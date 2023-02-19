@@ -41,12 +41,12 @@ public:
         CALLBACK_REPLAY,
         CALLBACK_RESETGEO,
         CALLBACK_LOCK,
+        CALLBACK_GAMMA,
         CALLBACK_BRIGHTNESS,
         CALLBACK_CONTRAST,
         CALLBACK_SATURATION,
         CALLBACK_HUE,
         CALLBACK_THRESHOLD,
-        CALLBACK_GAMMA,
         CALLBACK_INVERT,
         CALLBACK_POSTERIZE
     } CallbackType;
@@ -252,7 +252,7 @@ class PlayFastForward : public SourceCallback
     float duration_;
     double playspeed_;
 public:
-    PlayFastForward (uint seekstep = 1, float ms = FLT_MAX);
+    PlayFastForward (uint seekstep = 30, float ms = FLT_MAX);
 
     uint  value () const { return step_; }
     void  setValue (uint s) { step_ = s; }

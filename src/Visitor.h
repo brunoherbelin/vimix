@@ -57,6 +57,7 @@ class ValueSourceCallback;
 class SetAlpha;
 class SetDepth;
 class SetGeometry;
+class SetGamma;
 class Loom;
 class Grab;
 class Resize;
@@ -125,6 +126,7 @@ public:
     virtual void visit (SetAlpha&) {}
     virtual void visit (SetDepth&) {}
     virtual void visit (SetGeometry&) {}
+    virtual void visit (SetGamma&) {}
     virtual void visit (Loom&) {}
     virtual void visit (Grab&) {}
     virtual void visit (Resize&) {}

@@ -946,6 +946,16 @@ void SessionVisitor::visit (SetGeometry &c)
 
 }
 
+void SessionVisitor::visit (SetGamma &c)
+{
+    xmlCurrent_->SetAttribute("duration", c.duration());
+    xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
+
+    XMLElement *gamma = xmlDoc_->NewElement("gamma");
+    gamma->InsertEndChild( XMLElementFromGLM(xmlDoc_, c.value()) );
+    xmlCurrent_->InsertEndChild(gamma);
+}
+
 void SessionVisitor::visit (Loom &c)
 {
     xmlCurrent_->SetAttribute("delta", c.value());

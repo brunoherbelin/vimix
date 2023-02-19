@@ -1446,6 +1446,24 @@ void SessionLoader::visit (SetGeometry &c)
     xmlCurrent_ = current;
 }
 
+void SessionLoader::visit (SetGamma &c)
+{
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
+
+    XMLElement* gamma = xmlCurrent_->FirstChildElement("gamma");
+    if (gamma) {
+        glm::vec4 v;
+        tinyxml2::XMLElementToGLM( gamma->FirstChildElement("vec4"), v);
+        c.setValue(v);
+    }
+}
+
 void SessionLoader::visit (Loom &c)
 {
     float d = 0.f;

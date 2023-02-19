@@ -4925,19 +4925,19 @@ uint InputMappingInterface::ComboSelectCallback(uint current, bool imageprocessi
                                        ICON_FA_OBJECT_UNGROUP "  Turn",
                                        ICON_FA_LAYER_GROUP "  Depth",
                                        ICON_FA_PLAY_CIRCLE "  Play",
-                                       ICON_FA_PLAY_CIRCLE "  Play Speed",
-                                       ICON_FA_PLAY_CIRCLE "  Play Fast Fwd",
-                                       ICON_FA_PLAY_CIRCLE "  Play Seek",
+                                       ICON_FA_PLAY_CIRCLE "  Speed",
+                                       ICON_FA_PLAY_CIRCLE "  Fast forward",
+                                       ICON_FA_PLAY_CIRCLE "  Seek",
                                        "  None",
                                        "  None",
                                        "  None",
+                                       ICON_FA_PALETTE "  Gamma",
                                        ICON_FA_PALETTE "  Brightness",
                                        ICON_FA_PALETTE "  Contrast",
                                        ICON_FA_PALETTE "  Saturation",
                                        ICON_FA_PALETTE "  Hue",
                                        ICON_FA_PALETTE "  Threshold",
-                                       ICON_FA_PALETTE "  Gamma",
-                                       "  None",
+                                       ICON_FA_PALETTE "  Invert",
                                        "  None"
     };
 
@@ -4949,7 +4949,7 @@ uint InputMappingInterface::ComboSelectCallback(uint current, bool imageprocessi
             }
         }
         if (imageprocessing) {
-            for (uint i = SourceCallback::CALLBACK_BRIGHTNESS; i <= SourceCallback::CALLBACK_THRESHOLD; ++i){
+            for (uint i = SourceCallback::CALLBACK_GAMMA; i <= SourceCallback::CALLBACK_INVERT; ++i){
                 if ( ImGui::Selectable( callback_names[i]) ) {
                     selected = i;
                 }
@@ -5001,7 +5001,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Target alpha makes the source\nvisible (1.0), transparent (0.0),\n or innactive (-1.0)", 18, 12);
+        ImGuiToolkit::Indication("Alpha value to set if the source is\nvisible (1.0), transparent (0.0),\nor innactive (-1.0)", 18, 12);
 
     }
         break;
@@ -5015,7 +5015,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         if (ImGui::SliderFloat("##CALLBACK_LOOM", &val, -1.f, 1.f, "%.2f", 2.f))
             edited->setValue(val);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Increment making the source more visible (>0) or more transparent (<0)", 19, 12);
+        ImGuiToolkit::Indication("Increment alpha to make the source more visible (>0) or more transparent (<0)", 19, 12);
     }
         break;
     case SourceCallback::CALLBACK_GEOMETRY:
@@ -5070,7 +5070,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
             }
 
             ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-            ImGuiToolkit::Indication("Target geometry places the source by setting its position, scale and rotation", 1, 16);
+            ImGuiToolkit::Indication("Capture source geometry to restore it later (position, scale and rotation).", 1, 16);
         }
         else {
 
@@ -5090,7 +5090,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         if (ImGui::SliderFloat2("##CALLBACK_GRAB", val, -2.f, 2.f, "%.2f"))
             edited->setValue( glm::vec2(val[0], val[1]));
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Vector (x,y) moving the source horizontally and vertically.", 6, 15);
+        ImGuiToolkit::Indication("Increment vector (x,y) to move the source horizontally and vertically.", 6, 15);
     }
         break;
 
@@ -5104,7 +5104,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         if (ImGui::SliderFloat2("##CALLBACK_RESIZE", val, -2.f, 2.f, "%.2f"))
             edited->setValue( glm::vec2(val[0], val[1]));
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Vector (x,y) scaling the source horizontally and vertically.", 2, 15);
+        ImGuiToolkit::Indication("Increment vector (x,y) to scale the source horizontally and vertically.", 2, 15);
 
     }
         break;
@@ -5120,7 +5120,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
             edited->setValue(val );
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
-        ImGuiToolkit::Indication("Rotation of the source (speed in \u00B0/s),\nclockwise (>0), counterclockwise (<0)", 18, 9);
+        ImGuiToolkit::Indication("Rotation speed (\u00B0/s) to turn the source clockwise (>0) or counterclockwise (<0)", 18, 9);
     }
         break;
 
@@ -5145,7 +5145,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Target depth brings the source\nfront (12) or back (0).", 6, 6);
+        ImGuiToolkit::Indication("Depth value to place the source front (12) or back (0) in the scene.", 6, 6);
     }
         break;
 
@@ -5188,7 +5188,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Set play speed of a video source.", 16, 7);
+        ImGuiToolkit::Indication("Factor to multiply the playback speed of a video source.", 16, 7);
     }
         break;
 
@@ -5206,7 +5206,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
             edited->setValue( MAX(1, val) );
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Fast forward in a video source, by steps of the given duration (in miliseconds).", 13, 7);
+        ImGuiToolkit::Indication("Step increment (in miliseconds) to jump fast-forward in a video source.", 13, 7);
     }
         break;
 
@@ -5257,7 +5257,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         ImGui::PopStyleColor();
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
-        ImGuiToolkit::Indication("Jump to the given time in a video source (in minutes and seconds, MM:SS.MS).", 15, 7);
+        ImGuiToolkit::Indication("Target time (minutes and seconds, MM:SS.MS) to set where to jump to in a video source.", 15, 7);
     }
         break;
 
@@ -5278,11 +5278,11 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         float val = edited->value();
         ImGui::SetNextItemWidth(right_align);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        if (ImGui::SliderFloat("##CALLBACK_BRIGHTNESS", &val, -1.f, 1.f, "%.1f"))
+        if (ImGui::SliderFloat("##CALLBACK_BRIGHTNESS", &val, -1.f, 1.f))
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Set Brightness color correction.", 5, 16);
+        ImGuiToolkit::Indication("Brightness for color correction.", 5, 16);
     }
         break;
 
@@ -5303,11 +5303,11 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         float val = edited->value();
         ImGui::SetNextItemWidth(right_align);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        if (ImGui::SliderFloat("##CALLBACK_CONTRAST", &val, -1.f, 1.f, "%.1f"))
+        if (ImGui::SliderFloat("##CALLBACK_CONTRAST", &val, -1.f, 1.f))
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Set Contrast color correction.", 5, 16);
+        ImGuiToolkit::Indication("Contrast for color correction.", 5, 16);
     }
         break;
 
@@ -5328,11 +5328,11 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         float val = edited->value();
         ImGui::SetNextItemWidth(right_align);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        if (ImGui::SliderFloat("##CALLBACK_SATURATION", &val, -1.f, 1.f, "%.1f"))
+        if (ImGui::SliderFloat("##CALLBACK_SATURATION", &val, -1.f, 1.f))
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Set Saturation color correction.", 9, 16);
+        ImGuiToolkit::Indication("Saturation for color correction.", 9, 16);
     }
         break;
 
@@ -5353,11 +5353,11 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         float val = edited->value();
         ImGui::SetNextItemWidth(right_align);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        if (ImGui::SliderFloat("##CALLBACK_HUE", &val, 0.f, 1.f, "%.1f"))
+        if (ImGui::SliderFloat("##CALLBACK_HUE", &val, 0.f, 1.f))
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Set Hue shift color correction.", 12, 4);
+        ImGuiToolkit::Indication("Hue shift for color correction.", 12, 4);
     }
         break;
 
@@ -5378,38 +5378,60 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         float val = edited->value();
         ImGui::SetNextItemWidth(right_align);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        if (ImGui::SliderFloat("##CALLBACK_THRESHOLD", &val, 0.f, 1.f, "%.1f"))
+        if (ImGui::SliderFloat("##CALLBACK_THRESHOLD", &val, 0.0, 1.0, val < 0.001 ? "None" : "%.2f"))
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
-        ImGuiToolkit::Indication("Set Threshold color correction.", 8, 1);
+        ImGuiToolkit::Indication("Threshold for color correction.", 8, 1);
     }
         break;
 
     case SourceCallback::CALLBACK_GAMMA:
     {
-//        SetGamma *edited = static_cast<SetGamma*>(callback);
+        SetGamma *edited = static_cast<SetGamma*>(callback);
 
-//        bool bd = edited->bidirectional();
-//        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
-//            edited->setBidirectional(bd);
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
 
-//        ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
-//        int speed_index = d.index;
-//        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-//        if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
-//            edited->setDuration(speed_values[speed_index]);
+        ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
+        int speed_index = d.index;
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGuiToolkit::IconMultistate(speed_icon, &speed_index, speed_tooltip ))
+            edited->setDuration(speed_values[speed_index]);
 
-//        float val = edited->value();
-//        ImGui::SetNextItemWidth(right_align);
-//        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-//        if (ImGui::SliderFloat("##CALLBACK_GAMMA", &val, -1.f, 1.f, "%.1f"))
-//            edited->setValue(val);
+        glm::vec4 val = edited->value();
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGui::ColorEdit3("##CALLBACK_GAMMA Color", glm::value_ptr(val), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) )
+            edited->setValue(val);
+        ImGui::SetNextItemWidth(right_align);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGui::SliderFloat("##CALLBACK_GAMMA Gamma", &val.w, 0.5f, 10.f, "%.2f", 2.f) )
+            edited->setValue(val);
 
-//        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-//        ImGuiToolkit::Indication("Set Gamma color correction.", 5, 16);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Set Gamma color correction.", 6, 4);
     }
         break;
+
+    case SourceCallback::CALLBACK_INVERT:
+    {
+        SetInvert *edited = static_cast<SetInvert*>(callback);
+
+        bool bd = edited->bidirectional();
+        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+            edited->setBidirectional(bd);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+
+        int val = (int) edited->value();
+        ImGui::SetNextItemWidth(right_align);
+        if (ImGui::Combo("##CALLBACK_INVERT", &val, "None\0Color RGB\0Luminance\0"))
+            edited->setValue( (float) val);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        ImGuiToolkit::Indication("Invert mode for color correction.", 6, 16);
+    }
+        break;
+
     default:
         break;
     }
