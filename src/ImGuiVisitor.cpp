@@ -29,13 +29,11 @@
 #include <glm/gtc/matrix_access.hpp>
 
 #include <tinyxml2.h>
-#include "tinyxml2Toolkit.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
 
 #include "defines.h"
-#include "Log.h"
 #include "Scene.h"
 #include "Primitives.h"
 #include "ImageShader.h"
@@ -983,26 +981,31 @@ void ImGuiVisitor::visit (AlphaFilter& f)
     }
 
     if ( m == AlphaFilter::ALPHA_CHROMAKEY || m == AlphaFilter::ALPHA_FILL)
-    {
-        glm::vec4 color = glm::vec4(filter_parameters["Red"], filter_parameters["Green"], filter_parameters["Blue"], 1.f);
-        if (ImGuiToolkit::IconButton(13, 14)) {
-            color = glm::vec4(0.f, 0.8f, 0.f, 1.f);
-            f.setProgramParameter("Red",   color.r);
-            f.setProgramParameter("Green", color.g);
-            f.setProgramParameter("Blue",  color.b);
-        }
+    {        
+        static DialogToolkit::ColorPickerDialog colordialog;
+
+        // read color from filter
+        ImVec4 color = ImVec4(filter_parameters["Red"], filter_parameters["Green"], filter_parameters["Blue"], 1.f);
+
+        // show color
+        ImGui::ColorButton("##colorchromakey", *(ImVec4*)&color );
+
+        // offer to pick color
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::ColorEdit3("Color", glm::value_ptr(color), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoOptions) )
-        {
-            f.setProgramParameter("Red",   color.r);
-            f.setProgramParameter("Green", color.g);
-            f.setProgramParameter("Blue",  color.b);
+        if ( ImGui::Button( ICON_FA_EYE_DROPPER " Pick", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+            colordialog.setRGB( std::make_tuple(color.x, color.y, color.z) );
+            colordialog.open();
         }
-        if (ImGui::IsItemDeactivatedAfterEdit()) {
-            oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Color" << " " << color.r << " " << color.g << " " << color.b;
-            Action::manager().store(oss.str());
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Color");
+
+        // get picked color if dialog finished
+        if (colordialog.closed()){
+            std::tuple<float, float, float> c = colordialog.RGB();
+            f.setProgramParameter("Red",   std::get<0>(c));
+            f.setProgramParameter("Green", std::get<1>(c));
+            f.setProgramParameter("Blue",  std::get<2>(c));
         }
     }
 

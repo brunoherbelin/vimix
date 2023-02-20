@@ -715,7 +715,7 @@ bool UserInterface::saveOrSaveAs(bool force_versioning)
 bool UserInterface::TryClose()
 {
     // cannot close if a file dialog is pending
-    if (DialogToolkit::FileDialog::busy())
+    if (DialogToolkit::FileDialog::busy() || DialogToolkit::ColorPickerDialog::busy())
         return false;
 
     // always stop all recordings
