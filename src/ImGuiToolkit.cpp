@@ -1617,12 +1617,15 @@ void ImGuiToolkit::WindowDragFloat(const char* window_name, ImVec2 window_pos, f
     }
 }
 
+ImVec4 __colorHighlight;
+ImVec4 __colorHighlightActive;
+
 ImVec4 ImGuiToolkit::HighlightColor(bool active)
 {
     if (active)
-        return ImGui::GetStyle().Colors[ImGuiCol_CheckMark];
+        return __colorHighlightActive;
     else
-        return ImGui::GetStyle().Colors[ImGuiCol_TabUnfocusedActive];
+        return __colorHighlight;
 }
 
 void ImGuiToolkit::SetAccentColor(accent_color color)
@@ -1789,6 +1792,9 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.10f, 0.10f, 0.10f, 0.60f);
         colors[ImGuiCol_DragDropTarget]         = colors[ImGuiCol_HeaderActive];
     }
+
+    __colorHighlight = colors[ImGuiCol_TabUnfocusedActive];
+    __colorHighlightActive = colors[ImGuiCol_CheckMark];
 
 }
 
