@@ -682,6 +682,10 @@ std::tuple<float, float, float> openColorDialog( std::tuple<float, float, float>
     color.alpha = 1.f;
     gtk_color_chooser_set_rgba( GTK_COLOR_CHOOSER(dialog), &color );
 
+    // no alpha, with editor for picking color
+    gtk_color_chooser_set_use_alpha( GTK_COLOR_CHOOSER(dialog), false);
+    g_object_set( GTK_WINDOW(dialog), "show-editor", TRUE, NULL );
+
     // prepare dialog
     gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
     static int x = 0, y = 0;

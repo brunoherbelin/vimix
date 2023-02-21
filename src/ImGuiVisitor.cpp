@@ -985,16 +985,16 @@ void ImGuiVisitor::visit (AlphaFilter& f)
         static DialogToolkit::ColorPickerDialog colordialog;
 
         // read color from filter
-        ImVec4 color = ImVec4(filter_parameters["Red"], filter_parameters["Green"], filter_parameters["Blue"], 1.f);
+        float color[3] = {filter_parameters["Red"], filter_parameters["Green"], filter_parameters["Blue"]};
 
         // show color
-        ImGui::ColorButton("##colorchromakey", *(ImVec4*)&color );
+        ImGui::ColorEdit3("Chromakey Color", color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ;
 
         // offer to pick color
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::Button( ICON_FA_EYE_DROPPER " Pick", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            colordialog.setRGB( std::make_tuple(color.x, color.y, color.z) );
+        if ( ImGui::Button( ICON_FA_EYE_DROPPER " Open selector", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+            colordialog.setRGB( std::make_tuple(color[0], color[1], color[2]) );
             colordialog.open();
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
