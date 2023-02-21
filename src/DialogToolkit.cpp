@@ -655,11 +655,17 @@ std::tuple<float, float, float> openColorDialog( std::tuple<float, float, float>
 
 #if USE_TINYFILEDIALOG
 
-//    TODO
-//    char rgb[3];
-//    c_str hexColor = tinyfd_colorChooser("Choose or pick a color", "#FF0077", rgb, rgb);
-//    if (hexColor) {
-//    }
+    unsigned char prev_color[3];
+    prev_color[0] = (char) ceilf(255.f * std::get<0>(rgb));
+    prev_color[1] = (char) ceilf(255.f * std::get<1>(rgb));
+    prev_color[2] = (char) ceilf(255.f * std::get<2>(rgb));
+
+    unsigned char ret_color[3];
+
+    if ( NULL != tinyfd_colorChooser("Choose or pick a color", NULL, prev_color, ret_color) )
+    {
+        ret = { (float) ret_color[0] / 255.f, (float) ret_color[1] / 255.f, (float) ret_color[2] / 255.f};
+    }
 
 #else
     if (!gtk_init()) {
