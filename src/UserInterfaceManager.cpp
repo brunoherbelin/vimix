@@ -1464,7 +1464,7 @@ void ToolBox::Render()
     {
         if (ImGui::BeginMenu("Render"))
         {
-            if ( ImGui::MenuItem( ICON_FA_CAMERA_RETRO "  View screenshot", "F9") )
+            if ( ImGui::MenuItem( MENU_CAPTUREGUI, SHORTCUT_CAPTURE_GUI) )
                 UserInterface::manager().StartScreenshot();
 
             ImGui::EndMenu();
@@ -1687,7 +1687,7 @@ void HelperToolbox::Render()
         ImGui::PushTextWrapPos(width_window );
 
         ImGui::Text(IMGUI_TITLE_PREVIEW); ImGui::NextColumn();
-        ImGui::Text ("Preview the output displayed in the rendering window. Control video recording and sharing to other vimix in local network.");
+        ImGui::Text ("Preview the output displayed in the rendering window. Control video recording and streaming.");
         ImGui::NextColumn();
         ImGui::Text(IMGUI_TITLE_MEDIAPLAYER); ImGui::NextColumn();
         ImGui::Text ("Play, pause, rewind videos or dynamic sources. Control play duration, speed and synchronize multiple videos.");
@@ -1699,7 +1699,7 @@ void HelperToolbox::Render()
         ImGui::Text ("Define how user inputs (e.g. keyboard, joystick) are mapped to custom actions in the session.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_STICKY_NOTE "  Notes"); ImGui::NextColumn();
-        ImGui::Text ("Place sticky notes into your session.");
+        ImGui::Text ("Place sticky notes into your session. Does nothing, just keep notes and reminders.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_TACHOMETER_ALT "  Metrics"); ImGui::NextColumn();
         ImGui::Text ("Utility monitoring of metrics on the system (FPS, RAM), the runtime (session duration), or the current source.");
@@ -1770,10 +1770,10 @@ void HelperToolbox::Render()
         ImGui::Text ("Displays the rendering output as a source, with or without loopback.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_CLONE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Clone"); ImGui::NextColumn();
-        ImGui::Text ("Clone a source into another source with a filter.");
+        ImGui::Text ("Clones the frames of a source into another one, and applies a filter on the way.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Group"); ImGui::NextColumn();
-        ImGui::Text ("Group of sources rendered together after flattenning them in Layers view.");
+        ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Bundle"); ImGui::NextColumn();
+        ImGui::Text ("Bundles together several sources and renders them as an internal session.");
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
@@ -1875,7 +1875,7 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_EXPAND_ALT " " TOOLTIP_FULLSCREEN "main window"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_OUTPUT); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_WINDOW_MAXIMIZE " " TOOLTIP_OUTPUT "window"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_LAPTOP " " TOOLTIP_OUTPUT "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_PLAYER); ImGui::NextColumn();
         ImGui::Text(ICON_FA_PLAY_CIRCLE " " TOOLTIP_PLAYER "window" ); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_TIMER); ImGui::NextColumn();
@@ -1900,6 +1900,10 @@ void HelperToolbox::Render()
         ImGui::Text(SHORTCUT_SAVEAS_FILE); ImGui::NextColumn();
         ImGui::Text(MENU_SAVEAS_FILE " session"); ImGui::NextColumn();
         ImGui::Separator();
+        ImGui::Text(SHORTCUT_UNDO); ImGui::NextColumn();
+        ImGui::Text(MENU_UNDO); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_REDO); ImGui::NextColumn();
+        ImGui::Text(MENU_REDO); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_CUT); ImGui::NextColumn();
         ImGui::Text(MENU_CUT " source"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_COPY); ImGui::NextColumn();
@@ -1907,21 +1911,19 @@ void HelperToolbox::Render()
         ImGui::Text(SHORTCUT_PASTE); ImGui::NextColumn();
         ImGui::Text(MENU_PASTE); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_SELECTALL); ImGui::NextColumn();
-        ImGui::Text(MENU_SELECTALL " source"); ImGui::NextColumn();
-        ImGui::Text(SHORTCUT_UNDO); ImGui::NextColumn();
-        ImGui::Text(MENU_UNDO); ImGui::NextColumn();
-        ImGui::Text(SHORTCUT_REDO); ImGui::NextColumn();
-        ImGui::Text(MENU_REDO); ImGui::NextColumn();
+        ImGui::Text(MENU_SELECTALL " sources"); ImGui::NextColumn();
         ImGui::Separator();
-        ImGui::Text(SHORTCUT_CAPTUREFRAME); ImGui::NextColumn();
-        ImGui::Text(MENU_CAPTUREFRAME " Output"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_CAPTURE_DISPLAY); ImGui::NextColumn();
+        ImGui::Text(MENU_CAPTUREFRAME " display"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_OUTPUTDISABLE); ImGui::NextColumn();
+        ImGui::Text(MENU_OUTPUTDISABLE " display output"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_RECORD); ImGui::NextColumn();
         ImGui::Text(MENU_RECORD " Output"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_RECORDCONT); ImGui::NextColumn();
         ImGui::Text(MENU_RECORDCONT " recording"); ImGui::NextColumn();
-        ImGui::Text(SHORTCUT_OUTPUTDISABLE); ImGui::NextColumn();
-        ImGui::Text(MENU_OUTPUTDISABLE " output window"); ImGui::NextColumn();
         ImGui::Separator();
+        ImGui::Text(SHORTCUT_CAPTURE_PLAYER); ImGui::NextColumn();
+        ImGui::Text(MENU_CAPTUREFRAME " Player"); ImGui::NextColumn();
         ImGui::Text("Space"); ImGui::NextColumn();
         ImGui::Text("Toggle Play/Pause selected videos"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "Space"); ImGui::NextColumn();
@@ -1929,10 +1931,12 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_UP " " ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
         ImGui::Text("Move the selection in the canvas"); ImGui::NextColumn();
         ImGui::Separator();
+        ImGui::Text(SHORTCUT_CAPTURE_GUI); ImGui::NextColumn();
+        ImGui::Text(MENU_CAPTUREGUI); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_LOGS); ImGui::NextColumn();
         ImGui::Text(IMGUI_TITLE_LOGS); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_HELP); ImGui::NextColumn();
-        ImGui::Text(IMGUI_TITLE_HELP " window"); ImGui::NextColumn();
+        ImGui::Text(IMGUI_TITLE_HELP ); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_QUIT); ImGui::NextColumn();
         ImGui::Text(MENU_QUIT); ImGui::NextColumn();
 
@@ -4164,7 +4168,7 @@ void OutputPreview::Render()
             if (ImGui::BeginMenu( ICON_FA_ARROW_ALT_CIRCLE_DOWN " Capture"))
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
-                if ( ImGui::MenuItem( MENU_CAPTUREFRAME, SHORTCUT_CAPTUREFRAME) ) {
+                if ( ImGui::MenuItem( MENU_CAPTUREFRAME, SHORTCUT_CAPTURE_DISPLAY) ) {
                     FrameGrabbing::manager().add(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
                 }
                 ImGui::PopStyleColor(1);
@@ -8283,6 +8287,8 @@ void Navigator::RenderMainPannelSettings()
         //
         ImGui::Text("Appearance");
         int v = Settings::application.accent_color;
+        ImGui::Spacing();
+        ImGui::SetCursorPosX(-0.6f * IMGUI_RIGHT_ALIGN);
         if (ImGui::RadioButton("##Color", &v, v)){
             Settings::application.accent_color = (v+1)%3;
             ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
@@ -8292,9 +8298,12 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SameLine();
         ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::DragFloat("Scale", &Settings::application.scale, 0.01f, 0.5f, 2.0f, "%.1f"))
+        if ( ImGui::InputFloat("Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
+            Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 2.f);
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
-
+        }
+        ImGuiToolkit::HelpToolTip("Cursor filter that makes movement smoother when manipulating a source.");
+        ImGui::SameLine();
         ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
 
         //
