@@ -16,8 +16,8 @@ namespace ImGuiToolkit
 {
     // Icons from resource icon.dds
     void Icon (int i, int j, bool enabled = true);
-    bool IconButton (int i, int j, const char *tooltips = nullptr);
-    bool IconButton (const char* icon, const char *tooltips = nullptr);
+    bool IconButton (int i, int j, const char *tooltips = nullptr, const char *shortcut = nullptr);
+    bool IconButton (const char* icon, const char *tooltips = nullptr, const char *shortcut = nullptr);
     bool IconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips);
     bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
     void ShowIconsWindow(bool* p_open);
@@ -83,7 +83,7 @@ namespace ImGuiToolkit
     typedef enum {
         ACCENT_BLUE =0,
         ACCENT_ORANGE,
-        ACCENT_GREY
+        ACCENT_GREEN
     } accent_color;
     void SetAccentColor (accent_color color);
     struct ImVec4 HighlightColor (bool active = true);

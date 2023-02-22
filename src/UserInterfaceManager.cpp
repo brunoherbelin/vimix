@@ -1023,8 +1023,6 @@ void UserInterface::showMenuFile()
 
     // HELP AND QUIT
     ImGui::Separator();
-    if (ImGui::MenuItem( IMGUI_TITLE_HELP, SHORTCUT_HELP))
-        Settings::application.widget.help = true;
     if (ImGui::MenuItem( MENU_QUIT, SHORTCUT_QUIT) && TryClose())
         Rendering::manager().close();
 
@@ -8283,7 +8281,7 @@ void Navigator::RenderMainPannelSettings()
         //
         // Appearance
         //
-        ImGui::Text("Interface");
+        ImGui::Text("Appearance");
         int v = Settings::application.accent_color;
         if (ImGui::RadioButton("##Color", &v, v)){
             Settings::application.accent_color = (v+1)%3;
@@ -8600,10 +8598,13 @@ void Navigator::RenderMainPannel()
         const char *tooltip[2] = {"Settings", "Settings"};
         ImGuiToolkit::IconToggle(13,5,12,5, &show_config_, tooltip);
         // Metrics icon just above
-        ImGui::SetCursorScreenPos( rightcorner - ImVec2(button_height, 2.1 * button_height));
-        if ( ImGuiToolkit::IconButton( 11, 3 , TOOLTIP_METRICS) )
+        ImGui::SetCursorScreenPos( rightcorner - ImVec2(button_height, 2.0 * button_height ));
+        if ( ImGuiToolkit::IconButton(11, 3, TOOLTIP_METRICS, SHORTCUT_METRICS) )
             Settings::application.widget.stats = !Settings::application.widget.stats;
-
+        // Help icon above
+        ImGui::SetCursorScreenPos( rightcorner - ImVec2(g.FontSize + g.Style.FramePadding.y * 2.0f, 3.0 * button_height));
+        if ( ImGuiToolkit::IconButton( ICON_FA_LIFE_RING , "Help  ", SHORTCUT_HELP) )
+            Settings::application.widget.help = !Settings::application.widget.help;
 
         ImGui::End();
     }
