@@ -35,7 +35,6 @@
 #include "DrawVisitor.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
-#include "Log.h"
 
 #include "TransitionView.h"
 

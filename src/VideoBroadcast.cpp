@@ -29,7 +29,6 @@
 
 #include "Log.h"
 #include "GstToolkit.h"
-#include "NetworkToolkit.h"
 
 #include "VideoBroadcast.h"
 

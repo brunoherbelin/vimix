@@ -32,7 +32,6 @@
 #include <cmrc/cmrc.hpp>
 CMRC_DECLARE(vmix);
 
-#include "defines.h"
 #include "Log.h"
 #include "Resource.h"
 

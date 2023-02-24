@@ -1,13 +1,16 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
+#include <glm/fwd.hpp>
 #include <map>
 #include <list>
 #include <string>
 #include <atomic>
 #include <condition_variable>
 
-#include "NetworkToolkit.h"
+#include "osc/OscReceivedElements.h"
+#include "osc/OscPacketListener.h"
+#include "ip/UdpSocket.h"
 
 #define OSC_SYNC               "/sync"
 

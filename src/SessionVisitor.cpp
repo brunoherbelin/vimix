@@ -23,7 +23,6 @@
 #include <tinyxml2.h>
 using namespace tinyxml2;
 
-#include "Log.h"
 #include "defines.h"
 #include "Scene.h"
 #include "Decorations.h"
@@ -48,7 +47,6 @@ using namespace tinyxml2;
 #include "MediaPlayer.h"
 #include "MixingGroup.h"
 #include "SystemToolkit.h"
-#include "ActionManager.h"
 
 #include "SessionVisitor.h"
 

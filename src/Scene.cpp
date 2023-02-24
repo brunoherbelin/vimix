@@ -28,13 +28,9 @@
 
 #include "defines.h"
 #include "Shader.h"
-#include "Primitives.h"
 #include "Visitor.h"
-#include "GarbageVisitor.h"
-#include "Log.h"
 #include "BaseToolkit.h"
 #include "GlmToolkit.h"
-#include "SessionVisitor.h"
 
 #include "Scene.h"
 

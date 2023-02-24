@@ -21,7 +21,6 @@
 #include <cmath>
 
 #include "defines.h"
-#include "Log.h"
 #include "Timeline.h"
 
 

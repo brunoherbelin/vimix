@@ -26,7 +26,6 @@
 #include <gst/gstformat.h>
 #include <gst/video/video.h>
 
-#include "defines.h"
 #include "Log.h"
 #include "GstToolkit.h"
 #include "BaseToolkit.h"

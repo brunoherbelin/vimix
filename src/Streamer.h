@@ -3,6 +3,10 @@
 
 #include <mutex>
 
+#include "osc/OscReceivedElements.h"
+#include "osc/OscPacketListener.h"
+#include "ip/UdpSocket.h"
+
 #include "NetworkToolkit.h"
 #include "FrameGrabber.h"
 

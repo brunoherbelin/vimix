@@ -23,7 +23,6 @@
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
-#include "Log.h"
 #include "Decorations.h"
 #include "GlmToolkit.h"
 

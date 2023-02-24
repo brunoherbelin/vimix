@@ -31,9 +31,7 @@
 #include "ImageShader.h"
 #include "Resource.h"
 #include "FrameBuffer.h"
-#include "MediaPlayer.h"
 #include "Visitor.h"
-#include "Log.h"
 
 #include "Primitives.h"
 

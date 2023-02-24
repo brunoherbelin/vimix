@@ -26,7 +26,6 @@
 
 #include "osc/OscOutboundPacketStream.h"
 
-#include "defines.h"
 #include "Log.h"
 #include "Settings.h"
 #include "BaseToolkit.h"
@@ -35,10 +34,8 @@
 #include "SourceCallback.h"
 #include "ImageProcessingShader.h"
 #include "ActionManager.h"
-#include "SystemToolkit.h"
-#include "tinyxml2Toolkit.h"
-#include "Metronome.h"
 #include "TransitionView.h"
+#include "NetworkToolkit.h"
 
 #include "UserInterfaceManager.h"
 #include "RenderingManager.h"

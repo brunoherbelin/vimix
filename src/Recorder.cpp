@@ -34,9 +34,7 @@
 
 #include "Settings.h"
 #include "GstToolkit.h"
-#include "defines.h"
 #include "SystemToolkit.h"
-#include "FrameBuffer.h"
 #include "Log.h"
 
 #include "Recorder.h"

@@ -20,7 +20,6 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Scene.h"
-#include "Log.h"
 
 #include "UpdateCallback.h"
 

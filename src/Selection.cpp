@@ -19,7 +19,6 @@
 
 #include <algorithm>
 
-#include "defines.h"
 #include "SessionVisitor.h"
 #include "Source.h"
 
