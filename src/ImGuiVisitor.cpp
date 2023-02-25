@@ -988,7 +988,12 @@ void ImGuiVisitor::visit (AlphaFilter& f)
         float color[3] = {filter_parameters["Red"], filter_parameters["Green"], filter_parameters["Blue"]};
 
         // show color
-        ImGui::ColorEdit3("Chromakey Color", color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ;
+        if (ImGui::ColorEdit3("Chromakey Color", color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) )
+        {
+            f.setProgramParameter("Red",   color[0]);
+            f.setProgramParameter("Green", color[1]);
+            f.setProgramParameter("Blue",  color[2]);
+        }
 
         // offer to pick color
         ImGui::SameLine(0, IMGUI_SAME_LINE);
