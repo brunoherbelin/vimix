@@ -8,6 +8,10 @@
 #define XML_VERSION_MINOR 3
 #define MAX_RECENT_HISTORY 20
 #define MAX_SESSION_LEVEL 3
+#define MAX_OUTPUT_WINDOW 3
+
+#define VIMIX_GL_VERSION "opengl3"
+#define VIMIX_GLSL_VERSION "#version 150"
 
 #define VIMIX_FILE_EXT "mix"
 #define VIMIX_FILE_PATTERN "*.mix"
@@ -110,7 +114,8 @@
 #define COLOR_LIMBO_CIRCLE 0.173f, 0.173f, 0.173f
 #define COLOR_SLIDER_CIRCLE 0.11f, 0.11f, 0.11f
 #define COLOR_STASH_CIRCLE 0.06f, 0.06f, 0.06f
-#define COLOR_MONITOR 0.2f, 0.85f, 0.85f
+#define COLOR_MONITOR 0.90f, 0.90f, 0.90f
+#define COLOR_WINDOW 0.2f, 0.85f, 0.85f
 #define COLOR_MENU_HOVERED 0.3f, 0.3f, 0.3f
 
 #define OSC_PORT_RECV_DEFAULT 7000

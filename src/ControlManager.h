@@ -96,6 +96,8 @@ class GLFWwindow;
 
 class Control
 {
+    friend class RenderingWindow;
+
     // Private Constructor
     Control();
     Control(Control const& copy) = delete;
@@ -151,6 +153,8 @@ protected:
     void sendBatchStatus(const IpEndpointName& remoteEndpoint);
     void sendOutputStatus(const IpEndpointName& remoteEndpoint);
 
+    static void keyboardCalback(GLFWwindow*, int, int, int, int);
+
 private:
 
     static void listen();
@@ -169,7 +173,6 @@ private:
     int   multitouch_active[INPUT_MULTITOUCH_COUNT];
     glm::vec2 multitouch_values[INPUT_MULTITOUCH_COUNT];
 
-    static void keyboardCalback(GLFWwindow*, int, int, int, int);
 
 };
 

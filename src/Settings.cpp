@@ -94,6 +94,7 @@ void Settings::Save(uint64_t runtime)
     // Windows
 	{
 		XMLElement *windowsNode = xmlDoc.NewElement( "Windows" );  
+        windowsNode->SetAttribute("num_output_windows", application.num_output_windows);
 
         for (int i = 0; i < (int) application.windows.size(); ++i)
         {
@@ -108,6 +109,7 @@ void Settings::Save(uint64_t runtime)
             window->SetAttribute("h", w.h);
             window->SetAttribute("f", w.fullscreen);
             window->SetAttribute("s", w.scaled);
+            window->SetAttribute("d", w.decorated);
             window->SetAttribute("m", w.monitor.c_str());
             windowsNode->InsertEndChild(window);
 		}
@@ -494,6 +496,8 @@ void Settings::Load()
         XMLElement * pElement = pRoot->FirstChildElement("Windows");
         if (pElement)
         {
+            pElement->QueryIntAttribute("num_output_windows", &application.num_output_windows);
+
             XMLElement* windowNode = pElement->FirstChildElement("Window");
             for( ; windowNode ; windowNode=windowNode->NextSiblingElement())
             {
@@ -504,13 +508,17 @@ void Settings::Load()
                 windowNode->QueryIntAttribute("h", &w.h);
                 windowNode->QueryBoolAttribute("f", &w.fullscreen);
                 windowNode->QueryBoolAttribute("s", &w.scaled);
+                windowNode->QueryBoolAttribute("d", &w.decorated);
                 const char *text = windowNode->Attribute("m");
                 if (text)
                     w.monitor = std::string(text);
 
                 int i = 0;
                 windowNode->QueryIntAttribute("id", &i);
-                w.name = application.windows[i].name; // keep only original name
+                if (i > 0)
+                    w.name = APP_NAME " output " + std::to_string(i);
+                else
+                    w.name = APP_TITLE;
                 application.windows[i] = w;
             }
         }

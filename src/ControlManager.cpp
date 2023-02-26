@@ -24,6 +24,7 @@
 #include <iomanip>
 #include <regex>
 
+#include <GLFW/glfw3.h>
 #include "osc/OscOutboundPacketStream.h"
 
 #include "Log.h"
@@ -36,10 +37,7 @@
 #include "ActionManager.h"
 #include "TransitionView.h"
 #include "NetworkToolkit.h"
-
 #include "UserInterfaceManager.h"
-#include "RenderingManager.h"
-#include <GLFW/glfw3.h>
 
 #include "ControlManager.h"
 
@@ -377,14 +375,6 @@ bool Control::init()
     // terminate before init (allows calling init() multiple times)
     //
     terminate();
-
-    //
-    // set keyboard callback
-    //
-    GLFWwindow *main = Rendering::manager().mainWindow().window();
-    GLFWwindow *output = Rendering::manager().outputWindow().window();
-    glfwSetKeyCallback( main, Control::keyboardCalback);
-    glfwSetKeyCallback( output, Control::keyboardCalback);
 
     //
     // load OSC Translator
@@ -1181,7 +1171,7 @@ void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)
 }
 
 
-void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int mods)
+void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
 {
     if (UserInterface::manager().keyboardAvailable() && !mods )
     {
@@ -1197,9 +1187,7 @@ void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int 
         }
         else if (_key == GLFW_KEY_ESCAPE && action == GLFW_PRESS )
         {
-            static GLFWwindow *output = Rendering::manager().outputWindow().window();
-            if (window==output)
-                Rendering::manager().outputWindow().exitFullscreen();
+            Rendering::manager().window(w)->exitFullscreen();
         }
         Control::manager().input_access_.unlock();
     }

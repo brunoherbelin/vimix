@@ -61,9 +61,11 @@ struct WindowConfig
     int x,y,w,h;
     bool fullscreen;
     bool scaled;
+    bool decorated;
     std::string monitor;
 
-    WindowConfig() : name(""), x(15), y(15), w(1280), h(720), fullscreen(false), scaled(false), monitor("") { }
+    WindowConfig() : name(APP_TITLE), x(15), y(15), w(1280), h(720),
+        fullscreen(false), scaled(false), decorated(true), monitor("") { }
 
 };
 
@@ -299,6 +301,7 @@ struct Application
     ControllerConfig control;
 
     // multiple windows handling
+    int num_output_windows;
     std::vector<WindowConfig> windows;
 
     // recent files histories
@@ -334,12 +337,16 @@ struct Application
         current_view = 1;
         current_workspace= 1;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
-        windows = std::vector<WindowConfig>(3);
-        windows[0].name = APP_TITLE;
+        num_output_windows = 1;
+        windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
         windows[0].w = 1600;
         windows[0].h = 900;
-        windows[1].name = "Output " APP_TITLE;
-        windows[2].name = "Fullscreen " APP_TITLE;
+        windows[1].w = 1270;
+        windows[1].h = 720;
+        windows[2].w = 1270;
+        windows[2].h = 720;
+        windows[3].w = 1270;
+        windows[3].h = 720;
     }
 
 };

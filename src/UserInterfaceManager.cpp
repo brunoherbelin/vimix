@@ -162,7 +162,7 @@ bool UserInterface::Init()
 
     // Setup Platform/Renderer bindings
     ImGui_ImplGlfw_InitForOpenGL(Rendering::manager().mainWindow().window(), true);
-    ImGui_ImplOpenGL3_Init(Rendering::manager().glsl_version.c_str());
+    ImGui_ImplOpenGL3_Init(VIMIX_GLSL_VERSION);
 
     // hack to change keys according to keyboard layout
     io.KeyMap[ImGuiKey_A] = Control::layoutKey(GLFW_KEY_A);
@@ -1497,7 +1497,7 @@ void ToolBox::Render()
     // init
     if (refresh_rate < 0.f) {
 
-        const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().outputWindow().monitor());
+        const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().mainWindow().monitor());
         refresh_rate = float(mode->refreshRate);
         if (Settings::application.render.vsync > 0)
             refresh_rate /= Settings::application.render.vsync;
@@ -4137,8 +4137,9 @@ void OutputPreview::Render()
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
                 // Output window menu
-                if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show window") )
-                    Rendering::manager().outputWindow().show();
+// TODO Menu options for output windows creation / show ?
+//                if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show window") )
+//                    Rendering::manager().outputWindow().show();
 
                 ImGui::MenuItem( MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE, &Settings::application.render.disabled);
 
@@ -4368,9 +4369,6 @@ void OutputPreview::Render()
         ImGui::PopStyleVar();
         // mouse over the image
         if ( ImGui::IsItemHovered()  ) {
-            // raise window on double clic
-            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
-                Rendering::manager().outputWindow().show();
             // show magnifying glass if active
             if (magnifying_glass)
                 DrawInspector(output->texture(), imagesize, imagesize, draw_pos);
@@ -4467,7 +4465,7 @@ void OutputPreview::Render()
         if (Settings::application.render.disabled)
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + imagesize.y - 2.f*r));
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 0.8f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_WINDOW, 0.8f));
             ImGui::Text(ICON_FA_EYE_SLASH);
             ImGui::PopStyleColor(1);
         }
