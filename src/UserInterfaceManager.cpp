@@ -452,7 +452,7 @@ void UserInterface::handleKeyboard()
     // special case: CTRL + TAB is ALT + TAB in OSX
     if (io.ConfigMacOSXBehaviors ? io.KeyAlt : io.KeyCtrl) {
         if (ImGui::IsKeyPressed( GLFW_KEY_TAB, false ))
-            show_view_navigator += shift_modifier_active ? 3 : 1;
+            show_view_navigator += shift_modifier_active ? 5 : 1;
     }
     else if (show_view_navigator > 0) {
         show_view_navigator  = 0;
@@ -1063,16 +1063,21 @@ int UserInterface::RenderViewNavigator(int *shift)
 {
     // calculate potential target view index :
     // - shift increment : minus 1 to not react to first trigger
-    // - current_view : indices are between 1 (Mixing) and 5 (Appearance)
-    // - Modulo 4 to allow multiple repetition of shift increment
-    int target_index = ( (Settings::application.current_view -1)+ (*shift -1) )%4 + 1;
+    // - current_view : indices are >= 1 (Mixing) and < 7 (INVALID)
+    // - Modulo 6 to allow multiple repetition of shift increment
+    // - skipping TRANSITION view 5 that is called only during transition
+    int target_index = ( (Settings::application.current_view -1) + (*shift -1) )%6 + 1;
+
+    // skip TRANSITION view
+    if (target_index == View::TRANSITION)
+        ++target_index;
 
     // prepare rendering of centered, fixed-size, semi-transparent window;
     const ImGuiIO& io = ImGui::GetIO();
     ImVec2 window_pos = ImVec2(io.DisplaySize.x / 2.f, io.DisplaySize.y / 2.f);
     ImVec2 window_pos_pivot = ImVec2(0.5f, 0.5f);
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-    ImGui::SetNextWindowSize(ImVec2(500.f, 120.f + 2.f * ImGui::GetTextLineHeight()), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(5.f * 120.f, 120.f + 2.f * ImGui::GetTextLineHeight()), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.85f);
 
     // show window
@@ -1087,8 +1092,8 @@ int UserInterface::RenderViewNavigator(int *shift)
         ImVec2 alignment = ImVec2(0.4f, 0.5f);
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, alignment);
 
-        // draw in 4 columns
-        ImGui::Columns(4, NULL, false);
+        // draw in 5 columns
+        ImGui::Columns(5, NULL, false);
 
         // 4 selectable large icons
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
@@ -1115,10 +1120,20 @@ int UserInterface::RenderViewNavigator(int *shift)
             Mixer::manager().setView(View::TEXTURE);
             *shift = 0;
         }
+        // skip TRANSITION view
+        ImGui::NextColumn();
+        if (ImGui::Selectable( ICON_FA_TV, &selected_view[6], 0, iconsize))
+        {
+            Mixer::manager().setView(View::DISPLAYS);
+            *shift = 0;
+        }
         ImGui::PopFont();
 
-        // 4 subtitles (text centered in column)
-        for (int v = View::MIXING; v < View::TRANSITION; ++v) {
+        // 5 subtitles (text centered in column)
+        for (int v = View::MIXING; v < View::INVALID; ++v) {
+            // skip TRANSITION view
+            if (v == View::TRANSITION)
+                continue;
             ImGui::NextColumn();
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize(Settings::application.views[v].name.c_str()).x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
             ImGuiToolkit::PushFont(Settings::application.current_view == v ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
@@ -1251,12 +1266,29 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
     }
     else {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-        ImGui::Text("Window  %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
-        //        ImGui::Text("HiDPI (retina) %s", io.DisplayFramebufferScale.x > 1.f ? "on" : "off");
-        ImGui::Text("Refresh %.1f FPS", io.Framerate);
-        ImGui::Text("Memory  %s", BaseToolkit::byte_to_string( SystemToolkit::memory_usage()).c_str() );
-        ImGui::PopFont();
+        ImGui::Text("Refresh  %.1f FPS", io.Framerate);
 
+        // read Memory info every second
+        static long ram = 0;
+        static glm::ivec2 gpu(INT_MAX, INT_MAX);
+        {
+            static GTimer *timer = g_timer_new ();
+            double elapsed = g_timer_elapsed (timer, NULL);
+            if ( elapsed > 1.0 ){
+                ram = SystemToolkit::memory_usage();
+                gpu = Rendering::manager().getGPUMemoryInformation();
+                g_timer_start(timer);
+            }
+        }
+        // CPU RAM
+        ImGui::Text("RAM      %s", BaseToolkit::byte_to_string( ram ).c_str() );
+        // GPU RAM if available (default to resolution)
+        if (gpu.y < INT_MAX)
+            ImGui::Text("GPU RAM  %s", BaseToolkit::byte_to_string(long(gpu.y-gpu.x) * 1024).c_str() );
+        else
+            ImGui::Text("Window  %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
+
+        ImGui::PopFont();
     }
 
     if (ImGui::BeginPopup("metrics_menu"))
