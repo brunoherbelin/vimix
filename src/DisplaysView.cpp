@@ -133,17 +133,14 @@ void DisplaysView::update(float dt)
     View::update(dt);
 
     // a more complete update is requested
-    if (View::need_deep_update_ > 0) {
+    if (View::need_deep_update_ > 0 && Mixer::manager().view() == this ) {
 
         // update rendering of render frame
         FrameBuffer *render = Mixer::manager().session()->frame();
         if (render) {
-
             output_ar = render->aspectRatio();
-
-            for (int i = 0; i < MAX_OUTPUT_WINDOW; ++i) {
+            for (int i = 0; i < MAX_OUTPUT_WINDOW; ++i)
                 windows_[i].render_->setTextureIndex( render->texture() );
-            }
         }
         else
             output_ar = 1.f;
@@ -215,33 +212,12 @@ void  DisplaysView::recenter ()
 
 void DisplaysView::resize ( int scale )
 {
-//    glm::vec3 scene_center = Rendering::manager().unProject(resolution() * 0.5f, scene.root()->transform_);
-//    scene_center.z = 0.f;
-
-
     float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
     z *= z; // square
     z *= DISPLAYS_MAX_SCALE - DISPLAYS_MIN_SCALE;
     z += DISPLAYS_MIN_SCALE;
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
-
-//    scene.root()->update(0.f);
-//    glm::vec3 scene_center2 = Rendering::manager().unProject(resolution() * 0.5f, scene.root()->transform_);
-//    scene_center2.z = 0.f;
-
-//    g_printerr(" resol %f %f   -  center %f %f %f\n",resolution().x, resolution().y,
-//               scene_center.x, scene_center.y, scene_center.z);
-
-//    g_printerr(" scene.root()->translation_ %f %f \n",scene.root()->translation_.x,
-//               scene.root()->translation_.y);
-
-//    scene.root()->translation_ += scene_center2 -scene_center;
-
-//    // Clamp translation to acceptable area
-//    glm::vec3 left(-10.f, -5.f, 0.f);
-//    glm::vec3 right(5.f, 5.f, 0.f);
-//    scene.root()->translation_ = glm::clamp(scene.root()->translation_, left, right);
 }
 
 int  DisplaysView::size ()
@@ -406,18 +382,20 @@ void DisplaysView::draw()
         // Add / Remove windows
         ImGui::SameLine();
         if ( Settings::application.num_output_windows < MAX_OUTPUT_WINDOW) {
-            if (ImGuiToolkit::IconButton(18, 4, "Less windows"))
+            if (ImGuiToolkit::IconButton(18, 4, "More windows"))
                 ++Settings::application.num_output_windows;
         }
         else
             ImGuiToolkit::Icon(18, 4, false);
         ImGui::SameLine();
         if ( Settings::application.num_output_windows > 0 ) {
-            if (ImGuiToolkit::IconButton(19, 4, "More windows"))
+            if (ImGuiToolkit::IconButton(19, 4, "Less windows"))
                 --Settings::application.num_output_windows;
         }
         else
             ImGuiToolkit::Icon(19, 4, false);
+
+
 
         ImGui::PopStyleColor(14);  // 14 colors
         ImGui::End();
