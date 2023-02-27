@@ -8466,11 +8466,9 @@ void Navigator::RenderMainPannelSettings()
 
         static bool need_restart = false;
         static bool vsync = (Settings::application.render.vsync > 0);
-        static bool blit = Settings::application.render.blit;
         static bool multi = (Settings::application.render.multisampling > 0);
         static bool gpu = Settings::application.render.gpu_decoding;
         bool change = false;
-        change |= ImGuiToolkit::ButtonSwitch( "Blit framebuffer", &blit);
 #ifndef NDEBUG
         change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
@@ -8486,7 +8484,6 @@ void Navigator::RenderMainPannelSettings()
 
         if (change) {
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
-                 blit != Settings::application.render.blit ||
                  multi != (Settings::application.render.multisampling > 0) ||
                  gpu != Settings::application.render.gpu_decoding );
         }
@@ -8494,7 +8491,6 @@ void Navigator::RenderMainPannelSettings()
             ImGuiToolkit::Spacing();
             if (ImGui::Button( ICON_FA_POWER_OFF "  Restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
                 Settings::application.render.vsync = vsync ? 1 : 0;
-                Settings::application.render.blit = blit;
                 Settings::application.render.multisampling = multi ? 3 : 0;
                 Settings::application.render.gpu_decoding = gpu;
                 if (UserInterface::manager().TryClose())

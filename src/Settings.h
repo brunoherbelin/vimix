@@ -157,7 +157,6 @@ struct TransitionConfig
 struct RenderConfig
 {
     bool disabled;
-    bool blit;
     int vsync;
     int multisampling;
     int ratio;
@@ -169,7 +168,6 @@ struct RenderConfig
 
     RenderConfig() {
         disabled = false;
-        blit = false;
         vsync = 1;
         multisampling = 2;
         ratio = 3;

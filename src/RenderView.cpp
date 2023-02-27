@@ -182,11 +182,8 @@ void RenderView::drawThumbnail()
                     frame_thumbnail_ = new FrameBuffer( res_thumbnail );
 
                 // render
-                if (Settings::application.render.blit) {
-                    if ( !frame_buffer_->blit(frame_thumbnail_) )
-                        throw std::runtime_error("no blit");
-                }
-                else {
+                if ( !frame_buffer_->blit(frame_thumbnail_) ){
+                    // render anyway if blit failed
                     FrameBufferSurface *thumb = new FrameBufferSurface(frame_buffer_);
                     frame_thumbnail_->begin();
                     thumb->draw(glm::identity<glm::mat4>(), frame_thumbnail_->projection());

@@ -159,7 +159,6 @@ void Settings::Save(uint64_t runtime)
     XMLElement *RenderNode = xmlDoc.NewElement( "Render" );
     RenderNode->SetAttribute("vsync", application.render.vsync);
     RenderNode->SetAttribute("multisampling", application.render.multisampling);
-    RenderNode->SetAttribute("blit", application.render.blit);
     RenderNode->SetAttribute("gpu_decoding", application.render.gpu_decoding);
     RenderNode->SetAttribute("ratio", application.render.ratio);
     RenderNode->SetAttribute("res", application.render.res);
@@ -440,7 +439,6 @@ void Settings::Load()
     if (rendernode != nullptr) {
         rendernode->QueryIntAttribute("vsync", &application.render.vsync);
         rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
-        rendernode->QueryBoolAttribute("blit", &application.render.blit);
         rendernode->QueryBoolAttribute("gpu_decoding", &application.render.gpu_decoding);
         rendernode->QueryIntAttribute("ratio", &application.render.ratio);
         rendernode->QueryIntAttribute("res", &application.render.res);
