@@ -60,6 +60,7 @@
 // vimix
 #include "defines.h"
 #include "Log.h"
+#include "Stream.h"
 #include "Resource.h"
 #include "Settings.h"
 #include "ImageShader.h"
@@ -693,6 +694,7 @@ WindowSurface::WindowSurface(Shader *s) : Primitive(s)
 RenderingWindow::RenderingWindow() : window_(NULL), master_(NULL),
     index_(-1), dpi_scale_(1.f), textureid_(0), fbo_(0), surface_(nullptr), request_change_fullscreen_(false)
 {
+    pattern_ = new Stream;
 }
 
 RenderingWindow::~RenderingWindow()
@@ -1014,6 +1016,12 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
         window_attributes_.clear_color = glm::vec4(COLOR_BGROUND, 1.f);
     }
 
+    //
+    // Stream pattern
+    //
+    pattern_->open("videotestsrc pattern=smpte", 1280, 720);
+    pattern_->play(true);
+
     return true;
 }
 
@@ -1108,10 +1116,11 @@ bool RenderingWindow::draw(FrameBuffer *fb)
                 surface_ = new WindowSurface;
 
             // calculate scaling factor of frame buffer inside window
-            float windowAspectRatio = aspectRatio();
-            float renderingAspectRatio = fb->aspectRatio();
+            const float windowAspectRatio = aspectRatio();
+            const float renderingAspectRatio = fb->aspectRatio();
             glm::vec3 scale = glm::vec3(1.f, 1.f, 1.f);
 
+            // Display option: scaled or corrected aspect ratio
             if (!Settings::application.windows[index_].scaled) {
                 if (windowAspectRatio < renderingAspectRatio)
                     scale = glm::vec3(1.f, windowAspectRatio / renderingAspectRatio, 1.f);
@@ -1119,12 +1128,17 @@ bool RenderingWindow::draw(FrameBuffer *fb)
                     scale = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
             }
 
-            // make sure previous shader in another glcontext is disabled
-            ShadingProgram::enduse();
+            // Display option: draw calibration pattern
+            if ( Settings::application.windows[index_].show_pattern) {
+                pattern_->update();
+                textureid_ = pattern_->texture();
+            }
+            else
+                // draw normal texture
+                textureid_ = fb->texture();
 
-            // draw
-            glBindTexture(GL_TEXTURE_2D, fb->texture());
-            //            surface->shader()->color.a = 0.4f; // TODO alpha blending ?
+            // actual render of the textured surface
+            glBindTexture(GL_TEXTURE_2D, textureid_);
             static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
             surface_->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
 

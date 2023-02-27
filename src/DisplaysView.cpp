@@ -140,7 +140,7 @@ void DisplaysView::update(float dt)
         if (render) {
             output_ar = render->aspectRatio();
             for (int i = 0; i < MAX_OUTPUT_WINDOW; ++i)
-                windows_[i].render_->setTextureIndex( render->texture() );
+                windows_[i].render_->setTextureIndex( Rendering::manager().outputWindow(i).texture() );
         }
         else
             output_ar = 1.f;
@@ -395,6 +395,52 @@ void DisplaysView::draw()
         else
             ImGuiToolkit::Icon(19, 4, false);
 
+        // Modify current window
+        if (current_window_ > -1) {
+
+            // Pattern output
+            ImGui::SameLine(0, 50);
+            if ( ImGuiToolkit::ButtonIconToggle(10,1,11,1, &Settings::application.windows[1+current_window_].show_pattern, "Test pattern") )
+                View::need_deep_update_ += 2; // two frames update to get pattern initialized
+
+//            // White ballance
+//            static DialogToolkit::ColorPickerDialog whitedialog;
+//            ImGui::SameLine(0, 30);
+//            ImGuiToolkit::Icon(5, 4);
+//            static ImVec4 white = ImVec4(1.f, 1.f, 1.f, 1.f);
+//            ImGui::SameLine();
+//            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+//            if (ImGui::ColorButton("White", white, ImGuiColorEditFlags_NoAlpha)) {
+//                whitedialog.setRGB( std::make_tuple(white.x, white.y, white.z) );
+//                whitedialog.open();
+//            }
+//            ImGui::PopFont();
+//            // get picked color if dialog finished
+//            if (whitedialog.closed()){
+//                std::tuple<float, float, float> c = whitedialog.RGB();
+//                white.x =  std::get<0>(c);
+//                white.y =  std::get<1>(c);
+//                white.z =  std::get<2>(c);
+//            }
+
+//            ImGui::SameLine();
+//            ImGuiToolkit::Icon(3,4);
+//            static ImVec4 grey = ImVec4(0.5f, 0.5f, 0.5f, 1.f);
+//            ImGui::SameLine();
+//            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+//            ImGui::ColorButton("Grey", grey, ImGuiColorEditFlags_NoAlpha);
+//            ImGui::PopFont();
+
+//            ImGui::SameLine();
+//            ImGuiToolkit::Icon(4,4);
+//            static ImVec4 black = ImVec4(0.f, 0.f, 0.f, 1.f);
+//            ImGui::SameLine();
+//            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+//            ImGui::ColorButton("Black", black, ImGuiColorEditFlags_NoAlpha);
+//            ImGui::PopFont();
+
+
+        }
 
 
         ImGui::PopStyleColor(14);  // 14 colors

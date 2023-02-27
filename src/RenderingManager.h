@@ -16,6 +16,7 @@
 typedef struct GLFWmonitor GLFWmonitor;
 typedef struct GLFWwindow GLFWwindow;
 class FrameBuffer;
+class Stream;
 
 struct RenderingAttrib
 {
@@ -37,6 +38,7 @@ class RenderingWindow
     // objects to render
     uint textureid_;
     uint fbo_;
+    Stream *pattern_;
     class WindowSurface *surface_;
 
 protected:
@@ -65,6 +67,7 @@ public:
 
     // draw a framebuffer
     bool draw(FrameBuffer *fb);
+    inline uint texture() const {return textureid_; }
     void swap();
 
     // fullscreen

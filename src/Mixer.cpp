@@ -1526,7 +1526,7 @@ void Mixer::setResolution(glm::vec3 res)
 {
     if (session_) {
         session_->setResolution(res);
-        ++View::need_deep_update_;
+        View::need_deep_update_+=2;
         std::ostringstream info;
         info << "Session resolution changed to " << res.x << "x" << res.y;
         Log::Info("%s", info.str().c_str());
