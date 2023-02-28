@@ -132,18 +132,14 @@ void DisplaysView::update(float dt)
 {
     View::update(dt);
 
-    // a more complete update is requested
-    if (View::need_deep_update_ > 0 && Mixer::manager().view() == this ) {
+    // specific update when this view is active
+    if ( Mixer::manager().view() == this ) {
 
         // update rendering of render frame
-        FrameBuffer *render = Mixer::manager().session()->frame();
-        if (render) {
-            output_ar = render->aspectRatio();
-            for (int i = 0; i < MAX_OUTPUT_WINDOW; ++i)
-                windows_[i].render_->setTextureIndex( Rendering::manager().outputWindow(i).texture() );
-        }
-        else
-            output_ar = 1.f;
+        for (int i = 0; i < MAX_OUTPUT_WINDOW; ++i)
+            windows_[i].render_->setTextureIndex( Rendering::manager().outputWindow(i).texture() );
+
+        output_ar = Mixer::manager().session()->frame()->aspectRatio();
     }
 }
 
@@ -234,7 +230,6 @@ void DisplaysView::draw()
 
         // update visible flag
         windows_[i].root_->visible_ = true;
-        windows_[i].render_->visible_ = !Settings::application.render.disabled;
         windows_[i].icon_->visible_ = Settings::application.render.disabled;
 
         if (windows_[i].render_->visible_) {
@@ -400,8 +395,7 @@ void DisplaysView::draw()
 
             // Pattern output
             ImGui::SameLine(0, 50);
-            if ( ImGuiToolkit::ButtonIconToggle(10,1,11,1, &Settings::application.windows[1+current_window_].show_pattern, "Test pattern") )
-                View::need_deep_update_ += 2; // two frames update to get pattern initialized
+            ImGuiToolkit::ButtonIconToggle(10,1,11,1, &Settings::application.windows[1+current_window_].show_pattern, "Test pattern");
 
 //            // White ballance
 //            static DialogToolkit::ColorPickerDialog whitedialog;

@@ -489,7 +489,7 @@ void Rendering::draw()
         g_timer_start(timer);
     }
 
-    // swap GL buffers
+    // swap all GL buffers at once
     main_.swap();
     for (auto it = outputs_.begin(); it != outputs_.end(); ++it)
         it->swap();
@@ -1019,8 +1019,9 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     //
     // Stream pattern
     //
-    pattern_->open("videotestsrc pattern=smpte", 1280, 720);
+    pattern_->open("videotestsrc pattern=smpte", 1024, 1024);
     pattern_->play(true);
+    textureid_ = Resource::getTextureBlack();
 
     return true;
 }
@@ -1044,6 +1045,7 @@ void RenderingWindow::terminate()
     surface_ = nullptr;
     fbo_     = 0;
     index_   = -1;
+    textureid_ = Resource::getTextureBlack();
 }
 
 void RenderingWindow::show()
@@ -1088,6 +1090,7 @@ void RenderingWindow::swap()
 
 bool RenderingWindow::draw(FrameBuffer *fb)
 {
+    // cannot draw if there is no window or invalid framebuffer
     if (!window_ || !fb)
         return false;
 
@@ -1108,8 +1111,12 @@ bool RenderingWindow::draw(FrameBuffer *fb)
         ShadingProgram::enduse();
 
         // draw geometry
-        if (!Settings::application.render.disabled)
-        {
+        if (Settings::application.render.disabled)
+            // no draw; indicate texture is black
+            textureid_ = Resource::getTextureBlack();
+        else {
+            // normal draw
+
             // VAO is not shared between multiple contexts of different windows
             // so we have to create a new VAO for rendering the surface in this window
             if (surface_ == nullptr)
@@ -1130,6 +1137,7 @@ bool RenderingWindow::draw(FrameBuffer *fb)
 
             // Display option: draw calibration pattern
             if ( Settings::application.windows[index_].show_pattern) {
+                // draw pattern texture
                 pattern_->update();
                 textureid_ = pattern_->texture();
             }
