@@ -40,6 +40,7 @@ class RenderingWindow
     uint fbo_;
     Stream *pattern_;
     class WindowSurface *surface_;
+    class ImageFilteringShader *shader_;
 
 protected:
     void setTitle(const std::string &title = "");
@@ -81,6 +82,10 @@ public:
     // set geometry and decoration
     void setCoordinates(glm::ivec4 rect);
     void setDecoration (bool on);
+
+    // set color correction
+    void setWhiteBalance(glm::vec4 colorcorrection);
+    glm::vec4 whiteBalance() const;
 
     // get width of rendering area
     int width();

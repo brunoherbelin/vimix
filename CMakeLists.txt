@@ -613,6 +613,7 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/resample_quarter.glsl
     ./rsc/shaders/filters/earlybird.glsl
     ./rsc/shaders/filters/logo.glsl
+    ./rsc/shaders/filters/whitebalance.glsl
 )
 
 cmrc_add_resource_library(vmix-resources ALIAS vmix::rc NAMESPACE vmix WHENCE rsc ${VMIX_RSC_FILES})

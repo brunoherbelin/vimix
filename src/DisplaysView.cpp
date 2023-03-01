@@ -119,8 +119,8 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     // initial behavior: no window selected, no menu
     show_window_menu_ = false;
     current_window_ = -1;
-    current_window_status_ = new Group;
-
+    current_window_status_ = new Group;    
+    current_window_whitebalance = glm::vec4(1.f, 1.f, 1.f, 0.5f);
     draw_pending_ = false;
 
     // display actions : 0 = move output, 1 paint, 2 erase
@@ -377,15 +377,19 @@ void DisplaysView::draw()
         // Add / Remove windows
         ImGui::SameLine();
         if ( Settings::application.num_output_windows < MAX_OUTPUT_WINDOW) {
-            if (ImGuiToolkit::IconButton(18, 4, "More windows"))
+            if (ImGuiToolkit::IconButton(18, 4, "More windows")) {
                 ++Settings::application.num_output_windows;
+                current_window_ = Settings::application.num_output_windows-1;
+            }
         }
         else
             ImGuiToolkit::Icon(18, 4, false);
         ImGui::SameLine();
         if ( Settings::application.num_output_windows > 0 ) {
-            if (ImGuiToolkit::IconButton(19, 4, "Less windows"))
+            if (ImGuiToolkit::IconButton(19, 4, "Less windows")) {
                 --Settings::application.num_output_windows;
+                current_window_ = -1;
+            }
         }
         else
             ImGuiToolkit::Icon(19, 4, false);
@@ -393,47 +397,73 @@ void DisplaysView::draw()
         // Modify current window
         if (current_window_ > -1) {
 
-            // Pattern output
-            ImGui::SameLine(0, 50);
+            ImGuiContext& g = *GImGui;
+
+            // title output
+            ImGui::SameLine(0, 5.f * g.Style.FramePadding.x);
+            ImGui::Text("Output %d", current_window_ + 1);
+
+            // Output options
+            ImGui::SameLine(0, 2.f * g.Style.FramePadding.x);
+            ImGuiToolkit::ButtonIconToggle(8,5,9,5, &Settings::application.windows[1+current_window_].scaled, "Scaled to window");
+
+            ImGui::SameLine(0, g.Style.FramePadding.x);
             ImGuiToolkit::ButtonIconToggle(10,1,11,1, &Settings::application.windows[1+current_window_].show_pattern, "Test pattern");
 
-//            // White ballance
-//            static DialogToolkit::ColorPickerDialog whitedialog;
-//            ImGui::SameLine(0, 30);
-//            ImGuiToolkit::Icon(5, 4);
-//            static ImVec4 white = ImVec4(1.f, 1.f, 1.f, 1.f);
-//            ImGui::SameLine();
-//            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-//            if (ImGui::ColorButton("White", white, ImGuiColorEditFlags_NoAlpha)) {
-//                whitedialog.setRGB( std::make_tuple(white.x, white.y, white.z) );
-//                whitedialog.open();
-//            }
-//            ImGui::PopFont();
-//            // get picked color if dialog finished
-//            if (whitedialog.closed()){
-//                std::tuple<float, float, float> c = whitedialog.RGB();
-//                white.x =  std::get<0>(c);
-//                white.y =  std::get<1>(c);
-//                white.z =  std::get<2>(c);
-//            }
+            // White ballance color
+            static DialogToolkit::ColorPickerDialog whitebalancedialog;
 
-//            ImGui::SameLine();
-//            ImGuiToolkit::Icon(3,4);
-//            static ImVec4 grey = ImVec4(0.5f, 0.5f, 0.5f, 1.f);
-//            ImGui::SameLine();
-//            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-//            ImGui::ColorButton("Grey", grey, ImGuiColorEditFlags_NoAlpha);
-//            ImGui::PopFont();
+            ImGui::SameLine(0, 1.5f * g.Style.FramePadding.x);
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
 
-//            ImGui::SameLine();
-//            ImGuiToolkit::Icon(4,4);
-//            static ImVec4 black = ImVec4(0.f, 0.f, 0.f, 1.f);
-//            ImGui::SameLine();
-//            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-//            ImGui::ColorButton("Black", black, ImGuiColorEditFlags_NoAlpha);
-//            ImGui::PopFont();
+            // hack to re-align color button to text
+            ImGuiWindow* window = ImGui::GetCurrentWindow();
+            window->DC.CursorPos.y += g.Style.FramePadding.y;
 
+            if (ImGui::ColorButton("White balance", ImVec4(current_window_whitebalance.x,
+                                                           current_window_whitebalance.y,
+                                                           current_window_whitebalance.z, 1.f),
+                                   ImGuiColorEditFlags_NoAlpha)) {
+                whitebalancedialog.setRGB( std::make_tuple(current_window_whitebalance.x,
+                                                           current_window_whitebalance.y,
+                                                           current_window_whitebalance.z) );
+                whitebalancedialog.open();
+            }
+            ImGui::PopFont();
 
+            // get picked color if dialog finished
+            if (whitebalancedialog.closed()){
+                std::tuple<float, float, float> c = whitebalancedialog.RGB();
+                current_window_whitebalance.x =  std::get<0>(c);
+                current_window_whitebalance.y =  std::get<1>(c);
+                current_window_whitebalance.z =  std::get<2>(c);
+
+                // set White Balance Color matrix to shader
+                Rendering::manager().outputWindow(current_window_).setWhiteBalance( current_window_whitebalance );
+            }
+
+            // White ballance temperature
+            ImGui::SameLine();
+            window->DC.CursorPos.y -= g.Style.FramePadding.y;
+            if (ImGui::Button(ICON_FA_THERMOMETER_HALF ICON_FA_SORT_DOWN ))
+                ImGui::OpenPopup("temperature_popup");
+            if (ImGui::BeginPopup("temperature_popup", ImGuiWindowFlags_NoMove))
+            {
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                ImGuiToolkit::Indication("9000 K", " " ICON_FA_THERMOMETER_FULL);
+                if ( ImGui::VSliderFloat("##Temperature", ImVec2(30,260), &current_window_whitebalance.w, 0.0, 1.0, "") ){
+
+                    Rendering::manager().outputWindow(current_window_).setWhiteBalance( current_window_whitebalance );
+                }
+                if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("%d K", 4000 + (int) ceil(current_window_whitebalance.w * 5000.f));
+                    ImGui::EndTooltip();
+                }
+                ImGuiToolkit::Indication("4000 K", " " ICON_FA_THERMOMETER_EMPTY);
+                ImGui::PopFont();
+                ImGui::EndPopup();
+            }
         }
 
 
@@ -482,7 +512,7 @@ void DisplaysView::draw()
             Rendering::manager().outputWindow(current_window_).setDecoration(!_borderless);
         }
 
-        if (ImGui::MenuItem( ICON_FA_EXPAND_ALT "   Buffer aspect ratio" , nullptr, false, _windowed )){
+        if (ImGui::MenuItem( ICON_FA_EXPAND_ALT "   Reset aspect ratio" , nullptr, false, _windowed )){
             // reset aspect ratio
             glm::ivec4 rect = windowCoordinates(current_window_);
             float ar = Mixer::manager().session()->frame()->aspectRatio();
@@ -493,7 +523,7 @@ void DisplaysView::draw()
             Rendering::manager().outputWindow(current_window_).setCoordinates( rect );
         }
 
-        if (ImGui::MenuItem( ICON_FA_COMPRESS "   Buffer size", nullptr, false, _windowed )){
+        if (ImGui::MenuItem( ICON_FA_RULER_COMBINED "   Reset to pixel size", nullptr, false, _windowed )){
             // reset resolution to 1:1
             glm::ivec4 rect = windowCoordinates(current_window_);
             rect.p = Mixer::manager().session()->frame()->width();
@@ -517,7 +547,17 @@ void DisplaysView::draw()
         }
 
         ImGui::Separator();
-        ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT  "   Scaled content", nullptr, &Settings::application.windows[1].scaled );
+        if ( ImGui::MenuItem( ICON_FA_REPLY  "   Reset") ) {
+            glm::ivec4 rect (0, 0, 800, 600);
+            rect.p = Mixer::manager().session()->frame()->width();
+            rect.q = Mixer::manager().session()->frame()->height();
+            Rendering::manager().outputWindow(current_window_).setDecoration(true);
+            Rendering::manager().outputWindow(current_window_).setWhiteBalance( glm::vec4(1.f, 1.f, 1.f, 0.5f) );
+            if (Settings::application.windows[current_window_+1].fullscreen)
+                Rendering::manager().outputWindow(current_window_).exitFullscreen();
+            else
+                Rendering::manager().outputWindow(current_window_).setCoordinates( rect );
+        }
 
         ImGui::PopStyleColor(2);
         ImGui::EndPopup();
@@ -538,6 +578,8 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
 
         // test all windows
         current_window_ = -1;
+        current_window_whitebalance = glm::vec4(1.f, 1.f, 1.f, 0.5f);
+
         for (int i = 0; i < Settings::application.num_output_windows; ++i) {
 
             // ignore pick on render surface: it's the same as output surface
@@ -555,6 +597,7 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
                     (pick.first == windows_[i].handles_) ||
                     (pick.first == windows_[i].menu_) ) {
                 current_window_ = i;
+                current_window_whitebalance = Rendering::manager().outputWindow(current_window_).whiteBalance();
                 windows_[i].overlays_->setActive(1);
             }
             else

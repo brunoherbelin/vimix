@@ -69,6 +69,7 @@
 #include "GstToolkit.h"
 #include "UserInterfaceManager.h"
 #include "ControlManager.h"
+#include "ImageFilter.h"
 
 #include "RenderingManager.h"
 
@@ -1042,6 +1043,7 @@ void RenderingWindow::terminate()
 
     // invalidate
     window_  = NULL;
+    shader_  = nullptr;
     surface_ = nullptr;
     fbo_     = 0;
     index_   = -1;
@@ -1088,6 +1090,33 @@ void RenderingWindow::swap()
 
 }
 
+FilteringProgram whitebalance("Whitebalance", "shaders/filters/whitebalance.glsl", "", { { "Red", 1.0}, { "Green", 1.0}, { "Blue", 1.0}, { "Temperature", 0.5} });
+
+
+void RenderingWindow::setWhiteBalance(glm::vec4 colorcorrection)
+{
+    if (shader_)
+        shader_->uniforms_ = std::map< std::string, float >{
+            { "Red", colorcorrection.x},
+            { "Green", colorcorrection.y},
+            { "Blue", colorcorrection.z},
+            { "Temperature", colorcorrection.w}
+        };
+
+}
+
+glm::vec4 RenderingWindow::whiteBalance() const
+{
+    glm::vec4 ret(1.f, 1.f, 1.f, 0.5f);
+
+    ret.x = shader_->uniforms_["Red"];
+    ret.y = shader_->uniforms_["Green"];
+    ret.z = shader_->uniforms_["Blue"];
+    ret.w = shader_->uniforms_["Temperature"];
+
+    return ret;
+}
+
 bool RenderingWindow::draw(FrameBuffer *fb)
 {
     // cannot draw if there is no window or invalid framebuffer
@@ -1119,8 +1148,15 @@ bool RenderingWindow::draw(FrameBuffer *fb)
 
             // VAO is not shared between multiple contexts of different windows
             // so we have to create a new VAO for rendering the surface in this window
-            if (surface_ == nullptr)
-                surface_ = new WindowSurface;
+            if (surface_ == nullptr) {
+
+                const std::pair<std::string, std::string> codes = whitebalance.code();
+                shader_ = new ImageFilteringShader;
+                shader_->setCode( codes.first );
+                shader_->uniforms_ = whitebalance.parameters();
+
+                surface_ = new WindowSurface(shader_);
+            }
 
             // calculate scaling factor of frame buffer inside window
             const float windowAspectRatio = aspectRatio();

@@ -916,7 +916,7 @@ void TextureView::draw()
                 s->touch();
                 Action::manager().store(s->name() + std::string(": Texture Reset rotation"));
             }
-            if (ImGui::Selectable( ICON_FA_EXPAND_ALT "   Reset aspect ratio" )){
+            if (ImGui::Selectable( ICON_FA_EXPAND_ALT "  Reset aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
                 s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
                 s->touch();
