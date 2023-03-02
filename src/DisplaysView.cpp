@@ -44,6 +44,8 @@
 
 #define WINDOW_TITLEBAR_HEIGHT 0.03f
 
+FilteringProgram _whitebalance("Whitebalance", "shaders/filters/whitebalance.glsl", "", { { "Red", 1.0}, { "Green", 1.0}, { "Blue", 1.0}, { "Temperature", 0.5} });
+
 
 DisplaysView::DisplaysView() : View(DISPLAYS)
 {
@@ -68,7 +70,9 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
         // surface background and texture
         w->surface_ = new Surface;
         w->root_->attach(w->surface_);
-        w->render_ = new Surface;
+        w->shader_ = new ImageFilteringShader;
+        w->shader_->setCode( _whitebalance.code().first );
+        w->render_ = new Surface(w->shader_);
         w->root_->attach(w->render_);
         // icon if disabled
         w->icon_ = new Handles(Handles::EYESLASHED);
@@ -233,7 +237,7 @@ void DisplaysView::draw()
 
         if (windows_[i].render_->visible_) {
             // rendering of framebuffer in window
-            if (Settings::application.windows[1].scaled)  {
+            if (Settings::application.windows[i+1].scaled)  {
                 windows_[i].render_->scale_ = glm::vec3(1.f, 1.f, 1.f);
             }
             else {
@@ -242,6 +246,12 @@ void DisplaysView::draw()
                     windows_[i].render_->scale_ = glm::vec3(output_ar / out_ar, 1.f, 1.f);
                 else
                     windows_[i].render_->scale_ = glm::vec3(1.f, out_ar / output_ar, 1.f);
+            }
+            if (windows_[i].shader_) {
+                windows_[i].shader_->uniforms_["Red"] = Settings::application.windows[i+1].whitebalance.x;
+                windows_[i].shader_->uniforms_["Green"] = Settings::application.windows[i+1].whitebalance.y;
+                windows_[i].shader_->uniforms_["Blue"] = Settings::application.windows[i+1].whitebalance.z;
+                windows_[i].shader_->uniforms_["Temperature"] = Settings::application.windows[i+1].whitebalance.w;
             }
         }
 
@@ -379,7 +389,6 @@ void DisplaysView::draw()
             if (ImGuiToolkit::IconButton(18, 4, "More windows")) {
                 ++Settings::application.num_output_windows;
                 current_window_ = Settings::application.num_output_windows-1;
-                Settings::application.windows[1+current_window_].whitebalance = Rendering::manager().outputWindow(current_window_).whiteBalance();
             }
         }
         else
@@ -437,9 +446,6 @@ void DisplaysView::draw()
                 Settings::application.windows[1+current_window_].whitebalance.x =  std::get<0>(c);
                 Settings::application.windows[1+current_window_].whitebalance.y =  std::get<1>(c);
                 Settings::application.windows[1+current_window_].whitebalance.z =  std::get<2>(c);
-
-                // set White Balance Color matrix to shader
-                Rendering::manager().outputWindow(current_window_).setWhiteBalance( Settings::application.windows[1+current_window_].whitebalance );
             }
 
             // White ballance temperature
@@ -451,10 +457,7 @@ void DisplaysView::draw()
             {
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                 ImGuiToolkit::Indication("9000 K", " " ICON_FA_THERMOMETER_FULL);
-                if ( ImGui::VSliderFloat("##Temperature", ImVec2(30,260), &Settings::application.windows[1+current_window_].whitebalance.w, 0.0, 1.0, "") ){
-
-                    Rendering::manager().outputWindow(current_window_).setWhiteBalance( Settings::application.windows[1+current_window_].whitebalance );
-                }
+                ImGui::VSliderFloat("##Temperature", ImVec2(30,260), &Settings::application.windows[1+current_window_].whitebalance.w, 0.0, 1.0, "");
                 if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
                     ImGui::BeginTooltip();
                     ImGui::Text("%d K", 4000 + (int) ceil(Settings::application.windows[1+current_window_].whitebalance.w * 5000.f));
@@ -552,7 +555,9 @@ void DisplaysView::draw()
             rect.p = Mixer::manager().session()->frame()->width();
             rect.q = Mixer::manager().session()->frame()->height();
             Rendering::manager().outputWindow(current_window_).setDecoration(true);
-            Rendering::manager().outputWindow(current_window_).setWhiteBalance( glm::vec4(1.f, 1.f, 1.f, 0.5f) );
+            Settings::application.windows[1+current_window_].show_pattern = false;
+            Settings::application.windows[1+current_window_].scaled = false;
+            Settings::application.windows[1+current_window_].whitebalance = glm::vec4(1.f, 1.f, 1.f, 0.5f);
             if (Settings::application.windows[current_window_+1].fullscreen)
                 Rendering::manager().outputWindow(current_window_).exitFullscreen();
             else

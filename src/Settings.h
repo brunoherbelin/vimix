@@ -330,7 +330,7 @@ struct Application
         show_tooptips = true;
         accept_connections = false;
         stream_protocol = 0;
-        broadcast_port = 0;
+        broadcast_port = 7070;
         recentSRT.protocol = "srt://";
         recentSRT.default_host = { "127.0.0.1", "7070"};
         loopback_camera = 0;
@@ -343,12 +343,6 @@ struct Application
         windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
         windows[0].w = 1600;
         windows[0].h = 900;
-        windows[1].w = 1270;
-        windows[1].h = 720;
-        windows[2].w = 1270;
-        windows[2].h = 720;
-        windows[3].w = 1270;
-        windows[3].h = 720;
     }
 
 };

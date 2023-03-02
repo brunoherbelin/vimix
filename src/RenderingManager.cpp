@@ -1092,32 +1092,6 @@ void RenderingWindow::swap()
 
 FilteringProgram whitebalance("Whitebalance", "shaders/filters/whitebalance.glsl", "", { { "Red", 1.0}, { "Green", 1.0}, { "Blue", 1.0}, { "Temperature", 0.5} });
 
-
-void RenderingWindow::setWhiteBalance(glm::vec4 colorcorrection)
-{
-    if (shader_)
-        shader_->uniforms_ = std::map< std::string, float >{
-            { "Red", colorcorrection.x},
-            { "Green", colorcorrection.y},
-            { "Blue", colorcorrection.z},
-            { "Temperature", colorcorrection.w}
-        };
-
-}
-
-glm::vec4 RenderingWindow::whiteBalance() const
-{
-    glm::vec4 ret(1.f, 1.f, 1.f, 0.5f);
-
-    if (shader_) {
-        ret.x = shader_->uniforms_["Red"];
-        ret.y = shader_->uniforms_["Green"];
-        ret.z = shader_->uniforms_["Blue"];
-        ret.w = shader_->uniforms_["Temperature"];
-    }
-    return ret;
-}
-
 bool RenderingWindow::draw(FrameBuffer *fb)
 {
     // cannot draw if there is no window or invalid framebuffer
@@ -1150,13 +1124,18 @@ bool RenderingWindow::draw(FrameBuffer *fb)
             // VAO is not shared between multiple contexts of different windows
             // so we have to create a new VAO for rendering the surface in this window
             if (surface_ == nullptr) {
-
-                const std::pair<std::string, std::string> codes = whitebalance.code();
+                // create shader that performs white balance correction
                 shader_ = new ImageFilteringShader;
-                shader_->setCode( codes.first );
-                shader_->uniforms_ = whitebalance.parameters();
-
+                shader_->setCode( whitebalance.code().first );
+                // create surface using the shader
                 surface_ = new WindowSurface(shader_);
+            }
+            // update values of the shader
+            if (shader_) {
+                shader_->uniforms_["Red"] = Settings::application.windows[index_].whitebalance.x;
+                shader_->uniforms_["Green"] = Settings::application.windows[index_].whitebalance.y;
+                shader_->uniforms_["Blue"] = Settings::application.windows[index_].whitebalance.z;
+                shader_->uniforms_["Temperature"] = Settings::application.windows[index_].whitebalance.w;
             }
 
             // calculate scaling factor of frame buffer inside window

@@ -79,13 +79,9 @@ public:
     // get monitor in which the window is
     GLFWmonitor *monitor();
 
-    // set geometry and decoration
-    void setCoordinates(glm::ivec4 rect);
-    void setDecoration (bool on);
-
-    // set color correction
-    void setWhiteBalance(glm::vec4 colorcorrection);
-    glm::vec4 whiteBalance() const;
+    // set geometry, color correction and decoration
+    void setCoordinates  (glm::ivec4 rect);
+    void setDecoration   (bool on);
 
     // get width of rendering area
     int width();

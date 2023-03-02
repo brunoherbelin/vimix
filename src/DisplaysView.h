@@ -9,6 +9,7 @@ struct WindowPreview
     Group *status_;
     Surface *surface_;
     Surface *render_;
+    ImageFilteringShader *shader_;
     Switch  *overlays_;
     Switch  *mode_;
     Handles *handles_;
