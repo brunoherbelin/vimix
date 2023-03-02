@@ -64,9 +64,12 @@ struct WindowConfig
     bool decorated;
     std::string monitor;
     bool show_pattern;
+    glm::vec4 whitebalance;
 
     WindowConfig() : name(APP_TITLE), x(15), y(15), w(1280), h(720),
-        fullscreen(false), scaled(false), decorated(true), monitor(""), show_pattern(false) { }
+        fullscreen(false), scaled(false), decorated(true),
+        monitor(""), show_pattern(false), whitebalance(glm::vec4(1.f, 1.f, 1.f, 0.5f))
+    { }
 
 };
 

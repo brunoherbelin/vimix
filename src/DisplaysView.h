@@ -80,22 +80,7 @@ private:
     std::vector<WindowPreview> windows_;
     int current_window_;
     Group *current_window_status_;
-    glm::vec4 current_window_whitebalance;
     bool show_window_menu_;
-
-//    Group *window_;
-//    Group *window_status_;
-//    Surface *window_surface_;
-//    Surface *window_render_;
-//    Switch  *window_overlays_;
-//    Switch  *window_mode_;
-//    Handles *window_handles_;
-//    Handles *window_menu_;
-//    Handles *window_icon_;
-//    Surface *window_title_;
-//    Symbol  *window_fullscreen_;
-////    Surface *preview_surface_;
-//    std::string window_monitor_;
 
 //    bool window_selected_;
     int  display_action_;

@@ -110,7 +110,8 @@ void Settings::Save(uint64_t runtime)
             window->SetAttribute("f", w.fullscreen);
             window->SetAttribute("s", w.scaled);
             window->SetAttribute("d", w.decorated);
-            window->SetAttribute("m", w.monitor.c_str());
+            window->SetAttribute("m", w.monitor.c_str());            
+            window->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.whitebalance) );
             windowsNode->InsertEndChild(window);
 		}
 
@@ -517,6 +518,9 @@ void Settings::Load()
                     w.name = APP_NAME " output " + std::to_string(i);
                 else
                     w.name = APP_TITLE;
+
+                tinyxml2::XMLElementToGLM( windowNode->FirstChildElement("vec4"), w.whitebalance);
+
                 application.windows[i] = w;
             }
         }

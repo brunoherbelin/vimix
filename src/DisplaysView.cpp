@@ -120,7 +120,6 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     show_window_menu_ = false;
     current_window_ = -1;
     current_window_status_ = new Group;    
-    current_window_whitebalance = glm::vec4(1.f, 1.f, 1.f, 0.5f);
     draw_pending_ = false;
 
     // display actions : 0 = move output, 1 paint, 2 erase
@@ -380,6 +379,7 @@ void DisplaysView::draw()
             if (ImGuiToolkit::IconButton(18, 4, "More windows")) {
                 ++Settings::application.num_output_windows;
                 current_window_ = Settings::application.num_output_windows-1;
+                Settings::application.windows[1+current_window_].whitebalance = Rendering::manager().outputWindow(current_window_).whiteBalance();
             }
         }
         else
@@ -420,13 +420,13 @@ void DisplaysView::draw()
             ImGuiWindow* window = ImGui::GetCurrentWindow();
             window->DC.CursorPos.y += g.Style.FramePadding.y;
 
-            if (ImGui::ColorButton("White balance", ImVec4(current_window_whitebalance.x,
-                                                           current_window_whitebalance.y,
-                                                           current_window_whitebalance.z, 1.f),
+            if (ImGui::ColorButton("White balance", ImVec4(Settings::application.windows[1+current_window_].whitebalance.x,
+                                                           Settings::application.windows[1+current_window_].whitebalance.y,
+                                                           Settings::application.windows[1+current_window_].whitebalance.z, 1.f),
                                    ImGuiColorEditFlags_NoAlpha)) {
-                whitebalancedialog.setRGB( std::make_tuple(current_window_whitebalance.x,
-                                                           current_window_whitebalance.y,
-                                                           current_window_whitebalance.z) );
+                whitebalancedialog.setRGB( std::make_tuple(Settings::application.windows[1+current_window_].whitebalance.x,
+                                                           Settings::application.windows[1+current_window_].whitebalance.y,
+                                                           Settings::application.windows[1+current_window_].whitebalance.z) );
                 whitebalancedialog.open();
             }
             ImGui::PopFont();
@@ -434,12 +434,12 @@ void DisplaysView::draw()
             // get picked color if dialog finished
             if (whitebalancedialog.closed()){
                 std::tuple<float, float, float> c = whitebalancedialog.RGB();
-                current_window_whitebalance.x =  std::get<0>(c);
-                current_window_whitebalance.y =  std::get<1>(c);
-                current_window_whitebalance.z =  std::get<2>(c);
+                Settings::application.windows[1+current_window_].whitebalance.x =  std::get<0>(c);
+                Settings::application.windows[1+current_window_].whitebalance.y =  std::get<1>(c);
+                Settings::application.windows[1+current_window_].whitebalance.z =  std::get<2>(c);
 
                 // set White Balance Color matrix to shader
-                Rendering::manager().outputWindow(current_window_).setWhiteBalance( current_window_whitebalance );
+                Rendering::manager().outputWindow(current_window_).setWhiteBalance( Settings::application.windows[1+current_window_].whitebalance );
             }
 
             // White ballance temperature
@@ -451,13 +451,13 @@ void DisplaysView::draw()
             {
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                 ImGuiToolkit::Indication("9000 K", " " ICON_FA_THERMOMETER_FULL);
-                if ( ImGui::VSliderFloat("##Temperature", ImVec2(30,260), &current_window_whitebalance.w, 0.0, 1.0, "") ){
+                if ( ImGui::VSliderFloat("##Temperature", ImVec2(30,260), &Settings::application.windows[1+current_window_].whitebalance.w, 0.0, 1.0, "") ){
 
-                    Rendering::manager().outputWindow(current_window_).setWhiteBalance( current_window_whitebalance );
+                    Rendering::manager().outputWindow(current_window_).setWhiteBalance( Settings::application.windows[1+current_window_].whitebalance );
                 }
                 if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
                     ImGui::BeginTooltip();
-                    ImGui::Text("%d K", 4000 + (int) ceil(current_window_whitebalance.w * 5000.f));
+                    ImGui::Text("%d K", 4000 + (int) ceil(Settings::application.windows[1+current_window_].whitebalance.w * 5000.f));
                     ImGui::EndTooltip();
                 }
                 ImGuiToolkit::Indication("4000 K", " " ICON_FA_THERMOMETER_EMPTY);
@@ -578,7 +578,6 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
 
         // test all windows
         current_window_ = -1;
-        current_window_whitebalance = glm::vec4(1.f, 1.f, 1.f, 0.5f);
 
         for (int i = 0; i < Settings::application.num_output_windows; ++i) {
 
@@ -597,7 +596,6 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
                     (pick.first == windows_[i].handles_) ||
                     (pick.first == windows_[i].menu_) ) {
                 current_window_ = i;
-                current_window_whitebalance = Rendering::manager().outputWindow(current_window_).whiteBalance();
                 windows_[i].overlays_->setActive(1);
             }
             else

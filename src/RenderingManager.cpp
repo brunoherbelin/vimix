@@ -1109,11 +1109,12 @@ glm::vec4 RenderingWindow::whiteBalance() const
 {
     glm::vec4 ret(1.f, 1.f, 1.f, 0.5f);
 
-    ret.x = shader_->uniforms_["Red"];
-    ret.y = shader_->uniforms_["Green"];
-    ret.z = shader_->uniforms_["Blue"];
-    ret.w = shader_->uniforms_["Temperature"];
-
+    if (shader_) {
+        ret.x = shader_->uniforms_["Red"];
+        ret.y = shader_->uniforms_["Green"];
+        ret.z = shader_->uniforms_["Blue"];
+        ret.w = shader_->uniforms_["Temperature"];
+    }
     return ret;
 }
 
