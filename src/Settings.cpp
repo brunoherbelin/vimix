@@ -93,7 +93,7 @@ void Settings::Save(uint64_t runtime)
 
     // Windows
 	{
-		XMLElement *windowsNode = xmlDoc.NewElement( "Windows" );  
+        XMLElement *windowsNode = xmlDoc.NewElement( "OutputWindows" );
         windowsNode->SetAttribute("num_output_windows", application.num_output_windows);
 
         for (int i = 0; i < (int) application.windows.size(); ++i)
@@ -492,7 +492,7 @@ void Settings::Load()
 
     // Windows
     {
-        XMLElement * pElement = pRoot->FirstChildElement("Windows");
+        XMLElement * pElement = pRoot->FirstChildElement("OutputWindows");
         if (pElement)
         {
             pElement->QueryIntAttribute("num_output_windows", &application.num_output_windows);
