@@ -77,13 +77,11 @@ private:
 
     bool draw_pending_;
     float output_ar;
-
     std::vector<WindowPreview> windows_;
     int current_window_;
     Group *current_window_status_;
     bool show_window_menu_;
 
-//    bool window_selected_;
     int  display_action_;
 
 

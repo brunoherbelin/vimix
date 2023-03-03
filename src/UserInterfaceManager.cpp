@@ -574,8 +574,11 @@ void UserInterface::handleMouse()
                         Mixer::manager().view()->initiate();
                     }
                     // no source is selected
-                    else
+                    else {
+                        // unset current
                         Mixer::manager().unsetCurrentSource();
+                        navigator.hidePannel();
+                    }
                 }
                 if (clear_selection) {
                     // unset current

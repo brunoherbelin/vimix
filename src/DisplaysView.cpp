@@ -414,20 +414,18 @@ void DisplaysView::draw()
 
             // Output options
             ImGui::SameLine(0, 2.f * g.Style.FramePadding.x);
-            ImGuiToolkit::ButtonIconToggle(8,5,9,5, &Settings::application.windows[1+current_window_].scaled, "Scaled to window");
+            ImGuiToolkit::ButtonIconToggle(8,5,9,5, &Settings::application.windows[1+current_window_].scaled, "Window fit");
 
             ImGui::SameLine(0, g.Style.FramePadding.x);
             ImGuiToolkit::ButtonIconToggle(10,1,11,1, &Settings::application.windows[1+current_window_].show_pattern, "Test pattern");
 
-            // White ballance color
+            // White ballance color button
             static DialogToolkit::ColorPickerDialog whitebalancedialog;
 
             ImGui::SameLine(0, 1.5f * g.Style.FramePadding.x);
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-
-            // hack to re-align color button to text
             ImGuiWindow* window = ImGui::GetCurrentWindow();
-            window->DC.CursorPos.y += g.Style.FramePadding.y;
+            window->DC.CursorPos.y += g.Style.FramePadding.y; // hack to re-align color button to text
 
             if (ImGui::ColorButton("White balance", ImVec4(Settings::application.windows[1+current_window_].whitebalance.x,
                                                            Settings::application.windows[1+current_window_].whitebalance.y,
@@ -440,7 +438,7 @@ void DisplaysView::draw()
             }
             ImGui::PopFont();
 
-            // get picked color if dialog finished
+            // get icked color if dialog finished
             if (whitebalancedialog.closed()){
                 std::tuple<float, float, float> c = whitebalancedialog.RGB();
                 Settings::application.windows[1+current_window_].whitebalance.x =  std::get<0>(c);
@@ -453,20 +451,33 @@ void DisplaysView::draw()
             window->DC.CursorPos.y -= g.Style.FramePadding.y;
             if (ImGui::Button(ICON_FA_THERMOMETER_HALF ICON_FA_SORT_DOWN ))
                 ImGui::OpenPopup("temperature_popup");
-            if (ImGui::BeginPopup("temperature_popup", ImGuiWindowFlags_NoMove))
-            {
-                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                ImGuiToolkit::Indication("9000 K", " " ICON_FA_THERMOMETER_FULL);
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+            if (ImGui::IsItemHovered()){
+                ImGui::BeginTooltip();
+                ImGui::Text("%d Kelvin", 4000 + (int) ceil(Settings::application.windows[1+current_window_].whitebalance.w * 5000.f));
+                ImGui::EndTooltip();
+            }
+            if (ImGui::BeginPopup("temperature_popup", ImGuiWindowFlags_NoMove))  {
+                // High Kelvin = blue
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 1.f, 1.0f));
+                ImGui::Text("  " ICON_FA_THERMOMETER_FULL );
+                ImGui::PopStyleColor(1);
+
+                // Slider Temperature K
                 ImGui::VSliderFloat("##Temperature", ImVec2(30,260), &Settings::application.windows[1+current_window_].whitebalance.w, 0.0, 1.0, "");
                 if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
                     ImGui::BeginTooltip();
                     ImGui::Text("%d K", 4000 + (int) ceil(Settings::application.windows[1+current_window_].whitebalance.w * 5000.f));
                     ImGui::EndTooltip();
                 }
-                ImGuiToolkit::Indication("4000 K", " " ICON_FA_THERMOMETER_EMPTY);
-                ImGui::PopFont();
+                // High Kelvin = blue
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.4f, 0.4f, 1.0f));
+                ImGui::Text("  " ICON_FA_THERMOMETER_EMPTY );
+                ImGui::PopStyleColor(1);
+
                 ImGui::EndPopup();
             }
+            ImGui::PopFont();
         }
 
 
