@@ -713,7 +713,7 @@ std::tuple<float, float, float> openColorDialog( std::tuple<float, float, float>
 
 void DialogToolkit::ColorPickerDialog::open()
 {
-    if ( !busy_ && promises_.empty() ) {
+    if ( !DialogToolkit::ColorPickerDialog::busy_ && promises_.empty() ) {
         promises_.emplace_back( std::async(std::launch::async, openColorDialog, rgb_) );
         busy_ = true;
     }

@@ -33,6 +33,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
+#include "Log.h"
 #include "defines.h"
 #include "Scene.h"
 #include "Primitives.h"
@@ -999,8 +1000,13 @@ void ImGuiVisitor::visit (AlphaFilter& f)
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::Button( ICON_FA_EYE_DROPPER " Open selector", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            colordialog.setRGB( std::make_tuple(color[0], color[1], color[2]) );
-            colordialog.open();
+            if ( DialogToolkit::ColorPickerDialog::busy()) {
+                Log::Warning("Close previously openned color picker.");
+            }
+            else {
+                colordialog.setRGB( std::make_tuple(color[0], color[1], color[2]) );
+                colordialog.open();
+            }
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Color");

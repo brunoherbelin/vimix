@@ -30,6 +30,7 @@
 #include "ImGuiToolkit.h"
 #include "imgui_internal.h"
 
+#include "Log.h"
 #include "Mixer.h"
 #include "defines.h"
 #include "Source.h"
@@ -431,10 +432,15 @@ void DisplaysView::draw()
                                                            Settings::application.windows[1+current_window_].whitebalance.y,
                                                            Settings::application.windows[1+current_window_].whitebalance.z, 1.f),
                                    ImGuiColorEditFlags_NoAlpha)) {
-                whitebalancedialog.setRGB( std::make_tuple(Settings::application.windows[1+current_window_].whitebalance.x,
+                if ( DialogToolkit::ColorPickerDialog::busy()) {
+                    Log::Warning("Close previously openned color picker.");
+                }
+                else {
+                    whitebalancedialog.setRGB( std::make_tuple(Settings::application.windows[1+current_window_].whitebalance.x,
                                                            Settings::application.windows[1+current_window_].whitebalance.y,
                                                            Settings::application.windows[1+current_window_].whitebalance.z) );
-                whitebalancedialog.open();
+                    whitebalancedialog.open();
+                }
             }
             ImGui::PopFont();
 
