@@ -7018,8 +7018,9 @@ void Navigator::RenderNewPannel()
                 setNewMedia(MEDIA_RECENT, importpath);
                 // open file
                 if (!importpath.empty()) {
-                    std::string label = BaseToolkit::transliterate( sourceMediaFileCurrent );
-                    new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent), label);
+                    Mixer::manager().addSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent) );
+                    // close NEW pannel
+                    togglePannelNew();
                 }
             }
 
