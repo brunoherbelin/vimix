@@ -143,9 +143,8 @@ static void WindowResizeCallback( GLFWwindow *w, int width, int height)
         Settings::application.windows[id].h = height;
     }
 
-#if __APPLE__
-    Rendering::manager().draw();
-#endif
+//    Rendering::manager().draw();
+    Rendering::manager().window(w)->swap();
 }
 
 static void WindowMoveCallback( GLFWwindow *w, int x, int y)
@@ -481,6 +480,11 @@ void Rendering::draw()
         outputs_[count].show();
     }
 
+    // swap all GL buffers at once
+    main_.swap();
+    for (auto it = outputs_.begin(); it != outputs_.end(); ++it)
+        it->swap();
+
     // software framerate limiter < 62 FPS
     {
         static GTimer *timer = g_timer_new ();
@@ -489,11 +493,6 @@ void Rendering::draw()
             g_usleep( 16000 - (gulong)elapsed  );
         g_timer_start(timer);
     }
-
-    // swap all GL buffers at once
-    main_.swap();
-    for (auto it = outputs_.begin(); it != outputs_.end(); ++it)
-        it->swap();
 }
 
 void Rendering::terminate()
@@ -503,8 +502,6 @@ void Rendering::terminate()
         it->terminate();
 
     main_.terminate();
-
-//    glfwTerminate();
 }
 
 void Rendering::pushAttrib(RenderingAttrib ra)
@@ -702,6 +699,7 @@ RenderingWindow::~RenderingWindow()
 {
     if (window_ != NULL)
         terminate();
+    delete pattern_;
 }
 
 void RenderingWindow::setTitle(const std::string &title)
@@ -769,9 +767,9 @@ void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
         glfwSetInputMode( window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     }
 
-    // Enable vsync on output window only (i.e. not 0 if has a master)
+    // Enable vsync on main window only (i.e. 0 if has a master)
     // Workaround for disabled vsync in fullscreen (https://github.com/glfw/glfw/issues/1072)
-//    glfwSwapInterval( master_ != nullptr ? Settings::application.render.vsync : 0);
+    glfwSwapInterval( master_ != nullptr ? 0 : Settings::application.render.vsync);
 
 }
 
@@ -1018,10 +1016,8 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     }
 
     //
-    // Stream pattern
+    // default render black
     //
-    pattern_->open("videotestsrc pattern=smpte", 1024, 1024);
-    pattern_->play(true);
     textureid_ = Resource::getTextureBlack();
 
     return true;
@@ -1153,6 +1149,15 @@ bool RenderingWindow::draw(FrameBuffer *fb)
 
             // Display option: draw calibration pattern
             if ( Settings::application.windows[index_].show_pattern) {
+                // (re) create pattern at frame buffer resolution
+                if ( pattern_->width() != fb->width() || pattern_->height() != fb->height()) {
+                    if (GstToolkit::has_feature("frei0r-src-test-pat-b") )
+                        pattern_->open("frei0r-src-test-pat-b type=0.7", fb->width(), fb->height());
+                    else {
+                        pattern_->open("videotestsrc pattern=smpte", fb->width(), fb->height());
+                        pattern_->play(true);
+                    }
+                }
                 // draw pattern texture
                 pattern_->update();
                 textureid_ = pattern_->texture();
