@@ -7018,7 +7018,11 @@ void Navigator::RenderNewPannel()
                 setNewMedia(MEDIA_RECENT, importpath);
                 // open file
                 if (!importpath.empty()) {
-                    Mixer::manager().addSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent) );
+                    // replace or open source
+                    if (source_to_replace != nullptr)
+                        Mixer::manager().replaceSource(source_to_replace, Mixer::manager().createSourceFile(sourceMediaFileCurrent));
+                    else
+                        Mixer::manager().addSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent) );
                     // close NEW pannel
                     togglePannelNew();
                 }
