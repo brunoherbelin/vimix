@@ -518,18 +518,15 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     Source *s = Mixer::manager().findSource((*itp).first);
                     // accept picked sources in current workspaces
                     if ( s!=nullptr && s->workspace() == Settings::application.current_workspace) {
+                        if ( s->locked() && !UserInterface::manager().ctrlModifier() )
+                            continue;
                         // a non-locked source is picked (anywhere)
-                        if ( !s->locked() ) {
-                            // not in an active selection? don't pick this one!
-                            if ( !UserInterface::manager().ctrlModifier() &&
-                                 Mixer::selection().size() > 1 &&
-                                 !Mixer::selection().contains(s))
-                                continue;
-                            // yeah, pick this one (NB: locker_ is just a node in Geometry that is detected)
-                            pick = { s->locker_,  (*itp).second };
-                            break;
-                        }
-
+                        // not in an active selection? don't pick this one!
+                        if ( Mixer::selection().size() > 1 && !Mixer::selection().contains(s))
+                            continue;
+                        // yeah, pick this one (NB: locker_ is just a node in Geometry that is detected)
+                        pick = { s->locker_,  (*itp).second };
+                        break;
                     }
                     // not a source picked
                     else {
@@ -566,6 +563,8 @@ bool GeometryView::canSelect(Source *s) {
 void GeometryView::applySelectionTransform(glm::mat4 M)
 {
     for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); ++sit){
+        if ( (*sit)->locked() )
+            continue;
         // recompute all from matrix transform
         glm::mat4 transform = M * (*sit)->stored_status_->transform_;
         glm::vec3 tra, rot, sca;

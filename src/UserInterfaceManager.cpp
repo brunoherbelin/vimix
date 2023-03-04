@@ -638,7 +638,7 @@ void UserInterface::handleMouse()
                         if (!shift_modifier_active) {
                             // grab others from selection
                             for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
-                                if ( *it != current )
+                                if ( *it != current && !(*it)->locked() )
                                     Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
                             }
                         }
@@ -7382,7 +7382,7 @@ void Navigator::RenderNewPannel()
             ImGuiToolkit::HelpToolTip("Create a source with graphics generated algorithmically.");
 
             if (custom_pipeline) {
-                static std::vector< std::pair< std::string, std::string> > _examples = { {"Videotest", "videotestsrc horizontal-speed=1 " },
+                static std::vector< std::pair< std::string, std::string> > _examples = { {"Videotest", "videotestsrc horizontal-speed=1 ! video/x-raw, width=640, height=480 " },
                                                                                          {"Checker", "videotestsrc pattern=checkers-8 ! video/x-raw, width=64, height=64 "},
                                                                                          {"Color", "videotestsrc pattern=gradient foreground-color= 0xff55f54f background-color= 0x000000 "},
                                                                                          {"Text", "videotestsrc pattern=black ! textoverlay text=\"vimix\" halignment=center valignment=center font-desc=\"Sans,72\" "},
