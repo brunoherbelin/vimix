@@ -1,13 +1,15 @@
 #ifndef FRAMEBUFFERFILTER_H
 #define FRAMEBUFFERFILTER_H
 
+#include <string>
+#include <vector>
 #include <sys/types.h>
 #include <glm/glm.hpp>
 
 class Visitor;
 class FrameBuffer;
 
-
+#define ICON_FILTER_NONE 7, 11
 #define ICON_FILTER_DELAY 10, 15
 #define ICON_FILTER_RESAMPLE 1, 10
 #define ICON_FILTER_BLUR 0, 9
@@ -16,7 +18,6 @@ class FrameBuffer;
 #define ICON_FILTER_EDGE 16, 8
 #define ICON_FILTER_ALPHA 13, 4
 #define ICON_FILTER_IMAGE 1, 4
-
 
 class FrameBufferFilter
 {
@@ -40,7 +41,7 @@ public:
         FILTER_IMAGE,
         FILTER_INVALID
     } Type;
-    static const char* type_label[FILTER_INVALID];
+    static std::vector< std::tuple<int, int, std::string> > Types;
     virtual Type type () const = 0;
 
     // get the texture id of the rendered filtered framebuffer

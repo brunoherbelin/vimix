@@ -29,7 +29,9 @@
 
 #include "RenderSource.h"
 
-const char* RenderSource::rendering_provenance_label[2] = { "Loopback", "Non-recursive" };
+std::vector< std::tuple<int, int, std::string> > RenderSource::ProvenanceMethod = {
+    { 16, 12, "Loopback" }, { 15, 12, "Non-recursive"}
+};
 
 RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr), rendered_surface_(nullptr),
     paused_(false), provenance_(RENDER_TEXTURE)

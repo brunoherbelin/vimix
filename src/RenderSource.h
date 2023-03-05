@@ -31,7 +31,7 @@ public:
         RENDER_TEXTURE = 0,
         RENDER_EXCLUSIVE
     } RenderSourceProvenance;
-    static const char* rendering_provenance_label[2];
+    static std::vector< std::tuple<int, int, std::string> > ProvenanceMethod;
 
     void setRenderingProvenance(RenderSourceProvenance m) { provenance_ = m; }
     RenderSourceProvenance renderingProvenance() const { return provenance_; }

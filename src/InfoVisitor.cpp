@@ -211,7 +211,7 @@ void InfoVisitor::visit (RenderSource& s)
         }
         else {
             oss << "Rendering Output (";
-            oss << RenderSource::rendering_provenance_label[s.renderingProvenance()] << ") " << std::endl;
+            oss << std::get<2>(RenderSource::ProvenanceMethod[s.renderingProvenance()]) << ") " << std::endl;
             oss << (s.frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA" : "RGB") << std::endl;
             oss << s.frame()->width() << " x " << s.frame()->height();
         }
@@ -237,7 +237,7 @@ void InfoVisitor::visit (CloneSource& s)
             if (s.origin())
                 oss << "Clone of '" << s.origin()->name() << "' " << std::endl;
             oss << (s.frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA, " : "RGB, ");
-            oss << FrameBufferFilter::type_label[s.filter()->type()] << " filter" << std::endl;
+            oss << std::get<2>(FrameBufferFilter::Types[s.filter()->type()]) << " filter" << std::endl;
             oss << s.frame()->width() << " x " << s.frame()->height();
         }
     }

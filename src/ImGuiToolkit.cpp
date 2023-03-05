@@ -169,6 +169,26 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* sho
 /// 13 4, 13 5, 14 16, 15 1, 15 6, 15 12, 15 16, 16 1, 16 5, 16 7, 16 10, 16 16, 17 6,
 /// 18 1, 18 5, 18 12, 18 13, 18 15, 19 6, 19 12,
 
+
+
+void _drawIcon(ImVec2 screenpos, int i, int j, bool enabled = true)
+{
+    // icons.dds is a 20 x 20 grid of icons
+    if (textureicons == 0)
+        textureicons = Resource::getTextureDDS("images/icons.dds");
+
+    ImVec2 uv0( static_cast<float>(i) * 0.05, static_cast<float>(j) * 0.05 );
+    ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
+
+    ImVec4 tint_color = ImGui::GetStyle().Colors[ImGuiCol_Text];
+    if (!enabled)
+        tint_color = ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
+
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    ImRect bb(screenpos, screenpos + ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()));
+    window->DrawList->AddImage((void*)(intptr_t)textureicons, bb.Min, bb.Max, uv0, uv1, ImGui::GetColorU32(tint_color) );
+}
+
 void ImGuiToolkit::Icon(int i, int j, bool enabled)
 {
     // icons.dds is a 20 x 20 grid of icons 
@@ -274,7 +294,7 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip, const char* sho
 
     // draw icon with hovered color
     const ImVec4* colors = ImGui::GetStyle().Colors;
-    ImGui::PushStyleColor( ImGuiCol_Text, hovered ? colors[ImGuiCol_NavWindowingHighlight] : colors[ImGuiCol_Text] );
+    ImGui::PushStyleColor( ImGuiCol_Text, hovered ? colors[ImGuiCol_NavHighlight] : colors[ImGuiCol_Text] );
     Icon(i, j, !pressed);
     ImGui::PopStyleColor();
 
@@ -302,11 +322,53 @@ bool ImGuiToolkit::IconButton(const char* icon, const char *tooltip, const char*
 
     // draw with hovered color
     const ImVec4* colors = ImGui::GetStyle().Colors;
-    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? colors[ImGuiCol_NavWindowingHighlight] : colors[ImGuiCol_Text] );
+    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? colors[ImGuiCol_NavHighlight] : colors[ImGuiCol_Text] );
     ImGui::Text("%s", icon);
     ImGui::PopStyleColor();
 
     ImGui::PopID();
+    return ret;
+}
+
+bool ImGuiToolkit::TextButton(const char* text, const char *tooltip, const char* shortcut)
+{
+    ImGuiContext& g = *GImGui;
+    bool ret = false;
+
+    // identifyer
+    ImGui::PushID( text );
+
+    // button size
+    ImVec2 button_size = ImGui::CalcTextSize( text );
+    button_size.y = g.FontSize + g.Style.FramePadding.y * 2.0f;
+
+    // remember position where button starts
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+
+    // invisible button
+    ImGui::InvisibleButton("##hiddenTextbutton", button_size);
+    if (ImGui::IsItemClicked())
+        ret = true;
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(tooltip, shortcut);
+
+    // remember position where button ends
+    ImVec2 end_pos = ImGui::GetCursorScreenPos();
+
+    // draw text at button start (centered verticaly)
+    // with highlight color on button hovered
+    draw_pos.y += g.Style.FramePadding.y;
+    ImGui::SetCursorScreenPos(draw_pos);
+    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? g.Style.Colors[ImGuiCol_NavHighlight] : g.Style.Colors[ImGuiCol_Text] );
+    ImGui::Text("%s", text);
+    ImGui::PopStyleColor();
+
+    // back position to end of button
+    ImGui::SetCursorScreenPos(end_pos);
+
+    ImGui::PopID();
+
+    // return if button pressed
     return ret;
 }
 
@@ -329,7 +391,7 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
 
     // draw with hovered color
     const ImVec4* colors = ImGui::GetStyle().Colors;
-    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? colors[ImGuiCol_NavWindowingHighlight] : colors[ImGuiCol_Text] );
+    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? colors[ImGuiCol_NavHighlight] : colors[ImGuiCol_Text] );
     ImGui::SetCursorScreenPos(draw_pos);
     if (*toggle) {
         Icon(i_toggle, j_toggle, !ret);
@@ -401,55 +463,13 @@ bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons,
     return ret;
 }
 
-bool ImGuiToolkit::ComboIcon (std::vector<std::pair<int, int> > icons, std::vector<std::string> labels, int* state)
-{
-    bool ret = false;
-    Sum id = std::for_each(icons.begin(), icons.end(), Sum());
-    ImGui::PushID( id.sum );
-
-    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
-    float w = ImGui::GetTextLineHeight();
-    ImGui::SetNextItemWidth(w * 2.7f);
-    if (ImGui::BeginCombo("##ComboIcon", "  ") )
-    {
-        char space_buf[] = "                                                ";
-        const ImVec2 space_size = ImGui::CalcTextSize(" ", NULL);
-        const int space_num = static_cast<int>( ceil(ImGui::GetTextLineHeightWithSpacing() / space_size.x) );
-        space_buf[space_num]='\0';
-
-        std::vector<std::pair<int, int> >::iterator it_icon = icons.begin();
-        std::vector<std::string>::iterator it_label = labels.begin();
-        for(int i = 0 ; it_icon != icons.end(); i++, ++it_icon, ++it_label) {
-            ImGui::PushID( id.sum + i + 1);
-            ImVec2 pos = ImGui::GetCursorScreenPos();
-            // combo selectable item
-            char text_buf[256];
-            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, it_label->c_str());
-            if ( ImGui::Selectable(text_buf, i == *state )){
-                *state = i;
-                ret = true;
-            }
-            // draw item icon
-            ImGui::SetCursorScreenPos( pos + ImVec2(w/6.f,0) );
-            Icon( (*it_icon).first, (*it_icon).second );
-            ImGui::PopID();
-        }
-        ImGui::EndCombo();
-    }
-
-    // redraw current ad preview value
-    ImGui::SetCursorScreenPos(draw_pos + ImVec2(w/9.f,w/9.f));
-    Icon(icons[*state].first, icons[*state].second );
-
-    ImGui::PopID();
-    return ret;
-}
-
-bool ImGuiToolkit::ComboIcon (const char* label, std::vector<std::pair<int, int> > icons, std::vector<std::string> items, int* i)
+bool ImGuiToolkit::ComboIcon (const char* label, int* current_item, std::vector< std::tuple<int, int, std::string> > items)
 {
     bool ret = false;
     ImGuiContext& g = *GImGui;
     ImVec2 draw_pos = ImGui::GetCursorScreenPos() + g.Style.FramePadding * 0.5;
+
+    *current_item = CLAMP( *current_item, 0, (int) items.size() - 1);
 
     // make some space
     char space_buf[] = "                                                ";
@@ -458,25 +478,26 @@ bool ImGuiToolkit::ComboIcon (const char* label, std::vector<std::pair<int, int>
     space_buf[space_num]='\0';
 
     char text_buf[256];
-    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, items[*i].c_str());
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, std::get<2>( items.at(*current_item) ).c_str());
 
-    if (ImGui::BeginCombo(label, text_buf))
-    {
+    if ( ImGui::BeginCombo( label, text_buf, ImGuiComboFlags_None) ) {
+
         for (int p = 0; p < (int) items.size(); ++p){
-            if (ImGuiToolkit::SelectableIcon( items[p].c_str(), icons[p].first, icons[p].second, p == *i) ) {
-                *i = p;
+            ImGui::PushID((void*)(intptr_t)p);
+            if (ImGuiToolkit::SelectableIcon( std::get<2>( items.at(p) ).c_str(),
+                                              std::get<0>( items.at(p) ),
+                                              std::get<1>( items.at(p) ),
+                                              p == *current_item) ) {
+                *current_item = p;
                 ret = true;
             }
+            ImGui::PopID();
         }
         ImGui::EndCombo();
     }
-    ImVec2 end_pos = ImGui::GetCursorScreenPos();
 
-    // draw icon
-    ImGui::SetCursorScreenPos(draw_pos);
-    Icon(icons[*i].first, icons[*i].second);
-
-    ImGui::SetCursorScreenPos(end_pos);
+    // overlay of icon on top of first item
+    _drawIcon(draw_pos, std::get<0>( items.at(*current_item) ), std::get<1>( items.at(*current_item) ));
 
     return ret;
 }
@@ -497,13 +518,9 @@ bool ImGuiToolkit::SelectableIcon(const char* label, int i, int j, bool selected
 
     // draw menu item
     bool ret = ImGui::Selectable(text_buf, selected);
-    ImVec2 end_pos = ImGui::GetCursorScreenPos();
 
-    // draw icon
-    ImGui::SetCursorScreenPos(draw_pos);
-    Icon(i, j);
-
-    ImGui::SetCursorScreenPos(end_pos);
+    // overlay of icon on top of first item
+    _drawIcon(draw_pos, i, j);
 
     return ret;
 }
@@ -1710,7 +1727,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_PlotHistogram]          = ImVec4(0.66f, 0.40f, 0.83f, 1.00f);
         colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(0.75f, 0.60f, 0.84f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.47f, 0.62f, 0.49f, 0.71f);
-        colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+        colors[ImGuiCol_NavHighlight]           = ImVec4(0.58f, 0.84f, 0.67f, 1.00f);
     }
     else {
         // default BLUE

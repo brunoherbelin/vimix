@@ -263,110 +263,146 @@ void ImGuiVisitor::visit(Shader &n)
 
 void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
+    std::ostringstream oss;
     ImGui::PushID(std::to_string(n.id()).c_str());
 
-    if (ImGuiToolkit::IconButton(6, 4)) {
-        n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
-        Action::manager().store("Gamma & Color");
-    }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ///
+    /// GAMMA
+    ///
     ImGui::ColorEdit3("Gamma Color", glm::value_ptr(n.gamma), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ;
-    if (ImGui::IsItemDeactivatedAfterEdit())
-        Action::manager().store("Gamma Color changed");
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        char buf[64];
+        ImFormatString(buf, IM_ARRAYSIZE(buf), "#%02X%02X%02X", ImClamp((int)ceil(255.f * n.gamma.x),0,255),
+                       ImClamp((int)ceil(255.f * n.gamma.y),0,255), ImClamp((int)ceil(255.f * n.gamma.z),0,255));
+        oss << "Gamma color " << buf;
+        Action::manager().store(oss.str());
+    }
 
-    ImGui::SameLine(0, 5);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("Gamma", &n.gamma.w, 0.5f, 10.f, "%.2f", 2.f);
+    ImGui::SliderFloat("##Gamma", &n.gamma.w, 0.5f, 10.f, "%.2f", 2.f);
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
         oss << "Gamma " << std::setprecision(2) << n.gamma.w;
         Action::manager().store(oss.str());
     }
-
-//    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//    ImGui::SliderFloat4("Levels", glm::value_ptr(n.levels), 0.0, 1.0);
-
-    if (ImGuiToolkit::IconButton(5, 16)) {
-        n.brightness = 0.f;
-        n.contrast = 0.f;
-        Action::manager().store("B & C  0.0 0.0");
-    }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    float bc[2] = { n.brightness, n.contrast};
-    if ( ImGui::SliderFloat2("B & C", bc, -1.0, 1.0) )
-    {
-        n.brightness = bc[0];
-        n.contrast = bc[1];
-    }
-    if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
-        oss << "B & C  " << std::setprecision(2) << n.brightness << " " << n.contrast;
+    if (ImGuiToolkit::TextButton("Gamma")) {
+        n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
+        oss << "Gamma 1.0, #FFFFFF";
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::IconButton(9, 16)) {
-        n.saturation = 0.f;
-        Action::manager().store("Saturation 0.0");
+    ///
+    /// BRIGHTNESS
+    ///
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::SliderFloat("##Brightness", &n.brightness, -1.0, 1.0);
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        oss << "Brightness " << std::setprecision(2) << n.brightness;
+        Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Brightness")) {
+        n.brightness = 0.f;
+        oss << "Brightness " << std::setprecision(2) << n.brightness;
+        Action::manager().store(oss.str());
+    }
+
+    ///
+    /// CONTRAST
+    ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("Saturation", &n.saturation, -1.0, 1.0);
+    ImGui::SliderFloat("##Contrast", &n.contrast, -1.0, 1.0);
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
+        oss << "Contrast " << std::setprecision(2) << n.contrast;
+        Action::manager().store(oss.str());
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Contrast")) {
+        n.contrast = 0.f;
+        oss << "Contrast " << std::setprecision(2) << n.contrast;
+        Action::manager().store(oss.str());
+    }
+
+    ///
+    /// SATURATION
+    ///
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::SliderFloat("##Saturation", &n.saturation, -1.0, 1.0);
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        oss << "Saturation " << std::setprecision(2) << n.saturation;
+        Action::manager().store(oss.str());
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Saturation")) {
+        n.saturation = 0.f;
         oss << "Saturation " << std::setprecision(2) << n.saturation;
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::IconButton(12, 4)) {
-        n.hueshift = 0.f;
-        Action::manager().store("Hue shift 0.0");
-    }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ///
+    /// HUE SHIFT
+    ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("Hue", &n.hueshift, 0.0, 1.0);
+    ImGui::SliderFloat("##Hue", &n.hueshift, 0.0, 1.0);
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
         oss << "Hue shift " << std::setprecision(2) << n.hueshift;
         Action::manager().store(oss.str());
     }
-
-    if (ImGuiToolkit::IconButton(8, 1)) {
-        n.threshold = 0.f;
-        Action::manager().store("Threshold None");
-    }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Hue ")) {
+        n.hueshift = 0.f;
+        oss << "Hue shift  " << std::setprecision(2) << n.hueshift;
+        Action::manager().store(oss.str());
+    }
+
+    ///
+    /// THRESHOLD
+    ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("Threshold", &n.threshold, 0.0, 1.0, n.threshold < 0.001 ? "None" : "%.2f");
+    ImGui::SliderFloat("##Threshold", &n.threshold, 0.0, 1.0, n.threshold < 0.001 ? "None" : "%.2f");
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
         oss << "Threshold ";
         if (n.threshold < 0.001) oss << "None"; else oss << std::setprecision(2) << n.threshold;
         Action::manager().store(oss.str());
     }
-
-    if (ImGuiToolkit::IconButton(18, 1)) {
-        n.nbColors = 0;
-        Action::manager().store("Posterize None");
-    }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Threshold ")) {
+        n.threshold = 0.f;
+        oss << "Threshold None";
+        Action::manager().store(oss.str());
+    }
+
+    ///
+    /// POSTERIZATION
+    ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderInt("Posterize", &n.nbColors, 0, 16, n.nbColors == 0 ? "None" : "%d colors");
+    ImGui::SliderInt("##Posterize", &n.nbColors, 0, 16, n.nbColors == 0 ? "None" : "%d colors");
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
         oss << "Posterize ";
         if (n.nbColors == 0) oss << "None"; else oss << n.nbColors;
         Action::manager().store(oss.str());
     }
-
-    if (ImGuiToolkit::IconButton(6, 16)) {
-        n.invert = 0;
-        Action::manager().store("Invert None");
-    }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Posterize ")) {
+        n.nbColors = 0.f;
+        oss << "Posterize None";
+        Action::manager().store(oss.str());
+    }
+
+    ///
+    /// INVERSION
+    ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::Combo("Invert", &n.invert, "None\0Color RGB\0Luminance\0"))
+    if (ImGui::Combo("##Invert", &n.invert, "None\0Color RGB\0Luminance\0"))
         Action::manager().store("Invert " + std::string(n.invert<1 ? "None": (n.invert>1 ? "Luminance" : "Color")));
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Invert ")) {
+        n.invert = 0;
+        oss << "Invert None";
+        Action::manager().store(oss.str());
+    }
 
     ImGui::PopID();
 
@@ -746,7 +782,7 @@ void ImGuiVisitor::visit (RenderSource& s)
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) s.renderingProvenance();
-    if (ImGui::Combo("Render", &m, RenderSource::rendering_provenance_label, IM_ARRAYSIZE(RenderSource::rendering_provenance_label)) )
+    if (ImGuiToolkit::ComboIcon("##SelectRender", &m, RenderSource::ProvenanceMethod))
         s.setRenderingProvenance((RenderSource::RenderSourceProvenance)m);
 
 }
@@ -763,19 +799,24 @@ void ImGuiVisitor::visit (PassthroughFilter&)
 
 void ImGuiVisitor::visit (DelayFilter& f)
 {
-    if (ImGuiToolkit::IconButton(ICON_FILTER_DELAY)) {
-        f.setDelay(0.f);
-        Action::manager().store("Delay 0 s");
-    }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
+//    if (ImGuiToolkit::IconButton(ICON_FILTER_DELAY)) {
+//        f.setDelay(0.f);
+//        Action::manager().store("Delay 0 s");
+//    }
+//    ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     float d = f.delay();
-    if (ImGui::SliderFloat("Delay", &d, 0.f, 2.f, "%.2f s"))
+    if (ImGui::SliderFloat("##Delay", &d, 0.f, 2.f, "%.2f s"))
         f.setDelay(d);
     if (ImGui::IsItemDeactivatedAfterEdit()) {
         std::ostringstream oss;
         oss << "Delay " << std::setprecision(3) << d << " s";
         Action::manager().store(oss.str());
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Delay ")) {
+        f.setDelay(0.5f);
+        Action::manager().store("Delay 0.5 s");
     }
 }
 
@@ -783,19 +824,18 @@ void ImGuiVisitor::visit (ResampleFilter& f)
 {
     std::ostringstream oss;
 
-    // Resampling Factor selection
-    if (ImGuiToolkit::IconButton(ICON_FILTER_RESAMPLE)) {
-        f.setFactor( 0 );
-        oss << "Resample " << ResampleFilter::factor_label[0];
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) f.factor();
+    if (ImGui::Combo("##Factor", &m, ResampleFilter::factor_label, IM_ARRAYSIZE(ResampleFilter::factor_label) )) {
+        f.setFactor( m );
+        oss << "Resample " << ResampleFilter::factor_label[m];
         Action::manager().store(oss.str());
         info.reset();
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    int m = (int) f.factor();
-    if (ImGui::Combo("Factor", &m, ResampleFilter::factor_label, IM_ARRAYSIZE(ResampleFilter::factor_label) )) {
-        f.setFactor( m );
-        oss << "Resample " << ResampleFilter::factor_label[m];
+    if (ImGuiToolkit::TextButton("Factor")) {
+        f.setFactor( 0 );
+        oss << "Resample " << ResampleFilter::factor_label[0];
         Action::manager().store(oss.str());
         info.reset();
     }
@@ -808,19 +848,19 @@ void list_parameters_(ImageFilter &f, std::ostringstream &oss)
     {
         ImGui::PushID( param->first.c_str() );
         float v = param->second;
-        if (ImGuiToolkit::IconButton(13, 14)) {
-            v = 0.f;
-            f.setProgramParameter(param->first, v);
-            oss << " : " << param->first << " " << std::setprecision(3) << v;
-            Action::manager().store(oss.str());
-        }
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderFloat( param->first.c_str(), &v, 0.f, 1.f, "%.2f")) {
+        if (ImGui::SliderFloat( "##ImageFilterParameterEdit", &v, 0.f, 1.f, "%.2f")) {
             f.setProgramParameter(param->first, v);
         }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             oss << " : " << param->first << " " << std::setprecision(3) <<param->second;
+            Action::manager().store(oss.str());
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton( param->first.c_str() )) {
+            v = 0.5f;
+            f.setProgramParameter(param->first, v);
+            oss << " : " << param->first << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
         }
         ImGui::PopID();
@@ -833,17 +873,17 @@ void ImGuiVisitor::visit (BlurFilter& f)
     oss << "Blur ";
 
     // Method selection
-    if (ImGuiToolkit::IconButton(ICON_FILTER_BLUR)) {
-        f.setMethod( 0 );
-        oss << BlurFilter::method_label[0];
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) f.method();
+    if (ImGui::Combo("##MethodBlur", &m, BlurFilter::method_label, IM_ARRAYSIZE(BlurFilter::method_label) )) {
+        f.setMethod( m );
+        oss << BlurFilter::method_label[m];
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    int m = (int) f.method();
-    if (ImGui::Combo("Method", &m, BlurFilter::method_label, IM_ARRAYSIZE(BlurFilter::method_label) )) {
-        f.setMethod( m );
-        oss << BlurFilter::method_label[m];
+    if (ImGuiToolkit::TextButton("Method ")) {
+        f.setMethod( 0 );
+        oss << BlurFilter::method_label[0];
         Action::manager().store(oss.str());
     }
 
@@ -857,17 +897,17 @@ void ImGuiVisitor::visit (SharpenFilter& f)
     oss << "Sharpen ";
 
     // Method selection
-    if (ImGuiToolkit::IconButton(ICON_FILTER_SHARPEN)) {
-        f.setMethod( 0 );
-        oss << SharpenFilter::method_label[0];
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) f.method();
+    if (ImGui::Combo("##MethodSharpen", &m, SharpenFilter::method_label, IM_ARRAYSIZE(SharpenFilter::method_label) )) {
+        f.setMethod( m );
+        oss << SharpenFilter::method_label[m];
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    int m = (int) f.method();
-    if (ImGui::Combo("Method", &m, SharpenFilter::method_label, IM_ARRAYSIZE(SharpenFilter::method_label) )) {
-        f.setMethod( m );
-        oss << SharpenFilter::method_label[m];
+    if (ImGuiToolkit::TextButton("Method")) {
+        f.setMethod( 0 );
+        oss << SharpenFilter::method_label[0];
         Action::manager().store(oss.str());
     }
 
@@ -881,17 +921,17 @@ void ImGuiVisitor::visit (SmoothFilter& f)
     oss << "Smooth ";
 
     // Method selection
-    if (ImGuiToolkit::IconButton(ICON_FILTER_SMOOTH)) {
-        f.setMethod( 0 );
-        oss << SmoothFilter::method_label[0];
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) f.method();
+    if (ImGui::Combo("##MethodSmooth", &m, SmoothFilter::method_label, IM_ARRAYSIZE(SmoothFilter::method_label) )) {
+        f.setMethod( m );
+        oss << SmoothFilter::method_label[m];
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    int m = (int) f.method();
-    if (ImGui::Combo("Method", &m, SmoothFilter::method_label, IM_ARRAYSIZE(SmoothFilter::method_label) )) {
-        f.setMethod( m );
-        oss << SmoothFilter::method_label[m];
+    if (ImGuiToolkit::TextButton("Method")) {
+        f.setMethod( 0 );
+        oss << SmoothFilter::method_label[0];
         Action::manager().store(oss.str());
     }
 
@@ -905,17 +945,17 @@ void ImGuiVisitor::visit (EdgeFilter& f)
     oss << "Edge ";
 
     // Method selection
-    if (ImGuiToolkit::IconButton(ICON_FILTER_EDGE)) {
-        f.setMethod( 0 );
-        oss << EdgeFilter::method_label[0];
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) f.method();
+    if (ImGui::Combo("##MethodEdge", &m, EdgeFilter::method_label, IM_ARRAYSIZE(EdgeFilter::method_label) )) {
+        f.setMethod( m );
+        oss << EdgeFilter::method_label[m];
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    int m = (int) f.method();
-    if (ImGui::Combo("Method", &m, EdgeFilter::method_label, IM_ARRAYSIZE(EdgeFilter::method_label) )) {
-        f.setMethod( m );
-        oss << EdgeFilter::method_label[m];
+    if (ImGuiToolkit::TextButton("Method")) {
+        f.setMethod( 0 );
+        oss << EdgeFilter::method_label[0];
         Action::manager().store(oss.str());
     }
 
@@ -928,18 +968,18 @@ void ImGuiVisitor::visit (AlphaFilter& f)
     std::ostringstream oss;
     oss << "Alpha ";
 
-    // Method selection
-    if (ImGuiToolkit::IconButton(ICON_FILTER_ALPHA)) {
-        f.setOperation( 0 );
-        oss << AlphaFilter::operation_label[0];
+    // Alpha operation selection
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    int m = (int) f.operation();
+    if (ImGui::Combo("##Operation", &m, AlphaFilter::operation_label, IM_ARRAYSIZE(AlphaFilter::operation_label) )) {
+        f.setOperation( m );
+        oss << AlphaFilter::operation_label[m];
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    int m = (int) f.operation();
-    if (ImGui::Combo("Operation", &m, AlphaFilter::operation_label, IM_ARRAYSIZE(AlphaFilter::operation_label) )) {
-        f.setOperation( m );
-        oss << AlphaFilter::operation_label[m];
+    if (ImGuiToolkit::TextButton("Operation")) {
+        f.setOperation( 0 );
+        oss << AlphaFilter::operation_label[0];
         Action::manager().store(oss.str());
     }
 
@@ -949,13 +989,8 @@ void ImGuiVisitor::visit (AlphaFilter& f)
     if ( m == AlphaFilter::ALPHA_CHROMAKEY || m == AlphaFilter::ALPHA_LUMAKEY)
     {
         float t = filter_parameters["Threshold"];
-        if (ImGuiToolkit::IconButton(13, 14)) {
-            t = 0.f;
-            f.setProgramParameter("Threshold", t);
-        }
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderFloat( "Threshold", &t, 0.f, 1.f, "%.2f")) {
+        if (ImGui::SliderFloat( "##Threshold", &t, 0.f, 1.f, "%.2f")) {
             f.setProgramParameter("Threshold", t);
         }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
@@ -963,18 +998,29 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
             Action::manager().store(oss.str());
         }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Threshold")) {
+            t = 0.f;
+            f.setProgramParameter("Threshold", t);
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
+            Action::manager().store(oss.str());
+        }
 
         float v = filter_parameters["Tolerance"];
-        if (ImGuiToolkit::IconButton(13, 14)) {
-            v = 0.f;
-            f.setProgramParameter("Tolerance", v);
-        }
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderFloat( "Tolerance", &v, 0.f, 1.f, "%.2f")) {
+        if (ImGui::SliderFloat( "##Tolerance", &v, 0.f, 1.f, "%.2f")) {
             f.setProgramParameter("Tolerance", v);
         }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Tolerance" << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Tolerance")) {
+            v = 0.f;
+            f.setProgramParameter("Tolerance", v);
             oss << AlphaFilter::operation_label[ f.operation() ];
             oss << " : " << "Tolerance" << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
@@ -995,6 +1041,13 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             f.setProgramParameter("Green", color[1]);
             f.setProgramParameter("Blue",  color[2]);
         }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            char buf[64];
+            ImFormatString(buf, IM_ARRAYSIZE(buf), "#%02X%02X%02X", ImClamp((int)ceil(255.f * color[0]),0,255),
+                           ImClamp((int)ceil(255.f * color[1]),0,255), ImClamp((int)ceil(255.f * color[2]),0,255));
+            oss << " Color " << buf;
+            Action::manager().store(oss.str());
+        }
 
         // offer to pick color
         ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -1009,7 +1062,13 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             }
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Color");
+        if (ImGuiToolkit::TextButton("Color")) {
+            f.setProgramParameter("Red",   0.f);
+            f.setProgramParameter("Green", 1.f);
+            f.setProgramParameter("Blue",  0.f);
+            oss << " Color #00FF00";
+            Action::manager().store(oss.str());
+        }
 
         // get picked color if dialog finished
         if (colordialog.closed()){
@@ -1017,6 +1076,11 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             f.setProgramParameter("Red",   std::get<0>(c));
             f.setProgramParameter("Green", std::get<1>(c));
             f.setProgramParameter("Blue",  std::get<2>(c));
+            char buf[64];
+            ImFormatString(buf, IM_ARRAYSIZE(buf), "#%02X%02X%02X", ImClamp((int)ceil(255.f * std::get<0>(c)),0,255),
+                           ImClamp((int)ceil(255.f * std::get<1>(c)),0,255), ImClamp((int)ceil(255.f * std::get<2>(c)),0,255));
+            oss << " Color " << buf;
+            Action::manager().store(oss.str());
         }
     }
 
@@ -1024,18 +1088,14 @@ void ImGuiVisitor::visit (AlphaFilter& f)
 
 void ImGuiVisitor::visit (ImageFilter& f)
 {
-    // Selection of Algorithm
-    if (ImGuiToolkit::IconButton(ICON_FILTER_IMAGE)) {
-        FilteringProgram target;
-        f.setProgram( target );
-    }
-
     // Open Editor
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
     if ( ImGui::Button( ICON_FA_CODE "  Open editor", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         UserInterface::manager().shadercontrol.setVisible(true);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Code");
+    if (ImGuiToolkit::TextButton("Code")) {
+        FilteringProgram target;
+        f.setProgram( target );
+    }
 }
 
 void ImGuiVisitor::visit (CloneSource& s)
@@ -1073,18 +1133,18 @@ void ImGuiVisitor::visit (CloneSource& s)
     // filter selection
     std::ostringstream oss;
     oss << s.name();
-    if (ImGuiToolkit::IconButton(1, 7)) {
-        s.setFilter( FrameBufferFilter::FILTER_PASSTHROUGH );
-        oss << ": Filter None";
+    int type = (int) s.filter()->type();
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if (ImGuiToolkit::ComboIcon("##SelectFilter", &type, FrameBufferFilter::Types)) {
+        s.setFilter( FrameBufferFilter::Type(type) );
+        oss << ": Filter " << std::get<2>(FrameBufferFilter::Types[type]);
         Action::manager().store(oss.str());
         info.reset();
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    int type = (int) s.filter()->type();
-    if (ImGui::Combo("Filter", &type, FrameBufferFilter::type_label, IM_ARRAYSIZE(FrameBufferFilter::type_label), FrameBufferFilter::FILTER_INVALID)) {
-        s.setFilter( FrameBufferFilter::Type(type) );
-        oss << ": Filter " << FrameBufferFilter::type_label[type];
+    if (ImGuiToolkit::TextButton("Filter")) {
+        s.setFilter( FrameBufferFilter::FILTER_PASSTHROUGH );
+        oss << ": Filter None";
         Action::manager().store(oss.str());
         info.reset();
     }

@@ -3870,16 +3870,22 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
         ImGui::Spacing();
 
         static int l = 0;
-        static std::vector< std::pair<int, int> > icons_loc = { {19,7}, {18,7}, {0,8} };
-        static std::vector< std::string > labels_loc = { "Fade in", "Fade out", "Auto fade in & out" };
+        static std::vector< std::tuple<int, int, std::string> > fading_options = {
+            {19, 7, "Fade in"},
+            {18, 7, "Fade out"},
+            { 0, 8, "Auto fade in & out"}
+        };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGuiToolkit::ComboIcon("Fading", icons_loc, labels_loc, &l);
+        ImGuiToolkit::ComboIcon("Fading", &l, fading_options);
 
         static int c = 0;
-        static std::vector< std::pair<int, int> > icons_curve = { {18,3}, {19,3}, {17,3} };
-        static std::vector< std::string > labels_curve = { "Linear", "Progressive", "Abrupt" };
+        static std::vector< std::tuple<int, int, std::string> > curve_options = {
+            {18, 3, "Linear"},
+            {19, 3, "Progressive"},
+            {17, 3, "Abrupt"}
+        };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGuiToolkit::ComboIcon("Curve", icons_curve, labels_curve, &c);
+        ImGuiToolkit::ComboIcon("Curve", &c, curve_options);
 
         static uint d = 1000;
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -7334,7 +7340,7 @@ void Navigator::RenderNewPannel()
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Source", "Select object"))
             {
-                std::string label = "Rendering output";
+                std::string label = "Rendering Loopback";
                 if (ImGui::Selectable( label.c_str() )) {
                     new_source_preview_.setSource( Mixer::manager().createSourceRender(), label);
                 }
