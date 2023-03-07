@@ -1119,8 +1119,12 @@ void ImGuiVisitor::visit (CloneSource& s)
     // link to origin source
     if ( !s.failed() ) {
         std::string label = std::string(s.origin()->initials()) + " - " + s.origin()->name();
-        if (ImGui::Button(label.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) ))
+        if (ImGui::Button(label.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) )) {
             Mixer::manager().setCurrentSource(s.origin());
+
+            if (UserInterface::manager().navigator.pannelVisible())
+                UserInterface::manager().navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+        }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Origin");
     }

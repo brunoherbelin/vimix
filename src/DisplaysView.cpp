@@ -31,6 +31,7 @@
 #include "imgui_internal.h"
 
 #include "Log.h"
+#include "ImageFilter.h"
 #include "Mixer.h"
 #include "defines.h"
 #include "Source.h"

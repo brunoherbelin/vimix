@@ -20,9 +20,6 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "defines.h"
-#include "ImageShader.h"
-#include "ImageProcessingShader.h"
 #include "Resource.h"
 #include "Decorations.h"
 #include "MediaPlayer.h"

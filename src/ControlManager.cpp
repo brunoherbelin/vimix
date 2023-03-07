@@ -1253,6 +1253,7 @@ std::string Control::inputLabel(uint id)
 //
 int Control::layoutKey(int key)
 {
+#if (GLFW_VERSION_MAJOR * 1000 + GLFW_VERSION_MINOR * 100 >= 3300) // 3.3+
     static int  _keyMap[GLFW_KEY_LAST];
     static bool _initialized = false;
     if (!_initialized) {
@@ -1283,4 +1284,7 @@ int Control::layoutKey(int key)
 
 //    fprintf(stderr, "%d pressed; converted to %d\n", key, _keyMap[key]);
     return _keyMap[key];
+#else
+    return key;
+#endif
 }

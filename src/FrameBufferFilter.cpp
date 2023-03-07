@@ -3,7 +3,6 @@
 #include "Visitor.h"
 
 #include "FrameBufferFilter.h"
-#include "FrameBufferFilter.h"
 
 std::vector< std::tuple<int, int, std::string> > FrameBufferFilter::Types = {
     { ICON_FILTER_NONE, std::string("None") },

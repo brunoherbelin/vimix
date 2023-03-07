@@ -1,10 +1,11 @@
 #ifndef VIEW_H
 #define VIEW_H
 
+#include <string>
+
 #include <glm/glm.hpp>
 
 #include "Scene.h"
-#include "FrameBuffer.h"
 
 class Session;
 class SessionFileSource;

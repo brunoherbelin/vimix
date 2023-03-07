@@ -3,13 +3,14 @@
 
 #include "View.h"
 
+
 struct WindowPreview
 {
     Group *root_;
     Group *status_;
     Surface *surface_;
     Surface *render_;
-    ImageFilteringShader *shader_;
+    class ImageFilteringShader *shader_;
     Switch  *overlays_;
     Switch  *mode_;
     Handles *handles_;

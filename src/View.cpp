@@ -26,7 +26,6 @@
 #include <sstream>
 #include <regex>
 
-
 #include "defines.h"
 #include "Settings.h"
 #include "Source.h"

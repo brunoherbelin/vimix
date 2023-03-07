@@ -5,6 +5,7 @@
 #include <future>
 
 #include "View.h"
+#include "FrameBuffer.h"
 
 class RenderView : public View
 {
