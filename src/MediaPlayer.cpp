@@ -27,7 +27,6 @@
 #include "SystemToolkit.h"
 #include "BaseToolkit.h"
 #include "GstToolkit.h"
-#include "RenderingManager.h"
 #include "Metronome.h"
 
 #include "MediaPlayer.h"
@@ -331,7 +330,7 @@ void MediaPlayer::execute_open()
     }
 
     // set app sink
-    description += "appsink name=sink";
+    description += "queue ! appsink name=sink";
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -451,6 +450,19 @@ void MediaPlayer::Frame::unmap()
     full = false;
 }
 
+
+void delayed_terminate( GstElement *p )
+{
+    GstElement *__pipeline = p;
+
+    // end pipeline
+    gst_element_set_state (__pipeline, GST_STATE_NULL);
+
+    // unref to free pipeline
+    gst_object_unref ( GST_OBJECT (__pipeline) );
+}
+
+
 void MediaPlayer::close()
 {
     // not opened?
@@ -469,16 +481,17 @@ void MediaPlayer::close()
     // clean up GST
     if (pipeline_ != nullptr) {
 
-        // force flush
-        gst_element_send_event(pipeline_, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
-                    GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0) );
-        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
+        //        // force flush
+        //        gst_element_send_event(pipeline_, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
+        //                    GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0) );
+        //        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
+        //        // end pipeline
+        //        gst_element_set_state (pipeline_, GST_STATE_NULL);
+        //        gst_object_unref ( GST_OBJECT (pipeline_) );
 
-        // end pipeline
-        gst_element_set_state (pipeline_, GST_STATE_NULL);
-        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
+        // end pipeline asynchronously // TODO more stress test?
+        std::thread(delayed_terminate, pipeline_).detach();
 
-        gst_object_unref (pipeline_);
         pipeline_ = nullptr;
     }
 
