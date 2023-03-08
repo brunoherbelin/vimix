@@ -1068,3 +1068,148 @@ bool WindowPreview::hasNode::operator()(WindowPreview elem) const
 
 //    return ret;
 //}
+
+
+
+// GLM conversion of GLSL code to generate white balance matrices
+
+//// Parameters for transfer characteristics (gamma curves)
+//struct transfer {
+//    // Exponent used to linearize the signal
+//    float power;
+
+//    // Offset from 0.0 for the exponential curve
+//    float off;
+
+//    // Slope of linear segment near 0
+//    float slope;
+
+//    // Values below this are divided by slope during linearization
+//    float cutoffToLinear;
+
+//    // Values below this are multiplied by slope during gamma correction
+//    float cutoffToGamma;
+
+//    transfer(float p, float o, float s, float l, float g)  :
+//        power(p), off(o), slope (s), cutoffToLinear(l), cutoffToGamma(g)
+//    {}
+//};
+
+//// Parameters for a colorspace
+//struct rgb_space {
+//    // Chromaticity coordinates (xyz) for Red, Green, and Blue primaries
+//    glm::mat4 primaries;
+
+//    // Chromaticity coordinates (xyz) for white point
+//    glm::vec4 white;
+
+//    // Linearization and gamma correction parameters
+//    transfer trc;
+
+//    rgb_space(glm::mat4 p, glm::vec4 w, transfer t) :
+//        primaries(p), white(w), trc(t)
+//    {}
+//};
+
+
+//// Turns 6 chromaticity coordinates into a 3x3 matrix
+//#define Primaries(r1, r2, g1, g2, b1, b2)\
+//    glm::mat4(\
+//    (r1), (r2), 1.0 - (r1) - (r2), 0,\
+//    (g1), (g2), 1.0 - (g1) - (g2), 0,\
+//    (b1), (b2), 1.0 - (b1) - (b2), 0,\
+//    0, 0, 0, 1)
+
+//// Creates a whitepoint's xyz chromaticity coordinates from the given xy coordinates
+//#define White(x, y)\
+//    glm::vec4( glm::vec3((x), (y), 1.0f - (x) - (y)) /(y), 1.0f)
+
+//// Automatically calculate the slope and cutoffs for transfer characteristics
+//#define Transfer(po, of)\
+//transfer(\
+//    (po),\
+//    (of),\
+//    (pow((po)*(of)/((po) - 1.0), 1.0 - (po))*pow(1.0 + (of), (po)))/(po),\
+//    (of)/((po) - 1.0),\
+//    (of)/((po) - 1.0)*(po)/(pow((po)*(of)/((po) - 1.0), 1.0 - (po))*pow(1.0 + (of), (po)))\
+//)
+
+//// Creates a scaling matrix using a vec4 to set the xyzw scalars
+//#define diag(v)\
+//    glm::mat4(\
+//    (v).x, 0, 0, 0,\
+//    0, (v).y, 0, 0,\
+//    0, 0, (v).z, 0,\
+//    0, 0, 0, (v).w)
+
+//// Creates a conversion matrix that turns RGB colors into XYZ colors
+//#define rgbToXyz(space)\
+//    (space.primaries*diag(inverse((space).primaries)*(space).white))
+
+//// Creates a conversion matrix that turns XYZ colors into RGB colors
+//#define xyzToRgb(space)\
+//    inverse(rgbToXyz(space))
+
+
+///*
+// * Chromaticities for RGB primaries
+// */
+
+
+//// Rec. 709 (HDTV) and sRGB primaries
+//const glm::mat4 primaries709 = Primaries(
+//    0.64f, 0.33f,
+//    0.3f, 0.6f,
+//    0.15f, 0.06f
+//);
+
+
+//// Same as above, but in fractional form
+//const glm::mat4 primariesLms = Primaries(
+//    194735469.0/263725741.0, 68990272.0/263725741.0,
+//    141445123.0/106612934.0, -34832189.0/106612934.0,
+//    36476327.0/229961670.0, 0.0
+//);
+
+
+///*
+// * Chromaticities for white points
+// */
+
+//// Standard illuminant E (also known as the 'equal energy' white point)
+//const glm::vec4 whiteE = White(1.f/3.f, 1.f/3.f);
+
+//// Standard Illuminant D65 according to the Rec. 709 and sRGB standards
+//const glm::vec4 whiteD65S = White(0.3127f, 0.3290f);
+
+///*
+// * Gamma curve parameters
+// */
+//// Linear gamma
+//const transfer gam10 = transfer(1.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+//// Gamma for sRGB
+//const transfer gamSrgb = transfer(2.4f, 0.055f, 12.92f, 0.04045f, 0.0031308f);
+
+///*
+// * RGB Colorspaces
+// */
+//// sRGB (mostly the same as Rec. 709, but different gamma and full range values)
+//const rgb_space Srgb = rgb_space(primaries709, whiteD65S, gamSrgb);
+
+//// Lms primaries, balanced against equal energy white point
+//const rgb_space LmsRgb = rgb_space(primariesLms, whiteE, gam10);
+
+
+//const glm::mat4 toXyz = rgbToXyz(Srgb);
+//const glm::mat4 toRgb = xyzToRgb(Srgb);
+//const glm::mat4 toLms = xyzToRgb(LmsRgb);
+//const glm::mat4 frLms = rgbToXyz(LmsRgb);
+
+//std::cerr << "toXyz" << std::endl;
+//std::cerr << glm::to_string(toXyz) <<std::endl;
+//std::cerr << "toRgb" << std::endl;
+//std::cerr << glm::to_string(toRgb) <<std::endl;
+//std::cerr << "toLms" << std::endl;
+//std::cerr << glm::to_string(toLms) <<std::endl;
+//std::cerr << "frLms" << std::endl;
+//std::cerr << glm::to_string(frLms) <<std::endl;

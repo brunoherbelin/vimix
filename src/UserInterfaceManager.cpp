@@ -8324,7 +8324,7 @@ void Navigator::RenderMainPannelSettings()
         ImGui::Text("Appearance");
         int v = Settings::application.accent_color;
         ImGui::Spacing();
-        ImGui::SetCursorPosX(-0.6f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetCursorPosX(0.5f * width_);
         if (ImGui::RadioButton("##Color", &v, v)){
             Settings::application.accent_color = (v+1)%3;
             ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
@@ -8332,7 +8332,7 @@ void Navigator::RenderMainPannelSettings()
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Change accent color");
         ImGui::SameLine();
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::InputFloat("Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
             Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 2.f);
@@ -8348,11 +8348,11 @@ void Navigator::RenderMainPannelSettings()
         ImGui::Text("Record");
 
         // select CODEC and FPS
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Codec", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
 
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Framerate", &Settings::application.record.framerate_mode, VideoRecorder::framerate_preset_name, IM_ARRAYSIZE(VideoRecorder::framerate_preset_name) );
 
@@ -8367,7 +8367,7 @@ void Navigator::RenderMainPannelSettings()
             ImGui::SameLine(0);
         }
 
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
                          VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
@@ -8376,7 +8376,7 @@ void Navigator::RenderMainPannelSettings()
                                  ICON_FA_CARET_RIGHT " Duration:\n  Variable framerate, correct duration.\n"
                                  ICON_FA_CARET_RIGHT " Framerate:\n  Correct framerate,  shorter duration.");
         ImGui::SameLine(0);
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Duration\0Framerate\0");
 
@@ -8389,7 +8389,7 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::Indication("Peer-to-peer sharing on local network\n\n"
                                  "vimix can stream JPEG (default) or H264 (requires less bandwidth but more resources for encoding)", ICON_FA_SHARE_ALT_SQUARE);
         ImGui::SameLine(0);
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Share P2P", &Settings::application.stream_protocol, "JPEG\0H264\0");
 
@@ -8406,7 +8406,7 @@ void Navigator::RenderMainPannelSettings()
 
             ImGuiToolkit::Indication(msg, ICON_FA_GLOBE);
             ImGui::SameLine(0);
-            ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+            ImGui::SetCursorPosX(width_);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             char bufport[7] = "";
             sprintf(bufport, "%d", Settings::application.broadcast_port);
@@ -8436,7 +8436,7 @@ void Navigator::RenderMainPannelSettings()
         ImGuiToolkit::Indication(msg, ICON_FA_NETWORK_WIRED);
         ImGui::SameLine(0);
 
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         char bufreceive[7] = "";
         sprintf(bufreceive, "%d", Settings::application.control.osc_port_receive);
@@ -8448,7 +8448,7 @@ void Navigator::RenderMainPannelSettings()
             }
         }
 
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         char bufsend[7] = "";
         sprintf(bufsend, "%d", Settings::application.control.osc_port_send);
@@ -8460,7 +8460,7 @@ void Navigator::RenderMainPannelSettings()
             }
         }
 
-        ImGui::SetCursorPosX(-1.f * IMGUI_RIGHT_ALIGN);
+        ImGui::SetCursorPosX(width_);
         const float w = IMGUI_RIGHT_ALIGN - ImGui::GetFrameHeightWithSpacing();
         ImGuiToolkit::ButtonOpenUrl( "Edit", Settings::application.control.osc_filename.c_str(), ImVec2(w, 0) );
         ImGui::SameLine(0, 6);

@@ -151,11 +151,11 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* sho
 
     // draw the label right aligned
     const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
-    ImVec2 text_pos = draw_pos + ImVec2(frame_width -3.5f * ImGui::GetTextLineHeightWithSpacing() -label_size.x, 0.f);
+    ImVec2 text_pos = draw_pos + ImVec2(frame_width -3.8f * ImGui::GetTextLineHeightWithSpacing() -label_size.x, 0.f);
     ImGui::RenderText(text_pos, label);
 
     // draw switch after the text
-    ImVec2 p = draw_pos + ImVec2(frame_width -3.1f * ImGui::GetTextLineHeightWithSpacing(), 0.f);
+    ImVec2 p = draw_pos + ImVec2(frame_width -3.5f * ImGui::GetTextLineHeightWithSpacing(), 0.f);
     draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
     draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 250));
 

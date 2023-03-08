@@ -82,7 +82,7 @@
 #define IMGUI_TITLE_LOGS ICON_FA_LIST_UL "  Logs"
 #define IMGUI_LABEL_RECENT_FILES " Recent files"
 #define IMGUI_LABEL_RECENT_RECORDS " Recent recordings"
-#define IMGUI_RIGHT_ALIGN -3.5f * ImGui::GetTextLineHeightWithSpacing()
+#define IMGUI_RIGHT_ALIGN -3.8f * ImGui::GetTextLineHeightWithSpacing()
 #define IMGUI_SAME_LINE 8
 #define IMGUI_TOP_ALIGN 10
 #define IMGUI_COLOR_OVERLAY IM_COL32(5, 5, 5, 150)
