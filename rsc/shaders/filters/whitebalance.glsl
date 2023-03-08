@@ -44,28 +44,18 @@ struct transfer {
 
 // Parameters for a colorspace
 struct rgb_space {
-	// Chromaticity coordinates (xyz) for Red, Green, and Blue primaries
-	mat4 primaries;
 
-	// Chromaticity coordinates (xyz) for white point
-	vec4 white;
+        // Chromaticity coordinates (xyz) for white point
+        vec4 white;
 
-	// Linearization and gamma correction parameters
-	transfer trc;
+        // Linearization and gamma correction parameters
+        transfer trc;
 };
 
 
 /*
  * Preprocessor 'functions' that help build colorspaces as constants
  */
-
-// Turns 6 chromaticity coordinates into a 3x3 matrix
-#define Primaries(r1, r2, g1, g2, b1, b2)\
-	mat4(\
-	(r1), (r2), 1.0 - (r1) - (r2), 0,\
-	(g1), (g2), 1.0 - (g1) - (g2), 0,\
-	(b1), (b2), 1.0 - (b1) - (b2), 0,\
-	0, 0, 0, 1)
 
 // Creates a whitepoint's xyz chromaticity coordinates from the given xy coordinates
 #define White(x, y)\
@@ -89,42 +79,9 @@ transfer(\
 	0, 0, (v).z, 0,\
 	0, 0, 0, (v).w)
 
-// Creates a conversion matrix that turns RGB colors into XYZ colors
-#define rgbToXyz(space)\
-	(space.primaries*diag(inverse((space).primaries)*(space).white))
-
-// Creates a conversion matrix that turns XYZ colors into RGB colors
-#define xyzToRgb(space)\
-	inverse(rgbToXyz(space))
-
-
-/*
- * Chromaticities for RGB primaries
- */
-
-
-// Rec. 709 (HDTV) and sRGB primaries
-const mat4 primaries709 = Primaries(
-	0.64, 0.33,
-	0.3, 0.6,
-	0.15, 0.06
-);
-
-
-// Same as above, but in fractional form
-const mat4 primariesLms = Primaries(
-	194735469.0/263725741.0, 68990272.0/263725741.0,
-	141445123.0/106612934.0, -34832189.0/106612934.0,
-	36476327.0/229961670.0, 0.0
-);
-
-
 /*
  * Chromaticities for white points
  */
-
-// Standard illuminant E (also known as the 'equal energy' white point)
-const vec4 whiteE = White(1.0/3.0, 1.0/3.0);
 
 // Standard Illuminant D65 according to the Rec. 709 and sRGB standards
 const vec4 whiteD65S = White(0.3127, 0.3290);
@@ -132,8 +89,6 @@ const vec4 whiteD65S = White(0.3127, 0.3290);
 /*
  * Gamma curve parameters
  */
-// Linear gamma
-const transfer gam10 = transfer(1.0, 0.0, 1.0, 0.0, 0.0);
 // Gamma for sRGB
 const transfer gamSrgb = transfer(2.4, 0.055, 12.92, 0.04045, 0.0031308);
 
@@ -141,10 +96,7 @@ const transfer gamSrgb = transfer(2.4, 0.055, 12.92, 0.04045, 0.0031308);
  * RGB Colorspaces
  */
 // sRGB (mostly the same as Rec. 709, but different gamma and full range values)
-const rgb_space Srgb = rgb_space(primaries709, whiteD65S, gamSrgb);
-
-// Lms primaries, balanced against equal energy white point
-const rgb_space LmsRgb = rgb_space(primariesLms, whiteE, gam10);
+const rgb_space Srgb = rgb_space(whiteD65S, gamSrgb);
 
 
 /*
@@ -206,12 +158,12 @@ vec4 temperatureToXyz(float temperature)
 
 
 // XYZ conversion matrices for the display colorspace
-const mat4 toXyz = rgbToXyz(Srgb);
-const mat4 toRgb = xyzToRgb(Srgb);
+const mat4 toXyz = mat4(0.412391, 0.212639, 0.019331, 0.000000, 0.357584, 0.715169, 0.119195, 0.000000, 0.180481, 0.072192, 0.950532, 0.000000, 0.000000, 0.000000, 0.000000, 1.000000);
+const mat4 toRgb = mat4(3.240968, -0.969244, 0.055630, -0.000000, -1.537383, 1.875967, -0.203977, 0.000000, -0.498611, 0.041555, 1.056971, -0.000000, -0.000000, 0.000000, -0.000000, 1.000000);
 
 // LMS conversion matrices for white point adaptation
-const mat4 toLms = xyzToRgb(LmsRgb);
-const mat4 frLms = rgbToXyz(LmsRgb);
+const mat4 toLms = mat4(0.205245, -0.497222, -0.000000, -0.000000,  0.833449, 1.403485, 0.000000, 0.000000, -0.038693, 0.093738, 1.000000, -0.000000, 0.000000, 0.000000, -0.000000, 1.000000);
+const mat4 frLms = mat4(1.997937, 0.707823, 0.000000, 0.000000, -1.186460, 0.292177, -0.000000, 0.000000, 0.188522, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 0.000000, 1.000000);
 
 
 // Converts from one RGB colorspace to another, output as linear light
