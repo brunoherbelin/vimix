@@ -143,8 +143,7 @@ static void WindowResizeCallback( GLFWwindow *w, int width, int height)
         Settings::application.windows[id].h = height;
     }
 
-//    Rendering::manager().draw();
-    Rendering::manager().window(w)->swap();
+    Rendering::manager().draw();
 }
 
 static void WindowMoveCallback( GLFWwindow *w, int x, int y)
