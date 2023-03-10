@@ -38,7 +38,8 @@ std::vector< ShadingProgram > maskPrograms = {
     ShadingProgram("shaders/simple.vs", "shaders/mask_vertical.fs")
 };
 
-const char* MaskShader::mask_names[3]  = { ICON_FA_EXPAND, ICON_FA_EDIT, ICON_FA_SHAPES };
+const char* MaskShader::mask_icons[3]  = { ICON_FA_SQUARE, ICON_FA_EDIT, ICON_FA_SHAPES };
+const char* MaskShader::mask_names[3]  = { "No mask", "Paint mask", "Shape mask" };
 const char* MaskShader::mask_shapes[5] = { "Ellipse", "Oblong", "Rectangle", "Horizontal", "Vertical" };
 
 ImageShader::ImageShader(): Shader(), mask_texture(0), stipple(0.f)
