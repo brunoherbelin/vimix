@@ -156,6 +156,12 @@ void  DisplaysView::recenter ()
     scene.clearBackground();
     scene.clearForeground();
 
+    // reset scene transform
+    scene.root()->translation_.x = 0.f;
+    scene.root()->translation_.y = 0.f;
+    scene.root()->scale_.x = 1.f;
+    scene.root()->scale_.y = 1.f;
+
     // fill scene background with the frames to show monitors
     int index = 1;
     std::map<std::string, glm::ivec4> _monitors = Rendering::manager().monitors();
@@ -203,12 +209,28 @@ void  DisplaysView::recenter ()
     scene.accept(scene_visitor_bbox);
     GlmToolkit::AxisAlignedBoundingBox scene_box = scene_visitor_bbox.bbox();
 
-    // compute scaling to fit the scene box into the scene, modulo a margin ratio
-    scene.root()->scale_.x = SCENE_UNIT / ( scene_box.scale().x * 1.3f);
-    scene.root()->scale_.y = scene.root()->scale_.x;
-    // compute translation to place at the center (considering scaling)
-    scene.root()->translation_ = -scene.root()->scale_.x * scene_box.center();
+    // calculate the coordinates of top-left window corner: this indicates space available in view
+    static glm::mat4 projection = glm::ortho(-SCENE_UNIT, SCENE_UNIT, -SCENE_UNIT, SCENE_UNIT, -SCENE_DEPTH, 1.f);
+    float viewar = (float) Settings::application.windows[0].w / (float) Settings::application.windows[0].h;
+    glm::mat4 scale = glm::scale(glm::identity<glm::mat4>(), glm::vec3(viewar > 1.f ? 1.f : 1.f / viewar, viewar > 1.f ? viewar : 1.f, 1.f));
+    glm::vec4 viewport = glm::vec4(0.f, 0.f, Settings::application.windows[0].w, Settings::application.windows[0].h);
+    glm::vec3 view = glm::unProject(glm::vec3(0.f),glm::identity<glm::mat4>(), projection * scale, viewport);
+    view = glm::abs(view);
 
+    // compute scaling to fit the scene box into the view
+    if ( scene_box.scale().x > scene_box.scale().y ) {
+        // horizontal arrangement
+        scene.root()->scale_.x = glm::min(view.x, view.y) / ( scene_box.scale().x * 1.2f );
+        scene.root()->scale_.y = scene.root()->scale_.x;
+    }
+    else {
+        // vertical arrangement
+        scene.root()->scale_.y = glm::min(view.x, view.y) / ( scene_box.scale().y * 1.2f );
+        scene.root()->scale_.x = scene.root()->scale_.y;
+    }
+
+    // compute translation to place at the center (considering scaling, + shift for buttons left and above)
+    scene.root()->translation_ = -scene.root()->scale_.x * scene_box.center() + glm::vec3(0.2f, -0.2f, 0.f);
 }
 
 void DisplaysView::resize ( int scale )
