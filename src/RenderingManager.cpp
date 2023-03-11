@@ -1133,17 +1133,20 @@ bool RenderingWindow::draw(FrameBuffer *fb)
                 shader_->uniforms_["Temperature"] = Settings::application.windows[index_].whitebalance.w;
             }
 
-            // calculate scaling factor of frame buffer inside window
-            const float windowAspectRatio = aspectRatio();
-            const float renderingAspectRatio = fb->aspectRatio();
-            glm::vec3 scale = glm::vec3(1.f, 1.f, 1.f);
-
             // Display option: scaled or corrected aspect ratio
-            if (!Settings::application.windows[index_].scaled) {
+            if (Settings::application.windows[index_].scaled) {
+                surface_->scale_ = Settings::application.windows[index_].scale;
+                surface_->translation_ = Settings::application.windows[index_].translation;
+            }
+            else{
+                // calculate scaling factor of frame buffer inside window
+                const float windowAspectRatio = aspectRatio();
+                const float renderingAspectRatio = fb->aspectRatio();
                 if (windowAspectRatio < renderingAspectRatio)
-                    scale = glm::vec3(1.f, windowAspectRatio / renderingAspectRatio, 1.f);
+                    surface_->scale_ = glm::vec3(1.f, windowAspectRatio / renderingAspectRatio, 1.f);
                 else
-                    scale = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
+                    surface_->scale_ = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
+                surface_->translation_ = glm::vec3(0.f);
             }
 
             // Display option: draw calibration pattern
@@ -1168,7 +1171,8 @@ bool RenderingWindow::draw(FrameBuffer *fb)
             // actual render of the textured surface
             glBindTexture(GL_TEXTURE_2D, textureid_);
             static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
-            surface_->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
+            surface_->update(0.f);
+            surface_->draw(glm::identity<glm::mat4>(), projection);
 
             // done drawing (unload shader from this glcontext)
             ShadingProgram::enduse();

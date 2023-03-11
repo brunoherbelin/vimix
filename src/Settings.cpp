@@ -110,8 +110,16 @@ void Settings::Save(uint64_t runtime)
             window->SetAttribute("f", w.fullscreen);
             window->SetAttribute("s", w.scaled);
             window->SetAttribute("d", w.decorated);
-            window->SetAttribute("m", w.monitor.c_str());            
-            window->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.whitebalance) );
+            window->SetAttribute("m", w.monitor.c_str());
+            XMLElement *tmp = xmlDoc.NewElement("whitebalance");
+            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.whitebalance) );
+            window->InsertEndChild( tmp );
+            tmp = xmlDoc.NewElement("scale");
+            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.scale) );
+            window->InsertEndChild( tmp );
+            tmp = xmlDoc.NewElement("translation");
+            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.translation) );
+            window->InsertEndChild( tmp );
             windowsNode->InsertEndChild(window);
 		}
 
@@ -515,11 +523,19 @@ void Settings::Load()
                 int i = 0;
                 windowNode->QueryIntAttribute("id", &i);
                 if (i > 0)
-                    w.name = APP_NAME " output " + std::to_string(i);
+                    w.name = "Output " + std::to_string(i) + " - " APP_NAME;
                 else
                     w.name = APP_TITLE;
 
-                tinyxml2::XMLElementToGLM( windowNode->FirstChildElement("vec4"), w.whitebalance);
+                XMLElement *tmp = windowNode->FirstChildElement("whitebalance");
+                if (tmp)
+                    tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec4"), w.whitebalance);
+                tmp = windowNode->FirstChildElement("scale");
+                if (tmp)
+                    tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec3"), w.scale);
+                tmp = windowNode->FirstChildElement("translation");
+                if (tmp)
+                    tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec3"), w.translation);
 
                 application.windows[i] = w;
             }
@@ -549,11 +565,13 @@ void Settings::Load()
                 application.views[id].name = viewNode->Attribute("name");
 
                 XMLElement* scaleNode = viewNode->FirstChildElement("default_scale");
-                tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"),
+                if (scaleNode)
+                    tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"),
                                            application.views[id].default_scale);
 
                 XMLElement* translationNode = viewNode->FirstChildElement("default_translation");
-                tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"),
+                if (translationNode)
+                    tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"),
                                            application.views[id].default_translation);
 
             }

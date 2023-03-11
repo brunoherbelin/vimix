@@ -238,6 +238,14 @@ GlmToolkit::AxisAlignedBoundingBox GlmToolkit::AxisAlignedBoundingBox::transform
     return bb;
 }
 
+float GlmToolkit::AxisAlignedBoundingBox::area() const
+{
+    if (isNull())
+        return 0.f;
+
+    return (mMax.x - mMin.x) * (mMax.y - mMin.y) ;
+}
+
 bool GlmToolkit::operator< (const GlmToolkit::AxisAlignedBoundingBox& A, const GlmToolkit::AxisAlignedBoundingBox& B )
 {
     if (A.isNull())

@@ -6,11 +6,13 @@
 
 struct WindowPreview
 {
-    Group *root_;
-    Group *status_;
-    Surface *surface_;
-    Surface *render_;
+    class FrameBuffer *renderbuffer_;
     class ImageFilteringShader *shader_;
+    class FrameBufferSurface *surface_;
+    Surface *output_render_;
+    Group *root_;
+    Group *output_frame_;
+    Handles *output_handles_;
     Switch  *overlays_;
     Switch  *mode_;
     Handles *handles_;
@@ -21,12 +23,14 @@ struct WindowPreview
     std::string monitor_;
 
     WindowPreview() {
-        root_ = nullptr;
-        status_ = nullptr;
+        renderbuffer_ = nullptr;
+        shader_ = nullptr;
         surface_ = nullptr;
-        render_ = nullptr;
+        output_render_ = nullptr;
+        root_ = nullptr;
+        output_frame_ = nullptr;
+        output_handles_ = nullptr;
         overlays_ = nullptr;
-        status_ = nullptr;
         mode_ = nullptr;
         handles_ = nullptr;
         menu_ = nullptr;
@@ -81,9 +85,8 @@ private:
     std::vector<WindowPreview> windows_;
     int current_window_;
     Group *current_window_status_;
+    Group *current_output_status_;
     bool show_window_menu_;
-
-    int  display_action_;
 
 
 //    bool get_UV_window_render_from_pick(const glm::vec3 &pos, glm::vec2 *uv);
