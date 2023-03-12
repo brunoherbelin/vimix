@@ -7720,7 +7720,8 @@ void Navigator::RenderMainPannelVimix()
     }
 
     {
-        static bool _tooltip = 0;
+        static uint _tooltip = 0;
+        ++_tooltip;
 
         // display the sessions list and detect if one was selected (double clic)
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -7746,13 +7747,13 @@ void Navigator::RenderMainPannelVimix()
                     }
                     else
                         // show tooltip on clic
-                        _tooltip = true;
+                        _tooltip = 100;
 
                 }
                 if (ImGui::IsItemHovered())
                     _file_over = it;
 
-                if (_tooltip && _file_over != sessions_list.end() && count_over < 1) {
+                if (_tooltip > 60 && _file_over != sessions_list.end() && count_over < 1) {
 
                     static std::string _file_info = "";
                     static Thumbnail _file_thumbnail;
@@ -7795,7 +7796,7 @@ void Navigator::RenderMainPannelVimix()
             // done the selection !
             if (done) {
                 hidePannel();
-                _tooltip = false;
+                _tooltip = 0;
                 _displayed_over = _file_over = sessions_list.end();
                 // reload the list next time
                 selection_session_mode_changed = true;
@@ -7803,7 +7804,7 @@ void Navigator::RenderMainPannelVimix()
         }
         // cancel tooltip and mouse over on mouse exit
         if ( !ImGui::IsItemHovered()) {
-            _tooltip = false;
+            _tooltip = 0;
             _displayed_over = _file_over = sessions_list.end();
         }
     }
