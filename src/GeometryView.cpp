@@ -261,48 +261,28 @@ void GeometryView::draw()
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
     {
         // style
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 1.f));
-        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.1f, 0.1f, 0.1f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.1f, 0.1, 0.1, 0.8f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.46f));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.914f, 0.14f, 0.14f, 1.00f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.914f, 0.14f, 0.14f, 0.46f)); // 8
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 0.56f));
 
-        // draw vertical slider
-        ImVec2 _pos = ImGui::GetCursorPos();
-        int selected_ws = Source::FOREGROUND - Settings::application.current_workspace;
-        const ImVec2 slider_size(40, 132);
-        if (ImGui::VSliderInt("##sliderworkspace", slider_size, &selected_ws, 0, 2, "") ) {
-            Settings::application.current_workspace = Source::FOREGROUND - selected_ws;
+        bool on = Settings::application.current_workspace == Source::BACKGROUND;
+        if ( ImGuiToolkit::ButtonIconToggle(10,16,10,16, &on, "Background") ) {
+            Settings::application.current_workspace = Source::BACKGROUND;
             ++View::need_deep_update_;
         }
-        if (ImGui::IsItemActive()) {
-            if ( Settings::application.current_workspace == Source::BACKGROUND )
-                ImGuiToolkit::ToolTip("Background");
-            else if ( Settings::application.current_workspace == Source::FOREGROUND )
-                ImGuiToolkit::ToolTip("Foreground");
-            else
-                ImGuiToolkit::ToolTip("Workspace");
+        on = Settings::application.current_workspace == Source::STAGE;
+        if ( ImGuiToolkit::ButtonIconToggle(11,16,11,16, &on, "Workspace") ) {
+            Settings::application.current_workspace = Source::STAGE;
+            ++View::need_deep_update_;
+        }
+        on = Settings::application.current_workspace == Source::FOREGROUND;
+        if ( ImGuiToolkit::ButtonIconToggle(12,16,12,16, &on, "Foreground") ) {
+            Settings::application.current_workspace = Source::FOREGROUND;
+            ++View::need_deep_update_;
         }
 
-        // draw icons on top of slider
-        ImGui::SetCursorPos( _pos );
-        static std::vector< std::pair<int, int> > icons_ws = { {10,16}, {11,16}, {12,16} };
-        std::vector<std::pair<int, int> >::iterator it_icon = icons_ws.begin();
-        for(int i = 0 ; it_icon != icons_ws.end(); i++, ++it_icon) {
-            // current workspace icon is light color
-            if ( Settings::application.current_workspace != i) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 1.f));
-                ImGuiToolkit::Icon( (*it_icon).first, (*it_icon).second );
-                ImGui::PopStyleColor();
-            }
-            else
-                ImGuiToolkit::Icon( (*it_icon).first, (*it_icon).second );
-        }
-
-        ImGui::PopStyleColor(8);
+        ImGui::PopStyleColor(4);
         ImGui::End();
     }
     ImGui::PopFont();
