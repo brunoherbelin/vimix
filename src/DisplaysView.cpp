@@ -264,17 +264,17 @@ void  DisplaysView::recenter ()
     // compute scaling to fit the scene box into the view
     if ( scene_box.scale().x > scene_box.scale().y ) {
         // horizontal arrangement
-        scene.root()->scale_.x = glm::min(view.x, view.y) / ( scene_box.scale().x * 1.2f );
+        scene.root()->scale_.x = glm::min(view.x, view.y) / ( scene_box.scale().x );
         scene.root()->scale_.y = scene.root()->scale_.x;
     }
     else {
         // vertical arrangement
-        scene.root()->scale_.y = glm::min(view.x, view.y) / ( scene_box.scale().y * 1.2f );
+        scene.root()->scale_.y = glm::min(view.x, view.y) / ( scene_box.scale().y );
         scene.root()->scale_.x = scene.root()->scale_.y;
     }
 
     // compute translation to place at the center (considering scaling, + shift for buttons left and above)
-    scene.root()->translation_ = -scene.root()->scale_.x * scene_box.center() + glm::vec3(0.2f, -0.2f, 0.f);
+    scene.root()->translation_ = -scene.root()->scale_.x * (scene_box.center() + glm::vec3(-0.2f, 0.2f, 0.f));
 }
 
 void DisplaysView::resize ( int scale )
@@ -897,27 +897,14 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
                 windows_[current_window_].output_frame_->translation_ = glm::round( windows_[current_window_].output_frame_->translation_ * 20.f) * 0.05f;
             }
 
-            if (corner.x > 0.f) {
-                if (corner.y > 0.f)
-                    info << "Top Right";
-                else
-                    info << "Bottom Right";
-            }
-            else {
-                if (corner.y > 0.f)
-                    info << "Top Left";
-                else
-                    info << "Bottom Left";
-            }
-
             // show cursor depending on diagonal (corner picked)
             T = glm::rotate(glm::identity<glm::mat4>(), current_output_status_->rotation_.z, glm::vec3(0.f, 0.f, 1.f));
             T = glm::scale(T, current_output_status_->scale_);
             corner = T * glm::vec4( corner, 0.f, 0.f );
             ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
 
-//            info << "Output resized " << std::fixed << std::setprecision(1) << 100.f * windows_[current_window_].output_frame_->scale_.x;
-//            info << " x "  << 100.f * windows_[current_window_].output_frame_->scale_.y << " %";
+            info << "Output resized " << std::fixed << std::setprecision(1) << 100.f * windows_[current_window_].output_frame_->scale_.x;
+            info << " x "  << 100.f * windows_[current_window_].output_frame_->scale_.y << " %";
         }
 
         // grab window not fullscreen : move or resizes
