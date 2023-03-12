@@ -280,15 +280,17 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("##Gamma", &n.gamma.w, 0.5f, 10.f, "%.2f", 2.f);
+    float val = log10(n.gamma.w);
+    if ( ImGui::SliderFloat("##Gamma", &val, -1.f, 1.f, "%.3f", 2.f) )
+        n.gamma.w = exp10(val);
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        oss << "Gamma " << std::setprecision(2) << n.gamma.w;
+        oss << "Gamma " << std::setprecision(2) << val;
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     if (ImGuiToolkit::TextButton("Gamma")) {
         n.gamma = glm::vec4(1.f, 1.f, 1.f, 1.f);
-        oss << "Gamma 1.0, #FFFFFF";
+        oss << "Gamma 0.0, #FFFFFF";
         Action::manager().store(oss.str());
     }
 
@@ -296,7 +298,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     /// BRIGHTNESS
     ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("##Brightness", &n.brightness, -1.0, 1.0);
+    ImGui::SliderFloat("##Brightness", &n.brightness, -1.0, 1.0, "%.3f", 2.f);
     if (ImGui::IsItemDeactivatedAfterEdit()){
         oss << "Brightness " << std::setprecision(2) << n.brightness;
         Action::manager().store(oss.str());
@@ -312,7 +314,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     /// CONTRAST
     ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("##Contrast", &n.contrast, -1.0, 1.0);
+    ImGui::SliderFloat("##Contrast", &n.contrast, -1.0, 1.0, "%.3f", 2.f);
     if (ImGui::IsItemDeactivatedAfterEdit()){
         oss << "Contrast " << std::setprecision(2) << n.contrast;
         Action::manager().store(oss.str());
@@ -328,7 +330,7 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     /// SATURATION
     ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("##Saturation", &n.saturation, -1.0, 1.0);
+    ImGui::SliderFloat("##Saturation", &n.saturation, -1.0, 1.0, "%.3f", 2.f);
     if (ImGui::IsItemDeactivatedAfterEdit()){
         oss << "Saturation " << std::setprecision(2) << n.saturation;
         Action::manager().store(oss.str());
