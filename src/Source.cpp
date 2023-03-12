@@ -751,6 +751,10 @@ void Source::update(float dt)
             // adjust scale of mixing icon : smaller if not active
             groups_[View::MIXING]->scale_ = glm::vec3(MIXING_ICON_SCALE) - ( active_ ? glm::vec3(0.f, 0.f, 0.f) : glm::vec3(0.03f, 0.03f, 0.f) );
 
+            // highlight color of source in mixing circle only when visible
+            Frame *f = dynamic_cast<Frame *>(frames_[View::MIXING]->child(1));
+            if (f) f->color = blendingshader_->color.a > 0.f ? glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f) : glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);;
+
             // MODIFY geometry based on GEOMETRY node
             groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
             groups_[View::RENDERING]->rotation_ = groups_[View::GEOMETRY]->rotation_;
