@@ -181,14 +181,15 @@ void InfoVisitor::visit (SessionGroupSource& s)
     uint T = s.session()->numSources();
     if (T>N)
         oss << " (" << std::to_string(T) << " total)";
+    oss << std::endl;
 
     if (s.session()->frame()){
         if (brief_) {
-            oss << ", RGB, " << s.session()->frame()->width() << " x " << s.session()->frame()->height();
+            oss << (s.session()->frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA, " : "RGB, ");
+            oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
         else {
-            oss << std::endl;
-            oss << "RGB" << std::endl;
+            oss << (s.session()->frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA" : "RGB") << std::endl;
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
     }

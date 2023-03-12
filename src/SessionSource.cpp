@@ -24,14 +24,10 @@
 #include "defines.h"
 #include "Log.h"
 #include "FrameBuffer.h"
-#include "ImageShader.h"
-#include "ImageProcessingShader.h"
 #include "Resource.h"
 #include "Decorations.h"
-#include "SearchVisitor.h"
+#include "Visitor.h"
 #include "Session.h"
-#include "SessionCreator.h"
-#include "Mixer.h"
 
 #include "SessionSource.h"
 
@@ -377,7 +373,7 @@ void SessionGroupSource::init()
     if ( resolution_.x > 0.f && resolution_.y > 0.f ) {
 
         // valid resolution given to create render view
-        session_->setResolution( resolution_ );
+        session_->setResolution( resolution_, true );
 
         // deep update to make sure reordering of sources
         ++View::need_deep_update_;
@@ -389,7 +385,7 @@ void SessionGroupSource::init()
         texturesurface_->setTextureIndex( session_->frame()->texture() );
 
         // create Frame buffer matching size of session
-        FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution() );
+        FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution(), FrameBuffer::FrameBuffer_alpha );
 
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
