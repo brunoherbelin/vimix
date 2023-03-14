@@ -280,9 +280,9 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
 
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    float val = log10(n.gamma.w);
+    float val = log10f(n.gamma.w);
     if ( ImGui::SliderFloat("##Gamma", &val, -1.f, 1.f, "%.3f", 2.f) )
-        n.gamma.w = exp10(val);
+        n.gamma.w = powf(10.f, val);
     if (ImGui::IsItemDeactivatedAfterEdit()){
         oss << "Gamma " << std::setprecision(2) << val;
         Action::manager().store(oss.str());
