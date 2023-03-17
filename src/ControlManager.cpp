@@ -57,6 +57,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
 {
     // regular expression to check for batch
     static std::regex osc_batch_reg_exp( OSC_BATCH );
+    static std::regex osc_sourceid_reg_exp( OSC_SOURCEID );
 
     char sender[IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH];
     remoteEndpoint.AddressAndPortAsString(sender);
@@ -186,17 +187,27 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     }
                 }
             }
-            // General case: try to identify the target
+            // #ID sources target
+            else if ( std::regex_match(target, osc_sourceid_reg_exp) )
+            {
+                int i = 0;
+                std::string num = target.substr(1);
+                if ( BaseToolkit::is_a_number(num, &i)){
+                    Source *s = Mixer::manager().sourceAtIndex(i);
+                    if (s) {
+                        // apply attributes to source
+                        if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
+                            // and send back feedback if needed
+                            Control::manager().sendSourceAttibutes(remoteEndpoint, target, s);
+                    }
+                    else
+                        Log::Info(CONTROL_OSC_MSG "Unknown target '%s' requested by %s.", target.c_str(), sender);
+                }
+            }
+            // General case: try to identify the target by name
             else {
-                // try to find source by index
-                Source *s = nullptr;
-                int sourceid = -1;
-                if ( BaseToolkit::is_a_number(target.substr(1), &sourceid) )
-                    s = Mixer::manager().sourceAtIndex(sourceid);
-
-                // if failed, try to find source by name
-                if (s == nullptr)
-                    s = Mixer::manager().findSource(target.substr(1));
+                // try to find source by given name
+                Source *s = Mixer::manager().findSource(target.substr(1));
 
                 // if a source with the given target name or index was found
                 if (s) {

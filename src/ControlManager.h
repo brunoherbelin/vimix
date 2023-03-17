@@ -27,6 +27,7 @@
 
 #define OSC_ALL                "/all"
 #define OSC_SELECTION          "/selection"
+#define OSC_SOURCEID           "(\\/)[[:digit:]]+$"
 #define OSC_BATCH              "(\\/batch#)[[:digit:]]+$"
 #define OSC_CURRENT            "/current"
 #define OSC_NEXT               "/next"
