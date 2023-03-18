@@ -96,30 +96,32 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_MIN_THRESHOLD)
 
     // Mixing scene foreground
 
-    // button frame (non interactive; no picking detected on Mesh)
-    Mesh *tmp = new Mesh("mesh/disk.ply");
-    tmp->scale_ = glm::vec3(0.033f, 0.033f, 1.f);
-    tmp->translation_ = glm::vec3(0.f, 1.f, 0.f);
-    tmp->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
-    scene.fg()->attach(tmp);
     // interactive button
     button_white_ = new Disk();
-    button_white_->scale_ = glm::vec3(0.026f, 0.026f, 1.f);
+    button_white_->scale_ = glm::vec3(0.035f, 0.035f, 1.f);
     button_white_->translation_ = glm::vec3(0.f, 1.f, 0.f);
-    button_white_->color = glm::vec4( 0.85f, 0.85f, 0.85f, 1.0f );
+    button_white_->color = glm::vec4( COLOR_CIRCLE, 1.0f );
     scene.fg()->attach(button_white_);
-    // button frame
-    tmp = new Mesh("mesh/disk.ply");
-    tmp->scale_ = glm::vec3(0.033f, 0.033f, 1.f);
-    tmp->translation_ = glm::vec3(0.f, -1.f, 0.f);
-    tmp->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
+    // button color WHITE (non interactive; no picking detected on Mesh)
+    Mesh *tmp = new Mesh("mesh/disk.ply");
+    tmp->scale_ = glm::vec3(0.028f, 0.028f, 1.f);
+    tmp->translation_ = glm::vec3(0.f, 1.f, 0.f);
+    tmp->shader()->color = glm::vec4( 0.85f, 0.85f, 0.85f, 1.f );
     scene.fg()->attach(tmp);
+
     // interactive button
     button_black_ = new Disk();
-    button_black_->scale_ = glm::vec3(0.026f, 0.026f, 1.f);
+    button_black_->scale_ = glm::vec3(0.035f, 0.035f, 1.f);
     button_black_->translation_ = glm::vec3(0.f, -1.f, 0.f);
-    button_black_->color = glm::vec4( 0.1f, 0.1f, 0.1f, 1.0f );
+    button_black_->color = glm::vec4( COLOR_CIRCLE, 1.0f );
     scene.fg()->attach(button_black_);
+    // button color BLACK (non interactive; no picking detected on Mesh)
+    tmp = new Mesh("mesh/disk.ply");
+    tmp->scale_ = glm::vec3(0.028f, 0.028f, 1.f);
+    tmp->translation_ = glm::vec3(0.f, -1.f, 0.f);
+    tmp->shader()->color = glm::vec4( 0.1f, 0.1f, 0.1f, 1.f );
+    scene.fg()->attach(tmp);
+
     // moving slider
     slider_root_ = new Group;
     scene.fg()->attach(slider_root_);
@@ -581,7 +583,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     std::ostringstream info;
     if (s->active()) {
         info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a << "  ";
-        info << ( (s->blendingShader()->color.a > 0.f) ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
+        info << ( (s->blendingShader()->color.a > 0.f) ? ICON_FA_SUN : ICON_FA_CLOUD_SUN);
     }
     else
         info << "Inactive  " << ICON_FA_SNOWFLAKE;
@@ -631,6 +633,15 @@ View::Cursor MixingView::over (glm::vec2 pos)
         limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.01f );
     }
 
+    if ( pick.first == button_white_ )
+        button_white_->color = glm::vec4( COLOR_CIRCLE_OVER, 1.f );
+    else
+        button_white_->color = glm::vec4( COLOR_CIRCLE, 1.f );
+
+    if ( pick.first == button_black_ )
+        button_black_->color = glm::vec4( COLOR_CIRCLE_OVER, 1.f );
+    else
+        button_black_->color = glm::vec4( COLOR_CIRCLE, 1.f );
 
     return ret;
 }

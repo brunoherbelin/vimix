@@ -748,12 +748,11 @@ void Source::update(float dt)
             // use the sinusoidal transfer function
             blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, SourceCore::alphaFromCordinates( dist.x, dist.y ));
             mixingshader_->color = blendingshader_->color;
+
             // adjust scale of mixing icon : smaller if not active
             groups_[View::MIXING]->scale_ = glm::vec3(MIXING_ICON_SCALE) - ( active_ ? glm::vec3(0.f, 0.f, 0.f) : glm::vec3(0.03f, 0.03f, 0.f) );
-
-            // highlight color of source in mixing circle only when visible
-            Frame *f = dynamic_cast<Frame *>(frames_[View::MIXING]->child(1));
-            if (f) f->color = blendingshader_->color.a > 0.f ? glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f) : glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);;
+            // change stippling intensity of source in mixing view to indicate if shown in scene
+            mixingshader_->stipple = (blendingshader_->color.a > 0.f) ? 1.f : 0.75f;
 
             // MODIFY geometry based on GEOMETRY node
             groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;
