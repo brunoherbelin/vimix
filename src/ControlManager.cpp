@@ -191,7 +191,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             else if ( std::regex_match(target, osc_sourceid_reg_exp) )
             {
                 int i = 0;
-                std::string num = target.substr(1);
+                std::string num = target.substr( target.find("#") == std::string::npos ? 1 : 2 );
                 if ( BaseToolkit::is_a_number(num, &i)){
                     Source *s = Mixer::manager().sourceAtIndex(i);
                     if (s) {
@@ -201,7 +201,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                             Control::manager().sendSourceAttibutes(remoteEndpoint, target, s);
                     }
                     else
-                        Log::Info(CONTROL_OSC_MSG "Unknown target '%s' requested by %s.", target.c_str(), sender);
+                        Log::Info(CONTROL_OSC_MSG "No source at ID %s targetted by %s.", num.c_str(), sender);
                 }
             }
             // General case: try to identify the target by name
