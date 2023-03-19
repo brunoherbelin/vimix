@@ -25,6 +25,7 @@ public:
 
     typedef enum {
         CLONE,
+        REPLACE,
         DUPLICATE
     } Mode;
     Source *createSource(tinyxml2::XMLElement *sourceNode, Mode mode = CLONE);

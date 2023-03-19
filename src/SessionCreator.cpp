@@ -22,8 +22,6 @@
 #include "Log.h"
 #include "defines.h"
 #include "Scene.h"
-#include "Primitives.h"
-#include "Mesh.h"
 #include "Source.h"
 #include "SourceCallback.h"
 #include "CloneSource.h"
@@ -551,14 +549,17 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
     uint64_t id__ = 0;
     xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
 
-    // check if a source with the given id exists in the session
+    // for CLONE, find the source with the given id in the session
     SourceList::iterator sit = session_->end();
-    if (mode == CLONE) {
+    if (mode == CLONE)
         sit = session_->find(id__);
-    }
 
     // no source with this id exists or Mode DUPLICATE
     if ( sit == session_->end() ) {
+        // for DUPLICATE, a new id should be given
+        if (mode == DUPLICATE)
+            id__ = 0;
+
         // create a new source depending on type
         const char *pType = xmlCurrent_->Attribute("type");
         if (pType) {
@@ -619,8 +620,7 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
     // apply config to source
     if (load_source) {
         load_source->accept(*this);
-        // increment depth for clones (avoid supperposition)
-        if (is_clone)
+        if (mode != REPLACE)
             load_source->group(View::LAYER)->translation_.z += 0.2f;
     }
 

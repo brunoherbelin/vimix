@@ -531,7 +531,7 @@ bool Mixer::recreateSource(Source *s)
 
     // actually create the source with SessionLoader using xml description
     SessionLoader loader( session_ );
-    Source *replacement = loader.createSource(sourceNode, SessionLoader::DUPLICATE); // not clone
+    Source *replacement = loader.createSource(sourceNode, SessionLoader::REPLACE); // not clone
     if (replacement == nullptr) {
         g_printerr("replacement failed \n");
         return false;
@@ -1543,11 +1543,15 @@ void Mixer::paste(const std::string& clipboard)
 
         for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
         {
-            Source *s = loader.createSource(sourceNode);
+            Source *s = loader.createSource(sourceNode, SessionLoader::DUPLICATE);
             if (s) {
-                // Add source to Session
-                session_->addSource(s);
-                // Add source to Mixer
+//                // avoid name duplicates
+//                renameSource(s);
+//                // Add source to Session
+//                session_->addSource(s);
+//                // Add source to Mixer
+//                attach(s);
+
                 addSource(s);
             }
         }
