@@ -54,6 +54,7 @@
 #define SHORTCUT_COPY         CTRL_MOD "C"
 #define MENU_DELETE           ICON_FA_ERASER " Delete"
 #define SHORTCUT_DELETE       "Del"
+#define ACTION_DELETE         ICON_FA_BACKSPACE " Delete"
 #define MENU_PASTE            ICON_FA_PASTE "  Paste"
 #define SHORTCUT_PASTE        CTRL_MOD "V"
 #define MENU_SELECTALL        ICON_FA_TH_LIST "  Select all"
@@ -74,6 +75,7 @@
 #define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable"
 #define SHORTCUT_OUTPUTDISABLE "F12"
 #define MENU_CLOSE            ICON_FA_TIMES "   Close"
+#define DIALOG_FAILED_SOURCE  ICON_FA_EXCLAMATION_TRIANGLE " Source failure"
 
 #define TOOLTIP_NOTE          "New sticky note "
 #define SHORTCUT_NOTE         CTRL_MOD "Shift+N"

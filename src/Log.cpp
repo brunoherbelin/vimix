@@ -278,7 +278,8 @@ void Log::Render(bool *showWarnings)
 
 
     if (show_warnings) {
-        ImGui::OpenPopup("Warning");
+        if (!ImGui::IsPopupOpen("Warning") )
+            ImGui::OpenPopup("Warning");
         if (ImGui::BeginPopupModal("Warning", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
             ImGuiToolkit::Icon(7, 14);

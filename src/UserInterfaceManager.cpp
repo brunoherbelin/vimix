@@ -798,8 +798,8 @@ void UserInterface::NewFrame()
         {
             ImGui::Spacing();
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
-            ImGui::Text("Looks like you started some work");
-            ImGui::Text("but didn't save the session.");
+            ImGui::Text(" Looks like you started some work ");
+            ImGui::Text(" but didn't save the session. ");
             ImGui::PopFont();
             ImGui::Spacing();
             if (ImGui::Button(MENU_SAVEAS_FILE, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
@@ -6624,8 +6624,10 @@ void Navigator::Render()
             {
                 Source *s = (*iter);
 
-                // ignore source if failed (managed in stash below)
+                // Show failed sources in RED
+                bool pushed = false;
                 if (s->failed()){
+                    pushed = true;
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
                     ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_Button));
                     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetColorU32(ImGuiCol_ButtonActive));
@@ -6675,9 +6677,8 @@ void Navigator::Render()
                     ImGui::EndDragDropTarget();
                 }
 
-                if (s->failed()){
+                if (pushed)
                     ImGui::PopStyleColor(4);
-                }
 
                 ImGui::PopID();
             }
@@ -6917,7 +6918,7 @@ void Navigator::RenderSourcePannel(Source *s)
             source_to_replace = s;
         }
         // delete button
-        if ( ImGui::Button( ICON_FA_BACKSPACE " Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+        if ( ImGui::Button( ACTION_DELETE, ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
             Mixer::manager().deleteSource(s);
             Action::manager().store(sname + std::string(": deleted"));
         }
@@ -7928,6 +7929,12 @@ void Navigator::RenderMainPannelVimix()
                     if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save as" )) {
                         UserInterface::manager().selectSaveFilename();
                     }
+                    if (!sessionfilename.empty()) {
+
+                        ImGui::SameLine();
+                        if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
+                            SystemToolkit::open(SystemToolkit::path_filename(sessionfilename));
+                    }
                     ImGui::SetCursorScreenPos(draw_pos);
                     // combo boxes to select aspect rario
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -7969,14 +7976,6 @@ void Navigator::RenderMainPannelVimix()
         // the session file exists
         if (!sessionfilename.empty())
         {
-            // Folder
-            std::string path = SystemToolkit::path_filename(sessionfilename);
-            std::string label = BaseToolkit::truncated(path, 23);
-            label = BaseToolkit::transliterate(label);
-            ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
-            ImGui::SameLine();
-            ImGui::Text("Folder");
-
             // Thumbnail
             static Thumbnail _file_thumbnail;
             static FrameBufferImage *thumbnail = nullptr;
@@ -8362,7 +8361,8 @@ void Navigator::RenderMainPannelSettings()
         if (output) {
             guint64 nb = 0;
             nb = VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode] / (output->width() * output->height() * 4);
-            char buf[256]; sprintf(buf, "Buffer can contain %ld frames (%dx%d), %.1f sec", (unsigned long)nb, output->width(), output->height(),
+            char buf[512]; sprintf(buf, "Buffer at %s can contain %ld frames (%dx%d), i.e. %.1f sec", VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode],
+                                   (unsigned long)nb, output->width(), output->height(),
                                    (float)nb / (float) VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode] );
             ImGuiToolkit::Indication(buf, ICON_FA_MEMORY);
             ImGui::SameLine(0);
@@ -8484,10 +8484,6 @@ void Navigator::RenderMainPannelSettings()
         static bool multi = (Settings::application.render.multisampling > 0);
         static bool gpu = Settings::application.render.gpu_decoding;
         bool change = false;
-#ifndef NDEBUG
-        change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
-        change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
-#endif
         // hardware support deserves more explanation
         ImGuiToolkit::Indication("If enabled, tries to find a platform adapted hardware-accelerated "
                                  "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);
@@ -8497,6 +8493,11 @@ void Navigator::RenderMainPannelSettings()
         else
             ImGui::TextDisabled("Hardware en/decoding unavailable");
 
+        change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
+
+#ifndef NDEBUG
+        change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
+#endif
         if (change) {
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
                  multi != (Settings::application.render.multisampling > 0) ||
@@ -8504,7 +8505,7 @@ void Navigator::RenderMainPannelSettings()
         }
         if (need_restart) {
             ImGuiToolkit::Spacing();
-            if (ImGui::Button( ICON_FA_POWER_OFF "  Restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
+            if (ImGui::Button( ICON_FA_POWER_OFF "  Quit & restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
                 Settings::application.render.vsync = vsync ? 1 : 0;
                 Settings::application.render.multisampling = multi ? 3 : 0;
                 Settings::application.render.gpu_decoding = gpu;
