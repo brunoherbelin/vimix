@@ -44,7 +44,7 @@ SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_str
 }
 
 Session::Session(uint64_t id) : id_(id), active_(true), activation_threshold_(MIXING_MIN_THRESHOLD),
-    filename_(""), thumbnail_(nullptr)
+    filename_(""), thumbnail_(nullptr), ready_(false)
 {
     // create unique id
     if (id_ == 0)
@@ -135,6 +135,14 @@ void Session::setActive (bool on)
         for(auto it = sources_.begin(); it != sources_.end(); ++it) {
             (*it)->setActive(active_);
         }
+    }
+}
+
+
+void Session::deleteFailedSources ()
+{
+    while (!failed_.empty()) {
+        deleteSource( *(failed_.begin()) );
     }
 }
 
@@ -234,7 +242,7 @@ void Session::update(float dt)
     }
 
     // pre-render all sources
-    bool ready = true;
+    ready_ = true;
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); ++it){
 
         // ensure the RenderSource is rendering *this* session
@@ -244,17 +252,20 @@ void Session::update(float dt)
 
         // discard failed source
         if ( (*it)->failed() ) {
-            // insert source in list of failed
-            // (NB: insert in set fails if source is already listed)
-            failed_.insert( *it );
-            // do not render
-            render_.scene.ws()->detach( (*it)->group(View::RENDERING) );
+            // if source is already attached
+            if ((*it)->group(View::RENDERING)->refcount_ > 0) {
+                // insert source in list of failed
+                // (NB: insert in set fails if source is already listed)
+                failed_.insert( *it );
+                // detatch from rendering (do not render)
+                render_.scene.ws()->detach( (*it)->group(View::RENDERING) );
+            }
         }
         // render normally
         else {
             // session is not ready if one source is not ready
             if ( !(*it)->ready() )
-                ready = false;
+                ready_ = false;
             // update the source
             (*it)->setActive(activation_threshold_);
             (*it)->update(dt);
@@ -307,7 +318,7 @@ void Session::update(float dt)
     render_.draw();
 
     // draw the thumbnail only after all sources are ready
-    if (ready)
+    if (ready_)
         render_.drawThumbnail();
 }
 
@@ -589,9 +600,9 @@ bool Session::canlink (SourceList sources)
     validate(sources);
 
     for (auto it = sources.begin(); it != sources.end(); ++it) {
-        // this source is linked
+        // if this source is linked
         if ( (*it)->mixingGroup() != nullptr ) {
-            // askt its group to detach it
+            // ask its group to detach it
             canlink = false;
         }
     }

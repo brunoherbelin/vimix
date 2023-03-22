@@ -205,25 +205,37 @@ void Mixer::update()
     FrameGrabbing::manager().grabFrame(session_->frame());
 
     // manage sources which failed update
-    SourceListUnique failures = session()->failedSources();
-    for(auto it = failures.begin(); it != failures.end(); ++it)  {
-        // if the failed source is still attached to the mixer
-        if ( attached( *it ) ) {
-            // special case of failed Render loopback :
-            // it fails when resolution change, and we can fix it by
-            // recreating it in the current session
-            RenderSource *failedRender = dynamic_cast<RenderSource *>(*it);
-            if (failedRender != nullptr) {
-                // try to recreate the failed render source
-                if ( !recreateSource(failedRender) )
-                    // delete the source if could not
-                    deleteSource(failedRender);
+    if (session_->ready()) {
+        // go through all failed sources
+        SourceListUnique _failedsources = session_->failedSources();
+        for(auto it = _failedsources.begin(); it != _failedsources.end(); ++it)  {
+            // only deal with sources that are still attached to mixer
+            if ( attached( *it ) ) {
+                // intervention depends on the severity of the failure
+                Source::Failure fail = (*it)->failed();
+                // Attempt to repair BAD failed sources
+                // (can be automatically repaired without user intervention)
+                if (fail == Source::FAIL_BAD) {
+                    if ( !recreateSource( *it ) ) {
+                        Log::Warning("Source '%s' failed and was deleted.", (*it)->name().c_str());
+                        // delete failed source if could not recreate it
+                        deleteSource( *it );
+                    }
+                }
+                // Detatch CRITICAL failed sources from the mixer
+                // (not deleted in the session; user can replace it)
+                else if (fail == Source::FAIL_CRITICAL) {
+                    detach( *it );
+                }
+                // Delete FATAL failed sources from the mixer
+                // (nothing can be done by the user)
+                else {
+                    Log::Warning("Source '%s' failed and was deleted.", (*it)->name().c_str());
+                    deleteSource( *it );
+                }
+                // needs refresh after intervention
+                ++View::need_deep_update_;
             }
-            // general case:
-            // detatch failed sources from the mixer
-            // (not deleted in the session; user can replace it)
-            else
-                detach( *it );
         }
     }
 

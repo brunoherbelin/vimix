@@ -26,15 +26,10 @@
 #include <gst/gst.h>
 
 
-#include "defines.h"
 #include "Log.h"
-#include "ImageShader.h"
-#include "ImageProcessingShader.h"
-#include "Resource.h"
 #include "Decorations.h"
 #include "Stream.h"
 #include "Visitor.h"
-#include "CloneSource.h"
 
 #include "DeviceSource.h"
 
@@ -525,9 +520,9 @@ void DeviceSource::accept(Visitor& v)
     v.visit(*this);
 }
 
-bool DeviceSource::failed() const
+Source::Failure DeviceSource::failed() const
 {
-    return unplugged_ || StreamSource::failed();
+    return (unplugged_ || StreamSource::failed()) ? FAIL_CRITICAL : FAIL_NONE;
 }
 
 DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)

@@ -78,9 +78,9 @@ std::string MediaSource::info() const
         return "Video File";
 }
 
-bool MediaSource::failed() const
+Source::Failure MediaSource::failed() const
 {
-    return mediaplayer_->failed();
+    return mediaplayer_->failed() ? FAIL_CRITICAL : FAIL_NONE;
 }
 
 uint MediaSource::texture() const

@@ -46,7 +46,7 @@ SourceList playable_only (const SourceList &list)
 }
 
 
-bool isfailed (const Source *s) { return s->failed(); }
+bool isfailed (const Source *s) { return s->failed() != Source::FAIL_NONE; }
 
 SourceList valid_only (const SourceList &list)
 {

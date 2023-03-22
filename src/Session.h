@@ -88,6 +88,7 @@ public:
     uint numSources() const;
 
     // update all sources and mark sources which failed
+    inline bool ready () const  { return ready_; }
     void update (float dt);
     uint64_t runtime() const;
 
@@ -97,6 +98,7 @@ public:
 
     // return the list of sources which failed
     SourceListUnique failedSources () const { return failed_; }
+    void deleteFailedSources ();
 
     // get frame result of render
     inline FrameBuffer *frame () const { return render_.frame(); }
@@ -195,6 +197,7 @@ protected:
     std::mutex access_;
     FrameBufferImage *thumbnail_;
     uint64_t start_time_;
+    bool ready_;
 
     struct Fading
     {

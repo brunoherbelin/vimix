@@ -443,9 +443,9 @@ void ImGuiVisitor::visit (Source& s)
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y ) );
         if (s.active()) {
             if (s.blendingShader()->color.a > 0.f)
-                ImGuiToolkit::Indication("Visible", ICON_FA_EYE);
+                ImGuiToolkit::Indication("Visible", ICON_FA_SUN);
             else
-                ImGuiToolkit::Indication("Not visible", ICON_FA_EYE_SLASH);
+                ImGuiToolkit::Indication("Not visible", ICON_FA_CLOUD_SUN);
         }
         else
             ImGuiToolkit::Indication("Inactive", ICON_FA_SNOWFLAKE);
@@ -1142,8 +1142,9 @@ void ImGuiVisitor::visit (CloneSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    // link to origin source
     if ( !s.failed() ) {
+
+        // link to origin source
         std::string label = std::string(s.origin()->initials()) + " - " + s.origin()->name();
         if (ImGui::Button(label.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) )) {
             Mixer::manager().setCurrentSource(s.origin());
@@ -1153,49 +1154,46 @@ void ImGuiVisitor::visit (CloneSource& s)
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Origin");
-    }
-    else {
-        ImGuiToolkit::ButtonDisabled("No source", ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+
+        // filter selection
+        std::ostringstream oss;
+        oss << s.name();
+        int type = (int) s.filter()->type();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGuiToolkit::ComboIcon("##SelectFilter", &type, FrameBufferFilter::Types)) {
+            s.setFilter( FrameBufferFilter::Type(type) );
+            oss << ": Filter " << std::get<2>(FrameBufferFilter::Types[type]);
+            Action::manager().store(oss.str());
+            info.reset();
+        }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Origin");
-    }
+        if (ImGuiToolkit::TextButton("Filter")) {
+            s.setFilter( FrameBufferFilter::FILTER_PASSTHROUGH );
+            oss << ": Filter None";
+            Action::manager().store(oss.str());
+            info.reset();
+        }
 
-    // filter selection
-    std::ostringstream oss;
-    oss << s.name();
-    int type = (int) s.filter()->type();
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGuiToolkit::ComboIcon("##SelectFilter", &type, FrameBufferFilter::Types)) {
-        s.setFilter( FrameBufferFilter::Type(type) );
-        oss << ": Filter " << std::get<2>(FrameBufferFilter::Types[type]);
-        Action::manager().store(oss.str());
-        info.reset();
-    }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    if (ImGuiToolkit::TextButton("Filter")) {
-        s.setFilter( FrameBufferFilter::FILTER_PASSTHROUGH );
-        oss << ": Filter None";
-        Action::manager().store(oss.str());
-        info.reset();
-    }
+        // filter options
+        s.filter()->accept(*this);
 
-    // filter options
-    s.filter()->accept(*this);
+        ImVec2 botom = ImGui::GetCursorPos();
 
-    ImVec2 botom = ImGui::GetCursorPos();
-
-    if ( !s.failed() ) {
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
             if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
                 UserInterface::manager().showSourceEditor(&s);
         }
-    }
-    else
-        info.reset();
 
-    ImGui::SetCursorPos(botom);
+        ImGui::SetCursorPos(botom);
+    }
+    else {
+        ImGuiToolkit::ButtonDisabled("No source", ImVec2(IMGUI_RIGHT_ALIGN, 0) );
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Origin");
+        info.reset();
+    }
 }
 
 void ImGuiVisitor::visit (PatternSource& s)
@@ -1254,25 +1252,26 @@ void ImGuiVisitor::visit (DeviceSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::BeginCombo("Device", s.device().c_str()))
-    {
-        for (int d = 0; d < Device::manager().numDevices(); ++d){
-            std::string namedev = Device::manager().name(d);
-            if (ImGui::Selectable( namedev.c_str() )) {
-                s.setDevice(namedev);
-                info.reset();
-                std::ostringstream oss;
-                oss << s.name() << " Device " << namedev;
-                Action::manager().store(oss.str());
-            }
-        }
-        ImGui::EndCombo();
-    }
-
     ImVec2 botom = ImGui::GetCursorPos();
 
     if ( !s.failed() ) {
+
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::BeginCombo("Device", s.device().c_str()))
+        {
+            for (int d = 0; d < Device::manager().numDevices(); ++d){
+                std::string namedev = Device::manager().name(d);
+                if (ImGui::Selectable( namedev.c_str() )) {
+                    s.setDevice(namedev);
+                    info.reset();
+                    std::ostringstream oss;
+                    oss << s.name() << " Device " << namedev;
+                    Action::manager().store(oss.str());
+                }
+            }
+            ImGui::EndCombo();
+        }
+
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
@@ -1427,21 +1426,22 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    // Prepare display pipeline text
-    static int numlines = 0;
-    const ImGuiContext& g = *GImGui;
-    ImVec2 fieldsize(w,  MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y);
-
-    // Editor
-    std::string _description = s.description();
-    if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines) ) {
-        s.setDescription(_description);
-        Action::manager().store( s.name() + ": Change pipeline");
-    }
-
     ImVec2 botom = ImGui::GetCursorPos();
 
     if ( !s.failed() ) {
+
+        // Prepare display pipeline text
+        static int numlines = 0;
+        const ImGuiContext& g = *GImGui;
+        ImVec2 fieldsize(w,  MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y);
+
+        // Editor
+        std::string _description = s.description();
+        if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines) ) {
+            s.setDescription(_description);
+            Action::manager().store( s.name() + ": Change pipeline");
+        }
+
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);

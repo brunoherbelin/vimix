@@ -93,9 +93,9 @@ StreamSource::~StreamSource()
         delete stream_;
 }
 
-bool StreamSource::failed() const
+Source::Failure StreamSource::failed() const
 {
-    return (stream_ != nullptr &&  stream_->failed() );
+    return (stream_ != nullptr &&  stream_->failed()) ? FAIL_CRITICAL : FAIL_NONE;
 }
 
 uint StreamSource::texture() const

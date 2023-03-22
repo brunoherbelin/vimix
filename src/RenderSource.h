@@ -18,7 +18,7 @@ public:
     void replay () override {}
     bool playable () const  override { return true; }
     guint64 playtime () const override { return runtime_; }
-    bool failed () const override;
+    Failure failed () const override;
     uint texture() const override;
     void accept (Visitor& v) override;
 

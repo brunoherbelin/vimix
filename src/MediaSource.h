@@ -20,7 +20,7 @@ public:
     void replay () override;
     guint64 playtime () const override;
     void render() override;
-    bool failed() const override;
+    Failure failed() const override;
     uint texture() const override;
     void accept (Visitor& v) override;
 

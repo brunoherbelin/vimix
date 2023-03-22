@@ -19,7 +19,7 @@ public:
     bool playable () const  override;
     guint64 playtime () const override { return timer_; }
     void replay () override;
-    bool failed () const override;
+    Failure failed () const override;
     uint texture () const override;
 
     Session *detach();

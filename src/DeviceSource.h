@@ -15,7 +15,7 @@ public:
     ~DeviceSource();
 
     // Source interface
-    bool failed() const override;
+    Failure failed() const override;
     void accept (Visitor& v) override;
     void setActive (bool on) override;
 

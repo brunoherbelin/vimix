@@ -47,12 +47,12 @@ RenderSource::~RenderSource()
         delete rendered_output_;
 }
 
-bool RenderSource::failed() const
+Source::Failure RenderSource::failed() const
 {
     if ( rendered_output_ != nullptr && session_ != nullptr )
-        return rendered_output_->resolution() != session_->frame()->resolution();
+        return rendered_output_->resolution() != session_->frame()->resolution() ? FAIL_BAD : FAIL_NONE;
 
-    return false;
+    return FAIL_NONE;
 }
 
 uint RenderSource::texture() const

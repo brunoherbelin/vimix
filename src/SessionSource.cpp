@@ -113,9 +113,9 @@ Session *SessionSource::detach()
     return giveaway;
 }
 
-bool SessionSource::failed() const
+Source::Failure SessionSource::failed() const
 {
-    return failed_;
+    return failed_ ? FAIL_CRITICAL : FAIL_NONE;
 }
 
 uint SessionSource::texture() const
@@ -149,15 +149,9 @@ void SessionSource::update(float dt)
         timer_ += guint64(dt * 1000.f) * GST_USECOND;
     }
 
-    // delete source which failed
-    if ( !session_->failedSources().empty() ) {
-        Source *failure = *(session_->failedSources().cbegin());
-        Log::Info("Source '%s' deleted from Child Session %s.", failure->name().c_str(), std::to_string(session_->id()).c_str());
-        session_->deleteSource( failure );
-        // fail session if all sources failed
-        if ( session_->size() < 1)
-            failed_ = true;
-    }
+    // fail session if all its sources failed
+    if ( session_->failedSources().size() == session_->size() )
+        failed_ = true;
 
 }
 

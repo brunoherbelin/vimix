@@ -22,14 +22,14 @@ public:
     void replay () override;
     guint64 playtime () const override;
     uint texture() const override;
-    bool failed() const override  { return origin_ == nullptr || origin_->failed(); }
+    Failure failed() const override;
     void accept (Visitor& v) override;
     void render() override;
     glm::ivec2 icon() const override;
     std::string info() const override;
 
     // implementation of cloning mechanism
-    inline void detach() { origin_ = nullptr; }
+    void detach();
     inline Source *origin() const { return origin_; }
 
     // Filtering

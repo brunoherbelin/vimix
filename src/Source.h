@@ -177,7 +177,13 @@ public:
     virtual guint64 playtime () const { return 0; }
 
     // a Source shall informs if the source failed (i.e. shall be deleted)
-    virtual bool failed () const = 0;
+    typedef enum {
+        FAIL_NONE = 0,
+        FAIL_BAD= 1,
+        FAIL_CRITICAL = 2,
+        FAIL_FATAL  = 3
+    } Failure;
+    virtual Failure failed () const = 0;
 
     // a Source shall define a way to get a texture
     virtual uint texture () const = 0;
@@ -251,7 +257,7 @@ public:
     }
 
     static bool isInitialized (const Source* elem)  {
-        return (elem && elem->mode_ > Source::UNINITIALIZED);
+        return (elem && ( elem->mode_ > Source::UNINITIALIZED || elem->failed() ) );
     }
 
     // class-dependent icon

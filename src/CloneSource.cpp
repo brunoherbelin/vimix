@@ -61,6 +61,12 @@ CloneSource::~CloneSource()
     delete filter_;
 }
 
+void CloneSource::detach()
+{
+    Log::Info("Source '%s' detached from '%s'.", name().c_str(), origin_->name().c_str() );
+    origin_ = nullptr;
+}
+
 void CloneSource::init()
 {
     if (origin_ && origin_->ready_ && origin_->mode_ > Source::UNINITIALIZED && origin_->renderbuffer_) {
@@ -223,6 +229,11 @@ uint CloneSource::texture() const
     if (origin_)
         return origin_->frame()->texture();
     return Resource::getTextureBlack();
+}
+
+Source::Failure CloneSource::failed() const
+{
+    return (origin_ == nullptr || origin_->failed()) ? FAIL_FATAL : FAIL_NONE;
 }
 
 void CloneSource::accept(Visitor& v)
