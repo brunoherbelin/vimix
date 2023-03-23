@@ -1,6 +1,6 @@
 #####
 #####  This file is part of vimix - video live mixer
-#####  **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+#####  **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
 #####
 
 cmake_minimum_required(VERSION 3.8.2)
