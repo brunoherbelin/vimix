@@ -215,11 +215,14 @@ void GeometryView::draw()
          source_iter != Mixer::manager().session()->end(); ++source_iter) {
         // if it is in the current workspace
         if ((*source_iter)->workspace() == Settings::application.current_workspace) {
+//            if ((*source_iter)->blendingShader()->color.a > 0.f) // TODO: option to hide non visible
+            {
             // will draw its surface
             surfaces.push_back((*source_iter)->groups_[mode_]);
             // will draw its frame and locker icon
             overlays.push_back((*source_iter)->frames_[mode_]);
             overlays.push_back((*source_iter)->locker_);
+            }
         }
     }
 
@@ -251,11 +254,11 @@ void GeometryView::draw()
 
     // display interface
     // Locate window at upper right corner
-    glm::vec2 P = glm::vec2(output_surface_->scale_.x + 0.02f, output_surface_->scale_.y );
+    glm::vec2 P = glm::vec2(-output_surface_->scale_.x - 0.02f, output_surface_->scale_.y + 0.01);
     P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
     // Set window position depending on icons size
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    ImGui::SetNextWindowPos(ImVec2(P.x, P.y), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 1.5f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
     if (ImGui::Begin("##GeometryViewOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
@@ -263,26 +266,40 @@ void GeometryView::draw()
         // style
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 0.56f));
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
 
-        bool on = Settings::application.current_workspace == Source::BACKGROUND;
-        if ( ImGuiToolkit::ButtonIconToggle(10,16,10,16, &on, "Background") ) {
-            Settings::application.current_workspace = Source::BACKGROUND;
-            ++View::need_deep_update_;
-        }
-        on = Settings::application.current_workspace == Source::STAGE;
-        if ( ImGuiToolkit::ButtonIconToggle(11,16,11,16, &on, "Workspace") ) {
-            Settings::application.current_workspace = Source::STAGE;
-            ++View::need_deep_update_;
-        }
-        on = Settings::application.current_workspace == Source::FOREGROUND;
-        if ( ImGuiToolkit::ButtonIconToggle(12,16,12,16, &on, "Foreground") ) {
-            Settings::application.current_workspace = Source::FOREGROUND;
-            ++View::need_deep_update_;
+//        bool on = Settings::application.current_workspace == Source::BACKGROUND;
+//        if ( ImGuiToolkit::ButtonIconToggle(10,16,10,16, &on, "Background") ) {
+//            Settings::application.current_workspace = Source::BACKGROUND;
+//            ++View::need_deep_update_;
+//        }
+//        ImGui::SameLine(0, IMGUI_SAME_LINE);
+//        on = Settings::application.current_workspace == Source::STAGE;
+//        if ( ImGuiToolkit::ButtonIconToggle(11,16,11,16, &on, "Workspace") ) {
+//            Settings::application.current_workspace = Source::STAGE;
+//            ++View::need_deep_update_;
+//        }
+//        ImGui::SameLine(0, IMGUI_SAME_LINE);
+//        on = Settings::application.current_workspace == Source::FOREGROUND;
+//        if ( ImGuiToolkit::ButtonIconToggle(12,16,12,16, &on, "Foreground") ) {
+//            Settings::application.current_workspace = Source::FOREGROUND;
+//            ++View::need_deep_update_;
+//        }
+
+        static std::vector< std::tuple<int, int, std::string> > _workspaces = {
+            {10, 16, "Background"},
+            {11, 16, "Workspace"},
+            {12, 16, "Foreground"}
+        };
+        ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
+        if ( ImGuiToolkit::ComboIcon ("##WORKSPACE", &Settings::application.current_workspace, _workspaces, true) ){
+             ++View::need_deep_update_;
         }
 
-        ImGui::PopStyleColor(4);
+        ImGui::PopStyleColor(6);
         ImGui::End();
     }
     ImGui::PopFont();

@@ -28,7 +28,7 @@ namespace ImGuiToolkit
     bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips);
     bool MenuItemIcon (int i, int j, const char* label, bool selected = false, bool enabled = true);
     bool SelectableIcon(const char* label, int i, int j, bool selected = false);
-    bool ComboIcon (const char* label, int* current_item, std::vector<std::tuple<int, int, std::string> > items);
+    bool ComboIcon (const char* label, int* current_item, std::vector<std::tuple<int, int, std::string> > items, bool tooltiptext = false);
 
     // buttons
     bool ButtonToggle  (const char* label, bool* toggle, const char *tooltip = nullptr);
