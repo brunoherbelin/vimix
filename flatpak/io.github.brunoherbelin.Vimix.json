@@ -60,6 +60,22 @@
             ]
         },
         {
+            "name": "x265",
+            "buildsystem": "cmake-ninja",
+            "subdir": "source",
+            "config-opts": [
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+            ],
+            "sources": [
+            {
+                "type": "git",
+                "tag": "3.4",
+                "url": "https://bitbucket.org/multicoreware/x265_git.git"
+            }
+            ]
+        },
+        {
             "name": "srt",
             "buildsystem": "cmake-ninja",
             "config-opts": [
@@ -96,24 +112,25 @@
             "buildsystem": "meson",
             "builddir": true,
             "config-opts": [
-            "-Ddoc=disabled",
-            "-Dpython=disabled",
-            "-Dges=disabled",
-            "-Drs=disabled",
-            "-Dgst-examples=disabled",
-            "-Drtsp_server=disabled",
-            "-Ddevtools=disabled",
-            "-Dqt5=disabled",
-            "-Dlibav=enabled",
-            "-Dbase=enabled",
-            "-Dgood=enabled",
-            "-Dgst-plugins-good:v4l2=enabled",
-            "-Dgpl=enabled",
-            "-Dbad=enabled",
-            "-Dgst-plugins-bad:srt=enabled",
-            "-Dgst-plugins-bad:shm=enabled",
-            "-Dugly=enabled",
-            "-Dgst-plugins-ugly:x264=enabled"
+               "-Ddoc=disabled",
+               "-Dpython=disabled",
+               "-Dges=disabled",
+               "-Drs=disabled",
+               "-Dgst-examples=disabled",
+               "-Drtsp_server=disabled",
+               "-Ddevtools=disabled",
+               "-Dqt5=disabled",
+               "-Dlibav=enabled",
+               "-Dbase=enabled",
+               "-Dgood=enabled",
+               "-Dgst-plugins-good:v4l2=enabled",
+               "-Dgpl=enabled",
+               "-Dbad=enabled",
+               "-Dgst-plugins-bad:x265=enabled",
+               "-Dgst-plugins-bad:srt=enabled",
+               "-Dgst-plugins-bad:shm=enabled",
+               "-Dugly=enabled",
+               "-Dgst-plugins-ugly:x264=enabled"
             ],
             "sources": [
               {
