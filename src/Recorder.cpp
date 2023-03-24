@@ -29,6 +29,7 @@
 #include <stb_image_write.h>
 
 // gstreamer
+#include <gst/gl/gl.h>
 #include <gst/gstformat.h>
 #include <gst/video/video.h>
 
