@@ -642,9 +642,15 @@ void ImGuiVisitor::visit (MediaSource& s)
         info.reset();
 
     ImGui::SetCursorPos(top);
-
     if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
         SystemToolkit::open(SystemToolkit::path_filename(s.path()));
+
+    if ( info.str().size() > 150 ) {
+        top.y += 2.f * ImGui::GetFrameHeight();
+        ImGui::SetCursorPos(top);
+        if (ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy"))
+            ImGui::SetClipboardText(info.str().c_str());
+    }
 
     ImGui::SetCursorPos(botom);
 }
