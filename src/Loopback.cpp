@@ -86,7 +86,7 @@ std::string Loopback::init(GstCaps *caps)
         return std::string("Loopback : Invalid caps");
 
     // create a gstreamer pipeline
-    std::string description = "appsrc name=src ! videoconvert ! ";
+    std::string description = "appsrc name=src ! videoconvert ! queue ! ";
 
     // complement pipeline with sink
     description += Loopback::loopback_sink_ + " name=sink";

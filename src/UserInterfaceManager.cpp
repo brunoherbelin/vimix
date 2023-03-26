@@ -4377,6 +4377,10 @@ void OutputPreview::Render()
                         ImGui::SetCursorPos(draw_pos);
                     }
                 }
+                else {
+                    ImGui::Separator();
+                    ImGui::MenuItem("No active streams", nullptr, false, false);
+                }
 
                 ImGui::EndMenu();
             }
@@ -7484,6 +7488,9 @@ void Navigator::RenderNewPannel()
             // Indication
             ImGui::SameLine();
             ImVec2 pos = ImGui::GetCursorPos();
+            if (ImGuiToolkit::IconButton(5,15,"Reload list"))
+                Device::manager().reload();
+            ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Create a source capturing video streams from connected devices or machines;\n"
                                      ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                      ICON_FA_CARET_RIGHT " screen capture\n"
