@@ -91,7 +91,7 @@ void InfoVisitor::visit(MediaPlayer &mp)
 
     std::ostringstream oss;
     if (mp.failed()) {
-        oss << mp.filename() << std::endl << mp.log();
+        oss << mp.filename() << std::endl << std::endl << mp.log();
     }
     else {
         if (brief_) {
@@ -142,11 +142,12 @@ void InfoVisitor::visit (MediaSource& s)
 
 void InfoVisitor::visit (SessionFileSource& s)
 {
-    if (current_id_ == s.id() || s.session() == nullptr)
+    if (current_id_ == s.id())
         return;
 
     std::ostringstream oss;
-    if (s.session()->frame()){        
+
+    if (s.session() != nullptr && s.session()->frame() != nullptr){
         uint N = s.session()->size();
         std::string numsource = std::to_string(N) + " source" + (N>1 ? "s" : "");
         uint T = s.session()->numSources();
@@ -163,6 +164,9 @@ void InfoVisitor::visit (SessionFileSource& s)
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
     }
+    else {
+        oss << s.path() << std::endl << std::endl << "Failed to load.";
+    }
 
     information_ = oss.str();
     current_id_ = s.id();
@@ -170,20 +174,21 @@ void InfoVisitor::visit (SessionFileSource& s)
 
 void InfoVisitor::visit (SessionGroupSource& s)
 {
-    if (current_id_ == s.id() || s.session() == nullptr)
+    if (current_id_ == s.id())
         return;
 
     std::ostringstream oss;
 
-    if (!brief_) oss << "Bundle of ";
-    uint N = s.session()->size();
-    oss << N << " source" << (N>1 ? "s" : "");
-    uint T = s.session()->numSources();
-    if (T>N)
-        oss << " (" << std::to_string(T) << " total)";
-    oss << std::endl;
+    if (s.session() && s.session()->frame()){
 
-    if (s.session()->frame()){
+        if (!brief_) oss << "Bundle of ";
+        uint N = s.session()->size();
+        oss << N << " source" << (N>1 ? "s" : "");
+        uint T = s.session()->numSources();
+        if (T>N)
+            oss << " (" << std::to_string(T) << " total)";
+        oss << std::endl;
+
         if (brief_) {
             oss << (s.session()->frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA, " : "RGB, ");
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
@@ -192,6 +197,9 @@ void InfoVisitor::visit (SessionGroupSource& s)
             oss << (s.session()->frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA" : "RGB") << std::endl;
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
+    }
+    else {
+        oss << "Empty bundle.";
     }
 
     information_ = oss.str();
@@ -217,6 +225,8 @@ void InfoVisitor::visit (RenderSource& s)
             oss << s.frame()->width() << " x " << s.frame()->height();
         }
     }
+    else
+        oss << "Undefined";
 
     information_ = oss.str();
     current_id_ = s.id();
@@ -224,7 +234,7 @@ void InfoVisitor::visit (RenderSource& s)
 
 void InfoVisitor::visit (CloneSource& s)
 {
-    if (current_id_ == s.id() && !s.failed())
+    if (current_id_ == s.id())
         return;
 
     std::ostringstream oss;

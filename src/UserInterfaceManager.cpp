@@ -4336,7 +4336,7 @@ void OutputPreview::Render()
                 // Display list of active stream
                 if (ls.size()>0 || videoBroadcastEnabled() || sharedMemoryEnabled() || loopbackCameraEnabled()) {
                     ImGui::Separator();
-                    ImGui::MenuItem("Active streams", nullptr, false, false);
+                    ImGui::MenuItem("Active streams:", nullptr, false, false);
 
                     // First the list of peer 2 peer
                     for (auto it = ls.begin(); it != ls.end(); ++it)

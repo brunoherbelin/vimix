@@ -136,22 +136,22 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
         GstDiscovererResult result = gst_discoverer_info_get_result (info);
         switch (result) {
         case GST_DISCOVERER_URI_INVALID:
-            video_stream_info.log = "\nInvalid URI";
+            video_stream_info.log = "Invalid URI";
             break;
         case GST_DISCOVERER_ERROR:
-            video_stream_info.log = std::string( "\nError; " ) + err->message;
+            video_stream_info.log = std::string( "Error; " ) + err->message;
             break;
         case GST_DISCOVERER_TIMEOUT:
-            video_stream_info.log = "\nTimeout loading";
+            video_stream_info.log = "Timeout loading";
             break;
         case GST_DISCOVERER_BUSY:
-            video_stream_info.log = "\nBusy";
+            video_stream_info.log = "Busy";
             break;
         case GST_DISCOVERER_MISSING_PLUGINS:
         {
             const GstStructure *s = gst_discoverer_info_get_misc (info);
             gchar *str = gst_structure_to_string (s);
-            video_stream_info.log = std::string( "\nUnknown format; " ) + std::string(str);
+            video_stream_info.log = std::string( "Unknown format; " ) + std::string(str);
             g_free (str);
         }
             break;

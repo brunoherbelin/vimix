@@ -637,19 +637,17 @@ void ImGuiVisitor::visit (MediaSource& s)
                 UserInterface::manager().showSourceEditor(&s);
             top.x += ImGui::GetFrameHeight();
         }
-    }
-    else
-        info.reset();
 
-    ImGui::SetCursorPos(top);
-    if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
-        SystemToolkit::open(SystemToolkit::path_filename(s.path()));
-
-    if ( info.str().size() > 150 ) {
-        top.y += 2.f * ImGui::GetFrameHeight();
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy"))
+        if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
+            SystemToolkit::open(SystemToolkit::path_filename(s.path()));
+
+    }
+    else {
+        ImGui::SetCursorPos(top);
+        if (ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy message"))
             ImGui::SetClipboardText(info.str().c_str());
+        info.reset();
     }
 
     ImGui::SetCursorPos(botom);
@@ -657,9 +655,6 @@ void ImGuiVisitor::visit (MediaSource& s)
 
 void ImGuiVisitor::visit (SessionFileSource& s)
 {
-    if (s.session() == nullptr)
-        return;
-
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
@@ -674,13 +669,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
 
     ImVec2 botom = ImGui::GetCursorPos();
 
-    if ( !s.failed() ) {
-
-        if ( ImGui::Button( ICON_FA_SIGN_OUT_ALT " Import", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-            Mixer::manager().import( &s );
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Sources");
-
+    if ( !s.failed() && s.session() != nullptr && s.session()->ready()) {
         // versions
         SessionSnapshots *versions = s.session()->snapshots();
         if (versions->keys_.size()>0) {
@@ -701,23 +690,33 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         }
 
         // fading
-        if (ImGuiToolkit::IconButton(2, 1)) s.session()->setFadingTarget(0.f);
+        std::ostringstream oss;
         int f = 100 - int(s.session()->fading() * 100.f);
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderInt("Fading", &f, 0, 100, f > 99 ? "None" : "%d %%") )
+        if (ImGui::SliderInt("##Fading", &f, 0, 100, f > 99 ? "None" : "%d %%") )
             s.session()->setFadingTarget( float(100 - f) * 0.01f );
         if (ImGui::IsItemDeactivatedAfterEdit()){
-            std::ostringstream oss;
             oss << s.name() << ": Fading " << f << " %";
             Action::manager().store(oss.str());
         }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Fading")) {
+            s.session()->setFadingTarget(0.f);
+            oss << s.name() << ": Fading 0 %";
+            Action::manager().store(oss.str());
+        }
+
+        // import
+        if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import all", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+            Mixer::manager().import( &s );
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Sources");
 
         // file open
         if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
             Mixer::manager().set( s.detach() );
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("File");
+        ImGui::Text("Session");
 
         botom = ImGui::GetCursorPos();
 
@@ -729,17 +728,14 @@ void ImGuiVisitor::visit (SessionFileSource& s)
             top.x += ImGui::GetFrameHeight();
         }
 
+        ImGui::SetCursorPos(top);
+        if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
+            SystemToolkit::open(SystemToolkit::path_filename(s.path()));
     }
     else
         info.reset();
 
-    ImGui::SetCursorPos(top);
-
-    if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
-        SystemToolkit::open(SystemToolkit::path_filename(s.path()));
-
     ImGui::SetCursorPos(botom);
-
 }
 
 void ImGuiVisitor::visit (SessionGroupSource& s)
