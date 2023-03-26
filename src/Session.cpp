@@ -259,6 +259,10 @@ void Session::update(float dt)
                 failed_.insert( *it );
                 // detatch from rendering (do not render)
                 render_.scene.ws()->detach( (*it)->group(View::RENDERING) );
+                // detach from mixing groups
+                if ( (*it)->mixingGroup() != nullptr )
+                    // ask its group to detach it
+                    (*it)->mixingGroup()->detach(*it);
             }
         }
         // render normally
