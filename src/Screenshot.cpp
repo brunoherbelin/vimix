@@ -36,6 +36,7 @@ Screenshot::Screenshot()
 {
     Width = Height = 0;
     bpp = 3;
+    VFlip = true;
     Data = nullptr;
     Pbo = 0;
     Pbo_size = 0;
@@ -75,7 +76,10 @@ void Screenshot::capture()
     }
 
     // screenshot to PBO (fast)
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    if (bpp > 3)
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    else
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, Width, Height, bpp > 3 ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -89,6 +93,7 @@ void Screenshot::captureGL(int w, int h)
     bpp = 3; // screen capture of GL in RGB
     Width = w;
     Height = h;
+    VFlip = true;
 
     // do capture
     capture();
@@ -99,12 +104,13 @@ void Screenshot::captureFramebuffer(FrameBuffer *fb)
     if (!fb)
         return;
 
-    bpp = 4; // capture of FBO in RGBA
+    bpp = (fb->flags() & FrameBuffer::FrameBuffer_alpha) ? 4 : 3;
     Width = fb->width() * fb->projectionArea().x;
     Height = fb->height() * fb->projectionArea().y;
+    VFlip = false;
 
     // blit the frame buffer into an RBBA copy of cropped size
-    FrameBuffer copy(Width, Height, FrameBuffer::FrameBuffer_alpha);
+    FrameBuffer copy(Width, Height, fb->flags());
     fb->blit(&copy);
 
     // get pixels from copy
@@ -131,12 +137,14 @@ void Screenshot::save(std::string filename)
             glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
         }
 
+        // unbind buffer
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+
         // initiate saving in thread (slow)
         std::thread(storeToFile, this, filename).detach();
 
         // ready for next
         Pbo_full = false;
-        glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
     }
 
 }
@@ -152,8 +160,7 @@ void Screenshot::storeToFile(Screenshot *s, std::string filename)
     // got data to save ?
     if (s && s->Data) {
         // save file
-        if (s->bpp < 4) // hack : inverse screen capture GL
-            stbi_flip_vertically_on_write(true);
+        stbi_flip_vertically_on_write(s->VFlip);
         stbi_write_png(filename.c_str(), s->Width, s->Height, s->bpp, s->Data, s->Width * s->bpp);
     }
     ScreenshotSavePending_ = false;
