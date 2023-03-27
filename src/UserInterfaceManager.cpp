@@ -1334,30 +1334,32 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGui::Image((void*)(intptr_t)img_crow, ImVec2(512, 340));
 
     ImGui::Text("vimix performs graphical mixing and blending of\nseveral movie clips and computer generated graphics,\nwith image processing effects in real-time.");
-    ImGui::Text("\nvimix is licensed under GNU GPL version 3 or later.\n" UNICODE_COPYRIGHT " 2019-2022 Bruno Herbelin.");
+    ImGui::Text("\nvimix is licensed under GNU GPL version 3 or later.\n" UNICODE_COPYRIGHT " 2019-2023 Bruno Herbelin.");
 
     ImGui::Spacing();
     ImGuiToolkit::ButtonOpenUrl("Visit vimix website", "https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
     ImGui::Spacing();
     ImGui::Separator();
-    ImGui::Text("vimix is built using the following libraries:");
+    ImGui::Spacing();
+    ImGui::Text("Learn more about the libraries behind vimix:");
+    ImGui::Spacing();
 
-    if ( ImGui::Button("About Dear ImGui (build information)", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-        show_imgui_about = true;
-
-    if ( ImGui::Button("About GStreamer (plugins)", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+    if ( ImGui::Button("About GStreamer (available plugins)", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
         show_gst_about = true;
 
     if ( ImGui::Button("About OpenGL (runtime extensions)", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
         show_opengl_about = true;
 
+    if ( ImGui::Button("About Dear ImGui (build information)", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+        show_imgui_about = true;
+
     ImGui::Columns(3, "abouts");
     ImGui::Separator();
-    ImGuiToolkit::ButtonOpenUrl("glad", "https://glad.dav1d.de", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+    ImGuiToolkit::ButtonOpenUrl("Glad", "https://glad.dav1d.de", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
     ImGui::NextColumn();
-    ImGuiToolkit::ButtonOpenUrl("glfw3", "http://www.glfw.org", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+    ImGuiToolkit::ButtonOpenUrl("GLFW", "http://www.glfw.org", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
     ImGui::NextColumn();
     ImGuiToolkit::ButtonOpenUrl("glm", "https://glm.g-truc.net", ImVec2(ImGui::GetContentRegionAvail().x, 0));
@@ -7660,7 +7662,7 @@ void Navigator::RenderMainPannelVimix()
             }
         }
         // Add a folder
-        if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Add Folder") )
+        if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Open Folder") )
             customFolder.open();
         ImGui::EndCombo();
     }
@@ -7691,7 +7693,7 @@ void Navigator::RenderMainPannelVimix()
         }
     }
     else {
-        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear list")) {
+        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear list of recent files")) {
             Settings::application.recentSessions.filenames.clear();
             Settings::application.recentSessions.front_is_valid = false;
             // reload the list next time
@@ -7831,7 +7833,7 @@ void Navigator::RenderMainPannelVimix()
         ImGuiToolkit::ToolTip("New session", SHORTCUT_NEW_FILE);
 
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-    ImGuiToolkit::HelpToolTip("Select the history of recently opened files or a folder. "
+    ImGuiToolkit::HelpToolTip("Here are listed either all recent files or all the sessions files inside a selected folder (*.mix) .\n\n"
                              "Double-clic on a filename to open the session.\n\n"
                              ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition "
                              "performs cross fading to the opened session.");

@@ -1254,7 +1254,6 @@ void ImGuiVisitor::visit (DeviceSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
 
-    ImVec2 botom = ImGui::GetCursorPos();
 
     if ( !s.failed() ) {
 
@@ -1274,17 +1273,20 @@ void ImGuiVisitor::visit (DeviceSource& s)
             ImGui::EndCombo();
         }
 
+        ImVec2 botom = ImGui::GetCursorPos();
+
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
             if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
                 UserInterface::manager().showSourceEditor(&s);
         }
+
+        ImGui::SetCursorPos(botom);
     }
     else
         info.reset();
 
-    ImGui::SetCursorPos(botom);
 }
 
 void ImGuiVisitor::visit (NetworkSource& s)
