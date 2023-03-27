@@ -5,4 +5,5 @@ Comment=Live video mixing.
 Categories=AudioVideo;Video;Graphics;Utility;
 Icon=${SNAP}/meta/gui/vimix.svg
 Exec=vimix
+MimeType=application/x-vimix;text/xml
 Terminal=false

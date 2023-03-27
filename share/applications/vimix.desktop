@@ -6,5 +6,5 @@ Comment=Live video mixing
 Categories=AudioVideo;Video;Graphics;
 Icon=vimix.svg
 Exec=vimix
-MimeType=application/mix+xml
+MimeType=application/x-vimix;text/xml
 Terminal=false
