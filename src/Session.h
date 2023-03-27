@@ -60,6 +60,11 @@ public:
     // Does not delete the source
     SourceList::iterator removeSource (Source *s);
 
+    // attach or detach from rendering
+    void attachSource  (Source *s);
+    void detachSource  (Source *s);
+    bool attached      (Source *s) const;
+
     // get ptr to front most source and remove it from the session
     // Does not delete the source
     Source *popSource ();

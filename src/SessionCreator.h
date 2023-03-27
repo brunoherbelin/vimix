@@ -29,6 +29,7 @@ public:
         DUPLICATE
     } Mode;
     Source *createSource(tinyxml2::XMLElement *sourceNode, Mode mode = CLONE);
+    Source *recreateSource(Source *s);
 
     static bool isClipboard(const std::string &clipboard);
     static tinyxml2::XMLElement* firstSourceElement(const std::string &clipboard, tinyxml2::XMLDocument &xmlDoc);

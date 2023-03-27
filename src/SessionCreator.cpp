@@ -43,6 +43,7 @@
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
 #include "SystemToolkit.h"
+#include "SessionVisitor.h"
 
 #include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
@@ -538,13 +539,35 @@ void SessionLoader::load(XMLElement *sessionNode)
     }
 }
 
+
+Source *SessionLoader::recreateSource(Source *s)
+{
+    if ( s == nullptr || session_ == nullptr )
+        return nullptr;
+
+    // get the xml description from this source, and exit if not wellformed
+    tinyxml2::XMLDocument xmlDoc;
+    std::string clip = SessionVisitor::getClipboard(s);
+    //g_printerr("clibboard\n%s", clip.c_str());
+
+    // find XML desc of source
+    tinyxml2::XMLElement* sourceNode = SessionLoader::firstSourceElement(clip, xmlDoc);
+    if ( sourceNode == nullptr )
+        return nullptr;
+
+    // create loader
+    SessionLoader loader( session_ );
+
+    // actually create the source with SessionLoader using xml description
+    return loader.createSource(sourceNode, SessionLoader::REPLACE); // not clone
+}
+
 Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
 {
     xmlCurrent_ = sourceNode;
 
     // source to load
     Source *load_source = nullptr;
-    bool is_clone = false;
 
     uint64_t id__ = 0;
     xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
@@ -614,7 +637,6 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
     // clone existing source
     else {
         load_source = (*sit)->clone();
-        is_clone = true;
     }
 
     // apply config to source

@@ -141,8 +141,8 @@ protected:
     SourceList stash_;
     void insertSource  (Source *s, View::Mode m = View::INVALID);
     bool recreateSource(Source *s);
-    void attach        (Source *s);
-    void detach        (Source *s);
+    void attachSource  (Source *s);
+    void detachSource  (Source *s);
     bool attached      (Source *s) const;
 
     void setCurrentSource(SourceList::iterator it);

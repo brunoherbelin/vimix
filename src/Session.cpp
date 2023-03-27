@@ -146,6 +146,29 @@ void Session::deleteFailedSources ()
     }
 }
 
+void Session::attachSource (Source *s)
+{
+    if ( s != nullptr ) {
+        render_.scene.ws()->detach( s->group(View::RENDERING) );
+        render_.scene.ws()->attach( s->group(View::RENDERING) );
+    }
+}
+
+void Session::detachSource (Source *s)
+{
+    if ( s != nullptr ) {
+        render_.scene.ws()->detach( s->group(View::RENDERING) );
+        // inform group
+        if (s->mixingGroup() != nullptr)
+            s->mixingGroup()->detach(s);
+    }
+}
+
+bool Session::attached (Source *s) const
+{
+    return ( s != nullptr && s->group(View::RENDERING)->refcount_ > 0 );
+}
+
 // update all sources
 void Session::update(float dt)
 {
@@ -252,17 +275,12 @@ void Session::update(float dt)
 
         // discard failed source
         if ( (*it)->failed() ) {
-            // if source is already attached
-            if ((*it)->group(View::RENDERING)->refcount_ > 0) {
+            // if source is attached to the session
+            if ( attached(*it) )
+            {
                 // insert source in list of failed
                 // (NB: insert in set fails if source is already listed)
                 failed_.insert( *it );
-                // detatch from rendering (do not render)
-                render_.scene.ws()->detach( (*it)->group(View::RENDERING) );
-                // detach from mixing groups
-                if ( (*it)->mixingGroup() != nullptr )
-                    // ask its group to detach it
-                    (*it)->mixingGroup()->detach(*it);
             }
         }
         // render normally
@@ -337,7 +355,7 @@ SourceList::iterator Session::addSource(Source *s)
     // ok, it's NOT in the list !
     if (its == sources_.end()) {
         // insert the source in the rendering
-        render_.scene.ws()->attach(s->group(View::RENDERING));
+        attachSource(s);
         // insert the source to the end of the list
         sources_.push_back(s);
         // return the iterator to the source created at the end
@@ -359,11 +377,8 @@ SourceList::iterator Session::deleteSource(Source *s)
     SourceList::iterator its = find(s);
     // ok, its in the list !
     if (its != sources_.end()) {
-        // remove Node from the rendering scene
-        render_.scene.ws()->detach( s->group(View::RENDERING) );
-        // inform group
-        if (s->mixingGroup() != nullptr)
-            s->mixingGroup()->detach(s);
+        // detach
+        detachSource(s);
         // erase the source from the failed list
         failed_.erase(s);
         // erase the source from the update list & get next element
@@ -390,11 +405,8 @@ SourceList::iterator Session::removeSource(Source *s)
     SourceList::iterator its = find(s);
     // ok, its in the list !
     if (its != sources_.end()) {
-        // remove Node from the rendering scene
-        render_.scene.ws()->detach( s->group(View::RENDERING) );
-        // inform group
-        if (s->mixingGroup() != nullptr)
-            s->mixingGroup()->detach(s);
+        // detach
+        detachSource(s);
         // erase the source from the failed list
         failed_.erase(s);
         // erase the source from the update list & get next element
@@ -414,12 +426,10 @@ Source *Session::popSource()
     SourceList::iterator its = sources_.begin();
     if (its != sources_.end())
     {
+        // returned value
         s = *its;
-        // remove Node from the rendering scene
-        render_.scene.ws()->detach( s->group(View::RENDERING) );
-        // inform group
-        if (s->mixingGroup() != nullptr)
-            s->mixingGroup()->detach(s);
+        // detach
+        detachSource(s);
         // erase the source from the update list & get next element
         sources_.erase(its);
     }

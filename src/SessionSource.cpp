@@ -28,6 +28,7 @@
 #include "Decorations.h"
 #include "Visitor.h"
 #include "Session.h"
+#include "SessionCreator.h"
 
 #include "SessionSource.h"
 
@@ -149,9 +150,52 @@ void SessionSource::update(float dt)
         timer_ += guint64(dt * 1000.f) * GST_USECOND;
     }
 
-    // fail session if all its sources failed
-    if ( session_->failedSources().size() == session_->size() )
-        failed_ = true;
+    // manage sources which failed
+    if ( !session_->failedSources().empty() ) {
+
+        SourceListUnique _failedsources = session_->failedSources();
+        for(auto it = _failedsources.begin(); it != _failedsources.end(); ++it)  {
+
+            // only deal with sources that are still attached
+            if ( session_->attached( *it ) ) {
+
+                // intervention depends on the severity of the failure
+                Source::Failure fail = (*it)->failed();
+
+                // Attempt to repair RETRY failed sources
+                // (can be automatically repaired without user intervention)
+                if (fail == Source::FAIL_RETRY) {
+                    // generated replacement source
+                    SessionLoader loader( session_ );
+                    Source *replacement = loader.recreateSource( *it );
+                    // delete failed source
+                    session_->deleteSource( *it );
+                    // add replacement source, if successfully created
+                    if (replacement)
+                        session_->addSource(replacement);
+                    else
+                        Log::Warning("Source '%s' failed and could not be fixed.", (*it)->name().c_str());
+
+                }
+                // Detatch CRITICAL failed sources from the mixer
+                // (not deleted in the session; user can replace it)
+                else if (fail == Source::FAIL_CRITICAL) {
+                    session_->detachSource( *it );
+                }
+                // Delete FATAL failed sources
+                // (nothing can be done by the user)
+                else {
+                    Log::Warning("Source '%s' failed and was deleted.", (*it)->name().c_str());
+                    session_->deleteSource( *it );
+                }
+            }
+        }
+
+        // fail session if all its sources failed
+        if ( session_->size() < 1 )
+            failed_ = true;
+
+    }
 
 }
 
@@ -392,7 +436,7 @@ void SessionGroupSource::init()
         // done init
         uint N = session_->size();
         std::string numsource = std::to_string(N) + " source" + (N>1 ? "s" : "");
-        Log::Info("Buldne Session %s reading %s (%d x %d).", std::to_string(session_->id()).c_str(), numsource.c_str(),
+        Log::Info("Bundle Session %s reading %s (%d x %d).", std::to_string(session_->id()).c_str(), numsource.c_str(),
                   int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
         Log::Info("Source '%s' linked to Bundle Session %s.", name().c_str(), std::to_string(session_->id()).c_str());
     }

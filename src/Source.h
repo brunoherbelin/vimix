@@ -179,7 +179,7 @@ public:
     // a Source shall informs if the source failed (i.e. shall be deleted)
     typedef enum {
         FAIL_NONE = 0,
-        FAIL_BAD= 1,
+        FAIL_RETRY= 1,
         FAIL_CRITICAL = 2,
         FAIL_FATAL  = 3
     } Failure;

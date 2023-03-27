@@ -209,15 +209,18 @@ void Mixer::update()
         // go through all failed sources
         SourceListUnique _failedsources = session_->failedSources();
         for(auto it = _failedsources.begin(); it != _failedsources.end(); ++it)  {
+
             // only deal with sources that are still attached to mixer
             if ( attached( *it ) ) {
+
                 // intervention depends on the severity of the failure
                 Source::Failure fail = (*it)->failed();
+
                 // Attempt to repair BAD failed sources
                 // (can be automatically repaired without user intervention)
-                if (fail == Source::FAIL_BAD) {
+                if (fail == Source::FAIL_RETRY) {
                     if ( !recreateSource( *it ) ) {
-                        Log::Warning("Source '%s' failed and was deleted.", (*it)->name().c_str());
+                        Log::Warning("Source '%s' failed and could not be fixed.", (*it)->name().c_str());
                         // delete failed source if could not recreate it
                         deleteSource( *it );
                     }
@@ -225,7 +228,7 @@ void Mixer::update()
                 // Detatch CRITICAL failed sources from the mixer
                 // (not deleted in the session; user can replace it)
                 else if (fail == Source::FAIL_CRITICAL) {
-                    detach( *it );
+                    detachSource( *it );
                 }
                 // Delete FATAL failed sources from the mixer
                 // (nothing can be done by the user)
@@ -467,7 +470,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
         mixing_.setAlpha(s);
 
         // add sources Nodes to all views
-        attach(s);
+        attachSource(s);
 
         // new state in history manager
         Action::manager().store(s->name() + std::string(": source inserted"));
@@ -503,7 +506,7 @@ void Mixer::replaceSource(Source *previous, Source *s)
     std::string previous_name = previous->name();
 
     // remove source Nodes of previous from all views
-    detach(previous);
+    detachSource(previous);
 
     // copy all transforms
     s->group(View::MIXING)->copyTransform( previous->group(View::MIXING) );
@@ -529,37 +532,23 @@ void Mixer::replaceSource(Source *previous, Source *s)
 
 bool Mixer::recreateSource(Source *s)
 {
-    if ( s == nullptr )
-        return false;
-
-    // get the xml description from this source, and exit if not wellformed
-    tinyxml2::XMLDocument xmlDoc;
-    std::string clip = SessionVisitor::getClipboard(s);
-    g_printerr("clibboard\n%s", clip.c_str());
-
-    tinyxml2::XMLElement* sourceNode = SessionLoader::firstSourceElement(clip, xmlDoc);
-    if ( sourceNode == nullptr )
-        return false;
-
-    // actually create the source with SessionLoader using xml description
     SessionLoader loader( session_ );
-    Source *replacement = loader.createSource(sourceNode, SessionLoader::REPLACE); // not clone
-    if (replacement == nullptr) {
-        g_printerr("replacement failed \n");
+    Source *replacement = loader.recreateSource(s);
+
+    if (replacement == nullptr)
         return false;
-    }
 
     // remove source Nodes from all views
-    detach(s);
+    detachSource(s);
 
     // delete source
     session_->deleteSource(s);
 
-    // add sources Nodes to all views
-    attach(replacement);
-
     // add source
     session_->addSource(replacement);
+
+    // add sources Nodes to all views
+    attachSource(replacement);
 
     return true;
 }
@@ -572,7 +561,7 @@ void Mixer::deleteSource(Source *s)
         std::string name = s->name();
 
         // remove source Nodes from all views
-        detach(s);
+        detachSource(s);
 
         // delete source
         session_->deleteSource(s);
@@ -591,7 +580,7 @@ void Mixer::deleteSource(Source *s)
 }
 
 
-void Mixer::attach(Source *s)
+void Mixer::attachSource(Source *s)
 {
     if ( s != nullptr )
     {
@@ -602,10 +591,12 @@ void Mixer::attach(Source *s)
         geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
         layer_.scene.ws()->attach( s->group(View::LAYER) );
         appearance_.scene.ws()->attach( s->group(View::TEXTURE) );
+        // attach to session
+        session_->attachSource(s);
     }
 }
 
-void Mixer::detach(Source *s)
+void Mixer::detachSource(Source *s)
 {
     if ( s != nullptr )
     {
@@ -620,12 +611,14 @@ void Mixer::detach(Source *s)
         layer_.scene.ws()->detach( s->group(View::LAYER) );
         appearance_.scene.ws()->detach( s->group(View::TEXTURE) );
         transition_.scene.ws()->detach( s->group(View::TRANSITION) );
+        // dettach from session
+        session_->detachSource(s);
     }
 }
 
 bool Mixer::attached (Source *s) const
 {
-    return s->group(View::MIXING)->refcount_ > 0;
+    return ( s != nullptr && s->group(View::MIXING)->refcount_ > 0 );
 }
 
 bool Mixer::concealed(Source *s)
@@ -650,7 +643,7 @@ void Mixer::conceal(Source *s)
         session_->removeSource(s);
 
         // detach from scene workspace
-        detach(s);
+        detachSource(s);
     }
 }
 
@@ -660,7 +653,7 @@ void Mixer::uncover(Source *s)
     if ( it != stash_.end() ) {
         stash_.erase(it);
 
-        attach(s);
+        attachSource(s);
         session_->addSource(s);
     }
 }
@@ -734,7 +727,7 @@ void Mixer::groupSelection()
             // generate name from intials of all sources
             name += (*sit)->initials();
             // detach & remove element from selection()
-            detach (*sit);
+            detachSource (*sit);
             // remove source from session
             session_->removeSource(*sit);
         }
@@ -759,7 +752,7 @@ void Mixer::groupSelection()
         renameSource(sessiongroup, name);
 
         // Attach source to Mixer
-        attach(sessiongroup);
+        attachSource(sessiongroup);
 
         // needs to update !
         ++View::need_deep_update_;
@@ -800,11 +793,12 @@ void Mixer::groupAll(bool only_active)
 
     // loop over sources from the current mixer session
     for(auto it = session_->begin(); it != session_->end(); ) {
+
         // if request for only active, take only active source
         // and if could import the source in the new session group
         if ( ( !only_active || (*it)->active() ) && sessiongroup->import( *it ) ) {
             // detatch the source from mixer
-            detach( *it );
+            detachSource( *it );
             // take out source from session and go to next (does not delete the source)
             it = session_->removeSource( *it );
         }
@@ -821,7 +815,7 @@ void Mixer::groupAll(bool only_active)
             CloneSource *cs = dynamic_cast<CloneSource*>(*it);
             if ( cs != nullptr && session_->find( cs->origin() ) == session_->end() && sessiongroup->import( *it ) ) {
                 // detatch the source from mixer
-                detach( *it );
+                detachSource( *it );
                 // take out source from session and go to next (does not delete the source)
                 it = session_->removeSource( *it );
             }
@@ -895,7 +889,7 @@ void Mixer::groupSession()
 
     // detatch current session_'s nodes from views
     for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
-        detach(*source_iter);
+        detachSource(*source_iter);
 
     // detatch session_'s mixing group
     for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
@@ -1310,7 +1304,7 @@ void Mixer::merge(Session *session)
         session_->addSource(s);
 
         // Attach source to Mixer
-        attach(s);
+        attachSource(s);
     }
 
     // recreate groups in current session_
@@ -1397,7 +1391,7 @@ void Mixer::merge(SessionSource *source)
             session_->addSource(s);
 
             // Attach source to Mixer
-            attach(s);
+            attachSource(s);
         }
 
         // recreate groups in current session_
@@ -1410,7 +1404,7 @@ void Mixer::merge(SessionSource *source)
     }
 
     // imported source itself should be removed
-    detach(source);
+    detachSource(source);
     session_->deleteSource(source);
 
     // avoid display issues
@@ -1430,7 +1424,7 @@ void Mixer::swap()
         selection().clear();
         // detatch current session's nodes from views
         for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
-            detach(*source_iter);
+            detachSource(*source_iter);
         // detatch session's mixing group
         for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
             (*group_iter)->attachTo(nullptr);
@@ -1443,7 +1437,7 @@ void Mixer::swap()
 
     // attach new session's nodes to views
     for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
-        attach(*source_iter);
+        attachSource(*source_iter);
 
     // optional copy of views config
     mixing_.scene.root()->copyTransform( session_->config(View::MIXING) );
@@ -1609,7 +1603,7 @@ void Mixer::restore(tinyxml2::XMLElement *sessionNode)
             Log::Info("Delete   id %s\n", std::to_string(session_sources.front() ).c_str());
 #endif
             // remove the source from the mixer
-            detach( s );
+            detachSource( s );
             // delete source from session
             session_->deleteSource( s );
         }
@@ -1623,7 +1617,7 @@ void Mixer::restore(tinyxml2::XMLElement *sessionNode)
         Log::Info("Recreate id %s to %s\n", std::to_string((*lsit).first).c_str(), std::to_string((*lsit).second->id()).c_str());
 #endif
         // attach created source
-        attach( (*lsit).second );
+        attachSource( (*lsit).second );
     }
 
     //
