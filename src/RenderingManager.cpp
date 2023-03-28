@@ -134,6 +134,7 @@ static void WindowResizeCallback( GLFWwindow *w, int width, int height)
         // UI manager tries to keep windows in the workspace
         WorkspaceWindow::notifyWorkspaceSizeChanged(Rendering::manager().mainWindow().previous_size.x, Rendering::manager().mainWindow().previous_size.y, width, height);
         Rendering::manager().mainWindow().previous_size = glm::vec2(width, height);
+        Rendering::manager().draw();
     }
 
     int id = Rendering::manager().window(w)->index();
@@ -143,7 +144,6 @@ static void WindowResizeCallback( GLFWwindow *w, int width, int height)
         Settings::application.windows[id].h = height;
     }
 
-    Rendering::manager().draw();
 }
 
 static void WindowMoveCallback( GLFWwindow *w, int x, int y)
