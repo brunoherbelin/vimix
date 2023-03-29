@@ -130,7 +130,8 @@
                "-Dgst-plugins-bad:srt=enabled",
                "-Dgst-plugins-bad:shm=enabled",
                "-Dugly=enabled",
-               "-Dgst-plugins-ugly:x264=enabled"
+               "-Dgst-plugins-ugly:x264=enabled",
+               "-Dvaapi=enabled"
             ],
             "sources": [
               {
