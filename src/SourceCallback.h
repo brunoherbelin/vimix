@@ -35,22 +35,23 @@ public:
         CALLBACK_TURN,
         CALLBACK_DEPTH,
         CALLBACK_PLAY,
+        CALLBACK_PLAYSPEED,
+        CALLBACK_PLAYFFWD,
+        CALLBACK_SEEK,
         CALLBACK_REPLAY,
         CALLBACK_RESETGEO,
         CALLBACK_LOCK,
-        CALLBACK_SEEK,
+        CALLBACK_GAMMA,
         CALLBACK_BRIGHTNESS,
         CALLBACK_CONTRAST,
         CALLBACK_SATURATION,
         CALLBACK_HUE,
         CALLBACK_THRESHOLD,
-        CALLBACK_GAMMA,
         CALLBACK_INVERT,
         CALLBACK_POSTERIZE
     } CallbackType;
 
     static SourceCallback *create(CallbackType type);
-    static bool overlap(SourceCallback *a, SourceCallback *b);
 
     SourceCallback();
     virtual ~SourceCallback() {}
@@ -62,8 +63,9 @@ public:
     virtual CallbackType type () const { return CALLBACK_GENERIC; }
     virtual void accept (Visitor& v);
 
-    inline bool finished () const { return status_ > ACTIVE; }
     inline void reset () { status_ = PENDING; }
+    inline void finish () { status_ = FINISHED; }
+    inline bool finished () const { return status_ > ACTIVE; }
     inline void delay (float milisec) { delay_ = milisec;}
 
 protected:
@@ -146,7 +148,6 @@ public:
 class Loom : public SourceCallback
 {
     float speed_;
-    glm::vec2 pos_;
     glm::vec2 step_;
     float duration_;
 
@@ -161,7 +162,6 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone() const override;
-    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_LOOM; }
     void accept (Visitor& v) override;
 };
@@ -236,6 +236,45 @@ public:
     CallbackType type () const override { return CALLBACK_REPLAY; }
 };
 
+class PlaySpeed : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    PlaySpeed (float v = 1.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_PLAYSPEED; }
+};
+
+class PlayFastForward : public SourceCallback
+{
+    class MediaPlayer *media_;
+    uint step_;
+    float duration_;
+    double playspeed_;
+public:
+    PlayFastForward (uint seekstep = 30, float ms = FLT_MAX);
+
+    uint  value () const { return step_; }
+    void  setValue (uint s) { step_ = s; }
+    float duration () const { return duration_; }
+    void  setDuration (float ms) { duration_ = ms; }
+
+    void update (Source *s, float) override;
+    void multiply (float factor) override;
+    SourceCallback *clone() const override;
+    CallbackType type () const override { return CALLBACK_PLAYFFWD; }
+    void accept (Visitor& v) override;
+};
+
+class Seek : public ValueSourceCallback
+{
+    float readValue(Source *s) const override;
+    void  writeValue(Source *s, float val) override;
+public:
+    Seek (float t = 0.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_SEEK; }
+};
+
 class ResetGeometry : public SourceCallback
 {
 public:
@@ -273,7 +312,6 @@ public:
 class Grab : public SourceCallback
 {
     glm::vec2 speed_;
-    glm::vec2 pos_;
     float duration_;
 
 public:
@@ -287,7 +325,6 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
-    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_GRAB; }
     void accept (Visitor& v) override;
 };
@@ -308,7 +345,6 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
-    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_RESIZE; }
     void accept (Visitor& v) override;
 };
@@ -316,7 +352,6 @@ public:
 class Turn : public SourceCallback
 {
     float speed_;
-    float angle_;
     float duration_;
 
 public:
@@ -330,18 +365,8 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
-    SourceCallback *reverse(Source *) const override;
     CallbackType type () const override { return CALLBACK_TURN; }
     void accept (Visitor& v) override;
-};
-
-class Seek : public ValueSourceCallback
-{
-    float readValue(Source *s) const override;
-    void  writeValue(Source *s, float val) override;
-public:
-    Seek (float v = 0.f, float ms = 0.f, bool revert = false);
-    CallbackType type () const override { return CALLBACK_SEEK; }
 };
 
 class SetBrightness : public ValueSourceCallback

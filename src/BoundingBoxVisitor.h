@@ -8,8 +8,8 @@ class View;
 
 class BoundingBoxVisitor: public Visitor
 {
-    glm::mat4 modelview_;
     bool force_;
+    glm::mat4 modelview_;
     GlmToolkit::AxisAlignedBoundingBox bbox_;
 
 

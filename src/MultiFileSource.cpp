@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,9 +20,6 @@
 #include <sstream>
 #include <algorithm>
 
-#include "defines.h"
-#include "ImageShader.h"
-#include "Resource.h"
 #include "Decorations.h"
 #include "Stream.h"
 #include "Visitor.h"
@@ -77,20 +74,6 @@ bool MultiFileSequence::valid() const
     return !( location.empty() || codec.empty() || width < 1 || height < 1 || max == min);
 }
 
-MultiFileSequence& MultiFileSequence::operator = (const MultiFileSequence& b)
-{
-    if (this != &b) {
-        this->width = b.width;
-        this->height = b.height;
-        this->min = b.min;
-        this->max = b.max;
-        this->location = b.location;
-        this->codec = b.codec;
-    }
-    return *this;
-}
-
-
 bool MultiFileSequence::operator != (const MultiFileSequence& b)
 {
     return ( location != b.location || codec != b.codec || width != b.width ||
@@ -104,8 +87,11 @@ MultiFile::MultiFile() : Stream(), src_(nullptr)
 
 void MultiFile::open (const MultiFileSequence &sequence, uint framerate )
 {
-    if (sequence.location.empty())
+    std::string path = SystemToolkit::path_filename( sequence.location );
+    if (!SystemToolkit::file_exists(path) ) {
+        fail("Invalid path.");
         return;
+    }
 
     std::ostringstream gstreamer_pipeline;
     gstreamer_pipeline << "multifilesrc name=src location=\"";
@@ -255,8 +241,7 @@ guint64 MultiFileSource::playtime () const
 void MultiFileSource::accept (Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 MultiFile *MultiFileSource::multifile () const

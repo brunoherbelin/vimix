@@ -3,10 +3,17 @@
 #include "Visitor.h"
 
 #include "FrameBufferFilter.h"
-#include "FrameBufferFilter.h"
 
-const char* FrameBufferFilter::type_label[FrameBufferFilter::FILTER_INVALID] = {
-    "None", "Delay", "Resample", "Blur", "Sharpen", "Smooth & Noise", "Edge", "Alpha", "Custom shader"
+std::vector< std::tuple<int, int, std::string> > FrameBufferFilter::Types = {
+    { ICON_FILTER_NONE, std::string("None") },
+    { ICON_FILTER_DELAY, std::string("Delay") },
+    { ICON_FILTER_RESAMPLE, std::string("Resample") },
+    { ICON_FILTER_BLUR, std::string("Blur") },
+    { ICON_FILTER_SHARPEN, std::string("Sharpen") },
+    { ICON_FILTER_SMOOTH, std::string("Smooth & Noise") },
+    { ICON_FILTER_EDGE, std::string("Edge") },
+    { ICON_FILTER_ALPHA, std::string("Alpha") },
+    { ICON_FILTER_IMAGE, std::string("Custom shader") }
 };
 
 FrameBufferFilter::FrameBufferFilter() : enabled_(true), input_(nullptr)

@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -123,8 +123,7 @@ void NetworkStream::connect(const std::string &nameconnection)
 
     // refuse self referencing
     if (nameconnection.compare(Connection::manager().info().name) == 0) {
-        Log::Warning("Cannot create self-referencing Network Source '%s'", nameconnection.c_str());
-        failed_ = true;
+        fail("Cannot create self-referencing Network Source " + nameconnection);
         return;
     }
 
@@ -133,8 +132,7 @@ void NetworkStream::connect(const std::string &nameconnection)
 
     // Nope, cannot connect to unknown connection
     if (streamer_index < 0) {
-        Log::Warning("Cannot connect to %s: please make sure %s is active on this machine.", nameconnection.c_str(), APP_NAME);
-        failed_ = true;
+        fail("Cannot connect to "  + nameconnection + ". Please make sure vimix is active on this machine");
         return;
     }
 
@@ -159,8 +157,7 @@ void NetworkStream::connect(const std::string &nameconnection)
         }
     }
     if (receiver_ == nullptr) {
-        Log::Notify("Cannot establish connection with %s. Please check your network.", streamer_.name.c_str());
-        failed_ = true;
+        fail("Cannot establish connection with " + streamer_.name + ". Please check your network.");
         return;
     }
 
@@ -191,6 +188,7 @@ void NetworkStream::disconnect()
 {
     // receiver should not be active anyway, make sure it is deleted
     if (receiver_) {
+        receiver_->AsynchronousBreak();
         delete receiver_;
         receiver_ = nullptr;
     }
@@ -297,8 +295,7 @@ void NetworkStream::update()
             }
         }
         else {
-            Log::Warning("Connection was rejected by %s.\nMake sure Sharing on local network is enabled and try again.", streamer_.name.c_str());
-            failed_=true;
+            fail("Connection was rejected by " + streamer_.name + ".\nMake sure Sharing on local network is enabled and try again.");
         }
     }
 }
@@ -346,8 +343,7 @@ std::string NetworkSource::connection() const
 void NetworkSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 glm::ivec2 NetworkSource::icon() const

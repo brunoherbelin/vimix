@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "defines.h"
-#include "Log.h"
 #include "FrameBuffer.h"
 #include "Decorations.h"
 #include "Resource.h"
@@ -32,10 +31,7 @@
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "BaseToolkit.h"
-#include "SystemToolkit.h"
 #include "MixingGroup.h"
-#include "Metronome.h"
-#include "ControlManager.h"
 #include "SourceCallback.h"
 
 #include "CloneSource.h"
@@ -553,7 +549,7 @@ void Source::attach(FrameBuffer *renderbuffer)
     initial_1_->translation_.x = 0.4f - renderbuffer_->aspectRatio();
 
     // scale all icon nodes to match aspect ratio
-    for (int v = View::MIXING; v < View::INVALID; v++) {
+    for (int v = View::MIXING; v <= View::TRANSITION; v++) {
         NodeSet::iterator node;
         for (node = groups_[(View::Mode) v]->begin();
              node != groups_[(View::Mode) v]->end(); ++node) {
@@ -659,38 +655,17 @@ void Source::call(SourceCallback *callback, bool override)
         // lock access to callbacks list
         access_callbacks_.lock();
 
-        bool add = true;
-
-        // look for callbacks of same type
-        for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
-        {
-            // Test if the new callback would overlap an existing one
-            SourceCallback *c = *iter;
-            if ( SourceCallback::overlap( callback, c) ) {
-                if (override) {
-                    // either remove and delete all overlapping callbacks if override...
-                    iter = update_callbacks_.erase(iter);
-                    delete c;
-                }
-                else {
-                    // ...or cancel adding overlapping callbacks if not override
-                    add = false;
-                    break;
-                }
+        // if operation should override previous callbacks of same type
+        if (override) {
+            // finish all callbacks of the same type
+            for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); ++iter) {
+                if ( callback->type() == (*iter)->type() )
+                    (*iter)->finish();
             }
-            // iterate
-            else
-                ++iter;
         }
 
-        // we can add the callback : its either not overlapping or we override it
-        if (add) {
-            // add callback to callbacks list
-            update_callbacks_.push_back(callback);
-        }
-        // or delete it if couln't be added (overlapping but not override)
-        else
-            delete callback;
+        // allways add the given callback to list of callbacks
+        update_callbacks_.push_back(callback);
 
         // release access to callbacks list
         access_callbacks_.unlock();
@@ -698,10 +673,29 @@ void Source::call(SourceCallback *callback, bool override)
 
 }
 
+void Source::finish(SourceCallback *callback)
+{
+    if (callback != nullptr) {
+
+        // lock access to callbacks list
+        access_callbacks_.lock();
+
+        // make sure the given pointer is a callback listed in this source
+        auto cb = std::find(update_callbacks_.begin(), update_callbacks_.end(), callback);
+        if (cb != update_callbacks_.end())
+            // set found callback to finish state
+            (*cb)->finish();
+
+        // release access to callbacks list
+        access_callbacks_.unlock();
+    }
+}
+
 void Source::updateCallbacks(float dt)
 {
     // lock access to callbacks list
     access_callbacks_.lock();
+
     // call callback functions
     for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )
     {
@@ -720,9 +714,9 @@ void Source::updateCallbacks(float dt)
         else
             ++iter;
     }
+
     // release access to callbacks list
     access_callbacks_.unlock();
-
 }
 
 CloneSource *Source::clone(uint64_t id)
@@ -754,8 +748,11 @@ void Source::update(float dt)
             // use the sinusoidal transfer function
             blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, SourceCore::alphaFromCordinates( dist.x, dist.y ));
             mixingshader_->color = blendingshader_->color;
+
             // adjust scale of mixing icon : smaller if not active
             groups_[View::MIXING]->scale_ = glm::vec3(MIXING_ICON_SCALE) - ( active_ ? glm::vec3(0.f, 0.f, 0.f) : glm::vec3(0.03f, 0.03f, 0.f) );
+            // change stippling intensity of source in mixing view to indicate if shown in scene
+            mixingshader_->stipple = (blendingshader_->color.a > 0.f) ? 1.f : 0.75f;
 
             // MODIFY geometry based on GEOMETRY node
             groups_[View::RENDERING]->translation_ = groups_[View::GEOMETRY]->translation_;

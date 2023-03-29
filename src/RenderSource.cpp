@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,7 +29,9 @@
 
 #include "RenderSource.h"
 
-const char* RenderSource::rendering_provenance_label[2] = { "Loopback", "Non-recursive" };
+std::vector< std::tuple<int, int, std::string> > RenderSource::ProvenanceMethod = {
+    { 16, 12, "Loopback" }, { 15, 12, "Non-recursive"}
+};
 
 RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr), rendered_surface_(nullptr),
     paused_(false), provenance_(RENDER_TEXTURE)
@@ -45,12 +47,19 @@ RenderSource::~RenderSource()
         delete rendered_output_;
 }
 
-bool RenderSource::failed() const
+Source::Failure RenderSource::failed() const
 {
-    if ( rendered_output_ != nullptr && session_ != nullptr )
-        return rendered_output_->resolution() != session_->frame()->resolution();
+    if ( rendered_output_ != nullptr && session_ != nullptr ) {
+        // the renreding output was created, but resolution changed
+        if ( rendered_output_->resolution() != session_->frame()->resolution()
+             // or alpha channel changed (e.g. inside SessionSource)
+             || ( ( rendered_output_->flags() & FrameBuffer::FrameBuffer_alpha ) != ( session_->frame()->flags() & FrameBuffer::FrameBuffer_alpha ) )
+             ) {
+            return FAIL_RETRY;
+        }
+    }
 
-    return false;
+    return FAIL_NONE;
 }
 
 uint RenderSource::texture() const
@@ -62,11 +71,6 @@ uint RenderSource::texture() const
     else
         return Resource::getTextureBlack(); // getTextureTransparent ?
 }
-
-//void RenderSource::setActive (bool on)
-//{
-
-//}
 
 void RenderSource::init()
 {
@@ -107,6 +111,8 @@ void RenderSource::init()
 
 void RenderSource::update(float dt)
 {
+    static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
+
     Source::update(dt);
 
     if (!paused_ && session_ && rendered_output_) {
@@ -115,7 +121,6 @@ void RenderSource::update(float dt)
             // temporarily exclude this RenderSource from the rendering
             groups_[View::RENDERING]->visible_ = false;
             // simulate a rendering of the session in a framebuffer
-            static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
             glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
             rendered_output_->begin();
             // access to private RenderView in the session to call draw on the root of the scene
@@ -124,14 +129,19 @@ void RenderSource::update(float dt)
             // restore this RenderSource visibility
             groups_[View::RENDERING]->visible_ = true;
         }
-        else
-            session_->frame()->blit(rendered_output_);
+        // blit session frame to output
+        else if (!session_->frame()->blit(rendered_output_))
+        {
+            // if failed (which should not happen),
+            // simulate a rendering of the session in a framebuffer
+            glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
+            rendered_output_->begin();
+            // access to private RenderView in the session to call draw on the root of the scene
+            session_->render_.scene.root()->draw(glm::identity<glm::mat4>(), P);
+            rendered_output_->end();
+        }
 
         runtime_ = session_->runtime();
-
-        //        rendered_output_->begin(true); // if not blit
-        //        rendered_surface_->draw(glm::identity<glm::mat4>(), rendered_output_->projection());
-        //        rendered_output_->end();
     }
 
 }
@@ -155,8 +165,7 @@ glm::vec3 RenderSource::resolution() const
 void RenderSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 glm::ivec2 RenderSource::icon() const

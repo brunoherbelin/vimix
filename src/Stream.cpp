@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,11 +23,9 @@
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
 
-#include "defines.h"
 #include "Log.h"
 #include "Resource.h"
 #include "Visitor.h"
-#include "SystemToolkit.h"
 #include "BaseToolkit.h"
 #include "GstToolkit.h"
 
@@ -107,7 +105,7 @@ std::string Stream::decoderName()
 
 guint Stream::texture() const
 {
-    if (textureindex_ == 0)
+    if (!textureindex_)
         return Resource::getTextureBlack();
 
     return textureindex_;
@@ -192,8 +190,10 @@ StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
             gst_object_unref (_pipeline);
 
         }
-        else
+        else {
             info.message = error->message;
+            g_clear_error (&error);
+        }
     }
     // at this point, the info should be filled
     return info;
@@ -312,7 +312,8 @@ void Stream::execute_open()
 
 void Stream::fail(const std::string &message)
 {
-    Log::Warning("Stream %s %s.", std::to_string(id_).c_str(), message.c_str() );
+    log_ = message;
+    Log::Warning("Stream %s %s.", std::to_string(id_).c_str(), log_.c_str() );
     failed_ = true;
 }
 
@@ -517,8 +518,9 @@ GstClockTime Stream::position()
 void Stream::init_texture(guint index)
 {
     glActiveTexture(GL_TEXTURE0);
-    if (textureindex_ < 1)
-        glGenTextures(1, &textureindex_);
+    if (textureindex_)
+        glDeleteTextures(1, &textureindex_);
+    glGenTextures(1, &textureindex_);
     glBindTexture(GL_TEXTURE_2D, textureindex_);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width_, height_);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
@@ -581,7 +583,7 @@ void Stream::init_texture(guint index)
 void Stream::fill_texture(guint index)
 {
     // is this the first frame ?
-    if ( !textureinitialized_ || textureindex_ < 1)
+    if ( !textureinitialized_ || !textureindex_)
     {
         // initialize texture
         init_texture(index);
@@ -877,8 +879,6 @@ GstFlowReturn Stream::callback_new_sample (GstAppSink *sink, gpointer p)
 
     return ret;
 }
-
-
 
 Stream::TimeCounter::TimeCounter(): fps(1.f)
 {

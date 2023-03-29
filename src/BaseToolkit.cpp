@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -209,6 +209,24 @@ bool BaseToolkit::is_a_number(const std::string& str, int *val)
     }
 
     return isanumber;
+}
+
+bool BaseToolkit::is_a_value(const std::string& str, float *val)
+{
+    bool isavalue = false;
+
+    try {
+        *val = std::stof(str);
+        isavalue = true;
+    }
+    catch (const std::invalid_argument&) {
+        // avoids crash
+    }
+    catch (const std::out_of_range&) {
+        // avoids crash
+    }
+
+    return isavalue;
 }
 
 std::string BaseToolkit::common_prefix( const std::list<std::string> & allStrings )

@@ -7,8 +7,10 @@
 #include <string>
 #include <future>
 
+#include <glib.h>
 #include <glm/glm.hpp>
 
+#include "ImageShader.h"
 #include "FrameBufferFilter.h"
 
 class FilteringProgram
@@ -65,7 +67,39 @@ public:
 
 class Surface;
 class FrameBuffer;
-class ImageFilteringShader;
+
+class ImageFilteringShader : public ImageShader
+{
+    // GLSL Program
+    ShadingProgram custom_shading_;
+
+    // fragment shader GLSL code
+    std::string shader_code_;
+    std::string code_;
+
+public:
+    // for iTimedelta
+    GTimer *timer_;
+    double iTime_;
+    uint iFrame_;
+
+    // list of uniforms to control shader
+    std::map< std::string, float > uniforms_;
+
+    ImageFilteringShader();
+    ~ImageFilteringShader();
+
+    void update(float dt);
+
+    void use() override;
+    void reset() override;
+    void copy(ImageFilteringShader const& S);
+
+    // set the code of the filter
+    void setCode(const std::string &code, std::promise<std::string> *ret = nullptr);
+
+};
+
 
 class ImageFilter : public FrameBufferFilter
 {

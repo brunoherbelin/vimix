@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -559,7 +559,6 @@ std::list<std::string> selectImagesFileDialog(const std::string &label,const std
 
     // Set the default path
     gtk_file_chooser_set_current_folder( GTK_FILE_CHOOSER(dialog), startpath.c_str() );
-
     // ensure front and centered
     gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
     if (window_x > 0 && window_y > 0)
@@ -621,4 +620,102 @@ void DialogToolkit::ErrorDialog(const char* message)
 #endif
 }
 
+
+//
+// Color Picker Dialog common functions
+//
+
+bool DialogToolkit::ColorPickerDialog::busy_ = false;
+
+DialogToolkit::ColorPickerDialog::ColorPickerDialog()
+{
+    rgb_ = std::make_tuple(0.f, 0.f, 0.f);
+}
+
+bool DialogToolkit::ColorPickerDialog::closed()
+{
+    if ( !promises_.empty() ) {
+        // check that file dialog thread finished
+        if (promises_.back().wait_for(timeout) == std::future_status::ready ) {
+            // get the filename from this file dialog
+            rgb_ = promises_.back().get();
+            // done with this file dialog
+            promises_.pop_back();
+            busy_ = false;
+            return true;
+        }
+    }
+    return false;
+}
+
+std::tuple<float, float, float> openColorDialog( std::tuple<float, float, float> rgb)
+{
+    // default return value to given value (so Cancel does nothing)
+    std::tuple<float, float, float> ret = rgb;
+
+#if USE_TINYFILEDIALOG
+
+    unsigned char prev_color[3];
+    prev_color[0] = (char) ceilf(255.f * std::get<0>(rgb));
+    prev_color[1] = (char) ceilf(255.f * std::get<1>(rgb));
+    prev_color[2] = (char) ceilf(255.f * std::get<2>(rgb));
+
+    unsigned char ret_color[3];
+
+    if ( NULL != tinyfd_colorChooser("Choose or pick a color", NULL, prev_color, ret_color) )
+    {
+        ret = { (float) ret_color[0] / 255.f, (float) ret_color[1] / 255.f, (float) ret_color[2] / 255.f};
+    }
+
+#else
+    if (!gtk_init()) {
+        return ret;
+    }
+
+    GtkWidget *dialog = gtk_color_chooser_dialog_new( "Choose or pick a color", NULL);
+
+    // set initial color
+    GdkRGBA color;
+    color.red   = std::get<0>(rgb);
+    color.green = std::get<1>(rgb);
+    color.blue  = std::get<2>(rgb);
+    color.alpha = 1.f;
+    gtk_color_chooser_set_rgba( GTK_COLOR_CHOOSER(dialog), &color );
+
+    // no alpha, with editor for picking color
+    gtk_color_chooser_set_use_alpha( GTK_COLOR_CHOOSER(dialog), false);
+    g_object_set( GTK_WINDOW(dialog), "show-editor", TRUE, NULL );
+
+    // prepare dialog
+    gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
+    static int x = 0, y = 0;
+    if (x != 0)
+        gtk_window_move( GTK_WINDOW(dialog), x, y);
+
+    // display and get color
+    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_OK ) {
+
+        gtk_color_chooser_get_rgba( GTK_COLOR_CHOOSER(dialog), &color );
+        ret = { color.red, color.green, color.blue};
+    }
+
+    // remember position
+    gtk_window_get_position( GTK_WINDOW(dialog), &x, &y);
+
+    // done
+    gtk_widget_destroy( dialog );
+    wait_for_event();
+
+#endif
+
+    return ret;
+}
+
+void DialogToolkit::ColorPickerDialog::open()
+{
+    if ( !DialogToolkit::ColorPickerDialog::busy_ && promises_.empty() ) {
+        promises_.emplace_back( std::async(std::launch::async, openColorDialog, rgb_) );
+        busy_ = true;
+    }
+}
 

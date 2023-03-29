@@ -16,8 +16,8 @@ namespace ImGuiToolkit
 {
     // Icons from resource icon.dds
     void Icon (int i, int j, bool enabled = true);
-    bool IconButton (int i, int j, const char *tooltips = nullptr);
-    bool IconButton (const char* icon, const char *tooltips = nullptr);
+    bool IconButton (int i, int j, const char *tooltips = nullptr, const char *shortcut = nullptr);
+    bool IconButton (const char* icon, const char *tooltips = nullptr, const char *shortcut = nullptr);
     bool IconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips);
     bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
     void ShowIconsWindow(bool* p_open);
@@ -28,13 +28,14 @@ namespace ImGuiToolkit
     bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips);
     bool MenuItemIcon (int i, int j, const char* label, bool selected = false, bool enabled = true);
     bool SelectableIcon(const char* label, int i, int j, bool selected = false);
-    bool ComboIcon (std::vector<std::pair<int, int> > icons, std::vector<std::string> labels, int* state);
-    bool ComboIcon (const char* label, std::vector<std::pair<int, int> > icons, std::vector<std::string> items, int* i);
+    bool ComboIcon (const char* label, int* current_item, std::vector<std::tuple<int, int, std::string> > items, bool tooltiptext = false);
 
     // buttons
     bool ButtonToggle  (const char* label, bool* toggle, const char *tooltip = nullptr);
     bool ButtonSwitch  (const char* label, bool* toggle, const char *shortcut = nullptr);
     void ButtonOpenUrl (const char* label, const char* url, const ImVec2& size_arg = ImVec2(0,0));
+    void ButtonDisabled(const char* label, const ImVec2& size_arg = ImVec2(0,0));
+    bool TextButton    (const char* text, const char *tooltip = nullptr, const char *shortcut = nullptr);
 
     // tooltip and mouse over help
     void setToolTipsEnabled (bool on);
@@ -46,7 +47,7 @@ namespace ImGuiToolkit
 
     // sliders
     bool SliderTiming (const char* label, uint *ms, uint v_min, uint v_max, uint v_step, const char* text_max = nullptr);
-    bool TimelineSlider (const char* label, guint64 *time, guint64 begin, guint64 first, guint64 end, guint64 step, const float width, double tempo = 0, double quantum = 0);
+    bool TimelineSlider (const char* label, guint64 *time, guint64 begin, guint64 first, guint64 end, guint64 step, const float width);
     void RenderTimeline (ImVec2 min_bbox, ImVec2 max_bbox, guint64 begin, guint64 end, guint64 step, bool verticalflip = false);
     void RenderTimelineBPM (ImVec2 min_bbox, ImVec2 max_bbox, double tempo, double quantum, guint64 begin, guint64 end, guint64 step, bool verticalflip = false);
     bool InvisibleSliderInt(const char* label, uint *index, uint min, uint max, const ImVec2 size);
@@ -82,7 +83,7 @@ namespace ImGuiToolkit
     typedef enum {
         ACCENT_BLUE =0,
         ACCENT_ORANGE,
-        ACCENT_GREY
+        ACCENT_GREEN
     } accent_color;
     void SetAccentColor (accent_color color);
     struct ImVec4 HighlightColor (bool active = true);

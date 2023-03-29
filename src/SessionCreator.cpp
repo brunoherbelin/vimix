@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,6 @@
 #include "Log.h"
 #include "defines.h"
 #include "Scene.h"
-#include "Primitives.h"
-#include "Mesh.h"
 #include "Source.h"
 #include "SourceCallback.h"
 #include "CloneSource.h"
@@ -45,6 +43,7 @@
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
 #include "SystemToolkit.h"
+#include "SessionVisitor.h"
 
 #include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
@@ -234,10 +233,24 @@ void SessionCreator::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
             uint input = 0;
             xmlCurrent_->QueryUnsignedAttribute("input", &input);
             if (input > 0) {
-                // what id is the source ?
-                uint64_t id = 0;
-                xmlCurrent_->QueryUnsigned64Attribute("id", &id);
-                if (id > 0) {
+                Target target;
+                uint64_t sid = 0;
+                uint64_t bid = 0;
+                if ( xmlCurrent_->QueryUnsigned64Attribute("id", &sid) != XML_NO_ATTRIBUTE ) {
+                    // find the source with the given id
+                    SourceList::iterator sit = session_->find(sid);
+                    if (sit != session_->end()) {
+                        // assign variant
+                        target = *sit;
+                    }
+                }
+                else if ( xmlCurrent_->QueryUnsigned64Attribute("batch", &bid) != XML_NO_ATTRIBUTE ) {
+                    // assign variant
+                    target = (size_t) bid;
+                }
+
+                // if could identify the target
+                if (target.index() > 0) {
                     // what type is the callback ?
                     uint type = 0;
                     xmlCurrent_->QueryUnsignedAttribute("type", &type);
@@ -247,12 +260,8 @@ void SessionCreator::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
                     if (loadedcallback) {
                         // apply specific parameters
                         loadedcallback->accept(*this);
-                        // find the source with the given id
-                        SourceList::iterator sit = session_->find(id);
-                        if (sit != session_->end()) {
-                            // assign to source in session
-                            session_->assignSourceCallback(input, *sit, loadedcallback);
-                        }
+                        // assign to target
+                        session_->assignInputCallback(input, target, loadedcallback);
                     }
                 }
             }
@@ -321,7 +330,7 @@ void SessionCreator::loadPlayGroups(tinyxml2::XMLElement *playgroupNode)
                     playgroup_sources.push_back( id__ );
 
             }
-            session_->addPlayGroup( playgroup_sources );
+            session_->addBatch( playgroup_sources );
         }
     }
 }
@@ -530,25 +539,50 @@ void SessionLoader::load(XMLElement *sessionNode)
     }
 }
 
+
+Source *SessionLoader::recreateSource(Source *s)
+{
+    if ( s == nullptr || session_ == nullptr )
+        return nullptr;
+
+    // get the xml description from this source, and exit if not wellformed
+    tinyxml2::XMLDocument xmlDoc;
+    std::string clip = SessionVisitor::getClipboard(s);
+    //g_printerr("clibboard\n%s", clip.c_str());
+
+    // find XML desc of source
+    tinyxml2::XMLElement* sourceNode = SessionLoader::firstSourceElement(clip, xmlDoc);
+    if ( sourceNode == nullptr )
+        return nullptr;
+
+    // create loader
+    SessionLoader loader( session_ );
+
+    // actually create the source with SessionLoader using xml description
+    return loader.createSource(sourceNode, SessionLoader::REPLACE); // not clone
+}
+
 Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
 {
     xmlCurrent_ = sourceNode;
 
     // source to load
     Source *load_source = nullptr;
-    bool is_clone = false;
 
     uint64_t id__ = 0;
     xmlCurrent_->QueryUnsigned64Attribute("id", &id__);
 
-    // check if a source with the given id exists in the session
+    // for CLONE, find the source with the given id in the session
     SourceList::iterator sit = session_->end();
-    if (mode == CLONE) {
+    if (mode == CLONE)
         sit = session_->find(id__);
-    }
 
     // no source with this id exists or Mode DUPLICATE
     if ( sit == session_->end() ) {
+        // for DUPLICATE, a new id should be given
+        if (mode == DUPLICATE)
+            id__ = 0;
+
         // create a new source depending on type
         const char *pType = xmlCurrent_->Attribute("type");
         if (pType) {
@@ -603,14 +637,12 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
     // clone existing source
     else {
         load_source = (*sit)->clone();
-        is_clone = true;
     }
 
     // apply config to source
     if (load_source) {
         load_source->accept(*this);
-        // increment depth for clones (avoid supperposition)
-        if (is_clone)
+        if (mode != REPLACE)
             load_source->group(View::LAYER)->translation_.z += 0.2f;
     }
 
@@ -1373,6 +1405,17 @@ void SessionLoader::visit (Play &c)
     c.setBidirectional(b);
 }
 
+void SessionLoader::visit (PlayFastForward &c)
+{
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("step", &d);
+    c.setValue(d);
+
+    d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+}
+
 void SessionLoader::visit (SetAlpha &c)
 {
     float a = 0.f;
@@ -1423,6 +1466,24 @@ void SessionLoader::visit (SetGeometry &c)
     }
 
     xmlCurrent_ = current;
+}
+
+void SessionLoader::visit (SetGamma &c)
+{
+    float d = 0.f;
+    xmlCurrent_->QueryFloatAttribute("duration", &d);
+    c.setDuration(d);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
+
+    XMLElement* gamma = xmlCurrent_->FirstChildElement("gamma");
+    if (gamma) {
+        glm::vec4 v;
+        tinyxml2::XMLElementToGLM( gamma->FirstChildElement("vec4"), v);
+        c.setValue(v);
+    }
 }
 
 void SessionLoader::visit (Loom &c)

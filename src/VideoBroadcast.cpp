@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 
 #include "Log.h"
 #include "GstToolkit.h"
-#include "NetworkToolkit.h"
+#include "Settings.h"
 
 #include "VideoBroadcast.h"
 
@@ -48,6 +48,7 @@ std::vector< std::string > srt_sink_alternatives_ {
 std::vector< std::pair<std::string, std::string> > srt_encoder_alternatives_ {
     {"nvh264enc", "nvh264enc zerolatency=true rc-mode=cbr-ld-hq bitrate=4000 ! "},
     {"vaapih264enc", "vaapih264enc rate-control=cqp init-qp=26 ! "},
+    {"vtenc_h264_hw", "vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! "},
     {"x264enc", "x264enc tune=zerolatency ! "}
 };
 
@@ -68,13 +69,19 @@ bool VideoBroadcast::available()
 
         if (!srt_sink_.empty())
         {
-            for (auto config = srt_encoder_alternatives_.cbegin();
-                 config != srt_encoder_alternatives_.cend() && srt_encoder_.empty(); ++config) {
-                if ( GstToolkit::has_feature(config->first) ) {
-                    srt_encoder_ = config->second;
-                    if (config->first != srt_encoder_alternatives_.back().first)
-                        Log::Info("Video Broadcast uses hardware-accelerated encoder (%s)", config->first.c_str());
+            if (Settings::application.render.gpu_decoding) {
+                for (auto config = srt_encoder_alternatives_.cbegin();
+                     config != srt_encoder_alternatives_.cend() && srt_encoder_.empty(); ++config) {
+                    if ( GstToolkit::has_feature(config->first) ) {
+                        srt_encoder_ = config->second;
+                        if (config->first != srt_encoder_alternatives_.back().first)
+                            Log::Info("Video Broadcast uses hardware-accelerated encoder (%s)", config->first.c_str());
+                    }
                 }
+            }
+            // disabled hardware accelerated encoding
+            else {
+                srt_encoder_ = srt_encoder_alternatives_.back().second;
             }
         }
         else

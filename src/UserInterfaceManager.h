@@ -1,10 +1,12 @@
 #ifndef __UI_MANAGER_H_
 #define __UI_MANAGER_H_
 
+#include "Session.h"
 #include <string>
 #include <array>
 #include <list>
 #include <future>
+#include <variant>
 
 #include <gst/gstutils.h>
 
@@ -28,7 +30,7 @@
 #define IMGUI_TITLE_HELP ICON_FA_LIFE_RING "  Help"
 #define IMGUI_TITLE_TOOLBOX ICON_FA_HAMSA "  Guru Toolbox"
 #define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Shader Editor"
-#define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Output"
+#define IMGUI_TITLE_PREVIEW ICON_FA_LAPTOP "  Display"
 
 #define MENU_NEW_FILE         ICON_FA_FILE "  New"
 #define SHORTCUT_NEW_FILE     CTRL_MOD "W"
@@ -52,6 +54,7 @@
 #define SHORTCUT_COPY         CTRL_MOD "C"
 #define MENU_DELETE           ICON_FA_ERASER " Delete"
 #define SHORTCUT_DELETE       "Del"
+#define ACTION_DELETE         ICON_FA_BACKSPACE " Delete"
 #define MENU_PASTE            ICON_FA_PASTE "  Paste"
 #define SHORTCUT_PASTE        CTRL_MOD "V"
 #define MENU_SELECTALL        ICON_FA_TH_LIST "  Select all"
@@ -65,12 +68,14 @@
 #define MENU_RECORDCONT       ICON_FA_STOP_CIRCLE "  Save & continue"
 #define SHORTCUT_RECORDCONT   CTRL_MOD "Alt+R"
 #define MENU_CAPTUREFRAME     ICON_FA_CAMERA_RETRO "  Capture frame"
-#define SHORTCUT_CAPTUREFRAME "F11"
+#define SHORTCUT_CAPTURE_DISPLAY "F11"
+#define SHORTCUT_CAPTURE_PLAYER "F10"
+#define MENU_CAPTUREGUI       ICON_FA_CAMERA "  Screenshot vimix"
+#define SHORTCUT_CAPTURE_GUI  "F9"
 #define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable"
 #define SHORTCUT_OUTPUTDISABLE "F12"
-#define MENU_OUTPUTFULLSCREEN ICON_FA_EXPAND_ALT "  Fullscreen window"
-#define SHORTCUT_OUTPUTFULLSCREEN CTRL_MOD "F"
 #define MENU_CLOSE            ICON_FA_TIMES "   Close"
+#define DIALOG_FAILED_SOURCE  ICON_FA_EXCLAMATION_TRIANGLE " Source failure"
 
 #define TOOLTIP_NOTE          "New sticky note "
 #define SHORTCUT_NOTE         CTRL_MOD "Shift+N"
@@ -78,7 +83,7 @@
 #define SHORTCUT_METRICS      CTRL_MOD "M"
 #define TOOLTIP_PLAYER        "Player "
 #define SHORTCUT_PLAYER       CTRL_MOD "P"
-#define TOOLTIP_OUTPUT        "Output "
+#define TOOLTIP_OUTPUT        "Display "
 #define SHORTCUT_OUTPUT       CTRL_MOD "D"
 #define TOOLTIP_TIMER         "Timer "
 #define SHORTCUT_TIMER        CTRL_MOD "T"
@@ -87,7 +92,7 @@
 #define TOOLTIP_SHADEREDITOR  "Shader Editor "
 #define SHORTCUT_SHADEREDITOR CTRL_MOD "E"
 #define TOOLTIP_FULLSCREEN    "Fullscreen "
-#define SHORTCUT_FULLSCREEN   CTRL_MOD "Shift+F"
+#define SHORTCUT_FULLSCREEN   CTRL_MOD "F"
 #define TOOLTIP_MAIN          "Main menu "
 #define SHORTCUT_MAIN         "HOME"
 #define TOOLTIP_NEW_SOURCE    "New source "
@@ -211,6 +216,7 @@ private:
     std::string sourceMediaFileCurrent;
     MediaCreateMode new_media_mode;
     bool new_media_mode_changed;
+    Source *source_to_replace;
 };
 
 class ToolBox
@@ -282,8 +288,7 @@ class SourceController : public WorkspaceWindow
 
     // re-usable ui parts
     void DrawButtonBar(ImVec2 bottom, float width);
-    const char *SourcePlayIcon(Source *s);
-    bool SourceButton(Source *s, ImVec2 framesize);
+    int SourceButton(Source *s, ImVec2 framesize);
 
     // Render the sources dynamically selected
     void RenderSelectedSources();
@@ -306,6 +311,9 @@ class SourceController : public WorkspaceWindow
     bool mediaplayer_slider_pressed_;
     float mediaplayer_timeline_zoom_;
     void RenderMediaPlayer(MediaSource *ms);
+
+    // magnifying glass
+    bool magnifying_glass;
 
     // dialog to select frame capture location
     DialogToolkit::OpenFolderDialog *captureFolderDialog;
@@ -340,6 +348,9 @@ class OutputPreview : public WorkspaceWindow
 
     // dialog to select record location
     DialogToolkit::OpenFolderDialog *recordFolderDialog;
+
+    // magnifying glass
+    bool magnifying_glass;
 
 public:
     OutputPreview();
@@ -388,9 +399,9 @@ class InputMappingInterface : public WorkspaceWindow
     std::array< uint, 4 > current_input_for_mode;
     uint current_input_;
 
-    Source *ComboSelectSource(Source *current = nullptr);
+    Target ComboSelectTarget(const Target &current);
     uint ComboSelectCallback(uint current, bool imageprocessing);
-    void SliderParametersCallback(SourceCallback *callback, Source *source);
+    void SliderParametersCallback(SourceCallback *callback, const Target &target);
 
 public:
     InputMappingInterface();
@@ -427,6 +438,7 @@ public:
 
 class UserInterface
 {
+    friend class ImGuiVisitor;
     friend class Navigator;
     friend class OutputPreview;
 

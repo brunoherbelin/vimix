@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,15 +26,10 @@
 #include <gst/gst.h>
 
 
-#include "defines.h"
 #include "Log.h"
-#include "ImageShader.h"
-#include "ImageProcessingShader.h"
-#include "Resource.h"
 #include "Decorations.h"
 #include "Stream.h"
 #include "Visitor.h"
-#include "CloneSource.h"
 
 #include "DeviceSource.h"
 
@@ -208,7 +203,7 @@ void Device::remove(GstDevice *device)
     g_free (device_name);
 }
 
-Device::Device(): monitor_initialized_(false), monitor_unplug_event_(false)
+Device::Device(): monitor_(nullptr), monitor_initialized_(false), monitor_unplug_event_(false)
 {
     std::thread(launchMonitoring, this).detach();
 }
@@ -217,6 +212,7 @@ void Device::launchMonitoring(Device *d)
 {
     // gstreamer monitoring of devices
     d->monitor_ = gst_device_monitor_new ();
+    gst_device_monitor_set_show_all_devices(d->monitor_, true);
 
     // watching all video stream sources
     GstCaps *caps = gst_caps_new_empty_simple ("video/x-raw");
@@ -283,6 +279,15 @@ void Device::launchMonitoring(Device *d)
 bool Device::initialized()
 {
     return Device::manager().monitor_initialized_;
+}
+
+void Device::reload()
+{
+    if (monitor_ != nullptr) {
+        gst_device_monitor_stop(monitor_);
+        if ( !gst_device_monitor_start (monitor_) )
+            Log::Info("Device discovery start failed.");
+    }
 }
 
 int Device::numDevices()
@@ -522,13 +527,12 @@ void DeviceSource::setActive (bool on)
 void DeviceSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
-bool DeviceSource::failed() const
+Source::Failure DeviceSource::failed() const
 {
-    return unplugged_ || StreamSource::failed();
+    return (unplugged_ || StreamSource::failed()) ? FAIL_CRITICAL : FAIL_NONE;
 }
 
 DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)

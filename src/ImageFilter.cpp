@@ -1,7 +1,7 @@
 ﻿/*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,18 +19,14 @@
 #include <ctime>
 #include <algorithm>
 
-#include <glib.h>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "defines.h"
 #include "Resource.h"
-#include "ImageShader.h"
 #include "Visitor.h"
 #include "FrameBuffer.h"
-#include "ImageShader.h"
 #include "Primitives.h"
-#include "Log.h"
 
 #include "ImageFilter.h"
 
@@ -161,38 +157,6 @@ bool FilteringProgram::operator!= (const FilteringProgram& other) const
 ////  IMAGE SHADER FOR FILTERS       ///
 ///                                 ////
 ////////////////////////////////////////
-
-class ImageFilteringShader : public ImageShader
-{
-    // GLSL Program
-    ShadingProgram custom_shading_;
-
-    // fragment shader GLSL code
-    std::string shader_code_;
-    std::string code_;
-
-public:
-    // for iTimedelta
-    GTimer *timer_;
-    double iTime_;
-    uint iFrame_;
-
-    // list of uniforms to control shader
-    std::map< std::string, float > uniforms_;
-
-    ImageFilteringShader();
-    ~ImageFilteringShader();
-
-    void update(float dt);
-
-    void use() override;
-    void reset() override;
-    void copy(ImageFilteringShader const& S);
-
-    // set the code of the filter
-    void setCode(const std::string &code, std::promise<std::string> *ret = nullptr);
-
-};
 
 
 ImageFilteringShader::ImageFilteringShader(): ImageShader()

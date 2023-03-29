@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,7 +39,6 @@
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
-#include "Log.h"
 
 #include "MixingView.h"
 
@@ -78,13 +77,13 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_MIN_THRESHOLD)
     limbo_slider_root_->attach(limbo_slider_);
     limbo_up_ = new Mesh("mesh/triangle_point.ply");
     limbo_up_->scale_ = glm::vec3(0.8f, 0.8f, 1.f);
-    limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
+    limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.01f );
     limbo_slider_root_->attach(limbo_up_);
     limbo_down_ = new Mesh("mesh/triangle_point.ply");
     limbo_down_->translation_ = glm::vec3(0.f, -0.02f, 0.f);
     limbo_down_->scale_ = glm::vec3(0.8f, 0.8f, 1.f);
     limbo_down_->rotation_ = glm::vec3(0.f, 0.f, M_PI);
-    limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
+    limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.01f );
     limbo_slider_root_->attach(limbo_down_);
 
     mixingCircle_ = new Mesh("mesh/disk.ply");
@@ -97,30 +96,32 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_MIN_THRESHOLD)
 
     // Mixing scene foreground
 
-    // button frame (non interactive; no picking detected on Mesh)
-    Mesh *tmp = new Mesh("mesh/disk.ply");
-    tmp->scale_ = glm::vec3(0.033f, 0.033f, 1.f);
-    tmp->translation_ = glm::vec3(0.f, 1.f, 0.f);
-    tmp->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
-    scene.fg()->attach(tmp);
     // interactive button
     button_white_ = new Disk();
-    button_white_->scale_ = glm::vec3(0.026f, 0.026f, 1.f);
+    button_white_->scale_ = glm::vec3(0.035f, 0.035f, 1.f);
     button_white_->translation_ = glm::vec3(0.f, 1.f, 0.f);
-    button_white_->color = glm::vec4( 0.85f, 0.85f, 0.85f, 1.0f );
+    button_white_->color = glm::vec4( COLOR_CIRCLE, 1.0f );
     scene.fg()->attach(button_white_);
-    // button frame
-    tmp = new Mesh("mesh/disk.ply");
-    tmp->scale_ = glm::vec3(0.033f, 0.033f, 1.f);
-    tmp->translation_ = glm::vec3(0.f, -1.f, 0.f);
-    tmp->shader()->color = glm::vec4( COLOR_CIRCLE, 0.9f );
+    // button color WHITE (non interactive; no picking detected on Mesh)
+    Mesh *tmp = new Mesh("mesh/disk.ply");
+    tmp->scale_ = glm::vec3(0.028f, 0.028f, 1.f);
+    tmp->translation_ = glm::vec3(0.f, 1.f, 0.f);
+    tmp->shader()->color = glm::vec4( 0.85f, 0.85f, 0.85f, 1.f );
     scene.fg()->attach(tmp);
+
     // interactive button
     button_black_ = new Disk();
-    button_black_->scale_ = glm::vec3(0.026f, 0.026f, 1.f);
+    button_black_->scale_ = glm::vec3(0.035f, 0.035f, 1.f);
     button_black_->translation_ = glm::vec3(0.f, -1.f, 0.f);
-    button_black_->color = glm::vec4( 0.1f, 0.1f, 0.1f, 1.0f );
+    button_black_->color = glm::vec4( COLOR_CIRCLE, 1.0f );
     scene.fg()->attach(button_black_);
+    // button color BLACK (non interactive; no picking detected on Mesh)
+    tmp = new Mesh("mesh/disk.ply");
+    tmp->scale_ = glm::vec3(0.028f, 0.028f, 1.f);
+    tmp->translation_ = glm::vec3(0.f, -1.f, 0.f);
+    tmp->shader()->color = glm::vec4( 0.1f, 0.1f, 0.1f, 1.f );
+    scene.fg()->attach(tmp);
+
     // moving slider
     slider_root_ = new Group;
     scene.fg()->attach(slider_root_);
@@ -136,7 +137,22 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_MIN_THRESHOLD)
     tmp->translation_ = glm::vec3(0.0f, 1.0f, 0.f);
     tmp->shader()->color = glm::vec4( COLOR_SLIDER_CIRCLE, 1.0f );
     slider_root_->attach(tmp);
-
+    // show arrows indicating movement of slider
+    slider_arrows_ = new Group;
+    slider_arrows_->visible_ = false;
+    slider_root_->attach(slider_arrows_);
+    tmp = new Mesh("mesh/triangle_point.ply");
+    tmp->translation_ = glm::vec3(-0.012f, 1.0f, 0.f);
+    tmp->scale_ = glm::vec3(0.7f, 0.7f, 1.f);
+    tmp->rotation_ = glm::vec3(0.f, 0.f, M_PI_2);
+    tmp->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.1f );
+    slider_arrows_->attach(tmp);
+    tmp = new Mesh("mesh/triangle_point.ply");
+    tmp->translation_ = glm::vec3(0.012f, 1.0f, 0.f);
+    tmp->scale_ = glm::vec3(0.7f, 0.7f, 1.f);
+    tmp->rotation_ = glm::vec3(0.f, 0.f, -M_PI_2);
+    tmp->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.1f );
+    slider_arrows_->attach(tmp);
 
 //    stashCircle_ = new Disk();
 //    stashCircle_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
@@ -169,7 +185,7 @@ void MixingView::draw()
 
         // colored context menu
         ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
 
         // special action of Mixing view: link or unlink
         SourceList selected = Mixer::selection().getCopy();
@@ -305,7 +321,8 @@ void MixingView::resize ( int scale )
     scene.root()->scale_.y = z;
 
     // Clamp translation to acceptable area
-    glm::vec2 res = resolution();
+    const ImGuiIO& io = ImGui::GetIO();
+    glm::vec2 res = glm::vec2(io.DisplaySize.x, io.DisplaySize.y);
     glm::vec3 border(2.3f * res.x/res.y, 2.3f, 0.f);
     scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, border);
 }
@@ -379,7 +396,8 @@ void MixingView::update(float dt)
         mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
 
         // update the selection overlay
-        updateSelectionOverlay();
+        ImVec4 c = ImGuiToolkit::HighlightColor();
+        updateSelectionOverlay(glm::vec4(c.x, c.y, c.z, c.w));
     }
 
 }
@@ -498,6 +516,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
 
             // cursor feedback
             slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );
+            slider_arrows_->visible_ = true;
             std::ostringstream info;
             info << ICON_FA_ADJUST << " Output fading " << 100 - int(f * 100.0) << " %";
             return Cursor(Cursor_Hand, info.str() );
@@ -511,8 +530,8 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
             Mixer::manager().session()->setActivationThreshold(p);
 
             // color change of arrow indicators
-            limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, p < MIXING_MAX_THRESHOLD ? 0.15f : 0.01f );
-            limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, p > MIXING_MIN_THRESHOLD ? 0.15f : 0.01f );
+            limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, p < MIXING_MAX_THRESHOLD ? 0.15f : 0.01f );
+            limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, p > MIXING_MIN_THRESHOLD ? 0.15f : 0.01f );
 
             std::ostringstream info;
             info << ICON_FA_SNOWFLAKE " Deactivation limit";
@@ -564,7 +583,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     std::ostringstream info;
     if (s->active()) {
         info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a << "  ";
-        info << ( (s->blendingShader()->color.a > 0.f) ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
+        info << ( (s->blendingShader()->color.a > 0.f) ? ICON_FA_SUN : ICON_FA_CLOUD_SUN);
     }
     else
         info << "Inactive  " << ICON_FA_SNOWFLAKE;
@@ -595,22 +614,34 @@ View::Cursor MixingView::over (glm::vec2 pos)
 
     // deal with internal interactive objects
     if ( pick.first == slider_ ) {
-        slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );
-        ret.type = Cursor_Hand;
-    }
-    else
-        slider_->color = glm::vec4( COLOR_CIRCLE, 0.9f );
-
-    if ( pick.first == limbo_slider_ ) {
-        limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, limbo_slider_root_->translation_.y < MIXING_MAX_THRESHOLD ? 0.1f : 0.01f );
-        limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, limbo_slider_root_->translation_.y > MIXING_MIN_THRESHOLD ? 0.1f : 0.01f );
+        slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );        
+        slider_arrows_->visible_ = true;
         ret.type = Cursor_Hand;
     }
     else {
-        limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
-        limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_OVER, 0.01f );
+        slider_arrows_->visible_ = false;
+        slider_->color = glm::vec4( COLOR_CIRCLE, 0.9f );
     }
 
+    if ( pick.first == limbo_slider_ ) {
+        limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, limbo_slider_root_->translation_.y < MIXING_MAX_THRESHOLD ? 0.1f : 0.01f );
+        limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, limbo_slider_root_->translation_.y > MIXING_MIN_THRESHOLD ? 0.1f : 0.01f );
+        ret.type = Cursor_Hand;
+    }
+    else {
+        limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.01f );
+        limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.01f );
+    }
+
+    if ( pick.first == button_white_ )
+        button_white_->color = glm::vec4( COLOR_CIRCLE_OVER, 1.f );
+    else
+        button_white_->color = glm::vec4( COLOR_CIRCLE, 1.f );
+
+    if ( pick.first == button_black_ )
+        button_black_->color = glm::vec4( COLOR_CIRCLE_OVER, 1.f );
+    else
+        button_black_->color = glm::vec4( COLOR_CIRCLE, 1.f );
 
     return ret;
 }
@@ -707,9 +738,9 @@ void MixingView::setAlpha(Source *s)
 }
 
 
-void MixingView::updateSelectionOverlay()
+void MixingView::updateSelectionOverlay(glm::vec4 color)
 {
-    View::updateSelectionOverlay();
+    View::updateSelectionOverlay(color);
 
     if (overlay_selection_->visible_) {
         // calculate bbox on selection

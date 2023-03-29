@@ -77,6 +77,27 @@ public:
     inline std::list<std::string> images() const { return pathlist_; }
 };
 
+
+class ColorPickerDialog
+{
+protected:
+    std::tuple<float, float, float> rgb_;
+    std::vector< std::future< std::tuple<float, float, float> > > promises_;
+    static bool busy_;
+
+public:
+    ColorPickerDialog();
+
+    void open();
+    bool closed();
+
+    inline void setRGB(std::tuple<float, float, float> rgb) { rgb_ = rgb; }
+    inline std::tuple<float, float, float> RGB() const { return rgb_; }
+
+    static bool busy() { return busy_; }
+};
+
+
 }
 
 

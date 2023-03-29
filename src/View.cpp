@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,18 +26,14 @@
 #include <sstream>
 #include <regex>
 
-#include "ImGuiToolkit.h"
-
 #include "defines.h"
 #include "Settings.h"
 #include "Source.h"
 #include "PickingVisitor.h"
 #include "Decorations.h"
 #include "Mixer.h"
-#include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
-#include "Log.h"
 
 #include "View.h"
 
@@ -201,14 +197,14 @@ void View::recenter()
 
         // if the updated (translated) view does not contains the entire scene
         // we shall scale the view to fit the scene
-        if ( !updated_view_box.contains(scene_box)) {
+        if (!updated_view_box.contains(scene_box)) {
 
             glm::vec3 view_extend = updated_view_box.max() - updated_view_box.min();
             updated_view_box.extend(scene_box);
             glm::vec3 scene_extend = scene_box.max() - scene_box.min();
             glm::vec3 scale = view_extend  / scene_extend  ;
             float z = scene.root()->scale_.x;
-            z = CLAMP( z * MIN(scale.x, scale.y), MIXING_MIN_SCALE, MIXING_MAX_SCALE);
+            z = CLAMP( z * MIN(scale.x, scale.y), MIN_SCALE, MAX_SCALE);
             scene.root()->scale_.x = z;
             scene.root()->scale_.y = z;
 
@@ -263,7 +259,7 @@ bool View::canSelect(Source *s) {
     return ( s!=nullptr && !s->locked() );
 }
 
-void View::updateSelectionOverlay()
+void View::updateSelectionOverlay(glm::vec4 color)
 {
     // create first
     if (overlay_selection_ == nullptr) {
@@ -282,9 +278,9 @@ void View::updateSelectionOverlay()
     if (Mixer::selection().size() > 1) {
         // show group overlay
         overlay_selection_->visible_ = true;
-        ImVec4 c = ImGuiToolkit::HighlightColor();
-        overlay_selection_frame_->color = glm::vec4(c.x, c.y, c.z, c.w * 0.8f);
-        overlay_selection_icon_->color = glm::vec4(c.x, c.y, c.z, c.w);
+        overlay_selection_frame_->color = color;
+        overlay_selection_frame_->color.a *= 0.8;
+        overlay_selection_icon_->color = color;
     }
     // no selection: reset drawing selection overlay
     else
@@ -301,9 +297,3 @@ void View::lock(Source *s, bool on)
         Action::manager().store(s->name() + std::string(": unlock."));
 }
 
-
-glm::vec2 View::resolution() const
-{
-    const ImGuiIO& io = ImGui::GetIO();
-    return glm::vec2(io.DisplaySize.x, io.DisplaySize.y);
-}

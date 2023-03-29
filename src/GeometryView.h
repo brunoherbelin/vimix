@@ -36,7 +36,7 @@ private:
     Node *overlay_scaling_grid_;
     Node *overlay_crop_;
 
-    void updateSelectionOverlay() override;
+    void updateSelectionOverlay(glm::vec4 color) override;
     bool overlay_selection_active_;
     Group *overlay_selection_stored_status_;
     Handles *overlay_selection_scale_;

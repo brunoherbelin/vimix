@@ -27,6 +27,9 @@ Download and install a released [flatpak package](https://flathub.org/apps/detai
 
     ~$ flatpak install --user vimix
     
+NB: Building your flatpak package is an option for testing the latest beta version from git ; instructions are [here](https://github.com/brunoherbelin/vimix/tree/master/flatpak).
+    
+
 Download and install a released [snap package](https://snapcraft.io/vimix)  (slower release frequency)
 
     ~$ snap install vimix
@@ -107,10 +110,7 @@ Follow the instructions to [install Shmdata](https://gitlab.com/sat-mtl/tools/sh
 
     ~$ brew install cmake libpng glfw gstreamer gst-libav gst-plugins-bad gst-plugins-base gst-plugins-good gst-plugins-ugly icu4c
 
-### Generate flatpak
-    
-Building a flatpak package is a good option for having the latest version from git while avoiding to install all dependencies in your machine. Instructions are found [here](https://github.com/brunoherbelin/vimix/tree/master/flatpak).
-    
+
 ### Memcheck
 
 To generate memory usage plots in [massif format](https://valgrind.org/docs/manual/ms-manual.html):

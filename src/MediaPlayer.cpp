@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 #include "SystemToolkit.h"
 #include "BaseToolkit.h"
 #include "GstToolkit.h"
-#include "RenderingManager.h"
 #include "Metronome.h"
 
 #include "MediaPlayer.h"
@@ -137,92 +136,94 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
         GstDiscovererResult result = gst_discoverer_info_get_result (info);
         switch (result) {
         case GST_DISCOVERER_URI_INVALID:
-            Log::Warning("'%s': Invalid URI", uri.c_str());
+            video_stream_info.log = "Invalid URI";
             break;
         case GST_DISCOVERER_ERROR:
-            Log::Warning("'%s': %s", uri.c_str(), err->message);
+            video_stream_info.log = std::string( "Error; " ) + err->message;
             break;
         case GST_DISCOVERER_TIMEOUT:
-            Log::Warning("'%s': Timeout loading", uri.c_str());
+            video_stream_info.log = "Timeout loading";
             break;
         case GST_DISCOVERER_BUSY:
-            Log::Warning("'%s': Busy", uri.c_str());
+            video_stream_info.log = "Busy";
             break;
         case GST_DISCOVERER_MISSING_PLUGINS:
         {
             const GstStructure *s = gst_discoverer_info_get_misc (info);
             gchar *str = gst_structure_to_string (s);
-            Log::Info("'%s': Unknown file format (%s)", uri.c_str(), str);
+            video_stream_info.log = std::string( "Unknown format; " ) + std::string(str);
             g_free (str);
         }
             break;
         default:
-        case GST_DISCOVERER_OK:
             break;
         }
-        // get videos in information found
-        GList *streams = gst_discoverer_info_get_video_streams(info);
-        if ( g_list_length(streams) > 0) {
-            GList *tmp;
-            for (tmp = streams; tmp && !video_stream_info.valid; tmp = tmp->next ) {
-                GstDiscovererStreamInfo *tmpinf = (GstDiscovererStreamInfo *) tmp->data;
-                if ( GST_IS_DISCOVERER_VIDEO_INFO(tmpinf) )
-                {
-                    // found a video / image stream : fill-in information
-                    GstDiscovererVideoInfo* vinfo = GST_DISCOVERER_VIDEO_INFO(tmpinf);
-                    video_stream_info.width = gst_discoverer_video_info_get_width(vinfo);
-                    video_stream_info.height = gst_discoverer_video_info_get_height(vinfo);
-                    guint parn = gst_discoverer_video_info_get_par_num(vinfo);
-                    guint pard = gst_discoverer_video_info_get_par_denom(vinfo);
-                    video_stream_info.par_width = (video_stream_info.width * parn) / pard;
-                    video_stream_info.interlaced = gst_discoverer_video_info_is_interlaced(vinfo);
-                    video_stream_info.bitrate = gst_discoverer_video_info_get_bitrate(vinfo);
-                    video_stream_info.isimage = gst_discoverer_video_info_is_image(vinfo);
-                    // if its a video, set duration, framerate, etc.
-                    if ( !video_stream_info.isimage ) {
-                        video_stream_info.end = gst_discoverer_info_get_duration (info) ;
-                        video_stream_info.seekable = gst_discoverer_info_get_seekable (info);
-                        video_stream_info.framerate_n = gst_discoverer_video_info_get_framerate_num(vinfo);
-                        video_stream_info.framerate_d = gst_discoverer_video_info_get_framerate_denom(vinfo);
-                        if (video_stream_info.framerate_n == 0 || video_stream_info.framerate_d == 0) {
-                            Log::Info("'%s': No framerate indicated in the file; using default 30fps", uri.c_str());
-                            video_stream_info.framerate_n = 30;
-                            video_stream_info.framerate_d = 1;
+
+        if ( result == GST_DISCOVERER_OK ) {
+            // get videos in information found
+            GList *streams = gst_discoverer_info_get_video_streams(info);
+            if ( g_list_length(streams) > 0) {
+                GList *tmp;
+                for (tmp = streams; tmp && !video_stream_info.valid; tmp = tmp->next ) {
+                    GstDiscovererStreamInfo *tmpinf = (GstDiscovererStreamInfo *) tmp->data;
+                    if ( GST_IS_DISCOVERER_VIDEO_INFO(tmpinf) )
+                    {
+                        // found a video / image stream : fill-in information
+                        GstDiscovererVideoInfo* vinfo = GST_DISCOVERER_VIDEO_INFO(tmpinf);
+                        video_stream_info.width = gst_discoverer_video_info_get_width(vinfo);
+                        video_stream_info.height = gst_discoverer_video_info_get_height(vinfo);
+                        guint parn = gst_discoverer_video_info_get_par_num(vinfo);
+                        guint pard = gst_discoverer_video_info_get_par_denom(vinfo);
+                        video_stream_info.par_width = (video_stream_info.width * parn) / pard;
+                        video_stream_info.interlaced = gst_discoverer_video_info_is_interlaced(vinfo);
+                        video_stream_info.bitrate = gst_discoverer_video_info_get_bitrate(vinfo);
+                        video_stream_info.isimage = gst_discoverer_video_info_is_image(vinfo);
+                        // if its a video, set duration, framerate, etc.
+                        if ( !video_stream_info.isimage ) {
+                            video_stream_info.end = gst_discoverer_info_get_duration (info) ;
+                            video_stream_info.seekable = gst_discoverer_info_get_seekable (info);
+                            video_stream_info.framerate_n = gst_discoverer_video_info_get_framerate_num(vinfo);
+                            video_stream_info.framerate_d = gst_discoverer_video_info_get_framerate_denom(vinfo);
+                            if (video_stream_info.framerate_n == 0 || video_stream_info.framerate_d == 0) {
+                                Log::Info("'%s': No framerate indicated in the file; using default 30fps", uri.c_str());
+                                video_stream_info.framerate_n = 30;
+                                video_stream_info.framerate_d = 1;
+                            }
+                            video_stream_info.dt = ( (GST_SECOND * static_cast<guint64>(video_stream_info.framerate_d)) / (static_cast<guint64>(video_stream_info.framerate_n)) );
+                            // confirm (or infirm) that its not a single frame
+                            if ( video_stream_info.end < video_stream_info.dt * 2)
+                                video_stream_info.isimage = true;
                         }
-                        video_stream_info.dt = ( (GST_SECOND * static_cast<guint64>(video_stream_info.framerate_d)) / (static_cast<guint64>(video_stream_info.framerate_n)) );
-                        // confirm (or infirm) that its not a single frame
-                        if ( video_stream_info.end < video_stream_info.dt * 2)
-                            video_stream_info.isimage = true;
+                        // try to fill-in the codec information
+                        GstCaps *caps = gst_discoverer_stream_info_get_caps (tmpinf);
+                        if (caps) {
+                            gchar *codecstring = gst_pb_utils_get_codec_description(caps);
+                            video_stream_info.codec_name = std::string( codecstring );
+                            g_free(codecstring);
+                            gst_caps_unref (caps);
+                        }
+                        const GstTagList *tags = gst_discoverer_stream_info_get_tags(tmpinf);
+                        if ( tags ) {
+                            gchar *container = NULL;
+                            if ( gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container) )
+                                video_stream_info.codec_name += ", " + std::string(container);
+                            if (container)
+                                g_free(container);
+                        }
+                        // exit loop
+                        // inform that it succeeded
+                        video_stream_info.valid = true;
                     }
-                    // try to fill-in the codec information
-                    GstCaps *caps = gst_discoverer_stream_info_get_caps (tmpinf);
-                    if (caps) {
-                        gchar *codecstring = gst_pb_utils_get_codec_description(caps);
-                        video_stream_info.codec_name = std::string( codecstring );
-                        g_free(codecstring);
-                        gst_caps_unref (caps);
-                    }
-                    const GstTagList *tags = gst_discoverer_stream_info_get_tags(tmpinf);
-                    if ( tags ) {
-                        gchar *container = NULL;
-                        if ( gst_tag_list_get_string (tags, GST_TAG_CONTAINER_FORMAT, &container) )
-                             video_stream_info.codec_name += ", " + std::string(container);
-                        if (container)
-                            g_free(container);
-                    }
-                    // exit loop
-                    // inform that it succeeded
-                    video_stream_info.valid = true;
                 }
+
+                if (!video_stream_info.valid)
+                    video_stream_info.log = "Invalid video stream";
             }
+            else
+                video_stream_info.log = "No video stream";
 
-            if (!video_stream_info.valid)
-                Log::Warning("'%s': Invalid video stream", uri.c_str());
+            gst_discoverer_stream_info_list_free(streams);
         }
-        else
-            Log::Warning("'%s': No supported video stream", uri.c_str());
-
-        gst_discoverer_stream_info_list_free(streams);
 
         if (info)
             gst_discoverer_info_unref (info);
@@ -329,7 +330,7 @@ void MediaPlayer::execute_open()
     }
 
     // set app sink
-    description += "appsink name=sink";
+    description += "queue ! appsink name=sink";
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -422,8 +423,9 @@ void MediaPlayer::execute_open()
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
               SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(), media_.width, media_.height);
 
-    Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
-              timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
+    if (!isImage())
+        Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
+                  timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
 
     opened_ = true;
 
@@ -448,6 +450,19 @@ void MediaPlayer::Frame::unmap()
     full = false;
 }
 
+
+void delayed_terminate( GstElement *p )
+{
+    GstElement *__pipeline = p;
+
+    // end pipeline
+    gst_element_set_state (__pipeline, GST_STATE_NULL);
+
+    // unref to free pipeline
+    gst_object_unref ( GST_OBJECT (__pipeline) );
+}
+
+
 void MediaPlayer::close()
 {
     // not opened?
@@ -466,16 +481,17 @@ void MediaPlayer::close()
     // clean up GST
     if (pipeline_ != nullptr) {
 
-        // force flush
-        gst_element_send_event(pipeline_, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
-                    GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0) );
-        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
+        //        // force flush
+        //        gst_element_send_event(pipeline_, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
+        //                    GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0) );
+        //        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
+        //        // end pipeline
+        //        gst_element_set_state (pipeline_, GST_STATE_NULL);
+        //        gst_object_unref ( GST_OBJECT (pipeline_) );
 
-        // end pipeline
-        gst_element_set_state (pipeline_, GST_STATE_NULL);
-        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
+        // end pipeline asynchronously // TODO more stress test?
+        std::thread(delayed_terminate, pipeline_).detach();
 
-        gst_object_unref (pipeline_);
         pipeline_ = nullptr;
     }
 
@@ -722,7 +738,7 @@ void MediaPlayer::rewind(bool force)
 }
 
 
-void MediaPlayer::step()
+void MediaPlayer::step(uint milisecond)
 {
     // useful only when Paused
     if (!enabled_ || isPlaying() || pending_)
@@ -733,7 +749,9 @@ void MediaPlayer::step()
         rewind();
     else {
         // step event
-        GstEvent *stepevent = gst_event_new_step (GST_FORMAT_BUFFERS, 1, ABS(rate_), TRUE,  FALSE);
+        if (milisecond < media_.dt)
+            milisecond = media_.dt;
+        GstEvent *stepevent = gst_event_new_step (GST_FORMAT_TIME, milisecond, ABS(rate_), TRUE,  FALSE);
 
         // Metronome
         if (metro_sync_) {
@@ -747,11 +765,11 @@ void MediaPlayer::step()
                 Metronome::manager().executeAtPhase( steplater );
             else
                 Metronome::manager().executeAtBeat( steplater );
-
         }
         else
             // execute immediately
             gst_element_send_event (pipeline_, stepevent);
+
     }
 }
 
@@ -790,12 +808,16 @@ void MediaPlayer::seek(GstClockTime pos)
 
 }
 
-void MediaPlayer::jump()
+void MediaPlayer::jump(uint milisecond)
 {
     if (!enabled_ || !isPlaying())
         return;
 
-    gst_element_send_event (pipeline_, gst_event_new_step (GST_FORMAT_BUFFERS, 1, 30.f * ABS(rate_), TRUE,  FALSE));
+    gst_element_send_event (pipeline_, gst_event_new_step (GST_FORMAT_TIME,
+                                                           CLAMP(milisecond, 1, 1000) * GST_MSECOND,
+                                                           ABS(rate_),
+                                                           TRUE,  FALSE));
+
 }
 
 void MediaPlayer::init_texture(guint index)
@@ -927,7 +949,8 @@ void MediaPlayer::update()
                     execute_open();
                 }
                 else {
-                    Log::Warning("MediaPlayer %s Loading cancelled", std::to_string(id_).c_str());
+                    Log::Warning("'%s' : %s", uri().c_str(), media_.log.c_str());
+                    Log::Warning("MediaPlayer %s Loading failed.", std::to_string(id_).c_str());
                     failed_ = true;
                 }
             }

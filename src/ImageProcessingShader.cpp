@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,10 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include "defines.h"
 #include "Visitor.h"
-#include "Log.h"
-
 #include "ImageProcessingShader.h"
 
 ShadingProgram imageProcessingShadingProgram("shaders/image.vs", "shaders/imageprocessing.fs");

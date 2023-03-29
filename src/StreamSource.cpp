@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@
 #include <sstream>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "defines.h"
-#include "ImageShader.h"
 #include "Resource.h"
 #include "Decorations.h"
 #include "Stream.h"
@@ -71,8 +69,7 @@ std::list<std::string> GenericStreamSource::gstElements() const
 void GenericStreamSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 glm::ivec2 GenericStreamSource::icon() const
@@ -96,9 +93,9 @@ StreamSource::~StreamSource()
         delete stream_;
 }
 
-bool StreamSource::failed() const
+Source::Failure StreamSource::failed() const
 {
-    return (stream_ != nullptr &&  stream_->failed() );
+    return (stream_ != nullptr &&  stream_->failed()) ? FAIL_CRITICAL : FAIL_NONE;
 }
 
 uint StreamSource::texture() const

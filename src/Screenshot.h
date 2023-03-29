@@ -6,6 +6,7 @@
 class Screenshot
 {
     int             Width, Height, bpp;
+    bool            VFlip;
     unsigned char * Data;
     unsigned int    Pbo;
     unsigned int    Pbo_size;

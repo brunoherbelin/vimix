@@ -1,11 +1,11 @@
 #ifndef VIEW_H
 #define VIEW_H
 
+#include <string>
+
 #include <glm/glm.hpp>
 
 #include "Scene.h"
-#include "FrameBuffer.h"
-#include "SourceList.h"
 
 class Session;
 class SessionFileSource;
@@ -29,7 +29,8 @@ public:
         LAYER     = 3,
         TEXTURE   = 4,
         TRANSITION = 5,
-        INVALID   = 6
+        DISPLAYS  = 6,
+        INVALID   = 7
     } Mode;
 
     inline Mode mode () const { return mode_; }
@@ -66,8 +67,10 @@ public:
     virtual std::pair<Node *, glm::vec2> pick(glm::vec2);
 
     // select sources provided a start and end selection points in screen coordinates
-    virtual void select (glm::vec2, glm::vec2);
+    virtual void select(glm::vec2, glm::vec2);
+    // select all sources that can be selected in the view
     virtual void selectAll ();
+    // indicates if a source can be selected in the view
     virtual bool canSelect (Source *);
 
     // drag the view provided a start and an end point in screen coordinates
@@ -85,11 +88,13 @@ public:
         return Cursor ();
     }
 
+    // trigger double clic event on view, returns false if event not used
+    virtual bool doubleclic (glm::vec2) {
+        return false;
+    }
+
     // left-right [-1 1] and up-down [1 -1] action from arrow keys
     virtual void arrow (glm::vec2) {}
-
-    // resolution on screen
-    glm::vec2 resolution() const;
 
     // accessible scene
     Scene scene;
@@ -114,7 +119,7 @@ protected:
     Group *overlay_selection_;
     Frame *overlay_selection_frame_;
     Handles *overlay_selection_icon_;
-    virtual void updateSelectionOverlay ();
+    virtual void updateSelectionOverlay (glm::vec4 color);
 
     // contex menu
     typedef enum {

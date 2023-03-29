@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,6 @@
 #include "DrawVisitor.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
-#include "Log.h"
 
 #include "TransitionView.h"
 
@@ -115,56 +114,59 @@ void TransitionView::update(float dt)
     // Update transition source
     if ( transition_source_ != nullptr) {
 
-        float d = transition_source_->group(View::TRANSITION)->translation_.x;
+        // cancel if transition source failed
+        if (transition_source_->failed())
+            cancel();
+        else {
+            // apply transition
+            float d = transition_source_->group(View::TRANSITION)->translation_.x;
 
-        // Transfer this movement to changes in mixing
-        // cross fading
-        if ( Settings::application.transition.cross_fade )
-        {
-            float f = 0.f;
-            // change alpha of session:
-            if (Settings::application.transition.profile == 0)
-                // linear => identical coordinates in Mixing View
-                f = d;
-            else {
-                // quadratic => square coordinates in Mixing View
-                f = (d+1.f)*(d+1.f) -1.f;
+            // Transfer this movement to changes in mixing
+            // cross fading
+            if ( Settings::application.transition.cross_fade )
+            {
+                float f = 0.f;
+                // change alpha of session:
+                if (Settings::application.transition.profile == 0)
+                    // linear => identical coordinates in Mixing View
+                    f = d;
+                else {
+                    // quadratic => square coordinates in Mixing View
+                    f = (d+1.f)*(d+1.f) -1.f;
+                }
+                transition_source_->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
+                transition_source_->group(View::MIXING)->translation_.y = 0.f;
+
+                // no fading when cross fading
+                Mixer::manager().session()->setFadingTarget( 0.f );
             }
-            transition_source_->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
-            transition_source_->group(View::MIXING)->translation_.y = 0.f;
+            // fade to black
+            else
+            {
+                // change alpha of session ; hidden before -0.5, visible after
+                transition_source_->group(View::MIXING)->translation_.x = d < -0.5f ? -1.f : 0.f;
+                transition_source_->group(View::MIXING)->translation_.y = 0.f;
 
-            // no fading when cross fading
-            Mixer::manager().session()->setFadingTarget( 0.f );
-        }
-        // fade to black
-        else
-        {
-            // change alpha of session ; hidden before -0.5, visible after
-            transition_source_->group(View::MIXING)->translation_.x = d < -0.5f ? -1.f : 0.f;
-            transition_source_->group(View::MIXING)->translation_.y = 0.f;
-
-            // fade to black at 50% : fade-out [-1.0 -0.5], fade-in [-0.5 0.0]
-            float f = 0.f;
-            if (Settings::application.transition.profile == 0)
-                f = ABS(2.f * d + 1.f);  // linear
-            else {
-                f = ( 2.f * d + 1.f);  // quadratic
-                f *= f;
+                // fade to black at 50% : fade-out [-1.0 -0.5], fade-in [-0.5 0.0]
+                float f = 0.f;
+                if (Settings::application.transition.profile == 0)
+                    f = ABS(2.f * d + 1.f);  // linear
+                else {
+                    f = ( 2.f * d + 1.f);  // quadratic
+                    f *= f;
+                }
+                Mixer::manager().session()->setFadingTarget( 1.f - f );
             }
-            Mixer::manager().session()->setFadingTarget( 1.f - f );
+
+            // request update
+            transition_source_->touch();
+
+            if (d > 0.2f) {
+                Mixer::manager().setView(View::MIXING);
+                WorkspaceWindow::restoreWorkspace();
+            }
         }
-
-        // request update
-        transition_source_->touch();
-
-        if (d > 0.2f) {
-            Mixer::manager().setView(View::MIXING);
-            WorkspaceWindow::restoreWorkspace();
-        }
-
     }
-
-
 }
 
 
@@ -375,6 +377,7 @@ void TransitionView::cancel()
         transition_source_ = nullptr;
         // quit view
         Mixer::manager().setView(View::MIXING);
+        WorkspaceWindow::restoreWorkspace();
     }
 }
 
@@ -435,6 +438,13 @@ View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     }
 
     return Cursor(Cursor_ResizeEW, info.str() );
+}
+
+bool TransitionView::doubleclic (glm::vec2 )
+{
+    Mixer::manager().setView(View::MIXING);
+    WorkspaceWindow::restoreWorkspace();
+    return true;
 }
 
 void TransitionView::arrow (glm::vec2 movement)

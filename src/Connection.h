@@ -2,10 +2,12 @@
 #define CONNECTION_H
 
 #include <string>
+#include <atomic>
 #include <vector>
 #include <condition_variable>
 
-#include "NetworkToolkit.h"
+#include <osc/OscPacketListener.h>
+#include <ip/UdpSocket.h>
 
 #define MAX_HANDSHAKE 20
 #define HANDSHAKE_PORT 71310

@@ -18,6 +18,7 @@ public:
     int  size () override;
     bool canSelect(Source *) override;
     void select(glm::vec2 A, glm::vec2 B) override;
+    void recenter () override;
 
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;

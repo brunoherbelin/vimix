@@ -5,11 +5,9 @@
 #include "Connection.h"
 #include "StreamSource.h"
 
-
 class NetworkStream : public Stream
 {
 public:
-
     NetworkStream();
 
     void connect(const std::string &nameconnection);

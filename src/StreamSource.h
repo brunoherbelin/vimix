@@ -35,7 +35,7 @@ public:
     bool playable () const  override;
     void replay () override;
     guint64 playtime () const override;
-    bool failed() const override;
+    Failure failed() const override;
     uint texture() const override;
 
     // pure virtual interface

@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,14 +24,11 @@
 #include "defines.h"
 #include "Log.h"
 #include "FrameBuffer.h"
-#include "ImageShader.h"
-#include "ImageProcessingShader.h"
 #include "Resource.h"
 #include "Decorations.h"
-#include "SearchVisitor.h"
+#include "Visitor.h"
 #include "Session.h"
 #include "SessionCreator.h"
-#include "Mixer.h"
 
 #include "SessionSource.h"
 
@@ -117,9 +114,9 @@ Session *SessionSource::detach()
     return giveaway;
 }
 
-bool SessionSource::failed() const
+Source::Failure SessionSource::failed() const
 {
-    return failed_;
+    return failed_ ? FAIL_CRITICAL : FAIL_NONE;
 }
 
 uint SessionSource::texture() const
@@ -153,12 +150,51 @@ void SessionSource::update(float dt)
         timer_ += guint64(dt * 1000.f) * GST_USECOND;
     }
 
-    // delete a source which failed
-    if (session_->failedSource() != nullptr) {
-        session_->deleteSource(session_->failedSource());
-        // fail session if all sources failed
-        if ( session_->size() < 1)
+    // manage sources which failed
+    if ( !session_->failedSources().empty() ) {
+
+        SourceListUnique _failedsources = session_->failedSources();
+        for(auto it = _failedsources.begin(); it != _failedsources.end(); ++it)  {
+
+            // only deal with sources that are still attached
+            if ( session_->attached( *it ) ) {
+
+                // intervention depends on the severity of the failure
+                Source::Failure fail = (*it)->failed();
+
+                // Attempt to repair RETRY failed sources
+                // (can be automatically repaired without user intervention)
+                if (fail == Source::FAIL_RETRY) {
+                    // generated replacement source
+                    SessionLoader loader( session_ );
+                    Source *replacement = loader.recreateSource( *it );
+                    // delete failed source
+                    session_->deleteSource( *it );
+                    // add replacement source, if successfully created
+                    if (replacement)
+                        session_->addSource(replacement);
+                    else
+                        Log::Warning("Source '%s' failed and could not be fixed.", (*it)->name().c_str());
+
+                }
+                // Detatch CRITICAL failed sources from the mixer
+                // (not deleted in the session; user can replace it)
+                else if (fail == Source::FAIL_CRITICAL) {
+                    session_->detachSource( *it );
+                }
+                // Delete FATAL failed sources
+                // (nothing can be done by the user)
+                else {
+                    Log::Warning("Source '%s' failed and was deleted.", (*it)->name().c_str());
+                    session_->deleteSource( *it );
+                }
+            }
+        }
+
+        // fail session if all its sources failed
+        if ( session_->size() < 1 )
             failed_ = true;
+
     }
 
 }
@@ -349,8 +385,7 @@ void SessionFileSource::render()
 void SessionFileSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 glm::ivec2 SessionFileSource::icon() const
@@ -360,7 +395,7 @@ glm::ivec2 SessionFileSource::icon() const
 
 std::string SessionFileSource::info() const
 {
-    return "Session File";
+    return "Child Session";
 }
 
 
@@ -376,7 +411,7 @@ void SessionGroupSource::init()
     if ( resolution_.x > 0.f && resolution_.y > 0.f ) {
 
         // valid resolution given to create render view
-        session_->setResolution( resolution_ );
+        session_->setResolution( resolution_, true );
 
         // deep update to make sure reordering of sources
         ++View::need_deep_update_;
@@ -388,7 +423,7 @@ void SessionGroupSource::init()
         texturesurface_->setTextureIndex( session_->frame()->texture() );
 
         // create Frame buffer matching size of session
-        FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution() );
+        FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution(), FrameBuffer::FrameBuffer_alpha );
 
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
@@ -401,8 +436,9 @@ void SessionGroupSource::init()
         // done init
         uint N = session_->size();
         std::string numsource = std::to_string(N) + " source" + (N>1 ? "s" : "");
-        Log::Info("Source '%s' groupped %s (%d x %d).", name().c_str(), numsource.c_str(),
+        Log::Info("Bundle Session %s reading %s (%d x %d).", std::to_string(session_->id()).c_str(), numsource.c_str(),
                   int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
+        Log::Info("Source '%s' linked to Bundle Session %s.", name().c_str(), std::to_string(session_->id()).c_str());
     }
 }
 
@@ -433,8 +469,7 @@ bool SessionGroupSource::import(Source *source)
 void SessionGroupSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 glm::ivec2 SessionGroupSource::icon() const
@@ -444,5 +479,5 @@ glm::ivec2 SessionGroupSource::icon() const
 
 std::string SessionGroupSource::info() const
 {
-    return "Session group";
+    return "Bundle Session";
 }

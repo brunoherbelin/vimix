@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
 #include "ImageProcessingShader.h"
 #include "MediaSource.h"
 #include "MediaPlayer.h"
-#include "UpdateCallback.h"
 #include "Visitor.h"
-#include "Log.h"
 
 #include "SourceCallback.h"
 
@@ -58,6 +56,15 @@ SourceCallback *SourceCallback::create(CallbackType type)
     case SourceCallback::CALLBACK_PLAY:
         loadedcallback = new Play;
         break;
+    case SourceCallback::CALLBACK_PLAYSPEED:
+        loadedcallback = new PlaySpeed;
+        break;
+    case SourceCallback::CALLBACK_PLAYFFWD:
+        loadedcallback = new PlayFastForward;
+        break;
+    case SourceCallback::CALLBACK_SEEK:
+        loadedcallback = new Seek;
+        break;
     case SourceCallback::CALLBACK_REPLAY:
         loadedcallback = new RePlay;
         break;
@@ -66,9 +73,6 @@ SourceCallback *SourceCallback::create(CallbackType type)
         break;
     case SourceCallback::CALLBACK_LOCK:
         loadedcallback = new Lock;
-        break;
-    case SourceCallback::CALLBACK_SEEK:
-        loadedcallback = new Seek;
         break;
     case SourceCallback::CALLBACK_BRIGHTNESS:
         loadedcallback = new SetBrightness;
@@ -99,48 +103,6 @@ SourceCallback *SourceCallback::create(CallbackType type)
     }
 
     return loadedcallback;
-}
-
-
-bool SourceCallback::overlap( SourceCallback *a,  SourceCallback *b)
-{
-    bool ret = false;
-
-    if (a->type() == b->type()) {
-
-        // same type means overlap
-        ret = true;
-
-        // but there are some exceptions..
-        switch (a->type()) {
-        case SourceCallback::CALLBACK_GRAB:
-        {
-            const Grab *_a = static_cast<Grab*>(a);
-            const Grab *_b = static_cast<Grab*>(b);
-            // there is no overlap if the X or Y of a vector is zero
-            if ( ABS(_a->value().x) < EPSILON || ABS(_b->value().x) < EPSILON )
-                ret = false;
-            else if ( ABS(_a->value().y) < EPSILON || ABS(_b->value().y) < EPSILON )
-                ret = false;
-        }
-            break;
-        case SourceCallback::CALLBACK_RESIZE:
-        {
-            const Resize *_a = static_cast<Resize*>(a);
-            const Resize *_b = static_cast<Resize*>(b);
-            if ( ABS(_a->value().x) < EPSILON || ABS(_b->value().x) < EPSILON )
-                ret = false;
-            else if ( ABS(_a->value().y) < EPSILON || ABS(_b->value().y) < EPSILON )
-                ret = false;
-        }
-            break;
-        default:
-            break;
-        }
-
-    }
-
-    return ret;
 }
 
 SourceCallback::SourceCallback(): status_(PENDING), delay_(0.f), elapsed_(0.f)
@@ -271,7 +233,7 @@ SourceCallback *ResetGeometry::clone() const
 SetAlpha::SetAlpha(float alpha, float ms, bool revert) : SourceCallback(),
     duration_(ms), alpha_(alpha), bidirectional_(revert)
 {
-    alpha_ = glm::clamp(alpha_, 0.f, 1.f);
+    alpha_ = glm::clamp(alpha_, -1.f, 1.f);
     start_  = glm::vec2();
     target_ = glm::vec2();
 }
@@ -296,8 +258,13 @@ void SetAlpha::update(Source *s, float dt)
         //
         // target mixing view position
         //
+        // special case Alpha < 0 : negative means inactive
+        if (alpha_ < -DELTA_ALPHA) {
+            // linear interpolation between 1 and the value given (max 2.f)
+            target_ = step * ( ABS(alpha_) + 1.f);
+        }
         // special case Alpha = 0
-        if (alpha_ < DELTA_ALPHA) {
+        else if (alpha_ < DELTA_ALPHA) {
             target_ = step;
         }
         // special case Alpha = 1
@@ -349,7 +316,13 @@ SourceCallback *SetAlpha::clone() const
 
 SourceCallback *SetAlpha::reverse(Source *s) const
 {
-    return bidirectional_ ? new SetAlpha(s->alpha(), duration_) : nullptr;
+    float _a = glm::length( glm::vec2(s->group(View::MIXING)->translation_) );
+    if (_a > 1.f)
+        _a *= -1.f;
+    else
+        _a = s->alpha();
+
+    return bidirectional_ ? new SetAlpha(_a, duration_) : nullptr;
 }
 
 void SetAlpha::accept(Visitor& v)
@@ -379,7 +352,6 @@ SourceCallback *Lock::clone() const
 Loom::Loom(float speed, float ms) : SourceCallback(),
     speed_(speed), duration_(ms)
 {
-    pos_  = glm::vec2();
     step_ = glm::normalize(glm::vec2(1.f, 1.f));   // step in diagonal by default
 }
 
@@ -390,13 +362,14 @@ void Loom::update(Source *s, float dt)
     if (s->locked())
         status_ = FINISHED;
 
+    // current position
+    glm::vec2 pos = glm::vec2(s->group(View::MIXING)->translation_);
+
     // set start on first time it is ready
     if ( status_ == READY ){
-        // initial position
-        pos_ = glm::vec2(s->group(View::MIXING)->translation_);
         // step in direction of source translation if possible
-        if ( glm::length(pos_) > DELTA_ALPHA)
-            step_ = glm::normalize(pos_);
+        if ( glm::length(pos) > DELTA_ALPHA)
+            step_ = glm::normalize(pos);
         status_ = ACTIVE;
     }
 
@@ -405,12 +378,12 @@ void Loom::update(Source *s, float dt)
         float progress = elapsed_ - delay_;
 
         // move target by speed vector (in the direction of step_, amplitude of speed * time (in second))
-        pos_ -= step_ * ( speed_ * dt * 0.001f );
+        pos -= step_ * ( speed_ * dt * 0.001f );
 
-        // apply alpha if pos in range [0 MIXING_MIN_THRESHOLD]
-        float l = glm::length( pos_ );
-        if ( (l > 0.01f && speed_ > 0.f ) || (l < MIXING_MIN_THRESHOLD && speed_ < 0.f ) )
-            s->group(View::MIXING)->translation_ = glm::vec3(pos_, s->group(View::MIXING)->translation_.z);
+        // apply alpha if pos in range [0 MIXING_MAX_THRESHOLD]
+        float l = glm::length( pos );
+        if ( (l > 0.01f && speed_ > 0.f ) || (l < MIXING_MAX_THRESHOLD && speed_ < 0.f ) )
+            s->group(View::MIXING)->translation_ = glm::vec3(pos, s->group(View::MIXING)->translation_.z);
         else
             status_ = FINISHED;
 
@@ -429,11 +402,6 @@ void Loom::multiply (float factor)
 SourceCallback *Loom::clone() const
 {
     return new Loom(speed_, duration_);
-}
-
-SourceCallback *Loom::reverse(Source *) const
-{
-    return new Loom(speed_, 0.f);
 }
 
 void Loom::accept(Visitor& v)
@@ -562,7 +530,93 @@ SourceCallback *RePlay::clone() const
     return new RePlay;
 }
 
-Seek::Seek(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
+
+PlaySpeed::PlaySpeed(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
+{
+}
+
+float PlaySpeed::readValue(Source *s) const
+{
+    double ret = 1.f;
+    // access media player if target source is a media source
+    MediaSource *ms = dynamic_cast<MediaSource *>(s);
+    if (ms != nullptr) {
+        ret = (float) ms->mediaplayer()->playSpeed();
+    }
+
+    return (float)ret;
+}
+
+void PlaySpeed::writeValue(Source *s, float val)
+{
+    // access media player if target source is a media source
+    MediaSource *ms = dynamic_cast<MediaSource *>(s);
+    if (ms != nullptr) {
+        ms->mediaplayer()->setPlaySpeed((double) val);
+    }
+}
+
+PlayFastForward::PlayFastForward(uint seekstep, float ms) : SourceCallback(), media_(nullptr),
+    step_(seekstep), duration_(ms), playspeed_(0.)
+{
+
+}
+
+void PlayFastForward::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+
+    // on first start, get the media player
+    if ( status_ == READY ){
+        // works for media source only
+        MediaSource *ms = dynamic_cast<MediaSource *>(s);
+        if (ms != nullptr) {
+            MediaPlayer *mp = ms->mediaplayer();
+            // works only if media player is enabled and valid
+            if (mp && mp->isEnabled() && !mp->isImage()) {
+                media_ = mp;
+                playspeed_ = media_->playSpeed();
+            }
+        }
+        status_ = media_ ? ACTIVE : FINISHED;
+    }
+
+    if ( status_ == ACTIVE ) {
+
+        //  perform fast forward
+        if (media_->isPlaying())
+            media_->jump(step_);
+        else
+            media_->step(step_);
+
+        // time-out
+        if ( elapsed_ - delay_ > duration_ )
+            // done
+            status_ = FINISHED;
+    }
+
+    if (media_ && status_ == FINISHED)
+        media_->setPlaySpeed( playspeed_ );
+
+}
+
+void PlayFastForward::multiply (float factor)
+{
+    step_ *= MAX( 1, (uint) ceil( ABS(factor) ) );
+}
+
+SourceCallback *PlayFastForward::clone() const
+{
+    return new PlayFastForward(step_, duration_);
+}
+
+void PlayFastForward::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
+
+Seek::Seek(float t, float ms, bool r) : ValueSourceCallback(t, ms, r)
 {
 }
 
@@ -572,16 +626,13 @@ float Seek::readValue(Source *s) const
     // access media player if target source is a media source
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
     if (ms != nullptr) {
-        GstClockTime media_duration = ms->mediaplayer()->timeline()->duration();
         GstClockTime media_position = ms->mediaplayer()->position();
-
-        if (GST_CLOCK_TIME_IS_VALID(media_duration) && media_duration > 0 &&
-                GST_CLOCK_TIME_IS_VALID(media_position) && media_position > 0){
-            ret = static_cast<double>(media_position) / static_cast<double>(media_duration);
+        if (GST_CLOCK_TIME_IS_VALID(media_position) && media_position > 0){
+            ret = GST_TIME_AS_SECONDS( static_cast<double>(media_position) );
         }
     }
 
-    return (float)ret;
+    return (float) ret;
 }
 
 void Seek::writeValue(Source *s, float val)
@@ -590,9 +641,11 @@ void Seek::writeValue(Source *s, float val)
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
     if (ms != nullptr) {
         GstClockTime media_duration = ms->mediaplayer()->timeline()->duration();
-        double media_position = glm::clamp( (double) val, 0.0, 1.0);
-        if (GST_CLOCK_TIME_IS_VALID(media_duration))
-            ms->mediaplayer()->seek( media_position * media_duration );
+        GstClockTime t = (double) GST_SECOND * (double) val;
+        if (GST_CLOCK_TIME_IS_VALID(t) &&
+                GST_CLOCK_TIME_IS_VALID(media_duration) &&
+                t < media_duration )
+            ms->mediaplayer()->seek( t );
     }
 }
 
@@ -691,15 +744,15 @@ void Grab::update(Source *s, float dt)
     // set start on first time it is ready
     if ( status_ == READY ) {
         // initial position
-        pos_ = glm::vec2(s->group(View::GEOMETRY)->translation_);
         status_ = ACTIVE;
     }
 
     if ( status_ == ACTIVE ) {
 
         // move target by speed vector * time (in second)
-        pos_ += speed_ * ( dt * 0.001f);
-        s->group(View::GEOMETRY)->translation_ = glm::vec3(pos_, s->group(View::GEOMETRY)->translation_.z);
+        glm::vec2 pos = glm::vec2(s->group(View::GEOMETRY)->translation_);
+        pos += speed_ * ( dt * 0.001f);
+        s->group(View::GEOMETRY)->translation_ = glm::vec3(pos, s->group(View::GEOMETRY)->translation_.z);
 
         // time-out
         if ( (elapsed_ - delay_) > duration_ )
@@ -716,11 +769,6 @@ void Grab::multiply (float factor)
 SourceCallback *Grab::clone() const
 {
     return new Grab(speed_.x, speed_.y, duration_);
-}
-
-SourceCallback *Grab::reverse(Source *) const
-{
-    return new Grab(speed_.x, speed_.y, 0.f);
 }
 
 void Grab::accept(Visitor& v)
@@ -765,11 +813,6 @@ SourceCallback *Resize::clone() const
     return new Resize(speed_.x, speed_.y, duration_);
 }
 
-SourceCallback *Resize::reverse(Source *) const
-{
-    return new Resize(speed_.x, speed_.y, 0.f);
-}
-
 void Resize::accept(Visitor& v)
 {
     SourceCallback::accept(v);
@@ -790,16 +833,17 @@ void Turn::update(Source *s, float dt)
 
     // set start on first time it is ready
     if ( status_ == READY ){
-        // initial position
-        angle_ = s->group(View::GEOMETRY)->rotation_.z;
         status_ = ACTIVE;
     }
 
     if ( status_ == ACTIVE ) {
 
+        // current position
+        float angle = s->group(View::GEOMETRY)->rotation_.z;
+
         // perform movement
-        angle_ -= speed_ * ( dt * 0.001f );
-        s->group(View::GEOMETRY)->rotation_.z = angle_;
+        angle -= speed_ * ( dt * 0.001f );
+        s->group(View::GEOMETRY)->rotation_.z = angle;
 
         // timeout
         if ( (elapsed_ - delay_) > duration_ )
@@ -816,11 +860,6 @@ void Turn::multiply (float factor)
 SourceCallback *Turn::clone() const
 {
     return new Turn(speed_, duration_);
-}
-
-SourceCallback *Turn::reverse(Source *) const
-{
-    return new Turn(speed_, 0.f);
 }
 
 void Turn::accept(Visitor& v)

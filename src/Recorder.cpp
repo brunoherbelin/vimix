@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,14 +29,13 @@
 #include <stb_image_write.h>
 
 // gstreamer
+#include <gst/gl/gl.h>
 #include <gst/gstformat.h>
 #include <gst/video/video.h>
 
 #include "Settings.h"
 #include "GstToolkit.h"
-#include "defines.h"
 #include "SystemToolkit.h"
-#include "FrameBuffer.h"
 #include "Log.h"
 
 #include "Recorder.h"

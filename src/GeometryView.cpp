@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,7 +39,6 @@
 #include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
-#include "Log.h"
 
 #include "GeometryView.h"
 
@@ -170,7 +169,8 @@ void GeometryView::update(float dt)
     // the current view is the geometry view
     if (Mixer::manager().view() == this )
     {
-        updateSelectionOverlay();
+        ImVec4 c = ImGuiToolkit::HighlightColor();
+        updateSelectionOverlay(glm::vec4(c.x, c.y, c.z, c.w));
 //        overlay_selection_icon_->visible_ = false;
     }
 }
@@ -215,11 +215,14 @@ void GeometryView::draw()
          source_iter != Mixer::manager().session()->end(); ++source_iter) {
         // if it is in the current workspace
         if ((*source_iter)->workspace() == Settings::application.current_workspace) {
+//            if ((*source_iter)->blendingShader()->color.a > 0.f) // TODO: option to hide non visible
+            {
             // will draw its surface
             surfaces.push_back((*source_iter)->groups_[mode_]);
             // will draw its frame and locker icon
             overlays.push_back((*source_iter)->frames_[mode_]);
             overlays.push_back((*source_iter)->locker_);
+            }
         }
     }
 
@@ -250,8 +253,8 @@ void GeometryView::draw()
     scene.accept(draw_foreground);
 
     // display interface
-    // Locate window at upper left corner
-    glm::vec2 P = glm::vec2(-output_surface_->scale_.x - 0.02f, output_surface_->scale_.y + 0.01 );
+    // Locate window at upper right corner
+    glm::vec2 P = glm::vec2(-output_surface_->scale_.x - 0.02f, output_surface_->scale_.y + 0.01);
     P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
     // Set window position depending on icons size
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
@@ -260,28 +263,48 @@ void GeometryView::draw()
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
     {
-        // style grey
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 1.f));  // 1
+        // style
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 0.56f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.36f, 0.36f, 0.36f, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.5f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.46f));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.14f, 0.14f, 0.00f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.46f)); // 8
 
-        static std::vector< std::pair<int, int> > icons_ws = { {10,16}, {11,16}, {12,16} };
-        static std::vector< std::string > labels_ws = { "Background", "Workspace", "Foreground" };
-        if ( ImGuiToolkit::ComboIcon (icons_ws, labels_ws, &Settings::application.current_workspace) ){
+//        bool on = Settings::application.current_workspace == Source::BACKGROUND;
+//        if ( ImGuiToolkit::ButtonIconToggle(10,16,10,16, &on, "Background") ) {
+//            Settings::application.current_workspace = Source::BACKGROUND;
+//            ++View::need_deep_update_;
+//        }
+//        ImGui::SameLine(0, IMGUI_SAME_LINE);
+//        on = Settings::application.current_workspace == Source::STAGE;
+//        if ( ImGuiToolkit::ButtonIconToggle(11,16,11,16, &on, "Workspace") ) {
+//            Settings::application.current_workspace = Source::STAGE;
+//            ++View::need_deep_update_;
+//        }
+//        ImGui::SameLine(0, IMGUI_SAME_LINE);
+//        on = Settings::application.current_workspace == Source::FOREGROUND;
+//        if ( ImGuiToolkit::ButtonIconToggle(12,16,12,16, &on, "Foreground") ) {
+//            Settings::application.current_workspace = Source::FOREGROUND;
+//            ++View::need_deep_update_;
+//        }
+
+        static std::vector< std::tuple<int, int, std::string> > _workspaces = {
+            {10, 16, "Background"},
+            {11, 16, "Workspace"},
+            {12, 16, "Foreground"}
+        };
+        ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
+        if ( ImGuiToolkit::ComboIcon ("##WORKSPACE", &Settings::application.current_workspace, _workspaces, true) ){
              ++View::need_deep_update_;
         }
 
-        ImGui::PopStyleColor(8);  // 14 colors
+        ImGui::PopStyleColor(6);
         ImGui::End();
     }
     ImGui::PopFont();
 
-    // display popup menu
+    // display popup menu source
     if (show_context_menu_ == MENU_SOURCE) {
         ImGui::OpenPopup( "GeometrySourceContextMenu" );
         show_context_menu_ = MENU_NONE;
@@ -322,7 +345,7 @@ void GeometryView::draw()
         }
         ImGui::EndPopup();
     }
-    // display popup menu
+    // display popup menu selection
     if (show_context_menu_ == MENU_SELECTION) {
         ImGui::OpenPopup( "GeometrySelectionContextMenu" );
         show_context_menu_ = MENU_NONE;
@@ -331,7 +354,7 @@ void GeometryView::draw()
 
         // colored context menu
         ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.36f, 0.36f, 0.36f, 0.44f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
 
         // batch manipulation of sources in Geometry view
         if (ImGui::Selectable( ICON_FA_EXPAND "  Fit all" )){
@@ -492,18 +515,15 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     Source *s = Mixer::manager().findSource((*itp).first);
                     // accept picked sources in current workspaces
                     if ( s!=nullptr && s->workspace() == Settings::application.current_workspace) {
+                        if ( s->locked() && !UserInterface::manager().ctrlModifier() )
+                            continue;
                         // a non-locked source is picked (anywhere)
-                        if ( !s->locked() ) {
-                            // not in an active selection? don't pick this one!
-                            if ( !UserInterface::manager().ctrlModifier() &&
-                                 Mixer::selection().size() > 1 &&
-                                 !Mixer::selection().contains(s))
-                                continue;
-                            // yeah, pick this one (NB: locker_ is just a node in Geometry that is detected)
-                            pick = { s->locker_,  (*itp).second };
-                            break;
-                        }
-
+                        // not in an active selection? don't pick this one!
+                        if ( Mixer::selection().size() > 1 && !Mixer::selection().contains(s))
+                            continue;
+                        // yeah, pick this one (NB: locker_ is just a node in Geometry that is detected)
+                        pick = { s->locker_,  (*itp).second };
+                        break;
                     }
                     // not a source picked
                     else {
@@ -540,6 +560,8 @@ bool GeometryView::canSelect(Source *s) {
 void GeometryView::applySelectionTransform(glm::mat4 M)
 {
     for (auto sit = Mixer::selection().begin(); sit != Mixer::selection().end(); ++sit){
+        if ( (*sit)->locked() )
+            continue;
         // recompute all from matrix transform
         glm::mat4 transform = M * (*sit)->stored_status_->transform_;
         glm::vec3 tra, rot, sca;
@@ -1111,9 +1133,9 @@ void GeometryView::arrow (glm::vec2 movement)
     }
 }
 
-void GeometryView::updateSelectionOverlay()
+void GeometryView::updateSelectionOverlay(glm::vec4 color)
 {
-    View::updateSelectionOverlay();
+    View::updateSelectionOverlay(color);
 
     // create first
     if (overlay_selection_scale_ == nullptr) {

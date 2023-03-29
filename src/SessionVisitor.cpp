@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
 #include <tinyxml2.h>
 using namespace tinyxml2;
 
-#include "Log.h"
 #include "defines.h"
 #include "Scene.h"
 #include "Decorations.h"
@@ -48,7 +47,6 @@ using namespace tinyxml2;
 #include "MediaPlayer.h"
 #include "MixingGroup.h"
 #include "SystemToolkit.h"
-#include "ActionManager.h"
 
 #include "SessionVisitor.h"
 
@@ -197,7 +195,7 @@ void SessionVisitor::savePlayGroups(tinyxml2::XMLDocument *doc, Session *session
     if (doc != nullptr && session != nullptr)
     {
         XMLElement *playlistNode = doc->NewElement("PlayGroups");
-        std::vector<SourceIdList> pl = session->getPlayGroups();
+        std::vector<SourceIdList> pl = session->getAllBatch();
         for (auto plit = pl.begin(); plit != pl.end(); ++plit) {
             XMLElement *list = doc->NewElement("PlayGroup");
             playlistNode->InsertEndChild(list);
@@ -231,7 +229,14 @@ void SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Session *ses
                     // create node for this callback
                     XMLElement *cbNode = doc->NewElement("Callback");
                     cbNode->SetAttribute("input", *i);
-                    cbNode->SetAttribute("id", kit->first->id());
+                    // 1. Case of variant as Source pointer
+                    if (Source * const* v = std::get_if<Source *>(&kit->first)) {
+                        cbNode->SetAttribute("id", (*v)->id());
+                    }
+                    // 2. Case of variant as index of batch
+                    else if ( const size_t* v = std::get_if<size_t>(&kit->first)) {
+                        cbNode->SetAttribute("batch", (uint64_t) *v);
+                    }
                     inputsNode->InsertEndChild(cbNode);
                     // launch visitor to complete attributes
                     SessionVisitor sv(doc, cbNode);
@@ -638,7 +643,8 @@ void SessionVisitor::visit (MediaSource& s)
     if (!sessionFilePath_.empty())
         uri->SetAttribute("relative", SystemToolkit::path_relative_to_path(s.path(), sessionFilePath_).c_str());
 
-    s.mediaplayer()->accept(*this);
+    if (!s.failed())
+        s.mediaplayer()->accept(*this);
 }
 
 void SessionVisitor::visit (SessionFileSource& s)
@@ -902,6 +908,12 @@ void SessionVisitor::visit (Play &c)
     xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
 }
 
+void SessionVisitor::visit (PlayFastForward &c)
+{
+    xmlCurrent_->SetAttribute("step", c.value());
+    xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
 void SessionVisitor::visit (SetAlpha &c)
 {
     xmlCurrent_->SetAttribute("alpha", c.value());
@@ -930,6 +942,16 @@ void SessionVisitor::visit (SetGeometry &c)
     xmlCurrent_ = geom;
     g.accept(*this);
 
+}
+
+void SessionVisitor::visit (SetGamma &c)
+{
+    xmlCurrent_->SetAttribute("duration", c.duration());
+    xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
+
+    XMLElement *gamma = xmlDoc_->NewElement("gamma");
+    gamma->InsertEndChild( XMLElementFromGLM(xmlDoc_, c.value()) );
+    xmlCurrent_->InsertEndChild(gamma);
 }
 
 void SessionVisitor::visit (Loom &c)

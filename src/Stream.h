@@ -144,10 +144,15 @@ public:
      * */
     std::string decoderName();
     /**
+     * Get logs
+     * */
+    std::string log() const { return log_; }
+    /**
      * Accept visitors
      * Used for saving session file
      * */
     void accept(Visitor& v);
+
 
 protected:
 
@@ -220,6 +225,7 @@ protected:
     // gst pipeline control
     virtual void execute_open();
     virtual void fail(const std::string &message);
+    std::string log_;
 
     // gst frame filling
     bool textureinitialized_;

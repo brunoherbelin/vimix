@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,6 +59,12 @@ CloneSource::~CloneSource()
         origin_->clones_.remove(this);
 
     delete filter_;
+}
+
+void CloneSource::detach()
+{
+    Log::Info("Source '%s' detached from '%s'.", name().c_str(), origin_->name().c_str() );
+    origin_ = nullptr;
 }
 
 void CloneSource::init()
@@ -212,8 +218,9 @@ guint64 CloneSource::playtime () const
 {
     if (filter_->type() != FrameBufferFilter::FILTER_PASSTHROUGH)
         return guint64( filter_->updateTime() * GST_SECOND ) ;
-
-    return origin_->playtime();
+    if (origin_)
+        return origin_->playtime();
+    return 0;
 }
 
 
@@ -221,15 +228,18 @@ uint CloneSource::texture() const
 {
     if (origin_)
         return origin_->frame()->texture();
-    else
-        return Resource::getTextureBlack();
+    return Resource::getTextureBlack();
+}
+
+Source::Failure CloneSource::failed() const
+{
+    return (origin_ == nullptr || origin_->failed()) ? FAIL_FATAL : FAIL_NONE;
 }
 
 void CloneSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 glm::ivec2 CloneSource::icon() const

@@ -24,6 +24,7 @@ public:
     inline glm::vec3 max() const { return mMax; }
     glm::vec3 center(bool ignore_z = true) const;
     glm::vec3 scale(bool ignore_z = true) const;
+    float area() const;
     bool intersect(const AxisAlignedBoundingBox& bb, bool ignore_z = true) const;
     bool contains(const AxisAlignedBoundingBox& bb, bool ignore_z = true) const;
     bool contains(glm::vec3 point, bool ignore_z = true) const;

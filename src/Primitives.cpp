@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,9 +31,7 @@
 #include "ImageShader.h"
 #include "Resource.h"
 #include "FrameBuffer.h"
-#include "MediaPlayer.h"
 #include "Visitor.h"
-#include "Log.h"
 
 #include "Primitives.h"
 

@@ -5,7 +5,6 @@
 #include <vector>
 #include <set>
 
-#include "GstToolkit.h"
 #include "StreamSource.h"
 
 class DeviceSource : public StreamSource
@@ -15,7 +14,7 @@ public:
     ~DeviceSource();
 
     // Source interface
-    bool failed() const override;
+    Failure failed() const override;
     void accept (Visitor& v) override;
     void setActive (bool on) override;
 
@@ -51,19 +50,6 @@ struct DeviceConfig {
         fps_denominator = 1;
         stream = "";
         format = "";
-    }
-
-    inline DeviceConfig& operator = (const DeviceConfig& b)
-    {
-        if (this != &b) {
-            this->width = b.width;
-            this->height = b.height;
-            this->fps_numerator = b.fps_numerator;
-            this->fps_denominator = b.fps_denominator;
-            this->stream = b.stream;
-            this->format = b.format;
-        }
-        return *this;
     }
 
     inline bool operator < (const DeviceConfig b) const
@@ -124,6 +110,7 @@ public:
 
     int  index  (const std::string &device);
     bool exists (const std::string &device) ;
+    void reload ();
 
     static gboolean callback_device_monitor (GstBus *, GstMessage *, gpointer);
     static DeviceConfigSet getDeviceConfigs(const std::string &src_description);

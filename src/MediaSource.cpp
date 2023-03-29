@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,9 +20,6 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "defines.h"
-#include "ImageShader.h"
-#include "ImageProcessingShader.h"
 #include "Resource.h"
 #include "Decorations.h"
 #include "MediaPlayer.h"
@@ -81,9 +78,9 @@ std::string MediaSource::info() const
         return "Video File";
 }
 
-bool MediaSource::failed() const
+Source::Failure MediaSource::failed() const
 {
-    return mediaplayer_->failed();
+    return mediaplayer_->failed() ? FAIL_CRITICAL : FAIL_NONE;
 }
 
 uint MediaSource::texture() const
@@ -125,7 +122,7 @@ void MediaSource::init()
             View::need_deep_update_ += 2;
 
             // done init
-            Log::Info("Source '%s' linked to Media %s.", name().c_str(), std::to_string(mediaplayer_->id()).c_str());
+            Log::Info("Source '%s' linked to MediaPlayer %s.", name().c_str(), std::to_string(mediaplayer_->id()).c_str());
         }
     }
 

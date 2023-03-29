@@ -28,12 +28,13 @@ public:
     void setAlpha (Source *s);
 
 private:
-    void updateSelectionOverlay() override;
+    void updateSelectionOverlay(glm::vec4 color) override;
 
     float limbo_scale_;
 
     Group *slider_root_;
     Disk *slider_;
+    Group *slider_arrows_;
     Disk *button_white_;
     Disk *button_black_;
 //    Disk *stashCircle_;

@@ -4,9 +4,6 @@
 #include <string>
 #include <vector>
 
-#include "osc/OscReceivedElements.h"
-#include "osc/OscPacketListener.h"
-#include "ip/UdpSocket.h"
 
 #define OSC_SEPARATOR   '/'
 #define OSC_PREFIX "/vimix"

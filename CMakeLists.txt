@@ -1,6 +1,6 @@
 #####
 #####  This file is part of vimix - video live mixer
-#####  **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+#####  **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
 #####
 
 cmake_minimum_required(VERSION 3.8.2)
@@ -563,7 +563,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_crop.ply
     ./rsc/mesh/icon_eye.ply
     ./rsc/mesh/icon_eye_slash.ply
-    ./rsc/mesh/icon_vector_square_slash.ply
+    ./rsc/mesh/icon_tv.ply
     ./rsc/mesh/icon_cube.ply
     ./rsc/mesh/icon_sequence.ply
     ./rsc/mesh/icon_receive.ply
@@ -613,6 +613,7 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/resample_quarter.glsl
     ./rsc/shaders/filters/earlybird.glsl
     ./rsc/shaders/filters/logo.glsl
+    ./rsc/shaders/filters/whitebalance.glsl
 )
 
 cmrc_add_resource_library(vmix-resources ALIAS vmix::rc NAMESPACE vmix WHENCE rsc ${VMIX_RSC_FILES})

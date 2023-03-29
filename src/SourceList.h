@@ -2,6 +2,8 @@
 #define SOURCELIST_H
 
 #include <list>
+#include <set>
+#include <variant>
 #include <glm/glm.hpp>
 
 class Source;
@@ -10,8 +12,10 @@ class Session;
 
 typedef std::list<Source *> SourceList;
 typedef std::list<SourceCore *> SourceCoreList;
+typedef std::set<Source *> SourceListUnique;
 
 SourceList playable_only (const SourceList &list);
+SourceList valid_only    (const SourceList &list);
 SourceList active_only   (const SourceList &list);
 SourceList depth_sorted  (const SourceList &list);
 SourceList mixing_sorted (const SourceList &list, glm::vec2 center = glm::vec2(0.f, 0.f));
@@ -57,5 +61,8 @@ typedef std::list<SourceLink*> SourceLinkList;
 SourceLinkList getLinkList (const SourceList &list);
 void clearLinkList (SourceLinkList list);
 SourceList validateLinkList (const SourceLinkList &list);
+
+// utility type to target either a source or a batch
+typedef std::variant<std::monostate, Source *, size_t> Target;
 
 #endif // SOURCELIST_H

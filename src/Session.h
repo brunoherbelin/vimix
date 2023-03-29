@@ -2,6 +2,7 @@
 #define SESSION_H
 
 #include <mutex>
+#include <variant>
 
 #include "SourceList.h"
 #include "RenderView.h"
@@ -59,6 +60,11 @@ public:
     // Does not delete the source
     SourceList::iterator removeSource (Source *s);
 
+    // attach or detach from rendering
+    void attachSource  (Source *s);
+    void detachSource  (Source *s);
+    bool attached      (Source *s) const;
+
     // get ptr to front most source and remove it from the session
     // Does not delete the source
     Source *popSource ();
@@ -87,6 +93,7 @@ public:
     uint numSources() const;
 
     // update all sources and mark sources which failed
+    inline bool ready () const  { return ready_; }
     void update (float dt);
     uint64_t runtime() const;
 
@@ -94,8 +101,9 @@ public:
     void setActive (bool on);
     inline bool active () { return active_; }
 
-    // return the last source which failed
-    Source *failedSource () { return failedSource_; }
+    // return the list of sources which failed
+    SourceListUnique failedSources () const { return failed_; }
+    void deleteFailedSources ();
 
     // get frame result of render
     inline FrameBuffer *frame () const { return render_.frame(); }
@@ -153,25 +161,25 @@ public:
     void applySnapshot(uint64_t key);
 
     // playlists
-    void addPlayGroup(const SourceIdList &ids);
-    void deletePlayGroup(size_t i);
-    size_t numPlayGroups() const;
-    SourceList playGroup(size_t i) const;
-    void addToPlayGroup(size_t i, Source *s);
-    void removeFromPlayGroup(size_t i, Source *s);
-    std::vector<SourceIdList> getPlayGroups() { return play_groups_; }
+    void addBatch(const SourceIdList &ids);
+    void deleteBatch(size_t i);
+    size_t numBatch() const;
+    SourceList getBatch(size_t i) const;
+    void addSourceToBatch(size_t i, Source *s);
+    void removeSourceFromBatch(size_t i, Source *s);
+    std::vector<SourceIdList> getAllBatch() { return batch_; }
 
     // callbacks associated to inputs
-    void assignSourceCallback(uint input, Source *source, SourceCallback *callback);
-    std::list< std::pair<Source *, SourceCallback*> > getSourceCallbacks(uint input);
-    void deleteSourceCallback (SourceCallback *callback);
-    void deleteSourceCallbacks(Source *source);
-    void deleteSourceCallbacks(uint input);
-    void clearSourceCallbacks ();
+    void assignInputCallback(uint input, Target target, SourceCallback *callback);
+    std::list< std::pair<Target, SourceCallback*> > getSourceCallbacks(uint input);
+    void deleteInputCallback (SourceCallback *callback);
+    void deleteInputCallbacks(Target target);
+    void deleteInputCallbacks(uint input);
+    void clearInputCallbacks ();
     std::list<uint> assignedInputs();
     bool inputAssigned(uint input);
-    void swapSourceCallback(uint from, uint to);
-    void copySourceCallback(uint from, uint to);
+    void swapInputCallback(uint from, uint to);
+    void copyInputCallback(uint from, uint to);
 
     void setInputSynchrony(uint input, Metronome::Synchronicity sync);
     std::vector<Metronome::Synchronicity> getInputSynchrony();
@@ -183,17 +191,18 @@ protected:
     float activation_threshold_;
     RenderView render_;
     std::string filename_;
-    Source *failedSource_;
+    SourceListUnique failed_;
     SourceList sources_;
     void validate(SourceList &sources);
     std::list<SessionNote> notes_;
     std::list<MixingGroup *> mixing_groups_;
     std::map<View::Mode, Group*> config_;
     SessionSnapshots snapshots_;
-    std::vector<SourceIdList> play_groups_;
+    std::vector<SourceIdList> batch_;
     std::mutex access_;
     FrameBufferImage *thumbnail_;
     uint64_t start_time_;
+    bool ready_;
 
     struct Fading
     {
@@ -216,14 +225,14 @@ protected:
     struct InputSourceCallback {
         bool active_;
         SourceCallback *model_;
-        SourceCallback *reverse_;
-        Source *source_;
+        std::map<uint64_t, std::pair< SourceCallback *, SourceCallback *> > instances_;
+        Target target_;
         InputSourceCallback() {
             active_ = false;
             model_   = nullptr;
-            reverse_ = nullptr;
-            source_  = nullptr;
+            target_  = nullptr;
         }
+        void clear();
     };
     std::multimap<uint, InputSourceCallback> input_callbacks_;
     std::vector<Metronome::Synchronicity> input_sync_;

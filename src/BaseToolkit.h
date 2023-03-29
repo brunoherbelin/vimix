@@ -34,8 +34,11 @@ std::list<std::string> splitted(const std::string& str, char delim);
 // rebuilds a splitted string
 std::string joinned(std::list<std::string> strlist, char separator = ' ');
 
-// returns true if the string
+// returns true if the string contains an integer
 bool is_a_number(const std::string& str, int *val);
+
+// returns true if the string contains a float value
+bool is_a_value(const std::string& str, float *val);
 
 // find common parts in a list of strings
 std::string common_prefix(const std::list<std::string> &allStrings);

@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
 #include "Log.h"
 #include "View.h"
 #include "Mixer.h"
-#include "MixingGroup.h"
 #include "tinyxml2Toolkit.h"
-#include "ImageProcessingShader.h"
 #include "SessionVisitor.h"
 #include "SessionCreator.h"
 #include "Settings.h"
@@ -65,6 +63,8 @@ void Action::init()
     store("Session start");
 }
 
+// must be called in a thread running in parrallel of the rendering
+// (needs opengl update to get thumbnail)
 void captureMixerSession(Session *se, tinyxml2::XMLDocument *doc, std::string node, std::string label)
 {
     if (se != nullptr) {
@@ -101,6 +101,8 @@ void captureMixerSession(Session *se, tinyxml2::XMLDocument *doc, std::string no
 
 void Action::store(const std::string &label)
 {
+    // TODO: set a maximum amount of stored steps? (even very big, just to ensure memory limit)
+
     // ignore if locked or if no label is given
     if (locked_ || label.empty())
         return;

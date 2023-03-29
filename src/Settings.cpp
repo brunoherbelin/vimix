@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -93,7 +93,8 @@ void Settings::Save(uint64_t runtime)
 
     // Windows
 	{
-		XMLElement *windowsNode = xmlDoc.NewElement( "Windows" );  
+        XMLElement *windowsNode = xmlDoc.NewElement( "OutputWindows" );
+        windowsNode->SetAttribute("num_output_windows", application.num_output_windows);
 
         for (int i = 0; i < (int) application.windows.size(); ++i)
         {
@@ -105,9 +106,20 @@ void Settings::Save(uint64_t runtime)
 			window->SetAttribute("x", w.x);
 			window->SetAttribute("y", w.y);
 			window->SetAttribute("w", w.w);
-			window->SetAttribute("h", w.h);
+            window->SetAttribute("h", w.h);
             window->SetAttribute("f", w.fullscreen);
+            window->SetAttribute("s", w.scaled);
+            window->SetAttribute("d", w.decorated);
             window->SetAttribute("m", w.monitor.c_str());
+            XMLElement *tmp = xmlDoc.NewElement("whitebalance");
+            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.whitebalance) );
+            window->InsertEndChild( tmp );
+            tmp = xmlDoc.NewElement("scale");
+            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.scale) );
+            window->InsertEndChild( tmp );
+            tmp = xmlDoc.NewElement("translation");
+            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.translation) );
+            window->InsertEndChild( tmp );
             windowsNode->InsertEndChild(window);
 		}
 
@@ -156,10 +168,11 @@ void Settings::Save(uint64_t runtime)
     XMLElement *RenderNode = xmlDoc.NewElement( "Render" );
     RenderNode->SetAttribute("vsync", application.render.vsync);
     RenderNode->SetAttribute("multisampling", application.render.multisampling);
-    RenderNode->SetAttribute("blit", application.render.blit);
     RenderNode->SetAttribute("gpu_decoding", application.render.gpu_decoding);
     RenderNode->SetAttribute("ratio", application.render.ratio);
     RenderNode->SetAttribute("res", application.render.res);
+    RenderNode->SetAttribute("custom_width", application.render.custom_width);
+    RenderNode->SetAttribute("custom_height", application.render.custom_height);
     pRoot->InsertEndChild(RenderNode);
 
     // Record
@@ -200,8 +213,8 @@ void Settings::Save(uint64_t runtime)
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
-        // save current view only if [mixing, geometry, layers, appearance]
-        int v = application.current_view > 4 ? 1 : application.current_view;
+        // do not save Transition view as current
+        int v = application.current_view == 5 ? 1 : application.current_view;
         viewsNode->SetAttribute("current", v);
         viewsNode->SetAttribute("workspace", application.current_workspace);
 
@@ -435,10 +448,11 @@ void Settings::Load()
     if (rendernode != nullptr) {
         rendernode->QueryIntAttribute("vsync", &application.render.vsync);
         rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
-        rendernode->QueryBoolAttribute("blit", &application.render.blit);
         rendernode->QueryBoolAttribute("gpu_decoding", &application.render.gpu_decoding);
         rendernode->QueryIntAttribute("ratio", &application.render.ratio);
         rendernode->QueryIntAttribute("res", &application.render.res);
+        rendernode->QueryIntAttribute("custom_width", &application.render.custom_width);
+        rendernode->QueryIntAttribute("custom_height", &application.render.custom_height);
     }
 
     // Record
@@ -486,9 +500,11 @@ void Settings::Load()
 
     // Windows
     {
-        XMLElement * pElement = pRoot->FirstChildElement("Windows");
+        XMLElement * pElement = pRoot->FirstChildElement("OutputWindows");
         if (pElement)
         {
+            pElement->QueryIntAttribute("num_output_windows", &application.num_output_windows);
+
             XMLElement* windowNode = pElement->FirstChildElement("Window");
             for( ; windowNode ; windowNode=windowNode->NextSiblingElement())
             {
@@ -498,13 +514,29 @@ void Settings::Load()
                 windowNode->QueryIntAttribute("w", &w.w);
                 windowNode->QueryIntAttribute("h", &w.h);
                 windowNode->QueryBoolAttribute("f", &w.fullscreen);
+                windowNode->QueryBoolAttribute("s", &w.scaled);
+                windowNode->QueryBoolAttribute("d", &w.decorated);
                 const char *text = windowNode->Attribute("m");
                 if (text)
                     w.monitor = std::string(text);
 
                 int i = 0;
                 windowNode->QueryIntAttribute("id", &i);
-                w.name = application.windows[i].name; // keep only original name
+                if (i > 0)
+                    w.name = "Output " + std::to_string(i) + " - " APP_NAME;
+                else
+                    w.name = APP_TITLE;
+
+                XMLElement *tmp = windowNode->FirstChildElement("whitebalance");
+                if (tmp)
+                    tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec4"), w.whitebalance);
+                tmp = windowNode->FirstChildElement("scale");
+                if (tmp)
+                    tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec3"), w.scale);
+                tmp = windowNode->FirstChildElement("translation");
+                if (tmp)
+                    tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec3"), w.translation);
+
                 application.windows[i] = w;
             }
         }
@@ -533,11 +565,13 @@ void Settings::Load()
                 application.views[id].name = viewNode->Attribute("name");
 
                 XMLElement* scaleNode = viewNode->FirstChildElement("default_scale");
-                tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"),
+                if (scaleNode)
+                    tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"),
                                            application.views[id].default_scale);
 
                 XMLElement* translationNode = viewNode->FirstChildElement("default_translation");
-                tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"),
+                if (translationNode)
+                    tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"),
                                            application.views[id].default_translation);
 
             }

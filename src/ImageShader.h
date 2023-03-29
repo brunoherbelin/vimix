@@ -52,7 +52,7 @@ public:
     uint mode;
 
     enum Shapes {
-        ELIPSE = 0,
+        ELLIPSE = 0,
         OBLONG = 1,
         RECTANGLE = 2,
         HORIZONTAL = 3,
@@ -69,6 +69,7 @@ public:
     glm::vec4 cursor;
     glm::vec3 brush;
 
+    static const char* mask_icons[3];
     static const char* mask_names[3];
     static const char* mask_shapes[5];
 };

@@ -25,9 +25,11 @@ public:
 
     typedef enum {
         CLONE,
+        REPLACE,
         DUPLICATE
     } Mode;
     Source *createSource(tinyxml2::XMLElement *sourceNode, Mode mode = CLONE);
+    Source *recreateSource(Source *s);
 
     static bool isClipboard(const std::string &clipboard);
     static tinyxml2::XMLElement* firstSourceElement(const std::string &clipboard, tinyxml2::XMLDocument &xmlDoc);
@@ -78,11 +80,13 @@ public:
     void visit (SetAlpha&) override;
     void visit (SetDepth&) override;
     void visit (SetGeometry&) override;
+    void visit (SetGamma&) override;
     void visit (Loom&) override;
     void visit (Grab&) override;
     void visit (Resize&) override;
     void visit (Turn&) override;
     void visit (Play&) override;
+    void visit (PlayFastForward&) override;
 
     static void XMLToNode(const tinyxml2::XMLElement *xml, Node &n);
     static void XMLToSourcecore(tinyxml2::XMLElement *xml, SourceCore &s);

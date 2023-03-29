@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,10 +22,11 @@
 #include <sstream>
 #include <algorithm>
 #include <iomanip>
+#include <regex>
 
+#include <GLFW/glfw3.h>
 #include "osc/OscOutboundPacketStream.h"
 
-#include "defines.h"
 #include "Log.h"
 #include "Settings.h"
 #include "BaseToolkit.h"
@@ -34,14 +35,9 @@
 #include "SourceCallback.h"
 #include "ImageProcessingShader.h"
 #include "ActionManager.h"
-#include "SystemToolkit.h"
-#include "tinyxml2Toolkit.h"
-#include "Metronome.h"
 #include "TransitionView.h"
-
+#include "NetworkToolkit.h"
 #include "UserInterfaceManager.h"
-#include "RenderingManager.h"
-#include <GLFW/glfw3.h>
 
 #include "ControlManager.h"
 
@@ -59,6 +55,10 @@
 void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                                                const IpEndpointName& remoteEndpoint )
 {
+    // regular expression to check for batch
+    static std::regex osc_batch_reg_exp( OSC_BATCH );
+    static std::regex osc_sourceid_reg_exp( OSC_SOURCEID );
+
     char sender[IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH];
     remoteEndpoint.AddressAndPortAsString(sender);
 
@@ -83,6 +83,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             // next part of the OSC message is the attribute
             address.pop_front();
             std::string attribute = address.front();
+
             // Log target: just print text in log window
             if ( target.compare(OSC_INFO) == 0 )
             {
@@ -114,6 +115,8 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     Control::manager().sendOutputStatus(remoteEndpoint);
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
+                    // send the status of all batch
+                    Control::manager().sendBatchStatus(remoteEndpoint);
                 }
             }
             // ALL sources target: apply attribute to all sources of the session
@@ -127,10 +130,9 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                         Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
                 }
             }
-            // Selected sources target: apply attribute to all sources of the selection
-            else if ( target.compare(OSC_SELECTED) == 0 )
-            {
-                // Loop over selected sources
+            // Selection sources target: apply attribute to all sources of the selection
+            else if (target.compare(OSC_SELECTION) == 0) {
+                // Loop over dynamically selected sources
                 for (SourceList::iterator it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
                     // apply attributes
                     if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
@@ -172,17 +174,40 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                         Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
                 }
             }
-            // General case: try to identify the target
+            // Batch sources target: apply attribute to all sources in the Batch
+            else if ( std::regex_match(target, osc_batch_reg_exp) )
+            {
+                int i = 0;
+                std::string num = target.substr( target.find_last_of("#") + 1);
+                if ( BaseToolkit::is_a_number(num, &i)){
+                    // confirmed : the target is a Player Batch (e.g. '/batch#2')
+                    if ( Control::manager().receiveBatchAttribute(i, attribute, m.ArgumentStream()) ) {
+                        // send batch status
+                        Control::manager().sendBatchStatus(remoteEndpoint);
+                    }
+                }
+            }
+            // #ID sources target
+            else if ( std::regex_match(target, osc_sourceid_reg_exp) )
+            {
+                int i = 0;
+                std::string num = target.substr( target.find("#") == std::string::npos ? 1 : 2 );
+                if ( BaseToolkit::is_a_number(num, &i)){
+                    Source *s = Mixer::manager().sourceAtIndex(i);
+                    if (s) {
+                        // apply attributes to source
+                        if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
+                            // and send back feedback if needed
+                            Control::manager().sendSourceAttibutes(remoteEndpoint, target, s);
+                    }
+                    else
+                        Log::Info(CONTROL_OSC_MSG "No source at ID %s targetted by %s.", num.c_str(), sender);
+                }
+            }
+            // General case: try to identify the target by name
             else {
-                // try to find source by index
-                Source *s = nullptr;
-                int sourceid = -1;
-                if ( BaseToolkit::is_a_number(target.substr(1), &sourceid) )
-                    s = Mixer::manager().sourceAtIndex(sourceid);
-
-                // if failed, try to find source by name
-                if (s == nullptr)
-                    s = Mixer::manager().findSource(target.substr(1));
+                // try to find source by given name
+                Source *s = Mixer::manager().findSource(target.substr(1));
 
                 // if a source with the given target name or index was found
                 if (s) {
@@ -363,14 +388,6 @@ bool Control::init()
     terminate();
 
     //
-    // set keyboard callback
-    //
-    GLFWwindow *main = Rendering::manager().mainWindow().window();
-    GLFWwindow *output = Rendering::manager().outputWindow().window();
-    glfwSetKeyCallback( main, Control::keyboardCalback);
-    glfwSetKeyCallback( output, Control::keyboardCalback);
-
-    //
     // load OSC Translator
     //
     loadOscConfig();
@@ -540,11 +557,10 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() + f * 0.01);
             need_feedback = true;
         }
-#ifdef CONTROL_DEBUG
+        // inform of invalid attribute name
         else {
-            Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target 'output'", attribute.c_str());
+            Log::Info(CONTROL_OSC_MSG "Unknown attribute '%s' for target 'output'", attribute.c_str());
         }
-#endif
 
     }
     catch (osc::MissingArgumentException &e) {
@@ -605,7 +621,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_LOOM) == 0) {
             float x = 1.f;
             arguments >> x >> osc::EndMessage;
-            target->call( new Loom(x, 0.f), true );
+            target->call( new Loom(x, 0.f) );
             // this will require to send feedback status about source
             send_feedback = true;
         }
@@ -635,7 +651,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             catch (osc::WrongArgumentTypeException &) {
             }
             arguments >> osc::EndMessage;
-            target->call( new Grab( x, y, 0.f), true );
+            target->call( new Grab( x, y, 0.f) );
         }
         /// e.g. '/vimix/current/position ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_POSITION) == 0) {
@@ -672,7 +688,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             catch (osc::WrongArgumentTypeException &) {
             }
             arguments >> osc::EndMessage;
-            target->call( new Resize( x, y, 0.f), true );
+            target->call( new Resize( x, y, 0.f) );
         }        
         /// e.g. '/vimix/current/size ff 1.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_SIZE) == 0) {
@@ -703,7 +719,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
                 arguments >> osc::EndMessage;
             else
                 arguments >> t >> osc::EndMessage;
-            target->call( new Turn( x, t), true );
+            target->call( new Turn( x, t) );
         }
         /// e.g. '/vimix/current/angle f 3.1416'
         else if ( attribute.compare(OSC_SOURCE_ANGLE) == 0) {
@@ -813,11 +829,10 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             // this will require to send feedback status about source
             send_feedback = true;
         }
-#ifdef CONTROL_DEBUG
+        // inform of invalid attribute name
         else {
-            Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target %s.", attribute.c_str(), target->name().c_str());
+            Log::Info(CONTROL_OSC_MSG "Unknown attribute '%s' for target %s.", attribute.c_str(), target->name().c_str());
         }
-#endif
 
         // overwrite value if source locked
         if (target->locked())
@@ -833,6 +848,26 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
     catch (osc::WrongArgumentTypeException &e) {
         Log::Info(CONTROL_OSC_MSG "Invalid argument for attribute '%s' for target %s.", attribute.c_str(), target->name().c_str());
     }
+
+    return send_feedback;
+}
+
+bool Control::receiveBatchAttribute(int i, const std::string &attribute,
+                       osc::ReceivedMessageArgumentStream arguments)
+{
+    bool send_feedback = false;
+
+    if ( i < (int) Mixer::manager().session()->numBatch() ) {
+        // Batch sources target: apply attribute to all sources in the Batch
+        // loop over batch list of sources
+        SourceList _selection = Mixer::manager().session()->getBatch(i);
+        for (SourceList::iterator it = _selection.begin(); it != _selection.end(); ++it) {
+            // apply attributes
+            send_feedback |= Control::manager().receiveSourceAttribute( *it, attribute, arguments) ;
+        }
+    }
+    else
+        Log::Info(CONTROL_OSC_MSG "No batch %d", i);
 
     return send_feedback;
 }
@@ -892,11 +927,10 @@ bool Control::receiveSessionAttribute(const std::string &attribute,
                 tv->play(true);
             }
         }
-#ifdef CONTROL_DEBUG
+        // inform of invalid attribute name
         else {
-            Log::Info(CONTROL_OSC_MSG "Ignoring attribute '%s' for target 'session'", attribute.c_str());
+            Log::Info(CONTROL_OSC_MSG "Unknown attribute '%s' for target 'session'", attribute.c_str());
         }
-#endif
 
     }
     catch (osc::MissingArgumentException &e) {
@@ -1017,8 +1051,11 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::str
 
 void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::ReceivedMessageArgumentStream arguments)
 {
+    // always start to send status of current source
+    sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+
     //  (if an argument is given, it indicates the number of sources to update)
-    float N = 0.f;
+    float N = Mixer::manager().numSource();
     if ( !arguments.Eos())
         arguments >> N >> osc::EndMessage;
 
@@ -1035,7 +1072,8 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
     int i = 0;
     char oscaddr[128];
     int index_current = Mixer::manager().indexCurrentSource();
-    for (; i < Mixer::manager().numSource(); ++i) {
+    // return status of all listed sources (up to N)
+    for (; i < Mixer::manager().numSource() && i < (int) N; ++i) {
         // send status of currently selected
         sprintf(oscaddr, OSC_PREFIX OSC_CURRENT "/%d", i);
         p << osc::BeginMessage( oscaddr ) << (index_current == i ? 1.f : 0.f) << osc::EndMessage;
@@ -1048,7 +1086,7 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
         sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
         p << osc::BeginMessage( oscaddr ) <<  Mixer::manager().sourceAtIndex(i)->name().c_str() << osc::EndMessage;
     }
-
+    // zeros for non listed sources
     for (; i < (int) N ; ++i) {
         // reset status of currently selected
         sprintf(oscaddr, OSC_PREFIX OSC_CURRENT "/%d", i);
@@ -1065,11 +1103,59 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
 
     p << osc::EndBundle;
     socket.Send( p.Data(), p.Size() );
-
-    // send status of current source
-    sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
 }
 
+void Control::sendBatchStatus(const IpEndpointName &remoteEndpoint)
+{
+    // build socket to send message to indicated endpoint
+    UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );
+
+    // build messages packet
+    char buffer[IP_MTU_SIZE];
+    osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
+
+    p.Clear();
+    p << osc::BeginBundle();
+
+    // data structures to browse batch
+    int i = 0;
+    char oscaddr[128];
+    std::vector<SourceIdList> pl = Mixer::manager().session()->getAllBatch();
+
+    Session *_session = Mixer::manager().session();
+
+    // batch list
+    for (auto plit = pl.begin(); plit != pl.end(); ++plit, ++i) {
+
+        sprintf(oscaddr, OSC_PREFIX "/batch#%d/index" , i);
+        p << osc::BeginMessage( oscaddr );
+
+        for (auto id = plit->begin(); id != plit->end(); ++id) {
+            p << _session->index( _session->find( *id ) );
+        }
+
+        p << osc::EndMessage;
+    }
+
+    // alpha of all sources in all batches
+    i = 0;
+    for (auto plit = pl.begin(); plit != pl.end(); ++plit, ++i) {
+
+        sprintf(oscaddr, OSC_PREFIX "/batch#%d" OSC_SOURCE_ALPHA, i);
+        p << osc::BeginMessage( oscaddr );
+
+        for (auto id = plit->begin(); id != plit->end(); ++id) {
+            SourceList::iterator s = _session->find( *id );
+            if (s != _session->end() )
+                p << (*s)->alpha();
+        }
+
+        p << osc::EndMessage;
+    }
+
+    p << osc::EndBundle;
+    socket.Send( p.Data(), p.Size() );
+}
 
 void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)
 {
@@ -1096,7 +1182,7 @@ void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)
 }
 
 
-void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int mods)
+void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
 {
     if (UserInterface::manager().keyboardAvailable() && !mods )
     {
@@ -1112,9 +1198,7 @@ void Control::keyboardCalback(GLFWwindow* window, int key, int, int action, int 
         }
         else if (_key == GLFW_KEY_ESCAPE && action == GLFW_PRESS )
         {
-            static GLFWwindow *output = Rendering::manager().outputWindow().window();
-            if (window==output)
-                Rendering::manager().outputWindow().exitFullscreen();
+            Rendering::manager().window(w)->exitFullscreen();
         }
         Control::manager().input_access_.unlock();
     }
@@ -1180,6 +1264,7 @@ std::string Control::inputLabel(uint id)
 //
 int Control::layoutKey(int key)
 {
+#if (GLFW_VERSION_MAJOR * 1000 + GLFW_VERSION_MINOR * 100 >= 3300) // 3.3+
     static int  _keyMap[GLFW_KEY_LAST];
     static bool _initialized = false;
     if (!_initialized) {
@@ -1210,4 +1295,7 @@ int Control::layoutKey(int key)
 
 //    fprintf(stderr, "%d pressed; converted to %d\n", key, _keyMap[key]);
     return _keyMap[key];
+#else
+    return key;
+#endif
 }

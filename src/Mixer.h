@@ -6,6 +6,7 @@
 #include "LayerView.h"
 #include "TextureView.h"
 #include "TransitionView.h"
+#include "DisplaysView.h"
 #include "Session.h"
 #include "Selection.h"
 
@@ -61,6 +62,7 @@ public:
     // operations on sources
     void addSource    (Source *s);
     void deleteSource (Source *s);
+    void replaceSource(Source *previous, Source *s);
     void renameSource (Source *s, const std::string &newname = "");
     int  numSource    () const;
 
@@ -138,10 +140,10 @@ protected:
     SourceList candidate_sources_;
     SourceList stash_;
     void insertSource  (Source *s, View::Mode m = View::INVALID);
-    bool replaceSource (Source *from, Source *to);
     bool recreateSource(Source *s);
-    void attach        (Source *s);
-    void detach        (Source *s);
+    void attachSource  (Source *s);
+    void detachSource  (Source *s);
+    bool attached      (Source *s) const;
 
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;
@@ -153,6 +155,7 @@ protected:
     LayerView layer_;
     TextureView appearance_;
     TransitionView transition_;
+    DisplaysView displays_;
 
     bool busy_;
     float dt_;

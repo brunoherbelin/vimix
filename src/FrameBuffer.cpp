@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 #include <sstream>
 
 #include "FrameBuffer.h"
-#include "ImageShader.h"
 #include "Resource.h"
 #include "Settings.h"
 #include "Log.h"
@@ -35,45 +34,6 @@
 #define FRAMEBUFFER_DEBUG
 #endif
 
-const char* FrameBuffer::aspect_ratio_name[5] = { "4:3", "3:2", "16:10", "16:9", "21:9" };
-glm::vec2 FrameBuffer::aspect_ratio_size[5] = { glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f) , glm::vec2(21.f,9.f) };
-const char* FrameBuffer::resolution_name[5] = { "720", "1080", "1200", "1440", "2160" };
-float FrameBuffer::resolution_height[5] = { 720.f, 1080.f, 1200.f, 1440.f, 2160.f };
-
-
-glm::vec3 FrameBuffer::getResolutionFromParameters(int ar, int h)
-{
-    float width = aspect_ratio_size[ar].x * resolution_height[h] / aspect_ratio_size[ar].y;
-    width -= (int)width % 2;
-    glm::vec3 res = glm::vec3( width, resolution_height[h] , 0.f);
-
-    return res;
-}
-
-glm::ivec2 FrameBuffer::getParametersFromResolution(glm::vec3 res)
-{
-    glm::ivec2 p = glm::ivec2(-1);
-
-    // get aspect ratio parameter
-    static int num_ar = ((int)(sizeof(FrameBuffer::aspect_ratio_size) / sizeof(*FrameBuffer::aspect_ratio_size)));
-    float myratio = res.x / res.y;
-    for(int ar = 0; ar < num_ar; ar++) {
-        if ( myratio - (FrameBuffer::aspect_ratio_size[ar].x / FrameBuffer::aspect_ratio_size[ar].y ) < EPSILON){
-            p.x = ar;
-            break;
-        }
-    }
-    // get height parameter
-    static int num_height = ((int)(sizeof(FrameBuffer::resolution_height) / sizeof(*FrameBuffer::resolution_height)));
-    for(int h = 0; h < num_height; h++) {
-        if ( res.y - FrameBuffer::resolution_height[h] < 1){
-            p.y = h;
-            break;
-        }
-    }
-
-    return p;
-}
 
 FrameBuffer::FrameBuffer(glm::vec3 resolution, FrameBufferFlags flags): flags_(flags),
     textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0), mem_usage_(0)
@@ -220,12 +180,8 @@ float FrameBuffer::aspectRatio() const
 
 std::string FrameBuffer::info() const
 {
-    glm::ivec2 p = FrameBuffer::getParametersFromResolution(resolution());
     std::ostringstream info;
-
-    info << attrib_.viewport.x << "x" << attrib_.viewport.y;
-    if (p.x > -1)
-        info << "px, " << FrameBuffer::aspect_ratio_name[p.x];
+    info << attrib_.viewport.x << "x" << attrib_.viewport.y << "px";
 
     return info.str();
 }
@@ -399,7 +355,7 @@ void FrameBuffer::checkFramebufferStatus()
             glm::ivec2 RAM = Rendering::getGPUMemoryInformation();
 
             // bad case: not enough RAM, we should warn the user
-            if ( RAM.x < mem_usage_ * 3 ) {
+            if ( uint(RAM.x) < mem_usage_ * 3 ) {
                 Log::Warning("Critical allocation of frame buffer: only %d kB RAM remaining in graphics card.", RAM.x );
                 if (RAM.y < INT_MAX)
                     Log::Warning("Only %.1f %% of %d kB available.", 100.f*float(RAM.x)/float(RAM.y), RAM.y);

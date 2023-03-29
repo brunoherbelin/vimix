@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,9 +20,6 @@
 #include <sstream>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "defines.h"
-#include "ImageShader.h"
-#include "Resource.h"
 #include "Decorations.h"
 #include "Stream.h"
 #include "Visitor.h"
@@ -78,6 +75,8 @@ Pattern::Pattern() : Stream(), type_(UINT_MAX) // invalid pattern
 
 pattern_descriptor Pattern::get(uint type)
 {
+    type = CLAMP(type, 0, patterns_.size()-1);
+
     // check availability of feature to use this pattern
     if (!patterns_[type].available)
         patterns_[type].available = GstToolkit::has_feature(patterns_[type].feature);
@@ -151,7 +150,8 @@ void PatternSource::setPattern(uint type, glm::ivec2 resolution)
     // revert to pattern Black if not available
     else {
         pattern()->open( 0, resolution );
-        Log::Warning("Pattern '%s' is not available in this version of vimix.", Pattern::get(type).label.c_str());
+        Log::Warning("Pattern '%s' is not available in this version of vimix (missing %s).",
+                     Pattern::get(type).label.c_str(), Pattern::get(type).feature.c_str());
     }
 
     // play gstreamer
@@ -164,8 +164,7 @@ void PatternSource::setPattern(uint type, glm::ivec2 resolution)
 void PatternSource::accept(Visitor& v)
 {
     Source::accept(v);
-    if (!failed())
-        v.visit(*this);
+    v.visit(*this);
 }
 
 Pattern *PatternSource::pattern() const

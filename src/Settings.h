@@ -60,9 +60,19 @@ struct WindowConfig
     std::string name;
     int x,y,w,h;
     bool fullscreen;
+    bool scaled;
+    bool decorated;
     std::string monitor;
+    bool show_pattern;
+    glm::vec4 whitebalance;
+    glm::vec3 scale;
+    glm::vec3 translation;
 
-    WindowConfig() : name(""), x(15), y(15), w(1280), h(720), fullscreen(false), monitor("") { }
+    WindowConfig() : name(APP_TITLE), x(15), y(15), w(1280), h(720),
+        fullscreen(false), scaled(false), decorated(true),
+        monitor(""), show_pattern(false), whitebalance(glm::vec4(1.f, 1.f, 1.f, 0.5f)),
+        scale(glm::vec3(1.f)), translation(glm::vec3(0.f))
+    { }
 
 };
 
@@ -154,23 +164,26 @@ struct TransitionConfig
 struct RenderConfig
 {
     bool disabled;
-    bool blit;
     int vsync;
     int multisampling;
     int ratio;
     int res;
+    int custom_width, custom_height;
     float fading;
     bool gpu_decoding;
+    bool gpu_decoding_available;
 
     RenderConfig() {
         disabled = false;
-        blit = false;
         vsync = 1;
         multisampling = 2;
         ratio = 3;
         res = 1;
+        custom_width = 1200;
+        custom_height = 600;
         fading = 0.0;
         gpu_decoding = true;
+        gpu_decoding_available = false;
     }
 };
 
@@ -293,6 +306,7 @@ struct Application
     ControllerConfig control;
 
     // multiple windows handling
+    int num_output_windows;
     std::vector<WindowConfig> windows;
 
     // recent files histories
@@ -319,7 +333,7 @@ struct Application
         show_tooptips = true;
         accept_connections = false;
         stream_protocol = 0;
-        broadcast_port = 0;
+        broadcast_port = 7070;
         recentSRT.protocol = "srt://";
         recentSRT.default_host = { "127.0.0.1", "7070"};
         loopback_camera = 0;
@@ -328,11 +342,10 @@ struct Application
         current_view = 1;
         current_workspace= 1;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
-        windows = std::vector<WindowConfig>(3);
-        windows[0].name = APP_TITLE;
+        num_output_windows = 1;
+        windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
         windows[0].w = 1600;
         windows[0].h = 900;
-        windows[1].name = "Output " APP_TITLE;
     }
 
 };

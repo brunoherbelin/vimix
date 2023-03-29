@@ -1,7 +1,7 @@
 /*
  * This file is part of vimix - video live mixer
  *
- * **Copyright** (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
+ * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,13 +60,16 @@
 // vimix
 #include "defines.h"
 #include "Log.h"
+#include "Stream.h"
 #include "Resource.h"
 #include "Settings.h"
-#include "Primitives.h"
+#include "ImageShader.h"
 #include "Mixer.h"
 #include "SystemToolkit.h"
 #include "GstToolkit.h"
 #include "UserInterfaceManager.h"
+#include "ControlManager.h"
+#include "ImageFilter.h"
 
 #include "RenderingManager.h"
 
@@ -120,57 +123,57 @@ void Rendering::LinkPipeline( GstPipeline *pipeline )
 #endif
 
 
-std::map<GLFWwindow *, RenderingWindow*> GLFW_window_;
-
 static void glfw_error_callback(int error, const char* description)
 {
     g_printerr("Glfw Error %d: %s\n",  error, description);
-}
-
-static void WindowRefreshCallback( GLFWwindow * )
-{
-    Rendering::manager().draw();
 }
 
 static void WindowResizeCallback( GLFWwindow *w, int width, int height)
 {
     if (Rendering::manager().mainWindow().window() == w) {
         // UI manager tries to keep windows in the workspace
-        WorkspaceWindow::notifyWorkspaceSizeChanged(GLFW_window_[w]->previous_size.x,  GLFW_window_[w]->previous_size.y, width, height);
-        GLFW_window_[w]->previous_size = glm::vec2(width, height);
+        WorkspaceWindow::notifyWorkspaceSizeChanged(Rendering::manager().mainWindow().previous_size.x, Rendering::manager().mainWindow().previous_size.y, width, height);
+        Rendering::manager().mainWindow().previous_size = glm::vec2(width, height);
+        Rendering::manager().draw();
     }
 
-    int id = GLFW_window_[w]->index();
+    int id = Rendering::manager().window(w)->index();
+    Settings::application.windows[id].fullscreen = glfwGetWindowMonitor(w) != nullptr;
     if (!Settings::application.windows[id].fullscreen) {
         Settings::application.windows[id].w = width;
         Settings::application.windows[id].h = height;
     }
 
-#if __APPLE__
-    Rendering::manager().draw();
-#endif
 }
 
 static void WindowMoveCallback( GLFWwindow *w, int x, int y)
 {
-    int id = GLFW_window_[w]->index();
+    int id = Rendering::manager().window(w)->index();
     if (!Settings::application.windows[id].fullscreen) {
         Settings::application.windows[id].x = x;
         Settings::application.windows[id].y = y;
     }
 }
 
-static void WindowToggleFullscreen( GLFWwindow *w, int button, int action, int)
+static void OutputWindowEvent( GLFWwindow *w, int button, int action, int)
 {
+    // detect mouse press
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
         static double seconds = 0.f;
         // detect double clic
         if ( glfwGetTime() - seconds < 0.2f ) {
-            // toggle fullscreen
-            GLFW_window_[w]->toggleFullscreen();
+
+            // exit fullscreen if its the case
+            if (glfwGetWindowMonitor(w) != nullptr)
+                Rendering::manager().window(w)->exitFullscreen();
+
+            // show main window in DISPLAYS view to
+            // indicate how to manipulate output window
+            Mixer::manager().setView(View::DISPLAYS);
+            Rendering::manager().mainWindow().show();
         }
-        // for next clic detection
+        // for next double clic detection
         seconds = glfwGetTime();
     }
 }
@@ -179,6 +182,90 @@ static void WindowCloseCallback( GLFWwindow* w )
 {
     if (!UserInterface::manager().TryClose())
         glfwSetWindowShouldClose(w, GLFW_FALSE);
+}
+
+void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
+{
+    // reset list of monitors
+    Rendering::manager().monitors_geometry_.clear();
+
+    // list monitors with GLFW
+    int count_monitors = 0;
+    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
+
+    // Fill list of monitors of rendering manager
+    for (int i = 0; i < count_monitors;  i++) {
+        // fill monitor structure
+        int x = 0, y = 0;
+        glfwGetMonitorPos(monitors[i], &x, &y);
+        const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
+        std::string n = glfwGetMonitorName(monitors[i]);
+        // add
+        Rendering::manager().monitors_geometry_[n] = glm::ivec4(x, y, vm->width, vm->height);
+    }
+
+    // inform Displays View that monitors changed
+    Mixer::manager().view(View::DISPLAYS)->recenter();
+
+#ifndef NDEBUG
+    if (event == GLFW_CONNECTED)
+        g_printerr("Monitor %s connected\n",  glfwGetMonitorName(monitor));
+    else if (event == GLFW_DISCONNECTED)
+        g_printerr("Monitor %s disconnected\n",  glfwGetMonitorName(monitor));
+#endif
+}
+
+GLFWmonitor *Rendering::monitorAt(int x, int y)
+{
+    // default to primary monitor
+    GLFWmonitor *mo = glfwGetPrimaryMonitor();
+
+    // list all monitors
+    int count_monitors = 0;
+    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
+
+    // if there is more than one monitor
+    if (count_monitors > 1) {
+        // try every monitor
+        for (int i = 0; i < count_monitors;  i++) {
+            int workarea_x, workarea_y;
+            glfwGetMonitorPos(monitors[i], &workarea_x, &workarea_y);
+            const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
+            if ( x >= workarea_x && x <= workarea_x + vm->width &&
+                 y >= workarea_y && y <= workarea_y + vm->height) {
+                // found the monitor containing this point !
+                mo = monitors[i];
+                break;
+            }
+        }
+    }
+
+    return mo;
+}
+
+
+GLFWmonitor *Rendering::monitorNamed(const std::string &name)
+{
+    // default to primary monitor
+    GLFWmonitor *mo = glfwGetPrimaryMonitor();
+
+    // list all monitors
+    int count_monitors = 0;
+    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
+
+    // if there is more than one monitor
+    if (count_monitors > 1) {
+        // try every monitor
+        for (int i = 0; i < count_monitors;  i++) {
+            if ( name.compare( glfwGetMonitorName(monitors[i]) ) == 0 ){
+                // found the monitor with this name
+                mo = monitors[i];
+                break;
+            }
+        }
+    }
+
+    return mo;
 }
 
 void Rendering::close()
@@ -194,33 +281,14 @@ Rendering::Rendering()
 
 bool Rendering::init()
 {
-    // Setup window
+    //
+    // Setup GLFW
+    //
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()){
         g_printerr("Failed to Initialize GLFW.\n");
         return false;
     }
-
-    // Decide GL+GLSL versions GL 3.3 + GLSL 150
-    glsl_version = "#version 150";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-#if __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
-#endif
-
-    //
-    // OpenGL Multisampling main window
-    //
-    glfwWindowHint(GLFW_SAMPLES, Settings::application.render.multisampling);
-    main_.init(0);
-    // set application icon
-    main_.setIcon("images/vimix_256x256.png");
-    // additional window callbacks for main window
-    glfwSetWindowCloseCallback( main_.window(), WindowCloseCallback );
-    glfwSetWindowRefreshCallback( main_.window(), WindowRefreshCallback );
-    glfwSetDropCallback( main_.window(), Rendering::FileDropped);
 
     //
     // Gstreamer setup
@@ -259,22 +327,28 @@ bool Rendering::init()
         Log::Info("Found Frei0r plugins in %s", frei0r_path.c_str());
         g_setenv ("FREI0R_PATH", frei0r_path.c_str(), TRUE);
     }
-    g_setenv ("GST_GL_API", "opengl3", TRUE);
+
+    // init gstreamer with opengl API
+    g_setenv ("GST_GL_API", VIMIX_GL_VERSION, TRUE);
     gst_init (NULL, NULL);
 
     // increase selection rank for GPU decoding plugins
     std::list<std::string> gpuplugins = GstToolkit::enable_gpu_decoding_plugins(Settings::application.render.gpu_decoding);
-    if (Settings::application.render.gpu_decoding) {
-        if (gpuplugins.size() > 0) {
-            Log::Info("Found the following GPU decoding plugin(s):");
-            int i = 1;
-            for(auto it = gpuplugins.rbegin(); it != gpuplugins.rend(); it++, ++i)
-                Log::Info("%d. %s", i, (*it).c_str());
-        }
-        else {
-            Log::Info("No GPU decoding plugin found.");
-        }
+    if (gpuplugins.size() > 0) {
+        Settings::application.render.gpu_decoding_available = true;
+        Log::Info("Found the following hardware decoding gstreamer plugin(s):");
+        int i = 1;
+        for(auto it = gpuplugins.begin(); it != gpuplugins.end(); it++, ++i)
+            Log::Info("%d. %s", i, (*it).c_str());
+        if (Settings::application.render.gpu_decoding)
+            Log::Info("Hardware decoding enabled.");
+        else
+            Log::Info("Hardware decoding disabled.");
     }
+    else {
+        Log::Info("No hardware decoding plugin found.");
+    }
+
 #ifdef SYNC_GSTREAMER_OPENGL_CONTEXT
 #if GST_GL_HAVE_PLATFORM_WGL
     global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
@@ -295,22 +369,48 @@ bool Rendering::init()
 #endif
 
     //
-    // output window
+    // Monitors
     //
-    glfwWindowHint(GLFW_SAMPLES, 0); // no need for multisampling in displaying output
-    output_.init(1, main_.window());
-    output_.setIcon("images/vimix_256x256.png");
-    // special callbacks for user input in output window
-    glfwSetMouseButtonCallback( output_.window(), WindowToggleFullscreen);
+    Rendering::MonitorConnect(nullptr, GLFW_DONT_CARE);
+    // automatic detection of monitor connect & disconnect
+    glfwSetMonitorCallback(Rendering::MonitorConnect);
+
+    //
+    // Main window
+    //
+    if ( !main_.init(0) )
+        return false;
+
+    //
+    // Output windows will be initialized in draw
+    //
+    outputs_ = std::vector<RenderingWindow>(MAX_OUTPUT_WINDOW);
 
     return true;
+}
+
+RenderingWindow* Rendering::window(GLFWwindow *w)
+{
+    if (windows_.count(w))
+        return windows_[w];
+    else
+        return &main_;
+}
+
+RenderingWindow* Rendering::window(int index)
+{
+    if (index > 0 && index <= MAX_OUTPUT_WINDOW )
+        return &outputs_[index - 1];
+    else
+        return &main_;
 }
 
 
 void Rendering::show()
 {
-    // show output window
-    output_.show();
+    // show output windows
+    for (auto it = outputs_.begin(); it != outputs_.end(); ++it)
+        it->show();
 
     // show main window
     main_.show();
@@ -322,12 +422,6 @@ void Rendering::show()
 bool Rendering::isActive()
 {
     return !glfwWindowShouldClose(main_.window());
-}
-
-
-void Rendering::pushFrontDrawCallback(RenderingCallback function)
-{
-    draw_callbacks_.push_front(function);
 }
 
 void Rendering::pushBackDrawCallback(RenderingCallback function)
@@ -345,8 +439,9 @@ void Rendering::draw()
     glfwPollEvents();
 
     // change windows fullscreen mode if requested
-    main_.toggleFullscreen_();
-    output_.toggleFullscreen_();
+    main_.changeFullscreen_();
+    for (auto it = outputs_.begin(); it != outputs_.end(); ++it)
+        it->changeFullscreen_();
 
     // change main window title if requested
     if (!main_new_title_.empty()) {
@@ -370,6 +465,25 @@ void Rendering::draw()
         request_screenshot_ = false;
     }
 
+    // draw output windows and count number of success
+    int count = 0;
+    for (auto it = outputs_.begin(); it != outputs_.end(); ++it) {
+        if ( it->draw( Mixer::manager().session()->frame() ) )
+            ++count;
+    }
+    // terminate or initialize output windows to match number of output windows
+    if (count > Settings::application.num_output_windows)
+        outputs_[count-1].terminate();
+    else if (count < Settings::application.num_output_windows) {
+        outputs_[count].init( count+1, main_.window());
+        outputs_[count].show();
+    }
+
+    // swap all GL buffers at once
+    main_.swap();
+    for (auto it = outputs_.begin(); it != outputs_.end(); ++it)
+        it->swap();
+
     // software framerate limiter < 62 FPS
     {
         static GTimer *timer = g_timer_new ();
@@ -378,21 +492,15 @@ void Rendering::draw()
             g_usleep( 16000 - (gulong)elapsed  );
         g_timer_start(timer);
     }
-
-    // swap GL buffers
-    glfwSwapBuffers(main_.window());
-
-    // draw output window (and swap buffer output)
-    output_.draw( Mixer::manager().session()->frame() );
-
 }
 
 void Rendering::terminate()
 {
-    // close window
-    glfwDestroyWindow(output_.window());
-    glfwDestroyWindow(main_.window());
-//    glfwTerminate();
+    // terminate all windows
+    for (auto it = outputs_.begin(); it != outputs_.end(); ++it)
+        it->terminate();
+
+    main_.terminate();
 }
 
 void Rendering::pushAttrib(RenderingAttrib ra)
@@ -472,7 +580,7 @@ void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])
         if (filename.empty())
             break;
         // try to create a source
-        Mixer::manager().addSource ( Mixer::manager().createSourceFile( filename ) );
+        Mixer::manager().addSource ( Mixer::manager().createSourceFile( filename ) );        
     }
     if (i>0) {
         UserInterface::manager().showPannel();
@@ -580,17 +688,17 @@ WindowSurface::WindowSurface(Shader *s) : Primitive(s)
 }
 
 
-RenderingWindow::RenderingWindow() : window_(nullptr), master_(nullptr),
-    index_(-1), dpi_scale_(1.f), textureid_(0), fbo_(0), surface_(nullptr), request_toggle_fullscreen_(false)
+RenderingWindow::RenderingWindow() : window_(NULL), master_(NULL),
+    index_(-1), dpi_scale_(1.f), textureid_(0), fbo_(0), surface_(nullptr), request_change_fullscreen_(false)
 {
+    pattern_ = new Stream;
 }
 
 RenderingWindow::~RenderingWindow()
 {
-    if (surface_ != nullptr)
-        delete surface_;
-    if (fbo_ != 0)
-        glDeleteFramebuffers(1, &fbo_);
+    if (window_ != NULL)
+        terminate();
+    delete pattern_;
 }
 
 void RenderingWindow::setTitle(const std::string &title)
@@ -601,7 +709,7 @@ void RenderingWindow::setTitle(const std::string &title)
     else
         fulltitle = title + std::string(" - " APP_NAME);
 
-    if (window_ != nullptr)
+    if (window_ != NULL)
         glfwSetWindowTitle(window_, fulltitle.c_str());
 }
 
@@ -609,7 +717,7 @@ void RenderingWindow::setIcon(const std::string &resource)
 {
     size_t fpsize = 0;
     const char *fp = Resource::getData(resource, &fpsize);
-    if (fp != nullptr && window_ != nullptr) {
+    if (fp != nullptr && window_) {
         GLFWimage icon;
         icon.pixels = stbi_load_from_memory( (const stbi_uc*)fp, fpsize, &icon.width, &icon.height, nullptr, 4 );
         glfwSetWindowIcon( window_, 1, &icon );
@@ -617,88 +725,21 @@ void RenderingWindow::setIcon(const std::string &resource)
     }
 }
 
-bool RenderingWindow::isFullscreen ()
-{
-//    return (glfwGetWindowMonitor(window_) != nullptr);
-    return Settings::application.windows[index_].fullscreen;
-}
-
-GLFWmonitor *RenderingWindow::monitorAt(int x, int y)
-{
-    // default to primary monitor
-    GLFWmonitor *mo = glfwGetPrimaryMonitor();
-
-    // list all monitors
-    int count_monitors = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
-    // if there is more than one monitor
-    if (count_monitors > 1) {
-        // pick at the coordinates given or at pos of window
-        // try every monitor
-        int i = 0;
-        for (; i < count_monitors;  i++) {
-            int workarea_x, workarea_y, workarea_width, workarea_height;
-#if GLFW_VERSION_MINOR > 2
-            glfwGetMonitorWorkarea(monitors[i], &workarea_x, &workarea_y, &workarea_width, &workarea_height);
-#else
-            glfwGetMonitorPos(monitors[i], &workarea_x, &workarea_y);
-            const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
-            workarea_width = vm->width;
-            workarea_height = vm->height;
-#endif
-            if ( x >= workarea_x && x <= workarea_x + workarea_width &&
-                 y >= workarea_y && y <= workarea_y + workarea_height)
-                break;
-        }
-        // found the monitor containing this point !
-        if ( i < count_monitors)
-            mo = monitors[i];
-    }
-
-    return mo;
-}
-
-GLFWmonitor *RenderingWindow::monitorNamed(const std::string &name)
-{
-    // default to primary monitor
-    GLFWmonitor *mo = glfwGetPrimaryMonitor();
-
-    // list all monitors
-    int count_monitors = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
-    // if there is more than one monitor
-    if (count_monitors > 1) {
-        // pick at the coordinates given or at pos of window
-        // try every monitor
-        int i = 0;
-        for (; i < count_monitors;  i++) {
-            if ( std::string( glfwGetMonitorName(monitors[i])) == name )
-                break;
-        }
-        // found the monitor with this name
-        if ( i < count_monitors)
-            mo = monitors[i];
-    }
-
-    return mo;
-}
-
 GLFWmonitor *RenderingWindow::monitor()
 {
-    // pick at the coordinates given or at pos of window
-    int x = 1, y = 1;
-    if (window_ != nullptr)
+    // get monitor at the center of the window
+    int x = 0, y = 0, w = 2, h = 2;
+    if (window_) {
+        glfwGetWindowSize(window_, &w, &h);
         glfwGetWindowPos(window_, &x, &y);
-    return monitorAt(x, y);
+    }
+    return Rendering::manager().monitorAt(x + w/2, y + h/2);
 }
 
 void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
 {
-    if (window_ == nullptr)
+    if (!window_)
         return;
-
-    // done request
-    request_toggle_fullscreen_ = false;
 
     // disable fullscreen mode
     if (mo == nullptr) {
@@ -707,7 +748,7 @@ void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
 
         // set to window mode
         glfwSetInputMode( window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        glfwSetWindowMonitor( window_, nullptr, Settings::application.windows[index_].x,
+        glfwSetWindowMonitor( window_, NULL, Settings::application.windows[index_].x,
                                                 Settings::application.windows[index_].y,
                                                 Settings::application.windows[index_].w,
                                                 Settings::application.windows[index_].h, 0 );
@@ -720,44 +761,89 @@ void RenderingWindow::setFullscreen_(GLFWmonitor *mo)
 
         // set to fullscreen mode
         const GLFWvidmode * mode = glfwGetVideoMode(mo);
-        glfwSetInputMode( window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
         glfwSetWindowMonitor( window_, mo, 0, 0, mode->width, mode->height, mode->refreshRate);
+
+        glfwSetInputMode( window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     }
 
-    // Enable vsync on output window only (i.e. not 0 if has a master)
+    // Enable vsync on main window only (i.e. 0 if has a master)
     // Workaround for disabled vsync in fullscreen (https://github.com/glfw/glfw/issues/1072)
-    glfwSwapInterval( nullptr == master_ ? 0 : Settings::application.render.vsync);
+    glfwSwapInterval( master_ != nullptr ? 0 : Settings::application.render.vsync);
 
 }
 
-void RenderingWindow::exitFullscreen()
+bool RenderingWindow::isFullscreen ()
 {
-    if (isFullscreen()) {
-        // exit fullscreen
-        request_toggle_fullscreen_ = true;
-    }
+//    return (glfwGetWindowMonitor(window_) != nullptr);
+    return Settings::application.windows[index_].fullscreen;
 }
 
-void RenderingWindow::toggleFullscreen()
+void RenderingWindow::exitFullscreen ()
 {
-    request_toggle_fullscreen_ = true;
+    // exit fullscreen
+    request_change_fullscreen_ = isFullscreen();
 }
 
-void RenderingWindow::toggleFullscreen_()
+void RenderingWindow::toggleFullscreen ()
 {
-    if (request_toggle_fullscreen_) {
+    request_change_fullscreen_ = true;
+}
+
+void RenderingWindow::setFullscreen (std::string monitorname)
+{
+    Settings::application.windows[index_].monitor = monitorname;
+    request_change_fullscreen_ = true;
+}
+
+void RenderingWindow::changeFullscreen_()
+{
+    // change upon request
+    if (request_change_fullscreen_) {
+
+        // done request
+        request_change_fullscreen_ = false;
+
+        GLFWmonitor *mo = Rendering::manager().monitorNamed( Settings::application.windows[index_].monitor );
 
         // if in fullscreen mode
-        if (glfwGetWindowMonitor(window_) != nullptr) {
-            // exit fullscreen
-            setFullscreen_(nullptr);
+        if (isFullscreen ()) {
+
+            // changing fullscreen monitor
+            if ( glfwGetWindowMonitor(window_) != mo)
+                setFullscreen_(mo);
+            else
+                // exit fullscreen
+                setFullscreen_(nullptr);
         }
         // not in fullscreen mode
         else {
-            // enter fullscreen in monitor where the window is
-            setFullscreen_(monitor());
+            // enter fullscreen
+            setFullscreen_(mo);
         }
     }
+}
+
+void RenderingWindow::setDecoration (bool on)
+{
+    if (window_ == NULL)
+        return;
+
+    Settings::application.windows[index_].decorated = on;
+    glfwSetWindowAttrib( window_, GLFW_RESIZABLE, on ? GLFW_TRUE : GLFW_FALSE);
+    glfwSetWindowAttrib( window_, GLFW_DECORATED, on ? GLFW_TRUE : GLFW_FALSE);
+}
+
+void RenderingWindow::setCoordinates(glm::ivec4 rect)
+{
+    if (window_ == NULL)
+        return;
+
+    // restore maximized window to be able to change its coordinates
+    if (glfwGetWindowAttrib(window_, GLFW_MAXIMIZED))
+        glfwRestoreWindow(window_);
+
+    glfwSetWindowSize( window_, glm::max(50, rect.p), glm::max(50, rect.q));
+    glfwSetWindowPos( window_, rect.x, rect.y);
 }
 
 int RenderingWindow::width()
@@ -794,16 +880,41 @@ float RenderingWindow::aspectRatio()
 
 bool RenderingWindow::init(int index, GLFWwindow *share)
 {
+    if (window_)
+        return false;
+
+    glfwMakeContextCurrent(NULL);
+
+    ///
+    /// Settings
+    ///
     index_ = index;
     master_ = share;
-
-    // access Settings
     Settings::WindowConfig winset = Settings::application.windows[index_];
+
+    ///
+    /// GLFW window creation parameters
+    ///
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+#if __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
+#endif
+
+    // multisampling in main window
+    glfwWindowHint(GLFW_SAMPLES, master_ == NULL ? Settings::application.render.multisampling : 0);
 
     // do not show at creation
     glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
+
+    // restore decoration state
+    if (master_ != NULL && !winset.decorated) {
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+    }
 
     // create the window
     window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, master_);
@@ -813,26 +924,50 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     }
 
     // ensure minimal window size
-    glfwSetWindowSizeLimits(window_, 800, 500, GLFW_DONT_CARE, GLFW_DONT_CARE);
-
+    glfwSetWindowSizeLimits(window_, 500, 500, GLFW_DONT_CARE, GLFW_DONT_CARE);
     previous_size = glm::vec2(winset.w, winset.h);
 
     // set initial position
     glfwSetWindowPos(window_, winset.x, winset.y);
 
+    // set icon
+    setIcon("images/vimix_256x256.png");
+
+    ///
     /// CALLBACKS
+    ///
     // store global ref to pointers (used by callbacks)
-    GLFW_window_[window_] = this;
+    Rendering::manager().windows_[window_] = this;
+
+    //
     // window position and resize callbacks
+    //
     glfwSetWindowPosCallback( window_, WindowMoveCallback );
     glfwSetWindowSizeCallback( window_, WindowResizeCallback );
 
+    //
+    // set keyboard callback
+    //
+    // all windows capture keys
+    glfwSetKeyCallback( window_, Control::keyboardCalback);
+
+    if (master_ != NULL) {
+        // additional window callbacks for user input in output windows
+        glfwSetMouseButtonCallback( window_, OutputWindowEvent);
+    }
+    else {
+        // additional window callbacks for main window
+        glfwSetWindowCloseCallback( window_, WindowCloseCallback );
+        glfwSetDropCallback( window_, Rendering::FileDropped);
+    }
+
+    //
+    // Initialize OpenGL
+    //
     // take opengl context ownership
     glfwMakeContextCurrent(window_);
 
-    //
     // Initialize OpenGL loader on first call
-    //
     static bool glad_initialized = false;
     if ( !glad_initialized ) {
         bool err = gladLoadGLLoader((GLADloadproc) glfwGetProcAddress) == 0;
@@ -860,18 +995,16 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
 
     // if not main window
     if ( master_ != NULL ) {
-        // Enable vsync on output window
-        glfwSwapInterval(Settings::application.render.vsync);
+        // NO vsync on output windows
+        glfwSwapInterval(0);
         // no need for multisampling
         glDisable(GL_MULTISAMPLE);
         // clear to black
         window_attributes_.clear_color = glm::vec4(0.f, 0.f, 0.f, 1.f);
-        // give back context ownership
-        glfwMakeContextCurrent(master_);
     }
     else {
-        //  Disable vsync on main window
-        glfwSwapInterval(0);
+        //  vsync on main window
+        glfwSwapInterval(Settings::application.render.vsync);
         // Enable Antialiasing multisampling
         if (Settings::application.render.multisampling > 0) {
             glEnable(GL_MULTISAMPLE);
@@ -881,23 +1014,56 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
         window_attributes_.clear_color = glm::vec4(COLOR_BGROUND, 1.f);
     }
 
+    //
+    // default render black
+    //
+    textureid_ = Resource::getTextureBlack();
+
     return true;
+}
+
+void RenderingWindow::terminate()
+{
+    // cleanup
+    if (surface_ != nullptr)
+        delete surface_;
+    if (fbo_ != 0)
+        glDeleteFramebuffers(1, &fbo_);
+    if (window_ != NULL) {
+        // remove global ref to pointers
+        Rendering::manager().windows_.erase(window_);
+        // delete window
+        glfwDestroyWindow(window_);
+    }
+
+    // invalidate
+    window_  = NULL;
+    shader_  = nullptr;
+    surface_ = nullptr;
+    fbo_     = 0;
+    index_   = -1;
+    textureid_ = Resource::getTextureBlack();
 }
 
 void RenderingWindow::show()
 {
+    if (!window_)
+        return;
+
     glfwShowWindow(window_);
 
     if ( Settings::application.windows[index_].fullscreen ) {
-        GLFWmonitor *mo = monitorNamed(Settings::application.windows[index_].monitor);
+        GLFWmonitor *mo = Rendering::manager().monitorNamed(Settings::application.windows[index_].monitor);
         setFullscreen_(mo);
     }
-
 }
 
 
 void RenderingWindow::makeCurrent()
 {
+    if (!window_)
+        return;
+
     // handle window resize
     glfwGetFramebufferSize(window_, &(window_attributes_.viewport.x), &(window_attributes_.viewport.y));
 
@@ -911,12 +1077,21 @@ void RenderingWindow::makeCurrent()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-// TODO update parameters for draw on resize event (not every frame)
-
-void RenderingWindow::draw(FrameBuffer *fb)
+void RenderingWindow::swap()
 {
+    if (window_)
+        // swap buffer
+        glfwSwapBuffers(window_);
+
+}
+
+FilteringProgram whitebalance("Whitebalance", "shaders/filters/whitebalance.glsl", "", { { "Red", 1.0}, { "Green", 1.0}, { "Blue", 1.0}, { "Temperature", 0.5} });
+
+bool RenderingWindow::draw(FrameBuffer *fb)
+{
+    // cannot draw if there is no window or invalid framebuffer
     if (!window_ || !fb)
-        return;
+        return false;
 
     // only draw if window is not iconified
     if( !glfwGetWindowAttrib(window_, GLFW_ICONIFIED ) ) {
@@ -931,83 +1106,73 @@ void RenderingWindow::draw(FrameBuffer *fb)
         Rendering::manager().pushAttrib(window_attributes_);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // blit framebuffer
-        if (Settings::application.render.blit) {
-
-            if ( textureid_ != fb->texture()) {
-
-                textureid_ = fb->texture();
-
-                // create a new fbo in this opengl context
-                if (fbo_ != 0)
-                    glDeleteFramebuffers(1, &fbo_);
-                glGenFramebuffers(1, &fbo_);
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-
-                // attach the 2D texture to local FBO
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
-#ifndef NDEBUG
-                Log::Info("Blit to output window enabled.");
-#endif
-            }
-
-            // if not disabled
-            if (!Settings::application.render.disabled) {
-
-                // calculate scaling factor of frame buffer inside window
-                int rx, ry, rw, rh;
-                float renderingAspectRatio = fb->aspectRatio();
-                if (aspectRatio() < renderingAspectRatio) {
-                    int nh = (int)( float(window_attributes_.viewport.x) / renderingAspectRatio);
-                    rx = 0;
-                    ry = (window_attributes_.viewport.y - nh) / 2;
-                    rw = window_attributes_.viewport.x;
-                    rh = (window_attributes_.viewport.y + nh) / 2;
-                } else {
-                    int nw = (int)( float(window_attributes_.viewport.y) * renderingAspectRatio );
-                    rx = (window_attributes_.viewport.x - nw) / 2;
-                    ry = 0;
-                    rw = (window_attributes_.viewport.x + nw) / 2;
-                    rh = window_attributes_.viewport.y;
-                }
-
-                // select fbo texture read target
-                glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_);
-
-                // select screen target
-                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-
-                // blit operation from fbo (containing texture) to screen
-                glBlitFramebuffer(0, fb->height(), fb->width(), 0, rx, ry, rw, rh, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
-            }
-        }
+        // make sure previous shader in another glcontext is disabled
+        ShadingProgram::enduse();
 
         // draw geometry
-        else if (!Settings::application.render.disabled)
-        {
+        if (Settings::application.render.disabled)
+            // no draw; indicate texture is black
+            textureid_ = Resource::getTextureBlack();
+        else {
+            // normal draw
+
             // VAO is not shared between multiple contexts of different windows
             // so we have to create a new VAO for rendering the surface in this window
-            if (surface_ == 0)
-                surface_ = new WindowSurface;
+            if (surface_ == nullptr) {
+                // create shader that performs white balance correction
+                shader_ = new ImageFilteringShader;
+                shader_->setCode( whitebalance.code().first );
+                // create surface using the shader
+                surface_ = new WindowSurface(shader_);
+            }
+            // update values of the shader
+            if (shader_) {
+                shader_->uniforms_["Red"] = Settings::application.windows[index_].whitebalance.x;
+                shader_->uniforms_["Green"] = Settings::application.windows[index_].whitebalance.y;
+                shader_->uniforms_["Blue"] = Settings::application.windows[index_].whitebalance.z;
+                shader_->uniforms_["Temperature"] = Settings::application.windows[index_].whitebalance.w;
+            }
 
-            // calculate scaling factor of frame buffer inside window
-            float windowAspectRatio = aspectRatio();
-            float renderingAspectRatio = fb->aspectRatio();
-            glm::vec3 scale;
-            if (windowAspectRatio < renderingAspectRatio)
-                scale = glm::vec3(1.f, windowAspectRatio / renderingAspectRatio, 1.f);
+            // Display option: scaled or corrected aspect ratio
+            if (Settings::application.windows[index_].scaled) {
+                surface_->scale_ = Settings::application.windows[index_].scale;
+                surface_->translation_ = Settings::application.windows[index_].translation;
+            }
+            else{
+                // calculate scaling factor of frame buffer inside window
+                const float windowAspectRatio = aspectRatio();
+                const float renderingAspectRatio = fb->aspectRatio();
+                if (windowAspectRatio < renderingAspectRatio)
+                    surface_->scale_ = glm::vec3(1.f, windowAspectRatio / renderingAspectRatio, 1.f);
+                else
+                    surface_->scale_ = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
+                surface_->translation_ = glm::vec3(0.f);
+            }
+
+            // Display option: draw calibration pattern
+            if ( Settings::application.windows[index_].show_pattern) {
+                // (re) create pattern at frame buffer resolution
+                if ( pattern_->width() != fb->width() || pattern_->height() != fb->height()) {
+                    if (GstToolkit::has_feature("frei0r-src-test-pat-b") )
+                        pattern_->open("frei0r-src-test-pat-b type=0.7", fb->width(), fb->height());
+                    else {
+                        pattern_->open("videotestsrc pattern=smpte", fb->width(), fb->height());
+                        pattern_->play(true);
+                    }
+                }
+                // draw pattern texture
+                pattern_->update();
+                textureid_ = pattern_->texture();
+            }
             else
-                scale = glm::vec3(renderingAspectRatio / windowAspectRatio, 1.f, 1.f);
+                // draw normal texture
+                textureid_ = fb->texture();
 
-            // make sure previous shader in another glcontext is disabled
-            ShadingProgram::enduse();
-
-            // draw
-            glBindTexture(GL_TEXTURE_2D, fb->texture());
-            //            surface->shader()->color.a = 0.4f; // TODO alpha blending ?
+            // actual render of the textured surface
+            glBindTexture(GL_TEXTURE_2D, textureid_);
             static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
-            surface_->draw(glm::scale(glm::identity<glm::mat4>(), scale), projection);
+            surface_->update(0.f);
+            surface_->draw(glm::identity<glm::mat4>(), projection);
 
             // done drawing (unload shader from this glcontext)
             ShadingProgram::enduse();
@@ -1016,12 +1181,8 @@ void RenderingWindow::draw(FrameBuffer *fb)
 
         // restore attribs
         Rendering::manager().popAttrib();
-
-        // swap buffer
-        glfwSwapBuffers(window_);
     }
 
-    // give back context ownership
-    glfwMakeContextCurrent(master_);
+    return true;
 }
 

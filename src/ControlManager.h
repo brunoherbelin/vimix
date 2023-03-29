@@ -1,15 +1,16 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
+#include <glm/fwd.hpp>
 #include <map>
 #include <list>
 #include <string>
 #include <atomic>
 #include <condition_variable>
 
-#include "SourceList.h"
-#include "BaseToolkit.h"
-#include "NetworkToolkit.h"
+#include "osc/OscReceivedElements.h"
+#include "osc/OscPacketListener.h"
+#include "ip/UdpSocket.h"
 
 #define OSC_SYNC               "/sync"
 
@@ -25,7 +26,9 @@
 #define OSC_OUTPUT_FADE_OUT    "/fade-out"
 
 #define OSC_ALL                "/all"
-#define OSC_SELECTED           "/selected"
+#define OSC_SELECTION          "/selection"
+#define OSC_SOURCEID           "(\\/#?)[[:digit:]]+$"
+#define OSC_BATCH              "(\\/batch#)[[:digit:]]+$"
 #define OSC_CURRENT            "/current"
 #define OSC_NEXT               "/next"
 #define OSC_PREVIOUS           "/previous"
@@ -94,6 +97,8 @@ class GLFWwindow;
 
 class Control
 {
+    friend class RenderingWindow;
+
     // Private Constructor
     Control();
     Control(Control const& copy) = delete;
@@ -136,6 +141,8 @@ protected:
                             osc::ReceivedMessageArgumentStream arguments);
     bool receiveSourceAttribute(Source *target, const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
+    bool receiveBatchAttribute(int batch, const std::string &attribute,
+                            osc::ReceivedMessageArgumentStream arguments);
     bool receiveSessionAttribute(const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
     void receiveMultitouchAttribute(const std::string &attribute,
@@ -144,7 +151,10 @@ protected:
                              std::string target, Source *s = nullptr);
     void sendSourcesStatus(const IpEndpointName& remoteEndpoint,
                            osc::ReceivedMessageArgumentStream arguments);
+    void sendBatchStatus(const IpEndpointName& remoteEndpoint);
     void sendOutputStatus(const IpEndpointName& remoteEndpoint);
+
+    static void keyboardCalback(GLFWwindow*, int, int, int, int);
 
 private:
 
@@ -164,7 +174,6 @@ private:
     int   multitouch_active[INPUT_MULTITOUCH_COUNT];
     glm::vec2 multitouch_values[INPUT_MULTITOUCH_COUNT];
 
-    static void keyboardCalback(GLFWwindow*, int, int, int, int);
 
 };
 
