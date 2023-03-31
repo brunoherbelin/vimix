@@ -7,6 +7,11 @@
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
+                        <key>CFBundleTypeExtensions</key>
+                        <array>
+                        <string>mix</string>
+                        <string>MIX</string>
+                        </array>
 			<key>CFBundleTypeName</key>
 			<string>vimix session</string>
 			<key>CFBundleTypeRole</key>
@@ -17,14 +22,14 @@
 			<true/>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.bhbn.mix</string>
+                            <string>com.bhbn.vimix</string>
 			</array>
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
 	<string>vimix</string>
 	<key>CFBundleGetInfoString</key>
-	<string>vimix - Video Live Mix</string>
+        <string>vimix - Video Live Mixer</string>
 	<key>CFBundleIconFile</key>
 	<string>vimix.icns</string>
 	<key>CFBundleIdentifier</key>
@@ -32,15 +37,15 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleLongVersionString</key>
-        <string>0.7.0</string>
+        <string>version ${VIMIX_VERSION_MAJOR}.${VIMIX_VERSION_MINOR}.${VIMIX_VERSION_PATCH}</string>
 	<key>CFBundleName</key>
 	<string>vimix</string>
 	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-        <string>0.7</string>
-	<key>CFBundleVersion</key>
-        <string>0.7.0</string>
+        <string>APPL</string>
+        <key>CFBundleShortVersionString</key>
+        <string>${VIMIX_VERSION_MAJOR}.${VIMIX_VERSION_MINOR}</string>
+        <key>CFBundleVersion</key>
+        <string>${VIMIX_VERSION_MAJOR}.${VIMIX_VERSION_MINOR}.${VIMIX_VERSION_PATCH}</string>
 	<key>CSResourcesFileMapped</key>
 	<true/>
 	<key>LSAppNapIsDisabled</key>
@@ -48,7 +53,7 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.video</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+        <string>${MACOSX_DEPLOYMENT_TARGET}</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -61,7 +66,7 @@
         <key>NSMicrophoneUsageDescription</key>
         <string>vimix needs to access the microphone to enable sound sources.</string>
 	<key>NSHumanReadableCopyright</key>
-        <string>Copyright © 2022 Bruno Herbelin. All rights reserved.</string>
+        <string>Copyright © 2023 Bruno Herbelin. All rights reserved.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>
