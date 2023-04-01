@@ -7,7 +7,7 @@ shape for producing live graphics during concerts and VJ-ing sessions.
 The output image is typically projected full-screen on external monitors 
 or projectors, but can be streamed live (SRT) or recorded (without audio).
 
-![screenshot](vimix_screenshot.jpg)
+![screenshot](vimix_screenshot.png)
 
 Check the [Graphical User Manual](https://github.com/brunoherbelin/vimix/wiki/User-manual) or [demo videos](https://vimeo.com/vimix) to discover vimix.
 Watch this selection of [videos by Jean Detheux](https://vimeo.com/showcase/7871359) to see what vimix can do.
