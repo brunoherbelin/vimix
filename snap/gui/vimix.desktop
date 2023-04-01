@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=vimix
-Comment=Live video mixing.
+Comment=Video live mixer
 Categories=AudioVideo;Video;Graphics;Utility;
 Icon=${SNAP}/meta/gui/vimix.svg
 Exec=vimix
