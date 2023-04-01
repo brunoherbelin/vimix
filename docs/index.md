@@ -4,10 +4,10 @@ computer generated graphics, with image processing effects in real-time.
 Its intuitive and hands-on user interface gives direct control on image opacity and
 shape for producing live graphics during concerts and VJ-ing sessions.
 
-The output image is typically projected full-screen on an external
-monitor or a projector, but can be streamed live (SRT) or recorded (no audio).
+The output image is typically projected full-screen on external monitors 
+or projectors, but can be streamed live (SRT) or recorded (without audio).
 
-![screenshot](vimix_0.2_beta.jpg)
+![screenshot](vimix_screenshot.png)
 
 Check the [Graphical User Manual](https://github.com/brunoherbelin/vimix/wiki/User-manual) or [demo videos](https://vimeo.com/vimix) to discover vimix.
 Watch this selection of [videos by Jean Detheux](https://vimeo.com/showcase/7871359) to see what vimix can do.
@@ -18,11 +18,11 @@ Watch this selection of [videos by Jean Detheux](https://vimeo.com/showcase/7871
 
 ### Linux
 
-[![Get it from flathub](https://flathub.org/assets/badges/flathub-badge-en.svg)](https://flathub.org/apps/details/io.github.brunoherbelin.Vimix)
+Install the [flathub](https://flathub.org/apps/details/io.github.brunoherbelin.Vimix), [snap](https://snapcraft.io/vimix) or [Deb](https://tracker.debian.org/pkg/vimix) package. 
 
 ### Mac OSX
 
-Download package from [Github Releases](https://github.com/brunoherbelin/vimix/releases) page.
+Download package from [Github Releases](https://github.com/brunoherbelin/vimix/releases).
 
 ### Windows
 
@@ -40,7 +40,7 @@ vimix is free and open source (GPL3+).
 vimix is the successor of [GLMixer](https://sourceforge.net/projects/glmixer/), benefiting
 from 10 years of refinement of User-Experience design since its [first draft](https://sourceforge.net/p/glmixer/wiki/GLMixer%20History/).
 
-vimix is in its early infancy, open to [feature requests and bug reports](https://github.com/brunoherbelin/vimix/issues).
+vimix is open to [feature requests and bug reports](https://github.com/brunoherbelin/vimix/issues).
 
 vimix welcomes contributions and support: check the [wiki](https://github.com/brunoherbelin/vimix/wiki) for more info.
 

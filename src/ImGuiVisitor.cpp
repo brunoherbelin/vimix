@@ -1446,6 +1446,8 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
             Action::manager().store( s.name() + ": Change pipeline");
         }
 
+        botom = ImGui::GetCursorPos();
+
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);

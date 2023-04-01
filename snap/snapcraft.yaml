@@ -1,5 +1,5 @@
 name: vimix
-base: core18
+base: core20
 version: '0.8.0'
 summary: Live video mixing
 title: vimix
@@ -21,8 +21,8 @@ confinement: strict # use 'strict' once you have the right plugs and slots
 
 apps:
   vimix:
-    extensions: [gnome-3-28]
-    command: bin/vimix
+    extensions: [gnome-3-38]
+    command: usr/bin/vimix
     adapter: full
     plugs:
       - desktop
@@ -47,8 +47,8 @@ parts:
   vimix-binary:
     plugin: cmake
     source: .
-    configflags: 
-    - -DCMAKE_INSTALL_PREFIX=/
+    cmake-parameters:
+    - -DCMAKE_INSTALL_PREFIX=/usr
     - -DCMAKE_BUILD_TYPE=RelWithDebInfo
     build-packages:
     -  g++
@@ -80,6 +80,6 @@ parts:
     -  gstreamer1.0-plugins-ugly
     -  libgpm2
     -  libslang2
+    -  libpango-1.0-0
+    -  libicu66
 
-    
-    
