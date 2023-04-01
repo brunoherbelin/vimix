@@ -1,7 +1,7 @@
 name: vimix
 base: core20
 version: '0.8.0'
-summary: Live video mixing
+summary: Video live mixer
 title: vimix
 description: |
    vimix performs graphical mixing and blending of several movie clips and
