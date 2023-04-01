@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright 2022 Bruno Herbelin -->
+<!-- Copyright 2023 Bruno Herbelin -->
 <component type="desktop-application">
   <id>io.github.brunoherbelin.Vimix</id>
   <launchable type="desktop-id">vimix.desktop</launchable>
@@ -7,15 +7,17 @@
   <summary>Video live mixer</summary>
   <description>
     <p>vimix performs graphical mixing and blending of several movie clips and
-   computer generated graphics, with image processing effects in real-time.</p>
-    <p>The documentation can be accessed on vimix github wiki.</p>
-  </description>
+   computer generated graphics, with image processing effects in real-time. 
+   Its intuitive and hands-on user interface gives direct control on image opacity and
+   shape for producing live graphics during concerts and VJ-ing sessions.</p>
+    <p>The documentation is in the github wiki.</description>
   <screenshots>
     <screenshot type="default">
-      <image type="source">https://brunoherbelin.github.io/vimix/vimix_0.2_beta.jpg</image>
+      <image type="source">https://brunoherbelin.github.io/vimix/vimix_screenshot.png</image>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.8.0" date="2023-03-31"/>
     <release version="0.7.3" date="2022-12-10"/>
     <release version="0.7.2" date="2022-11-19"/>
     <release version="0.7.1" date="2022-07-21"/>
@@ -27,8 +29,6 @@
   <developer_name>Bruno Herbelin</developer_name>
   <project_license>GPL-3.0-or-later</project_license>
   <metadata_license>CC0-1.0</metadata_license>
-  <content_rating type="oars-1.1">
-    <content_attribute id="social-audio">moderate</content_attribute>
-  </content_rating>
+  <content_rating type="oars-1.1" />
 </component>
 
