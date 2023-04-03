@@ -4113,9 +4113,14 @@ void OutputPreview::ToggleSharedMemory()
         shm_broadcaster_->stop();
     }
     else {
-        if (Settings::application.shm_socket_path.empty())
-            Settings::application.shm_socket_path = SHMDATA_DEFAULT_PATH + std::to_string(Settings::application.instance_id);
-        shm_broadcaster_ = new ShmdataBroadcast(Settings::application.shm_socket_path);
+        // find a folder to put the socket for shm
+        std::string _shm_socket_file = Settings::application.shm_socket_path;
+        if (_shm_socket_file.empty() || !SystemToolkit::file_exists(_shm_socket_file))
+            _shm_socket_file = SystemToolkit::home_path();
+        _shm_socket_file = SystemToolkit::full_filename(_shm_socket_file, ".shm_vimix" + std::to_string(Settings::application.instance_id));
+
+        // create shhmdata broadcaster with method
+        shm_broadcaster_ = new ShmdataBroadcast( (ShmdataBroadcast::Method) Settings::application.shm_method, _shm_socket_file);
         FrameGrabbing::manager().add(shm_broadcaster_);
     }
 }
@@ -4306,7 +4311,7 @@ void OutputPreview::Render()
             {
                 // Stream sharing menu
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
-                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT_SQUARE "   Peer-to-peer sharing", NULL, &Settings::application.accept_connections) ) {
+                if ( ImGui::MenuItem( ICON_FA_SHARE_ALT_SQUARE "   P2P Peer-to-peer sharing", NULL, &Settings::application.accept_connections) ) {
                     Streaming::manager().enable(Settings::application.accept_connections);
                 }
                 ImGui::PopStyleColor(1);
@@ -4323,7 +4328,7 @@ void OutputPreview::Render()
 
                 // Shared Memory menu
                 if (ShmdataBroadcast::available()) {
-                    if ( ImGui::MenuItem( ICON_FA_SHARE_ALT "   Shared Memory", NULL, sharedMemoryEnabled()) )
+                    if ( ImGui::MenuItem( ICON_FA_MEMORY "  SHM Shared Memory", NULL, sharedMemoryEnabled()) )
                         ToggleSharedMemory();
                 }
 
@@ -4363,8 +4368,8 @@ void OutputPreview::Render()
                         // copy text icon to give user the socket path to connect to
                         ImVec2 draw_pos = ImGui::GetCursorPos();
                         ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
-                        if (ImGuiToolkit::IconButton( ICON_FA_COPY, shm_broadcaster_->socket_path().c_str()))
-                            ImGui::SetClipboardText(shm_broadcaster_->socket_path().c_str());
+                        if (ImGuiToolkit::IconButton( ICON_FA_COPY, shm_broadcaster_->gst_pipeline().c_str()))
+                            ImGui::SetClipboardText(shm_broadcaster_->gst_pipeline().c_str());
                         ImGui::SetCursorPos(draw_pos);
                     }
 
@@ -4482,7 +4487,7 @@ void OutputPreview::Render()
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));
-            ImGui::Text(ICON_FA_SHARE_ALT);
+            ImGui::Text(ICON_FA_MEMORY);
             ImGui::PopStyleColor(1);
             vertical += 2.f * r;
         }
@@ -8373,7 +8378,7 @@ void Navigator::RenderMainPannelSettings()
             char buf[512]; sprintf(buf, "Buffer at %s can contain %ld frames (%dx%d), i.e. %.1f sec", VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode],
                                    (unsigned long)nb, output->width(), output->height(),
                                    (float)nb / (float) VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode] );
-            ImGuiToolkit::Indication(buf, ICON_FA_MEMORY);
+            ImGuiToolkit::Indication(buf, ICON_FA_ELLIPSIS_H);
             ImGui::SameLine(0);
         }
 
@@ -8391,22 +8396,22 @@ void Navigator::RenderMainPannelSettings()
         ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Duration\0Framerate\0");
 
         //
-        // Networking preferences
+        // Steaming preferences
         //
         ImGuiToolkit::Spacing();
         ImGui::Text("Stream");
 
-        ImGuiToolkit::Indication("Peer-to-peer sharing on local network\n\n"
-                                 "vimix can stream JPEG (default) or H264 (requires less bandwidth but more resources for encoding)", ICON_FA_SHARE_ALT_SQUARE);
+        ImGuiToolkit::Indication("Peer-to-peer sharing local network\n\n"
+                                 "vimix can stream JPEG (default) or H264 (less bandwidth, higher encoding cost)", ICON_FA_SHARE_ALT_SQUARE);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("Share P2P", &Settings::application.stream_protocol, "JPEG\0H264\0");
+        ImGui::Combo("P2P codec", &Settings::application.stream_protocol, "JPEG\0H264\0");
 
         if (VideoBroadcast::available()) {
             char msg[256];
-            ImFormatString(msg, IM_ARRAYSIZE(msg), "Broadcast SRT\n\n"
-                                                   "vimix is listening to SRT requests on Port %d. "
+            ImFormatString(msg, IM_ARRAYSIZE(msg), "SRT Broadcast\n\n"
+                                                   "vimix listens to SRT requests on Port %d. "
                                                    "Example network addresses to call:\n"
                                                    " srt//%s:%d (localhost)\n"
                                                    " srt//%s:%d (local IP)",
@@ -8420,10 +8425,49 @@ void Navigator::RenderMainPannelSettings()
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             char bufport[7] = "";
             sprintf(bufport, "%d", Settings::application.broadcast_port);
-            ImGui::InputTextWithHint("Port SRT", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
+            ImGui::InputTextWithHint("SRT Port", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
             if (ImGui::IsItemDeactivatedAfterEdit()){
                 if ( BaseToolkit::is_a_number(bufport, &Settings::application.broadcast_port))
                     Settings::application.broadcast_port = CLAMP(Settings::application.broadcast_port, 1029, 49150);
+            }
+        }
+
+        if (ShmdataBroadcast::available()) {
+            std::string _shm_socket_file = Settings::application.shm_socket_path;
+            if (_shm_socket_file.empty() || !SystemToolkit::file_exists(_shm_socket_file))
+                _shm_socket_file = SystemToolkit::home_path();
+            _shm_socket_file = SystemToolkit::full_filename(_shm_socket_file, ".shm_vimix" + std::to_string(Settings::application.instance_id));
+
+            char msg[256];
+            if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
+                ImFormatString(msg, IM_ARRAYSIZE(msg), "Shared Memory\n\n"
+                                                       "vimix can share to RAM with "
+                                                       "gstreamer default 'shmsink' "
+                                                       "and with 'shmdatasink'.\n"
+                                                       "Socket file to connect to:\n%s\n",
+                               _shm_socket_file.c_str());
+            }
+            else {
+                ImFormatString(msg, IM_ARRAYSIZE(msg), "Shared Memory\n\n"
+                                                       "vimix can share to RAM with "
+                                                       "gstreamer 'shmsink'.\n"
+                                                       "Socket file to connect to:\n%s\n",
+                               _shm_socket_file.c_str());
+            }
+            ImGuiToolkit::Indication(msg, ICON_FA_MEMORY);
+            ImGui::SameLine(0);
+            ImGui::SetCursorPosX(width_);
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            char bufsocket[64] = "";
+            sprintf(bufsocket, "%s", Settings::application.shm_socket_path.c_str());
+            ImGui::InputTextWithHint("SHM path", SystemToolkit::home_path().c_str(), bufsocket, 64);
+            if (ImGui::IsItemDeactivatedAfterEdit()) {
+                Settings::application.shm_socket_path = bufsocket;
+            }
+            if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
+                ImGui::SetCursorPosX(width_);
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGui::Combo("SHM plugin", &Settings::application.shm_method, "shmsink\0shmdatasink\0");
             }
         }
 
