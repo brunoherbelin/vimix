@@ -106,6 +106,9 @@ void ShowAboutGStreamer(bool* p_open);
 void ShowAboutOpengl(bool* p_open);
 void ShowSandbox(bool* p_open);
 void SetMouseCursor(ImVec2 mousepos, View::Cursor c = View::Cursor());
+void DrawInspector(uint texture, ImVec2 texturesize, ImVec2 cropsize, ImVec2 origin);
+void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider = false, bool withinspector = false);
+ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_inspector);
 
 std::string readable_date_time_string(std::string date){
     if (date.length()<12)
@@ -141,6 +144,7 @@ UserInterface::UserInterface()
     target_view_navigator = 1;
     screenshot_step = 0;
     pending_save_on_exit = false;
+    show_output_fullview = false;
 
     sessionopendialog = nullptr;
     sessionimportdialog = nullptr;
@@ -243,6 +247,8 @@ void UserInterface::handleKeyboard()
     shift_modifier_active = io.KeyShift;
     ctrl_modifier_active = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
     keyboard_available = !io.WantCaptureKeyboard;
+
+    show_output_fullview = ImGui::IsKeyDown( GLFW_KEY_F6 );
 
     if (io.WantCaptureKeyboard || io.WantTextInput) {
         // only react to ESC key when keyboard is captured
@@ -891,6 +897,9 @@ void UserInterface::Render()
     if (show_view_navigator > 0)
         target_view_navigator = RenderViewNavigator( &show_view_navigator );
 
+    //
+    RenderOutputView();
+
     // handle keyboard input after all IMGUI widgets have potentially captured keyboard
     handleKeyboard();
 
@@ -1165,6 +1174,49 @@ void UserInterface::showSourceEditor(Source *s)
         navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
     }
 }
+
+void UserInterface::RenderOutputView()
+{
+    static bool _inspector = false;
+
+    if (show_output_fullview && !ImGui::IsPopupOpen("##OUTPUTVIEW")) {
+        ImGui::OpenPopup("##OUTPUTVIEW");
+        _inspector = false;
+    }
+
+    if (ImGui::BeginPopupModal("##OUTPUTVIEW", NULL, ImGuiWindowFlags_AlwaysAutoResize |
+                               ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground)) {
+
+        FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output)
+        {
+            ImGuiIO& io = ImGui::GetIO();
+            float ar = output->aspectRatio();
+            // image takes the available window area
+            ImVec2 imagesize = io.DisplaySize;
+            // image height respects original aspect ratio but is at most the available window height
+            imagesize.y = MIN( imagesize.x / ar, imagesize.y) * 0.95f;
+            // image respects original aspect ratio
+            imagesize.x = imagesize.y * ar;
+
+            // 100% opacity for the image (ensures true colors)
+            ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
+            ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
+            ImGui::PopStyleVar();
+
+            if ( ImGui::IsItemClicked() )
+                _inspector = !_inspector;
+            if ( _inspector && ImGui::IsItemHovered()  )
+                DrawInspector(output->texture(), imagesize, imagesize, draw_pos);
+        }
+        // close on button release
+        if (!show_output_fullview)
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+}
+
 
 void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 {
@@ -3138,7 +3190,7 @@ void DrawInspector(uint texture, ImVec2 texturesize, ImVec2 cropsize, ImVec2 ori
     }
 }
 
-void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider = false, bool withinspector = false)
+void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider, bool withinspector)
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 

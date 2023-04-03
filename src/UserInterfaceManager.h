@@ -496,6 +496,7 @@ protected:
     int  target_view_navigator;
     unsigned int screenshot_step;
     bool pending_save_on_exit;
+    bool show_output_fullview;
 
     // Dialogs
     DialogToolkit::OpenSessionDialog *sessionopendialog;
@@ -520,6 +521,7 @@ protected:
 
     void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
     int  RenderViewNavigator(int* shift);
+    void RenderOutputView();
     void RenderAbout(bool* p_open);
     void RenderNotes();
 
