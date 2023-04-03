@@ -350,9 +350,6 @@ void UserInterface::handleKeyboard()
             if (clipboard != nullptr && strlen(clipboard) > 0)
                 Mixer::manager().paste(clipboard);
         }
-        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_F), false )) {
-            Rendering::manager().mainWindow().toggleFullscreen();
-        }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_M), false )) {
             Settings::application.widget.stats = !Settings::application.widget.stats;
         }

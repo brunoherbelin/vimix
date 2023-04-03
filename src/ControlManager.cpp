@@ -1184,23 +1184,25 @@ void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)
 
 void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
 {
-    if (UserInterface::manager().keyboardAvailable() && !mods )
+    if (UserInterface::manager().keyboardAvailable())
     {
-        int _key = layoutKey(key);
-        Control::manager().input_access_.lock();
-        if (_key >= GLFW_KEY_A && _key <= GLFW_KEY_Z) {
-            Control::manager().input_active[INPUT_KEYBOARD_FIRST + _key - GLFW_KEY_A] = action > GLFW_RELEASE;
-            Control::manager().input_values[INPUT_KEYBOARD_FIRST + _key - GLFW_KEY_A] = action > GLFW_RELEASE ? 1.f : 0.f;
+        if ( !mods ) {
+            int _key = layoutKey(key);
+            Control::manager().input_access_.lock();
+            if (_key >= GLFW_KEY_A && _key <= GLFW_KEY_Z) {
+                Control::manager().input_active[INPUT_KEYBOARD_FIRST + _key - GLFW_KEY_A] = action > GLFW_RELEASE;
+                Control::manager().input_values[INPUT_KEYBOARD_FIRST + _key - GLFW_KEY_A] = action > GLFW_RELEASE ? 1.f : 0.f;
+            }
+            else if (_key >= GLFW_KEY_KP_0 && _key <= GLFW_KEY_KP_EQUAL) {
+                Control::manager().input_active[INPUT_NUMPAD_FIRST + _key - GLFW_KEY_KP_0] = action > GLFW_RELEASE;
+                Control::manager().input_values[INPUT_NUMPAD_FIRST + _key - GLFW_KEY_KP_0] = action > GLFW_RELEASE ? 1.f : 0.f;
+            }
+            Control::manager().input_access_.unlock();
         }
-        else if (_key >= GLFW_KEY_KP_0 && _key <= GLFW_KEY_KP_EQUAL) {
-            Control::manager().input_active[INPUT_NUMPAD_FIRST + _key - GLFW_KEY_KP_0] = action > GLFW_RELEASE;
-            Control::manager().input_values[INPUT_NUMPAD_FIRST + _key - GLFW_KEY_KP_0] = action > GLFW_RELEASE ? 1.f : 0.f;
-        }
-        else if (_key == GLFW_KEY_ESCAPE && action == GLFW_PRESS )
+        else if ( key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
         {
-            Rendering::manager().window(w)->exitFullscreen();
+            Rendering::manager().window(w)->toggleFullscreen();
         }
-        Control::manager().input_access_.unlock();
     }
 }
 

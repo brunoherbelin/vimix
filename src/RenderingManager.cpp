@@ -167,10 +167,8 @@ static void OutputWindowEvent( GLFWwindow *w, int button, int action, int)
             // exit fullscreen if its the case
             if (glfwGetWindowMonitor(w) != nullptr)
                 Rendering::manager().window(w)->exitFullscreen();
-
-            // show main window in DISPLAYS view to
-            // indicate how to manipulate output window
-            Mixer::manager().setView(View::DISPLAYS);
+            // show main window
+            else
             Rendering::manager().mainWindow().show();
         }
         // for next double clic detection
