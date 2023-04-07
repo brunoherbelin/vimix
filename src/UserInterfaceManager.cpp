@@ -1257,7 +1257,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
         Source *s = Mixer::manager().currentSource();
         if (s) {
-            float rightalign = -2.5f * ImGui::GetTextLineHeightWithSpacing();
+            float rightalign = 6.4f * ImGui::GetTextLineHeightWithSpacing();
             std::ostringstream info;
             info << s->name() << ": ";
 
@@ -1297,12 +1297,25 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                 Action::manager().store(info.str());
             }
 
-            float scale[2] = { n->scale_.x, n->scale_.y} ;
-            ImGui::SetNextItemWidth(rightalign);
-            if ( ImGui::DragFloat2("##Scale", scale, 0.001f, -MAX_SCALE, MAX_SCALE, "%.3f") )
-            {
-                n->scale_.x = CLAMP_SCALE(scale[0]);
-                n->scale_.y = CLAMP_SCALE(scale[1]);
+            static bool lock_scale = true;
+            float ar_scale = n->scale_.x / n->scale_.y;
+            ImGui::SetNextItemWidth( 2.7f * ImGui::GetTextLineHeightWithSpacing() );
+            if ( ImGui::DragFloat("##ScaleX", &(n->scale_.x), 0.001f, -MAX_SCALE, MAX_SCALE, "%.3f") ) {
+                if (lock_scale)
+                    n->scale_.y = n->scale_.x / ar_scale;
+                s->touch();
+            }
+            if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
+                Action::manager().store(info.str());
+            }
+            ImGui::SameLine(0, 0);
+            ImGuiToolkit::IconToggle(5,1,6,1, &lock_scale );
+            ImGui::SameLine(0, 0);
+            ImGui::SetNextItemWidth( 2.7f * ImGui::GetTextLineHeightWithSpacing() );
+            if ( ImGui::DragFloat("##ScaleY", &(n->scale_.y), 0.001f, -MAX_SCALE, MAX_SCALE, "%.3f") ) {
+                if (lock_scale)
+                    n->scale_.x = n->scale_.y * ar_scale;
                 s->touch();
             }
             if ( ImGui::IsItemDeactivatedAfterEdit() ){
@@ -1335,6 +1348,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                 info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
                 Action::manager().store(info.str());
             }
+
         }
         else
             ImGui::Text("No source selected");
