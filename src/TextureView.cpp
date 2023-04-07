@@ -1384,9 +1384,17 @@ void TextureView::arrow (glm::vec2 movement)
         if (UserInterface::manager().altModifier()) {            
             if (accumulator > 100.f)
             {
-                alt_move_ += glm::sign(gl_delta) * 0.1f;
-                sourceNode->translation_.x = ROUND(alt_move_.x, 10.f);
-                sourceNode->translation_.y = ROUND(alt_move_.y, 10.f);
+                // precise movement with SHIFT
+                if ( UserInterface::manager().shiftModifier() ) {
+                    alt_move_ += glm::sign(gl_delta) * 0.0011f;
+                    sourceNode->translation_.x = ROUND(alt_move_.x, 1000.f);
+                    sourceNode->translation_.y = ROUND(alt_move_.y, 1000.f);
+                }
+                else {
+                    alt_move_ += glm::sign(gl_delta) * 0.11f;
+                    sourceNode->translation_.x = ROUND(alt_move_.x, 10.f);
+                    sourceNode->translation_.y = ROUND(alt_move_.y, 10.f);
+                }
                 accumulator = 0.f;
             }
         }

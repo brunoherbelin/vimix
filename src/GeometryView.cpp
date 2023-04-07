@@ -1083,9 +1083,6 @@ void GeometryView::arrow (glm::vec2 movement)
     glm::vec3 delta_translation(0.f);
     for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
 
-        // individual move with SHIFT
-        if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
-            continue;
 
         Group *sourceNode = (*it)->group(mode_);
         glm::vec3 dest_translation(0.f);
@@ -1097,9 +1094,17 @@ void GeometryView::arrow (glm::vec2 movement)
             // + ALT : discrete displacement
             if (UserInterface::manager().altModifier()) {
                 if (accumulator > 100.f) {
-                    dest_translation += glm::sign(gl_delta) * 0.11f;
-                    dest_translation.x = ROUND(dest_translation.x, 10.f);
-                    dest_translation.y = ROUND(dest_translation.y, 10.f);
+                    // precise movement with SHIFT
+                    if ( UserInterface::manager().shiftModifier() ) {
+                        dest_translation += glm::sign(gl_delta) * 0.0011f;
+                        dest_translation.x = ROUND(dest_translation.x, 1000.f);
+                        dest_translation.y = ROUND(dest_translation.y, 1000.f);
+                    }
+                    else {
+                        dest_translation += glm::sign(gl_delta) * 0.11f;
+                        dest_translation.x = ROUND(dest_translation.x, 10.f);
+                        dest_translation.y = ROUND(dest_translation.y, 10.f);
+                    }
                     accumulator = 0.f;
                 }
                 else
