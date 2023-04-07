@@ -1263,17 +1263,23 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 
             float v = s->alpha();
             ImGui::SetNextItemWidth(rightalign);
-            if ( ImGui::DragFloat("Alpha", &v, 0.01f, 0.f, 1.f) )
+            if ( ImGui::DragFloat("##Alpha", &v, 0.002f, 0.f, 1.f) )
                 s->call(new SetAlpha(v), true);
             if ( ImGui::IsItemDeactivatedAfterEdit() ) {
                 info << "Alpha " << std::fixed << std::setprecision(3) << v;
+                Action::manager().store(info.str());
+            }
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton("Alpha")) {
+                s->call(new SetAlpha(1.f), true);
+                info << "Alpha " << std::fixed << std::setprecision(3) << 0.f;
                 Action::manager().store(info.str());
             }
 
             Group *n = s->group(View::GEOMETRY);
             float translation[2] = { n->translation_.x, n->translation_.y};
             ImGui::SetNextItemWidth(rightalign);
-            if ( ImGui::DragFloat2("Pos", translation, 0.01f, -MAX_SCALE, MAX_SCALE, "%.2f") )  {
+            if ( ImGui::DragFloat2("##Pos", translation, 0.001f, -MAX_SCALE, MAX_SCALE, "%.3f") )  {
                 n->translation_.x = translation[0];
                 n->translation_.y = translation[1];
                 s->touch();
@@ -1282,9 +1288,18 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                 info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
                 Action::manager().store(info.str());
             }
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton("Pos")) {
+                n->translation_.x = 0.f;
+                n->translation_.y = 0.f;
+                s->touch();
+                info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                Action::manager().store(info.str());
+            }
+
             float scale[2] = { n->scale_.x, n->scale_.y} ;
             ImGui::SetNextItemWidth(rightalign);
-            if ( ImGui::DragFloat2("Scale", scale, 0.01f, -MAX_SCALE, MAX_SCALE, "%.2f") )
+            if ( ImGui::DragFloat2("##Scale", scale, 0.001f, -MAX_SCALE, MAX_SCALE, "%.3f") )
             {
                 n->scale_.x = CLAMP_SCALE(scale[0]);
                 n->scale_.y = CLAMP_SCALE(scale[1]);
@@ -1294,11 +1309,29 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                 info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
                 Action::manager().store(info.str());
             }
-
-            ImGui::SetNextItemWidth(rightalign);
-            if ( ImGui::SliderAngle("Angle", &(n->rotation_.z), -180.f, 180.f) )
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton("Scale")) {
+                n->scale_.x = 1.f;
+                n->scale_.y = 1.f;
                 s->touch();
+                info << "Scale " << std::setprecision(3) << n->scale_.x << ", " << n->scale_.y;
+                Action::manager().store(info.str());
+            }
+
+            float v_deg = n->rotation_.z * 360.0f / (2.f*M_PI);
+            ImGui::SetNextItemWidth(rightalign);
+            if ( ImGui::DragFloat("##Angle", &v_deg, 0.02f, -180.f, 180.f, "%.2f" UNICODE_DEGREE) ) {
+                n->rotation_.z = v_deg * (2.f*M_PI) / 360.0f;
+                s->touch();
+            }
             if ( ImGui::IsItemDeactivatedAfterEdit() ) {
+                info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                Action::manager().store(info.str());
+            }
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton("Angle")) {
+                n->rotation_.z = 0.f;
+                s->touch();
                 info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
                 Action::manager().store(info.str());
             }
