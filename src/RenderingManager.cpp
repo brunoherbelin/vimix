@@ -644,9 +644,9 @@ glm::ivec2 Rendering::getGPUMemoryInformation()
     }
     // ATI
     else if (meminfomode == 2) {
-        GLint memInMB[4] = { 0, 0, 0, 0 };
-        glGetIntegerv( GL_TEXTURE_FREE_MEMORY_ATI, &memInMB[0] );
-        ret.x = memInMB[3] ;
+        GLint memInKB[4] = { 0, 0, 0, 0 };
+        glGetIntegerv( GL_TEXTURE_FREE_MEMORY_ATI, &memInKB[0] );
+        ret.x = memInKB[3] ;
     }
 
     return ret;

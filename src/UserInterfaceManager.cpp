@@ -1242,7 +1242,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
     }
 
     // combo selection of mode, with fixed width to display enough text
-    ImGui::SetNextItemWidth( 8.f * ImGui::GetTextLineHeight());
+    ImGui::SetNextItemWidth( 8.4f * ImGui::GetTextLineHeight());
     ImGui::Combo("##mode", p_mode,
                  ICON_FA_TACHOMETER_ALT "  Performance\0"
                  ICON_FA_HOURGLASS_HALF "   Runtime\0"
@@ -1252,19 +1252,23 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
     if (ImGuiToolkit::IconButton(5,8))
         ImGui::OpenPopup("metrics_menu");
     ImGui::Spacing();
+    ImGui::Spacing();
+    float sliderwidth = 6.4f * ImGui::GetTextLineHeightWithSpacing();
 
     if (*p_mode > 1) {
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
         Source *s = Mixer::manager().currentSource();
         if (s) {
-            float rightalign = 6.4f * ImGui::GetTextLineHeightWithSpacing();
             std::ostringstream info;
             info << s->name() << ": ";
 
-            float v = s->alpha();
-            ImGui::SetNextItemWidth(rightalign);
-            if ( ImGui::DragFloat("##Alpha", &v, 0.002f, 0.f, 1.f) )
-                s->call(new SetAlpha(v), true);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.f, 2.f));
+            //
+            // ALPHA
+            //
+            float v = s->alpha() * 100.f;
+            ImGui::SetNextItemWidth(sliderwidth);
+            if ( ImGui::DragFloat("##Alpha", &v, 0.1f, 0.f, 100.f, "%.1f%%") )
+                s->call(new SetAlpha(v*0.01f), true);
             if ( ImGui::IsItemDeactivatedAfterEdit() ) {
                 info << "Alpha " << std::fixed << std::setprecision(3) << v;
                 Action::manager().store(info.str());
@@ -1276,12 +1280,16 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                 Action::manager().store(info.str());
             }
 
+            //
+            // POSITION COORDINATES
+            //
             Group *n = s->group(View::GEOMETRY);
-            float translation[2] = { n->translation_.x, n->translation_.y};
-            ImGui::SetNextItemWidth(rightalign);
-            if ( ImGui::DragFloat2("##Pos", translation, 0.001f, -MAX_SCALE, MAX_SCALE, "%.3f") )  {
-                n->translation_.x = translation[0];
-                n->translation_.y = translation[1];
+            glm::vec3 out = Mixer::manager().session()->frame()->resolution();
+            float vec[2] = { n->translation_.x * out.y * 0.5f, n->translation_.y * out.y * 0.5f};
+            ImGui::SetNextItemWidth(sliderwidth);
+            if ( ImGui::DragFloat2("##Pos", vec, 1.0f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0f px") )  {
+                n->translation_.x = vec[0] / (0.5f * out.y);
+                n->translation_.y = vec[1] / (0.5f * out.y);
                 s->touch();
             }
             if ( ImGui::IsItemDeactivatedAfterEdit() ){
@@ -1297,33 +1305,47 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                 Action::manager().store(info.str());
             }
 
+            //
+            // SCALE
+            //
             static bool lock_scale = true;
             float ar_scale = n->scale_.x / n->scale_.y;
+            // SCALE X
+            v = n->scale_.x * out.x;
             ImGui::SetNextItemWidth( 2.7f * ImGui::GetTextLineHeightWithSpacing() );
-            if ( ImGui::DragFloat("##ScaleX", &(n->scale_.x), 0.001f, -MAX_SCALE, MAX_SCALE, "%.3f") ) {
-                if (lock_scale)
-                    n->scale_.y = n->scale_.x / ar_scale;
-                s->touch();
+            if ( ImGui::DragFloat("##ScaleX", &v, 1.f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0f") ) {
+                if (v > 10.f) {
+                    n->scale_.x = v / out.x;
+                    if (lock_scale)
+                        n->scale_.y = n->scale_.x / ar_scale;
+                    s->touch();
+                }
             }
             if ( ImGui::IsItemDeactivatedAfterEdit() ){
                 info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
                 Action::manager().store(info.str());
             }
+            // SCALE LOCK ASPECT RATIO
             ImGui::SameLine(0, 0);
             ImGuiToolkit::IconToggle(5,1,6,1, &lock_scale );
             ImGui::SameLine(0, 0);
+            // SCALE Y
+            v = n->scale_.y * out.y;
             ImGui::SetNextItemWidth( 2.7f * ImGui::GetTextLineHeightWithSpacing() );
-            if ( ImGui::DragFloat("##ScaleY", &(n->scale_.y), 0.001f, -MAX_SCALE, MAX_SCALE, "%.3f") ) {
-                if (lock_scale)
-                    n->scale_.x = n->scale_.y * ar_scale;
-                s->touch();
+            if ( ImGui::DragFloat("##ScaleY", &v, 1.f, -MAX_SCALE * out.y, MAX_SCALE * out.y, "%.0f") ) {
+                if (v > 10.f) {
+                    n->scale_.y = v / out.y;
+                    if (lock_scale)
+                        n->scale_.x = n->scale_.y * ar_scale;
+                    s->touch();
+                }
             }
             if ( ImGui::IsItemDeactivatedAfterEdit() ){
                 info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
                 Action::manager().store(info.str());
             }
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::TextButton("Scale")) {
+            if (ImGuiToolkit::TextButton("Size")) {
                 n->scale_.x = 1.f;
                 n->scale_.y = 1.f;
                 s->touch();
@@ -1331,8 +1353,11 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                 Action::manager().store(info.str());
             }
 
+            //
+            // ROTATION ANGLE
+            //
             float v_deg = n->rotation_.z * 360.0f / (2.f*M_PI);
-            ImGui::SetNextItemWidth(rightalign);
+            ImGui::SetNextItemWidth(sliderwidth);
             if ( ImGui::DragFloat("##Angle", &v_deg, 0.02f, -180.f, 180.f, "%.2f" UNICODE_DEGREE) ) {
                 n->rotation_.z = v_deg * (2.f*M_PI) / 360.0f;
                 s->touch();
@@ -1349,45 +1374,109 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                 Action::manager().store(info.str());
             }
 
+            ImGui::PopStyleVar();
         }
         else
             ImGui::Text("No source selected");
-        ImGui::PopFont();
     }
     else if (*p_mode > 0) {
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-        ImGui::Text("Session  %s", GstToolkit::time_to_string(Mixer::manager().session()->runtime(), GstToolkit::TIME_STRING_READABLE).c_str());
-        uint64_t time = Runtime();
-        ImGui::Text("Program  %s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
-        time += Settings::application.total_runtime;
-        ImGui::Text("Total    %s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
+
+        static char dummy_str[] = "00:00:00.00";
+        sliderwidth = 5.0f * ImGui::GetTextLineHeightWithSpacing();
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.f, 2.f));
+
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+        sprintf(dummy_str, "%s", GstToolkit::time_to_string(Mixer::manager().session()->runtime(), GstToolkit::TIME_STRING_READABLE).c_str());
+        ImGui::SetNextItemWidth(sliderwidth);
+        ImGui::InputText("##dummy", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Session");
+
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+        uint64_t time = Runtime();
+        sprintf(dummy_str, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
+        ImGui::SetNextItemWidth(sliderwidth);
+        ImGui::InputText("##dummy2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopFont();
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Program");
+
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+        time += Settings::application.total_runtime;
+        sprintf(dummy_str, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
+        ImGui::SetNextItemWidth(sliderwidth);
+        ImGui::InputText("##dummy3", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopFont();
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Total");
+
+        ImGui::PopStyleVar();
     }
     else {
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-        ImGui::Text("Refresh  %.1f FPS", io.Framerate);
 
-        // read Memory info every second
-        static long ram = 0;
+        char buf[32];
+
+        // read Framerate
+        sprintf(buf, "%.1f", io.Framerate);
+        float progress = (io.Framerate < 0.0f) ? 0.0f : (io.Framerate > 62.0f) ? 1.0f : io.Framerate / 62.f;
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+        ImGui::ProgressBar(progress, ImVec2(sliderwidth, ImGui::GetTextLineHeightWithSpacing()), buf);
+        ImGui::PopFont();
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("FPS");
+
+        // read Memory info every 1/2 second
+        static long ram = 0, max = 0;
         static glm::ivec2 gpu(INT_MAX, INT_MAX);
         {
             static GTimer *timer = g_timer_new ();
             double elapsed = g_timer_elapsed (timer, NULL);
-            if ( elapsed > 1.0 ){
+            if ( elapsed > 0.5 ){
                 ram = SystemToolkit::memory_usage();
+                max = SystemToolkit::memory_available();
                 gpu = Rendering::manager().getGPUMemoryInformation();
                 g_timer_start(timer);
             }
         }
-        // CPU RAM
-        ImGui::Text("RAM      %s", BaseToolkit::byte_to_string( ram ).c_str() );
-        // GPU RAM if available (default to resolution)
-        if (gpu.y < INT_MAX)
-            ImGui::Text("GPU RAM  %s", BaseToolkit::byte_to_string(long(gpu.y-gpu.x) * 1024).c_str() );
-        else
-            ImGui::Text("Window  %.0f x %.0f", io.DisplaySize.x, io.DisplaySize.y);
-
+        sprintf(buf, "%s", BaseToolkit::byte_to_string( ram ).c_str());
+        progress = (float) ram / (float) max;
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+        ImGui::ProgressBar(progress, ImVec2(sliderwidth, ImGui::GetTextLineHeightWithSpacing()), buf);
         ImGui::PopFont();
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Memory used by vimix\n(over available free RAM)");
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("RAM");
+
+        // GPU RAM if available
+        if (gpu.x < INT_MAX && gpu.x > 0) {
+            // got free and max GPU RAM (nvidia)
+            if (gpu.y < INT_MAX && gpu.y > 0) {
+                sprintf(buf, "%s", BaseToolkit::byte_to_string( long(gpu.y-gpu.x) * 1024 ).c_str());
+                progress = (float) (gpu.y-gpu.x) / (float) gpu.y;
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+                ImGui::ProgressBar(progress, ImVec2(sliderwidth, ImGui::GetTextLineHeightWithSpacing()), buf);
+                ImGui::PopFont();
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Memory used in GPU (nvidia)\n(over total physical GPU RAM)");
+            }
+            // got used GPU RAM (ati)
+            else {
+                static int max_gpu_ram = 0;
+                max_gpu_ram = MAX(max_gpu_ram, gpu.x);
+                sprintf(buf, "%s", BaseToolkit::byte_to_string( long(gpu.x) * 1024 ).c_str());
+                progress = (float) gpu.x / (float) max_gpu_ram;
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+                ImGui::ProgressBar(progress, ImVec2(sliderwidth, ImGui::GetTextLineHeightWithSpacing()), buf);
+                ImGui::PopFont();
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Memory used in GPU (ATI)");
+            }
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::Text("GPU");
+        }
+
     }
 
     if (ImGui::BeginPopup("metrics_menu"))
@@ -1685,7 +1774,7 @@ void ToolBox::Render()
     ImGui::PlotLines("LinesRender", recorded_values[0], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[0][0], recorded_bounds[0][1], plot_size);
     sprintf(overlay, "Update time %.1f ms (%.1f FPS)", recorded_sum[1] / float(PLOT_ARRAY_SIZE), (float(PLOT_ARRAY_SIZE) * 1000.f) / recorded_sum[1]);
     ImGui::PlotHistogram("LinesMixer", recorded_values[1], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[1][0], recorded_bounds[1][1], plot_size);
-    sprintf(overlay, "Memory %.1f MB / %s", recorded_values[2][(values_index+PLOT_ARRAY_SIZE-1) % PLOT_ARRAY_SIZE], BaseToolkit::byte_to_string(SystemToolkit::memory_max_usage()).c_str() );
+    sprintf(overlay, "Memory %.1f MB / %s", recorded_values[2][(values_index+PLOT_ARRAY_SIZE-1) % PLOT_ARRAY_SIZE], BaseToolkit::byte_to_string(SystemToolkit::memory_available()).c_str() );
     ImGui::PlotLines("LinesMemo", recorded_values[2], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[2][0], recorded_bounds[2][1], plot_size);
 
     ImGui::End();

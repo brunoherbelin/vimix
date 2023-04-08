@@ -102,12 +102,30 @@ long SystemToolkit::memory_usage()
 #endif
 }
 
-long SystemToolkit::memory_max_usage() {
+long SystemToolkit::memory_available() {
 
+#if defined(LINUX)
+    FILE *file = fopen("/proc/meminfo", "r");
+    if (file) {
+        long m = 0;
+        int ret = 0;
+        char trash[256] __attribute__((unused));
+        ret = fscanf(file, "%s", trash); // "MemTotal:"
+        ret = fscanf(file, "%s", trash); // value memtotal
+        ret = fscanf(file, "%s", trash); // "kB"
+        ret = fscanf(file, "%s", trash); // "MemFree:"
+        ret = fscanf (file, "%ld", &m);  // mem free ; the value we actually read
+        fclose (file);
+        if (ret)
+            return 1024 * m;
+    }
+#elif defined(APPLE)
     struct rusage r_usage;
     getrusage(RUSAGE_SELF,&r_usage);
     return 1024 * r_usage.ru_maxrss;
-//    return r_usage.ru_isrss;
+#endif
+
+    return 0;
 }
 
 
