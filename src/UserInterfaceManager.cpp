@@ -960,13 +960,13 @@ void UserInterface::showMenuEdit()
 
     // GROUP
     ImGui::Separator();
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " Bundle all active sources", false, Mixer::manager().numSource() > 0)) {
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " Bundle all active sources", NULL, false, Mixer::manager().numSource() > 0)) {
         // create a new group session with only active sources
         Mixer::manager().groupAll( true );
         // switch pannel to show first source (created)
         navigator.showPannelSource(0);
     }
-    if (ImGuiToolkit::MenuItemIcon(7, 2, " Expand all bundles", false, Mixer::manager().numSource() > 0)) {
+    if (ImGuiToolkit::MenuItemIcon(7, 2, " Expand all bundles", NULL, false, Mixer::manager().numSource() > 0)) {
         // create a new group session with all sources
         Mixer::manager().ungroupAll();
     }
@@ -1382,8 +1382,8 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
     else if (*p_mode > 0) {
 
         static char dummy_str[] = "00:00:00.00";
-        sliderwidth = 5.0f * ImGui::GetTextLineHeightWithSpacing();
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.f, 2.f));
+        sliderwidth = 5.6f * ImGui::GetTextLineHeightWithSpacing();
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.f, 2.5f));
 
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
         sprintf(dummy_str, "%s", GstToolkit::time_to_string(Mixer::manager().session()->runtime(), GstToolkit::TIME_STRING_READABLE).c_str());
@@ -1392,6 +1392,8 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         ImGui::PopFont();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Session");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Runtime since session load");
 
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
         uint64_t time = Runtime();
@@ -1401,6 +1403,8 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         ImGui::PopFont();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Program");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Runtime since program start");
 
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
         time += Settings::application.total_runtime;
@@ -1410,6 +1414,8 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         ImGui::PopFont();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Total");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Runtime of vimix since its installation");
 
         ImGui::PopStyleVar();
     }
@@ -1425,6 +1431,8 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         ImGui::PopFont();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("FPS");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Frames per second");
 
         // read Memory info every 1/2 second
         static long ram = 0, max = 0;
@@ -1444,10 +1452,10 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
         ImGui::ProgressBar(progress, ImVec2(sliderwidth, ImGui::GetTextLineHeightWithSpacing()), buf);
         ImGui::PopFont();
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Memory used by vimix\n(over available free RAM)");
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("RAM");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Memory used by vimix\n(over available free RAM)");
 
         // GPU RAM if available
         if (gpu.x < INT_MAX && gpu.x > 0) {
@@ -1458,6 +1466,8 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
                 ImGui::ProgressBar(progress, ImVec2(sliderwidth, ImGui::GetTextLineHeightWithSpacing()), buf);
                 ImGui::PopFont();
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::Text("GPU");
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip("Memory used in GPU (nvidia)\n(over total physical GPU RAM)");
             }
@@ -1470,18 +1480,17 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
                 ImGui::ProgressBar(progress, ImVec2(sliderwidth, ImGui::GetTextLineHeightWithSpacing()), buf);
                 ImGui::PopFont();
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::Text("GPU");
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip("Memory used in GPU (ATI)");
             }
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            ImGui::Text("GPU");
         }
-
     }
 
     if (ImGui::BeginPopup("metrics_menu"))
     {
-        ImGui::TextDisabled("Metrics");
+        ImGui::TextDisabled( MENU_METRICS );
         if (ImGui::MenuItem( ICON_FA_ANGLE_UP "  Top",    NULL, corner == 1)) *p_corner = 1;
         if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom", NULL, corner == 3)) *p_corner = 3;
         if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT " Free position", NULL, corner == -1)) *p_corner = -1;
@@ -2083,6 +2092,10 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_LAYER_GROUP " Layers view"); ImGui::NextColumn();
         ImGui::Text("F4"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CHESS_BOARD " Texturing view"); ImGui::NextColumn();
+        ImGui::Text("F5"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_TV " Displays view"); ImGui::NextColumn();
+        ImGui::Text("F6"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_EYE " Output preview"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_FULLSCREEN); ImGui::NextColumn();
@@ -2099,7 +2112,7 @@ void HelperToolbox::Render()
         ImGui::Text(SHORTCUT_SHADEREDITOR); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CODE " " TOOLTIP_SHADEREDITOR "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_NOTE); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_STICKY_NOTE " " TOOLTIP_NOTE); ImGui::NextColumn();
+        ImGui::Text(MENU_NOTE); ImGui::NextColumn();
         ImGui::Text("ESC"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_TOGGLE_OFF " Hide / " ICON_FA_TOGGLE_ON " Show windows"); ImGui::NextColumn();
         ImGui::Separator();
@@ -2713,13 +2726,13 @@ void SourceController::Render()
             {
                 Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
                 bool active = sync == Metronome::SYNC_NONE;
-                if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", active ))
+                if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", NULL, active ))
                     mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_NONE);
                 active = sync == Metronome::SYNC_BEAT;
-                if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", active ))
+                if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", NULL, active ))
                     mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_BEAT);
                 active = sync == Metronome::SYNC_PHASE;
-                if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", active ))
+                if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", NULL, active ))
                     mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
                 ImGui::EndMenu();
             }
@@ -3263,12 +3276,12 @@ void SourceController::RenderSelectionContextMenu()
         std::ostringstream info;
         info << SystemToolkit::base_filename( selection_mediaplayer_->filename() );
 
-        if ( ImGuiToolkit::MenuItemIcon(14, 16,  ICON_FA_CARET_LEFT " Accelerate" , false, fabs(selection_target_faster_) > 0 )){
+        if ( ImGuiToolkit::MenuItemIcon(14, 16,  ICON_FA_CARET_LEFT " Accelerate", NULL, false, fabs(selection_target_faster_) > 0 )){
             selection_mediaplayer_->setPlaySpeed( selection_target_faster_ );
             info << ": Speed x" << std::setprecision(3) << selection_target_faster_;
             Action::manager().store(info.str());
         }
-        if ( ImGuiToolkit::MenuItemIcon(15, 16,  "Slow down " ICON_FA_CARET_RIGHT , false, fabs(selection_target_slower_) > 0 )){
+        if ( ImGuiToolkit::MenuItemIcon(15, 16,  "Slow down " ICON_FA_CARET_RIGHT, NULL, false, fabs(selection_target_slower_) > 0 )){
             selection_mediaplayer_->setPlaySpeed( selection_target_slower_ );
             info << ": Speed x" << std::setprecision(3) << selection_target_slower_;
             Action::manager().store(info.str());
@@ -3969,7 +3982,7 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
         static std::vector< std::pair<int, int> > icons_loop = { {0,15}, {1,15}, {19,14} };
         static std::vector< std::string > tooltips_loop = { "Stop at end", "Loop to start", "Bounce (reverse speed)" };
         current_loop = (int) mediaplayer_active_->loop();
-        if ( ImGuiToolkit::ButtonIconMultistate(icons_loop, &current_loop, tooltips_loop) )
+        if ( ImGuiToolkit::IconMultistate(icons_loop, &current_loop, tooltips_loop) )
             mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );
 
         // speed slider (if enough space)
@@ -3991,7 +4004,7 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
 
         ImGui::SameLine();
         ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.4f);
-        if (ImGuiToolkit::ButtonIcon(12,14,"Reset speed" )) {
+        if (ImGuiToolkit::IconButton(12,14,"Reset speed" )) {
             mediaplayer_active_->setPlaySpeed( 1.0 );
             oss << ": Speed x1";
             Action::manager().store(oss.str());
@@ -5749,15 +5762,15 @@ void InputMappingInterface::Render()
             {
                 Metronome::Synchronicity sync = S->inputSynchrony(current_input_);
                 bool active = sync == Metronome::SYNC_NONE;
-                if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", active )){
+                if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", NULL, active )){
                     S->setInputSynchrony(current_input_, Metronome::SYNC_NONE);
                 }
                 active = sync == Metronome::SYNC_BEAT;
-                if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", active )){
+                if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", NULL, active )){
                     S->setInputSynchrony(current_input_, Metronome::SYNC_BEAT);
                 }
                 active = sync == Metronome::SYNC_PHASE;
-                if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", active )){
+                if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", NULL, active )){
                     S->setInputSynchrony(current_input_, Metronome::SYNC_PHASE);
                 }
                 ImGui::EndMenu();
@@ -8466,44 +8479,46 @@ void Navigator::RenderMainPannelVimix()
     ImGui::Text("Windows");
     ImGui::Spacing();
 
-    std::pair<std::string, std::string> tooltip_;
 
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
     ImGui::SameLine(0, 0.5f * ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_LAPTOP ) )
-        UserInterface::manager().outputcontrol.setVisible(!Settings::application.widget.preview);
-    if (ImGui::IsItemHovered())
-        tooltip_ = { TOOLTIP_OUTPUT, SHORTCUT_OUTPUT};
+    ImGuiToolkit::IconToggle( ICON_FA_LAPTOP, &Settings::application.widget.preview, TOOLTIP_OUTPUT, SHORTCUT_OUTPUT);
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_PLAY_CIRCLE ) )
-        UserInterface::manager().sourcecontrol.setVisible(!Settings::application.widget.media_player);
-    if (ImGui::IsItemHovered())
-        tooltip_ = { TOOLTIP_PLAYER, SHORTCUT_PLAYER};
+    ImGuiToolkit::IconToggle( ICON_FA_PLAY_CIRCLE, &Settings::application.widget.media_player, TOOLTIP_PLAYER, SHORTCUT_PLAYER);
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_CLOCK ) )
-        UserInterface::manager().timercontrol.setVisible(!Settings::application.widget.timer);
-    if (ImGui::IsItemHovered())
-        tooltip_ = { TOOLTIP_TIMER, SHORTCUT_TIMER};
+    ImGuiToolkit::IconToggle( ICON_FA_CLOCK, &Settings::application.widget.timer, TOOLTIP_TIMER, SHORTCUT_TIMER);
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_HAND_PAPER ) )
-        UserInterface::manager().inputscontrol.setVisible(!Settings::application.widget.inputs);
-    if (ImGui::IsItemHovered())
-        tooltip_ = { TOOLTIP_INPUTS, SHORTCUT_INPUTS};
+    ImGuiToolkit::IconToggle( ICON_FA_HAND_PAPER, &Settings::application.widget.inputs, TOOLTIP_INPUTS, SHORTCUT_INPUTS);
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE ) )
-        Mixer::manager().session()->addNote();
-    if (ImGui::IsItemHovered())
-        tooltip_ = { TOOLTIP_NOTE, SHORTCUT_NOTE};
+    static uint counter_menu_timeout = 0;
+    if ( ImGuiToolkit::IconButton( ICON_FA_SORT_DOWN ) || ImGui::IsItemHovered() ) {
+        counter_menu_timeout=0;
+        ImGui::OpenPopup( "MenuToolboxWindows" );
+    }
 
     ImGui::PopFont();
 
-    if (!tooltip_.first.empty()) {
-        ImGuiToolkit::ToolTip(tooltip_.first.c_str(), tooltip_.second.c_str());
+    if (ImGui::BeginPopup( "MenuToolboxWindows" ))
+    {
+        if (ImGui::MenuItem( MENU_NOTE, SHORTCUT_NOTE ))
+            Mixer::manager().session()->addNote();
+
+        if ( ImGuiToolkit::MenuItemIcon( 11, 3, MENU_METRICS, SHORTCUT_METRICS, Settings::application.widget.stats ) )
+            Settings::application.widget.stats = !Settings::application.widget.stats;
+
+        ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP, &Settings::application.widget.help );
+
+        if (ImGui::IsWindowHovered())
+            counter_menu_timeout=0;
+        else if (++counter_menu_timeout > 60)
+            ImGui::CloseCurrentPopup();
+
+        ImGui::EndPopup();
     }
 
 }
@@ -8878,14 +8893,6 @@ void Navigator::RenderMainPannel()
         ImGui::SetCursorScreenPos( rightcorner - ImVec2(button_height, button_height));
         const char *tooltip[2] = {"Settings", "Settings"};
         ImGuiToolkit::IconToggle(13,5,12,5, &show_config_, tooltip);
-        // Metrics icon just above
-        ImGui::SetCursorScreenPos( rightcorner - ImVec2(button_height, 2.0 * button_height ));
-        if ( ImGuiToolkit::IconButton(11, 3, TOOLTIP_METRICS, SHORTCUT_METRICS) )
-            Settings::application.widget.stats = !Settings::application.widget.stats;
-        // Help icon above
-        ImGui::SetCursorScreenPos( rightcorner - ImVec2(g.FontSize + g.Style.FramePadding.y * 2.0f, 3.0 * button_height));
-        if ( ImGuiToolkit::IconButton( ICON_FA_LIFE_RING , "Help  ", SHORTCUT_HELP) )
-            Settings::application.widget.help = !Settings::application.widget.help;
 
         ImGui::End();
     }

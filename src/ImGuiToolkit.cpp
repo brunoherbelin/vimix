@@ -261,6 +261,7 @@ bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bo
 
 bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip, const char* shortcut)
 {
+    ImGuiContext& g = *GImGui;
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -273,8 +274,9 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip, const char* sho
     float h = ImGui::GetFrameHeight();
     ImVec2 size = ImGui::CalcItemSize(ImVec2(h, h), 0.0f, 0.0f);
     ImVec2 draw_pos = window->DC.CursorPos;
-    const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + size);
-    ImGui::ItemSize(size);
+    draw_pos.y += window->DC.CurrLineTextBaseOffset - g.Style.FramePadding.y;
+    const ImRect bb(draw_pos, draw_pos + size);
+    ImGui::ItemSize(size, g.Style.FramePadding.y);
 
     if (!ImGui::ItemAdd(bb, id)){
         ImGui::PopID();
@@ -340,7 +342,8 @@ bool ImGuiToolkit::TextButton(const char* text, const char *tooltip, const char*
 
     // button size
     ImVec2 button_size = ImGui::CalcTextSize( text );
-    button_size.y = g.FontSize + g.Style.FramePadding.y * 2.0f;
+    button_size.x += g.Style.FramePadding.x * 2.0f;
+    button_size.y += g.Style.FramePadding.y * 2.0f;
 
     // remember position where button starts
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
@@ -409,6 +412,37 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
     return ret;
 }
 
+
+bool ImGuiToolkit::IconToggle(const char* icon, bool* toggle, const char *tooltip, const char* shortcut)
+{
+    bool ret = false;
+    ImGui::PushID( icon );
+
+    float frame_height = ImGui::GetFrameHeight();
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+
+    // toggle action : operate on the whole area
+    ImGui::InvisibleButton("##icontogglebutton", ImVec2(frame_height, frame_height));
+    if (ImGui::IsItemClicked()) {
+        *toggle = !*toggle;
+        ret = true;
+    }
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(tooltip, shortcut);
+
+    ImGui::SetCursorScreenPos(draw_pos);
+
+    // draw with hovered color
+    const ImVec4* colors = ImGui::GetStyle().Colors;
+    ImGui::PushStyleColor( ImGuiCol_Text, *toggle ? colors[ImGuiCol_DragDropTarget] : colors[ImGuiCol_Text] );
+    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? colors[ImGuiCol_NavHighlight] : colors[ImGuiCol_Text] );
+    ImGui::Text("%s", icon);
+    ImGui::PopStyleColor(2);
+
+
+    ImGui::PopID();
+    return ret;
+}
 
 struct Sum
 {
@@ -545,7 +579,7 @@ bool ImGuiToolkit::SelectableIcon(const char* label, int i, int j, bool selected
 }
 
 
-bool ImGuiToolkit::MenuItemIcon (int i, int j, const char* label, bool selected, bool enabled)
+bool ImGuiToolkit::MenuItemIcon (int i, int j, const char* label, const char* shortcut, bool selected, bool enabled)
 {
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
 
@@ -559,7 +593,7 @@ bool ImGuiToolkit::MenuItemIcon (int i, int j, const char* label, bool selected,
     ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, label);
 
     // draw menu item
-    bool ret = ImGui::MenuItem(text_buf, NULL, selected, enabled);
+    bool ret = ImGui::MenuItem(text_buf, shortcut, selected, enabled);
 
     // draw icon
     ImGui::SetCursorScreenPos(draw_pos);
@@ -1724,6 +1758,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(0.59f, 0.73f, 0.90f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.98f, 0.59f, 0.26f, 0.64f);
         colors[ImGuiCol_NavHighlight]           = ImVec4(0.98f, 0.59f, 0.26f, 1.00f);
+        colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 0.69f, 0.39f, 1.00f);
     }
     else if (color == ImGuiToolkit::ACCENT_GREEN) {
 
@@ -1747,6 +1782,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(0.75f, 0.60f, 0.84f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.47f, 0.62f, 0.49f, 0.71f);
         colors[ImGuiCol_NavHighlight]           = ImVec4(0.58f, 0.84f, 0.67f, 1.00f);
+        colors[ImGuiCol_DragDropTarget]         = ImVec4(0.68f, 0.94f, 0.77f, 1.00f);
     }
     else {
         // default BLUE
@@ -1773,9 +1809,9 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.82f, 0.00f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.59f, 0.98f, 0.64f);
         colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+        colors[ImGuiCol_DragDropTarget]         = ImVec4(0.46f, 0.69f, 1.00f, 1.00f);
     }
 
-    colors[ImGuiCol_DragDropTarget]         = colors[ImGuiCol_HeaderActive];
     __colorHighlight = colors[ImGuiCol_TabUnfocusedActive];
     __colorHighlightActive = colors[ImGuiCol_CheckMark];
 

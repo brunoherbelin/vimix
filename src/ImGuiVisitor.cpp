@@ -497,8 +497,11 @@ void ImGuiVisitor::visit (Source& s)
 
         // menu icon for image processing
         ImGui::SameLine(preview_width, 2 * IMGUI_SAME_LINE);
-        if (ImGuiToolkit::IconButton(5, 8))
+        static uint counter_menu_timeout = 0;
+        if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered()) {
+            counter_menu_timeout=0;
             ImGui::OpenPopup( "MenuImageProcessing" );
+        }
 
         if (ImGui::BeginPopup( "MenuImageProcessing" ))
         {
@@ -556,6 +559,11 @@ void ImGuiVisitor::visit (Source& s)
                 //                ImGui::EndMenu();
                 //            }
             }
+
+            if (ImGui::IsWindowHovered())
+                counter_menu_timeout=0;
+            else if (++counter_menu_timeout > 60)
+                ImGui::CloseCurrentPopup();
 
             ImGui::EndPopup();
         }
