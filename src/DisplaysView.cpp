@@ -52,6 +52,15 @@
 FilteringProgram _whitebalance("Whitebalance", "shaders/filters/whitebalance.glsl", "", { { "Red", 1.0}, { "Green", 1.0}, { "Blue", 1.0}, { "Temperature", 0.5} });
 
 
+
+WindowPreview::~WindowPreview()
+{
+    if (renderbuffer_)
+        delete renderbuffer_;
+    if (output_render_)
+        delete output_render_;
+}
+
 DisplaysView::DisplaysView() : View(DISPLAYS)
 {
     scene.root()->scale_ = glm::vec3(DISPLAYS_DEFAULT_SCALE, DISPLAYS_DEFAULT_SCALE, 1.0f);
@@ -68,6 +77,10 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     windows_ = std::vector<WindowPreview>(MAX_OUTPUT_WINDOW);
     for (auto w = windows_.begin(); w != windows_.end(); ++w){
 
+        // surface & buffer for render
+        w->output_render_ = new Surface;
+        w->renderbuffer_ = new FrameBuffer(1024, 1024);
+
         // root node
         w->root_ = new Group;
         scene.ws()->attach(w->root_);
@@ -78,14 +91,11 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
         w->title_->scale_ = glm::vec3(1.002f, WINDOW_TITLEBAR_HEIGHT, 1.f);
         w->title_->translation_ = glm::vec3(0.f, 1.f + WINDOW_TITLEBAR_HEIGHT, 0.f);
         w->root_->attach(w->title_);
-
         // surface background and texture
-        w->renderbuffer_ = new FrameBuffer(1024, 1024);  // TODO delete on close
         w->shader_ = new ImageFilteringShader;
         w->shader_->setCode( _whitebalance.code().first );
         w->surface_ = new FrameBufferSurface(w->renderbuffer_, w->shader_);
         w->root_->attach(w->surface_);
-        w->output_render_ = new Surface;
         // icon if disabled
         w->icon_ = new Handles(Handles::EYESLASHED);
         w->icon_->visible_ = false;

@@ -39,6 +39,7 @@ struct WindowPreview
         fullscreen_ = nullptr;
         monitor_ = "";
     }
+    ~WindowPreview();
 
     struct hasNode
     {

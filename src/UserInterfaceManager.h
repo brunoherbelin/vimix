@@ -484,6 +484,7 @@ public:
 protected:
 
     // internal
+    char inifilepath[2048];
     uint64_t start_time;
     bool ctrl_modifier_active;
     bool alt_modifier_active;

@@ -217,7 +217,6 @@ bool UserInterface::Init()
 
     // setup settings filename
     std::string inifile = SystemToolkit::full_filename(SystemToolkit::settings_path(), "imgui.ini");
-    char *inifilepath = (char *) malloc( (inifile.size() + 1) * sizeof(char) );
     std::sprintf(inifilepath, "%s", inifile.c_str() );
     io.IniFilename = inifilepath;
 

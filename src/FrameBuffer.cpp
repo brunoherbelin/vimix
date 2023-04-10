@@ -388,14 +388,14 @@ void FrameBuffer::setProjectionArea(glm::vec2 c)
 
 
 FrameBufferImage::FrameBufferImage(int w, int h) :
-    rgb(nullptr), width(w), height(h)
+    rgb(nullptr), width(w), height(h), is_stbi(false)
 {
     if (width>0 && height>0)
         rgb = new uint8_t[width*height*3];
 }
 
 FrameBufferImage::FrameBufferImage(jpegBuffer jpgimg) :
-    rgb(nullptr), width(0), height(0)
+    rgb(nullptr), width(0), height(0), is_stbi(true)
 {
     int c = 0;
     if (jpgimg.buffer != nullptr && jpgimg.len >0)
@@ -403,7 +403,7 @@ FrameBufferImage::FrameBufferImage(jpegBuffer jpgimg) :
 }
 
 FrameBufferImage::FrameBufferImage(const std::string &filename) :
-    rgb(nullptr), width(0), height(0)
+    rgb(nullptr), width(0), height(0), is_stbi(true)
 {
     int c = 0;
     if (!filename.empty())
@@ -412,8 +412,12 @@ FrameBufferImage::FrameBufferImage(const std::string &filename) :
 
 FrameBufferImage::~FrameBufferImage()
 {
-    if (rgb!=nullptr)
-        delete rgb;
+    if (rgb!=nullptr) {
+        if (is_stbi)
+            stbi_image_free(rgb);
+        else
+            delete [] rgb;
+    }
 }
 
 FrameBufferImage::jpegBuffer FrameBufferImage::getJpeg() const
@@ -423,14 +427,13 @@ FrameBufferImage::jpegBuffer FrameBufferImage::getJpeg() const
     // if we hold a valid image
     if (rgb!=nullptr && width>0 && height>0) {
 
-        // allocate JPEG buffer
-        // (NB: JPEG will need less than this but we can't know before...)
-        jpgimg.buffer = (unsigned char *) malloc( width * height * 3 * sizeof(unsigned char));
-
+        // dynamically allocate JPEG buffer
         stbi_write_jpg_to_func( [](void *context, void *data, int size)
         {
-            memcpy(((FrameBufferImage::jpegBuffer*)context)->buffer + ((FrameBufferImage::jpegBuffer*)context)->len, data, size);
+            uint pos = ((FrameBufferImage::jpegBuffer*)context)->len;
             ((FrameBufferImage::jpegBuffer*)context)->len += size;
+            ((FrameBufferImage::jpegBuffer*)context)->buffer = (unsigned char *) realloc(((FrameBufferImage::jpegBuffer*)context)->buffer, ((FrameBufferImage::jpegBuffer*)context)->len);
+            memmove(((FrameBufferImage::jpegBuffer*)context)->buffer + pos, data, size);
         }
         ,&jpgimg, width, height, 3, rgb, FBI_JPEG_QUALITY);
     }
