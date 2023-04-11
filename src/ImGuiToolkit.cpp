@@ -274,7 +274,6 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip, const char* sho
     float h = ImGui::GetFrameHeight();
     ImVec2 size = ImGui::CalcItemSize(ImVec2(h, h), 0.0f, 0.0f);
     ImVec2 draw_pos = window->DC.CursorPos;
-    draw_pos.y += window->DC.CurrLineTextBaseOffset - g.Style.FramePadding.y;
     const ImRect bb(draw_pos, draw_pos + size);
     ImGui::ItemSize(size, g.Style.FramePadding.y);
 
