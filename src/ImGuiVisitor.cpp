@@ -383,13 +383,13 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     /// THRESHOLD
     ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    float threshold = n.threshold < 0.001f ? 1.f : n.threshold;
-    if (ImGui::SliderFloat("##Threshold", &threshold, 1.f, 0.f, threshold > 0.999f ? "None" : "%.3f") ){
-        n.threshold = threshold > 0.999f ? 0.f : threshold;
+    float threshold = n.threshold < 0.001f ? 0.f : n.threshold;
+    if (ImGui::SliderFloat("##Threshold", &threshold, 0.f, 1.f, threshold < 0.001f ? "None" : "%.3f") ){
+        n.threshold = threshold < 0.001f ? 0.f : threshold;
     }
     if (ImGui::IsItemDeactivatedAfterEdit()){
         oss << "Threshold ";
-        if (n.threshold < 0.001) oss << "None"; else oss << std::setprecision(2) << n.threshold;
+        if (n.threshold < 0.001f) oss << "None"; else oss << std::setprecision(3) << n.threshold;
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
