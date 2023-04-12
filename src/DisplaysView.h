@@ -11,7 +11,8 @@ struct WindowPreview
     class FrameBufferSurface *surface_;
     Surface *output_render_;
     Group *root_;
-    Group *output_frame_;
+    Group *output_group_;
+    Frame *output_frame_;
     Handles *output_handles_;
     Switch  *overlays_;
     Switch  *mode_;
@@ -28,7 +29,7 @@ struct WindowPreview
         surface_ = nullptr;
         output_render_ = nullptr;
         root_ = nullptr;
-        output_frame_ = nullptr;
+        output_group_ = nullptr;
         output_handles_ = nullptr;
         overlays_ = nullptr;
         mode_ = nullptr;
