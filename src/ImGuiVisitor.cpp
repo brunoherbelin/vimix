@@ -359,10 +359,34 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     }
 
     ///
+    /// POSTERIZATION
+    ///
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    float posterized = n.nbColors < 1 ? 257.f : n.nbColors;
+    if (ImGui::SliderFloat("##Posterize", &posterized, 257.f, 1.f, posterized > 256.f ? "Full range" : "%.0f colors", 0.5f)) {
+        n.nbColors = posterized > 256 ? 0.f : posterized;
+    }
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        std::ostringstream oss;
+        oss << "Posterize ";
+        if (n.nbColors == 0) oss << "Full range"; else oss << n.nbColors;
+        Action::manager().store(oss.str());
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Posterize ")) {
+        n.nbColors = 0.f;
+        oss << "Posterize Full range";
+        Action::manager().store(oss.str());
+    }
+
+    ///
     /// THRESHOLD
     ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("##Threshold", &n.threshold, 0.0, 1.0, n.threshold < 0.001 ? "None" : "%.2f");
+    float threshold = n.threshold < 0.001f ? 1.f : n.threshold;
+    if (ImGui::SliderFloat("##Threshold", &threshold, 1.f, 0.f, threshold > 0.999f ? "None" : "%.3f") ){
+        n.threshold = threshold > 0.999f ? 0.f : threshold;
+    }
     if (ImGui::IsItemDeactivatedAfterEdit()){
         oss << "Threshold ";
         if (n.threshold < 0.001) oss << "None"; else oss << std::setprecision(2) << n.threshold;
@@ -372,24 +396,6 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     if (ImGuiToolkit::TextButton("Threshold ")) {
         n.threshold = 0.f;
         oss << "Threshold None";
-        Action::manager().store(oss.str());
-    }
-
-    ///
-    /// POSTERIZATION
-    ///
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderInt("##Posterize", &n.nbColors, 0, 16, n.nbColors == 0 ? "None" : "%d colors");
-    if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
-        oss << "Posterize ";
-        if (n.nbColors == 0) oss << "None"; else oss << n.nbColors;
-        Action::manager().store(oss.str());
-    }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    if (ImGuiToolkit::TextButton("Posterize ")) {
-        n.nbColors = 0.f;
-        oss << "Posterize None";
         Action::manager().store(oss.str());
     }
 
