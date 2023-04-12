@@ -299,6 +299,9 @@ int  DisplaysView::size ()
 
 void DisplaysView::draw()
 {
+    // White ballance color button
+    static DialogToolkit::ColorPickerDialog whitebalancedialog;
+
     // draw all windows
     int i = 0;
     for (; i < Settings::application.num_output_windows; ++i) {
@@ -477,9 +480,6 @@ void DisplaysView::draw()
             ImGui::SameLine(0, g.Style.FramePadding.x);
             ImGuiToolkit::ButtonIconToggle(11,1,11,1, &Settings::application.windows[1+current_window_].show_pattern, "Test pattern");
 
-            // White ballance color button
-            static DialogToolkit::ColorPickerDialog whitebalancedialog;
-
             ImGui::SameLine(0, 1.5f * g.Style.FramePadding.x);
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
             ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -500,14 +500,6 @@ void DisplaysView::draw()
                 }
             }
             ImGui::PopFont();
-
-            // get icked color if dialog finished
-            if (whitebalancedialog.closed()){
-                std::tuple<float, float, float> c = whitebalancedialog.RGB();
-                Settings::application.windows[1+current_window_].whitebalance.x =  std::get<0>(c);
-                Settings::application.windows[1+current_window_].whitebalance.y =  std::get<1>(c);
-                Settings::application.windows[1+current_window_].whitebalance.z =  std::get<2>(c);
-            }
 
             // White ballance temperature
             ImGui::SameLine();
@@ -549,6 +541,13 @@ void DisplaysView::draw()
     }
     ImGui::PopFont();
 
+    // get picked color if dialog finished
+    if (whitebalancedialog.closed()){
+        std::tuple<float, float, float> c = whitebalancedialog.RGB();
+        Settings::application.windows[1+current_window_].whitebalance.x =  std::get<0>(c);
+        Settings::application.windows[1+current_window_].whitebalance.y =  std::get<1>(c);
+        Settings::application.windows[1+current_window_].whitebalance.z =  std::get<2>(c);
+    }
 
     // display popup menu
     if (show_window_menu_ && current_window_ > -1) {

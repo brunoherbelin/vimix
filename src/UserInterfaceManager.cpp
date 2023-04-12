@@ -792,6 +792,16 @@ void UserInterface::NewFrame()
         }
     }
 
+    // overlay to ensure file color dialog is closed after use
+    if (DialogToolkit::ColorPickerDialog::busy()){
+        if (!ImGui::IsPopupOpen("##Color"))
+            ImGui::OpenPopup("##Color");
+        if (ImGui::BeginPopup("##Color")) {
+            ImGui::Text("Validate color dialog to return to vimix.");
+            ImGui::EndPopup();
+        }
+    }
+
     // popup to inform to save before close
     if (pending_save_on_exit) {
         if (!ImGui::IsPopupOpen(MENU_SAVE_ON_EXIT))
