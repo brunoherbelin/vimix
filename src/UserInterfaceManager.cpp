@@ -1250,6 +1250,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     if (ImGuiToolkit::IconButton(5,8))
         ImGui::OpenPopup("metrics_menu");
+
     ImGui::Spacing();
     ImGui::Spacing();
     float sliderwidth = 6.4f * ImGui::GetTextLineHeightWithSpacing();
@@ -1401,9 +1402,9 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         ImGui::InputText("##dummy2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Program");
+        ImGui::Text("Runtime");
         if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Runtime since program start");
+            ImGuiToolkit::ToolTip("Runtime since vimix started");
 
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
         time += Settings::application.total_runtime;
@@ -1412,79 +1413,69 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         ImGui::InputText("##dummy3", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Total");
+        ImGui::Text("Lifetime");
         if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Runtime of vimix since its installation");
+            ImGuiToolkit::ToolTip("Accumulated runtime of vimix\nsince its installation");
 
         ImGui::PopStyleVar();
     }
     else {
 
-        char buf[32];
-
-        // read Framerate
-        sprintf(buf, "%.1f", io.Framerate);
-        float progress = (io.Framerate < 0.0f) ? 0.0f : (io.Framerate > 62.0f) ? 1.0f : io.Framerate / 62.f;
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        ImGui::ProgressBar(progress, ImVec2(sliderwidth, ImGui::GetTextLineHeightWithSpacing()), buf);
-        ImGui::PopFont();
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("FPS");
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Frames per second");
-
         // read Memory info every 1/2 second
-        static long ram = 0, max = 0;
+        static long ram = 0;
         static glm::ivec2 gpu(INT_MAX, INT_MAX);
         {
             static GTimer *timer = g_timer_new ();
             double elapsed = g_timer_elapsed (timer, NULL);
             if ( elapsed > 0.5 ){
                 ram = SystemToolkit::memory_usage();
-                max = SystemToolkit::memory_available();
                 gpu = Rendering::manager().getGPUMemoryInformation();
                 g_timer_start(timer);
             }
         }
-        sprintf(buf, "%s", BaseToolkit::byte_to_string( ram ).c_str());
-        progress = (float) ram / (float) max;
+        static char dummy_str[256];
+
+        sliderwidth = 5.6f * ImGui::GetTextLineHeightWithSpacing();
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.f, 2.5f));
+
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        ImGui::ProgressBar(progress, ImVec2(sliderwidth, ImGui::GetTextLineHeightWithSpacing()), buf);
+        sprintf(dummy_str, "%.1f", io.Framerate);
+        ImGui::SetNextItemWidth(sliderwidth);
+        ImGui::InputText("##dummy", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopFont();
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("FPS");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Frames per second");
+
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+        sprintf(dummy_str, "%s", BaseToolkit::byte_to_string( ram ).c_str());
+        ImGui::SetNextItemWidth(sliderwidth);
+        ImGui::InputText("##dummy2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("RAM");
         if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Memory used by vimix\n(over available free RAM)");
+            ImGuiToolkit::ToolTip("Amount of physical memory\nused by vimix");
 
         // GPU RAM if available
         if (gpu.x < INT_MAX && gpu.x > 0) {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
             // got free and max GPU RAM (nvidia)
-            if (gpu.y < INT_MAX && gpu.y > 0) {
-                sprintf(buf, "%s", BaseToolkit::byte_to_string( long(gpu.y-gpu.x) * 1024 ).c_str());
-                progress = (float) (gpu.y-gpu.x) / (float) gpu.y;
-                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-                ImGui::ProgressBar(progress, ImVec2(sliderwidth, ImGui::GetTextLineHeightWithSpacing()), buf);
-                ImGui::PopFont();
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGui::Text("GPU");
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip("Memory used in GPU (nvidia)\n(over total physical GPU RAM)");
-            }
+            if (gpu.y < INT_MAX && gpu.y > 0)
+                sprintf(dummy_str, "%s", BaseToolkit::byte_to_string( long(gpu.y-gpu.x) * 1024 ).c_str());
             // got used GPU RAM (ati)
-            else {
-                static int max_gpu_ram = 0;
-                max_gpu_ram = MAX(max_gpu_ram, gpu.x);
-                sprintf(buf, "%s", BaseToolkit::byte_to_string( long(gpu.x) * 1024 ).c_str());
-                progress = (float) gpu.x / (float) max_gpu_ram;
-                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-                ImGui::ProgressBar(progress, ImVec2(sliderwidth, ImGui::GetTextLineHeightWithSpacing()), buf);
-                ImGui::PopFont();
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGui::Text("GPU");
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip("Memory used in GPU (ATI)");
-            }
+            else
+                sprintf(dummy_str, "%s", BaseToolkit::byte_to_string( long(gpu.x) * 1024 ).c_str());
+            ImGui::SetNextItemWidth(sliderwidth);
+            ImGui::InputText("##dummy3", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopFont();
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::Text("GPU");
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Total memory used in GPU");
         }
+        ImGui::PopStyleVar();
     }
 
     if (ImGui::BeginPopup("metrics_menu"))
@@ -1782,7 +1773,7 @@ void ToolBox::Render()
     ImGui::PlotLines("LinesRender", recorded_values[0], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[0][0], recorded_bounds[0][1], plot_size);
     sprintf(overlay, "Update time %.1f ms (%.1f FPS)", recorded_sum[1] / float(PLOT_ARRAY_SIZE), (float(PLOT_ARRAY_SIZE) * 1000.f) / recorded_sum[1]);
     ImGui::PlotHistogram("LinesMixer", recorded_values[1], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[1][0], recorded_bounds[1][1], plot_size);
-    sprintf(overlay, "Memory %.1f MB / %s", recorded_values[2][(values_index+PLOT_ARRAY_SIZE-1) % PLOT_ARRAY_SIZE], BaseToolkit::byte_to_string(SystemToolkit::memory_available()).c_str() );
+    sprintf(overlay, "Memory %.1f MB", recorded_values[2][(values_index+PLOT_ARRAY_SIZE-1) % PLOT_ARRAY_SIZE] );
     ImGui::PlotLines("LinesMemo", recorded_values[2], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[2][0], recorded_bounds[2][1], plot_size);
 
     ImGui::End();

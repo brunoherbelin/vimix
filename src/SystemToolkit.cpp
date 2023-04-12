@@ -72,15 +72,20 @@ long SystemToolkit::memory_usage()
     size_t size = 0;
     FILE *file = fopen("/proc/self/statm", "r");
     if (file) {
-        unsigned long m = 0;
+        size_t m = 0;
         int ret = 0, ret2 = 0;
         ret = fscanf (file, "%lu", &m);  // virtual mem program size,
         ret2 = fscanf (file, "%lu", &m);  // resident set size,
         fclose (file);
         if (ret>0 && ret2>0)
-            size = (size_t)m * getpagesize();
+            size = m * getpagesize();
     }
     return (long)size;
+
+// ALTERNATIVE implementation (less reactive)
+//    struct rusage r_usage;
+//    getrusage(RUSAGE_SELF,&r_usage);
+//    return 1024 * r_usage.ru_maxrss;
 
 #elif defined(APPLE)
     // Inspired from
@@ -100,32 +105,6 @@ long SystemToolkit::memory_usage()
 #else
     return 0;
 #endif
-}
-
-long SystemToolkit::memory_available() {
-
-#if defined(LINUX)
-    FILE *file = fopen("/proc/meminfo", "r");
-    if (file) {
-        long m = 0;
-        int ret = 0;
-        char trash[256] __attribute__((unused));
-        ret = fscanf(file, "%s", trash); // "MemTotal:"
-        ret = fscanf(file, "%s", trash); // value memtotal
-        ret = fscanf(file, "%s", trash); // "kB"
-        ret = fscanf(file, "%s", trash); // "MemFree:"
-        ret = fscanf (file, "%ld", &m);  // mem free ; the value we actually read
-        fclose (file);
-        if (ret)
-            return 1024 * m;
-    }
-#elif defined(APPLE)
-    struct rusage r_usage;
-    getrusage(RUSAGE_SELF,&r_usage);
-    return 1024 * r_usage.ru_maxrss;
-#endif
-
-    return 0;
 }
 
 
