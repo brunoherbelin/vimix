@@ -78,14 +78,16 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), sessionSwapRequested
     if ( Settings::application.recentSessions.load_at_start &&
          Settings::application.recentSessions.front_is_valid &&
          Settings::application.recentSessions.filenames.size() > 0 &&
-         Settings::application.fresh_start)
+         Settings::application.fresh_start) {
         load( Settings::application.recentSessions.filenames.front() );
-    else
-        // initializes with a new empty session
+        // initialize with the current view
+        setView( (View::Mode) Settings::application.current_view );
+    }
+    else {
+        // initialize with a new empty session
         clear();
-
-    // this initializes with the current view
-    setView( (View::Mode) Settings::application.current_view );
+        setView( View::MIXING );
+    }
 }
 
 void Mixer::update()

@@ -2682,7 +2682,7 @@ void SourceController::Render()
             // offer to open folder location
             ImVec2 draw_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -ImGui::GetFrameHeight()) );
-            if (ImGuiToolkit::IconButton( ICON_FA_EXTERNAL_LINK_ALT,  Settings::application.source.capture_path.c_str()))
+            if (ImGuiToolkit::IconButton( ICON_FA_FOLDER_OPEN,  Settings::application.source.capture_path.c_str()))
                 SystemToolkit::open(Settings::application.source.capture_path);
             ImGui::SetCursorPos(draw_pos);
 
@@ -4476,7 +4476,7 @@ void OutputPreview::Render()
                 // offer to open folder location
                 ImVec2 draw_pos = ImGui::GetCursorPos();
                 ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -ImGui::GetFrameHeight()) );
-                if (ImGuiToolkit::IconButton( ICON_FA_EXTERNAL_LINK_ALT,  Settings::application.record.path.c_str()))
+                if (ImGuiToolkit::IconButton( ICON_FA_FOLDER_OPEN,  Settings::application.record.path.c_str()))
                     SystemToolkit::open(Settings::application.record.path);
                 ImGui::SetCursorPos(draw_pos);
 

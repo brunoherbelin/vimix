@@ -42,7 +42,7 @@
 #define SHORTCUT_SAVE_FILE    CTRL_MOD "S"
 #define MENU_SAVEAS_FILE      ICON_FA_FILE_DOWNLOAD "  Save as"
 #define MENU_SAVE_ON_EXIT     ICON_FA_LEVEL_DOWN_ALT "  Save on exit"
-#define MENU_OPEN_ON_START    ICON_FA_LEVEL_UP_ALT "  Open last on start"
+#define MENU_OPEN_ON_START    ICON_FA_LEVEL_UP_ALT "  Restore on start"
 #define SHORTCUT_SAVEAS_FILE  CTRL_MOD "Shift+S"
 #define SHORTCUT_LOGS         CTRL_MOD "L"
 #define MENU_QUIT             ICON_FA_POWER_OFF "  Quit"
