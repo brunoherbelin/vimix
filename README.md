@@ -53,10 +53,6 @@ NB: You'll need to accept the exception in OSX security preference.
 This will create the directory 'vimix', download the latest version of vimix code,
 and (recursively) clone all the internal git dependencies.
 
-To only update a cloned git copy:
-
-    ~$ git pull
-
 ## Compile
 
 First time after git clone:
@@ -64,12 +60,37 @@ First time after git clone:
     ~$ mkdir vimix-build
     ~$ cd vimix-build
     ~$ cmake -DCMAKE_BUILD_TYPE=Release ../vimix
-    
-Compile (or re-compile after pull):
-    
     ~$ cmake --build .
+    
+This will create the directory 'vimix-build', configure the program for build, and compile vimix.
+If successful, the compilation will have produced the executable `vimix` in the `src` directory. 
+You can run vimix with `./src/vimix` :
+     
+     ...
+     [100%] Built target vimix
+     ~$ ./src/vimix
+    
+## Update clone and re-compile 
 
-### Dependencies
+Run these commands from the `vimix-build` directory if you did 'Clone' and 'Compile' previously and only want to get the latest update and rebuild.
+    
+    ~$ git -C ../vimix/ pull
+    ~$ cmake --build .
+    
+This will pull the latest commit from git and recompile. 
+
+## Try the Beta branch
+
+Run this commands from the `vimix-build` directory before runing 'Update clone and re-compile above'
+
+    $ git -C ../vimix/ checkout beta
+    
+It should say;
+
+    branch 'beta' set up to track 'origin/beta'.
+    Switched to a new branch 'beta'
+
+## Dependencies
 
 **Compiling tools:**
 
@@ -93,9 +114,9 @@ Optionnal:
 - AbletonLink
 - Shmdata
 
-#### Install Dependencies
+### Install Dependencies
 
-**Ubuntu**
+#### Ubuntu
 
     ~$ apt-get install build-essential cmake libpng-dev libglfw3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-libav libicu-dev libgtk-3-dev 
 
@@ -103,20 +124,9 @@ Optionnal:
 
     ~$ apt-get install libglm-dev libstb-dev libtinyxml2-dev ableton-link-dev 
     
++ Follow the instructions to [install Shmdata](https://gitlab.com/sat-mtl/tools/shmdata).
 
-Follow the instructions to [install Shmdata](https://gitlab.com/sat-mtl/tools/shmdata).
-
-**OSX with Brew**
+#### OSX with Brew
 
     ~$ brew install cmake libpng glfw gstreamer gst-libav gst-plugins-bad gst-plugins-base gst-plugins-good gst-plugins-ugly icu4c
 
-
-### Memcheck
-
-To generate memory usage plots in [massif format](https://valgrind.org/docs/manual/ms-manual.html):
-
-    $ G_SLICE=always-malloc valgrind --tool=massif ./vimix
-    
-To check for memory leaks:
-    
-    $ G_SLICE=always-malloc valgrind --leak-check=full --log-file=vimix_mem.txt ./vimix
