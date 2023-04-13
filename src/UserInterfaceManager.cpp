@@ -5065,9 +5065,16 @@ void TimerMetronome::Render()
         // small text: remaining time
         ImGui::PushStyleColor(ImGuiCol_Text, colorfg);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        sprintf(text_buf, "%s", GstToolkit::time_to_string(duration_hand_-(time_-start_time_hand_)%duration_hand_, GstToolkit::TIME_STRING_READABLE).c_str() );
+
+        guint64 lap = (time_-start_time_hand_)/duration_hand_;
+        sprintf(text_buf, "%ld turn%s", lap, lap > 1 ? "s" : " " );
         label_size = ImGui::CalcTextSize(text_buf, NULL);
         ImGui::SetCursorScreenPos(circle_center + ImVec2(0.f, circle_radius * -0.7f) - label_size/2);
+        ImGui::Text("%s", text_buf);
+
+        sprintf(text_buf, "%s", GstToolkit::time_to_string(duration_hand_-(time_-start_time_hand_)%duration_hand_, GstToolkit::TIME_STRING_READABLE).c_str() );
+        label_size = ImGui::CalcTextSize(text_buf, NULL);
+        ImGui::SetCursorScreenPos(circle_center - ImVec2(0.f, circle_radius * -0.7f) - label_size/2);
         ImGui::Text("%s", text_buf);
         ImGui::PopFont();
         ImGui::PopStyleColor();
