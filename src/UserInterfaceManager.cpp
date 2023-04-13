@@ -1521,6 +1521,12 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGui::PopFont();
 #endif
 
+#ifdef VIMIX_GIT
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
+    ImGui::Text(VIMIX_GIT);
+    ImGui::PopFont();
+#endif
+
     static unsigned int img_crow = 0;
     if (img_crow == 0)
         img_crow = Resource::getTextureImage("images/vimix_crow_white.png");
