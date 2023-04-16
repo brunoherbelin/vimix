@@ -32,6 +32,9 @@ struct WidgetsConfig
     int  shader_editor_view;
     bool toolbox;
     bool help;
+    bool source_toolbar;
+    int  source_toolbar_border;
+    int  source_toolbar_mode;
 
     WidgetsConfig() {
         stats = false;
@@ -52,6 +55,9 @@ struct WidgetsConfig
         shader_editor_view = -1;
         inputs = false;
         inputs_view = -1;
+        source_toolbar = false;
+        source_toolbar_mode = 0;
+        source_toolbar_border = -1;
     }
 };
 

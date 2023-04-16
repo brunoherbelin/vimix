@@ -76,10 +76,9 @@
 #define MENU_CLOSE            ICON_FA_TIMES "   Close"
 #define DIALOG_FAILED_SOURCE  ICON_FA_EXCLAMATION_TRIANGLE " Source failure"
 
-#define MENU_NOTE             ICON_FA_STICKY_NOTE "  New sticky note "
-#define SHORTCUT_NOTE         CTRL_MOD "Shift+N"
-#define MENU_METRICS          "Metrics"
-#define SHORTCUT_METRICS      CTRL_MOD "M"
+#define MENU_NOTE             ICON_FA_STICKY_NOTE "   Add sticky note"
+#define MENU_METRICS          ICON_FA_TACHOMETER_ALT "  Metrics"
+#define MENU_SOURCE_TOOL      ICON_FA_VECTOR_SQUARE "  Source editor"
 #define MENU_HELP             ICON_FA_LIFE_RING "  Help"
 #define SHORTCUT_HELP         CTRL_MOD "H"
 #define TOOLTIP_PLAYER        "Player "
@@ -101,6 +100,11 @@
 #define TOOLTIP_HIDE          "Hide windows "
 #define TOOLTIP_SHOW          "Show windows "
 #define SHORTCUT_HIDE         "ESC"
+
+#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_USER_CIRCLE "  User selection"
+#define LABEL_STORE_SELECTION "  Create batch"
+#define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fade in & out"
+#define LABEL_VIDEO_SEQUENCE "  Encode an image sequence"
 
 #include "SourceList.h"
 #include "InfoVisitor.h"
@@ -522,6 +526,7 @@ protected:
     void selectOpenFilename();
 
     void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
+    void RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode);
     int  RenderViewNavigator(int* shift);
     void RenderOutputView();
     void RenderAbout(bool* p_open);

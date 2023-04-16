@@ -96,10 +96,8 @@ TextEditor _editor;
 #include "UserInterfaceManager.h"
 #define PLOT_CIRCLE_SEGMENTS 64
 #define PLOT_ARRAY_SIZE 180
-#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_USER_CIRCLE "  User selection"
-#define LABEL_STORE_SELECTION "  Create batch"
-#define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fade in & out"
-#define LABEL_VIDEO_SEQUENCE "  Encode an image sequence"
+#define WINDOW_TOOLBOX_ALPHA 0.35f
+#define WINDOW_TOOLBOX_DIST_TO_BORDER 10.f
 
 // utility functions
 void ShowAboutGStreamer(bool* p_open);
@@ -303,7 +301,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_H), false )) {
             // Helper
-            Settings::application.widget.help = !Settings::application.widget.help;
+            Settings::application.widget.help = true;
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_E), false )) {
             // Shader Editor
@@ -355,14 +353,8 @@ void UserInterface::handleKeyboard()
             if (clipboard != nullptr && strlen(clipboard) > 0)
                 Mixer::manager().paste(clipboard);
         }
-        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_M), false )) {
-            Settings::application.widget.stats = !Settings::application.widget.stats;
-        }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_I), false )) {
             Settings::application.widget.inputs = !Settings::application.widget.inputs;
-        }
-        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_N), false ) && shift_modifier_active) {
-            Mixer::manager().session()->addNote();
         }
 
     }
@@ -878,6 +870,12 @@ void UserInterface::Render()
                   &Settings::application.widget.stats_corner,
                   &Settings::application.widget.stats_mode);
 
+    // source editor
+    if (Settings::application.widget.source_toolbar)
+        RenderSourceToolbar(&Settings::application.widget.source_toolbar,
+                           &Settings::application.widget.source_toolbar_border,
+                           &Settings::application.widget.source_toolbar_mode);
+
     if ( WorkspaceWindow::clear())
         ImGui::PopStyleVar();
     // All other windows are simply not rendered if workspace is clear
@@ -1227,278 +1225,540 @@ void UserInterface::RenderOutputView()
 }
 
 
+enum MetricsFlags_
+{
+    Metrics_none       = 0,
+    Metrics_framerate  = 1,
+    Metrics_ram        = 2,
+    Metrics_gpu        = 4,
+    Metrics_session    = 8,
+    Metrics_runtime    = 16,
+    Metrics_lifetime   = 32
+};
+
 void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 {
-    if (!p_corner || !p_open)
+    if (!p_open || !p_corner || !p_mode)
         return;
 
-    const float DISTANCE = 10.0f;
-    int corner = *p_corner;
+    if (*p_mode == Metrics_none)
+        *p_mode = Metrics_framerate;
+
     ImGuiIO& io = ImGui::GetIO();
-    if (corner != -1)
-    {
-        ImVec2 window_pos = ImVec2((corner & 1) ? io.DisplaySize.x - DISTANCE : DISTANCE, (corner & 2) ? io.DisplaySize.y - DISTANCE : DISTANCE);
-        ImVec2 window_pos_pivot = ImVec2((corner & 1) ? 1.0f : 0.0f, (corner & 2) ? 1.0f : 0.0f);
+    if (*p_corner != -1) {
+        ImVec2 window_pos = ImVec2((*p_corner & 1) ? io.DisplaySize.x - WINDOW_TOOLBOX_DIST_TO_BORDER : WINDOW_TOOLBOX_DIST_TO_BORDER,
+                                   (*p_corner & 2) ? io.DisplaySize.y - WINDOW_TOOLBOX_DIST_TO_BORDER : WINDOW_TOOLBOX_DIST_TO_BORDER);
+        ImVec2 window_pos_pivot = ImVec2((*p_corner & 1) ? 1.0f : 0.0f, (*p_corner & 2) ? 1.0f : 0.0f);
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
     }
 
-    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+    ImGui::SetNextWindowBgAlpha(WINDOW_TOOLBOX_ALPHA); // Transparent background
 
-    if (!ImGui::Begin("Metrics", NULL, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    if (!ImGui::Begin("Metrics", NULL, (*p_corner != -1 ? ImGuiWindowFlags_NoMove : 0) |
+                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+                      ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         ImGui::End();
         return;
     }
 
-    // combo selection of mode, with fixed width to display enough text
-    ImGui::SetNextItemWidth( 8.4f * ImGui::GetTextLineHeight());
-    ImGui::Combo("##mode", p_mode,
-                 ICON_FA_TACHOMETER_ALT "  Performance\0"
-                 ICON_FA_HOURGLASS_HALF "   Runtime\0"
-                 ICON_FA_VECTOR_SQUARE  "  Source\0");
-
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    // title
+    ImGui::Text( MENU_METRICS );
+    ImGui::SameLine(0, 2.2f * ImGui::GetTextLineHeightWithSpacing());
     if (ImGuiToolkit::IconButton(5,8))
         ImGui::OpenPopup("metrics_menu");
 
-    ImGui::Spacing();
-    ImGui::Spacing();
-    float sliderwidth = 6.4f * ImGui::GetTextLineHeightWithSpacing();
-
-    if (*p_mode > 1) {
-        Source *s = Mixer::manager().currentSource();
-        if (s) {
-            std::ostringstream info;
-            info << s->name() << ": ";
-
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.f, 2.f));
-            //
-            // ALPHA
-            //
-            float v = s->alpha() * 100.f;
-            ImGui::SetNextItemWidth(sliderwidth);
-            if ( ImGui::DragFloat("##Alpha", &v, 0.1f, 0.f, 100.f, "%.1f%%") )
-                s->call(new SetAlpha(v*0.01f), true);
-            if ( ImGui::IsItemDeactivatedAfterEdit() ) {
-                info << "Alpha " << std::fixed << std::setprecision(3) << v;
-                Action::manager().store(info.str());
-            }
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::TextButton("Alpha")) {
-                s->call(new SetAlpha(1.f), true);
-                info << "Alpha " << std::fixed << std::setprecision(3) << 0.f;
-                Action::manager().store(info.str());
-            }
-
-            //
-            // POSITION COORDINATES
-            //
-            Group *n = s->group(View::GEOMETRY);
-            glm::vec3 out = Mixer::manager().session()->frame()->resolution();
-            float vec[2] = { n->translation_.x * out.y * 0.5f, n->translation_.y * out.y * 0.5f};
-            ImGui::SetNextItemWidth(sliderwidth);
-            if ( ImGui::DragFloat2("##Pos", vec, 1.0f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0f px") )  {
-                n->translation_.x = vec[0] / (0.5f * out.y);
-                n->translation_.y = vec[1] / (0.5f * out.y);
-                s->touch();
-            }
-            if ( ImGui::IsItemDeactivatedAfterEdit() ){
-                info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
-                Action::manager().store(info.str());
-            }
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::TextButton("Pos")) {
-                n->translation_.x = 0.f;
-                n->translation_.y = 0.f;
-                s->touch();
-                info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
-                Action::manager().store(info.str());
-            }
-
-            //
-            // SCALE
-            //
-            static bool lock_scale = true;
-            float ar_scale = n->scale_.x / n->scale_.y;
-            // SCALE X
-            v = n->scale_.x * out.x;
-            ImGui::SetNextItemWidth( 2.7f * ImGui::GetTextLineHeightWithSpacing() );
-            if ( ImGui::DragFloat("##ScaleX", &v, 1.f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0f") ) {
-                if (v > 10.f) {
-                    n->scale_.x = v / out.x;
-                    if (lock_scale)
-                        n->scale_.y = n->scale_.x / ar_scale;
-                    s->touch();
-                }
-            }
-            if ( ImGui::IsItemDeactivatedAfterEdit() ){
-                info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
-                Action::manager().store(info.str());
-            }
-            // SCALE LOCK ASPECT RATIO
-            ImGui::SameLine(0, 0);
-            ImGuiToolkit::IconToggle(5,1,6,1, &lock_scale );
-            ImGui::SameLine(0, 0);
-            // SCALE Y
-            v = n->scale_.y * out.y;
-            ImGui::SetNextItemWidth( 2.7f * ImGui::GetTextLineHeightWithSpacing() );
-            if ( ImGui::DragFloat("##ScaleY", &v, 1.f, -MAX_SCALE * out.y, MAX_SCALE * out.y, "%.0f") ) {
-                if (v > 10.f) {
-                    n->scale_.y = v / out.y;
-                    if (lock_scale)
-                        n->scale_.x = n->scale_.y * ar_scale;
-                    s->touch();
-                }
-            }
-            if ( ImGui::IsItemDeactivatedAfterEdit() ){
-                info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
-                Action::manager().store(info.str());
-            }
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::TextButton("Size")) {
-                n->scale_.x = 1.f;
-                n->scale_.y = 1.f;
-                s->touch();
-                info << "Scale " << std::setprecision(3) << n->scale_.x << ", " << n->scale_.y;
-                Action::manager().store(info.str());
-            }
-
-            //
-            // ROTATION ANGLE
-            //
-            float v_deg = n->rotation_.z * 360.0f / (2.f*M_PI);
-            ImGui::SetNextItemWidth(sliderwidth);
-            if ( ImGui::DragFloat("##Angle", &v_deg, 0.02f, -180.f, 180.f, "%.2f" UNICODE_DEGREE) ) {
-                n->rotation_.z = v_deg * (2.f*M_PI) / 360.0f;
-                s->touch();
-            }
-            if ( ImGui::IsItemDeactivatedAfterEdit() ) {
-                info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
-                Action::manager().store(info.str());
-            }
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::TextButton("Angle")) {
-                n->rotation_.z = 0.f;
-                s->touch();
-                info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
-                Action::manager().store(info.str());
-            }
-
-            ImGui::PopStyleVar();
+    // read Memory info every 1/2 second
+    static long ram = 0;
+    static glm::ivec2 gpu(INT_MAX, INT_MAX);
+    {
+        static GTimer *timer = g_timer_new ();
+        double elapsed = g_timer_elapsed (timer, NULL);
+        if ( elapsed > 0.5 ){
+            ram = SystemToolkit::memory_usage();
+            gpu = Rendering::manager().getGPUMemoryInformation();
+            g_timer_start(timer);
         }
-        else
-            ImGui::Text("No source selected");
     }
-    else if (*p_mode > 0) {
+    static char dummy_str[256];
+    uint64_t time = Runtime();
 
-        static char dummy_str[] = "00:00:00.00";
-        sliderwidth = 5.6f * ImGui::GetTextLineHeightWithSpacing();
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.f, 2.5f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.f, 2.5f));
+    const float _width = 4.f * ImGui::GetTextLineHeightWithSpacing();
 
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        sprintf(dummy_str, "%s", GstToolkit::time_to_string(Mixer::manager().session()->runtime(), GstToolkit::TIME_STRING_READABLE).c_str());
-        ImGui::SetNextItemWidth(sliderwidth);
-        ImGui::InputText("##dummy", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopFont();
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Session");
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Runtime since session load");
-
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        uint64_t time = Runtime();
-        sprintf(dummy_str, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
-        ImGui::SetNextItemWidth(sliderwidth);
-        ImGui::InputText("##dummy2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopFont();
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Runtime");
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Runtime since vimix started");
-
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        time += Settings::application.total_runtime;
-        sprintf(dummy_str, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
-        ImGui::SetNextItemWidth(sliderwidth);
-        ImGui::InputText("##dummy3", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopFont();
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Lifetime");
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Accumulated runtime of vimix\nsince its installation");
-
-        ImGui::PopStyleVar();
-    }
-    else {
-
-        // read Memory info every 1/2 second
-        static long ram = 0;
-        static glm::ivec2 gpu(INT_MAX, INT_MAX);
-        {
-            static GTimer *timer = g_timer_new ();
-            double elapsed = g_timer_elapsed (timer, NULL);
-            if ( elapsed > 0.5 ){
-                ram = SystemToolkit::memory_usage();
-                gpu = Rendering::manager().getGPUMemoryInformation();
-                g_timer_start(timer);
-            }
-        }
-        static char dummy_str[256];
-
-        sliderwidth = 5.6f * ImGui::GetTextLineHeightWithSpacing();
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.f, 2.5f));
-
+    if (*p_mode & Metrics_framerate) {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
         sprintf(dummy_str, "%.1f", io.Framerate);
-        ImGui::SetNextItemWidth(sliderwidth);
+        ImGui::SetNextItemWidth(_width);
         ImGui::InputText("##dummy", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("FPS");
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Frames per second");
+    }
 
+    if (*p_mode & Metrics_ram) {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
         sprintf(dummy_str, "%s", BaseToolkit::byte_to_string( ram ).c_str());
-        ImGui::SetNextItemWidth(sliderwidth);
+        ImGui::SetNextItemWidth(_width);
         ImGui::InputText("##dummy2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("RAM");
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Amount of physical memory\nused by vimix");
-
-        // GPU RAM if available
-        if (gpu.x < INT_MAX && gpu.x > 0) {
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-            // got free and max GPU RAM (nvidia)
-            if (gpu.y < INT_MAX && gpu.y > 0)
-                sprintf(dummy_str, "%s", BaseToolkit::byte_to_string( long(gpu.y-gpu.x) * 1024 ).c_str());
-            // got used GPU RAM (ati)
-            else
-                sprintf(dummy_str, "%s", BaseToolkit::byte_to_string( long(gpu.x) * 1024 ).c_str());
-            ImGui::SetNextItemWidth(sliderwidth);
-            ImGui::InputText("##dummy3", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-            ImGui::PopFont();
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            ImGui::Text("GPU");
-            if (ImGui::IsItemHovered())
-                ImGuiToolkit::ToolTip("Total memory used in GPU");
-        }
-        ImGui::PopStyleVar();
     }
+
+    // GPU RAM if available
+    if (gpu.x < INT_MAX && gpu.x > 0 && *p_mode & Metrics_gpu) {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+        // got free and max GPU RAM (nvidia)
+        if (gpu.y < INT_MAX && gpu.y > 0)
+            sprintf(dummy_str, "%s", BaseToolkit::byte_to_string( long(gpu.y-gpu.x) * 1024 ).c_str());
+        // got used GPU RAM (ati)
+        else
+            sprintf(dummy_str, "%s", BaseToolkit::byte_to_string( long(gpu.x) * 1024 ).c_str());
+        ImGui::SetNextItemWidth(_width);
+        ImGui::InputText("##dummy3", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopFont();
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("GPU");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Total memory used in GPU");
+    }
+
+    if (*p_mode & Metrics_session) {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+        sprintf(dummy_str, "%s", GstToolkit::time_to_string(Mixer::manager().session()->runtime(), GstToolkit::TIME_STRING_READABLE).c_str());
+        ImGui::SetNextItemWidth(_width);
+        ImGui::InputText("##dummy", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopFont();
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Session");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Runtime since session load");
+    }
+
+    if (*p_mode & Metrics_runtime) {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+        sprintf(dummy_str, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
+        ImGui::SetNextItemWidth(_width);
+        ImGui::InputText("##dummy2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopFont();
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Runtime");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Runtime since vimix started");
+    }
+
+    if (*p_mode & Metrics_lifetime) {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+        time += Settings::application.total_runtime;
+        sprintf(dummy_str, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
+        ImGui::SetNextItemWidth(_width);
+        ImGui::InputText("##dummy3", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopFont();
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Lifetime");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Accumulated runtime of vimix\nsince its installation");
+    }
+
+    ImGui::PopStyleVar();
 
     if (ImGui::BeginPopup("metrics_menu"))
     {
-        ImGui::TextDisabled( MENU_METRICS );
-        if (ImGui::MenuItem( ICON_FA_ANGLE_UP "  Top",    NULL, corner == 1)) *p_corner = 1;
-        if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom", NULL, corner == 3)) *p_corner = 3;
-        if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT " Free position", NULL, corner == -1)) *p_corner = -1;
-        if (p_open && ImGui::MenuItem( ICON_FA_TIMES "  Close")) *p_open = false;
+        if (ImGui::MenuItem( "Framerate", NULL, *p_mode & Metrics_framerate))
+            *p_mode ^= Metrics_framerate;
+        if (ImGui::MenuItem( "RAM", NULL, *p_mode & Metrics_ram))
+            *p_mode ^= Metrics_ram;
+        // GPU RAM if available
+        if (gpu.x < INT_MAX && gpu.x > 0)
+            if (ImGui::MenuItem( "GPU", NULL, *p_mode & Metrics_gpu))
+                *p_mode ^= Metrics_gpu;
+        if (ImGui::MenuItem( "Session time", NULL, *p_mode & Metrics_session))
+            *p_mode ^= Metrics_session;
+        if (ImGui::MenuItem( "Runtime", NULL, *p_mode & Metrics_runtime))
+            *p_mode ^= Metrics_runtime;
+        if (ImGui::MenuItem( "Lifetime", NULL, *p_mode & Metrics_lifetime))
+            *p_mode ^= Metrics_lifetime;
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem( ICON_FA_ANGLE_UP "  Top right",    NULL, *p_corner == 1))
+            *p_corner = 1;
+        if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom right", NULL, *p_corner == 3))
+            *p_corner = 3;
+        if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT " Free position", NULL, *p_corner == -1))
+            *p_corner = -1;
+        if (p_open && ImGui::MenuItem( ICON_FA_TIMES "  Close"))
+            *p_open = false;
+
         ImGui::EndPopup();
     }
 
     ImGui::End();
+}
+
+enum SourceToolbarFlags_
+{
+    SourceToolbar_none       = 0,
+    SourceToolbar_linkar     = 1,
+    SourceToolbar_autohide   = 2
+};
+
+void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode) {
+
+    if (!p_open || !p_border || !p_mode)
+        return;
+
+    Source *s = Mixer::manager().currentSource();
+    if (s || !(*p_mode & SourceToolbar_autohide) ) {
+
+        std::ostringstream info;
+        const glm::vec3 out = Mixer::manager().session()->frame()->resolution();
+        const char *tooltip_lock[2] = {"Width & height not linked", "Width & height linked"};
+
+        //
+        // horizontal layout for top and bottom placements
+        //
+        if (*p_border > 0) {
+
+            ImGuiIO& io = ImGui::GetIO();
+            ImVec2 window_pos = ImVec2((*p_border & 1) ? io.DisplaySize.x * 0.5 : WINDOW_TOOLBOX_DIST_TO_BORDER,
+                                       (*p_border & 2) ? io.DisplaySize.y - WINDOW_TOOLBOX_DIST_TO_BORDER : WINDOW_TOOLBOX_DIST_TO_BORDER);
+            ImVec2 window_pos_pivot = ImVec2((*p_border & 1) ? 0.5f : 0.0f, (*p_border & 2) ? 1.0f : 0.0f);
+            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+            ImGui::SetNextWindowBgAlpha(WINDOW_TOOLBOX_ALPHA); // Transparent background
+
+            if (!ImGui::Begin("SourceToolbarfixed", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |
+                              ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoNav))
+            {
+                ImGui::End();
+                return;
+            }
+
+            const float sliderwidth = 3.f * ImGui::GetTextLineHeightWithSpacing();
+
+            if (s) {
+
+                // get info on source
+                Group *n = s->group(View::GEOMETRY);
+                info << s->name() << ": ";
+
+                //
+                // ALPHA
+                //
+                float v = s->alpha() * 100.f;
+                if (ImGuiToolkit::TextButton( ICON_FA_BULLSEYE , "Alpha")) {
+                    s->call(new SetAlpha(1.f), true);
+                    info << "Alpha " << std::fixed << std::setprecision(3) << 0.f;
+                    Action::manager().store(info.str());
+                }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::SetNextItemWidth(sliderwidth);
+                if ( ImGui::DragFloat("##Alpha", &v, 0.1f, 0.f, 100.f, "%.1f%%") )
+                    s->call(new SetAlpha(v*0.01f), true);
+                if ( ImGui::IsItemDeactivatedAfterEdit() ) {
+                    info << "Alpha " << std::fixed << std::setprecision(3) << v;
+                    Action::manager().store(info.str());
+                }
+
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::Text("|");
+                //
+                // POSITION COORDINATES
+                //
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton( ICON_FA_SIGN, "Position")) {
+                    n->translation_.x = 0.f;
+                    n->translation_.y = 0.f;
+                    s->touch();
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
+                }
+                float vec[2] = { n->translation_.x * out.y * 0.5f, n->translation_.y * out.y * 0.5f};
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::SetNextItemWidth( 2.f * sliderwidth);
+                if ( ImGui::DragFloat2("##Pos", vec, 1.0f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0fpx") )  {
+                    n->translation_.x = vec[0] / (0.5f * out.y);
+                    n->translation_.y = vec[1] / (0.5f * out.y);
+                    s->touch();
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
+                }
+
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::Text("|");
+
+                //
+                // SCALE
+                //
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton( ICON_FA_RULER_COMBINED, "Size")) {
+                    n->scale_.x = 1.f;
+                    n->scale_.y = 1.f;
+                    s->touch();
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << ", " << n->scale_.y;
+                    Action::manager().store(info.str());
+                }
+                float ar_scale = n->scale_.x / n->scale_.y;
+                // SCALE X
+                v = n->scale_.x * ( out.y * s->frame()->aspectRatio());
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::SetNextItemWidth( sliderwidth );
+                if ( ImGui::DragFloat("##ScaleX", &v, 1.f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0fpx") ) {
+                    if (v > 10.f) {
+                        n->scale_.x = v / out.x;
+                        if (*p_mode & SourceToolbar_linkar)
+                            n->scale_.y = n->scale_.x / ar_scale;
+                        s->touch();
+                    }
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
+                    Action::manager().store(info.str());
+                }
+                // SCALE LOCK ASPECT RATIO
+                ImGui::SameLine(0, 0);
+                bool lock = *p_mode & SourceToolbar_linkar;
+                if (ImGuiToolkit::IconToggle(5,1,6,1, &lock, tooltip_lock ))
+                    *p_mode ^= SourceToolbar_linkar; //             *p_mode |= lock ? SourceToolbar_linkar : !SourceToolbar_linkar;
+                ImGui::SameLine(0, 0);
+                // SCALE Y
+                v = n->scale_.y * out.y;
+                ImGui::SetNextItemWidth( sliderwidth );
+                if ( ImGui::DragFloat("##ScaleY", &v, 1.f, -MAX_SCALE * out.y, MAX_SCALE * out.y, "%.0fpx") ) {
+                    if (v > 10.f) {
+                        n->scale_.y = v / out.y;
+                        if (*p_mode & SourceToolbar_linkar)
+                            n->scale_.x = n->scale_.y * ar_scale;
+                        s->touch();
+                    }
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
+                    Action::manager().store(info.str());
+                }
+
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::Text("|");
+
+                //
+                // ROTATION ANGLE
+                //
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::IconButton( 18, 9, "Angle")) {
+                    n->rotation_.z = 0.f;
+                    s->touch();
+                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    Action::manager().store(info.str());
+                }
+                float v_deg = n->rotation_.z * 360.0f / (2.f*M_PI);
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::SetNextItemWidth(sliderwidth);
+                if ( ImGui::DragFloat("##Angle", &v_deg, 0.02f, -180.f, 180.f, "%.2f" UNICODE_DEGREE) ) {
+                    n->rotation_.z = v_deg * (2.f*M_PI) / 360.0f;
+                    s->touch();
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ) {
+                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    Action::manager().store(info.str());
+                }
+
+                ImGui::SameLine(0, 2 * IMGUI_SAME_LINE);
+
+            }
+            // NO SOURCE and not auto hide
+            else {
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text( MENU_SOURCE_TOOL );
+                ImGui::SameLine(0, sliderwidth);
+                ImGui::TextDisabled("No source selected");
+                ImGui::SameLine(0, sliderwidth);
+            }
+
+            if (ImGuiToolkit::IconButton(5,8))
+                ImGui::OpenPopup("sourcetool_menu");
+        }
+        //
+        // compact layout for free placement
+        //
+        else {
+            ImGui::SetNextWindowPos(ImVec2(690,20), ImGuiCond_FirstUseEver); // initial pos
+            ImGui::SetNextWindowBgAlpha(WINDOW_TOOLBOX_ALPHA); // Transparent background
+            if (!ImGui::Begin("SourceToolbar", NULL, ImGuiWindowFlags_NoDecoration |
+                              ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoNav))
+            {
+                ImGui::End();
+                return;
+            }
+
+            // Title window
+            ImGui::Text( MENU_SOURCE_TOOL );
+            ImGui::SameLine(0, 2.f * ImGui::GetTextLineHeightWithSpacing());
+            if (ImGuiToolkit::IconButton(5,8))
+                ImGui::OpenPopup("sourcetool_menu");
+
+            // WITH SOURCE
+            if (s) {
+
+                // get info on source
+                Group *n = s->group(View::GEOMETRY);
+                info << s->name() << ": ";
+
+                const float sliderwidth = 6.4f * ImGui::GetTextLineHeightWithSpacing();
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.f, 2.f));
+
+                //
+                // ALPHA
+                //
+                float v = s->alpha() * 100.f;
+                ImGui::SetNextItemWidth(sliderwidth);
+                if ( ImGui::DragFloat("##Alpha", &v, 0.1f, 0.f, 100.f, "%.1f%%") )
+                    s->call(new SetAlpha(v*0.01f), true);
+                if ( ImGui::IsItemDeactivatedAfterEdit() ) {
+                    info << "Alpha " << std::fixed << std::setprecision(3) << v;
+                    Action::manager().store(info.str());
+                }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton("Alpha")) {
+                    s->call(new SetAlpha(1.f), true);
+                    info << "Alpha " << std::fixed << std::setprecision(3) << 0.f;
+                    Action::manager().store(info.str());
+                }
+
+                //
+                // POSITION COORDINATES
+                //
+                float vec[2] = { n->translation_.x * out.y * 0.5f, n->translation_.y * out.y * 0.5f};
+                ImGui::SetNextItemWidth(sliderwidth);
+                if ( ImGui::DragFloat2("##Pos", vec, 1.0f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0fpx") )  {
+                    n->translation_.x = vec[0] / (0.5f * out.y);
+                    n->translation_.y = vec[1] / (0.5f * out.y);
+                    s->touch();
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
+                }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton("Pos")) {
+                    n->translation_.x = 0.f;
+                    n->translation_.y = 0.f;
+                    s->touch();
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
+                }
+
+                //
+                // SCALE
+                //
+                float ar_scale = n->scale_.x / n->scale_.y;
+                // SCALE X
+                v = n->scale_.x * ( out.y * s->frame()->aspectRatio());
+                ImGui::SetNextItemWidth( 2.7f * ImGui::GetTextLineHeightWithSpacing() );
+                if ( ImGui::DragFloat("##ScaleX", &v, 1.f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0f") ) {
+                    if (v > 10.f) {
+                        n->scale_.x = v / out.x;
+                        if (*p_mode & SourceToolbar_linkar)
+                            n->scale_.y = n->scale_.x / ar_scale;
+                        s->touch();
+                    }
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
+                    Action::manager().store(info.str());
+                }
+                // SCALE LOCK ASPECT RATIO
+                ImGui::SameLine(0, 0);
+                bool lock = *p_mode & SourceToolbar_linkar;
+                if (ImGuiToolkit::IconToggle(5,1,6,1, &lock, tooltip_lock ))
+                    *p_mode ^= SourceToolbar_linkar;
+                ImGui::SameLine(0, 0);
+                // SCALE Y
+                v = n->scale_.y * out.y ;
+                ImGui::SetNextItemWidth( 2.7f * ImGui::GetTextLineHeightWithSpacing() );
+                if ( ImGui::DragFloat("##ScaleY", &v, 1.f, -MAX_SCALE * out.y, MAX_SCALE * out.y, "%.0f") ) {
+                    if (v > 10.f) {
+                        n->scale_.y = v / out.y;
+                        if (*p_mode & SourceToolbar_linkar)
+                            n->scale_.x = n->scale_.y * ar_scale;
+                        s->touch();
+                    }
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
+                    Action::manager().store(info.str());
+                }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton("Size")) {
+                    n->scale_.x = 1.f;
+                    n->scale_.y = 1.f;
+                    s->touch();
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << ", " << n->scale_.y;
+                    Action::manager().store(info.str());
+                }
+
+                //
+                // ROTATION ANGLE
+                //
+                float v_deg = n->rotation_.z * 360.0f / (2.f*M_PI);
+                ImGui::SetNextItemWidth(sliderwidth);
+                if ( ImGui::DragFloat("##Angle", &v_deg, 0.02f, -180.f, 180.f, "%.2f" UNICODE_DEGREE) ) {
+                    n->rotation_.z = v_deg * (2.f*M_PI) / 360.0f;
+                    s->touch();
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ) {
+                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    Action::manager().store(info.str());
+                }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton("Angle")) {
+                    n->rotation_.z = 0.f;
+                    s->touch();
+                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    Action::manager().store(info.str());
+                }
+
+                ImGui::PopStyleVar();
+            }
+            // NO SOURCE and not auto hide
+            else {
+
+                ImGui::TextDisabled("");
+                ImGui::TextDisabled("No source selected");
+                ImGui::TextDisabled("");
+
+            }
+        }
+
+        if (ImGui::BeginPopup("sourcetool_menu"))
+        {
+            if (ImGui::MenuItem( "Auto hide", NULL, *p_mode & SourceToolbar_autohide))
+                *p_mode ^= SourceToolbar_autohide;
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem( ICON_FA_ANGLE_UP "  Top",    NULL, *p_border == 1))
+                *p_border = 1;
+            if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom", NULL, *p_border == 3))
+                *p_border = 3;
+            if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT " Free position", NULL, *p_border == -1))
+                *p_border = -1;
+            if (p_open && ImGui::MenuItem( ICON_FA_TIMES "  Close"))
+                *p_open = false;
+
+            ImGui::EndPopup();
+        }
+
+        ImGui::Spacing();
+        ImGui::End();
+    }
+
 }
 
 void UserInterface::RenderAbout(bool* p_open)
@@ -2117,8 +2377,6 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_HAND_PAPER " " TOOLTIP_INPUTS "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_SHADEREDITOR); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CODE " " TOOLTIP_SHADEREDITOR "window"); ImGui::NextColumn();
-        ImGui::Text(SHORTCUT_NOTE); ImGui::NextColumn();
-        ImGui::Text(MENU_NOTE); ImGui::NextColumn();
         ImGui::Text("ESC"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_TOGGLE_OFF " Hide / " ICON_FA_TOGGLE_ON " Show windows"); ImGui::NextColumn();
         ImGui::Separator();
@@ -8509,7 +8767,7 @@ void Navigator::RenderMainPannelVimix()
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     static uint counter_menu_timeout = 0;
-    if ( ImGuiToolkit::IconButton( ICON_FA_SORT_DOWN ) || ImGui::IsItemHovered() ) {
+    if ( ImGuiToolkit::IconButton( ICON_FA_ELLIPSIS_V ) || ImGui::IsItemHovered() ) {
         counter_menu_timeout=0;
         ImGui::OpenPopup( "MenuToolboxWindows" );
     }
@@ -8518,14 +8776,17 @@ void Navigator::RenderMainPannelVimix()
 
     if (ImGui::BeginPopup( "MenuToolboxWindows" ))
     {
-        if (ImGui::MenuItem( MENU_NOTE, SHORTCUT_NOTE ))
+        // Enable / disable source toolbar
+        ImGui::MenuItem( MENU_SOURCE_TOOL, NULL, &Settings::application.widget.source_toolbar );
+        // Enable / disable metrics toolbar
+        ImGui::MenuItem( MENU_METRICS, NULL, &Settings::application.widget.stats );
+        // Add sticky note
+        if (ImGui::MenuItem( MENU_NOTE ))
             Mixer::manager().session()->addNote();
-
-        if ( ImGuiToolkit::MenuItemIcon( 11, 3, MENU_METRICS, SHORTCUT_METRICS, Settings::application.widget.stats ) )
-            Settings::application.widget.stats = !Settings::application.widget.stats;
-
-        ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP, &Settings::application.widget.help );
-
+        // Show help
+        if (ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP) )
+            Settings::application.widget.help = true;
+        // timer to close menu like a tooltip
         if (ImGui::IsWindowHovered())
             counter_menu_timeout=0;
         else if (++counter_menu_timeout > 60)

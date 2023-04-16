@@ -162,6 +162,9 @@ void Settings::Save(uint64_t runtime)
     widgetsNode->SetAttribute("stats_corner", application.widget.stats_corner);
     widgetsNode->SetAttribute("logs", application.widget.logs);
     widgetsNode->SetAttribute("toolbox", application.widget.toolbox);
+    widgetsNode->SetAttribute("source_toolbar", application.widget.source_toolbar);
+    widgetsNode->SetAttribute("source_toolbar_mode", application.widget.source_toolbar_mode);
+    widgetsNode->SetAttribute("source_toolbar_border", application.widget.source_toolbar_border);
     pRoot->InsertEndChild(widgetsNode);
 
     // Render
@@ -441,6 +444,9 @@ void Settings::Load()
         widgetsNode->QueryIntAttribute("stats_corner", &application.widget.stats_corner);
         widgetsNode->QueryBoolAttribute("logs", &application.widget.logs);
         widgetsNode->QueryBoolAttribute("toolbox", &application.widget.toolbox);
+        widgetsNode->QueryBoolAttribute("source_toolbar", &application.widget.source_toolbar);
+        widgetsNode->QueryIntAttribute("source_toolbar_mode", &application.widget.source_toolbar_mode);
+        widgetsNode->QueryIntAttribute("source_toolbar_border", &application.widget.source_toolbar_border);
     }
 
     // Render
