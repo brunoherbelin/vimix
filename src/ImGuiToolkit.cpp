@@ -333,8 +333,12 @@ bool ImGuiToolkit::IconButton(const char* icon, const char *tooltip, const char*
 
 bool ImGuiToolkit::TextButton(const char* text, const char *tooltip, const char* shortcut)
 {
-    ImGuiContext& g = *GImGui;
     bool ret = false;
+
+    ImGuiContext& g = *GImGui;
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return ret;
 
     // identifyer
     ImGui::PushID( text );
@@ -345,28 +349,29 @@ bool ImGuiToolkit::TextButton(const char* text, const char *tooltip, const char*
     button_size.y += g.Style.FramePadding.y * 2.0f;
 
     // remember position where button starts
-    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+    ImVec2 draw_pos = window->DC.CursorPos;
 
     // invisible button
     ImGui::InvisibleButton("##hiddenTextbutton", button_size);
+    // remember position where button ends
+    ImVec2 end_pos = window->DC.CursorPos;
+
     if (ImGui::IsItemClicked())
         ret = true;
     if (tooltip != nullptr && ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip(tooltip, shortcut);
 
-    // remember position where button ends
-    ImVec2 end_pos = ImGui::GetCursorScreenPos();
-
     // draw text at button start (centered verticaly)
     // with highlight color on button hovered
-    draw_pos.y += g.Style.FramePadding.y;
-    ImGui::SetCursorScreenPos(draw_pos);
+    window->DC.CurrLineTextBaseOffset = g.Style.FramePadding.y;
+    window->DC.CursorPos = draw_pos;
     ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? g.Style.Colors[ImGuiCol_NavHighlight] : g.Style.Colors[ImGuiCol_Text] );
     ImGui::Text("%s", text);
     ImGui::PopStyleColor();
 
     // back position to end of button
-    ImGui::SetCursorScreenPos(end_pos);
+    window->DC.CursorPos = end_pos;
+    window->DC.CurrLineTextBaseOffset = window->DC.PrevLineTextBaseOffset;
 
     ImGui::PopID();
 
@@ -1744,7 +1749,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.75f, 0.40f, 0.10f, 0.67f);
         colors[ImGuiCol_SeparatorActive]        = ImVec4(0.90f, 0.73f, 0.59f, 0.95f);
         colors[ImGuiCol_ResizeGrip]             = ImVec4(0.52f, 0.49f, 0.49f, 0.50f);
-        colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.90f, 0.73f, 0.59f, 0.67f);
+        colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.90f, 0.73f, 0.59f, 0.77f);
         colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.90f, 0.73f, 0.59f, 0.95f);
         colors[ImGuiCol_Tab]                    = ImVec4(0.58f, 0.35f, 0.18f, 0.82f);
         colors[ImGuiCol_TabHovered]             = ImVec4(0.80f, 0.49f, 0.25f, 0.82f);
@@ -1770,6 +1775,9 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_Separator]              = ImVec4(0.47f, 0.47f, 0.43f, 0.50f);
         colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.65f, 0.65f, 0.59f, 0.50f);
         colors[ImGuiCol_SeparatorActive]        = ImVec4(0.53f, 0.53f, 0.47f, 0.50f);
+        colors[ImGuiCol_ResizeGrip]             = ImVec4(0.50f, 0.58f, 0.52f, 0.50f);
+        colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.50f, 0.65f, 0.52f, 0.77f);
+        colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.50f, 0.65f, 0.52f, 0.95f);
         colors[ImGuiCol_Tab]                    = ImVec4(0.48f, 0.58f, 0.52f, 0.82f);
         colors[ImGuiCol_TabHovered]             = ImVec4(0.58f, 0.69f, 0.62f, 0.82f);
         colors[ImGuiCol_TabActive]              = ImVec4(0.58f, 0.70f, 0.62f, 1.00f);
@@ -1795,7 +1803,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
         colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.10f, 0.40f, 0.75f, 0.67f);
         colors[ImGuiCol_SeparatorActive]        = ImVec4(0.59f, 0.73f, 0.90f, 0.95f);
         colors[ImGuiCol_ResizeGrip]             = ImVec4(0.49f, 0.49f, 0.52f, 0.50f);
-        colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.59f, 0.73f, 0.90f, 0.67f);
+        colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.59f, 0.73f, 0.90f, 0.77f);
         colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.59f, 0.73f, 0.90f, 0.95f);
         colors[ImGuiCol_Tab]                    = ImVec4(0.18f, 0.35f, 0.58f, 0.82f);
         colors[ImGuiCol_TabHovered]             = ImVec4(0.25f, 0.49f, 0.80f, 0.82f);
