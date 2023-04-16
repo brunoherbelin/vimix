@@ -257,6 +257,10 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
             else if ( pick.first == s->symbol_ ) {
                 UserInterface::manager().showSourceEditor(s);
             }
+            // pick the initials: ask to show left panel
+            else if ( pick.first == s->initial_0_ || pick.first == s->initial_1_ ) {
+                UserInterface::manager().showSourcePanel(s);
+            }
         }
         else
             pick = { nullptr, glm::vec2(0.f) };
@@ -334,6 +338,36 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
         info << "\n   (Background)";
 
     return Cursor(Cursor_ResizeNESW, info.str() );
+}
+
+View::Cursor LayerView::over (glm::vec2 pos)
+{
+    View::Cursor ret = Cursor();
+    std::pair<Node *, glm::vec2> pick = View::pick(pos);
+
+    //
+    // mouse over source
+    //
+    //    Source *s = Mixer::manager().findSource(pick.first);
+    Source *s = Mixer::manager().currentSource();
+    if (s != nullptr) {
+
+        s->symbol_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
+        s->initial_0_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
+        s->initial_1_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
+        const ImVec4 h = ImGuiToolkit::HighlightColor();
+
+        // overlay symbol
+        if ( pick.first == s->symbol_ )
+            s->symbol_->color = glm::vec4( h.x, h.y, h.z, 1.f );
+        // overlay initials
+        if ( pick.first == s->initial_0_ || pick.first == s->initial_1_ ) {
+            s->initial_0_->color = glm::vec4( h.x, h.y, h.z, 1.f );
+            s->initial_1_->color = glm::vec4( h.x, h.y, h.z, 1.f );
+        }
+    }
+
+    return ret;
 }
 
 void LayerView::arrow (glm::vec2 movement)

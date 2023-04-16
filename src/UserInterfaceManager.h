@@ -481,6 +481,7 @@ public:
     inline bool shiftModifier() const  { return shift_modifier_active; }
 
     void showPannel(int id = 0);
+    void showSourcePanel(Source *s);
     void showSourceEditor(Source *s);
 
     void StartScreenshot();

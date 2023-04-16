@@ -231,7 +231,7 @@ void  DisplaysView::recenter ()
         frame->color = glm::vec4( COLOR_MONITOR, 1.f);
         m->attach(frame);
         // central label
-        Glyph  *label = new Glyph(4);
+        Character  *label = new Character(4);
         label->setChar( std::to_string(index).back() );
         label->color = glm::vec4( COLOR_MONITOR, 1.f );
         label->translation_.y =  0.02f ;

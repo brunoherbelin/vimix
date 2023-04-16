@@ -1166,6 +1166,14 @@ int UserInterface::RenderViewNavigator(int *shift)
     return target_index;
 }
 
+void UserInterface::showSourcePanel(Source *s)
+{
+    if (s) {
+        Mixer::manager().setCurrentSource( s );
+        navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+    }
+}
+
 void UserInterface::showSourceEditor(Source *s)
 {
     Mixer::manager().unsetCurrentSource();
@@ -1178,7 +1186,8 @@ void UserInterface::showSourceEditor(Source *s)
             sourcecontrol.resetActiveSelection();
             return;
         }
-        navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+        else
+            showSourcePanel(s);
     }
 }
 
@@ -1729,9 +1738,9 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
             // NO SOURCE and not auto hide
             else {
 
-                ImGui::TextDisabled("");
+                ImGui::TextDisabled("  ");
                 ImGui::TextDisabled("No source selected");
-                ImGui::TextDisabled("");
+                ImGui::TextDisabled("  ");
 
             }
         }
