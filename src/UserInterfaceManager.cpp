@@ -2286,6 +2286,9 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_CHESS_BOARD "  Texturing"); ImGui::NextColumn();
         ImGui::Text ("Apply masks or freely paint the texture on the source surface. Repeat or crop the graphics.");
         ImGui::NextColumn();
+        ImGui::Text(ICON_FA_TV "  Displays"); ImGui::NextColumn();
+        ImGui::Text ("Manage and place output windows in computer's displays (e.g. fullscreen mode, color white balance adjustment).");
+        ImGui::NextColumn();
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
@@ -2309,11 +2312,14 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_HAND_PAPER "  Inputs"); ImGui::NextColumn();
         ImGui::Text ("Define how user inputs (e.g. keyboard, joystick) are mapped to custom actions in the session.");
         ImGui::NextColumn();
-        ImGui::Text(ICON_FA_STICKY_NOTE "  Notes"); ImGui::NextColumn();
-        ImGui::Text ("Place sticky notes into your session. Does nothing, just keep notes and reminders.");
+        ImGui::Text(ICON_FA_VECTOR_SQUARE "  Source editor"); ImGui::NextColumn();
+        ImGui::Text ("Toolbar to show and edit alpha and geometry of the current source.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_TACHOMETER_ALT "  Metrics"); ImGui::NextColumn();
-        ImGui::Text ("Utility monitoring of metrics on the system (FPS, RAM), the runtime (session duration), or the current source.");
+        ImGui::Text ("Monitoring of metrics on the system (e.g. FPS, RAM) and runtime (e.g. session duration).");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_STICKY_NOTE "  Sticky note"); ImGui::NextColumn();
+        ImGui::Text ("Place sticky notes into your session. Does nothing, just keep notes and reminders.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_COG "  Settings"); ImGui::NextColumn();
         ImGui::Text ("Set user preferences and system settings.");
@@ -8889,7 +8895,7 @@ void Navigator::RenderMainPannelVimix()
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     static uint counter_menu_timeout = 0;
-    if ( ImGuiToolkit::IconButton( ICON_FA_ELLIPSIS_V ) || ImGui::IsItemHovered() ) {
+    if ( ImGuiToolkit::IconButton( ICON_FA_ELLIPSIS_V ) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) ) {
         counter_menu_timeout=0;
         ImGui::OpenPopup( "MenuToolboxWindows" );
     }
@@ -8911,7 +8917,7 @@ void Navigator::RenderMainPannelVimix()
         // timer to close menu like a tooltip
         if (ImGui::IsWindowHovered())
             counter_menu_timeout=0;
-        else if (++counter_menu_timeout > 60)
+        else if (++counter_menu_timeout > 10)
             ImGui::CloseCurrentPopup();
 
         ImGui::EndPopup();

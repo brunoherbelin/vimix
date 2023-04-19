@@ -541,7 +541,7 @@ void ImGuiVisitor::visit (Source& s)
         // menu icon for image processing
         ImGui::SameLine(preview_width, 2 * IMGUI_SAME_LINE);
         static uint counter_menu_timeout = 0;
-        if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered()) {
+        if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             counter_menu_timeout=0;
             ImGui::OpenPopup( "MenuImageProcessing" );
         }
@@ -605,7 +605,7 @@ void ImGuiVisitor::visit (Source& s)
 
             if (ImGui::IsWindowHovered())
                 counter_menu_timeout=0;
-            else if (++counter_menu_timeout > 60)
+            else if (++counter_menu_timeout > 10)
                 ImGui::CloseCurrentPopup();
 
             ImGui::EndPopup();
