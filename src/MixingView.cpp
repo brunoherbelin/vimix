@@ -448,10 +448,6 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
             else if ( pick.first == s->symbol_ ) {
                 UserInterface::manager().showSourceEditor(s);
             }
-            // pick the initials: ask to show left panel
-            else if ( pick.first == s->initial_0_ || pick.first == s->initial_1_ ) {
-                UserInterface::manager().showSourcePanel(s);
-            }
             // pick on the mixing group rotation icon
             else if ( pick.first == s->rotation_mixingroup_ ) {
                 if (UserInterface::manager().shiftModifier())
@@ -667,11 +663,6 @@ View::Cursor MixingView::over (glm::vec2 pos)
         // overlay symbol
         if ( pick.first == s->symbol_ )
             s->symbol_->color = glm::vec4( h.x, h.y, h.z, 1.f );
-        // overlay initials
-        if ( pick.first == s->initial_0_ || pick.first == s->initial_1_ ) {
-            s->initial_0_->color = glm::vec4( h.x, h.y, h.z, 1.f );
-            s->initial_1_->color = glm::vec4( h.x, h.y, h.z, 1.f );
-        }
     }
 
     return ret;

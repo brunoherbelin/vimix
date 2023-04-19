@@ -257,10 +257,6 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
             else if ( pick.first == s->symbol_ ) {
                 UserInterface::manager().showSourceEditor(s);
             }
-            // pick the initials: ask to show left panel
-            else if ( pick.first == s->initial_0_ || pick.first == s->initial_1_ ) {
-                UserInterface::manager().showSourcePanel(s);
-            }
         }
         else
             pick = { nullptr, glm::vec2(0.f) };
@@ -360,11 +356,6 @@ View::Cursor LayerView::over (glm::vec2 pos)
         // overlay symbol
         if ( pick.first == s->symbol_ )
             s->symbol_->color = glm::vec4( h.x, h.y, h.z, 1.f );
-        // overlay initials
-        if ( pick.first == s->initial_0_ || pick.first == s->initial_1_ ) {
-            s->initial_0_->color = glm::vec4( h.x, h.y, h.z, 1.f );
-            s->initial_1_->color = glm::vec4( h.x, h.y, h.z, 1.f );
-        }
     }
 
     return ret;
