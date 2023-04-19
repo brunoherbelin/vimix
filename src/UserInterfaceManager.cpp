@@ -1494,14 +1494,14 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                     Action::manager().store(info.str());
                 }
                 // Position X
-                v = n->translation_.x * out.y * 0.5f;
+                v = n->translation_.x * (0.5f * out.y);
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::SetNextItemWidth( sliderwidth);
-                if ( ImGui::DragFloat("##PosX", &v, 1.0f, -MAX_SCALE * out.x * 0.5f, MAX_SCALE * out.x * 0.5f, "%.0fpx") )  {
+                if ( ImGui::DragFloat("##PosX", &v, 1.0f, -MAX_SCALE * (0.5f * out.y), MAX_SCALE * (0.5f * out.y), "%.0fpx") )  {
                     n->translation_.x = v / (0.5f * out.y);
                     s->touch();
                 }
-                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+                if ( ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
                     v += io.MouseWheel;
                     n->translation_.x = v / (0.5f * out.y);
                     s->touch();
@@ -1513,10 +1513,10 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                     Action::manager().store(info.str());
                 }
                 // Position Y
-                v = n->translation_.y * out.y * 0.5f;
+                v = n->translation_.y * (0.5f * out.y);
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::SetNextItemWidth( sliderwidth);
-                if ( ImGui::DragFloat("##PosY", &v, 1.0f, -MAX_SCALE * out.y * 0.5f, MAX_SCALE * out.y * 0.5f, "%.0fpx") )  {
+                if ( ImGui::DragFloat("##PosY", &v, 1.0f, -MAX_SCALE * (0.5f * out.y), MAX_SCALE * (0.5f * out.y), "%.0fpx") )  {
                     n->translation_.y = v / (0.5f * out.y);
                     s->touch();
                 }
@@ -1706,15 +1706,15 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 // POSITION COORDINATES
                 //
                 // Position X
-                v = n->translation_.x * out.y * 0.5f;
-                ImGui::SetNextItemWidth( 3.06f * ImGui::GetTextLineHeightWithSpacing() );
-                if ( ImGui::DragFloat("##PosX", &v, 1.0f, -MAX_SCALE * (0.5f * out.x), MAX_SCALE * (0.5f * out.x), "%.0fpx") )  {
-                    n->translation_.x = v / (0.5f * out.x);
+                v = n->translation_.x * (0.5f * out.y);
+                ImGui::SetNextItemWidth( 3.08f * ImGui::GetTextLineHeightWithSpacing() );
+                if ( ImGui::DragFloat("##PosX", &v, 1.0f, -MAX_SCALE * (0.5f * out.y), MAX_SCALE * (0.5f * out.y), "%.0fpx") )  {
+                    n->translation_.x = v / (0.5f * out.y);
                     s->touch();
                 }
-                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+                if ( ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
                     v += io.MouseWheel;
-                    n->translation_.x = v / (0.5f * out.x);
+                    n->translation_.x = v / (0.5f * out.y);
                     s->touch();
                     info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
                     Action::manager().store(info.str());
@@ -1724,14 +1724,14 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                     Action::manager().store(info.str());
                 }
                 // Position Y
-                v = n->translation_.y * out.y * 0.5f;
+                v = n->translation_.y * (0.5f * out.y);
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGui::SetNextItemWidth( 3.05f * ImGui::GetTextLineHeightWithSpacing() );
+                ImGui::SetNextItemWidth( 3.08f * ImGui::GetTextLineHeightWithSpacing() );
                 if ( ImGui::DragFloat("##PosY", &v, 1.0f, -MAX_SCALE * (0.5f * out.y), MAX_SCALE * (0.5f * out.y), "%.0fpx") )  {
                     n->translation_.y = v / (0.5f * out.y);
                     s->touch();
                 }
-                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+                if ( ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
                     v += io.MouseWheel;
                     n->translation_.y = v / (0.5f * out.y);
                     s->touch();
