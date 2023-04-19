@@ -263,6 +263,7 @@ void ImGuiVisitor::visit(Shader &n)
 
 void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
+    ImGuiIO& io = ImGui::GetIO();
     std::ostringstream oss;
     ImGui::PushID(std::to_string(n.id()).c_str());
 
@@ -283,8 +284,14 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     float val = log10f(n.gamma.w);
     if ( ImGui::SliderFloat("##Gamma", &val, -1.f, 1.f, "%.3f", 2.f) )
         n.gamma.w = powf(10.f, val);
+    if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+        val = CLAMP(val + 0.001f * io.MouseWheel, -1.f, 1.f);
+        n.gamma.w = powf(10.f, val);
+        oss << "Gamma " << std::setprecision(3) << val;
+        Action::manager().store(oss.str());
+    }
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        oss << "Gamma " << std::setprecision(2) << val;
+        oss << "Gamma " << std::setprecision(3) << val;
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -299,8 +306,13 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("##Brightness", &n.brightness, -1.0, 1.0, "%.3f", 2.f);
+    if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+        n.brightness = CLAMP(n.brightness + 0.001f * io.MouseWheel, -1.f, 1.f);
+        oss << "Brightness " << std::setprecision(3) << n.brightness;
+        Action::manager().store(oss.str());
+    }
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        oss << "Brightness " << std::setprecision(2) << n.brightness;
+        oss << "Brightness " << std::setprecision(3) << n.brightness;
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -315,8 +327,13 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("##Contrast", &n.contrast, -1.0, 1.0, "%.3f", 2.f);
+    if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+        n.contrast = CLAMP(n.contrast + 0.001f * io.MouseWheel, -1.f, 1.f);
+        oss << "Contrast " << std::setprecision(3) << n.contrast;
+        Action::manager().store(oss.str());
+    }
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        oss << "Contrast " << std::setprecision(2) << n.contrast;
+        oss << "Contrast " << std::setprecision(3) << n.contrast;
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -331,8 +348,13 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderFloat("##Saturation", &n.saturation, -1.0, 1.0, "%.3f", 2.f);
+    if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+        n.saturation = CLAMP(n.saturation + 0.001f * io.MouseWheel, -1.f, 1.f);
+        oss << "Saturation " << std::setprecision(3) << n.saturation;
+        Action::manager().store(oss.str());
+    }
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        oss << "Saturation " << std::setprecision(2) << n.saturation;
+        oss << "Saturation " << std::setprecision(3) << n.saturation;
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -346,9 +368,14 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     /// HUE SHIFT
     ///
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderFloat("##Hue", &n.hueshift, 0.0, 1.0);
+    ImGui::SliderFloat("##Hue", &n.hueshift, 0.0, 1.0, "%.3f");
+    if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+        n.hueshift = CLAMP(n.hueshift + 0.001f * io.MouseWheel, 0.f, 1.f);
+        oss << "Hue shift " << std::setprecision(3) << n.hueshift;
+        Action::manager().store(oss.str());
+    }
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        oss << "Hue shift " << std::setprecision(2) << n.hueshift;
+        oss << "Hue shift " << std::setprecision(3) << n.hueshift;
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -365,6 +392,11 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     float posterized = n.nbColors < 1 ? 257.f : n.nbColors;
     if (ImGui::SliderFloat("##Posterize", &posterized, 257.f, 1.f, posterized > 256.f ? "Full range" : "%.0f colors", 0.5f)) {
         n.nbColors = posterized > 256 ? 0.f : posterized;
+    }
+    if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+        n.nbColors = CLAMP( n.nbColors + io.MouseWheel, 1.f, 257.f);
+        if (n.nbColors == 0) oss << "Full range"; else oss << n.nbColors;
+        Action::manager().store(oss.str());
     }
     if (ImGui::IsItemDeactivatedAfterEdit()){
         std::ostringstream oss;
@@ -386,6 +418,11 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
     float threshold = n.threshold < 0.001f ? 0.f : n.threshold;
     if (ImGui::SliderFloat("##Threshold", &threshold, 0.f, 1.f, threshold < 0.001f ? "None" : "%.3f") ){
         n.threshold = threshold < 0.001f ? 0.f : threshold;
+    }
+    if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+        n.threshold = CLAMP(n.threshold + 0.001f * io.MouseWheel, 0.f, 1.f);
+        if (n.threshold < 0.001f) oss << "None"; else oss << std::setprecision(3) << n.threshold;
+        Action::manager().store(oss.str());
     }
     if (ImGui::IsItemDeactivatedAfterEdit()){
         oss << "Threshold ";
@@ -647,7 +684,8 @@ void ImGuiVisitor::visit (MediaSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
             top.x += ImGui::GetFrameHeight();
         }
@@ -737,7 +775,8 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
             top.x += ImGui::GetFrameHeight();
         }
@@ -788,7 +827,8 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
         }
     }
@@ -821,7 +861,8 @@ void ImGuiVisitor::visit (RenderSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
             top.x += ImGui::GetFrameHeight();
         }
@@ -848,6 +889,9 @@ void ImGuiVisitor::visit (PassthroughFilter&)
 
 void ImGuiVisitor::visit (DelayFilter& f)
 {
+    ImGuiIO& io = ImGui::GetIO();
+    std::ostringstream oss;
+
 //    if (ImGuiToolkit::IconButton(ICON_FILTER_DELAY)) {
 //        f.setDelay(0.f);
 //        Action::manager().store("Delay 0 s");
@@ -857,8 +901,13 @@ void ImGuiVisitor::visit (DelayFilter& f)
     float d = f.delay();
     if (ImGui::SliderFloat("##Delay", &d, 0.f, 2.f, "%.2f s"))
         f.setDelay(d);
+    if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+        d = CLAMP( d + 0.01f * io.MouseWheel, 0.f, 2.f);
+        f.setDelay(d);
+        oss << "Delay " << std::setprecision(3) << d << " s";
+        Action::manager().store(oss.str());
+    }
     if (ImGui::IsItemDeactivatedAfterEdit()) {
-        std::ostringstream oss;
         oss << "Delay " << std::setprecision(3) << d << " s";
         Action::manager().store(oss.str());
     }
@@ -892,6 +941,8 @@ void ImGuiVisitor::visit (ResampleFilter& f)
 
 void list_parameters_(ImageFilter &f, std::ostringstream &oss)
 {
+    ImGuiIO& io = ImGui::GetIO();
+
     std::map<std::string, float> filter_parameters = f.program().parameters();
     for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
     {
@@ -900,6 +951,12 @@ void list_parameters_(ImageFilter &f, std::ostringstream &oss)
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::SliderFloat( "##ImageFilterParameterEdit", &v, 0.f, 1.f, "%.2f")) {
             f.setProgramParameter(param->first, v);
+        }
+        if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+            v = CLAMP( v + 0.01f * io.MouseWheel, 0.f, 1.f);
+            f.setProgramParameter(param->first, v);
+            oss << " : " << param->first << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
         }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             oss << " : " << param->first << " " << std::setprecision(3) <<param->second;
@@ -1014,6 +1071,7 @@ void ImGuiVisitor::visit (EdgeFilter& f)
 
 void ImGuiVisitor::visit (AlphaFilter& f)
 {
+    ImGuiIO& io = ImGui::GetIO();
     std::ostringstream oss;
     oss << "Alpha ";
 
@@ -1042,6 +1100,13 @@ void ImGuiVisitor::visit (AlphaFilter& f)
         if (ImGui::SliderFloat( "##Threshold", &t, 0.f, 1.f, "%.2f")) {
             f.setProgramParameter("Threshold", t);
         }
+        if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+            t = CLAMP( t + 0.01f * io.MouseWheel, 0.f, 1.f);
+            f.setProgramParameter("Threshold", t);
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
+            Action::manager().store(oss.str());
+        }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             oss << AlphaFilter::operation_label[ f.operation() ];
             oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
@@ -1060,6 +1125,13 @@ void ImGuiVisitor::visit (AlphaFilter& f)
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::SliderFloat( "##Tolerance", &v, 0.f, 1.f, "%.2f")) {
             f.setProgramParameter("Tolerance", v);
+        }
+        if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+            v = CLAMP( v + 0.01f * io.MouseWheel, 0.f, 1.f);
+            f.setProgramParameter("Tolerance", v);
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Tolerance" << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
         }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             oss << AlphaFilter::operation_label[ f.operation() ];
@@ -1198,7 +1270,8 @@ void ImGuiVisitor::visit (CloneSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
         }
 
@@ -1248,7 +1321,8 @@ void ImGuiVisitor::visit (PatternSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
         }
     }
@@ -1292,7 +1366,8 @@ void ImGuiVisitor::visit (DeviceSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
         }
 
@@ -1324,7 +1399,8 @@ void ImGuiVisitor::visit (NetworkSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
         }
     }
@@ -1411,7 +1487,8 @@ void ImGuiVisitor::visit (MultiFileSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
             top.x += ImGui::GetFrameHeight();
         }
@@ -1465,7 +1542,8 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
         }
     }
@@ -1493,7 +1571,8 @@ void ImGuiVisitor::visit (SrtReceiverSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Open in Player"))
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
         }
     }

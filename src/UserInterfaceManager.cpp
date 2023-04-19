@@ -1425,6 +1425,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
     Source *s = Mixer::manager().currentSource();
     if (s || !(*p_mode & SourceToolbar_autohide) ) {
 
+        ImGuiIO& io = ImGui::GetIO();
         std::ostringstream info;
         const glm::vec3 out = Mixer::manager().session()->frame()->resolution();
         const char *tooltip_lock[2] = {"Width & height not linked", "Width & height linked"};
@@ -1434,7 +1435,6 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
         //
         if (*p_border > 0) {
 
-            ImGuiIO& io = ImGui::GetIO();
             ImVec2 window_pos = ImVec2((*p_border & 1) ? io.DisplaySize.x * 0.5 : WINDOW_TOOLBOX_DIST_TO_BORDER,
                                        (*p_border & 2) ? io.DisplaySize.y - WINDOW_TOOLBOX_DIST_TO_BORDER : WINDOW_TOOLBOX_DIST_TO_BORDER);
             ImVec2 window_pos_pivot = ImVec2((*p_border & 1) ? 0.5f : 0.0f, (*p_border & 2) ? 1.0f : 0.0f);
@@ -1469,8 +1469,14 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 ImGui::SetNextItemWidth(sliderwidth);
                 if ( ImGui::DragFloat("##Alpha", &v, 0.1f, 0.f, 100.f, "%.1f%%") )
                     s->call(new SetAlpha(v*0.01f), true);
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+                    v = CLAMP(v + 0.1f * io.MouseWheel, 0.f, 100.f);
+                    s->call(new SetAlpha(v*0.01f), true);
+                    info << "Alpha " << std::fixed << std::setprecision(3) << v*0.01f;
+                    Action::manager().store(info.str());
+                }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ) {
-                    info << "Alpha " << std::fixed << std::setprecision(3) << v;
+                    info << "Alpha " << std::fixed << std::setprecision(3) << v*0.01f;
                     Action::manager().store(info.str());
                 }
 
@@ -1487,19 +1493,44 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                     info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
                     Action::manager().store(info.str());
                 }
-                float vec[2] = { n->translation_.x * out.y * 0.5f, n->translation_.y * out.y * 0.5f};
+                // Position X
+                v = n->translation_.x * out.y * 0.5f;
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGui::SetNextItemWidth( 2.f * sliderwidth);
-                if ( ImGui::DragFloat2("##Pos", vec, 1.0f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0fpx") )  {
-                    n->translation_.x = vec[0] / (0.5f * out.y);
-                    n->translation_.y = vec[1] / (0.5f * out.y);
+                ImGui::SetNextItemWidth( sliderwidth);
+                if ( ImGui::DragFloat("##PosX", &v, 1.0f, -MAX_SCALE * out.x * 0.5f, MAX_SCALE * out.x * 0.5f, "%.0fpx") )  {
+                    n->translation_.x = v / (0.5f * out.y);
                     s->touch();
+                }
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+                    v += io.MouseWheel;
+                    n->translation_.x = v / (0.5f * out.y);
+                    s->touch();
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
                 }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ){
                     info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
                     Action::manager().store(info.str());
                 }
-
+                // Position Y
+                v = n->translation_.y * out.y * 0.5f;
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::SetNextItemWidth( sliderwidth);
+                if ( ImGui::DragFloat("##PosY", &v, 1.0f, -MAX_SCALE * out.y * 0.5f, MAX_SCALE * out.y * 0.5f, "%.0fpx") )  {
+                    n->translation_.y = v / (0.5f * out.y);
+                    s->touch();
+                }
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+                    v += io.MouseWheel;
+                    n->translation_.y = v / (0.5f * out.y);
+                    s->touch();
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
+                }
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::Text("|");
 
@@ -1527,6 +1558,15 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                         s->touch();
                     }
                 }
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f && v > 10.f){
+                    v += io.MouseWheel;
+                    n->scale_.x = v / out.x;
+                    if (*p_mode & SourceToolbar_linkar)
+                        n->scale_.y = n->scale_.x / ar_scale;
+                    s->touch();
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
+                    Action::manager().store(info.str());
+                }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ){
                     info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
                     Action::manager().store(info.str());
@@ -1547,6 +1587,15 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                             n->scale_.x = n->scale_.y * ar_scale;
                         s->touch();
                     }
+                }
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f && v > 10.f){
+                    v += io.MouseWheel;
+                    n->scale_.y = v / out.y;
+                    if (*p_mode & SourceToolbar_linkar)
+                        n->scale_.x = n->scale_.y * ar_scale;
+                    s->touch();
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
+                    Action::manager().store(info.str());
                 }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ){
                     info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
@@ -1572,6 +1621,13 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 if ( ImGui::DragFloat("##Angle", &v_deg, 0.02f, -180.f, 180.f, "%.2f" UNICODE_DEGREE) ) {
                     n->rotation_.z = v_deg * (2.f*M_PI) / 360.0f;
                     s->touch();
+                }
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f){
+                    v_deg = CLAMP(v_deg + 0.01f * io.MouseWheel, -180.f, 180.f);
+                    n->rotation_.z = v_deg * (2.f*M_PI) / 360.0f;
+                    s->touch();
+                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    Action::manager().store(info.str());
                 }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ) {
                     info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
@@ -1629,8 +1685,14 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 ImGui::SetNextItemWidth(sliderwidth);
                 if ( ImGui::DragFloat("##Alpha", &v, 0.1f, 0.f, 100.f, "%.1f%%") )
                     s->call(new SetAlpha(v*0.01f), true);
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+                    v = CLAMP(v + 0.1f * io.MouseWheel, 0.f, 100.f);
+                    s->call(new SetAlpha(v*0.01f), true);
+                    info << "Alpha " << std::fixed << std::setprecision(3) << v*0.01f;
+                    Action::manager().store(info.str());
+                }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ) {
-                    info << "Alpha " << std::fixed << std::setprecision(3) << v;
+                    info << "Alpha " << std::fixed << std::setprecision(3) << v*0.01f;
                     Action::manager().store(info.str());
                 }
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -1643,12 +1705,38 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 //
                 // POSITION COORDINATES
                 //
-                float vec[2] = { n->translation_.x * out.y * 0.5f, n->translation_.y * out.y * 0.5f};
-                ImGui::SetNextItemWidth(sliderwidth);
-                if ( ImGui::DragFloat2("##Pos", vec, 1.0f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0fpx") )  {
-                    n->translation_.x = vec[0] / (0.5f * out.y);
-                    n->translation_.y = vec[1] / (0.5f * out.y);
+                // Position X
+                v = n->translation_.x * out.y * 0.5f;
+                ImGui::SetNextItemWidth( 3.06f * ImGui::GetTextLineHeightWithSpacing() );
+                if ( ImGui::DragFloat("##PosX", &v, 1.0f, -MAX_SCALE * (0.5f * out.x), MAX_SCALE * (0.5f * out.x), "%.0fpx") )  {
+                    n->translation_.x = v / (0.5f * out.x);
                     s->touch();
+                }
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+                    v += io.MouseWheel;
+                    n->translation_.x = v / (0.5f * out.x);
+                    s->touch();
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
+                }
+                if ( ImGui::IsItemDeactivatedAfterEdit() ){
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
+                }
+                // Position Y
+                v = n->translation_.y * out.y * 0.5f;
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::SetNextItemWidth( 3.05f * ImGui::GetTextLineHeightWithSpacing() );
+                if ( ImGui::DragFloat("##PosY", &v, 1.0f, -MAX_SCALE * (0.5f * out.y), MAX_SCALE * (0.5f * out.y), "%.0fpx") )  {
+                    n->translation_.y = v / (0.5f * out.y);
+                    s->touch();
+                }
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+                    v += io.MouseWheel;
+                    n->translation_.y = v / (0.5f * out.y);
+                    s->touch();
+                    info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
+                    Action::manager().store(info.str());
                 }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ){
                     info << "Position " << std::setprecision(3) << n->translation_.x << ", " << n->translation_.y;
@@ -1678,6 +1766,15 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                         s->touch();
                     }
                 }
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f && v > 10.f){
+                    v += io.MouseWheel;
+                    n->scale_.x = v / out.x;
+                    if (*p_mode & SourceToolbar_linkar)
+                        n->scale_.y = n->scale_.x / ar_scale;
+                    s->touch();
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
+                    Action::manager().store(info.str());
+                }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ){
                     info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
                     Action::manager().store(info.str());
@@ -1698,6 +1795,15 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                             n->scale_.x = n->scale_.y * ar_scale;
                         s->touch();
                     }
+                }
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f && v > 10.f){
+                    v += io.MouseWheel;
+                    n->scale_.y = v / out.y;
+                    if (*p_mode & SourceToolbar_linkar)
+                        n->scale_.x = n->scale_.y * ar_scale;
+                    s->touch();
+                    info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
+                    Action::manager().store(info.str());
                 }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ){
                     info << "Scale " << std::setprecision(3) << n->scale_.x << " x " << n->scale_.y;
@@ -1720,6 +1826,13 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 if ( ImGui::DragFloat("##Angle", &v_deg, 0.02f, -180.f, 180.f, "%.2f" UNICODE_DEGREE) ) {
                     n->rotation_.z = v_deg * (2.f*M_PI) / 360.0f;
                     s->touch();
+                }
+                if (ImGui::IsItemHovered() && io.MouseWheel != 0.f){
+                    v_deg = CLAMP(v_deg + 0.01f * io.MouseWheel, -180.f, 180.f);
+                    n->rotation_.z = v_deg * (2.f*M_PI) / 360.0f;
+                    s->touch();
+                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    Action::manager().store(info.str());
                 }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ) {
                     info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
