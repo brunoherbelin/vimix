@@ -1179,7 +1179,7 @@ void DisplaysView::arrow (glm::vec2 movement)
 
 
 
-bool WindowPreview::hasNode::operator()(WindowPreview elem) const
+bool WindowPreview::hasNode::operator()(const WindowPreview &elem) const
 {
     if (_n)
     {

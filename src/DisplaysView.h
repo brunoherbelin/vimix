@@ -44,8 +44,8 @@ struct WindowPreview
 
     struct hasNode
     {
-        bool operator()(WindowPreview elem) const;
-        hasNode(Node *n) : _n(n) { }
+        bool operator()(const WindowPreview &elem) const;
+        explicit hasNode(Node *n) : _n(n) { }
     private:
         Node *_n;
     };
