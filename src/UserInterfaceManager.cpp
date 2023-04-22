@@ -1919,6 +1919,13 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGui::Text("\nvimix is licensed under GNU GPL version 3 or later.\n" UNICODE_COPYRIGHT " 2019-2023 Bruno Herbelin.");
 
     ImGui::Spacing();
+
+    if ( ImGui::Button(MENU_HELP, ImVec2(250.f, 0.f)) )
+        Settings::application.widget.help = true;
+    ImGui::SameLine(0, 12);
+    if ( ImGui::Button(MENU_LOGS, ImVec2(250.f, 0.f)) )
+        Settings::application.widget.logs = true;
+
     ImGuiToolkit::ButtonOpenUrl("Visit vimix website", "https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
     ImGui::Spacing();
@@ -8914,6 +8921,9 @@ void Navigator::RenderMainPannelVimix()
         // Show help
         if (ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP) )
             Settings::application.widget.help = true;
+        // Show Logs
+        if (ImGui::MenuItem( MENU_LOGS, SHORTCUT_LOGS) )
+            Settings::application.widget.logs = true;
         // timer to close menu like a tooltip
         if (ImGui::IsWindowHovered())
             counter_menu_timeout=0;
