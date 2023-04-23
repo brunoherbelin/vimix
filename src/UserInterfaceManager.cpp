@@ -1552,7 +1552,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 ImGui::SetNextItemWidth( sliderwidth );
                 if ( ImGui::DragFloat("##ScaleX", &v, 1.f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0fpx") ) {
                     if (v > 10.f) {
-                        n->scale_.x = v / out.x;
+                        n->scale_.x = v / ( out.y * s->frame()->aspectRatio());
                         if (*p_mode & SourceToolbar_linkar)
                             n->scale_.y = n->scale_.x / ar_scale;
                         s->touch();
@@ -1560,7 +1560,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 }
                 if (ImGui::IsItemHovered() && io.MouseWheel != 0.f && v > 10.f){
                     v += io.MouseWheel;
-                    n->scale_.x = v / out.x;
+                    n->scale_.x = v / ( out.y * s->frame()->aspectRatio());
                     if (*p_mode & SourceToolbar_linkar)
                         n->scale_.y = n->scale_.x / ar_scale;
                     s->touch();
@@ -1760,7 +1760,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 ImGui::SetNextItemWidth( 2.7f * ImGui::GetTextLineHeightWithSpacing() );
                 if ( ImGui::DragFloat("##ScaleX", &v, 1.f, -MAX_SCALE * out.x, MAX_SCALE * out.x, "%.0f") ) {
                     if (v > 10.f) {
-                        n->scale_.x = v / out.x;
+                        n->scale_.x = v / ( out.y * s->frame()->aspectRatio());
                         if (*p_mode & SourceToolbar_linkar)
                             n->scale_.y = n->scale_.x / ar_scale;
                         s->touch();
@@ -1768,7 +1768,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 }
                 if (ImGui::IsItemHovered() && io.MouseWheel != 0.f && v > 10.f){
                     v += io.MouseWheel;
-                    n->scale_.x = v / out.x;
+                    n->scale_.x = v / ( out.y * s->frame()->aspectRatio());
                     if (*p_mode & SourceToolbar_linkar)
                         n->scale_.y = n->scale_.x / ar_scale;
                     s->touch();
@@ -8900,9 +8900,9 @@ void Navigator::RenderMainPannelVimix()
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
     ImGuiToolkit::IconToggle( ICON_FA_HAND_PAPER, &Settings::application.widget.inputs, TOOLTIP_INPUTS, SHORTCUT_INPUTS);
 
-    ImGui::SameLine(0, ImGui::GetTextLineHeight());
+    ImGui::SameLine(0, ImGui::GetTextLineHeight() - IMGUI_SAME_LINE);
     static uint counter_menu_timeout = 0;
-    if ( ImGuiToolkit::IconButton( ICON_FA_ELLIPSIS_V ) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) ) {
+    if ( ImGuiToolkit::IconButton( " " ICON_FA_ELLIPSIS_V " " ) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) ) {
         counter_menu_timeout=0;
         ImGui::OpenPopup( "MenuToolboxWindows" );
     }

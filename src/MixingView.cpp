@@ -271,7 +271,7 @@ void MixingView::draw()
             }
             Action::manager().store(std::string("Selection: Mixing Distribute in circle"));
         }
-        if (ImGui::Selectable( ICON_FA_ELLIPSIS_V "     Align & Distribute" )){
+        if (ImGui::Selectable( ICON_FA_ALIGN_CENTER "   Align & Distribute" )){
             SourceList list;
             glm::vec2 center = glm::vec2(0.f, 0.f);
             for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {

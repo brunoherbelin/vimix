@@ -190,6 +190,19 @@ void DisplaysView::update(float dt)
                 windows_[i].output_group_->visible_ = false;
             }
 
+            if ( current_window_ == i ) {
+                windows_[i].overlays_->setActive(1);
+                windows_[i].output_handles_->visible_ = true;
+                windows_[i].output_frame_->color = glm::vec4( COLOR_FRAME, 1.f );
+                windows_[i].title_->shader()->color = glm::vec4( COLOR_WINDOW, 1.f );
+            }
+            else {
+                windows_[i].overlays_->setActive(0);
+                windows_[i].output_handles_->visible_ = false;
+                windows_[i].output_frame_->color = glm::vec4( COLOR_FRAME, 0.3f );
+                windows_[i].title_->shader()->color = glm::vec4( COLOR_WINDOW, 0.8f );
+            }
+
         }
 
         output_ar = Mixer::manager().session()->frame()->aspectRatio();
@@ -684,16 +697,6 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
              (pick.first == windows_[i].output_handles_) ||
              (pick.first == windows_[i].menu_) ) {
             current_window_ = i;
-            windows_[i].overlays_->setActive(1);
-            windows_[i].output_handles_->visible_ = true;
-            windows_[i].output_frame_->color = glm::vec4( COLOR_FRAME, 1.f );
-            windows_[i].title_->shader()->color = glm::vec4( COLOR_WINDOW, 1.f );
-        }
-        else {
-            windows_[i].overlays_->setActive(0);
-            windows_[i].output_handles_->visible_ = false;
-            windows_[i].output_frame_->color = glm::vec4( COLOR_FRAME, 0.3f );
-            windows_[i].title_->shader()->color = glm::vec4( COLOR_WINDOW, 0.8f );
         }
     }
 
@@ -728,18 +731,9 @@ void DisplaysView::select(glm::vec2 A, glm::vec2 B)
         for (; itp != pv.rend(); ++itp){
             // search for WindowPreview
             auto w = std::find_if(windows_.begin(), windows_.end(), WindowPreview::hasNode(itp->first));
-            if (w != windows_.end()) {
-                // cancel previous current
-                if (current_window_>-1) {
-                    windows_[current_window_].overlays_->setActive(0);
-                    windows_[current_window_].output_group_->visible_ = false;
-                }
+            if (w != windows_.end())
                 // set current
                 current_window_ = (int) std::distance(windows_.begin(), w);
-                windows_[current_window_].overlays_->setActive(1);
-                windows_[current_window_].output_group_->visible_ = true;
-            }
-
         }
 
     }

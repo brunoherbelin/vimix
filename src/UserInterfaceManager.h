@@ -77,7 +77,7 @@
 
 #define MENU_NOTE             ICON_FA_STICKY_NOTE "   Add sticky note"
 #define MENU_METRICS          ICON_FA_TACHOMETER_ALT "  Metrics"
-#define MENU_SOURCE_TOOL      ICON_FA_VECTOR_SQUARE "  Source editor"
+#define MENU_SOURCE_TOOL      ICON_FA_LIST_ALT "  Source toolbox"
 #define MENU_HELP             ICON_FA_LIFE_RING "  Help"
 #define SHORTCUT_HELP         CTRL_MOD "H"
 #define MENU_LOGS             ICON_FA_LIST_UL "  Logs"

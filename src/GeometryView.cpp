@@ -396,7 +396,7 @@ void GeometryView::draw()
             }
             Action::manager().store(std::string("Selection: Align."));
         }
-        if (ImGui::Selectable( ICON_FA_COMPRESS "   Best Fit" )){
+        if (ImGui::Selectable( ICON_FA_OBJECT_GROUP "  Best Fit" )){
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
             float factor = 1.f;
             float angle = -overlay_selection_->rotation_.z;

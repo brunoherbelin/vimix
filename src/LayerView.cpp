@@ -129,7 +129,7 @@ void LayerView::draw()
         ImGui::Separator();
 
         // manipulation of sources in Mixing view
-        if (ImGui::Selectable( ICON_FA_ALIGN_CENTER "   Distribute" )){
+        if (ImGui::Selectable( ICON_FA_GRIP_LINES_VERTICAL ICON_FA_GRIP_LINES_VERTICAL "  Distribute" )){
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
@@ -140,7 +140,7 @@ void LayerView::draw()
             }
             Action::manager().store(std::string("Selection: Layer Distribute"));
         }
-        if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Compress" )){
+        if (ImGui::Selectable( ICON_FA_CARET_RIGHT ICON_FA_CARET_LEFT "   Compress" )){
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
