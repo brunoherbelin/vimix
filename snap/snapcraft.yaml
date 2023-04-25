@@ -1,5 +1,5 @@
 name: vimix
-base: core20
+base: core22
 version: '0.8.0'
 summary: Video live mixer
 title: vimix
@@ -21,9 +21,8 @@ confinement: strict # use 'strict' once you have the right plugs and slots
 
 apps:
   vimix:
-    extensions: [gnome-3-38]
+    extensions: [gnome]
     command: usr/bin/vimix
-    adapter: full
     plugs:
       - desktop
       - desktop-legacy
@@ -80,6 +79,5 @@ parts:
     -  gstreamer1.0-plugins-ugly
     -  libgpm2
     -  libslang2
-    -  libpango-1.0-0
-    -  libicu66
+    -  libicu70
 
