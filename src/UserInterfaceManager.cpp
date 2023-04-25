@@ -1200,7 +1200,7 @@ void UserInterface::RenderOutputView()
         _inspector = false;
     }
 
-    if (ImGui::BeginPopupModal("##OUTPUTVIEW", NULL, ImGuiWindowFlags_AlwaysAutoResize |
+    if (ImGui::BeginPopupModal("##OUTPUTVIEW", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
                                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground)) {
 
         FrameBuffer *output = Mixer::manager().session()->frame();
