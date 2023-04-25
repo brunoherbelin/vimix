@@ -221,6 +221,23 @@ void PickingVisitor::visit(Symbol& n)
 
 }
 
+void PickingVisitor::visit(Character& n)
+{
+    // discard if not visible or if not exactly one point given for picking
+    if ((!n.visible_ && !force_) || points_.size() != 1)
+        return;
+
+    // apply inverse transform to the point of interest
+    glm::vec4 P = glm::inverse(modelview_) * glm::vec4( points_[0], 1.f );
+
+    // test bounding box for picking from a single point
+    if ( n.bbox().contains( glm::vec3(P)) ) {
+        // add this to the nodes picked
+        nodes_.push_back( std::pair(&n, glm::vec2(P)) );
+    }
+
+}
+
 void PickingVisitor::visit(Scene &n)
 {
     n.root()->accept(*this);

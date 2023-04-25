@@ -16,6 +16,7 @@ public:
     uint8_t *rgb;
     int width;
     int height;
+    bool is_stbi;
 
     struct jpegBuffer {
         unsigned char *buffer = nullptr;

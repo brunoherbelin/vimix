@@ -93,13 +93,16 @@ protected:
     static Mesh *disk_;
 };
 
-class Glyph : public Node
+class Character : public Node
 {
 public:
-    Glyph(int imgui_font_index = 0);
+    Character(int imgui_font_index = 0);
     void setChar(char c);
 
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
+    void accept (Visitor& v) override;
+
+    GlmToolkit::AxisAlignedBoundingBox bbox() const { return font_->bbox(); }
 
     glm::vec4 color;
 

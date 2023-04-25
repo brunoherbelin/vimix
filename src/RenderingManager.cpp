@@ -167,10 +167,8 @@ static void OutputWindowEvent( GLFWwindow *w, int button, int action, int)
             // exit fullscreen if its the case
             if (glfwGetWindowMonitor(w) != nullptr)
                 Rendering::manager().window(w)->exitFullscreen();
-
-            // show main window in DISPLAYS view to
-            // indicate how to manipulate output window
-            Mixer::manager().setView(View::DISPLAYS);
+            // show main window
+            else
             Rendering::manager().mainWindow().show();
         }
         // for next double clic detection
@@ -646,9 +644,9 @@ glm::ivec2 Rendering::getGPUMemoryInformation()
     }
     // ATI
     else if (meminfomode == 2) {
-        GLint memInMB[4] = { 0, 0, 0, 0 };
-        glGetIntegerv( GL_TEXTURE_FREE_MEMORY_ATI, &memInMB[0] );
-        ret.x = memInMB[3] ;
+        GLint memInKB[4] = { 0, 0, 0, 0 };
+        glGetIntegerv( GL_TEXTURE_FREE_MEMORY_ATI, &memInKB[0] );
+        ret.x = memInKB[3] ;
     }
 
     return ret;

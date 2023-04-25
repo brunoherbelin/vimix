@@ -79,11 +79,8 @@ namespace SystemToolkit
     // try to execute a command
     void execute(const std::string& command);
 
-    // return memory used (in bytes)
+    // return memory used by the program (in Kbytes)
     long memory_usage();
-    // return maximum memory resident set size used (in bytes)
-    long memory_max_usage();
-
 }
 
 #endif // SYSTEMTOOLKIT_H

@@ -32,6 +32,9 @@ struct WidgetsConfig
     int  shader_editor_view;
     bool toolbox;
     bool help;
+    bool source_toolbar;
+    int  source_toolbar_border;
+    int  source_toolbar_mode;
 
     WidgetsConfig() {
         stats = false;
@@ -52,6 +55,9 @@ struct WidgetsConfig
         shader_editor_view = -1;
         inputs = false;
         inputs_view = -1;
+        source_toolbar = false;
+        source_toolbar_mode = 0;
+        source_toolbar_border = -1;
     }
 };
 
@@ -277,6 +283,7 @@ struct Application
     int broadcast_port;
     KnownHosts recentSRT;
     int loopback_camera;
+    int shm_method;
     std::string shm_socket_path;
 
     // Settings of widgets
@@ -337,6 +344,7 @@ struct Application
         recentSRT.protocol = "srt://";
         recentSRT.default_host = { "127.0.0.1", "7070"};
         loopback_camera = 0;
+        shm_method = 0;
         shm_socket_path = "";
         pannel_current_session_mode = 0;
         current_view = 1;

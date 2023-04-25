@@ -20,6 +20,7 @@ class Frame;
 class Handles;
 class Symbol;
 class Disk;
+class Character;
 class Stream;
 class MediaPlayer;
 class Shader;
@@ -88,6 +89,7 @@ public:
     virtual void visit (Handles&) {}
     virtual void visit (Symbol&) {}
     virtual void visit (Disk&) {}
+    virtual void visit (Character&) {}
     virtual void visit (Shader&) {}
     virtual void visit (ImageShader&) {}
     virtual void visit (MaskShader&) {}

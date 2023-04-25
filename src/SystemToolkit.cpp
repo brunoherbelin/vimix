@@ -72,15 +72,20 @@ long SystemToolkit::memory_usage()
     size_t size = 0;
     FILE *file = fopen("/proc/self/statm", "r");
     if (file) {
-        unsigned long m = 0;
+        size_t m = 0;
         int ret = 0, ret2 = 0;
         ret = fscanf (file, "%lu", &m);  // virtual mem program size,
         ret2 = fscanf (file, "%lu", &m);  // resident set size,
         fclose (file);
         if (ret>0 && ret2>0)
-            size = (size_t)m * getpagesize();
+            size = m * getpagesize();
     }
     return (long)size;
+
+// ALTERNATIVE implementation (less reactive)
+//    struct rusage r_usage;
+//    getrusage(RUSAGE_SELF,&r_usage);
+//    return 1024 * r_usage.ru_maxrss;
 
 #elif defined(APPLE)
     // Inspired from
@@ -100,14 +105,6 @@ long SystemToolkit::memory_usage()
 #else
     return 0;
 #endif
-}
-
-long SystemToolkit::memory_max_usage() {
-
-    struct rusage r_usage;
-    getrusage(RUSAGE_SELF,&r_usage);
-    return 1024 * r_usage.ru_maxrss;
-//    return r_usage.ru_isrss;
 }
 
 

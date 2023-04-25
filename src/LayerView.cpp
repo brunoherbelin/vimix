@@ -129,7 +129,7 @@ void LayerView::draw()
         ImGui::Separator();
 
         // manipulation of sources in Mixing view
-        if (ImGui::Selectable( ICON_FA_ALIGN_CENTER "   Distribute" )){
+        if (ImGui::Selectable( ICON_FA_GRIP_LINES_VERTICAL ICON_FA_GRIP_LINES_VERTICAL "  Distribute" )){
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
@@ -140,7 +140,7 @@ void LayerView::draw()
             }
             Action::manager().store(std::string("Selection: Layer Distribute"));
         }
-        if (ImGui::Selectable( ICON_FA_RULER_HORIZONTAL "  Compress" )){
+        if (ImGui::Selectable( ICON_FA_CARET_RIGHT ICON_FA_CARET_LEFT "   Compress" )){
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
             SourceList::iterator  it = dsl.begin();
             float depth = (*it)->depth();
@@ -334,6 +334,31 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
         info << "\n   (Background)";
 
     return Cursor(Cursor_ResizeNESW, info.str() );
+}
+
+View::Cursor LayerView::over (glm::vec2 pos)
+{
+    View::Cursor ret = Cursor();
+    std::pair<Node *, glm::vec2> pick = View::pick(pos);
+
+    //
+    // mouse over source
+    //
+    //    Source *s = Mixer::manager().findSource(pick.first);
+    Source *s = Mixer::manager().currentSource();
+    if (s != nullptr) {
+
+        s->symbol_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
+        s->initial_0_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
+        s->initial_1_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
+        const ImVec4 h = ImGuiToolkit::HighlightColor();
+
+        // overlay symbol
+        if ( pick.first == s->symbol_ )
+            s->symbol_->color = glm::vec4( h.x, h.y, h.z, 1.f );
+    }
+
+    return ret;
 }
 
 void LayerView::arrow (glm::vec2 movement)

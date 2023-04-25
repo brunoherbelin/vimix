@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of vimix - video live mixer
  *
  * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
@@ -19,6 +19,9 @@
 
 #include <sstream>
 #include <iostream>
+#include <vector>
+#include <regex>
+
 
 // gstreamer
 #include <gst/gstformat.h>
@@ -28,54 +31,78 @@
 
 #include "Log.h"
 #include "GstToolkit.h"
+#include "SystemToolkit.h"
 
 #include "ShmdataBroadcast.h"
 
-// Test command
+// Test command shmdata
 // gst-launch-1.0 --gst-plugin-path=/usr/local/lib/gstreamer-1.0/ shmdatasrc socket-path=/tmp/shmdata_vimix0 ! videoconvert ! autovideosink
 
-std::string ShmdataBroadcast::shmdata_sink_ = "shmdatasink";
+// Test command shmsrc
+// gst-launch-1.0 shmsrc socket-path=/tmp/shmdata_vimix0 is-live=true ! video/x-raw, format=RGB, framerate=30/1, width=1152, height=720 ! videoconvert ! autovideosink
 
-bool ShmdataBroadcast::available()
+// OBS receiver
+// shmsrc socket-path=/tmp/shmdata_vimix0 is-live=true ! video/x-raw, format=RGB, framerate=30/1, width=1152, height=720 ! videoconvert ! video.
+// !!!  OBS needs access to shm & filesystem
+// sudo flatpak override --device=shm com.obsproject.Studio
+// sudo flatpak override --filesystem=/tmp com.obsproject.Studio
+
+std::vector<std::string> shm_sink_ = {
+    "shmsink",
+    "shmdatasink"
+};
+
+bool ShmdataBroadcast::available(Method m)
 {
     // test for availability once on first run
-    static bool _available = false, _tested = false;
+    static bool _shm_available = false, _shmdata_available = false, _tested = false;
     if (!_tested) {
-        _available = GstToolkit::has_feature(ShmdataBroadcast::shmdata_sink_);
+        _shm_available = GstToolkit::has_feature(shm_sink_[SHM_SHMSINK]);
+        _shmdata_available = GstToolkit::has_feature(shm_sink_[SHM_SHMDATASINK]);
         _tested = true;
     }
 
-    return _available;
+    if (m == SHM_SHMSINK)
+        return _shm_available;
+    else if (m == SHM_SHMDATASINK)
+        return _shmdata_available;
+    else
+        return _shm_available | _shmdata_available;
 }
 
-ShmdataBroadcast::ShmdataBroadcast(const std::string &socketpath): FrameGrabber(), socket_path_(socketpath)
+ShmdataBroadcast::ShmdataBroadcast(Method m, const std::string &socketpath): FrameGrabber(), method_(m), socket_path_(socketpath)
 {
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, SHMDATA_FPS);  // fixed 30 FPS
 
+    // default socket path
     if (socket_path_.empty())
         socket_path_ = SHMDATA_DEFAULT_PATH;
+
+    // default to SHMSINK / ignore SHM_SHMDATASINK if not available
+    if (!GstToolkit::has_feature(shm_sink_[SHM_SHMDATASINK]) || m == SHM_SHMDATAANY)
+        method_ = SHM_SHMSINK;
 }
 
 std::string ShmdataBroadcast::init(GstCaps *caps)
 {
     if (!ShmdataBroadcast::available())
-        return std::string("Shmdata Broadcast : Not available (missing shmdatasink plugin)");
+        return std::string("Shared Memory Broadcast : Not available (missing shmsink or shmdatasink plugin)");
 
     // ignore
     if (caps == nullptr)
-        return std::string("Shmdata Broadcast : Invalid caps");
+        return std::string("Shared Memory Broadcast : Invalid caps");
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! queue ! ";
 
     // complement pipeline with sink
-    description += ShmdataBroadcast::shmdata_sink_ + " name=sink";
+    description += shm_sink_[method_] + " name=sink";
 
     // parse pipeline descriptor
     GError *error = NULL;
     pipeline_ = gst_parse_launch (description.c_str(), &error);
     if (error != NULL) {
-        std::string msg = std::string("Shmdata Broadcast : Could not construct pipeline ") + description + "\n" + std::string(error->message);
+        std::string msg = std::string("Shared Memory Broadcast : Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
         return msg;
     }
@@ -83,6 +110,7 @@ std::string ShmdataBroadcast::init(GstCaps *caps)
     // setup shm sink
     g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
                   "socket-path", socket_path_.c_str(),
+                  "wait-for-connection", FALSE,
                   NULL);
 
     // setup custom app source
@@ -123,19 +151,19 @@ std::string ShmdataBroadcast::init(GstCaps *caps)
 
     }
     else {
-        return std::string("Shmdata Broadcast : Failed to configure frame grabber.");
+        return std::string("Shared Memory Broadcast : Failed to configure frame grabber ") + shm_sink_[method_];
     }
 
     // start
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        return std::string("Shmdata Broadcast : Failed to start frame grabber.");
+        return std::string("Shared Memory Broadcast : Failed to start frame grabber.");
     }
 
     // all good
     initialized_ = true;
 
-    return std::string("Shared Memory with Shmdata started on ") + socket_path_;
+    return std::string("Shared Memory Broadcast with '") + shm_sink_[method_] + "' started on " + socket_path_;
 }
 
 
@@ -145,21 +173,44 @@ void ShmdataBroadcast::terminate()
     endofstream_ = true;
     active_ = false;
 
+    // delete socket
+    SystemToolkit::remove_file(socket_path_);
+
     Log::Notify("Shared Memory terminated after %s s.",
                 GstToolkit::time_to_string(duration_).c_str());
 }
 
+
+std::string ShmdataBroadcast::gst_pipeline() const
+{
+    std::string pipeline;
+
+    pipeline += (method_ == SHM_SHMDATASINK) ? "shmdatasrc" : "shmsrc";
+    pipeline += " socket-path=";
+    pipeline += socket_path_;
+    pipeline += " is-live=true";
+
+    if (method_ == SHM_SHMSINK){
+        pipeline += " ! ";
+        pipeline += std::string( gst_caps_to_string(caps_) );
+        pipeline = std::regex_replace(pipeline, std::regex("\\(int\\)"), "");
+        pipeline = std::regex_replace(pipeline, std::regex("\\(fraction\\)"), "");
+        pipeline = std::regex_replace(pipeline, std::regex("\\(string\\)"), "");
+    }
+
+    return pipeline;
+}
 
 std::string ShmdataBroadcast::info() const
 {
     std::ostringstream ret;
 
     if (!initialized_)
-        ret << "Shmdata starting..";
+        ret << "Shared Memory starting..";
     else if (active_)
-        ret << "Shmdata " << socket_path_;
+        ret << "Shared Memory " << socket_path_;
     else
-        ret << "Shmdata terminated";
+        ret << "Shared Memory terminated";
 
     return ret.str();
 }

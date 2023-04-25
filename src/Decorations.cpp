@@ -590,31 +590,31 @@ void Disk::accept(Visitor& v)
     v.visit(*this);
 }
 
-Surface *Glyph::font_ = nullptr;
+Surface *Character::font_ = nullptr;
 
-Glyph::Glyph(int imgui_font_index) : Node(), character_(' '), font_index_(imgui_font_index), baseline_(0.f), shape_(1.f, 1.f)
+Character::Character(int imgui_font_index) : Node(), character_(' '), font_index_(imgui_font_index), baseline_(0.f), shape_(1.f, 1.f)
 {
-    if (Glyph::font_ == nullptr)
-        Glyph::font_ = new Surface;
+    if (Character::font_ == nullptr)
+        Character::font_ = new Surface;
 
     uvTransform_ = glm::identity<glm::mat4>();
     color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
 
-void Glyph::draw(glm::mat4 modelview, glm::mat4 projection)
+void Character::draw(glm::mat4 modelview, glm::mat4 projection)
 {
     if ( !initialized() ) {
 
-        if (!Glyph::font_->initialized()) {
+        if (!Character::font_->initialized()) {
 
             uint tex = (uint)(intptr_t)ImGui::GetIO().Fonts->TexID;
             if ( tex > 0) {
-                Glyph::font_->init();
+                Character::font_->init();
                 font_->setTextureIndex(tex);
             }
         }
 
-        if (Glyph::font_->initialized()) {
+        if (Character::font_->initialized()) {
             init();
             setChar(character_);
         }
@@ -623,10 +623,10 @@ void Glyph::draw(glm::mat4 modelview, glm::mat4 projection)
     if ( visible_ ) {
 
         // set color
-        Glyph::font_->shader()->color = color;
+        Character::font_->shader()->color = color;
 
         // modify the shader iTransform to select UVs of the desired glyph
-        Glyph::font_->shader()->iTransform = uvTransform_;
+        Character::font_->shader()->iTransform = uvTransform_;
 
         // rebuild a matrix with rotation (see handles) and translation from modelview + translation_
         // and define scale to be 1, 1
@@ -646,11 +646,17 @@ void Glyph::draw(glm::mat4 modelview, glm::mat4 projection)
         // generate matrix
         ctm = GlmToolkit::transform(tran, rot, glm::vec3(sca, 1.f));
 
-        Glyph::font_->draw( ctm, projection);
+        Character::font_->draw( ctm, projection);
     }
 }
 
-void Glyph::setChar(char c)
+void Character::accept(Visitor& v)
+{
+    Node::accept(v);
+    v.visit(*this);
+}
+
+void Character::setChar(char c)
 {
     character_ = c;
 

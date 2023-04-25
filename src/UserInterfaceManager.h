@@ -42,10 +42,8 @@
 #define SHORTCUT_SAVE_FILE    CTRL_MOD "S"
 #define MENU_SAVEAS_FILE      ICON_FA_FILE_DOWNLOAD "  Save as"
 #define MENU_SAVE_ON_EXIT     ICON_FA_LEVEL_DOWN_ALT "  Save on exit"
-#define MENU_OPEN_ON_START    ICON_FA_LEVEL_UP_ALT "  Open last on start"
+#define MENU_OPEN_ON_START    ICON_FA_LEVEL_UP_ALT "  Restore on start"
 #define SHORTCUT_SAVEAS_FILE  CTRL_MOD "Shift+S"
-#define SHORTCUT_HELP         CTRL_MOD "H"
-#define SHORTCUT_LOGS         CTRL_MOD "L"
 #define MENU_QUIT             ICON_FA_POWER_OFF "  Quit"
 #define SHORTCUT_QUIT         CTRL_MOD "Q"
 #define MENU_CUT              ICON_FA_CUT "  Cut"
@@ -77,10 +75,13 @@
 #define MENU_CLOSE            ICON_FA_TIMES "   Close"
 #define DIALOG_FAILED_SOURCE  ICON_FA_EXCLAMATION_TRIANGLE " Source failure"
 
-#define TOOLTIP_NOTE          "New sticky note "
-#define SHORTCUT_NOTE         CTRL_MOD "Shift+N"
-#define TOOLTIP_METRICS       "Metrics "
-#define SHORTCUT_METRICS      CTRL_MOD "M"
+#define MENU_NOTE             ICON_FA_STICKY_NOTE "   Add sticky note"
+#define MENU_METRICS          ICON_FA_TACHOMETER_ALT "  Metrics"
+#define MENU_SOURCE_TOOL      ICON_FA_LIST_ALT "  Source toolbox"
+#define MENU_HELP             ICON_FA_LIFE_RING "  Help"
+#define SHORTCUT_HELP         CTRL_MOD "H"
+#define MENU_LOGS             ICON_FA_LIST_UL "  Logs"
+#define SHORTCUT_LOGS         CTRL_MOD "L"
 #define TOOLTIP_PLAYER        "Player "
 #define SHORTCUT_PLAYER       CTRL_MOD "P"
 #define TOOLTIP_OUTPUT        "Display "
@@ -100,6 +101,11 @@
 #define TOOLTIP_HIDE          "Hide windows "
 #define TOOLTIP_SHOW          "Show windows "
 #define SHORTCUT_HIDE         "ESC"
+
+#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_USER_CIRCLE "  User selection"
+#define LABEL_STORE_SELECTION "  Create batch"
+#define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fade in & out"
+#define LABEL_VIDEO_SEQUENCE "  Encode an image sequence"
 
 #include "SourceList.h"
 #include "InfoVisitor.h"
@@ -476,6 +482,7 @@ public:
     inline bool shiftModifier() const  { return shift_modifier_active; }
 
     void showPannel(int id = 0);
+    void showSourcePanel(Source *s);
     void showSourceEditor(Source *s);
 
     void StartScreenshot();
@@ -483,6 +490,7 @@ public:
 protected:
 
     // internal
+    char inifilepath[2048];
     uint64_t start_time;
     bool ctrl_modifier_active;
     bool alt_modifier_active;
@@ -496,6 +504,7 @@ protected:
     int  target_view_navigator;
     unsigned int screenshot_step;
     bool pending_save_on_exit;
+    bool show_output_fullview;
 
     // Dialogs
     DialogToolkit::OpenSessionDialog *sessionopendialog;
@@ -519,7 +528,9 @@ protected:
     void selectOpenFilename();
 
     void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
+    void RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode);
     int  RenderViewNavigator(int* shift);
+    void RenderOutputView();
     void RenderAbout(bool* p_open);
     void RenderNotes();
 

@@ -271,7 +271,7 @@ void MixingView::draw()
             }
             Action::manager().store(std::string("Selection: Mixing Distribute in circle"));
         }
-        if (ImGui::Selectable( ICON_FA_ELLIPSIS_V "     Align & Distribute" )){
+        if (ImGui::Selectable( ICON_FA_ALIGN_CENTER "   Align & Distribute" )){
             SourceList list;
             glm::vec2 center = glm::vec2(0.f, 0.f);
             for (SourceList::iterator  it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
@@ -612,7 +612,10 @@ View::Cursor MixingView::over (glm::vec2 pos)
     View::Cursor ret = Cursor();
     std::pair<Node *, glm::vec2> pick = View::pick(pos);
 
+    //
     // deal with internal interactive objects
+    //
+    // mouse over opacity slider
     if ( pick.first == slider_ ) {
         slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );        
         slider_arrows_->visible_ = true;
@@ -623,6 +626,7 @@ View::Cursor MixingView::over (glm::vec2 pos)
         slider_->color = glm::vec4( COLOR_CIRCLE, 0.9f );
     }
 
+    // mouse over limbo scale
     if ( pick.first == limbo_slider_ ) {
         limbo_up_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, limbo_slider_root_->translation_.y < MIXING_MAX_THRESHOLD ? 0.1f : 0.01f );
         limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, limbo_slider_root_->translation_.y > MIXING_MIN_THRESHOLD ? 0.1f : 0.01f );
@@ -633,6 +637,7 @@ View::Cursor MixingView::over (glm::vec2 pos)
         limbo_down_->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.01f );
     }
 
+    // mouse over white and black buttons
     if ( pick.first == button_white_ )
         button_white_->color = glm::vec4( COLOR_CIRCLE_OVER, 1.f );
     else
@@ -642,6 +647,23 @@ View::Cursor MixingView::over (glm::vec2 pos)
         button_black_->color = glm::vec4( COLOR_CIRCLE_OVER, 1.f );
     else
         button_black_->color = glm::vec4( COLOR_CIRCLE, 1.f );
+
+    //
+    // mouse over source
+    //
+    //    Source *s = Mixer::manager().findSource(pick.first);
+    Source *s = Mixer::manager().currentSource();
+    if (s != nullptr && s->ready()) {
+
+        s->symbol_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
+        s->initial_0_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
+        s->initial_1_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
+        const ImVec4 h = ImGuiToolkit::HighlightColor();
+
+        // overlay symbol
+        if ( pick.first == s->symbol_ )
+            s->symbol_->color = glm::vec4( h.x, h.y, h.z, 1.f );
+    }
 
     return ret;
 }

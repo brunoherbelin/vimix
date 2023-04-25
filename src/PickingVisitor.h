@@ -51,10 +51,15 @@ public:
      */
     void visit(Handles& n) override;
     /**
-     * @brief visit Disk : picking grabber for mixing view
+     * @brief visit Symbol for mixing view
      * @param n
      */
     void visit(Symbol& n) override;
+    /**
+     * @brief visit Glyph for mixing view
+     * @param n
+     */
+    void visit(Character& n) override;
     /**
      * @brief visit Disk : picking grabber for mixing view
      * @param n
