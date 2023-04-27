@@ -32,7 +32,7 @@ if(GIT_EXECUTABLE)
       add_definitions(-DVIMIX_VERSION_MAJOR=${VIMIX_VERSION_MAJOR})
       add_definitions(-DVIMIX_VERSION_MINOR=${VIMIX_VERSION_MINOR})
       add_definitions(-DVIMIX_VERSION_PATCH=${VIMIX_VERSION_PATCH})
-      message(STATUS "Compiling vimix version ${VIMIX_VERSION_MAJOR}.${VIMIX_VERSION_MINOR}.${VIMIX_VERSION_PATCH}")
+      message(STATUS "Compiling vimix version ${VIMIX_VERSION_MAJOR}.${VIMIX_VERSION_MINOR}.${VIMIX_VERSION_PATCH} (${GIT_DESCRIBE_VERSION})")
   endif()
 endif()
 
