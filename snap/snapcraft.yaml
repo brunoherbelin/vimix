@@ -41,6 +41,7 @@ apps:
        GST_PLUGIN_SYSTEM_PATH : $SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0
        GST_PLUGIN_SCANNER: $SNAP/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner
        FREI0R_PATH: $SNAP/usr/lib/frei0r-1
+       LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$SNAP/usr/lib/x86_64-linux-gnu/blas:$SNAP/usr/lib/x86_64-linux-gnu/lapack
 
 parts:
   vimix-binary:
@@ -63,6 +64,8 @@ parts:
     -  libpng16-16
     -  libglu1-mesa
     -  freeglut3
+    -  libblas3
+    -  liblapack3
     -  libglfw3
     -  frei0r-plugins
     -  libgstreamer1.0-0
