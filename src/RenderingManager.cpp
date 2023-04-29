@@ -801,7 +801,9 @@ void RenderingWindow::changeFullscreen_()
         // done request
         request_change_fullscreen_ = false;
 
-        GLFWmonitor *mo = Rendering::manager().monitorNamed( Settings::application.windows[index_].monitor );
+        GLFWmonitor *mo = monitor();
+        if (index_ > 0)
+            mo = Rendering::manager().monitorNamed( Settings::application.windows[index_].monitor );
 
         // if in fullscreen mode
         if (isFullscreen ()) {
