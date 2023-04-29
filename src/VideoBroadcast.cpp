@@ -116,7 +116,7 @@ std::string VideoBroadcast::init(GstCaps *caps)
 
     // complement pipeline with encoder
     description += VideoBroadcast::srt_encoder_;
-    description += "video/x-h264, profile=high ! queue ! h264parse config-interval=-1 ! mpegtsmux ! ";
+    description += "video/x-h264, profile=high ! queue ! h264parse config-interval=-1 ! mpegtsmux alignment=7 ! ";
 
     // complement pipeline with sink
     description += VideoBroadcast::srt_sink_ + " name=sink";
@@ -131,10 +131,10 @@ std::string VideoBroadcast::init(GstCaps *caps)
     }
 
     // setup SRT streaming sink properties (uri, latency)
-    std::string uri = "srt://:" + std::to_string(port_);
     g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
-                  "uri", uri.c_str(),
+                  "localport", port_,
                   "latency", 200,
+                  "mode", 2,
                   "wait-for-connection", false,
                   NULL);
 
