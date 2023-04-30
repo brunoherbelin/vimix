@@ -24,6 +24,11 @@ SrtReceiverSource::SrtReceiverSource(uint64_t id) : StreamSource(id)
     symbol_->scale_.y = 1.5f;
 }
 
+Source::Failure SrtReceiverSource::failed() const
+{
+    return (stream_ != nullptr &&  stream_->failed()) ? FAIL_RETRY : FAIL_NONE;
+}
+
 
 void SrtReceiverSource::setConnection(const std::string &ip, const std::string &port)
 {
@@ -32,7 +37,7 @@ void SrtReceiverSource::setConnection(const std::string &ip, const std::string &
     port_ = port;
     Log::Notify("Creating Source SRT receiving from '%s'", uri().c_str());
 
-    std::string description = "srtsrc uri=" + uri() + " latency=200 ! decodebin ! videoconvert";
+    std::string description = "srtsrc uri=" + uri() + " latency=200 ! queue ! decodebin ! videoconvert";
 
     // open gstreamer
     stream_->open(description);

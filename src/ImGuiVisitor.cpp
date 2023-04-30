@@ -1569,21 +1569,18 @@ void ImGuiVisitor::visit (SrtReceiverSource& s)
 
     if ( !s.failed() ) {
         // icon (>) to open player
-        if ( s.playable() ) {
+        if ( s.stream()->isOpen() ) {
             ImGui::SetCursorPos(top);
             std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
             if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
         }
+        else
+            info.reset();
     }
     else
         info.reset();
 
     ImGui::SetCursorPos(botom);
 
-//    if ( ImGui::Button( ICON_FA_REPLY " Reconnect", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-//    {
-//        s.setConnection(s.connection());
-//        info.reset();
-//    }
 }

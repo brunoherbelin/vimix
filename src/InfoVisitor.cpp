@@ -433,13 +433,25 @@ void InfoVisitor::visit (SrtReceiverSource& s)
         if (stm->failed()) {
             oss << s.uri() << std::endl << stm->log();
         }
-        else {
-            if (brief_)
+        else if (stm->isOpen()) {
+            if (brief_) {
                 oss << s.uri() << std::endl;
+                oss << "Connected." << std::endl;
+            }
             else {
                 oss << "SRT Receiver " << s.uri() << std::endl;
-                oss << "H264 (" << stm->decoderName() << ")" << std::endl;
+                oss << "H264 (" << stm->decoderName() << ")" ;
                 oss << stm->width() << " x " << stm->height();
+            }
+        }
+        else {
+            if (brief_) {
+                oss << s.uri() << std::endl;
+                oss << "Trying to connect..." << std::endl;
+            }
+            else {
+                oss << "SRT Receiver " << s.uri() << std::endl;
+                oss << "Connecting...";
             }
         }
     }
