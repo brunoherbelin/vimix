@@ -256,7 +256,7 @@ void drawMediaPlayer()
     ImGui::SameLine(0, spacing);
     ImGui::SetNextItemWidth(270);
     // ImGui::SetNextItemWidth(width - 90.0);
-    if (ImGui::SliderFloat( "Speed", &speed, -10.f, 10.f, "x %.1f", 2.f))
+    if (ImGui::SliderFloat( "Speed", &speed, -10.f, 10.f, "x %.2f", 2.f))
         testmedia.setPlaySpeed( static_cast<double>(speed) );
     ImGui::SameLine(0, spacing);
     if (ImGuiToolkit::ButtonIcon(19, 15)) {
