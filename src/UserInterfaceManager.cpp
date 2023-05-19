@@ -3146,20 +3146,19 @@ void SourceController::Render()
                     mediaplayer_active_->setRewindOnDisabled(true);
                 ImGui::EndMenu();
             }
-            if (Settings::application.render.gpu_decoding)
+            // always allow for hardware decoding to be disabled
+            ImGui::Separator();
+            if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
             {
-                ImGui::Separator();
-                if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
-                {
-                    bool hwdec = !mediaplayer_active_->softwareDecodingForced();
-                    if (ImGui::MenuItem("Auto", "", &hwdec ))
-                        mediaplayer_active_->setSoftwareDecodingForced(false);
-                    hwdec = mediaplayer_active_->softwareDecodingForced();
-                    if (ImGui::MenuItem("Disabled", "", &hwdec ))
-                        mediaplayer_active_->setSoftwareDecodingForced(true);
-                    ImGui::EndMenu();
-                }
+                bool hwdec = !mediaplayer_active_->softwareDecodingForced();
+                if (ImGui::MenuItem("Auto", "", &hwdec ))
+                    mediaplayer_active_->setSoftwareDecodingForced(false);
+                hwdec = mediaplayer_active_->softwareDecodingForced();
+                if (ImGui::MenuItem("Disabled", "", &hwdec ))
+                    mediaplayer_active_->setSoftwareDecodingForced(true);
+                ImGui::EndMenu();
             }
+            
 
             ImGui::EndMenu();
         }
