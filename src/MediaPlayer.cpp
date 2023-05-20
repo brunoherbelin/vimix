@@ -139,7 +139,8 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
             video_stream_info.log = "Invalid URI";
             break;
         case GST_DISCOVERER_ERROR:
-            video_stream_info.log = std::string( "Error; " ) + err->message;
+            video_stream_info.log = std::string( "Warning: " ) + err->message;
+            result = GST_DISCOVERER_OK; // try to read the file anyways, discoverer can report errors but still read the file
             break;
         case GST_DISCOVERER_TIMEOUT:
             video_stream_info.log = "Timeout loading";
@@ -355,7 +356,7 @@ void MediaPlayer::execute_open()
         return;
     }
 
-    // setup uridecodebin
+    // setup software decode
     if (force_software_decoding_) {
         g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "decoder")), "force-sw-decoders", true,  NULL);
     }
@@ -584,8 +585,11 @@ bool MediaPlayer::isImage() const
 std::string MediaPlayer::decoderName()
 {
     if (pipeline_) {
+        if (force_software_decoding_) {
+            decoder_name_ = "software";
+        }
         // decoder_name_ not initialized
-        if (decoder_name_.empty()) {
+        else if (decoder_name_.empty()) {
             // try to know if it is a hardware decoder
             decoder_name_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
             // nope, then it is a sofware decoder
