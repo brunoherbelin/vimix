@@ -824,6 +824,12 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             arguments >> t >> osc::EndMessage;
             target->call( new Seek( t ), true );
         }
+        /// e.g. '/vimix/current/speed f 0.25'
+        else if ( attribute.compare(OSC_SOURCE_SPEED) == 0) {
+            float t = 0.f;
+            arguments >> t >> osc::EndMessage;
+            target->call( new PlaySpeed( t ), true );
+        }
         /// e.g. '/vimix/name/sync'
         else if ( attribute.compare(OSC_SYNC) == 0) {
             // this will require to send feedback status about source

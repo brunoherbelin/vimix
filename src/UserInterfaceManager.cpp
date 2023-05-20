@@ -3146,20 +3146,19 @@ void SourceController::Render()
                     mediaplayer_active_->setRewindOnDisabled(true);
                 ImGui::EndMenu();
             }
-            if (Settings::application.render.gpu_decoding)
+            // always allow for hardware decoding to be disabled
+            ImGui::Separator();
+            if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
             {
-                ImGui::Separator();
-                if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
-                {
-                    bool hwdec = !mediaplayer_active_->softwareDecodingForced();
-                    if (ImGui::MenuItem("Auto", "", &hwdec ))
-                        mediaplayer_active_->setSoftwareDecodingForced(false);
-                    hwdec = mediaplayer_active_->softwareDecodingForced();
-                    if (ImGui::MenuItem("Disabled", "", &hwdec ))
-                        mediaplayer_active_->setSoftwareDecodingForced(true);
-                    ImGui::EndMenu();
-                }
+                bool hwdec = !mediaplayer_active_->softwareDecodingForced();
+                if (ImGui::MenuItem("Auto", "", &hwdec ))
+                    mediaplayer_active_->setSoftwareDecodingForced(false);
+                hwdec = mediaplayer_active_->softwareDecodingForced();
+                if (ImGui::MenuItem("Disabled", "", &hwdec ))
+                    mediaplayer_active_->setSoftwareDecodingForced(true);
+                ImGui::EndMenu();
             }
+            
 
             ImGui::EndMenu();
         }
@@ -4390,7 +4389,7 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - buttons_height_ );
             // speed slider
             float speed = static_cast<float>(mediaplayer_active_->playSpeed());
-            if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, UNICODE_MULTIPLY " %.1f", 2.f))
+            if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, UNICODE_MULTIPLY " %.2f", 2.f))
                 mediaplayer_active_->setPlaySpeed( static_cast<double>(speed) );
             // store action on mouse release
             if (ImGui::IsItemDeactivatedAfterEdit()){
@@ -5832,7 +5831,7 @@ void InputMappingInterface::SliderParametersCallback(SourceCallback *callback, c
         float val = edited->value();
         ImGui::SetNextItemWidth(right_align);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        if (ImGui::SliderFloat("##CALLBACK_PLAYSPEED", &val, 0.1f, 20.f, "x %.1f"))
+        if (ImGui::SliderFloat("##CALLBACK_PLAYSPEED", &val, -10.f, 10.f, UNICODE_MULTIPLY " %.2f"))
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
