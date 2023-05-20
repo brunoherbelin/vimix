@@ -15,6 +15,7 @@ public:
     void accept (Visitor& v) override;
 
     // StreamSource interface
+    Failure failed() const override;
     Stream *stream() const override { return stream_; }
 
     // specific interface

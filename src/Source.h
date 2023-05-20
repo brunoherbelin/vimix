@@ -25,7 +25,7 @@
 #define ICON_SOURCE_RENDER 0, 2
 #define ICON_SOURCE_CLONE 9, 2
 #define ICON_SOURCE_GSTREAMER 16, 16
-#define ICON_SOURCE_SRT 15, 5
+#define ICON_SOURCE_SRT 14, 5
 #define ICON_SOURCE 13, 11
 
 class Visitor;

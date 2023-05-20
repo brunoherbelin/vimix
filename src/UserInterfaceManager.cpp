@@ -1642,7 +1642,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 ImGui::AlignTextToFramePadding();
                 ImGui::Text( MENU_SOURCE_TOOL );
                 ImGui::SameLine(0, sliderwidth);
-                ImGui::TextDisabled("No source selected");
+                ImGui::TextDisabled("No active source");
                 ImGui::SameLine(0, sliderwidth);
             }
 
@@ -1852,7 +1852,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
             else {
 
                 ImGui::TextDisabled("  ");
-                ImGui::TextDisabled("No source selected");
+                ImGui::TextDisabled("No active source");
                 ImGui::TextDisabled("  ");
 
             }
