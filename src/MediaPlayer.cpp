@@ -152,8 +152,9 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
         {
             const GstStructure *s = gst_discoverer_info_get_misc (info);
             gchar *str = gst_structure_to_string (s);
-            video_stream_info.log = std::string( "Unknown format; " ) + std::string(str);
+            video_stream_info.log = std::string( "Warning: " ) + std::string(str);
             g_free (str);
+            result = GST_DISCOVERER_OK; // try to read the file anyways, discoverer can report errors but still read the file
         }
             break;
         default:
@@ -948,6 +949,9 @@ void MediaPlayer::update()
                 media_ = discoverer_.get();
                 // if its ok, open the media
                 if (media_.valid) {
+                    if (!media_.log.empty())
+                        Log::Info("'%s' : %s", uri().c_str(), media_.log.c_str());
+
                     timeline_.setEnd( media_.end );
                     timeline_.setStep( media_.dt );
                     execute_open();
