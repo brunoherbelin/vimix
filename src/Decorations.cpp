@@ -21,14 +21,9 @@
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtx/component_wise.hpp>
 
-#include "Decorations.h"
-
 #include "Visitor.h"
-#include "BoundingBoxVisitor.h"
-#include "ImageShader.h"
 #include "GlmToolkit.h"
-#include "Resource.h"
-#include "Log.h"
+#include "Decorations.h"
 
 #include "imgui.h"
 #include <glad/glad.h>

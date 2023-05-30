@@ -21,6 +21,7 @@
 #include <sstream>
 #include <iostream>
 #include <cstring>
+#include <algorithm>
 
 // Desktop OpenGL function loader
 #include <glad/glad.h>
@@ -37,7 +38,6 @@
 #include "Settings.h"
 #include "GstToolkit.h"
 #include "SystemToolkit.h"
-#include "Session.h"
 #include "Log.h"
 #include "Connection.h"
 #include "NetworkToolkit.h"
@@ -47,6 +47,15 @@
 #ifndef NDEBUG
 #define STREAMER_DEBUG
 #endif
+
+/// oscsend 127.0.0.1 71510 /vimix/request is 9000 "vimixclient"
+/// oscdump -L 9000 | xargs -L1 -P1 sh -c 'gst-launch-1.0 udpsrc port=$3 caps="application/x-rtp,media=(string)video,encoding-name=(string)RAW,sampling=(string)RGB,width=(string)$5,height=(string)$6" ! rtpvrawdepay ! queue max-size-buffers=10 ! videoconvert ! autovideosink'
+
+/// oscsend 127.0.0.1 71510 /vimix/request is 9000 "h264"
+/// oscdump -L 9000 | xargs -L1 -P1 sh -c 'gst-launch-1.0 udpsrc port=$3 caps="application/x-rtp,media=(string)video,encoding-name=(string)H264" ! rtph264depay ! queue ! decodebin ! videoconvert ! autovideosink'
+
+/// oscsend 127.0.0.1 71510 /vimix/request is 9000 "jpeg"
+/// oscdump -L 9000 | xargs -L1 -P1 sh -c 'gst-launch-1.0 udpsrc port=$3 caps="application/x-rtp,media=(string)video,encoding-name=(string)JPEG" ! rtpjpegdepay ! queue ! decodebin ! videoconvert ! autovideosink'
 
 void Streaming::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                                                const IpEndpointName& remoteEndpoint )
