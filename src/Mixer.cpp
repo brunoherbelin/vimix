@@ -51,7 +51,6 @@
 #include "SrtReceiverSource.h"
 #include "SourceCallback.h"
 
-#include "InfoVisitor.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
 #include "FrameGrabber.h"
@@ -455,6 +454,33 @@ void Mixer::addSource(Source *s)
         candidate_sources_.push_back(s);
 }
 
+void delayed_notification( Source *source )
+{
+    bool done = false;
+
+    while (!done) {
+        // give it a bit of time and avoid CPU overload
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+        // to be safe, make sure we have a valid source
+        Session *session = Mixer::manager().session();
+        SourceList::iterator sit = session->find(source);
+        if ( sit != session->end() ) {
+            // voila! the source is valid : notify user if it's ready
+            if ( (*sit)->ready() ) {
+                Log::Notify("%s source %s is ready.", (*sit)->info().c_str(), (*sit)->name().c_str());
+                done = true;
+            }
+            // do not notify if failed
+            else if ( (*sit)->failed() )
+                done = true;
+        }
+        // end loop if invalid source
+        else
+            done = true;
+    }
+}
+
 void Mixer::insertSource(Source *s, View::Mode m)
 {
     if ( s != nullptr )
@@ -477,11 +503,9 @@ void Mixer::insertSource(Source *s, View::Mode m)
         // new state in history manager
         Action::manager().store(s->name() + std::string(": source inserted"));
 
-        // notify creation of source
-        static InfoVisitor _more_info;
-        s->accept(_more_info);
-        std::string moreinfo = BaseToolkit::unspace(_more_info.str(), ' ');
-        Log::Notify("Added %s source '%s' (%s)", s->info().c_str(), s->name().c_str(), moreinfo.c_str());
+        // Log & notification
+        Log::Info("Adding source '%s'...", s->name().c_str());
+        std::thread(delayed_notification, s).detach();
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)
