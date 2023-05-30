@@ -112,8 +112,8 @@ void InfoVisitor::visit(MediaPlayer &mp)
 
     information_ = oss.str();
 
-    // remember (except if codec was not identified yet)
-    if ( !mp.media().codec_name.empty() )
+    // remember
+    if ( mp.isOpen() )
         current_id_ = mp.id();
 }
 
@@ -137,7 +137,8 @@ void InfoVisitor::visit (MediaSource& s)
 
     s.mediaplayer()->accept(*this);
 
-    current_id_ = s.id();
+    if (s.ready())
+        current_id_ = s.id();
 }
 
 void InfoVisitor::visit (SessionFileSource& s)
