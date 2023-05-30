@@ -182,8 +182,8 @@ bool UserInterface::Init()
     base_font_size = CLAMP( base_font_size, 8.f, 50.f);
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) );
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", int(base_font_size) );
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) + 1 );
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", int(base_font_size) + 1 );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_MONO, "Hack-Regular", int(base_font_size) - 2);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_LARGE, "Hack-Regular", MIN(int(base_font_size * 1.5f), 50) );
 
@@ -245,8 +245,6 @@ void UserInterface::handleKeyboard()
     ctrl_modifier_active = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
     keyboard_available = !io.WantCaptureKeyboard;
 
-    show_output_fullview = ImGui::IsKeyDown( GLFW_KEY_F6 );
-
     if (io.WantCaptureKeyboard || io.WantTextInput) {
         // only react to ESC key when keyboard is captured
         if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false )) {
@@ -254,6 +252,8 @@ void UserInterface::handleKeyboard()
         }
         return;
     }
+
+    show_output_fullview = ImGui::IsKeyDown( GLFW_KEY_F6 );
 
     // Application "CTRL +"" Shortcuts
     if ( ctrl_modifier_active ) {
@@ -806,15 +806,22 @@ void UserInterface::NewFrame()
             ImGui::Text(" but didn't save the session. ");
             ImGui::PopFont();
             ImGui::Spacing();
+            if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+                pending_save_on_exit = false;
+                ImGui::CloseCurrentPopup();
+            }
             if (ImGui::Button(MENU_SAVEAS_FILE, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
                 pending_save_on_exit = false;
                 saveOrSaveAs();
                 ImGui::CloseCurrentPopup();
             }
-            if (ImGui::Button(MENU_QUIT, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+            if (ImGui::Button(MENU_QUIT, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))
+                     || ImGui::IsKeyPressed(GLFW_KEY_ENTER)  || ImGui::IsKeyPressed(GLFW_KEY_KP_ENTER) ) {
                 Rendering::manager().close();
                 ImGui::CloseCurrentPopup();
             }
+            ImGui::PopStyleColor(1);
             ImGui::Spacing();
             ImGui::EndPopup();
         }
@@ -2319,14 +2326,17 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_HAND_PAPER "  Inputs"); ImGui::NextColumn();
         ImGui::Text ("Define how user inputs (e.g. keyboard, joystick) are mapped to custom actions in the session.");
         ImGui::NextColumn();
-        ImGui::Text(ICON_FA_VECTOR_SQUARE "  Source editor"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_LIST_ALT " Source tool"); ImGui::NextColumn();
         ImGui::Text ("Toolbar to show and edit alpha and geometry of the current source.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_TACHOMETER_ALT "  Metrics"); ImGui::NextColumn();
         ImGui::Text ("Monitoring of metrics on the system (e.g. FPS, RAM) and runtime (e.g. session duration).");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_STICKY_NOTE "  Sticky note"); ImGui::NextColumn();
-        ImGui::Text ("Place sticky notes into your session. Does nothing, just keep notes and reminders.");
+        ImGui::Text ("Place sticky notes into your session. Does nothing, just keeps notes and reminders.");
+        ImGui::NextColumn();
+        ImGui::Text(IMGUI_TITLE_LOGS); ImGui::NextColumn();
+        ImGui::Text ("History of program logs, with information on success and failure of commands.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_COG "  Settings"); ImGui::NextColumn();
         ImGui::Text ("Set user preferences and system settings.");
@@ -2819,8 +2829,10 @@ void SourceController::setVisible(bool on)
         if (!on)  return;
     }
 
-    if (on && Settings::application.widget.media_player_view != Settings::application.current_view)
+    if (Settings::application.widget.media_player && Settings::application.widget.media_player_view != Settings::application.current_view) {
         Settings::application.widget.media_player_view = -1;
+        on = true;
+    }
 
     // if no selection in the player and in the source selection, show all sources
     if (on && selection_.empty() && Mixer::selection().empty() )
@@ -4493,10 +4505,12 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
 
         bool close = false;
         ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
-        if (ImGui::Button("Cancel", ImVec2(area.x * 0.3f, 0)))
+        if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(area.x * 0.3f, 0)))
             close = true;
         ImGui::SetCursorPos(pos + ImVec2(area.x * 0.7f, area.y - buttons_height_));
-        if (ImGui::Button("Apply", ImVec2(area.x * 0.3f, 0))) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+        if (ImGui::Button(ICON_FA_CHECK "  Apply", ImVec2(area.x * 0.3f, 0))
+                || ImGui::IsKeyPressed(GLFW_KEY_ENTER)  || ImGui::IsKeyPressed(GLFW_KEY_KP_ENTER) ) {
             close = true;
             // timeline to edit
             Timeline *tl = mediaplayer_active_->timeline();
@@ -4519,6 +4533,7 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
             tl->smoothFading( 2 );
             Action::manager().store(oss.str());
         }
+        ImGui::PopStyleColor(1);
 
         if (close)
             ImGui::CloseCurrentPopup();
@@ -4620,8 +4635,10 @@ void OutputPreview::setVisible(bool on)
         if (!on)  return;
     }
 
-    if (on && Settings::application.widget.preview_view != Settings::application.current_view)
+    if (Settings::application.widget.preview && Settings::application.widget.preview_view != Settings::application.current_view) {
         Settings::application.widget.preview_view = -1;
+        on = true;
+    }
 
     Settings::application.widget.preview = on;
 }
@@ -5181,7 +5198,8 @@ void OutputPreview::Render()
 
         ImGui::NewLine();
         ImGui::SetItemDefaultFocus();
-        if (ImGui::Button("Ok, I'll do this in a terminal and try again later.", ImVec2(w, 0)) ) {
+        if (ImGui::Button("Ok, I'll do this in a terminal and try again later.", ImVec2(w, 0))
+                || ImGui::IsKeyPressed(GLFW_KEY_ENTER)  || ImGui::IsKeyPressed(GLFW_KEY_KP_ENTER) ) {
             ImGui::CloseCurrentPopup();
         }
 
@@ -5214,8 +5232,10 @@ void TimerMetronome::setVisible(bool on)
         if (!on)  return;
     }
 
-    if (on && Settings::application.widget.timer_view != Settings::application.current_view)
+    if (Settings::application.widget.timer && Settings::application.widget.timer_view != Settings::application.current_view){
         Settings::application.widget.timer_view = -1;
+        on = true;
+    }
 
     Settings::application.widget.timer = on;
 }
@@ -5506,8 +5526,10 @@ void InputMappingInterface::setVisible(bool on)
         if (!on)  return;
     }
 
-    if (on && Settings::application.widget.inputs_view != Settings::application.current_view)
+    if (Settings::application.widget.inputs && Settings::application.widget.inputs_view != Settings::application.current_view) {
         Settings::application.widget.inputs_view = -1;
+        on = true;
+    }
 
     Settings::application.widget.inputs = on;
 }
@@ -7930,7 +7952,7 @@ void Navigator::RenderNewPannel()
                     ImGui::ProgressBar(_video_recorder.progress());
 
                     ImGui::Spacing();
-                    if (ImGui::Button("Cancel"))
+                    if (ImGui::Button(ICON_FA_TIMES "  Cancel"))
                         _video_recorder.cancel();
 
                     ImGui::EndPopup();
@@ -8886,18 +8908,27 @@ void Navigator::RenderMainPannelVimix()
 
 
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    bool on = false;
 
     ImGui::SameLine(0, 0.5f * ImGui::GetTextLineHeight());
-    ImGuiToolkit::IconToggle( ICON_FA_LAPTOP, &Settings::application.widget.preview, TOOLTIP_OUTPUT, SHORTCUT_OUTPUT);
+    on = Settings::application.widget.preview;
+    if (ImGuiToolkit::IconToggle( ICON_FA_LAPTOP, &on, TOOLTIP_OUTPUT, SHORTCUT_OUTPUT))
+        UserInterface::manager().outputcontrol.setVisible(on);
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    ImGuiToolkit::IconToggle( ICON_FA_PLAY_CIRCLE, &Settings::application.widget.media_player, TOOLTIP_PLAYER, SHORTCUT_PLAYER);
+    on = Settings::application.widget.media_player;
+    if (ImGuiToolkit::IconToggle( ICON_FA_PLAY_CIRCLE, &on, TOOLTIP_PLAYER, SHORTCUT_PLAYER))
+        UserInterface::manager().sourcecontrol.setVisible(on);
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    ImGuiToolkit::IconToggle( ICON_FA_CLOCK, &Settings::application.widget.timer, TOOLTIP_TIMER, SHORTCUT_TIMER);
+    on = Settings::application.widget.timer;
+    if (ImGuiToolkit::IconToggle( ICON_FA_CLOCK, &on, TOOLTIP_TIMER, SHORTCUT_TIMER))
+        UserInterface::manager().timercontrol.setVisible(on);
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    ImGuiToolkit::IconToggle( ICON_FA_HAND_PAPER, &Settings::application.widget.inputs, TOOLTIP_INPUTS, SHORTCUT_INPUTS);
+    on = Settings::application.widget.inputs;
+    if (ImGuiToolkit::IconToggle( ICON_FA_HAND_PAPER, &on, TOOLTIP_INPUTS, SHORTCUT_INPUTS))
+        UserInterface::manager().inputscontrol.setVisible(on);
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight() - IMGUI_SAME_LINE);
     static uint counter_menu_timeout = 0;
@@ -9472,6 +9503,16 @@ void ShowSandbox(bool* p_open)
 
     ImGui::Text("Testing sandox");
     ImGui::Separator();
+
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+    ImGui::Text("This text is in BOLD");
+    ImGui::PopFont();
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+    ImGui::Text("This text is in REGULAR");
+    ImGui::PopFont();
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
+    ImGui::Text("This text is in ITALIC");
+    ImGui::PopFont();
 
     ImGui::Text("IMAGE of Font");
 
