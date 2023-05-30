@@ -544,6 +544,7 @@ void Mixer::replaceSource(Source *previous, Source *s)
     SessionLoader loader( session_ );
     loader.applyImageProcessing(*s, SessionVisitor::getClipboard(previous));
     s->setImageProcessingEnabled( previous->imageProcessingEnabled() );
+    s->blendingShader()->blending = previous->blendingShader()->blending;
 
     // delete previous source
     session_->deleteSource(previous);
