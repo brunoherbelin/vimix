@@ -48,7 +48,7 @@ public:
     void draw ();
 
     // creation of sources
-    Source * createSourceFile   (const std::string &path);
+    Source * createSourceFile   (const std::string &path, bool disable_hw_decoding = false);
     Source * createSourceMultifile(const std::list<std::string> &list_files, uint fps);
     Source * createSourceClone  (const std::string &namesource = "", bool copy_attributes = true);
     Source * createSourceRender ();
@@ -137,7 +137,9 @@ protected:
     bool sessionSwapRequested_;
     void swap();
 
-    SourceList candidate_sources_;
+    // temporary buffer of sources to be inserted at next iteration,
+    // stored in pair with the source to replace, if provided
+    std::list< std::pair<Source *, Source *> > candidate_sources_;
     SourceList stash_;
     void insertSource  (Source *s, View::Mode m = View::INVALID);
     bool recreateSource(Source *s);

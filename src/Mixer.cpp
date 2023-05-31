@@ -31,6 +31,7 @@
 
 #include <tinyxml2.h>
 
+#include "ImageShader.h"
 #include "defines.h"
 #include "Settings.h"
 #include "Log.h"
@@ -42,6 +43,7 @@
 #include "SessionSource.h"
 #include "CloneSource.h"
 #include "RenderSource.h"
+#include "MediaPlayer.h"
 #include "MediaSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
@@ -186,8 +188,14 @@ void Mixer::update()
 
     // if there is a source candidate for this session
     if (candidate_sources_.size() > 0) {
+        // the first element of the pair is the source to insert
         // NB: only make the last candidate the current source in Mixing view
-        insertSource(candidate_sources_.front(), candidate_sources_.size() > 1 ? View::INVALID : View::MIXING);
+        insertSource(candidate_sources_.front().first, candidate_sources_.size() > 1 ? View::INVALID : View::MIXING);
+
+        // the second element of the pair is the source to be replaced, i.e. deleted if provided
+        if (candidate_sources_.front().second != nullptr)
+            deleteSource(candidate_sources_.front().second);
+
         candidate_sources_.pop_front();
     }
 
@@ -264,7 +272,7 @@ void Mixer::draw()
 }
 
 // manangement of sources
-Source * Mixer::createSourceFile(const std::string &path)
+Source * Mixer::createSourceFile(const std::string &path, bool disable_hw_decoding)
 {
     // ready to create a source
     Source *s = nullptr;
@@ -283,6 +291,7 @@ Source * Mixer::createSourceFile(const std::string &path)
         else {
             // (try to) create media source by default
             MediaSource *ms = new MediaSource;
+            ms->mediaplayer()->setSoftwareDecodingForced(disable_hw_decoding);
             ms->setPath(path);
             s = ms;
         }
@@ -451,7 +460,7 @@ Source * Mixer::createSourceClone(const std::string &namesource, bool copy_attri
 void Mixer::addSource(Source *s)
 {
     if (s != nullptr)
-        candidate_sources_.push_back(s);
+        candidate_sources_.push_back( std::make_pair(s, nullptr) );
 }
 
 void delayed_notification( Source *source )
@@ -546,14 +555,11 @@ void Mixer::replaceSource(Source *previous, Source *s)
     s->setImageProcessingEnabled( previous->imageProcessingEnabled() );
     s->blendingShader()->blending = previous->blendingShader()->blending;
 
-    // delete previous source
-    session_->deleteSource(previous);
-
     // rename s
     renameSource(s, previous_name);
 
-    // add source s
-    candidate_sources_.push_back(s);
+    // add source 's' and remove source 'previous'
+    candidate_sources_.push_back( std::make_pair(s, previous) );
 }
 
 
