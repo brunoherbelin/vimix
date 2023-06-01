@@ -4401,7 +4401,7 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - buttons_height_ );
             // speed slider
             float speed = static_cast<float>(mediaplayer_active_->playSpeed());
-            if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, UNICODE_MULTIPLY " %.2f", 2.f))
+            if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, UNICODE_MULTIPLY " %.2f"))
                 mediaplayer_active_->setPlaySpeed( static_cast<double>(speed) );
             // store action on mouse release
             if (ImGui::IsItemDeactivatedAfterEdit()){

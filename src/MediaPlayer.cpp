@@ -1130,6 +1130,10 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
 
 void MediaPlayer::setPlaySpeed(double s)
 {
+#if GST_VERSION_MINOR > 17 && GST_VERSION_MAJOR > 0
+    bool change_direction =  s * rate_ < 0.0;
+#endif
+
     if (media_.isimage)
         return;
 
@@ -1139,8 +1143,31 @@ void MediaPlayer::setPlaySpeed(double s)
     if (ABS(rate_) < MIN_PLAY_SPEED)
         rate_ = SIGN(rate_) * MIN_PLAY_SPEED;
 
-    // apply with seek
+    // Apply with gstreamer seek
+    //
+    //  GST_SEEK_FLAG_INSTANT_RATE_CHANGE: Signals that a rate change should be
+    //  applied immediately. Only valid if start/stop position
+    //  are GST_CLOCK_TIME_NONE, the playback direction does not change
+    //  and the seek is not flushing. (Since: 1.18)
+#if GST_VERSION_MINOR > 17 && GST_VERSION_MAJOR > 0
+    // if all conditions to use GST_SEEK_FLAG_INSTANT_RATE_CHANGE are met
+    if ( pipeline_ != nullptr && media_.seekable && !change_direction ) {
+
+        GstEvent *seek_event = gst_event_new_seek (rate_, GST_FORMAT_TIME, GST_SEEK_FLAG_INSTANT_RATE_CHANGE,
+            GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0);
+
+        if (seek_event && !gst_element_send_event(pipeline_, seek_event) )
+            Log::Warning("MediaPlayer %s setPlaySpeed failed", std::to_string(id_).c_str());
+        else
+            seeking_ = true;
+    }
+    // Generic way is following the example from
+    // https://gstreamer.freedesktop.org/documentation/tutorials/basic/playback-speed.html
+    else
+        execute_seek_command();
+#else
     execute_seek_command();
+#endif
 }
 
 double MediaPlayer::playSpeed() const
