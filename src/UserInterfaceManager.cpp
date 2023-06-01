@@ -245,6 +245,8 @@ void UserInterface::handleKeyboard()
     ctrl_modifier_active = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
     keyboard_available = !io.WantCaptureKeyboard;
 
+    show_output_fullview = ImGui::IsKeyDown( GLFW_KEY_F6 ) && !ImGui::IsPopupOpen("Warning");
+
     if (io.WantCaptureKeyboard || io.WantTextInput) {
         // only react to ESC key when keyboard is captured
         if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false )) {
@@ -252,8 +254,6 @@ void UserInterface::handleKeyboard()
         }
         return;
     }
-
-    show_output_fullview = ImGui::IsKeyDown( GLFW_KEY_F6 );
 
     // Application "CTRL +"" Shortcuts
     if ( ctrl_modifier_active ) {
@@ -1208,7 +1208,7 @@ void UserInterface::RenderOutputView()
     }
 
     if (ImGui::BeginPopupModal("##OUTPUTVIEW", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
-                               ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground)) {
+                               ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNav)) {
 
         FrameBuffer *output = Mixer::manager().session()->frame();
         if (output)
