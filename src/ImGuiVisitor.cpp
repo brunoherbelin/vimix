@@ -666,8 +666,9 @@ void ImGuiVisitor::visit (Source& s)
 
 void ImGuiVisitor::visit (MediaSource& s)
 {
-    ImVec2 top = ImGui::GetCursorPos();
-    top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+    ImVec2 _top = ImGui::GetCursorPos();
+    _top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+    ImVec2 top = _top;
 
     // Media info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
@@ -693,6 +694,16 @@ void ImGuiVisitor::visit (MediaSource& s)
         ImGui::SetCursorPos(top);
         if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
+
+        // Icon to inform hardware decoding
+        std::string decoder = s.mediaplayer()->decoderName();
+        if ( decoder.compare("software") != 0) {
+            top = _top;
+            top.y += ImGui::GetFrameHeight();
+            ImGui::SetCursorPos(top);
+            decoder = "Using hardware decoder\n" + decoder;
+            ImGuiToolkit::Indication(decoder.c_str(), ICON_FA_MICROCHIP);
+        }
 
         ImGui::SetCursorPos(botom);
     }
