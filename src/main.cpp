@@ -61,6 +61,15 @@ int main(int argc, char *argv[])
 {
     std::string _openfile;
 
+    ///
+    /// Settings
+    ///
+    Settings::Load();
+    Settings::application.executable = std::string(argv[0]);
+
+    /// lock to inform an instance is running
+    Settings::Lock();
+
     // one extra argument is given
     if (argc == 2) {
         std::string argument(argv[1]);
@@ -72,10 +81,14 @@ int main(int argc, char *argv[])
                 return 0;
             }
             else if (argument == "--version" || argument == "-V") {
+#ifdef VIMIX_GIT
+                fprintf(stderr, APP_NAME " " VIMIX_GIT " \n");
+#else
 #ifdef VIMIX_VERSION_MAJOR
                 fprintf(stderr, "%s: version %d.%d.%d\n", APP_NAME, VIMIX_VERSION_MAJOR, VIMIX_VERSION_MINOR, VIMIX_VERSION_PATCH);
 #else
                 fprintf(stderr, "%s\n", APP_NAME);
+#endif
 #endif
                 return 0;
             }
@@ -97,18 +110,11 @@ int main(int argc, char *argv[])
         else {
             // try to open the file
             _openfile = argument;
+            Settings::application.fresh_start = false;
             fprintf(stderr, "Loading %s %s\n", argv[0], _openfile.c_str());
         }
     }
 
-    ///
-    /// Settings
-    ///
-    Settings::Load();
-    Settings::application.executable = std::string(argv[0]);
-
-    /// lock to inform an instance is running
-    Settings::Lock();
 
     ///
     /// CONNECTION INIT
