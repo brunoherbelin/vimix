@@ -585,18 +585,13 @@ bool MediaPlayer::isImage() const
 
 std::string MediaPlayer::decoderName()
 {
-    if (pipeline_) {
-        if (force_software_decoding_) {
-            decoder_name_ = "software";
-        }
-        // decoder_name_ not initialized
-        else if (decoder_name_.empty()) {
-            // try to know if it is a hardware decoder
+    if (decoder_name_.empty()) {
+        // try to know if it is a hardware decoder
+        if (pipeline_)
             decoder_name_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
-            // nope, then it is a sofware decoder
-            if (decoder_name_.empty())
-                decoder_name_ = "software";
-        }
+        // nope, then it is a sofware decoder
+        if (decoder_name_.empty())
+            decoder_name_ = "software";
     }
 
     return decoder_name_;
@@ -876,7 +871,8 @@ void MediaPlayer::init_texture(guint index)
         pbo_index_ = 0;
         pbo_next_index_ = 1;
 
-        // initialize decoderName once
+        // initialize decoderName once (forced update)
+        decoder_name_ = "";
         Log::Info("MediaPlayer %s Uses %s decoding and OpenGL PBO texturing.", std::to_string(id_).c_str(), decoderName().c_str());
     }
 

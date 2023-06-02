@@ -701,7 +701,7 @@ void ImGuiVisitor::visit (MediaSource& s)
             top = _top;
             top.y += ImGui::GetFrameHeight();
             ImGui::SetCursorPos(top);
-            decoder = "Using hardware decoder\n" + decoder;
+            decoder = "Hardware decoder\n" + decoder;
             ImGuiToolkit::Indication(decoder.c_str(), ICON_FA_MICROCHIP);
         }
 
