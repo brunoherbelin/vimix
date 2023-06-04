@@ -1025,7 +1025,9 @@ void Control::receiveStreamAttribute(const std::string &attribute,
                 // remove prevous identical stream
                 Streaming::manager().removeStream(sender, port);
                 // add the requested stream to manager
-                Streaming::manager().addStream(sender, port, label == nullptr ? sender : label);
+                std::string clientname = label == nullptr ? sender.substr(0, sender.find_last_of(":")) : label;
+                clientname += " [" + std::to_string(port) + "]";
+                Streaming::manager().addStream(sender, port, clientname);
             }
             // Stream disconnection request /vimix/stream/disconnect
             else if ( attribute.compare(OSC_STREAM_DISCONNECT) == 0 ) {
