@@ -178,8 +178,14 @@ static void OutputWindowEvent( GLFWwindow *w, int button, int action, int)
 
 static void WindowCloseCallback( GLFWwindow* w )
 {
-    if (!UserInterface::manager().TryClose())
-        glfwSetWindowShouldClose(w, GLFW_FALSE);
+    if (Rendering::manager().mainWindow().window() == w) {
+        if (!UserInterface::manager().TryClose())
+            glfwSetWindowShouldClose(w, GLFW_FALSE);
+    }
+    else {
+        Mixer::manager().setView(View::DISPLAYS);
+        Rendering::manager().mainWindow().show();
+    }
 }
 
 void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
@@ -950,6 +956,7 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     //
     // all windows capture keys
     glfwSetKeyCallback( window_, Control::keyboardCalback);
+    glfwSetWindowCloseCallback( window_, WindowCloseCallback );
 
     if (master_ != NULL) {
         // additional window callbacks for user input in output windows
@@ -957,7 +964,6 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     }
     else {
         // additional window callbacks for main window
-        glfwSetWindowCloseCallback( window_, WindowCloseCallback );
         glfwSetDropCallback( window_, Rendering::FileDropped);
     }
 
