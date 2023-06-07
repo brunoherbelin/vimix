@@ -60,8 +60,12 @@ if(UNIX)
         # the RPATH to be used when installing
         set(CMAKE_SKIP_RPATH TRUE)
         set(OpenGL_DIR /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/)
-        set(CMAKE_OSX_ARCHITECTURES "x86_64")
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14")
+
+#        set(CMAKE_OSX_ARCHITECTURES "x86_64")
+#        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
+
+        set(CMAKE_OSX_ARCHITECTURES "arm64")
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "12")
 
         # CPACK
         set(CPACK_SYSTEM_NAME  "OSX_${CMAKE_OSX_DEPLOYMENT_TARGET}_${CMAKE_OSX_ARCHITECTURES}")
@@ -70,7 +74,7 @@ if(UNIX)
         set(APPLE_CODESIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/osx/entitlements.plist")
 
         # find icu4c in OSX (pretty well hidden...)
-        set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/opt/icu4c/lib/pkgconfig")
+        set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/opt/icu4c/lib/pkgconfig:/opt/homebrew/opt/icu4c/lib/pkgconfig")
 
     else()
         add_definitions(-DLINUX)

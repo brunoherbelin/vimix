@@ -1014,7 +1014,7 @@ void Control::receiveStreamAttribute(const std::string &attribute,
         if (Streaming::manager().enabled()) {
             // Stream request /vimix/stream/request
             if ( attribute.compare(OSC_STREAM_REQUEST) == 0 ) {
-                int port = 0;
+                osc::int32 port = 0;
                 const char *label = nullptr;
                 // read arguments, port is mandatory, label optionnal
                 arguments >> port;
@@ -1023,11 +1023,11 @@ void Control::receiveStreamAttribute(const std::string &attribute,
                 else
                     arguments >> label >> osc::EndMessage;
                 // remove prevous identical stream
-                Streaming::manager().removeStream(sender, port);
+                Streaming::manager().removeStream(sender, (int) port);
                 // add the requested stream to manager
                 std::string clientname = label == nullptr ? sender.substr(0, sender.find_last_of(":")) : label;
                 clientname += " [" + std::to_string(port) + "]";
-                Streaming::manager().addStream(sender, port, clientname);
+                Streaming::manager().addStream(sender, (int) port, clientname);
             }
             // Stream disconnection request /vimix/stream/disconnect
             else if ( attribute.compare(OSC_STREAM_DISCONNECT) == 0 ) {
@@ -1037,10 +1037,10 @@ void Control::receiveStreamAttribute(const std::string &attribute,
                 // Port is given: remove stream from that sender at given port
                 try {
                     osc::ReceivedMessageArgumentStream arg = arguments;
-                    int port = 0;
+                    osc::int32 port = 0;
                     arg >> port;
                     // no exception, remove that port
-                    removed = Streaming::manager().removeStream(sender, port);
+                    removed = Streaming::manager().removeStream(sender, (int) port);
                     // silently ignore any other argument
                 }
                 catch (osc::WrongArgumentTypeException &) {
