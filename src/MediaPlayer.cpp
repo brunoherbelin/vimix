@@ -358,7 +358,7 @@ void MediaPlayer::execute_open()
     }
 
     // setup software decode
-    if (force_software_decoding_) {
+    if (force_software_decoding_ || media_.isimage) {
         g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "decoder")), "force-sw-decoders", true,  NULL);
     }
 
