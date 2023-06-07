@@ -182,7 +182,7 @@ static void WindowCloseCallback( GLFWwindow* w )
         if (!UserInterface::manager().TryClose())
             glfwSetWindowShouldClose(w, GLFW_FALSE);
     }
-    else {
+    else if (!glfwWindowShouldClose(w)) {
         Mixer::manager().setView(View::DISPLAYS);
         Rendering::manager().mainWindow().show();
     }
@@ -425,7 +425,7 @@ void Rendering::show()
 
 bool Rendering::isActive()
 {
-    return !glfwWindowShouldClose(main_.window());
+    return ( main_.window() != NULL && !glfwWindowShouldClose(main_.window()) );
 }
 
 void Rendering::pushBackDrawCallback(RenderingCallback function)
