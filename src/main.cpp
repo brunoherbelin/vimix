@@ -61,15 +61,6 @@ int main(int argc, char *argv[])
 {
     std::string _openfile;
 
-    ///
-    /// Settings
-    ///
-    Settings::Load();
-    Settings::application.executable = std::string(argv[0]);
-
-    /// lock to inform an instance is running
-    Settings::Lock();
-
     // one extra argument is given
     if (argc == 2) {
         std::string argument(argv[1]);
@@ -110,11 +101,22 @@ int main(int argc, char *argv[])
         else {
             // try to open the file
             _openfile = argument;
-            Settings::application.fresh_start = false;
-            fprintf(stderr, "Loading %s %s\n", argv[0], _openfile.c_str());
         }
     }
 
+    ///
+    /// Settings
+    ///
+    Settings::Load();
+    Settings::application.executable = std::string(argv[0]);
+
+    /// lock to inform an instance is running
+    Settings::Lock();
+
+    if (!_openfile.empty()) {
+        Settings::application.fresh_start = false;
+        fprintf(stderr, "Loading %s\n", _openfile.c_str());
+    }
 
     ///
     /// CONNECTION INIT
