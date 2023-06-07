@@ -666,9 +666,8 @@ void ImGuiVisitor::visit (Source& s)
 
 void ImGuiVisitor::visit (MediaSource& s)
 {
-    ImVec2 _top = ImGui::GetCursorPos();
-    _top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
-    ImVec2 top = _top;
+    ImVec2 top = ImGui::GetCursorPos();
+    top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
     // Media info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
@@ -685,6 +684,15 @@ void ImGuiVisitor::visit (MediaSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
+            std::string decoder = s.mediaplayer()->decoderName();
+            if ( decoder.compare("software") != 0) {
+                decoder = "Hardware decoder\n" + decoder;
+                ImGuiToolkit::Indication(decoder.c_str(), 13, 2);
+            }
+            else
+                ImGuiToolkit::Indication("Software decoder", 14, 2);
+            top.x += ImGui::GetFrameHeight();
+            ImGui::SetCursorPos(top);
             std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
             if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
@@ -694,16 +702,6 @@ void ImGuiVisitor::visit (MediaSource& s)
         ImGui::SetCursorPos(top);
         if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
-
-        // Icon to inform hardware decoding
-        std::string decoder = s.mediaplayer()->decoderName();
-        if ( decoder.compare("software") != 0) {
-            top = _top;
-            top.y += ImGui::GetFrameHeight();
-            ImGui::SetCursorPos(top);
-            decoder = "Hardware decoder\n" + decoder;
-            ImGuiToolkit::Indication(decoder.c_str(), ICON_FA_MICROCHIP);
-        }
 
         ImGui::SetCursorPos(botom);
     }
