@@ -2829,7 +2829,7 @@ void SourceController::setVisible(bool on)
         if (!on)  return;
     }
 
-    if (Settings::application.widget.media_player && Settings::application.widget.media_player_view != Settings::application.current_view) {
+    if (Settings::application.widget.media_player_view > 0 && Settings::application.widget.media_player_view != Settings::application.current_view) {
         Settings::application.widget.media_player_view = -1;
         on = true;
     }
@@ -4635,7 +4635,7 @@ void OutputPreview::setVisible(bool on)
         if (!on)  return;
     }
 
-    if (Settings::application.widget.preview && Settings::application.widget.preview_view != Settings::application.current_view) {
+    if (Settings::application.widget.preview_view > 0 && Settings::application.widget.preview_view != Settings::application.current_view) {
         Settings::application.widget.preview_view = -1;
         on = true;
     }
@@ -5232,7 +5232,7 @@ void TimerMetronome::setVisible(bool on)
         if (!on)  return;
     }
 
-    if (Settings::application.widget.timer && Settings::application.widget.timer_view != Settings::application.current_view){
+    if (Settings::application.widget.timer_view > 0 && Settings::application.widget.timer_view != Settings::application.current_view){
         Settings::application.widget.timer_view = -1;
         on = true;
     }
@@ -5526,7 +5526,7 @@ void InputMappingInterface::setVisible(bool on)
         if (!on)  return;
     }
 
-    if (Settings::application.widget.inputs && Settings::application.widget.inputs_view != Settings::application.current_view) {
+    if (Settings::application.widget.inputs_view > 0 && Settings::application.widget.inputs_view != Settings::application.current_view) {
         Settings::application.widget.inputs_view = -1;
         on = true;
     }
