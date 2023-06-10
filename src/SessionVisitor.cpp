@@ -582,7 +582,7 @@ void SessionVisitor::visit (Source& s)
     sourceNode->SetAttribute("play", s.playing() );
 
     // insert into hierarchy
-    xmlCurrent_->InsertFirstChild(sourceNode);
+    xmlCurrent_->InsertEndChild(sourceNode);
 
     xmlCurrent_ = xmlDoc_->NewElement( "Mixing" );
     sourceNode->InsertEndChild(xmlCurrent_);

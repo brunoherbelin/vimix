@@ -387,25 +387,26 @@ void SessionLoader::load(XMLElement *sessionNode)
         sessionNode->QueryFloatAttribute("activationThreshold", &t);
         session_->setActivationThreshold(t);
 
-
         std::list<XMLElement*> cloneNodesToAdd;
-        std::list<uint64_t> possible_xml_ids;
+        std::map<int, uint64_t> loaded_xml_ids;
 
         //
         // source lists
         //
         XMLElement* sourceNode = sessionNode->FirstChildElement("Source");
-        for( ; sourceNode ; sourceNode = sourceNode->NextSiblingElement())
+        for(int i = 0 ; sourceNode ; sourceNode = sourceNode->NextSiblingElement("Source"), ++i)
         {
             xmlCurrent_ = sourceNode;
 
             // source to load
             Source *load_source = nullptr;
 
-            // check if a source with the given id exists in the session
+            // read the xml id of this source element, and store it in ordered list
             uint64_t id_xml_ = 0;
             xmlCurrent_->QueryUnsigned64Attribute("id", &id_xml_);
-            possible_xml_ids.push_front(id_xml_);
+            loaded_xml_ids[i] = id_xml_;
+
+            // check if a source with the given id exists in the session
             SourceList::iterator sit = session_->find(id_xml_);
 
             // no source with this id exists
@@ -521,8 +522,13 @@ void SessionLoader::load(XMLElement *sessionNode)
                     }
                     // origin not found, retry later
                     else {
-                        // sanity check: only retry later if the id is possible.
-                        if ( std::find(possible_xml_ids.begin(), possible_xml_ids.end(),id_origin_) != possible_xml_ids.end() )
+                        // sanity check: does the given id even exists in the loaded list?
+                        auto id_found = std::find_if(
+                                  loaded_xml_ids.begin(),
+                                  loaded_xml_ids.end(),
+                                  [id_origin_](const auto& mo) {return mo.second == id_origin_; });
+                        // keep trying to insert the clone only if the id exists
+                        if(id_found != loaded_xml_ids.end())
                             cloneNodesToAdd.push_back(xmlCurrent_);
                     }
                 }
@@ -535,6 +541,12 @@ void SessionLoader::load(XMLElement *sessionNode)
         std::list< SourceList > groups = getMixingGroups();
         for (auto group_it = groups.begin(); group_it != groups.end(); ++group_it)
              session_->link( *group_it );
+
+        //
+        // reorder according to index order as originally loaded
+        //
+        for ( auto id = loaded_xml_ids.begin(); id != loaded_xml_ids.end(); ++id)
+            session_->move( session_->index( session_->find( id->second)), id->first );
 
     }
 }
