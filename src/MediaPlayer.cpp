@@ -310,19 +310,11 @@ void MediaPlayer::execute_open()
     if (media_.interlaced)
         description += "deinterlace method=2 ! ";
 
+    // effect
+    description += "videoconvert name=prev ! identity name=effect ! ";
+
     // video convertion algorithm (should only do colorspace conversion, no scaling)
-    // chroma-resampler:
-    //      Duplicates the samples when upsampling and drops when downsampling 0
-    //      Uses linear interpolation 1 (default)
-    //      Uses cubic interpolation 2
-    //      Uses sinc interpolation 3
-    //  dither:
-    //      no dithering 0
-    //      propagate rounding errors downwards 1
-    //      Dither with floyd-steinberg error diffusion 2
-    //      Dither with Sierra Lite error diffusion 3
-    //      ordered dither using a bayer pattern 4 (default)
-    description += "videoconvert chroma-resampler=1 dither=0 ! "; // fast
+    description += "videoconvert name=post ! "; // fast
 
     // hack to compensate for lack of PTS in gif animations
     if (media_.codec_name.compare("image/gst-libav-gif") == 0){
@@ -433,6 +425,84 @@ void MediaPlayer::execute_open()
 
     // register media player
     MediaPlayer::registered_.push_back(this);
+}
+
+
+bool MediaPlayer::setEffect(const std::string &pipeline_element)
+{
+    if ( pipeline_ == nullptr )
+        return false;
+
+    // try to create the pipeline element given
+    GError *error = NULL;
+    std::string elem = pipeline_element + " name=effect ";
+    GstElement *el = gst_parse_launch( elem.c_str(), &error);
+    if (error != NULL) {
+        Log::Warning("MediaPlayer %s Error constructing %s:\n%s", std::to_string(id_).c_str(), pipeline_element.c_str(), error->message);
+        g_clear_error (&error);
+        return false;
+    }
+    if (el == NULL) {
+        Log::Warning("MediaPlayer %s Could not parse %s", std::to_string(id_).c_str(), pipeline_element.c_str());
+        return false;
+    }
+
+    // find all GST elements needed
+    GstElement *effect = gst_bin_get_by_name (GST_BIN (pipeline_), "effect");
+    if (!effect) {
+        Log::Warning("MediaPlayer %s Could not find effect", std::to_string(id_).c_str());
+        return false;
+    }
+    GstElement *prev = gst_bin_get_by_name (GST_BIN (pipeline_), "prev");
+    if (!prev) {
+        Log::Warning("MediaPlayer %s Could not find prev", std::to_string(id_).c_str());
+        return false;
+    }
+    GstElement *post = gst_bin_get_by_name (GST_BIN (pipeline_), "post");
+    if (!post) {
+        Log::Warning("MediaPlayer %s Could not find post", std::to_string(id_).c_str());
+        return false;
+    }
+
+    // PAUSE pipeline
+    execute_play_command(false);
+
+    // assume failure
+    bool success = false;
+
+    // remove the previous effect (this deconnects from prev and post)
+    gst_object_ref(effect);
+    if (gst_bin_remove (GST_BIN (pipeline_), effect) ) {
+        // add new element to the pipeline
+        if ( gst_bin_add (GST_BIN (pipeline_), el) ) {
+            // reconnect pipeline
+            if ( gst_element_link_many (prev, el, post, NULL) )
+                // all good !! success !!
+                success = true;
+            else {
+                gst_bin_remove (GST_BIN (pipeline_), el);
+                Log::Warning("MediaPlayer %s Could not re-link effect", std::to_string(id_).c_str());
+            }
+        }
+        else
+            Log::Warning("MediaPlayer %s Could not add new effect", std::to_string(id_).c_str());
+
+        if (success)
+            // can delete effect
+            gst_object_unref(effect);
+        else {
+            // restore effect into the pileline
+            gst_bin_add (GST_BIN (pipeline_), effect);
+            gst_element_link_many (prev, effect, post, NULL);
+        }
+    }
+    else
+        Log::Warning("MediaPlayer %s Could not remove effect", std::to_string(id_).c_str());
+
+    // PLAY pipeline
+    execute_play_command(true);
+
+    return success;
 }
 
 bool MediaPlayer::isOpen() const

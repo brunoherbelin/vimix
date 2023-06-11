@@ -267,6 +267,8 @@ public:
     static MediaInfo UriDiscoverer(const std::string &uri);
     std::string log() const { return media_.log; }
 
+    bool setEffect(const std::string &pipeline_element);
+
 private:
 
     // video player description
