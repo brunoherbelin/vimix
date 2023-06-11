@@ -245,15 +245,9 @@ void UserInterface::handleKeyboard()
     ctrl_modifier_active = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
     keyboard_available = !io.WantCaptureKeyboard;
 
-    show_output_fullview = ImGui::IsKeyDown( GLFW_KEY_F6 ) && !ImGui::IsPopupOpen("Warning");
-
-    if (io.WantCaptureKeyboard || io.WantTextInput) {
-        // only react to ESC key when keyboard is captured
-        if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false )) {
-
-        }
+    // do not capture keys if keyboard is used (e.g. for entering text field)
+    if (io.WantCaptureKeyboard || io.WantTextInput)
         return;
-    }
 
     // Application "CTRL +"" Shortcuts
     if ( ctrl_modifier_active ) {
@@ -404,6 +398,9 @@ void UserInterface::handleKeyboard()
             // restore cleared workspace when releasing ESC after maintain
             WorkspaceWindow::restoreWorkspace();
             esc_repeat_ = false;
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F6,  false )) {
+            show_output_fullview = true;
         }
         // Space bar
         else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false ))
@@ -1201,10 +1198,12 @@ void UserInterface::showSourceEditor(Source *s)
 void UserInterface::RenderOutputView()
 {
     static bool _inspector = false;
+    static bool _sustain = false;
 
-    if (show_output_fullview && !ImGui::IsPopupOpen("##OUTPUTVIEW")) {
+    if ( show_output_fullview && !ImGui::IsPopupOpen("##OUTPUTVIEW")) {
         ImGui::OpenPopup("##OUTPUTVIEW");
         _inspector = false;
+        _sustain = false;
     }
 
     if (ImGui::BeginPopupModal("##OUTPUTVIEW", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
@@ -1228,14 +1227,32 @@ void UserInterface::RenderOutputView()
             ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
             ImGui::PopStyleVar();
 
-            if ( ImGui::IsItemClicked() )
-                _inspector = !_inspector;
+            if ( ImGui::IsMouseClicked(ImGuiMouseButton_Left) ) {
+                // show inspector on mouse clic in
+                if ( ImGui::IsItemHovered()  )
+                    _inspector = !_inspector;
+                // close view on mouse clic outside
+                else if (!_sustain)
+                    show_output_fullview = false;
+            }
+            // draw inspector (magnifying glass)
             if ( _inspector && ImGui::IsItemHovered()  )
                 DrawInspector(output->texture(), imagesize, imagesize, draw_pos);
         }
-        // close on button release
+
+        // local keyboard handler (because focus is captured by modal dialog)
+        if ( ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false ) ||
+             ImGui::IsKeyPressed( GLFW_KEY_F6,  false ) )
+            show_output_fullview = false;
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F6,  true ))
+            _sustain = true;
+        else if (_sustain &&  ImGui::IsKeyReleased( GLFW_KEY_F6 ))
+            show_output_fullview = false;
+
+        // close
         if (!show_output_fullview)
             ImGui::CloseCurrentPopup();
+
         ImGui::EndPopup();
     }
 }
@@ -1406,7 +1423,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
             *p_corner = 1;
         if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom right", NULL, *p_corner == 3))
             *p_corner = 3;
-        if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT " Free position", NULL, *p_corner == -1))
+        if (ImGui::MenuItem( ICON_FA_ARROWS_ALT " Free position", NULL, *p_corner == -1))
             *p_corner = -1;
         if (p_open && ImGui::MenuItem( ICON_FA_TIMES "  Close"))
             *p_open = false;
@@ -1876,7 +1893,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 *p_border = 1;
             if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom", NULL, *p_border == 3))
                 *p_border = 3;
-            if (ImGui::MenuItem( ICON_FA_EXPAND_ARROWS_ALT " Free position", NULL, *p_border == -1))
+            if (ImGui::MenuItem( ICON_FA_ARROWS_ALT " Free position", NULL, *p_border == -1))
                 *p_border = -1;
             if (p_open && ImGui::MenuItem( ICON_FA_TIMES "  Close"))
                 *p_open = false;
@@ -2505,8 +2522,6 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_CHESS_BOARD " Texturing view"); ImGui::NextColumn();
         ImGui::Text("F5"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_TV " Displays view"); ImGui::NextColumn();
-        ImGui::Text("F6"); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_EYE " Output preview"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_FULLSCREEN); ImGui::NextColumn();
@@ -2553,6 +2568,8 @@ void HelperToolbox::Render()
         ImGui::Text(MENU_CAPTUREFRAME " display"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_OUTPUTDISABLE); ImGui::NextColumn();
         ImGui::Text(MENU_OUTPUTDISABLE " display output"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_LARGEPREVIEW); ImGui::NextColumn();
+        ImGui::Text(MENU_LARGEPREVIEW " of output"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_RECORD); ImGui::NextColumn();
         ImGui::Text(MENU_RECORD " Output"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_RECORDCONT); ImGui::NextColumn();
@@ -3170,7 +3187,9 @@ void SourceController::Render()
                     mediaplayer_active_->setSoftwareDecodingForced(true);
                 ImGui::EndMenu();
             }
-            
+            // TODO finalize pipeline editor
+//            if (ImGui::MenuItem(ICON_FA_HAT_WIZARD "  gst pipeline"))
+//                mediaplayer_edit_pipeline_ = true;
 
             ImGui::EndMenu();
         }
@@ -4869,14 +4888,11 @@ void OutputPreview::Render()
 
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
-                // Output window menu
-// TODO Menu options for output windows creation / show ?
-//                if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE "  Show window") )
-//                    Rendering::manager().outputWindow().show();
-
+                // Preview and output menu
+                ImGui::MenuItem( MENU_LARGEPREVIEW, SHORTCUT_LARGEPREVIEW, &UserInterface::manager().show_output_fullview);
                 ImGui::MenuItem( MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE, &Settings::application.render.disabled);
 
-                // output manager menu
+                // Display window manager menu
                 ImGui::Separator();
                 bool pinned = Settings::application.widget.preview_view == Settings::application.current_view;
                 std::string menutext = std::string( ICON_FA_MAP_PIN "    Stick to ") + Settings::application.views[Settings::application.current_view].name + " view";
@@ -7441,7 +7457,7 @@ void Navigator::Render()
 
     // Left bar bottom
     ImGui::SetNextWindowPos( ImVec2(0, sourcelist_height), ImGuiCond_Always );
-    ImGui::SetNextWindowSize( ImVec2(width_, height_ - sourcelist_height), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(width_, height_ - sourcelist_height + 1.f), ImGuiCond_Always );
     ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
     if (ImGui::Begin("##navigatorViews", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollWithMouse))
@@ -9042,10 +9058,13 @@ void Navigator::RenderMainPannelVimix()
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight() - IMGUI_SAME_LINE);
     static uint counter_menu_timeout = 0;
+    const ImVec4* colors = ImGui::GetStyle().Colors;
+    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsPopupOpen("MenuToolboxWindows") ? colors[ImGuiCol_DragDropTarget] : colors[ImGuiCol_Text] );
     if ( ImGuiToolkit::IconButton( " " ICON_FA_ELLIPSIS_V " " ) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) ) {
         counter_menu_timeout=0;
         ImGui::OpenPopup( "MenuToolboxWindows" );
     }
+    ImGui::PopStyleColor(1);
 
     ImGui::PopFont();
 
@@ -9130,7 +9149,7 @@ void Navigator::RenderMainPannelSettings()
             char buf[512]; sprintf(buf, "Buffer at %s can contain %ld frames (%dx%d), i.e. %.1f sec", VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode],
                                    (unsigned long)nb, output->width(), output->height(),
                                    (float)nb / (float) VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode] );
-            ImGuiToolkit::Indication(buf, ICON_FA_ELLIPSIS_H);
+            ImGuiToolkit::Indication(buf, 4, 6);
             ImGui::SameLine(0);
         }
 
