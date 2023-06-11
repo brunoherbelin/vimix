@@ -381,9 +381,9 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12, false )) {
             Settings::application.render.disabled = !Settings::application.render.disabled;
         }
-        // button home to toggle menu
+        // button home to toggle panel
         else if (ImGui::IsKeyPressed( GLFW_KEY_HOME, false ))
-            navigator.togglePannelMenu();
+            navigator.togglePannelAutoHide();
         // button home to toggle menu
         else if (ImGui::IsKeyPressed( GLFW_KEY_INSERT, false ))
             navigator.togglePannelNew();
@@ -2488,7 +2488,7 @@ void HelperToolbox::Render()
         ImGui::SetColumnWidth(0, width_column0);
 
         ImGui::Text("HOME"); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_BARS " Main menu"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_BARS " Toggle left panel"); ImGui::NextColumn();
         ImGui::Text("INS"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_PLUS " New source"); ImGui::NextColumn();
         ImGui::Text("DEL"); ImGui::NextColumn();
@@ -2523,7 +2523,7 @@ void HelperToolbox::Render()
         ImGui::Text(SHORTCUT_SHADEREDITOR); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CODE " " TOOLTIP_SHADEREDITOR "window"); ImGui::NextColumn();
         ImGui::Text("ESC"); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_TOGGLE_OFF " Hide / " ICON_FA_TOGGLE_ON " Show windows"); ImGui::NextColumn();
+        ImGui::Text(" Hide / Show all windows"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_NEW_FILE); ImGui::NextColumn();
         ImGui::Text(MENU_NEW_FILE " session"); ImGui::NextColumn();
@@ -2799,7 +2799,7 @@ SourceController::SourceController() : WorkspaceWindow("SourceController"),
     play_toggle_request_(false), replay_request_(false), pending_(false),
     active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
-    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f),
+    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f),
     magnifying_glass(false)
 {
     info_.setExtendedStringMode();
@@ -3148,6 +3148,7 @@ void SourceController::Render()
                 ImGui::EndMenu();
             }
 
+            ImGui::Separator();
             if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "   Deactivation"))
             {
                 bool option = !mediaplayer_active_->rewindOnDisabled();
@@ -3159,7 +3160,6 @@ void SourceController::Render()
                 ImGui::EndMenu();
             }
             // always allow for hardware decoding to be disabled
-            ImGui::Separator();
             if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
             {
                 bool hwdec = !mediaplayer_active_->softwareDecodingForced();
@@ -4532,6 +4532,78 @@ void SourceController::RenderMediaPlayer(MediaSource *ms)
             }
             tl->smoothFading( 2 );
             Action::manager().store(oss.str());
+        }
+        ImGui::PopStyleColor(1);
+
+        if (close)
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
+
+    if (mediaplayer_edit_pipeline_) {
+        ImGui::OpenPopup("Edit gstreamer pipeline");
+        mediaplayer_edit_pipeline_ = false;
+    }
+    const ImVec2 mpp_dialog_size(buttons_width_ * 3.f, buttons_height_ * 6);
+    ImGui::SetNextWindowSize(mpp_dialog_size, ImGuiCond_Always);
+    const ImVec2 mpp_dialog_pos = top + rendersize * 0.5f  - mpp_dialog_size * 0.5f;
+    ImGui::SetNextWindowPos(mpp_dialog_pos, ImGuiCond_Always);
+    if (ImGui::BeginPopupModal("Edit gstreamer pipeline", NULL, ImGuiWindowFlags_NoResize))
+    {
+        bool update_new_source = false;
+        const ImVec2 pos = ImGui::GetCursorPos();
+        const ImVec2 area = ImGui::GetContentRegionAvail();
+
+        static std::vector< std::pair< std::string, std::string> > _examples = { {"Primary color", "frei0r-filter-primaries" },
+                                                                                 {"Histogram", "frei0r-filter-rgb-parade"},
+                                                                                 {"Emboss", "frei0r-filter-emboss"},
+                                                                                 {"B&W", "frei0r-filter-bw0r"},
+                                                                                 {"Gamma", "frei0r-filter-gamma gamma=0.5"},
+                                                                                 {"Broken tv", "frei0r-filter-nosync0r "}
+                                                                               };
+        static std::string _description = _examples[0].second;
+        static ImVec2 fieldsize(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 100);
+        static int numlines = 0;
+        const ImGuiContext& g = *GImGui;
+        fieldsize.y = MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y;
+
+        ImGui::Spacing();
+        ImGui::Text("Enter pipeline element and apply:");
+        ImGui::Spacing();
+
+        // Editor
+        if ( ImGuiToolkit::InputCodeMultiline("Filter", &_description, fieldsize, &numlines) )
+            update_new_source = true;
+
+        // Local menu for list of examples
+        ImVec2 pos_bot = ImGui::GetCursorPos();
+        ImGui::SetCursorPos( pos_bot + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -ImGui::GetFrameHeightWithSpacing()));
+        if (ImGui::BeginCombo("##Examples", "Examples", ImGuiComboFlags_NoPreview))  {
+            ImGui::TextDisabled("Gstreamer examples");
+            ImGui::Separator();
+            for (auto it = _examples.begin(); it != _examples.end(); ++it) {
+                if (ImGui::Selectable( it->first.c_str() ) ) {
+                    _description = it->second;
+                    update_new_source = true;
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+
+        bool close = false;
+        ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
+        if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(area.x * 0.3f, 0)))
+            close = true;
+        ImGui::SetCursorPos(pos + ImVec2(area.x * 0.7f, area.y - buttons_height_));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+        if (ImGui::Button(ICON_FA_CHECK "  Apply", ImVec2(area.x * 0.3f, 0))
+                || ImGui::IsKeyPressed(GLFW_KEY_ENTER)  || ImGui::IsKeyPressed(GLFW_KEY_KP_ENTER) ) {
+            close = true;
+
+            // apply to pipeline
+            mediaplayer_active_->setEffect(_description);
         }
         ImGui::PopStyleColor(1);
 
@@ -7119,6 +7191,7 @@ Navigator::Navigator()
     // clean start
     show_config_ = false;
     pannel_visible_ = false;
+    pannel_alpha_ = 0.85f;
     view_pannel_visible = false;
     clearButtonSelection();
 
@@ -7172,7 +7245,7 @@ void Navigator::clearButtonSelection()
 void Navigator::showPannelSource(int index)
 {
     // invalid index given
-    if ( index < 0)
+    if ( index < 0 )
         hidePannel();
     else {
         selected_button[index] = true;
@@ -7200,11 +7273,38 @@ void Navigator::togglePannelNew()
     new_media_mode_changed = true;
 }
 
+void Navigator::togglePannelAutoHide()
+{
+    // toggle variable
+    Settings::application.pannel_always_visible = !Settings::application.pannel_always_visible;
+    // initiate change
+    if (Settings::application.pannel_always_visible) {
+        int current = Mixer::manager().indexCurrentSource();
+        if ( current < 0 ) {
+            if (!selected_button[NAV_MENU] && !selected_button[NAV_TRANS] && !selected_button[NAV_NEW] )
+                showPannelSource(NAV_MENU);
+        }
+        else
+            showPannelSource( current );
+    }
+    else
+        hidePannel();
+}
+
+bool Navigator::pannelVisible()
+{
+    return pannel_visible_;
+}
+
 void Navigator::hidePannel()
 {
-    clearButtonSelection();
-    pannel_visible_ = false;
-    view_pannel_visible = false;    
+    if ( Settings::application.pannel_always_visible )
+        showPannelSource(NAV_MENU);
+    else if ( pannel_visible_) {
+        clearButtonSelection();
+        pannel_visible_ = false;
+    }
+    view_pannel_visible = false;
     show_config_ = false;
 }
 
@@ -7388,16 +7488,18 @@ void Navigator::Render()
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SetCursorPos(pos + ImVec2(0.f, style.WindowPadding.y));
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+        // icon for Fullscreen
         if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
             Rendering::manager().mainWindow().toggleFullscreen();
         if (ImGui::IsItemHovered())
             tooltip = {TOOLTIP_FULLSCREEN, SHORTCUT_FULLSCREEN};
 
+        // icon for toggle always visible / auto hide pannel
         ImGui::SetCursorPos(pos + ImVec2(width_ * 0.5f, style.WindowPadding.y));
-        if ( ImGuiToolkit::IconButton( WorkspaceWindow::clear() ? ICON_FA_TOGGLE_OFF : ICON_FA_TOGGLE_ON ) )
-            WorkspaceWindow::toggleClearRestoreWorkspace();
+        if ( ImGuiToolkit::IconButton( Settings::application.pannel_always_visible ? ICON_FA_TOGGLE_ON : ICON_FA_TOGGLE_OFF ) )
+            togglePannelAutoHide();
         if (ImGui::IsItemHovered())
-            tooltip = { WorkspaceWindow::clear() ? TOOLTIP_SHOW : TOOLTIP_HIDE, SHORTCUT_HIDE};
+            tooltip = { Settings::application.pannel_always_visible ? TOOLTIP_PANEL_VISIBLE : TOOLTIP_PANEL_AUTO, SHORTCUT_PANEL_MODE };
 
         ImGui::PopFont();
 
@@ -7415,13 +7517,18 @@ void Navigator::Render()
     else
         _timeout_tooltip = 0;
 
+    // Rendering of special side pannel for view zoom
     if ( view_pannel_visible && !pannel_visible_ )
         RenderViewPannel( ImVec2(width_, sourcelist_height), ImVec2(width_*0.8f, height_ - sourcelist_height) );
 
     ImGui::PopStyleVar();
     ImGui::PopFont();
 
-    if ( pannel_visible_){
+    // Rendering of the side pannel
+    if ( pannel_visible_ || Settings::application.pannel_always_visible ){
+
+        pannel_alpha_ = Settings::application.pannel_always_visible ? 0.95f : 0.85f;
+
         // pannel menu
         if (selected_button[NAV_MENU])
         {
@@ -7492,7 +7599,7 @@ void Navigator::RenderSourcePannel(Source *s)
     // Next window is a side pannel
     ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
     ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
-    ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
+    ImGui::SetNextWindowBgAlpha( pannel_alpha_ ); // Transparent background
     if (ImGui::Begin("##navigatorSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
@@ -7601,10 +7708,13 @@ void Navigator::setNewMedia(MediaCreateMode mode, std::string path)
 
 void Navigator::RenderNewPannel()
 {
+    if (Settings::application.current_view == View::TRANSITION)
+        return;
+
     // Next window is a side pannel
     ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
     ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
-    ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
+    ImGui::SetNextWindowBgAlpha( pannel_alpha_ ); // Transparent background
     if (ImGui::Begin("##navigatorNewSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
@@ -9221,7 +9331,7 @@ void Navigator::RenderTransitionPannel()
     // Next window is a side pannel
     ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
     ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
-    ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
+    ImGui::SetNextWindowBgAlpha( pannel_alpha_ ); // Transparent background
     if (ImGui::Begin("##navigatorTrans", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
@@ -9283,10 +9393,13 @@ void Navigator::RenderTransitionPannel()
 
 void Navigator::RenderMainPannel()
 {
+    if (Settings::application.current_view == View::TRANSITION)
+        return;
+
     // Next window is a side pannel
     ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
     ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
-    ImGui::SetNextWindowBgAlpha(0.85f); // Transparent background
+    ImGui::SetNextWindowBgAlpha( pannel_alpha_ ); // Transparent background
     if (ImGui::Begin("##navigatorMain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // Temporary fix for preventing horizontal scrolling (https://github.com/ocornut/imgui/issues/2915)

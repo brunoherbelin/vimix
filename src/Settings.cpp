@@ -137,6 +137,7 @@ void Settings::Save(uint64_t runtime)
     applicationNode->SetAttribute("show_tooptips", application.show_tooptips);
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
     applicationNode->SetAttribute("pannel_history_mode", application.pannel_current_session_mode);
+    applicationNode->SetAttribute("pannel_always_visible", application.pannel_always_visible);
     applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
     applicationNode->SetAttribute("broadcast_port", application.broadcast_port);
     applicationNode->SetAttribute("loopback_camera", application.loopback_camera);
@@ -413,6 +414,7 @@ void Settings::Load()
         applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
         applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
         applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
+        applicationNode->QueryBoolAttribute("pannel_always_visible", &application.pannel_always_visible);
         applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_current_session_mode);
         applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
         applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);

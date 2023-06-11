@@ -101,6 +101,9 @@
 #define TOOLTIP_HIDE          "Hide windows "
 #define TOOLTIP_SHOW          "Show windows "
 #define SHORTCUT_HIDE         "ESC"
+#define TOOLTIP_PANEL_VISIBLE "Panel always visible "
+#define TOOLTIP_PANEL_AUTO    "Panel auto hide "
+#define SHORTCUT_PANEL_MODE   "HOME"
 
 #define LABEL_AUTO_MEDIA_PLAYER ICON_FA_USER_CIRCLE "  User selection"
 #define LABEL_STORE_SELECTION "  Create batch"
@@ -167,6 +170,7 @@ class Navigator
     // behavior pannel
     bool show_config_;
     bool pannel_visible_;
+    float pannel_alpha_;
     bool view_pannel_visible;
     bool selected_button[NAV_COUNT];
     int  pattern_type;
@@ -199,12 +203,13 @@ public:
     Navigator();
     void Render();
 
-    bool pannelVisible() { return pannel_visible_; }
+    bool pannelVisible();
     void hidePannel();
     void showPannelSource(int index);
     void togglePannelMenu();
     void togglePannelNew();
     void showConfig();
+    void togglePannelAutoHide();
 
     typedef enum {
         MEDIA_RECENT = 0,
@@ -313,6 +318,7 @@ class SourceController : public WorkspaceWindow
     // Render a single media player
     MediaPlayer *mediaplayer_active_;
     bool mediaplayer_edit_fading_;
+    bool mediaplayer_edit_pipeline_;
     bool mediaplayer_mode_;
     bool mediaplayer_slider_pressed_;
     float mediaplayer_timeline_zoom_;
