@@ -823,8 +823,8 @@ void Source::update(float dt)
             // if a mask image was given to be updated
             if (mask_need_update_) {
                 // fill the mask buffer (once)
-                if (maskbuffer_->fill(maskimage_) )
-                    mask_need_update_ = false;
+                maskbuffer_->fill(maskimage_);
+                mask_need_update_ = false;
             }
             // otherwise, render the mask buffer
             else
