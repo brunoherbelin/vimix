@@ -572,17 +572,19 @@ void Source::attach(FrameBuffer *renderbuffer)
 
 void Source::setActive (bool on)
 {
+    // do not disactivate if any clone depends on it
+    for(auto clone = clones_.begin(); clone != clones_.end(); ++clone) {
+        if ( (*clone)->ready() && (*clone)->active() ) {
+            on = true;
+            break;
+        }
+    }
+
     // request update
     need_update_ |= active_ != on;
 
     // activate
     active_ = on;
-
-    // do not disactivate if a clone depends on it
-    for(auto clone = clones_.begin(); clone != clones_.end(); ++clone) {
-        if ( (*clone)->ready() && (*clone)->active() )
-            active_ = true;
-    }
 
     // an inactive source is visible only in the MIXING view
     groups_[View::RENDERING]->visible_ = active_;
