@@ -47,7 +47,8 @@ public:
     enum Modes {
         NONE = 0,
         PAINT = 1,
-        SHAPE = 2
+        SHAPE = 2,
+        SOURCE = 3
     };
     uint mode;
 
@@ -69,8 +70,8 @@ public:
     glm::vec4 cursor;
     glm::vec3 brush;
 
-    static const char* mask_icons[3];
-    static const char* mask_names[3];
+    static const char* mask_icons[4];
+    static const char* mask_names[4];
     static const char* mask_shapes[5];
 };
 

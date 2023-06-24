@@ -38,8 +38,8 @@ std::vector< ShadingProgram > maskPrograms = {
     ShadingProgram("shaders/simple.vs", "shaders/mask_vertical.fs")
 };
 
-const char* MaskShader::mask_icons[3]  = { ICON_FA_SQUARE, ICON_FA_EDIT, ICON_FA_SHAPES };
-const char* MaskShader::mask_names[3]  = { "No mask", "Paint mask", "Shape mask" };
+const char* MaskShader::mask_icons[4]  = { ICON_FA_WINDOW_CLOSE, ICON_FA_EDIT, ICON_FA_SHAPES, ICON_FA_CLONE };
+const char* MaskShader::mask_names[4]  = { "No mask", "Paint mask", "Shape mask", "Source mask" };
 const char* MaskShader::mask_shapes[5] = { "Ellipse", "Oblong", "Rectangle", "Horizontal", "Vertical" };
 
 ImageShader::ImageShader(): Shader(), mask_texture(0), stipple(0.f)
@@ -113,9 +113,9 @@ MaskShader::MaskShader(): Shader(), mode(0)
 void MaskShader::use()
 {
     // select program to use
-    mode = MINI(mode, 2);
-    shape = MINI(shape, 4);
-    program_ = mode < 2 ? &maskPrograms[mode] : &maskPrograms[shape+2] ;
+    mode = MINI(mode, MaskShader::SOURCE);
+    shape = MINI(shape, MaskShader::VERTICAL);
+    program_ = mode > 2 ? &maskPrograms[0] : mode < 2 ? &maskPrograms[mode] : &maskPrograms[shape+2] ;
 
     // actual use of shader program
     Shader::use();

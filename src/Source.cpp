@@ -116,7 +116,7 @@ SourceCore& SourceCore::operator= (SourceCore const& other)
 
 
 Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(nullptr),
-    active_(true), locked_(false), need_update_(true), dt_(16.f), workspace_(STAGE)
+    active_(true), locked_(false), need_update_(SourceUpdate_None), dt_(16.f), workspace_(STAGE)
 {
     // create unique id
     if (id_ == 0)
@@ -318,7 +318,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     activesurface_  = nullptr;
     maskbuffer_     = nullptr;
     maskimage_      = nullptr;
-    mask_need_update_ = false;
+    masksource_     = new SourceLink;
 }
 
 
@@ -342,6 +342,7 @@ Source::~Source()
         delete maskimage_;
     if (masksurface_)
         delete masksurface_; // deletes maskshader_
+    delete masksource_;
 
     delete texturesurface_;
 
@@ -567,7 +568,7 @@ void Source::attach(FrameBuffer *renderbuffer)
         setMode(VISIBLE);
 
     // request update
-    need_update_ = true;
+    need_update_ |= Source::SourceUpdate_Render;
 }
 
 void Source::setActive (bool on)
@@ -581,7 +582,8 @@ void Source::setActive (bool on)
     }
 
     // request update
-    need_update_ |= active_ != on;
+    if (active_ != on)
+        need_update_ |= Source::SourceUpdate_Render;
 
     // activate
     active_ = on;
@@ -705,7 +707,7 @@ void Source::updateCallbacks(float dt)
 
         // call update on callbacks
         callback->update(this, dt);
-        need_update_ = true;
+        need_update_ |= Source::SourceUpdate_Render;
 
         // remove and delete finished callbacks
         if (callback->finished()) {
@@ -742,8 +744,11 @@ void Source::update(float dt)
         updateCallbacks(dt);
 
         // update nodes if needed
-        if (need_update_)
+        if (need_update_ & SourceUpdate_Render)
         {
+            // do not update next frame
+            need_update_ &= ~SourceUpdate_Render;
+
             // ADJUST alpha based on MIXING node
             // read position of the mixing node and interpret this as transparency of render output
             glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
@@ -822,15 +827,40 @@ void Source::update(float dt)
             // 7. switch back to UV coordinate system
             texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * glm::inverse(Sca) * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
 
-            // if a mask image was given to be updated
-            if (mask_need_update_) {
-                // fill the mask buffer (once)
-                maskbuffer_->fill(maskimage_);
-                mask_need_update_ = false;
+            // inform mixing group
+            if (mixinggroup_)
+                mixinggroup_->setAction(MixingGroup::ACTION_UPDATE);
+        }
+
+        if (need_update_ & SourceUpdate_Mask_fill) {
+
+            // do not update Mask fill next frame
+            need_update_ &= ~SourceUpdate_Mask_fill;
+
+            // fill the mask buffer (once)
+            maskbuffer_->fill(maskimage_);
+        }
+
+        if (need_update_ & SourceUpdate_Mask) {
+
+            // do not update Mask next frame
+            need_update_ &= ~SourceUpdate_Mask;
+
+            // MODIFY Mask based on mask shader mode
+            // if MaskShader::SOURCE available, set a source as mask for blending
+            if (maskshader_->mode == MaskShader::SOURCE && masksource_->connected()) {
+                Source *ref_source = masksource_->source();
+                if (ref_source != nullptr) {
+                    if (ref_source->ready())
+                        // set mask texture to mask source
+                        blendingshader_->mask_texture = ref_source->frame()->texture();
+                    else
+                        // retry for when source will be ready
+                        need_update_ |= SourceUpdate_Mask;
+                }
             }
-            // otherwise, render the mask buffer
-            else
-            {
+            // all other MaskShader types to update
+            else {
                 // draw mask in mask frame buffer
                 maskbuffer_->begin(false);
                 // loopback maskbuffer texture for painting
@@ -838,17 +868,9 @@ void Source::update(float dt)
                 // fill surface with mask texture
                 masksurface_->draw(glm::identity<glm::mat4>(), maskbuffer_->projection());
                 maskbuffer_->end();
+                // set mask texture to mask buffer
+                blendingshader_->mask_texture = maskbuffer_->texture();
             }
-
-            // set the rendered mask as mask for blending
-            blendingshader_->mask_texture = maskbuffer_->texture();
-
-            // inform mixing group
-            if (mixinggroup_)
-                mixinggroup_->setAction(MixingGroup::ACTION_UPDATE);
-
-            // do not update next frame
-            need_update_ = false;
         }
 
         if (processingshader_link_.connected() && imageProcessingEnabled()) {
@@ -872,7 +894,7 @@ FrameBuffer *Source::frame() const
         return renderbuffer_;
     }
     else {
-        static FrameBuffer *black = new FrameBuffer(320,180);
+        static FrameBuffer *black = new FrameBuffer(64,64);
         return black;
     }
 }
@@ -885,7 +907,6 @@ bool Source::contains(Node *node) const
     hasNode tester(node);
     return tester(this);
 }
-
 
 void Source::storeMask(FrameBufferImage *img)
 {
@@ -919,14 +940,9 @@ void Source::setMask(FrameBufferImage *img)
         // NB: will be freed when replaced
         storeMask(img);
 
-        // ask Source::update to use it at next update for filling mask buffer
-        mask_need_update_ = true;
-
-        // ask to update the source
-        touch();
+        // ask to update the source mask
+        touch(Source::SourceUpdate_Mask_fill);
     }
-    else
-        mask_need_update_ = false;
 }
 
 bool Source::hasNode::operator()(const Source* elem) const

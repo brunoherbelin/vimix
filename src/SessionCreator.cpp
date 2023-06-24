@@ -1014,7 +1014,12 @@ void SessionLoader::visit (Source& s)
     if (xmlCurrent_)  {
         // read the mask shader attributes
         s.maskShader()->accept(*this);
-        // set the mask from jpeg
+        // set id of source used as mask (if exists)
+        uint64_t id__ = 0;
+        xmlCurrent_->QueryUnsigned64Attribute("source", &id__);
+        s.maskSource()->connect(id__, session_);
+        s.touch(Source::SourceUpdate_Mask);
+        // set the mask from jpeg (if exists)
         s.setMask( SessionLoader::XMLToImage(xmlCurrent_) );
     }
 

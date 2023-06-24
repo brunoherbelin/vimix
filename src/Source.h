@@ -136,11 +136,15 @@ public:
     // every Source has a frame buffer from the renderbuffer
     virtual FrameBuffer *frame () const;
 
-    // a Source has a shader used to render mask
-    inline MaskShader *maskShader () const { return maskshader_; }
-
     // touch to request update
-    inline void touch () { need_update_ = true; }
+    enum UpdateFlags_ {
+        SourceUpdate_None      = 0,
+        SourceUpdate_Render    = 1 << 1,
+        SourceUpdate_Mask      = 1 << 2,
+        SourceUpdate_Mask_fill = 1 << 3
+    };
+    typedef int UpdateFlags;
+    inline void touch (UpdateFlags f = SourceUpdate_Render) { need_update_ |= f; }
 
     // informs if its ready (i.e. initialized)
     inline bool ready () const  { return ready_; }
@@ -197,9 +201,14 @@ public:
     virtual void accept (Visitor& v);
 
     // operations on mask
+    // get shader used to render mask
+    inline MaskShader *maskShader () const { return maskshader_; }
+    // set/get framebuffer used for mask painting
     inline FrameBufferImage *getMask () const { return maskimage_; }
     void setMask (FrameBufferImage *img);
     void storeMask (FrameBufferImage *img = nullptr);
+    // link to source used as mask
+    inline  SourceLink *maskSource() const { return masksource_; }
 
     // get properties
     float depth () const;
@@ -300,8 +309,8 @@ protected:
     MaskShader *maskshader_;
     FrameBuffer *maskbuffer_;
     Surface *masksurface_;
-    bool mask_need_update_;
     FrameBufferImage *maskimage_;
+    SourceLink *masksource_;
 
     // surface to draw on
     Surface *texturesurface_;
@@ -321,7 +330,7 @@ protected:
     // update
     bool  active_;
     bool  locked_;
-    bool  need_update_;
+    UpdateFlags   need_update_;
     float dt_;
     Workspace  workspace_;
 
