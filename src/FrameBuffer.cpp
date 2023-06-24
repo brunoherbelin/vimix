@@ -260,7 +260,7 @@ void FrameBuffer::release()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void FrameBuffer::readPixels(uint8_t *target_data)
+void FrameBuffer::readPixels()
 {
     if (!framebufferid_) {
 #ifdef FRAMEBUFFER_DEBUG
@@ -279,7 +279,7 @@ void FrameBuffer::readPixels(uint8_t *target_data)
     else
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
-    glReadPixels(0, 0, attrib_.viewport.x, attrib_.viewport.y, ((flags_ & FrameBuffer_alpha)? GL_RGBA : GL_RGB), GL_UNSIGNED_BYTE, target_data);
+    glReadPixels(0, 0, attrib_.viewport.x, attrib_.viewport.y, ((flags_ & FrameBuffer_alpha)? GL_RGBA : GL_RGB), GL_UNSIGNED_BYTE, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -449,8 +449,7 @@ FrameBufferImage *FrameBuffer::image(){
     if (!framebufferid_)
         return img;
 
-    // only compatible for RGB FrameBuffers
-    if (flags_ & FrameBuffer_alpha || flags_ & FrameBuffer_multisampling)
+    if (flags_ & FrameBuffer_multisampling)
         return img;
 
     // allocate image
@@ -458,7 +457,16 @@ FrameBufferImage *FrameBuffer::image(){
 
     // get pixels into image
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); // set buffer target readpixel
-    readPixels(img->rgb);
+
+    // read pixels (not multisampling)
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferid_);
+
+    // for reading RGB (even on RGBA)
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+
+    // read RGB (no alpha)
+    glReadPixels(0, 0, attrib_.viewport.x, attrib_.viewport.y, GL_RGB, GL_UNSIGNED_BYTE, img->rgb);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     return img;
 }
