@@ -133,11 +133,15 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     groups_[View::MIXING]->translation_ = glm::vec3(DEFAULT_MIXING_TRANSLATION, 0.f);
 
     frames_[View::MIXING] = new Switch;
-    Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);
+    Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP); // visible
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.85f);
     frames_[View::MIXING]->attach(frame);
-    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);
+    frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);        // selected
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.95f);
+    frames_[View::MIXING]->attach(frame);
+    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);       // current
     frame->translation_.z = 0.01;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     frames_[View::MIXING]->attach(frame);
@@ -174,11 +178,15 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
 
     // default geometry nodes
     frames_[View::GEOMETRY] = new Switch;
-    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE); // visible
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.8f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.85f);
     frames_[View::GEOMETRY]->attach(frame);
-    frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::GLOW);
+    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE); // selected
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.95f);
+    frames_[View::GEOMETRY]->attach(frame);
+    frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::GLOW); // current
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     frames_[View::GEOMETRY]->attach(frame);
@@ -226,11 +234,15 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     groups_[View::LAYER]->translation_.z = -1.f;
 
     frames_[View::LAYER] = new Switch;
-    frame = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);
+    frame = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);  // visible
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.85f);
     frames_[View::LAYER]->attach(frame);
-    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::PERSPECTIVE);
+    frame = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);  // selected
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.95f);
+    frames_[View::LAYER]->attach(frame);
+    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::PERSPECTIVE); // current
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     frames_[View::LAYER]->attach(frame);
@@ -246,11 +258,15 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
 
     // default appearance node
     frames_[View::TEXTURE] = new Switch;
-    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);  // visible
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 0.2f);
+    frames_[View::TEXTURE]->attach(frame);
+    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);  // selected
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 0.7f);
     frames_[View::TEXTURE]->attach(frame);
-    frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE);
+    frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE); // current
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
     frames_[View::TEXTURE]->attach(frame);
@@ -390,13 +406,13 @@ void Source::setMode(Source::Mode m)
             (*g).second->visible_ = true;
     }
 
-    // choose frame 0 if visible, 1 if selected
-    uint index_frame = m == Source::VISIBLE ? 0 : 1;
+    // Switch frame between visible, selected and current modes
+    const uint index_frame = MAX(m, 1) - 1;
     for (auto f = frames_.begin(); f != frames_.end(); ++f)
         (*f).second->setActive(index_frame);
 
-    // show overlay if current
-    bool current = m >= Source::CURRENT;
+    // Switch overlay if current
+    const bool current = m >= Source::CURRENT;
     for (auto o = overlays_.begin(); o != overlays_.end(); ++o)
         (*o).second->visible_ = (current && !locked_);
 
@@ -412,7 +428,7 @@ void Source::setMode(Source::Mode m)
     overlay_mixinggroup_->visible_ = mixinggroup_!= nullptr && !locked_;
     overlay_mixinggroup_->setActive(current);
 
-    // show in appearance view if current
+    // show in texturing view if selected or current
     groups_[View::TEXTURE]->visible_ = m > Source::VISIBLE;
 
     mode_ = m;
