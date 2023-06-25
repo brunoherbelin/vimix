@@ -485,16 +485,6 @@ void TextureView::adjustBackground()
 
 Source *TextureView::getEditOrCurrentSource()
 {
-    // cancel multiple selection
-    if (Mixer::selection().size() > 1) {
-        Source *s = Mixer::manager().currentSource();
-        Mixer::manager().unsetCurrentSource();
-        if ( s == nullptr )
-            s = Mixer::selection().front();
-        Mixer::selection().clear();
-        Mixer::manager().setCurrentSource(s);
-    }
-
     // get current source
     Source *_source = Mixer::manager().currentSource();
 
@@ -503,11 +493,15 @@ Source *TextureView::getEditOrCurrentSource()
         // if something can be selected
         if ( !Mixer::manager().session()->empty()) {
             // return the edit source, if exists
-            if (edit_source_ != nullptr)
+            if (edit_source_ != nullptr) {
                 _source = Mixer::manager().findSource(edit_source_->id());
+                // put the edit source back in the selection
+                Mixer::selection().set(_source);
+            }
         }
     }
 
+    // do not work on a failed source
     if (_source != nullptr && _source->failed() ) {
         _source = nullptr;
     }
