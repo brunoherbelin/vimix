@@ -671,15 +671,15 @@ void UserInterface::handleMouse()
 
     if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) || ImGui::IsMouseReleased(ImGuiMouseButton_Right) )
     {
+        // special case of one single source in area selection : make current after release
+        if (view_drag && picked.first == nullptr && Mixer::selection().size() == 1)
+            Mixer::manager().setCurrentSource( Mixer::selection().front() );
+
         view_drag = nullptr;
         mousedown = false;
         picked = { nullptr, glm::vec2(0.f) };
         Mixer::manager().view()->terminate();
         SetMouseCursor(io.MousePos);
-
-        // special case of one single source in selection : make current after release
-        if (Mixer::selection().size() == 1)
-            Mixer::manager().setCurrentSource( Mixer::selection().front() );
     }
 }
 
@@ -7386,16 +7386,14 @@ void Navigator::Render()
                     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
                 }
 
-                // draw an indicator for current source
-                if ( s->mode() >= Source::SELECTED ){
-                    ImVec2 p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0.5f * sourceiconsize.y);
-                    ImVec2 p2 = ImVec2(p1.x + 2.f, p1.y + 2.f);
+                // draw an indicator for selected sources (a dot) and for the current source (a line)
+                if (s->mode() > Source::VISIBLE) {
+                    // source is SELECTED or CURRENT
+                    const ImVec2 p1 = ImGui::GetCursorScreenPos() +
+                            ImVec2(icon_width, (s->mode() > Source::SELECTED ? 0.f : 0.5f * sourceiconsize.y - 2.5f) );
+                    const ImVec2 p2 = ImVec2(p1.x, p1.y + (s->mode() > Source::SELECTED ? sourceiconsize.y : 5.f) );
                     const ImU32 color = ImGui::GetColorU32(ImGuiCol_Text);
-                    if ((*iter)->mode() == Source::CURRENT)  {
-                        p1 = ImGui::GetCursorScreenPos() + ImVec2(icon_width, 0);
-                        p2 = ImVec2(p1.x + 2.f, p1.y + sourceiconsize.y);
-                    }
-                    draw_list->AddRect(p1, p2, color, 0.0f,  0, 3.f);
+                    draw_list->AddLine(p1, p2, color, 5.f);
                 }
                 // draw select box
                 ImGui::PushID(std::to_string(s->group(View::RENDERING)->id()).c_str());
