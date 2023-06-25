@@ -197,15 +197,13 @@ int  GeometryView::size ()
 
 void GeometryView::draw()
 {
-    // hack to prevent source manipulation (scale and rotate)
-    // when multiple sources are selected: simply do not draw overlay in scene
+    // work on the current source
     Source *s = Mixer::manager().currentSource();
-    if (s != nullptr) {
-        if ( Mixer::selection().size() > 1)   {
-            s->setMode(Source::SELECTED);
-            s = nullptr;
-        }
-    }
+
+    // hack to prevent source manipulation (scale and rotate)
+    // when multiple sources are selected: temporarily change mode to 'selected'
+    if (s != nullptr &&  Mixer::selection().size() > 1)
+        s->setMode(Source::SELECTED);
 
     // Drawing of Geometry view is different as it renders
     // only sources in the current workspace
@@ -241,11 +239,12 @@ void GeometryView::draw()
     DrawVisitor draw_overlays(overlays, projection);
     scene.accept(draw_overlays);
 
-    // 4. Draw control overlays of current source on top (if selectable)
-    if (s!=nullptr && canSelect(s)) {
-        s->setMode(Source::CURRENT);
+    // 4. Draw control overlays of current source on top (if selected)
+    if (s != nullptr) {
         DrawVisitor dv(s->overlays_[mode_], projection);
         scene.accept(dv);
+        // Always restore current source after draw
+        s->setMode(Source::CURRENT);
     }
 
     // 5. Finally, draw overlays of view
@@ -462,7 +461,8 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     }
                 }
                 // not found: the current source was not clicked
-                if (itp == pv.rend()) {
+                // OR the selection contains multiple sources and actions on single source are disabled
+                if (itp == pv.rend() || Mixer::selection().size() > 1) {
                     current = nullptr;
                 }
                 // picking on the menu handle: show context menu
