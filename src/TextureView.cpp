@@ -488,17 +488,17 @@ Source *TextureView::getEditOrCurrentSource()
     // get current source
     Source *_source = Mixer::manager().currentSource();
 
-    // no current source?
-    if (_source == nullptr) {
-        // if something can be selected
-        if ( !Mixer::manager().session()->empty()) {
-            // return the edit source, if exists
-            if (edit_source_ != nullptr) {
-                _source = Mixer::manager().findSource(edit_source_->id());
-                // put the edit source back in the selection
-                Mixer::selection().set(_source);
-            }
+    // no current source but possible source
+    if (_source == nullptr && Mixer::manager().numSource() > 0) {
+        // then get the source active in user interface left panel
+        _source = UserInterface::manager().sourceInPanel();
+        // no source in panel neither?
+        if (_source == nullptr && edit_source_ != nullptr) {
+            // then keep the current edit source ( if still available )
+            _source = Mixer::manager().findSource( edit_source_->id() );
         }
+        // ensures the source is selected
+        Mixer::selection().set(_source);
     }
 
     // do not work on a failed source

@@ -175,6 +175,7 @@ class Navigator
     float pannel_alpha_;
     bool view_pannel_visible;
     bool selected_button[NAV_COUNT];
+    int  selected_index;
     int  pattern_type;
     bool custom_pipeline;
     bool custom_connected;
@@ -208,6 +209,7 @@ public:
     bool pannelVisible();
     void hidePannel();
     void showPannelSource(int index);
+    int  selectedPannelSource();
     void togglePannelMenu();
     void togglePannelNew();
     void showConfig();
@@ -491,6 +493,7 @@ public:
 
     void showPannel(int id = 0);
     void showSourcePanel(Source *s);
+    Source *sourceInPanel();
     void showSourceEditor(Source *s);
 
     void StartScreenshot();
@@ -542,6 +545,7 @@ protected:
     void RenderAbout(bool* p_open);
     void RenderNotes();
 
+    void setView(View::Mode mode);
     void handleKeyboard();
     void handleMouse();
     void handleScreenshot();

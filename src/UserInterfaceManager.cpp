@@ -235,6 +235,12 @@ uint64_t UserInterface::Runtime() const
 }
 
 
+void UserInterface::setView(View::Mode mode)
+{
+    Mixer::manager().setView(mode);
+    navigator.hidePannel();
+}
+
 void UserInterface::handleKeyboard()
 {
     static bool esc_repeat_ = false;
@@ -357,15 +363,15 @@ void UserInterface::handleKeyboard()
 
         // Application F-Keys
         if (ImGui::IsKeyPressed( GLFW_KEY_F1, false ))
-            Mixer::manager().setView(View::MIXING);
+            setView(View::MIXING);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F2, false ))
-            Mixer::manager().setView(View::GEOMETRY);
+            setView(View::GEOMETRY);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F3, false ))
-            Mixer::manager().setView(View::LAYER);
+            setView(View::LAYER);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F4, false ))
-            Mixer::manager().setView(View::TEXTURE);
+            setView(View::TEXTURE);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F5, false ))
-            Mixer::manager().setView(View::DISPLAYS);
+            setView(View::DISPLAYS);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F9, false ))
             StartScreenshot();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
@@ -585,13 +591,7 @@ void UserInterface::handleMouse()
         {
             // if double clic action of view didn't succeed
             if ( !Mixer::manager().view()->doubleclic(mousepos) ) {
-                // default behavior :
-                if (navigator.pannelVisible())
-                    // discard current to select front most source
-                    // (because single clic maintains same source active)
-                    Mixer::manager().unsetCurrentSource();
-
-                // display source in left pannel
+                // display current source in left panel /or/ hide left panel if no current source
                 navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
             }
         }
@@ -672,8 +672,10 @@ void UserInterface::handleMouse()
     if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) || ImGui::IsMouseReleased(ImGuiMouseButton_Right) )
     {
         // special case of one single source in area selection : make current after release
-        if (view_drag && picked.first == nullptr && Mixer::selection().size() == 1)
+        if (view_drag && picked.first == nullptr && Mixer::selection().size() == 1) {
             Mixer::manager().setCurrentSource( Mixer::selection().front() );
+            navigator.hidePannel();
+        }
 
         view_drag = nullptr;
         mousedown = false;
@@ -1119,32 +1121,32 @@ int UserInterface::RenderViewNavigator(int *shift)
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[1], 0, iconsize))
         {
-            Mixer::manager().setView(View::MIXING);
+            setView(View::MIXING);
             *shift = 0;
         }
         ImGui::NextColumn();
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
         {
-            Mixer::manager().setView(View::GEOMETRY);
+            setView(View::GEOMETRY);
             *shift = 0;
         }
         ImGui::NextColumn();
         if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
         {
-            Mixer::manager().setView(View::LAYER);
+            setView(View::LAYER);
             *shift = 0;
         }
         ImGui::NextColumn();
         if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[4], 0, iconsize))
         {
-            Mixer::manager().setView(View::TEXTURE);
+            setView(View::TEXTURE);
             *shift = 0;
         }
         // skip TRANSITION view
         ImGui::NextColumn();
         if (ImGui::Selectable( ICON_FA_TV, &selected_view[6], 0, iconsize))
         {
-            Mixer::manager().setView(View::DISPLAYS);
+            setView(View::DISPLAYS);
             *shift = 0;
         }
         ImGui::PopFont();
@@ -1176,6 +1178,18 @@ void UserInterface::showSourcePanel(Source *s)
         Mixer::manager().setCurrentSource( s );
         navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
     }
+}
+
+Source *UserInterface::sourceInPanel()
+{
+    Source *ret = nullptr;
+
+    int idxpanel = navigator.selectedPannelSource();
+    if (idxpanel > -1 && idxpanel < NAV_MAX) {
+        ret = Mixer::manager().sourceAtIndex(idxpanel);
+    }
+
+    return ret;
 }
 
 void UserInterface::showSourceEditor(Source *s)
@@ -7229,6 +7243,7 @@ void Navigator::applyButtonSelection(int index)
     bool status = selected_button[index];
     clearButtonSelection();
     selected_button[index] = status;
+    selected_index = index;
 
     // set visible if button is active
     pannel_visible_ = status;
@@ -7256,10 +7271,12 @@ void Navigator::clearButtonSelection()
     // clear new source pannel
     clearNewPannel();
     source_to_replace = nullptr;
+    selected_index = -1;
 }
 
 void Navigator::showPannelSource(int index)
 {
+    selected_index = index;
     // invalid index given
     if ( index < 0 )
         hidePannel();
@@ -7267,6 +7284,11 @@ void Navigator::showPannelSource(int index)
         selected_button[index] = true;
         applyButtonSelection(index);
     }
+}
+
+int Navigator::selectedPannelSource()
+{
+    return selected_index;
 }
 
 void Navigator::showConfig()
@@ -7280,6 +7302,9 @@ void Navigator::togglePannelMenu()
 {
     selected_button[NAV_MENU] = !selected_button[NAV_MENU];
     applyButtonSelection(NAV_MENU);
+
+    if (Settings::application.pannel_always_visible)
+        showPannelSource(NAV_MENU);
 }
 
 void Navigator::togglePannelNew()
@@ -7303,23 +7328,46 @@ void Navigator::togglePannelAutoHide()
         else
             showPannelSource( current );
     }
-    else
+    else {
+        pannel_visible_ = true;
         hidePannel();
+    }
 }
 
 bool Navigator::pannelVisible()
 {
-    return pannel_visible_;
+    return pannel_visible_ || Settings::application.pannel_always_visible;
 }
 
 void Navigator::hidePannel()
 {
-    if ( Settings::application.pannel_always_visible )
-        showPannelSource(NAV_MENU);
-    else if ( pannel_visible_) {
-        clearButtonSelection();
-        pannel_visible_ = false;
+    if ( Settings::application.pannel_always_visible ) {
+
+        if ( !selected_button[NAV_MENU] && !selected_button[NAV_TRANS] && !selected_button[NAV_NEW] )
+        {
+            // get index of current source
+            int idx = Mixer::manager().indexCurrentSource();
+            if (idx < 0) {
+                // no current source, try to get source previously in panel
+                Source *cs = Mixer::manager().sourceAtIndex( selected_index );
+                if ( cs )
+                    idx = selected_index;
+                else {
+                    // really no source is current, try to get one from user selection
+                    cs = Mixer::selection().front();
+                    if ( cs )
+                        idx = Mixer::manager().session()->index( Mixer::manager().session()->find(cs) );
+                }
+            }
+            // if current source or a selected source, show it's pannel
+            if (idx >= 0)
+                showPannelSource( idx );
+        }
     }
+    else if ( pannel_visible_)
+        clearButtonSelection();
+
+    pannel_visible_ = false;
     view_pannel_visible = false;
     show_config_ = false;
 }
@@ -7367,6 +7415,14 @@ void Navigator::Render()
             if (ImGui::IsItemHovered())
                 tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN};
 
+            // the "+" icon for action of creating new source
+            if (ImGui::Selectable( source_to_replace != nullptr ? ICON_FA_PLUS_SQUARE : ICON_FA_PLUS,
+                                   &selected_button[NAV_NEW], 0, iconsize)) {
+                Mixer::manager().unsetCurrentSource();
+                applyButtonSelection(NAV_NEW);
+            }
+            if (ImGui::IsItemHovered())
+                tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE};
             //
             // the list of INITIALS for sources
             //
@@ -7433,14 +7489,6 @@ void Navigator::Render()
                 ImGui::PopID();
             }
 
-            // the "+" icon for action of creating new source
-            if (ImGui::Selectable( source_to_replace != nullptr ? ICON_FA_PLUS_SQUARE : ICON_FA_PLUS,
-                                   &selected_button[NAV_NEW], 0, iconsize)) {
-                Mixer::manager().unsetCurrentSource();
-                applyButtonSelection(NAV_NEW);
-            }
-            if (ImGui::IsItemHovered())
-                tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE};
         }
         else {
             // the ">" icon for transition menu
@@ -7465,35 +7513,35 @@ void Navigator::Render()
         int previous_view = Settings::application.current_view;
         if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[View::MIXING], 0, iconsize))
         {
-            Mixer::manager().setView(View::MIXING);
+            UserInterface::manager().setView(View::MIXING);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
             tooltip = {"Mixing ", "F1"};
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[View::GEOMETRY], 0, iconsize))
         {
-            Mixer::manager().setView(View::GEOMETRY);
+            UserInterface::manager().setView(View::GEOMETRY);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
             tooltip = {"Geometry ", "F2"};
         if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[View::LAYER], 0, iconsize))
         {
-            Mixer::manager().setView(View::LAYER);
+            UserInterface::manager().setView(View::LAYER);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
             tooltip = {"Layers ", "F3"};
         if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[View::TEXTURE], 0, iconsize))
         {
-            Mixer::manager().setView(View::TEXTURE);
+            UserInterface::manager().setView(View::TEXTURE);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
             tooltip = {"Texturing ", "F4"};
         if (ImGui::Selectable( ICON_FA_TV, &selected_view[View::DISPLAYS], 0, iconsize))
         {
-            Mixer::manager().setView(View::DISPLAYS);
+            UserInterface::manager().setView(View::DISPLAYS);
             view_pannel_visible = previous_view == Settings::application.current_view;
         }
         if (ImGui::IsItemHovered())
@@ -7539,9 +7587,15 @@ void Navigator::Render()
     ImGui::PopFont();
 
     // Rendering of the side pannel
-    if ( pannel_visible_ || Settings::application.pannel_always_visible ){
+    if ( Settings::application.pannel_always_visible || pannel_visible_ ){
 
-        pannel_alpha_ = Settings::application.pannel_always_visible ? 0.95f : 0.85f;
+        // slight differences if temporari vixible or always visible panel
+        if (Settings::application.pannel_always_visible)
+            pannel_alpha_ = 0.95f;
+        else {
+            pannel_alpha_ = 0.85f;
+            view_pannel_visible = false;
+        }
 
         // pannel menu
         if (selected_button[NAV_MENU])
@@ -7561,10 +7615,20 @@ void Navigator::Render()
         // pannel to configure a selected source
         else
         {
-            RenderSourcePannel(Mixer::manager().currentSource());
+            if ( selected_index < 0 )
+                showPannelSource(NAV_MENU);
+            // most often, render current sources
+            else if ( selected_index == Mixer::manager().indexCurrentSource())
+                RenderSourcePannel(Mixer::manager().currentSource());
+            // rarely its not the current source that is selected
+            else {
+                SourceList::iterator cs = Mixer::manager().session()->at( selected_index );
+                if (cs != Mixer::manager().session()->end() )
+                    RenderSourcePannel( *cs );
+            }
         }
-        view_pannel_visible = false;
     }
+
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar();
 
@@ -7575,7 +7639,7 @@ void Navigator::RenderViewPannel(ImVec2 draw_pos , ImVec2 draw_size)
     ImGui::SetNextWindowPos( draw_pos, ImGuiCond_Always );
     ImGui::SetNextWindowSize( draw_size, ImGuiCond_Always );
     ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
-    if (ImGui::Begin("##ViewPannel", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    if (ImGui::Begin("##ViewPannel", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav))
     {
         ImGui::SetCursorPosX(10.f);
         ImGui::SetCursorPosY(10.f);
@@ -7725,6 +7789,10 @@ void Navigator::RenderNewPannel()
     if (Settings::application.current_view == View::TRANSITION)
         return;
 
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float icon_width = width_ - 2.f * style.WindowPadding.x;
+    const ImVec2 iconsize(icon_width, icon_width);
+
     // Next window is a side pannel
     ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
     ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
@@ -7738,26 +7806,47 @@ void Navigator::RenderNewPannel()
             ImGui::Text("Replace");
         else
             ImGui::Text("Insert");
-        ImGui::PopFont();
-
-        // Edit menu
-        ImGui::SetCursorPosY(width_);
-        ImGui::Text("Source");
 
         //
         // News Source selection pannel
         //
-        static const char* origin_names[SOURCE_TYPES] = { ICON_FA_PHOTO_VIDEO "  File",
-                                               ICON_FA_IMAGES "   Sequence",
-                                               ICON_FA_PLUG "    Connected",
-                                               ICON_FA_COG "   Generated",
-                                               ICON_FA_SYNC "   Internal"
-                                             };
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::Combo("##Origin", &Settings::application.source.new_type, origin_names, IM_ARRAYSIZE(origin_names)) )
-            clearNewPannel();
+        ImGui::SetCursorPosY(width_ - style.WindowPadding.x);
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
 
-        ImGui::SetCursorPosY(2.f * width_);
+        ImGui::Columns(5, NULL, false);
+        bool selected_type[5] = {0};
+        selected_type[Settings::application.source.new_type] = true;
+        if (ImGui::Selectable( ICON_FA_PHOTO_VIDEO, &selected_type[SOURCE_FILE], 0, iconsize)) {
+            Settings::application.source.new_type = SOURCE_FILE;
+            clearNewPannel();
+        }
+        ImGui::NextColumn();
+        if (ImGui::Selectable( ICON_FA_IMAGES, &selected_type[SOURCE_SEQUENCE], 0, iconsize)) {
+            Settings::application.source.new_type = SOURCE_SEQUENCE;
+            clearNewPannel();
+        }
+        ImGui::NextColumn();
+        if (ImGui::Selectable( ICON_FA_PLUG, &selected_type[SOURCE_CONNECTED], 0, iconsize)) {
+            Settings::application.source.new_type = SOURCE_CONNECTED;
+            clearNewPannel();
+        }
+        ImGui::NextColumn();
+        if (ImGui::Selectable( ICON_FA_COGS, &selected_type[SOURCE_GENERATED], 0, iconsize)) {
+            Settings::application.source.new_type = SOURCE_GENERATED;
+            clearNewPannel();
+        }
+        ImGui::NextColumn();
+        if (ImGui::Selectable( ICON_FA_RETWEET, &selected_type[SOURCE_INTERNAL], 0, iconsize)) {
+            Settings::application.source.new_type = SOURCE_INTERNAL;
+            clearNewPannel();
+        }
+
+        ImGui::Columns(1);
+        ImGui::PopStyleVar();
+        ImGui::PopFont();
+
+        // Edit menu
+        ImGui::SetCursorPosY(width_ * 1.9f);
 
         // File Source creation
         if (Settings::application.source.new_type == SOURCE_FILE) {
@@ -7765,8 +7854,10 @@ void Navigator::RenderNewPannel()
             static DialogToolkit::OpenMediaDialog fileimportdialog("Open Media");
             static DialogToolkit::OpenFolderDialog folderimportdialog("Select Folder");
 
+            ImGui::Text("Load media file:");
+
             // clic button to load file
-            if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open File", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) )
+            if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) )
                 fileimportdialog.open();
             // Indication
             ImGui::SameLine();
@@ -7963,8 +8054,10 @@ void Navigator::RenderNewPannel()
             static MultiFileRecorder _video_recorder;
             static int _fps = 25;
 
+            ImGui::Text("Create image sequence:");
+
             // clic button to load file
-            if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open images", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
+            if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open multiple", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
                 sourceSequenceFiles.clear();
                 new_source_preview_.setSource();
                 _selectImagesDialog.open();
@@ -7998,7 +8091,7 @@ void Navigator::RenderNewPannel()
             // multiple files selected
             if (sourceSequenceFiles.size() > 1) {
 
-                ImGui::Text("\nCreate image sequence:");
+                ImGui::Text(" ");
 
                 // show info sequence
                 ImGuiTextBuffer info;
@@ -8097,9 +8190,11 @@ void Navigator::RenderNewPannel()
         // Internal Source creator
         else if (Settings::application.source.new_type == SOURCE_INTERNAL){
 
+            ImGui::Text("Loopback object:");
+
             // fill new_source_preview with a new source
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##Source", "Select object"))
+            if (ImGui::BeginCombo("##Source", "Select"))
             {
                 std::string label = "Rendering Loopback";
                 if (ImGui::Selectable( label.c_str() )) {
@@ -8128,8 +8223,10 @@ void Navigator::RenderNewPannel()
 
             bool update_new_source = false;
 
+            ImGui::Text("Generate graphics:");
+
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##Pattern", "Select generator", ImGuiComboFlags_HeightLarge))
+            if (ImGui::BeginCombo("##Pattern", "Select", ImGuiComboFlags_HeightLarge))
             {
                 if ( ImGui::Selectable("Custom " ICON_FA_CARET_RIGHT) ) {
                     update_new_source = true;
@@ -8215,8 +8312,10 @@ void Navigator::RenderNewPannel()
         // External source creator
         else if (Settings::application.source.new_type == SOURCE_CONNECTED){
 
+            ImGui::Text("Connect device or stream:");
+
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##External", "Select stream"))
+            if (ImGui::BeginCombo("##External", "Select "))
             {
                 for (int d = 0; d < Device::manager().numDevices(); ++d){
                     std::string namedev = Device::manager().name(d);
@@ -9402,7 +9501,7 @@ void Navigator::RenderTransitionPannel()
             if (tv) tv->play(true);
         }
         if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
-            Mixer::manager().setView(View::MIXING);
+            UserInterface::manager().setView(View::MIXING);
 
         ImGui::End();
     }
