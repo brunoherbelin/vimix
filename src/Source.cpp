@@ -116,7 +116,7 @@ SourceCore& SourceCore::operator= (SourceCore const& other)
 
 
 Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(nullptr),
-    active_(true), locked_(false), need_update_(true), dt_(16.f), workspace_(STAGE)
+    active_(true), locked_(false), need_update_(SourceUpdate_None), dt_(16.f), workspace_(STAGE)
 {
     // create unique id
     if (id_ == 0)
@@ -133,11 +133,15 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     groups_[View::MIXING]->translation_ = glm::vec3(DEFAULT_MIXING_TRANSLATION, 0.f);
 
     frames_[View::MIXING] = new Switch;
-    Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);
+    Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP); // visible
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.85f);
     frames_[View::MIXING]->attach(frame);
-    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);
+    frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);        // selected
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.95f);
+    frames_[View::MIXING]->attach(frame);
+    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);       // current
     frame->translation_.z = 0.01;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     frames_[View::MIXING]->attach(frame);
@@ -174,11 +178,15 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
 
     // default geometry nodes
     frames_[View::GEOMETRY] = new Switch;
-    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE); // visible
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.8f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.85f);
     frames_[View::GEOMETRY]->attach(frame);
-    frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::GLOW);
+    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE); // selected
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.95f);
+    frames_[View::GEOMETRY]->attach(frame);
+    frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::GLOW); // current
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     frames_[View::GEOMETRY]->attach(frame);
@@ -226,11 +234,15 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     groups_[View::LAYER]->translation_.z = -1.f;
 
     frames_[View::LAYER] = new Switch;
-    frame = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);
+    frame = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);  // visible
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.85f);
     frames_[View::LAYER]->attach(frame);
-    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::PERSPECTIVE);
+    frame = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);  // selected
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.95f);
+    frames_[View::LAYER]->attach(frame);
+    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::PERSPECTIVE); // current
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
     frames_[View::LAYER]->attach(frame);
@@ -246,11 +258,15 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
 
     // default appearance node
     frames_[View::TEXTURE] = new Switch;
-    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);  // visible
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 0.2f);
+    frames_[View::TEXTURE]->attach(frame);
+    frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);  // selected
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 0.7f);
     frames_[View::TEXTURE]->attach(frame);
-    frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE);
+    frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE); // current
     frame->translation_.z = 0.1;
     frame->color = glm::vec4( COLOR_APPEARANCE_SOURCE, 1.f);
     frames_[View::TEXTURE]->attach(frame);
@@ -318,7 +334,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     activesurface_  = nullptr;
     maskbuffer_     = nullptr;
     maskimage_      = nullptr;
-    mask_need_update_ = false;
+    masksource_     = new SourceLink;
 }
 
 
@@ -342,6 +358,7 @@ Source::~Source()
         delete maskimage_;
     if (masksurface_)
         delete masksurface_; // deletes maskshader_
+    delete masksource_;
 
     delete texturesurface_;
 
@@ -389,13 +406,13 @@ void Source::setMode(Source::Mode m)
             (*g).second->visible_ = true;
     }
 
-    // choose frame 0 if visible, 1 if selected
-    uint index_frame = m == Source::VISIBLE ? 0 : 1;
+    // Switch frame between visible, selected and current modes
+    const uint index_frame = MAX(m, 1) - 1;
     for (auto f = frames_.begin(); f != frames_.end(); ++f)
         (*f).second->setActive(index_frame);
 
-    // show overlay if current
-    bool current = m >= Source::CURRENT;
+    // Switch overlay if current
+    const bool current = m >= Source::CURRENT;
     for (auto o = overlays_.begin(); o != overlays_.end(); ++o)
         (*o).second->visible_ = (current && !locked_);
 
@@ -411,7 +428,7 @@ void Source::setMode(Source::Mode m)
     overlay_mixinggroup_->visible_ = mixinggroup_!= nullptr && !locked_;
     overlay_mixinggroup_->setActive(current);
 
-    // show in appearance view if current
+    // show in texturing view if selected or current
     groups_[View::TEXTURE]->visible_ = m > Source::VISIBLE;
 
     mode_ = m;
@@ -567,22 +584,25 @@ void Source::attach(FrameBuffer *renderbuffer)
         setMode(VISIBLE);
 
     // request update
-    need_update_ = true;
+    need_update_ |= Source::SourceUpdate_Render;
 }
 
 void Source::setActive (bool on)
 {
+    // do not disactivate if any clone depends on it
+    for(auto clone = clones_.begin(); clone != clones_.end(); ++clone) {
+        if ( (*clone)->ready() && (*clone)->active() ) {
+            on = true;
+            break;
+        }
+    }
+
     // request update
-    need_update_ |= active_ != on;
+    if (active_ != on)
+        need_update_ |= Source::SourceUpdate_Render;
 
     // activate
     active_ = on;
-
-    // do not disactivate if a clone depends on it
-    for(auto clone = clones_.begin(); clone != clones_.end(); ++clone) {
-        if ( (*clone)->ready() && (*clone)->active() )
-            active_ = true;
-    }
 
     // an inactive source is visible only in the MIXING view
     groups_[View::RENDERING]->visible_ = active_;
@@ -703,7 +723,7 @@ void Source::updateCallbacks(float dt)
 
         // call update on callbacks
         callback->update(this, dt);
-        need_update_ = true;
+        need_update_ |= Source::SourceUpdate_Render;
 
         // remove and delete finished callbacks
         if (callback->finished()) {
@@ -740,8 +760,11 @@ void Source::update(float dt)
         updateCallbacks(dt);
 
         // update nodes if needed
-        if (need_update_)
+        if (need_update_ & SourceUpdate_Render)
         {
+            // do not update next frame
+            need_update_ &= ~SourceUpdate_Render;
+
             // ADJUST alpha based on MIXING node
             // read position of the mixing node and interpret this as transparency of render output
             glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
@@ -820,15 +843,40 @@ void Source::update(float dt)
             // 7. switch back to UV coordinate system
             texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * glm::inverse(Sca) * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
 
-            // if a mask image was given to be updated
-            if (mask_need_update_) {
-                // fill the mask buffer (once)
-                if (maskbuffer_->fill(maskimage_) )
-                    mask_need_update_ = false;
+            // inform mixing group
+            if (mixinggroup_)
+                mixinggroup_->setAction(MixingGroup::ACTION_UPDATE);
+        }
+
+        if (need_update_ & SourceUpdate_Mask_fill) {
+
+            // do not update Mask fill next frame
+            need_update_ &= ~SourceUpdate_Mask_fill;
+
+            // fill the mask buffer (once)
+            maskbuffer_->fill(maskimage_);
+        }
+
+        if (need_update_ & SourceUpdate_Mask) {
+
+            // do not update Mask next frame
+            need_update_ &= ~SourceUpdate_Mask;
+
+            // MODIFY Mask based on mask shader mode
+            // if MaskShader::SOURCE available, set a source as mask for blending
+            if (maskshader_->mode == MaskShader::SOURCE && masksource_->connected()) {
+                Source *ref_source = masksource_->source();
+                if (ref_source != nullptr) {
+                    if (ref_source->ready())
+                        // set mask texture to mask source
+                        blendingshader_->mask_texture = ref_source->frame()->texture();
+                    else
+                        // retry for when source will be ready
+                        need_update_ |= SourceUpdate_Mask;
+                }
             }
-            // otherwise, render the mask buffer
-            else
-            {
+            // all other MaskShader types to update
+            else {
                 // draw mask in mask frame buffer
                 maskbuffer_->begin(false);
                 // loopback maskbuffer texture for painting
@@ -836,17 +884,9 @@ void Source::update(float dt)
                 // fill surface with mask texture
                 masksurface_->draw(glm::identity<glm::mat4>(), maskbuffer_->projection());
                 maskbuffer_->end();
+                // set mask texture to mask buffer
+                blendingshader_->mask_texture = maskbuffer_->texture();
             }
-
-            // set the rendered mask as mask for blending
-            blendingshader_->mask_texture = maskbuffer_->texture();
-
-            // inform mixing group
-            if (mixinggroup_)
-                mixinggroup_->setAction(MixingGroup::ACTION_UPDATE);
-
-            // do not update next frame
-            need_update_ = false;
         }
 
         if (processingshader_link_.connected() && imageProcessingEnabled()) {
@@ -870,7 +910,7 @@ FrameBuffer *Source::frame() const
         return renderbuffer_;
     }
     else {
-        static FrameBuffer *black = new FrameBuffer(320,180);
+        static FrameBuffer *black = new FrameBuffer(64,64);
         return black;
     }
 }
@@ -883,7 +923,6 @@ bool Source::contains(Node *node) const
     hasNode tester(node);
     return tester(this);
 }
-
 
 void Source::storeMask(FrameBufferImage *img)
 {
@@ -917,14 +956,9 @@ void Source::setMask(FrameBufferImage *img)
         // NB: will be freed when replaced
         storeMask(img);
 
-        // ask Source::update to use it at next update for filling mask buffer
-        mask_need_update_ = true;
-
-        // ask to update the source
-        touch();
+        // ask to update the source mask
+        touch(Source::SourceUpdate_Mask_fill);
     }
-    else
-        mask_need_update_ = false;
 }
 
 bool Source::hasNode::operator()(const Source* elem) const

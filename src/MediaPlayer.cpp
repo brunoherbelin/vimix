@@ -57,6 +57,7 @@ MediaPlayer::MediaPlayer()
     seeking_ = false;
     rewind_on_disable_ = false;
     force_software_decoding_ = false;
+    force_basic_speedchange_ = false;
     decoder_name_ = "";
     rate_ = 1.0;
     position_ = GST_CLOCK_TIME_NONE;
@@ -152,8 +153,9 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
         {
             const GstStructure *s = gst_discoverer_info_get_misc (info);
             gchar *str = gst_structure_to_string (s);
-            video_stream_info.log = std::string( "Unknown format; " ) + std::string(str);
+            video_stream_info.log = std::string( "Warning: " ) + std::string(str);
             g_free (str);
+            result = GST_DISCOVERER_OK; // try to read the file anyways, discoverer can report errors but still read the file
         }
             break;
         default:
@@ -293,7 +295,7 @@ void MediaPlayer::execute_open()
     //         "uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
     // equivalent to command line
     //         "gst-launch-1.0 uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! ximagesink"
-    std::string description = "uridecodebin name=decoder uri=" + uri_ + " ! queue max-size-time=0 ! ";
+    std::string description = "uridecodebin name=decoder uri=" + uri_ + " ! ";
     // NB: queue adds some control over the buffer, thereby limiting the frame delay. zero size means no buffering
 
 //    string description = "uridecodebin name=decoder uri=" + uri_ + " decoder. ! ";
@@ -309,6 +311,9 @@ void MediaPlayer::execute_open()
     if (media_.interlaced)
         description += "deinterlace method=2 ! ";
 
+    // queue
+    description += "queue max-size-time=0 name=prev ! ";
+
     // video convertion algorithm (should only do colorspace conversion, no scaling)
     // chroma-resampler:
     //      Duplicates the samples when upsampling and drops when downsampling 0
@@ -321,7 +326,7 @@ void MediaPlayer::execute_open()
     //      Dither with floyd-steinberg error diffusion 2
     //      Dither with Sierra Lite error diffusion 3
     //      ordered dither using a bayer pattern 4 (default)
-    description += "videoconvert chroma-resampler=1 dither=0 ! "; // fast
+    description += "videoconvert chroma-resampler=1 dither=0 name=post ! "; // fast
 
     // hack to compensate for lack of PTS in gif animations
     if (media_.codec_name.compare("image/gst-libav-gif") == 0){
@@ -357,7 +362,7 @@ void MediaPlayer::execute_open()
     }
 
     // setup software decode
-    if (force_software_decoding_) {
+    if (force_software_decoding_ || media_.isimage) {
         g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "decoder")), "force-sw-decoders", true,  NULL);
     }
 
@@ -432,6 +437,100 @@ void MediaPlayer::execute_open()
 
     // register media player
     MediaPlayer::registered_.push_back(this);
+}
+
+
+bool MediaPlayer::setEffect(const std::string &pipeline_element)
+{
+    if ( pipeline_ == nullptr )
+        return false;
+
+    GstElement *prev = gst_bin_get_by_name (GST_BIN (pipeline_), "prev");
+    if (!prev) {
+        Log::Warning("MediaPlayer %s Could not find prev", std::to_string(id_).c_str());
+        return false;
+    }
+    GstElement *post = gst_bin_get_by_name (GST_BIN (pipeline_), "post");
+    if (!post) {
+        Log::Warning("MediaPlayer %s Could not find post", std::to_string(id_).c_str());
+        return false;
+    }
+
+    // try to create the pipeline element given
+    GError *error = NULL;
+    std::string elem = pipeline_element + " name=effect ";
+    GstElement *effect = gst_parse_launch( elem.c_str(), &error);
+    if (error != NULL) {
+        Log::Warning("MediaPlayer %s Error constructing %s:\n%s", std::to_string(id_).c_str(), pipeline_element.c_str(), error->message);
+        g_clear_error (&error);
+        return false;
+    }
+    if (effect == NULL) {
+        Log::Warning("MediaPlayer %s Could not parse %s", std::to_string(id_).c_str(), pipeline_element.c_str());
+        return false;
+    }
+
+    // try to create the pipeline converter needed
+    elem = "videoconvert name=conv ";
+    GstElement *conv = gst_parse_launch( elem.c_str(), &error);
+    if (error != NULL) {
+        Log::Warning("MediaPlayer %s Error constructing %s:\n%s", std::to_string(id_).c_str(), elem.c_str(), error->message);
+        g_clear_error (&error);
+        return false;
+    }
+    if (conv == NULL) {
+        Log::Warning("MediaPlayer %s Could not parse %s", std::to_string(id_).c_str(), elem.c_str());
+        return false;
+    }
+
+    // PAUSE pipeline
+    execute_play_command(false);
+
+    // remove previous (if exists)
+    GstElement *ef = gst_bin_get_by_name (GST_BIN (pipeline_), "effect");
+    if (ef) {
+        // remove the previous effect (this deconnects from prev and post)
+        if ( !gst_bin_remove (GST_BIN (pipeline_), ef) ) {
+            Log::Warning("MediaPlayer %s Could not remove effect", std::to_string(id_).c_str());
+            return false;
+        }
+        gst_object_unref(ef);
+    }
+
+    GstElement *co = gst_bin_get_by_name (GST_BIN (pipeline_), "conv");
+    if (co) {
+        // remove the previous convertor  (this deconnects from prev and post)
+        if ( !gst_bin_remove (GST_BIN (pipeline_), co) ) {
+            Log::Warning("MediaPlayer %s Could not remove convert for effect", std::to_string(id_).c_str());
+            return false;
+        }
+        gst_object_unref(co);
+    }
+    else
+        gst_element_unlink(prev, post);
+
+    // add new elements to the pipeline
+    if ( gst_bin_add (GST_BIN (pipeline_), conv) && gst_bin_add (GST_BIN (pipeline_), effect) ) {
+        // reconnect pipeline
+        if ( !gst_element_link_many (prev, conv, effect, post, NULL) ) {
+            gst_bin_remove (GST_BIN (pipeline_), conv);
+            gst_bin_remove (GST_BIN (pipeline_), effect);
+            // restore pileline without any effect
+            gst_element_link_many (prev, post, NULL);
+            // inform
+            Log::Warning("MediaPlayer %s Could not re-link effect", std::to_string(id_).c_str());
+        }
+    }
+    else {
+        // restore pileline without any effect
+        gst_element_link_many (prev, post, NULL);
+        Log::Warning("MediaPlayer %s Could not add new effect", std::to_string(id_).c_str());
+    }
+
+    // PLAY pipeline
+    execute_play_command(true);
+
+    return true;
 }
 
 bool MediaPlayer::isOpen() const
@@ -584,18 +683,13 @@ bool MediaPlayer::isImage() const
 
 std::string MediaPlayer::decoderName()
 {
-    if (pipeline_) {
-        if (force_software_decoding_) {
-            decoder_name_ = "software";
-        }
-        // decoder_name_ not initialized
-        else if (decoder_name_.empty()) {
-            // try to know if it is a hardware decoder
+    if (decoder_name_.empty()) {
+        // try to know if it is a hardware decoder
+        if (pipeline_)
             decoder_name_ = GstToolkit::used_gpu_decoding_plugins(pipeline_);
-            // nope, then it is a sofware decoder
-            if (decoder_name_.empty())
-                decoder_name_ = "software";
-        }
+        // nope, then it is a sofware decoder
+        if (decoder_name_.empty())
+            decoder_name_ = "software";
     }
 
     return decoder_name_;
@@ -875,7 +969,8 @@ void MediaPlayer::init_texture(guint index)
         pbo_index_ = 0;
         pbo_next_index_ = 1;
 
-        // initialize decoderName once
+        // initialize decoderName once (forced update)
+        decoder_name_ = "";
         Log::Info("MediaPlayer %s Uses %s decoding and OpenGL PBO texturing.", std::to_string(id_).c_str(), decoderName().c_str());
     }
 
@@ -948,6 +1043,9 @@ void MediaPlayer::update()
                 media_ = discoverer_.get();
                 // if its ok, open the media
                 if (media_.valid) {
+                    if (!media_.log.empty())
+                        Log::Info("'%s' : %s", uri().c_str(), media_.log.c_str());
+
                     timeline_.setEnd( media_.end );
                     timeline_.setStep( media_.dt );
                     execute_open();
@@ -1126,6 +1224,10 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
 
 void MediaPlayer::setPlaySpeed(double s)
 {
+#if GST_VERSION_MINOR > 17 && GST_VERSION_MAJOR > 0
+    bool change_direction =  s * rate_ < 0.0;
+#endif
+
     if (media_.isimage)
         return;
 
@@ -1135,8 +1237,33 @@ void MediaPlayer::setPlaySpeed(double s)
     if (ABS(rate_) < MIN_PLAY_SPEED)
         rate_ = SIGN(rate_) * MIN_PLAY_SPEED;
 
-    // apply with seek
+    // Apply with gstreamer seek
+    //
+    //  GST_SEEK_FLAG_INSTANT_RATE_CHANGE: Signals that a rate change should be
+    //  applied immediately. Only valid if start/stop position
+    //  are GST_CLOCK_TIME_NONE, the playback direction does not change
+    //  and the seek is not flushing. (Since: 1.18)
+#if GST_VERSION_MINOR > 17 && GST_VERSION_MAJOR > 0
+    // if all conditions to use GST_SEEK_FLAG_INSTANT_RATE_CHANGE are met
+    if ( pipeline_ != nullptr && media_.seekable && !change_direction && !force_basic_speedchange_) {
+
+        GstEvent *seek_event = gst_event_new_seek (rate_, GST_FORMAT_TIME, GST_SEEK_FLAG_INSTANT_RATE_CHANGE,
+            GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0);
+
+        if (seek_event && !gst_element_send_event(pipeline_, seek_event) ) {
+            Log::Info("MediaPlayer %s; cannot perform instantaneous speed change. Change of play speed will not be smooth.", std::to_string(id_).c_str());
+            force_basic_speedchange_ = true;
+        }
+        else
+            seeking_ = true;
+    }
+    // Generic way is following the example from
+    // https://gstreamer.freedesktop.org/documentation/tutorials/basic/playback-speed.html
+    else
+        execute_seek_command();
+#else
     execute_seek_command();
+#endif
 }
 
 double MediaPlayer::playSpeed() const

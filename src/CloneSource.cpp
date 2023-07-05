@@ -122,15 +122,10 @@ void CloneSource::setActive (bool on)
     // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
-    if (origin_) {
+    // enable / disable filtering
+    if ( active_ != was_active )
+        filter_->setEnabled( active_ );
 
-        if ( mode_ > Source::UNINITIALIZED )
-            origin_->touch();
-
-        // enable / disable filtering
-        if ( active_ != was_active )
-            filter_->setEnabled( active_ );
-    }
 }
 
 void CloneSource::update(float dt)

@@ -49,18 +49,6 @@ struct StreamConfig {
         width = 0;
         height = 0;
     }
-
-    inline StreamConfig& operator = (const StreamConfig& o) {
-        if (this != &o) {
-            this->client_name = o.client_name;
-            this->client_address = o.client_address;
-            this->port = o.port;
-            this->protocol = o.protocol;
-            this->width = o.width;
-            this->height = o.height;
-        }
-        return *this;
-    }
 };
 
 //typedef enum {

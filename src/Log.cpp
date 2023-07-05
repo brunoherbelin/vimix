@@ -307,8 +307,11 @@ void Log::Render(bool *showWarnings)
             ImGui::SameLine();
             ImGui::Dummy(ImVec2(width * 0.6f, 0)); // right align
             ImGui::SameLine();
-            if (ImGui::Button(" Ok ", ImVec2(width * 0.2f, 0)))
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+            if (ImGui::Button(" Ok ", ImVec2(width * 0.2f, 0))
+                    || ImGui::IsKeyPressed(257) || ImGui::IsKeyPressed(335) ) // GLFW_KEY_ENTER or GLFW_KEY_KP_ENTER
                 close = true;
+            ImGui::PopStyleColor(1);
 
             if (close) {
                 ImGui::CloseCurrentPopup();
@@ -316,7 +319,6 @@ void Log::Render(bool *showWarnings)
                 warnings.clear();
             }
 
-            ImGui::SetItemDefaultFocus();
             ImGui::EndPopup();
         }
     }

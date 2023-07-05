@@ -198,8 +198,10 @@ void SourceLink::connect(uint64_t id, Session *se)
     if (connected())
         disconnect();
 
-    id_ = id;
-    host_ = se;
+    if (se != nullptr && id > 0) {
+        id_ = id;
+        host_ = se;
+    }
 }
 
 void SourceLink::connect(Source *s)
@@ -207,11 +209,13 @@ void SourceLink::connect(Source *s)
     if (connected())
         disconnect();
 
-    target_ = s;
-    target_->links_.push_back(this);
+    if (s != nullptr) {
+        target_ = s;
+        target_->links_.push_back(this);
 
-    id_ = s->id();
-    // TODO veryfy circular dependency recursively ?
+        id_ = s->id();
+        // TODO veryfy circular dependency recursively ?
+    }
 }
 
 void SourceLink::disconnect()
@@ -242,9 +246,6 @@ Source *SourceLink::source()
                 target_ = *it;
                 target_->links_.push_back(this);
             }
-//            // not found: invalidate link
-//            else
-//                disconnect();
         }
         // no host: invalidate link
         else

@@ -267,6 +267,8 @@ public:
     static MediaInfo UriDiscoverer(const std::string &uri);
     std::string log() const { return media_.log; }
 
+    bool setEffect(const std::string &pipeline_element);
+
 private:
 
     // video player description
@@ -295,6 +297,7 @@ private:
     bool enabled_;
     bool rewind_on_disable_;
     bool force_software_decoding_;
+    bool force_basic_speedchange_;
     std::string decoder_name_;
     Metronome::Synchronicity metro_sync_;
 

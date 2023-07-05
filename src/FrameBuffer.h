@@ -64,7 +64,7 @@ public:
     bool blit(FrameBuffer *destination);
     // bind the FrameBuffer in READ and perform glReadPixels
     // (to be used after preparing a target PBO)
-    void readPixels(uint8_t* target_data = 0);
+    void readPixels();
 
     // clear color
     inline void setClearColor(glm::vec4 color) { attrib_.clear_color = color; }

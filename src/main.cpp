@@ -72,10 +72,14 @@ int main(int argc, char *argv[])
                 return 0;
             }
             else if (argument == "--version" || argument == "-V") {
+#ifdef VIMIX_GIT
+                fprintf(stderr, APP_NAME " " VIMIX_GIT " \n");
+#else
 #ifdef VIMIX_VERSION_MAJOR
                 fprintf(stderr, "%s: version %d.%d.%d\n", APP_NAME, VIMIX_VERSION_MAJOR, VIMIX_VERSION_MINOR, VIMIX_VERSION_PATCH);
 #else
                 fprintf(stderr, "%s\n", APP_NAME);
+#endif
 #endif
                 return 0;
             }
@@ -97,7 +101,6 @@ int main(int argc, char *argv[])
         else {
             // try to open the file
             _openfile = argument;
-            fprintf(stderr, "Loading %s %s\n", argv[0], _openfile.c_str());
         }
     }
 
@@ -109,6 +112,11 @@ int main(int argc, char *argv[])
 
     /// lock to inform an instance is running
     Settings::Lock();
+
+    if (!_openfile.empty()) {
+        Settings::application.fresh_start = false;
+        fprintf(stderr, "Loading %s\n", _openfile.c_str());
+    }
 
     ///
     /// CONNECTION INIT

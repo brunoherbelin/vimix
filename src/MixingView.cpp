@@ -656,13 +656,12 @@ View::Cursor MixingView::over (glm::vec2 pos)
     if (s != nullptr && s->ready()) {
 
         s->symbol_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
-        s->initial_0_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
-        s->initial_1_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
         const ImVec4 h = ImGuiToolkit::HighlightColor();
 
         // overlay symbol
         if ( pick.first == s->symbol_ )
             s->symbol_->color = glm::vec4( h.x, h.y, h.z, 1.f );
+
     }
 
     return ret;

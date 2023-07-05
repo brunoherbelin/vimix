@@ -36,6 +36,7 @@ public:
     void removeStreams(const std::string &clientname);
     NetworkToolkit::StreamConfig removeStream(const std::string &sender, int port);
     void removeStream(const VideoStreamer *vs);
+    void addStream(const std::string &sender, int port, const std::string &clientname);
 
     bool busy();
     std::vector<std::string> listStreams();
@@ -48,9 +49,9 @@ protected:
         virtual void ProcessMessage( const osc::ReceivedMessage& m,
                                      const IpEndpointName& remoteEndpoint );
     };
-    void addStream(const std::string &sender, int reply_to, const std::string &clientname,
+    void _addStream(const std::string &sender, int reply_to, const std::string &clientname,
                    NetworkToolkit::StreamProtocol protocol = NetworkToolkit::DEFAULT);
-    void refuseStream(const std::string &sender, int reply_to);
+    void _refuseStream(const std::string &sender, int reply_to);
 
 private:
 

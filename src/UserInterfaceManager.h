@@ -72,12 +72,14 @@
 #define SHORTCUT_CAPTURE_GUI  "F9"
 #define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable"
 #define SHORTCUT_OUTPUTDISABLE "F12"
+#define MENU_LARGEPREVIEW     ICON_FA_EXPAND_ARROWS_ALT "   Large preview"
+#define SHORTCUT_LARGEPREVIEW "F6"
 #define MENU_CLOSE            ICON_FA_TIMES "   Close"
 #define DIALOG_FAILED_SOURCE  ICON_FA_EXCLAMATION_TRIANGLE " Source failure"
 
 #define MENU_NOTE             ICON_FA_STICKY_NOTE "   Add sticky note"
 #define MENU_METRICS          ICON_FA_TACHOMETER_ALT "  Metrics"
-#define MENU_SOURCE_TOOL      ICON_FA_LIST_ALT "  Source toolbox"
+#define MENU_SOURCE_TOOL      ICON_FA_WRENCH "  Source toolbar"
 #define MENU_HELP             ICON_FA_LIFE_RING "  Help"
 #define SHORTCUT_HELP         CTRL_MOD "H"
 #define MENU_LOGS             ICON_FA_LIST_UL "  Logs"
@@ -101,6 +103,9 @@
 #define TOOLTIP_HIDE          "Hide windows "
 #define TOOLTIP_SHOW          "Show windows "
 #define SHORTCUT_HIDE         "ESC"
+#define TOOLTIP_PANEL_VISIBLE "Panel always visible "
+#define TOOLTIP_PANEL_AUTO    "Panel auto hide "
+#define SHORTCUT_PANEL_MODE   "HOME"
 
 #define LABEL_AUTO_MEDIA_PLAYER ICON_FA_USER_CIRCLE "  User selection"
 #define LABEL_STORE_SELECTION "  Create batch"
@@ -167,8 +172,10 @@ class Navigator
     // behavior pannel
     bool show_config_;
     bool pannel_visible_;
+    float pannel_alpha_;
     bool view_pannel_visible;
     bool selected_button[NAV_COUNT];
+    int  selected_index;
     int  pattern_type;
     bool custom_pipeline;
     bool custom_connected;
@@ -199,12 +206,14 @@ public:
     Navigator();
     void Render();
 
-    bool pannelVisible() { return pannel_visible_; }
+    bool pannelVisible();
     void hidePannel();
     void showPannelSource(int index);
+    int  selectedPannelSource();
     void togglePannelMenu();
     void togglePannelNew();
     void showConfig();
+    void togglePannelAutoHide();
 
     typedef enum {
         MEDIA_RECENT = 0,
@@ -313,6 +322,7 @@ class SourceController : public WorkspaceWindow
     // Render a single media player
     MediaPlayer *mediaplayer_active_;
     bool mediaplayer_edit_fading_;
+    bool mediaplayer_edit_pipeline_;
     bool mediaplayer_mode_;
     bool mediaplayer_slider_pressed_;
     float mediaplayer_timeline_zoom_;
@@ -483,6 +493,7 @@ public:
 
     void showPannel(int id = 0);
     void showSourcePanel(Source *s);
+    Source *sourceInPanel();
     void showSourceEditor(Source *s);
 
     void StartScreenshot();
@@ -534,6 +545,7 @@ protected:
     void RenderAbout(bool* p_open);
     void RenderNotes();
 
+    void setView(View::Mode mode);
     void handleKeyboard();
     void handleMouse();
     void handleScreenshot();

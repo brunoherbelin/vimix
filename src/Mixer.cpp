@@ -31,6 +31,7 @@
 
 #include <tinyxml2.h>
 
+#include "ImageShader.h"
 #include "defines.h"
 #include "Settings.h"
 #include "Log.h"
@@ -42,6 +43,7 @@
 #include "SessionSource.h"
 #include "CloneSource.h"
 #include "RenderSource.h"
+#include "MediaPlayer.h"
 #include "MediaSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
@@ -51,7 +53,6 @@
 #include "SrtReceiverSource.h"
 #include "SourceCallback.h"
 
-#include "InfoVisitor.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
 #include "FrameGrabber.h"
@@ -187,8 +188,14 @@ void Mixer::update()
 
     // if there is a source candidate for this session
     if (candidate_sources_.size() > 0) {
+        // the first element of the pair is the source to insert
         // NB: only make the last candidate the current source in Mixing view
-        insertSource(candidate_sources_.front(), candidate_sources_.size() > 1 ? View::INVALID : View::MIXING);
+        insertSource(candidate_sources_.front().first, candidate_sources_.size() > 1 ? View::INVALID : View::MIXING);
+
+        // the second element of the pair is the source to be replaced, i.e. deleted if provided
+        if (candidate_sources_.front().second != nullptr)
+            deleteSource(candidate_sources_.front().second);
+
         candidate_sources_.pop_front();
     }
 
@@ -265,7 +272,7 @@ void Mixer::draw()
 }
 
 // manangement of sources
-Source * Mixer::createSourceFile(const std::string &path)
+Source * Mixer::createSourceFile(const std::string &path, bool disable_hw_decoding)
 {
     // ready to create a source
     Source *s = nullptr;
@@ -284,6 +291,7 @@ Source * Mixer::createSourceFile(const std::string &path)
         else {
             // (try to) create media source by default
             MediaSource *ms = new MediaSource;
+            ms->mediaplayer()->setSoftwareDecodingForced(disable_hw_decoding);
             ms->setPath(path);
             s = ms;
         }
@@ -452,7 +460,34 @@ Source * Mixer::createSourceClone(const std::string &namesource, bool copy_attri
 void Mixer::addSource(Source *s)
 {
     if (s != nullptr)
-        candidate_sources_.push_back(s);
+        candidate_sources_.push_back( std::make_pair(s, nullptr) );
+}
+
+void delayed_notification( Source *source )
+{
+    bool done = false;
+
+    while (!done) {
+        // give it a bit of time and avoid CPU overload
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+        // to be safe, make sure we have a valid source
+        Session *session = Mixer::manager().session();
+        SourceList::iterator sit = session->find(source);
+        if ( sit != session->end() ) {
+            // voila! the source is valid : notify user if it's ready
+            if ( (*sit)->ready() ) {
+                Log::Notify("%s source %s is ready.", (*sit)->info().c_str(), (*sit)->name().c_str());
+                done = true;
+            }
+            // do not notify if failed
+            else if ( (*sit)->failed() )
+                done = true;
+        }
+        // end loop if invalid source
+        else
+            done = true;
+    }
 }
 
 void Mixer::insertSource(Source *s, View::Mode m)
@@ -477,11 +512,9 @@ void Mixer::insertSource(Source *s, View::Mode m)
         // new state in history manager
         Action::manager().store(s->name() + std::string(": source inserted"));
 
-        // notify creation of source
-        static InfoVisitor _more_info;
-        s->accept(_more_info);
-        std::string moreinfo = BaseToolkit::unspace(_more_info.str(), ' ');
-        Log::Notify("Added %s source '%s' (%s)", s->info().c_str(), s->name().c_str(), moreinfo.c_str());
+        // Log & notification
+        Log::Info("Adding source '%s'...", s->name().c_str());
+        std::thread(delayed_notification, s).detach();
 
         // if requested to show the source in a given view
         // (known to work for View::MIXING et TRANSITION: other views untested)
@@ -520,15 +553,13 @@ void Mixer::replaceSource(Source *previous, Source *s)
     SessionLoader loader( session_ );
     loader.applyImageProcessing(*s, SessionVisitor::getClipboard(previous));
     s->setImageProcessingEnabled( previous->imageProcessingEnabled() );
-
-    // delete previous source
-    session_->deleteSource(previous);
+    s->blendingShader()->blending = previous->blendingShader()->blending;
 
     // rename s
     renameSource(s, previous_name);
 
-    // add source s
-    candidate_sources_.push_back(s);
+    // add source 's' and remove source 'previous'
+    candidate_sources_.push_back( std::make_pair(s, previous) );
 }
 
 

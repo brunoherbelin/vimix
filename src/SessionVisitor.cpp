@@ -582,7 +582,7 @@ void SessionVisitor::visit (Source& s)
     sourceNode->SetAttribute("play", s.playing() );
 
     // insert into hierarchy
-    xmlCurrent_->InsertFirstChild(sourceNode);
+    xmlCurrent_->InsertEndChild(sourceNode);
 
     xmlCurrent_ = xmlDoc_->NewElement( "Mixing" );
     sourceNode->InsertEndChild(xmlCurrent_);
@@ -608,12 +608,17 @@ void SessionVisitor::visit (Source& s)
     xmlCurrent_ = xmlDoc_->NewElement( "Mask" );
     sourceNode->InsertEndChild(xmlCurrent_);
     s.maskShader()->accept(*this);
-    // if we are saving a pain mask
+    // if we are saving a paint mask
     if (s.maskShader()->mode == MaskShader::PAINT) {
         // get the mask previously stored
         XMLElement *imageelement = SessionVisitor::ImageToXML(s.getMask(), xmlDoc_);
         if (imageelement)
             xmlCurrent_->InsertEndChild(imageelement);
+    }
+    // if we are saving a source mask
+    else if (s.maskShader()->mode == MaskShader::SOURCE) {
+        // get the id of the source used as mask
+        xmlCurrent_->SetAttribute("source", s.maskSource()->id());
     }
 
     xmlCurrent_ = xmlDoc_->NewElement( "ImageProcessing" );

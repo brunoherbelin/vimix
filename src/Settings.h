@@ -276,6 +276,7 @@ struct Application
     bool show_tooptips;
 
     int  pannel_current_session_mode;
+    bool pannel_always_visible;
 
     // connection settings
     bool accept_connections;

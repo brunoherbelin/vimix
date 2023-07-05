@@ -684,6 +684,15 @@ void ImGuiVisitor::visit (MediaSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
+            std::string decoder = s.mediaplayer()->decoderName();
+            if ( decoder.compare("software") != 0) {
+                decoder = "Hardware decoder\n" + decoder;
+                ImGuiToolkit::Indication(decoder.c_str(), 13, 2);
+            }
+            else
+                ImGuiToolkit::Indication("Software decoder", 14, 2);
+            top.x += ImGui::GetFrameHeight();
+            ImGui::SetCursorPos(top);
             std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
             if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
@@ -694,15 +703,29 @@ void ImGuiVisitor::visit (MediaSource& s)
         if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
 
+        ImGui::SetCursorPos(botom);
     }
     else {
+        // failed
         ImGui::SetCursorPos(top);
         if (ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy message"))
             ImGui::SetClipboardText(info.str().c_str());
         info.reset();
+
+        ImGui::SetCursorPos(botom);
+
+        // because sometimes the error comes from gpu decoding
+        if ( Settings::application.render.gpu_decoding )
+        {
+            // offer to reload the source without hardware decoding
+            if ( ImGui::Button( ICON_FA_REDO_ALT " Try again without\nhardware decoding", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+                // replace current source with one created with a flag forcing software decoding
+                Mixer::manager().replaceSource(Mixer::manager().currentSource(),
+                                               Mixer::manager().createSourceFile(s.path(), true));
+            }
+        }
     }
 
-    ImGui::SetCursorPos(botom);
 }
 
 void ImGuiVisitor::visit (SessionFileSource& s)

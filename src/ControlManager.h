@@ -67,6 +67,7 @@
 #define OSC_SESSION_SAVE       "/save"
 #define OSC_SESSION_CLOSE      "/close"
 
+#define OSC_STREAM             "/peertopeer"
 #define OSC_MULTITOUCH         "/multitouch"
 
 #define INPUT_UNDEFINED        0
@@ -154,6 +155,9 @@ protected:
                            osc::ReceivedMessageArgumentStream arguments);
     void sendBatchStatus(const IpEndpointName& remoteEndpoint);
     void sendOutputStatus(const IpEndpointName& remoteEndpoint);
+
+    void receiveStreamAttribute(const std::string &attribute,
+                            osc::ReceivedMessageArgumentStream arguments, const std::string &sender);
 
     static void keyboardCalback(GLFWwindow*, int, int, int, int);
 

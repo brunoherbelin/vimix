@@ -240,11 +240,15 @@ SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_("")
     groups_[View::TRANSITION]->translation_ = glm::vec3(-1.f, 0.f, 0.f);
 
     frames_[View::TRANSITION] = new Switch;
-    Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);
+    Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);  // visible
     frame->translation_.z = 0.1;
-    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.95f);
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.85f);
     frames_[View::TRANSITION]->attach(frame);
-    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);
+    frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);         // selected
+    frame->translation_.z = 0.1;
+    frame->color = glm::vec4( COLOR_DEFAULT_SOURCE, 1.f);
+    frames_[View::TRANSITION]->attach(frame);
+    frame = new Frame(Frame::ROUND, Frame::LARGE, Frame::DROP);        // current
     frame->translation_.z = 0.01;
     frame->color = glm::vec4( COLOR_TRANSITION_SOURCE, 1.f);
     frames_[View::TRANSITION]->attach(frame);

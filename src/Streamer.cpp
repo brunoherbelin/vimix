@@ -21,6 +21,7 @@
 #include <sstream>
 #include <iostream>
 #include <cstring>
+#include <algorithm>
 
 // Desktop OpenGL function loader
 #include <glad/glad.h>
@@ -37,7 +38,6 @@
 #include "Settings.h"
 #include "GstToolkit.h"
 #include "SystemToolkit.h"
-#include "Session.h"
 #include "Log.h"
 #include "Connection.h"
 #include "NetworkToolkit.h"
@@ -47,6 +47,15 @@
 #ifndef NDEBUG
 #define STREAMER_DEBUG
 #endif
+
+/// oscsend 127.0.0.1 71510 /vimix/request is 9000 "vimixclient"
+/// oscdump -L 9000 | xargs -L1 -P1 sh -c 'gst-launch-1.0 udpsrc port=$3 caps="application/x-rtp,media=(string)video,encoding-name=(string)RAW,sampling=(string)RGB,width=(string)$5,height=(string)$6" ! rtpvrawdepay ! queue max-size-buffers=10 ! videoconvert ! autovideosink'
+
+/// oscsend 127.0.0.1 71510 /vimix/request is 9000 "h264"
+/// oscdump -L 9000 | xargs -L1 -P1 sh -c 'gst-launch-1.0 udpsrc port=$3 caps="application/x-rtp,media=(string)video,encoding-name=(string)H264" ! rtph264depay ! queue ! decodebin ! videoconvert ! autovideosink'
+
+/// oscsend 127.0.0.1 71510 /vimix/request is 9000 "jpeg"
+/// oscdump -L 9000 | xargs -L1 -P1 sh -c 'gst-launch-1.0 udpsrc port=$3 caps="application/x-rtp,media=(string)video,encoding-name=(string)JPEG" ! rtpjpegdepay ! queue ! decodebin ! videoconvert ! autovideosink'
 
 void Streaming::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                                                const IpEndpointName& remoteEndpoint )
@@ -74,10 +83,10 @@ void Streaming::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     // then enforce local UDP transfer
                     protocol = NetworkToolkit::UDP_RAW;
                 // add stream answering to request
-                Streaming::manager().addStream(sender, reply_to_port, client_name, protocol);
+                Streaming::manager()._addStream(sender, reply_to_port, client_name, protocol);
             }
             else
-                Streaming::manager().refuseStream(sender, reply_to_port);
+                Streaming::manager()._refuseStream(sender, reply_to_port);
         }
         else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_STREAM_DISCONNECT) == 0 ){
             // receive info on disconnection
@@ -245,7 +254,7 @@ void Streaming::removeStream(const VideoStreamer *vs)
     }
 }
 
-void Streaming::refuseStream(const std::string &sender, int reply_to)
+void Streaming::_refuseStream(const std::string &sender, int reply_to)
 {
     // get ip of client
     std::string sender_ip = sender.substr(0, sender.find_last_of(":"));
@@ -264,7 +273,32 @@ void Streaming::refuseStream(const std::string &sender, int reply_to)
     Log::Warning("A connection request for streaming came in and was refused.\nYou can enable the Sharing on local network from the menu of the Output window.");
 }
 
-void Streaming::addStream(const std::string &sender, int reply_to,
+void Streaming::addStream(const std::string &sender, int port,
+                          const std::string &clientname)
+{
+    // get ip of client
+    std::string sender_ip = sender.substr(0, sender.find_last_of(":"));
+
+    // prepare an offer
+    NetworkToolkit::StreamConfig conf;
+    conf.client_address = sender_ip;
+    conf.client_name = clientname;
+    conf.port = port;
+    conf.width = FrameGrabbing::manager().width();
+    conf.height = FrameGrabbing::manager().height();
+    conf.protocol = Settings::application.stream_protocol > 0 ? NetworkToolkit::UDP_H264 : NetworkToolkit::UDP_JPEG;
+
+    // create streamer & remember it
+    VideoStreamer *streamer = new VideoStreamer(conf);
+    streamers_lock_.lock();
+    streamers_.push_back(streamer);
+    streamers_lock_.unlock();
+
+    // start streamer
+    FrameGrabbing::manager().add(streamer);
+}
+
+void Streaming::_addStream(const std::string &sender, int reply_to,
                           const std::string &clientname, NetworkToolkit::StreamProtocol protocol)
 {
     // get ip of client
@@ -386,10 +420,12 @@ std::string VideoStreamer::init(GstCaps *caps)
         std::string path = SystemToolkit::full_filename(SystemToolkit::temp_path(), "shm");
         path += std::to_string(config_.port);
         g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
+                      "sync", FALSE,
                       "socket-path", path.c_str(),  NULL);
     }
     else {
         g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
+                      "sync", FALSE,
                       "host", config_.client_address.c_str(),
                       "port", config_.port,  NULL);
     }

@@ -38,6 +38,7 @@
 #include "TransitionView.h"
 #include "NetworkToolkit.h"
 #include "UserInterfaceManager.h"
+#include "Streamer.h"
 
 #include "ControlManager.h"
 
@@ -118,6 +119,11 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     // send the status of all batch
                     Control::manager().sendBatchStatus(remoteEndpoint);
                 }
+            }
+            // Request stream
+            else if ( target.compare(OSC_STREAM) == 0 )
+            {
+                Control::manager().receiveStreamAttribute(attribute, m.ArgumentStream(), sender);
             }
             // ALL sources target: apply attribute to all sources of the session
             else if ( target.compare(OSC_ALL) == 0 )
@@ -998,6 +1004,70 @@ void Control::receiveMultitouchAttribute(const std::string &attribute,
     }
 
 }
+
+
+void Control::receiveStreamAttribute(const std::string &attribute,
+                                     osc::ReceivedMessageArgumentStream arguments,
+                                     const std::string &sender)
+{
+    try {
+        if (Streaming::manager().enabled()) {
+            // Stream request /vimix/stream/request
+            if ( attribute.compare(OSC_STREAM_REQUEST) == 0 ) {
+                osc::int32 port = 0;
+                const char *label = nullptr;
+                // read arguments, port is mandatory, label optionnal
+                arguments >> port;
+                if (arguments.Eos())
+                    arguments >> osc::EndMessage;
+                else
+                    arguments >> label >> osc::EndMessage;
+                // remove prevous identical stream
+                Streaming::manager().removeStream(sender, (int) port);
+                // add the requested stream to manager
+                std::string clientname = label == nullptr ? sender.substr(0, sender.find_last_of(":")) : label;
+                clientname += " [" + std::to_string(port) + "]";
+                Streaming::manager().addStream(sender, (int) port, clientname);
+            }
+            // Stream disconnection request /vimix/stream/disconnect
+            else if ( attribute.compare(OSC_STREAM_DISCONNECT) == 0 ) {
+
+                NetworkToolkit::StreamConfig removed;
+
+                // Port is given: remove stream from that sender at given port
+                try {
+                    osc::ReceivedMessageArgumentStream arg = arguments;
+                    osc::int32 port = 0;
+                    arg >> port;
+                    // no exception, remove that port
+                    removed = Streaming::manager().removeStream(sender, (int) port);
+                    // silently ignore any other argument
+                }
+                catch (osc::WrongArgumentTypeException &) {
+                }
+                // no stream was removed by port
+                if (!removed.port) {
+                    // try by client name if given: remove all streams with that name
+                    const char *label = nullptr;
+                    arguments >> label >> osc::EndMessage;
+                    // no exception, remove that label
+                    Streaming::manager().removeStreams(label);
+                }
+            }
+        }
+    }
+    catch (osc::MissingArgumentException &e) {
+        Log::Info(CONTROL_OSC_MSG "Missing argument for attribute '%s' for target %s.", attribute.c_str(), OSC_STREAM);
+    }
+    catch (osc::ExcessArgumentException &e) {
+        Log::Info(CONTROL_OSC_MSG "Too many arguments for attribute '%s' for target %s.", attribute.c_str(), OSC_STREAM);
+    }
+    catch (osc::WrongArgumentTypeException &e) {
+        Log::Info(CONTROL_OSC_MSG "Invalid argument for attribute '%s' for target %s.", attribute.c_str(), OSC_STREAM);
+    }
+
+}
+
 
 void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::string target, Source *s)
 {

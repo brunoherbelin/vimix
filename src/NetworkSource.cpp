@@ -30,7 +30,6 @@
 #include "osc/OscOutboundPacketStream.h"
 
 #include "SystemToolkit.h"
-#include "defines.h"
 #include "Stream.h"
 #include "Decorations.h"
 #include "Visitor.h"

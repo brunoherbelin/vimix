@@ -436,7 +436,7 @@ void TextureView::adjustBackground()
     preview_surface_->setTextureIndex( Resource::getTextureTransparent() );
 
     // if its a valid index
-    if (edit_source_ != nullptr) {
+    if (edit_source_ != nullptr && edit_source_->ready()) {
         // update rendering frame to match edit source AR
         image_original_width = edit_source_->frame()->aspectRatio();
         scale = edit_source_->mixingsurface_->scale_;
@@ -444,7 +444,7 @@ void TextureView::adjustBackground()
         preview_shader_->mask_texture = edit_source_->blendingShader()->mask_texture;
         preview_surface_->scale_ = scale;
         // mask appearance
-        mask_node_->visible_ = edit_source_->maskShader()->mode > MaskShader::PAINT && mask_cursor_shape_ > 0;
+        mask_node_->visible_ = edit_source_->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0;
 
         int shape = edit_source_->maskShader()->shape;
         mask_circle_->visible_ = shape == MaskShader::ELLIPSE;
@@ -485,29 +485,23 @@ void TextureView::adjustBackground()
 
 Source *TextureView::getEditOrCurrentSource()
 {
-    // cancel multiple selection
-    if (Mixer::selection().size() > 1) {
-        Source *s = Mixer::manager().currentSource();
-        Mixer::manager().unsetCurrentSource();
-        if ( s == nullptr )
-            s = Mixer::selection().front();
-        Mixer::selection().clear();
-        Mixer::manager().setCurrentSource(s);
-    }
-
     // get current source
     Source *_source = Mixer::manager().currentSource();
 
-    // no current source?
-    if (_source == nullptr) {
-        // if something can be selected
-        if ( !Mixer::manager().session()->empty()) {
-            // return the edit source, if exists
-            if (edit_source_ != nullptr)
-                _source = Mixer::manager().findSource(edit_source_->id());
+    // no current source but possible source
+    if (_source == nullptr && Mixer::manager().numSource() > 0) {
+        // then get the source active in user interface left panel
+        _source = UserInterface::manager().sourceInPanel();
+        // no source in panel neither?
+        if (_source == nullptr && edit_source_ != nullptr) {
+            // then keep the current edit source ( if still available )
+            _source = Mixer::manager().findSource( edit_source_->id() );
         }
+        // ensures the source is selected
+        Mixer::selection().set(_source);
     }
 
+    // do not work on a failed source
     if (_source != nullptr && _source->failed() ) {
         _source = nullptr;
     }
@@ -591,25 +585,40 @@ void TextureView::draw()
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
 
 
-            int mode = edit_source_->maskShader()->mode;
+            int maskmode = edit_source_->maskShader()->mode;
             ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
 
-            if (ImGui::BeginCombo("##Mask", MaskShader::mask_icons[mode])) {
+            if (ImGui::BeginCombo("##Mask", MaskShader::mask_icons[maskmode])) {
 
-                for (int m = 0; m < 3; ++m){
+                for (int m = MaskShader::NONE; m <= MaskShader::SOURCE; ++m){
                     if (ImGui::Selectable( MaskShader::mask_icons[m] )) {
-                        mode = m;
-                        edit_source_->maskShader()->mode = mode;
-                        if (mode == MaskShader::NONE)
-                            Mixer::manager().setCurrentSource(edit_source_);
-                        else if (mode == MaskShader::PAINT)
-                            edit_source_->storeMask();
-                        edit_source_->touch();
-                        need_edit_update_ = true;
-                        // store action history
-                        std::ostringstream oss;
-                        oss << edit_source_->name() << ": " << MaskShader::mask_names[mode];
-                        Action::manager().store(oss.str());
+                        // on change of mode
+                        if (maskmode != m) {
+                            // cancel previous source mask
+                            if (maskmode == MaskShader::SOURCE) {
+                                // store source image as mask before painting
+                                if (edit_source_->maskSource()->connected() && m == MaskShader::PAINT)
+                                    edit_source_->setMask( edit_source_->maskSource()->source()->frame()->image() );
+                                // cancel source mask
+                                edit_source_->maskSource()->disconnect();
+                            }
+                            // store current mask before painting
+                            else if (m == MaskShader::PAINT)
+                                edit_source_->storeMask();
+                            // set new mode
+                            maskmode = m;
+                            edit_source_->maskShader()->mode = maskmode;
+                            // force update source and view
+                            edit_source_->touch(Source::SourceUpdate_Mask);
+                            need_edit_update_ = true;
+                            // store action history
+                            std::ostringstream oss;
+                            oss << edit_source_->name() << ": " << MaskShader::mask_names[maskmode];
+                            Action::manager().store(oss.str());
+                            // force take control of source for NONE and SOURCE modes
+                            if (maskmode == MaskShader::NONE || maskmode == MaskShader::SOURCE)
+                                Mixer::manager().setCurrentSource(edit_source_);
+                        }
                     }
                     if (ImGui::IsItemHovered())
                         ImGuiToolkit::ToolTip(MaskShader::mask_names[m]);
@@ -617,8 +626,53 @@ void TextureView::draw()
                 ImGui::EndCombo();
             }
 
+
+            // GUI for selecting source mask
+            if (maskmode == MaskShader::SOURCE) {
+
+                ImGui::SameLine(0, 60);
+                bool on = true;
+                ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on, "Edit texture");
+
+                // List of sources
+                ImGui::SameLine(0, 60);
+                std::string label = "Select source";
+                Source *ref_source = nullptr;
+                if (edit_source_->maskSource()->connected()) {
+                    ref_source = edit_source_->maskSource()->source();
+                    if (ref_source != nullptr)
+                        label = std::string("Source ") + ref_source->initials() + " - " + ref_source->name();
+                }
+                if (ImGui::BeginCombo("##SourceMask", label.c_str())) {
+                    SourceList::iterator iter;
+                    for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter)
+                    {
+                        label = std::string("Source ") + (*iter)->initials() + " - " + (*iter)->name();
+                        if (ImGui::Selectable( label.c_str(), *iter == ref_source )) {
+                            edit_source_->maskSource()->connect( *iter );
+                            edit_source_->touch(Source::SourceUpdate_Mask);
+                            need_edit_update_ = true;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Source used as mask");
+                // reset button
+                if (ref_source){
+                    ImGui::SameLine();
+                    if (ImGui::Button(ICON_FA_BACKSPACE)){
+                        edit_source_->maskSource()->disconnect();
+                        edit_source_->touch(Source::SourceUpdate_Mask);
+                        need_edit_update_ = true;
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGuiToolkit::ToolTip("Reset");
+                }
+
+            }
             // GUI for drawing mask
-            if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
+            else if (maskmode == MaskShader::PAINT) {
 
                 // select cursor
                 static bool on = true;
@@ -739,7 +793,7 @@ void TextureView::draw()
                         if (e>0) {
                             edit_source_->maskShader()->effect = e;
                             edit_source_->maskShader()->cursor = glm::vec4(100.0, 100.0, 0.f, 0.f);
-                            edit_source_->touch();
+                            edit_source_->touch(Source::SourceUpdate_Mask);
                             Action::manager().store(oss.str());
                         }
                         ImGui::PopFont();
@@ -774,8 +828,8 @@ void TextureView::draw()
                 }
 
             }
-            // GUI for all other masks
-            else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
+            // GUI for shape masks
+            else if (maskmode == MaskShader::SHAPE) {
 
                 // select cursor
                 static bool on = true;
@@ -804,7 +858,7 @@ void TextureView::draw()
                     ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 6.5f);
                     if ( ImGui::Combo("##MaskShape", &shape, MaskShader::mask_shapes, IM_ARRAYSIZE(MaskShader::mask_shapes) ) ) {
                         edit_source_->maskShader()->shape = shape;
-                        edit_source_->touch();
+                        edit_source_->touch(Source::SourceUpdate_Mask);
                         need_edit_update_ = true;
                         // store action history
                         std::ostringstream oss;
@@ -826,7 +880,7 @@ void TextureView::draw()
                         ImGuiToolkit::Indication("Blured ", 7, 16, ICON_FA_ARROW_UP);
                         if (ImGui::VSliderInt("##shapeblur", ImVec2(30,260), &blur_percent, 0, 100, "") ){
                             edit_source_->maskShader()->blur = float(blur_percent) / 100.f;
-                            edit_source_->touch();
+                            edit_source_->touch(Source::SourceUpdate_Mask);
                             need_edit_update_ = true;
                             smoothchanged = true;
                         }
@@ -856,7 +910,7 @@ void TextureView::draw()
                     ImGui::TextDisabled( "mask");
                 }
             }
-            else {// mode == MaskShader::NONE
+            else {// maskmode == MaskShader::NONE
                 // always active mouse pointer
                 ImGui::SameLine(0, 60);
                 bool on = true;
@@ -951,7 +1005,7 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
                 // inform shader of a cursor action : coordinates and crop scaling
                 edit_source_->maskShader()->cursor = glm::vec4(scene_to.x, scene_to.y,
                                                             edit_source_->mixingsurface_->scale_.x, edit_source_->mixingsurface_->scale_.y);
-                edit_source_->touch();
+                edit_source_->touch(Source::SourceUpdate_Mask);
                 // action label
                 info << MASK_PAINT_ACTION_LABEL;
                 // cursor indication - no info, just cursor
@@ -985,7 +1039,7 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
                 else
                     edit_source_->maskShader()->size = glm::max(glm::abs(glm::vec2(val)), glm::vec2(0.2));
 //                edit_source_->maskShader()->size = glm::max( glm::min( glm::vec2(val), glm::vec2(2.f)), glm::vec2(hv?-2.f:0.2f));
-                edit_source_->touch();
+                edit_source_->touch(Source::SourceUpdate_Mask);
                 // update
                 need_edit_update_ = true;
                 // action label
@@ -1425,7 +1479,7 @@ void TextureView::arrow (glm::vec2 movement)
             if (mask_cursor_shape_ > 0) {
                 float b = -0.02f * movement.y;
                 edit_source_->maskShader()->blur = CLAMP(edit_source_->maskShader()->blur+b, SHAPE_MIN_BLUR, SHAPE_MAX_BLUR);
-                edit_source_->touch();
+                edit_source_->touch(Source::SourceUpdate_Mask);
             }
         }
     }
