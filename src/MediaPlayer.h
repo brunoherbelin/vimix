@@ -297,6 +297,7 @@ private:
     bool enabled_;
     bool rewind_on_disable_;
     bool force_software_decoding_;
+    bool force_basic_speedchange_;
     std::string decoder_name_;
     Metronome::Synchronicity metro_sync_;
 
