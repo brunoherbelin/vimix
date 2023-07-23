@@ -2332,7 +2332,7 @@ void HelperToolbox::Render()
         ImGui::Text ("Apply masks or freely paint the texture on the source surface. Repeat or crop the graphics.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_TV "  Displays"); ImGui::NextColumn();
-        ImGui::Text ("Manage and place output windows in computer's displays (e.g. fullscreen mode, color white balance adjustment).");
+        ImGui::Text ("Manage and place output windows in computer's displays (e.g. fullscreen mode, white balance adjustment).");
         ImGui::NextColumn();
 
         ImGui::Columns(1);
@@ -2357,7 +2357,7 @@ void HelperToolbox::Render()
         ImGui::Text(ICON_FA_HAND_PAPER "  Inputs"); ImGui::NextColumn();
         ImGui::Text ("Define how user inputs (e.g. keyboard, joystick) are mapped to custom actions in the session.");
         ImGui::NextColumn();
-        ImGui::Text(ICON_FA_LIST_ALT " Source tool"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_WRENCH " Source toolbar"); ImGui::NextColumn();
         ImGui::Text ("Toolbar to show and edit alpha and geometry of the current source.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_TACHOMETER_ALT "  Metrics"); ImGui::NextColumn();
@@ -2539,7 +2539,7 @@ void HelperToolbox::Render()
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_FULLSCREEN); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_EXPAND_ALT " " TOOLTIP_FULLSCREEN "main window"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_EXPAND_ALT " " TOOLTIP_FULLSCREEN " window"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_OUTPUT); ImGui::NextColumn();
         ImGui::Text(ICON_FA_LAPTOP " " TOOLTIP_OUTPUT "window"); ImGui::NextColumn();
