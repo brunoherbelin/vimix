@@ -65,6 +65,12 @@ set(VMIX_SRCS
     DelayFilter.cpp
     RenderingManager.cpp
     UserInterfaceManager.cpp
+    WorkspaceWindow.cpp
+    SourceControlWindow.cpp
+    OutputPreviewWindow.cpp
+    TimerMetronomeWindow.cpp
+    InputMappingWindow.cpp
+    ShaderEditWindow.cpp
     PickingVisitor.cpp
     BoundingBoxVisitor.cpp
     DrawVisitor.cpp
