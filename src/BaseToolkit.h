@@ -1,6 +1,7 @@
 #ifndef BASETOOLKIT_H
 #define BASETOOLKIT_H
 
+#include <cstdint>
 #include <list>
 #include <string>
 
