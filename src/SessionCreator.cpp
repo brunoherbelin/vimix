@@ -875,6 +875,10 @@ void SessionLoader::visit(MediaPlayer &n)
         // change play status only if different id (e.g. new media player)
         if ( n.id() != id__ ) {
 
+            const char *pFilter = mediaplayerNode->Attribute("video_effect");
+            if (pFilter)
+                n.setVideoEffect(std::string(pFilter));
+
             double speed = 1.0;
             mediaplayerNode->QueryDoubleAttribute("speed", &speed);
             n.setPlaySpeed(speed);
@@ -1078,6 +1082,9 @@ void SessionLoader::visit (MediaSource& s)
 
     // set config media player
     s.mediaplayer()->accept(*this);
+
+    // add a callback to activate play speed
+    s.call( new PlaySpeed( s.mediaplayer()->playSpeed() ) );
 }
 
 void SessionLoader::visit (SessionFileSource& s)

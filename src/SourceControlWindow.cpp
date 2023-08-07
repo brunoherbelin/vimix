@@ -1668,10 +1668,8 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         ImGui::SameLine();
         ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.4f);
-        if (ImGuiToolkit::IconButton(12,14,"Reset speed" )) {
-            mediaplayer_active_->setPlaySpeed( 1.0 );
-            oss << ": Speed x1";
-            Action::manager().store(oss.str());
+        if (ImGuiToolkit::IconButton(12,14,"Reset" )) {
+            mediaplayer_active_->reopen();
         }
 
         // restore buttons style
@@ -1858,7 +1856,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             close = true;
 
             // apply to pipeline
-            mediaplayer_active_->setEffect(_description);
+            mediaplayer_active_->setVideoEffect(_description);
         }
         ImGui::PopStyleColor(1);
 

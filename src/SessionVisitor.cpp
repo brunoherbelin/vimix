@@ -414,6 +414,7 @@ void SessionVisitor::visit(MediaPlayer &n)
         newelement->SetAttribute("play", n.isPlaying());
         newelement->SetAttribute("loop", (int) n.loop());
         newelement->SetAttribute("speed", n.playSpeed());
+        newelement->SetAttribute("video_effect", n.videoEffect().c_str());
         newelement->SetAttribute("software_decoding", n.softwareDecodingForced());
         newelement->SetAttribute("rewind_on_disabled", n.rewindOnDisabled());
         newelement->SetAttribute("sync_to_metronome", (int) n.syncToMetronome());
