@@ -319,6 +319,7 @@ typedef enum {
     GST_PLAY_FLAG_SW_DECODER    = 0x00001000
 } GstPlayFlags;
 
+
 //
 // Setup a media player using gstreamer playbin
 //
@@ -368,7 +369,7 @@ void MediaPlayer::execute_open()
     }
 
     // setup appsink
-    GstElement *sink = gst_element_factory_make ("appsink", NULL);
+    GstElement *sink = gst_element_factory_make ("appsink", "appsink");
     if (!sink) {
         Log::Warning("MediaPlayer %s Could not configure  sink", std::to_string(id_).c_str());
         failed_ = true;
@@ -1358,10 +1359,8 @@ void MediaPlayer::setPlaySpeed(double s)
                                                    GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE,
                                                    GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
 
-        if (seek_event && gst_element_send_event(pipeline_, seek_event) ) {
+        if (seek_event && gst_element_send_event(pipeline_, seek_event) )
             seeking_ = true;
-            Log::Info("MediaPlayer %s; instant rate to %f", std::to_string(id_).c_str(), rate_);
-        }
         else {
             Log::Info("MediaPlayer %s; cannot perform instantaneous speed change. Change of play speed will not be smooth.", std::to_string(id_).c_str());
             rate_change_ = RATE_CHANGE_FLUSH;
@@ -1370,10 +1369,8 @@ void MediaPlayer::setPlaySpeed(double s)
     // Generic way is a flush seek
     // following the example from
     // https://gstreamer.freedesktop.org/documentation/tutorials/basic/playback-speed.html
-    else {
-        Log::Info("MediaPlayer %s; flush rate to %f", std::to_string(id_).c_str(), rate_);
+    else
         execute_seek_command();
-    }
 
     // Set after initialization (will be used next time)
     if (rate_change_ == RATE_CHANGE_NONE)
@@ -1616,3 +1613,16 @@ void MediaPlayer::TimeCounter::tic ()
     }
 }
 
+
+//static void audio_changed_callback (GstElement *pipeline, MediaPlayer *mp)
+//{
+//    gint n_audio;
+//    g_object_get (G_OBJECT (pipeline), "n-audio", &n_audio, NULL);
+//    if ( n_audio > 0 ) {
+//        Log::Info("MediaPlayer %d Audio stream muted", std::to_string( mp->id() ).c_str() );
+//        gst_stream_volume_set_volume (GST_STREAM_VOLUME (pipeline), GST_STREAM_VOLUME_FORMAT_LINEAR, 0.);
+//        gst_stream_volume_set_mute (GST_STREAM_VOLUME (pipeline), true);
+//    }
+//}
+//    flags |= GST_PLAY_FLAG_AUDIO;
+//    g_signal_connect ( G_OBJECT (pipeline_), "audio-changed", G_CALLBACK (audio_changed_callback), this);

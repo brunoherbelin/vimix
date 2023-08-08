@@ -374,7 +374,33 @@ void SourceControlWindow::Render()
         //
         if (ImGui::BeginMenu(ICON_FA_FILM " Video", mediaplayer_active_) )
         {
-            if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset timeline")){
+            if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
+                mediaplayer_active_->reopen();
+            if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect") )
+                mediaplayer_edit_pipeline_ = true;
+            if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "   On deactivation"))
+            {
+                bool option = !mediaplayer_active_->rewindOnDisabled();
+                if (ImGui::MenuItem(ICON_FA_STOP "  Stop", NULL, &option ))
+                    mediaplayer_active_->setRewindOnDisabled(false);
+                option = mediaplayer_active_->rewindOnDisabled();
+                if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", NULL, &option ))
+                    mediaplayer_active_->setRewindOnDisabled(true);
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
+            {
+                bool hwdec = !mediaplayer_active_->softwareDecodingForced();
+                if (ImGui::MenuItem("Auto", "", &hwdec ))
+                    mediaplayer_active_->setSoftwareDecodingForced(false);
+                hwdec = mediaplayer_active_->softwareDecodingForced();
+                if (ImGui::MenuItem("Disabled", "", &hwdec ))
+                    mediaplayer_active_->setSoftwareDecodingForced(true);
+                ImGui::EndMenu();
+            }
+            ImGui::Separator();
+            ImGui::TextDisabled("Timeline");
+            if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset")){
                 mediaplayer_timeline_zoom_ = 1.f;
                 mediaplayer_active_->timeline()->clearFading();
                 mediaplayer_active_->timeline()->clearGaps();
@@ -401,32 +427,6 @@ void SourceControlWindow::Render()
                     mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
                 ImGui::EndMenu();
             }
-
-            ImGui::Separator();
-            if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "   Deactivation"))
-            {
-                bool option = !mediaplayer_active_->rewindOnDisabled();
-                if (ImGui::MenuItem(ICON_FA_STOP "  Stop", NULL, &option ))
-                    mediaplayer_active_->setRewindOnDisabled(false);
-                option = mediaplayer_active_->rewindOnDisabled();
-                if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", NULL, &option ))
-                    mediaplayer_active_->setRewindOnDisabled(true);
-                ImGui::EndMenu();
-            }
-            // always allow for hardware decoding to be disabled
-            if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
-            {
-                bool hwdec = !mediaplayer_active_->softwareDecodingForced();
-                if (ImGui::MenuItem("Auto", "", &hwdec ))
-                    mediaplayer_active_->setSoftwareDecodingForced(false);
-                hwdec = mediaplayer_active_->softwareDecodingForced();
-                if (ImGui::MenuItem("Disabled", "", &hwdec ))
-                    mediaplayer_active_->setSoftwareDecodingForced(true);
-                ImGui::EndMenu();
-            }
-            // TODO finalize pipeline editor
-            if (ImGui::MenuItem(ICON_FA_MAGIC "  Video effect"))
-                mediaplayer_edit_pipeline_ = true;
 
             ImGui::EndMenu();
         }
@@ -1491,6 +1491,8 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     ///
     /// media player timelines
     ///
+    double current_play_speed = mediaplayer_active_->playSpeed();
+    static uint counter_menu_timeout = 0;
     const ImVec2 scrollwindow = ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
                                  2.f * timeline_height_ + scrollbar_ );
 
@@ -1656,12 +1658,12 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::SameLine(0, MAX(h_space_ * 2.f, rendersize.x - min_width_ * 1.4f) );
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - buttons_height_ );
             // speed slider
-            float speed = static_cast<float>(mediaplayer_active_->playSpeed());
-            if (ImGui::DragFloat( "##Speed", &speed, 0.01f, -10.f, 10.f, UNICODE_MULTIPLY " %.2f"))
-                mediaplayer_active_->setPlaySpeed( static_cast<double>(speed) );
+            float s = fabs(static_cast<float>(current_play_speed));
+            if (ImGui::DragFloat( "##Speed", &s, 0.01f, 0.1f, 10.f, UNICODE_MULTIPLY " %.2f"))
+                mediaplayer_active_->setPlaySpeed( SIGN(current_play_speed) * static_cast<double>(s) );
             // store action on mouse release
             if (ImGui::IsItemDeactivatedAfterEdit()){
-                oss << ": Speed x" << std::setprecision(3) << speed;
+                oss << ": Speed x" << std::setprecision(3) << s;
                 Action::manager().store(oss.str());
             }
             if (ImGui::IsItemHovered())
@@ -1670,8 +1672,9 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         ImGui::SameLine();
         ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.4f);
-        if (ImGuiToolkit::IconButton(12,14,"Reset" )) {
-            mediaplayer_active_->reopen();
+        if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+            counter_menu_timeout=0;
+            ImGui::OpenPopup( "MenuPlaySpeed" );
         }
 
         // restore buttons style
@@ -1713,6 +1716,32 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ///
         bottom.y += 2.f * timeline_height_ + scrollbar_;
         DrawButtonBar(bottom, rendersize.x);
+    }
+
+    if (ImGui::BeginPopup( "MenuPlaySpeed" ))
+    {
+        if (ImGuiToolkit::MenuItemIcon(8,0, "Play forward", nullptr, current_play_speed>0)) {
+            mediaplayer_active_->setPlaySpeed( ABS(mediaplayer_active_->playSpeed()) );
+            oss << ": Play forward";
+            Action::manager().store(oss.str());
+        }
+        if (ImGuiToolkit::MenuItemIcon(9,0, "Play backward", nullptr, current_play_speed<0)) {
+            mediaplayer_active_->setPlaySpeed( - ABS(mediaplayer_active_->playSpeed()) );
+            oss << ": Play backward";
+            Action::manager().store(oss.str());
+        }
+        if (ImGuiToolkit::MenuItemIcon(19,15, "Reset speed")) {
+            mediaplayer_active_->setPlaySpeed(1.0);
+            oss << ": Speed x 1.0";
+            Action::manager().store(oss.str());
+        }
+
+        if (ImGui::IsWindowHovered())
+            counter_menu_timeout=0;
+        else if (++counter_menu_timeout > 10)
+            ImGui::CloseCurrentPopup();
+
+        ImGui::EndPopup();
     }
 
 
@@ -1798,7 +1827,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     static bool _effect_description_changed = false;
     if (mediaplayer_edit_pipeline_) {
         // open dialog
-        ImGui::OpenPopup(ICON_FA_MAGIC "  Video effect");
+        ImGui::OpenPopup("Gstreamer Video effect");
         mediaplayer_edit_pipeline_ = false;
         // initialize dialog
         _effect_description = mediaplayer_active_->videoEffect();
@@ -1808,7 +1837,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     ImGui::SetNextWindowSize(mpp_dialog_size, ImGuiCond_Always);
     const ImVec2 mpp_dialog_pos = top + rendersize * 0.5f  - mpp_dialog_size * 0.5f;
     ImGui::SetNextWindowPos(mpp_dialog_pos, ImGuiCond_Always);
-    if (ImGui::BeginPopupModal(ICON_FA_MAGIC "  Video effect", NULL, ImGuiWindowFlags_NoResize))
+    if (ImGui::BeginPopupModal("Gstreamer Video effect", NULL, ImGuiWindowFlags_NoResize))
     {
         const ImVec2 pos = ImGui::GetCursorPos();
         const ImVec2 area = ImGui::GetContentRegionAvail();

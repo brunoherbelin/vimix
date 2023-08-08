@@ -140,7 +140,7 @@ void ShaderEditWindow::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_SHADEREDITOR))
         {
             // reload code from GPU
-            if (ImGui::MenuItem( ICON_FA_SYNC "  Reload", nullptr, nullptr, current_ != nullptr)) {
+            if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload", nullptr, nullptr, current_ != nullptr)) {
                 // force reload
                 if ( current_ != nullptr )
                     filters_.erase(current_);
