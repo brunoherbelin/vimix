@@ -122,7 +122,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     if (id_ == 0)
         id_ = BaseToolkit::uniqueId();
 
-    sprintf(initials_, "__");
+    snprintf(initials_, 3, "__");
     name_ = "Source";
     mode_ = Source::UNINITIALIZED;
 

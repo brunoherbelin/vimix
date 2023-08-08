@@ -202,7 +202,7 @@ void WorkspaceWindow::Update()
                 ImGui::SetNextWindowPos(window->Pos, ImGuiCond_Always);
                 ImGui::SetNextWindowSize(window->Size, ImGuiCond_Always);
                 char nameoverlay[64];
-                sprintf(nameoverlay, "%sOverlay", name_);
+                snprintf(nameoverlay, 64, "%sOverlay", name_);
                 if (ImGui::Begin(nameoverlay, NULL, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings ))
                 {
                     // exit workspace clear mode if user clics on the window

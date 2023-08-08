@@ -341,11 +341,11 @@ void SystemToolkit::open(const string& url)
         ShellExecuteA( nullptr, nullptr, url.c_str(), nullptr, nullptr, 0 );
 #elif defined APPLE
         char buf[2048];
-        sprintf( buf, "open '%s'", url.c_str() );
+        snprintf( buf, 2048, "open '%s'", url.c_str() );
         ignored = system( buf );
 #else
         char buf[2048];
-        sprintf( buf, "xdg-open '%s'", url.c_str() );
+        snprintf( buf, 2048, "xdg-open '%s'", url.c_str() );
         ignored = system( buf );
 #endif
 }

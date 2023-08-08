@@ -331,13 +331,13 @@ void SourceControlWindow::Render()
             if ( name_path[0] == nullptr ) {
                 for (int i = 0; i < 4; ++i)
                     name_path[i] = (char *) malloc( 1024 * sizeof(char));
-                sprintf( name_path[1], "%s", ICON_FA_HOME " Home");
-                sprintf( name_path[2], "%s", ICON_FA_FOLDER " File location");
-                sprintf( name_path[3], "%s", ICON_FA_FOLDER_PLUS " Select");
+                snprintf( name_path[1], 1024, "%s", ICON_FA_HOME " Home");
+                snprintf( name_path[2], 1024, "%s", ICON_FA_FOLDER " File location");
+                snprintf( name_path[3], 1024, "%s", ICON_FA_FOLDER_PLUS " Select");
             }
             if (Settings::application.source.capture_path.empty())
                 Settings::application.source.capture_path = SystemToolkit::home_path();
-            sprintf( name_path[0], "%s", Settings::application.source.capture_path.c_str());
+            snprintf( name_path[0], 1024, "%s", Settings::application.source.capture_path.c_str());
             int selected_path = 0;
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             ImGui::Combo("Path", &selected_path, name_path, 4);

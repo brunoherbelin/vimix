@@ -196,7 +196,7 @@ bool UserInterface::Init()
 
     // setup settings filename
     std::string inifile = SystemToolkit::full_filename(SystemToolkit::settings_path(), "imgui.ini");
-    std::sprintf(inifilepath, "%s", inifile.c_str() );
+    std::snprintf(inifilepath, 2048, "%s", inifile.c_str() );
     io.IniFilename = inifilepath;
 
     // init dialogs
@@ -1316,7 +1316,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 
     if (*p_mode & Metrics_framerate) {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        sprintf(dummy_str, "%.1f", io.Framerate);
+        snprintf(dummy_str, 256, "%.1f", io.Framerate);
         ImGui::SetNextItemWidth(_width);
         ImGui::InputText("##dummy", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
@@ -1328,7 +1328,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 
     if (*p_mode & Metrics_ram) {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        sprintf(dummy_str, "%s", BaseToolkit::byte_to_string( ram ).c_str());
+        snprintf(dummy_str, 256, "%s", BaseToolkit::byte_to_string( ram ).c_str());
         ImGui::SetNextItemWidth(_width);
         ImGui::InputText("##dummy2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
@@ -1343,10 +1343,10 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
         // got free and max GPU RAM (nvidia)
         if (gpu.y < INT_MAX && gpu.y > 0)
-            sprintf(dummy_str, "%s", BaseToolkit::byte_to_string( long(gpu.y-gpu.x) * 1024 ).c_str());
+            snprintf(dummy_str, 256, "%s", BaseToolkit::byte_to_string( long(gpu.y-gpu.x) * 1024 ).c_str());
         // got used GPU RAM (ati)
         else
-            sprintf(dummy_str, "%s", BaseToolkit::byte_to_string( long(gpu.x) * 1024 ).c_str());
+            snprintf(dummy_str, 256, "%s", BaseToolkit::byte_to_string( long(gpu.x) * 1024 ).c_str());
         ImGui::SetNextItemWidth(_width);
         ImGui::InputText("##dummy3", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
@@ -1358,7 +1358,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 
     if (*p_mode & Metrics_session) {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        sprintf(dummy_str, "%s", GstToolkit::time_to_string(Mixer::manager().session()->runtime(), GstToolkit::TIME_STRING_READABLE).c_str());
+        snprintf(dummy_str, 256, "%s", GstToolkit::time_to_string(Mixer::manager().session()->runtime(), GstToolkit::TIME_STRING_READABLE).c_str());
         ImGui::SetNextItemWidth(_width);
         ImGui::InputText("##dummy", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
@@ -1370,7 +1370,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 
     if (*p_mode & Metrics_runtime) {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        sprintf(dummy_str, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
+        snprintf(dummy_str, 256, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
         ImGui::SetNextItemWidth(_width);
         ImGui::InputText("##dummy2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
@@ -1383,7 +1383,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
     if (*p_mode & Metrics_lifetime) {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
         time += Settings::application.total_runtime;
-        sprintf(dummy_str, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
+        snprintf(dummy_str, 256, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
         ImGui::SetNextItemWidth(_width);
         ImGui::InputText("##dummy3", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopFont();
@@ -2193,11 +2193,11 @@ void ToolBox::Render()
     ImVec2 plot_size = ImGui::GetContentRegionAvail();
     plot_size.y *= 0.32;
     char overlay[128];
-    sprintf(overlay, "Rendering %.1f FPS", recorded_sum[0] / float(PLOT_ARRAY_SIZE));
+    snprintf(overlay, 128, "Rendering %.1f FPS", recorded_sum[0] / float(PLOT_ARRAY_SIZE));
     ImGui::PlotLines("LinesRender", recorded_values[0], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[0][0], recorded_bounds[0][1], plot_size);
-    sprintf(overlay, "Update time %.1f ms (%.1f FPS)", recorded_sum[1] / float(PLOT_ARRAY_SIZE), (float(PLOT_ARRAY_SIZE) * 1000.f) / recorded_sum[1]);
+    snprintf(overlay, 128, "Update time %.1f ms (%.1f FPS)", recorded_sum[1] / float(PLOT_ARRAY_SIZE), (float(PLOT_ARRAY_SIZE) * 1000.f) / recorded_sum[1]);
     ImGui::PlotHistogram("LinesMixer", recorded_values[1], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[1][0], recorded_bounds[1][1], plot_size);
-    sprintf(overlay, "Memory %.1f MB", recorded_values[2][(values_index+PLOT_ARRAY_SIZE-1) % PLOT_ARRAY_SIZE] );
+    snprintf(overlay, 128, "Memory %.1f MB", recorded_values[2][(values_index+PLOT_ARRAY_SIZE-1) % PLOT_ARRAY_SIZE] );
     ImGui::PlotLines("LinesMemo", recorded_values[2], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[2][0], recorded_bounds[2][1], plot_size);
 
     ImGui::End();
@@ -4150,18 +4150,18 @@ void Navigator::RenderMainPannelVimix()
                     static char dummy_str[512];
                     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    sprintf(dummy_str, "%s", RenderView::ratio_preset_name[preset.x]);
+                    snprintf(dummy_str, 512, "%s", RenderView::ratio_preset_name[preset.x]);
                     ImGui::InputText("Ratio", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                     if (preset.x < RenderView::AspectRatio_Custom) {
                         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                        sprintf(dummy_str, "%s", RenderView::height_preset_name[preset.y]);
+                        snprintf(dummy_str, 512, "%s", RenderView::height_preset_name[preset.y]);
                         ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                     } else {
                         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                        sprintf(dummy_str, "%d", custom.x);
+                        snprintf(dummy_str, 512, "%d", custom.x);
                         ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                        sprintf(dummy_str, "%d", custom.y);
+                        snprintf(dummy_str, 512, "%d", custom.y);
                         ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                     }
                     ImGui::PopStyleColor(1);
@@ -4625,7 +4625,7 @@ void Navigator::RenderMainPannelSettings()
         if (output) {
             guint64 nb = 0;
             nb = VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode] / (output->width() * output->height() * 4);
-            char buf[512]; sprintf(buf, "Buffer at %s can contain %ld frames (%dx%d), i.e. %.1f sec", VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode],
+            char buf[512]; snprintf(buf, 512, "Buffer at %s can contain %ld frames (%dx%d), i.e. %.1f sec", VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode],
                                    (unsigned long)nb, output->width(), output->height(),
                                    (float)nb / (float) VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode] );
             ImGuiToolkit::Indication(buf, 4, 6);
@@ -4674,7 +4674,7 @@ void Navigator::RenderMainPannelSettings()
             ImGui::SetCursorPosX(width_);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             char bufport[7] = "";
-            sprintf(bufport, "%d", Settings::application.broadcast_port);
+            snprintf(bufport, 7, "%d", Settings::application.broadcast_port);
             ImGui::InputTextWithHint("SRT Port", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
             if (ImGui::IsItemDeactivatedAfterEdit()){
                 if ( BaseToolkit::is_a_number(bufport, &Settings::application.broadcast_port))
@@ -4709,7 +4709,7 @@ void Navigator::RenderMainPannelSettings()
             ImGui::SetCursorPosX(width_);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             char bufsocket[64] = "";
-            sprintf(bufsocket, "%s", Settings::application.shm_socket_path.c_str());
+            snprintf(bufsocket, 64, "%s", Settings::application.shm_socket_path.c_str());
             ImGui::InputTextWithHint("SHM path", SystemToolkit::home_path().c_str(), bufsocket, 64);
             if (ImGui::IsItemDeactivatedAfterEdit()) {
                 Settings::application.shm_socket_path = bufsocket;
@@ -4743,7 +4743,7 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         char bufreceive[7] = "";
-        sprintf(bufreceive, "%d", Settings::application.control.osc_port_receive);
+        snprintf(bufreceive, 7, "%d", Settings::application.control.osc_port_receive);
         ImGui::InputTextWithHint("Port in", "7000", bufreceive, 7, ImGuiInputTextFlags_CharsDecimal);
         if (ImGui::IsItemDeactivatedAfterEdit()){
             if ( BaseToolkit::is_a_number(bufreceive, &Settings::application.control.osc_port_receive)){
@@ -4755,7 +4755,7 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         char bufsend[7] = "";
-        sprintf(bufsend, "%d", Settings::application.control.osc_port_send);
+        snprintf(bufsend, 7, "%d", Settings::application.control.osc_port_send);
         ImGui::InputTextWithHint("Port out", "7001", bufsend, 7, ImGuiInputTextFlags_CharsDecimal);
         if (ImGui::IsItemDeactivatedAfterEdit()){
             if ( BaseToolkit::is_a_number(bufsend, &Settings::application.control.osc_port_send)){

@@ -304,13 +304,13 @@ void OutputPreviewWindow::Render()
                 if ( name_path[0] == nullptr ) {
                     for (int i = 0; i < 4; ++i)
                         name_path[i] = (char *) malloc( 1024 * sizeof(char));
-                    sprintf( name_path[1], "%s", ICON_FA_HOME " Home");
-                    sprintf( name_path[2], "%s", ICON_FA_FOLDER " Session location");
-                    sprintf( name_path[3], "%s", ICON_FA_FOLDER_PLUS " Select");
+                    snprintf( name_path[1], 1024, "%s", ICON_FA_HOME " Home");
+                    snprintf( name_path[2], 1024, "%s", ICON_FA_FOLDER " Session location");
+                    snprintf( name_path[3], 1024, "%s", ICON_FA_FOLDER_PLUS " Select");
                 }
                 if (Settings::application.record.path.empty())
                     Settings::application.record.path = SystemToolkit::home_path();
-                sprintf( name_path[0], "%s", Settings::application.record.path.c_str());
+                snprintf( name_path[0], 1024, "%s", Settings::application.record.path.c_str());
                 int selected_path = 0;
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 ImGui::Combo("Path", &selected_path, name_path, 4);
@@ -595,7 +595,7 @@ void OutputPreviewWindow::Render()
         ImGui::Text("To do so, the following commands should be executed\n(with admin rights):");
 
         static char dummy_str[512];
-        sprintf(dummy_str, "sudo apt install v4l2loopback-dkms");
+        snprintf(dummy_str, 512, "sudo apt install v4l2loopback-dkms");
         ImGui::NewLine();
         ImGui::Text("Install v4l2loopack (only once, and reboot):");
         ImGui::SetNextItemWidth(600-40);
@@ -606,7 +606,7 @@ void OutputPreviewWindow::Render()
             ImGui::SetClipboardText(dummy_str);
         ImGui::PopID();
 
-        sprintf(dummy_str, "sudo modprobe v4l2loopback exclusive_caps=1 video_nr=%d"
+        snprintf(dummy_str, 512, "sudo modprobe v4l2loopback exclusive_caps=1 video_nr=%d"
                            " card_label=\"vimix loopback\"" , Settings::application.loopback_camera);
         ImGui::NewLine();
         ImGui::Text("Initialize v4l2loopack:");

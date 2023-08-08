@@ -428,7 +428,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         static std::regex RegExTime("([0-9]+\\:)*([0-5][0-9]|[0-9])(\\.[0-9]+)*");
         struct TextFilters { static int FilterTime(ImGuiInputTextCallbackData* data) { if (data->EventChar < 256 && strchr("0123456789.:", (char)data->EventChar)) return 0; return 1; } };
         char buf6[64] = "";
-        sprintf(buf6, "%d:%.2f", min, sec );
+        snprintf(buf6, 64, "%d:%.2f", min, sec );
 
         // Text input field for MM:SS:MS seek target time
         ImGui::SetNextItemWidth(right_align);

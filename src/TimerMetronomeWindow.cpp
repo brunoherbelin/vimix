@@ -178,7 +178,7 @@ void TimerMetronomeWindow::Render()
         draw_list->AddCircleFilled(circle_center, margin, colorfg, PLOT_CIRCLE_SEGMENTS);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
         char text_buf[24];
-        sprintf(text_buf, "%d/%d", (int)(p)+1, (int)(q) );
+        snprintf(text_buf, 24, "%d/%d", (int)(p)+1, (int)(q) );
         ImVec2 label_size = ImGui::CalcTextSize(text_buf, NULL);
         ImGui::SetCursorScreenPos(circle_center - label_size/2);
         ImGui::Text("%s", text_buf);
@@ -204,12 +204,12 @@ void TimerMetronomeWindow::Render()
             ImGui::SetCursorScreenPos(circle_top_right);
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
             ImGui::PushStyleColor(ImGuiCol_Text, colorfg);
-            sprintf(text_buf, "%d", (int) ceil(t) );
+            snprintf(text_buf, 24, "%d", (int) ceil(t) );
             ImGui::Text("%s", text_buf);
             ImGui::PopStyleColor();
             ImGui::PopFont();
             if (ImGui::IsItemHovered()){
-                sprintf(text_buf, "%d BPM\n(set by peer)", (int) ceil(t));
+                snprintf(text_buf, 24, "%d BPM\n(set by peer)", (int) ceil(t));
                 ImGuiToolkit::ToolTip(text_buf);
             }
         }
@@ -218,13 +218,13 @@ void TimerMetronomeWindow::Render()
             // Tempo
             ImGui::SetCursorScreenPos(circle_top_right);
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-            sprintf(text_buf, "%d", (int) ceil(t) );
+            snprintf(text_buf, 24, "%d", (int) ceil(t) );
             ImGui::Text("%s", text_buf);
             ImGui::PopFont();
             if (ImGui::IsItemClicked())
                 ImGui::OpenPopup("bpm_popup");
             else if (ImGui::IsItemHovered()){
-                sprintf(text_buf, "%d BPM\n(clic to edit)", (int) ceil(t));
+                snprintf(text_buf, 24, "%d BPM\n(clic to edit)", (int) ceil(t));
                 ImGuiToolkit::ToolTip(text_buf);
             }
             if (ImGui::BeginPopup("bpm_popup", ImGuiWindowFlags_NoMove))
@@ -253,7 +253,7 @@ void TimerMetronomeWindow::Render()
             ImGui::SetCursorScreenPos(circle_botom_right);
             ImGuiToolkit::Icon(16, 5, np > 0);
             if (ImGui::IsItemHovered()){
-                sprintf(text_buf, np < 1 ? "Ableton Link\nNo peer" : "Ableton Link\n%d peer%c", np, np < 2 ? ' ' : 's' );
+                snprintf(text_buf, 24, np < 1 ? "Ableton Link\nNo peer" : "Ableton Link\n%d peer%c", np, np < 2 ? ' ' : 's' );
                 ImGuiToolkit::ToolTip(text_buf);
             }
         }
@@ -288,7 +288,7 @@ void TimerMetronomeWindow::Render()
         // main text: elapsed time
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         char text_buf[24];
-        sprintf(text_buf, "%s", GstToolkit::time_to_string(time_-start_time_, GstToolkit::TIME_STRING_FIXED).c_str() );
+        snprintf(text_buf, 24, "%s", GstToolkit::time_to_string(time_-start_time_, GstToolkit::TIME_STRING_FIXED).c_str() );
         ImVec2 label_size = ImGui::CalcTextSize(text_buf, NULL);
         ImGui::SetCursorScreenPos(circle_center - label_size/2);
         ImGui::Text("%s", text_buf);
@@ -299,12 +299,12 @@ void TimerMetronomeWindow::Render()
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
 
         guint64 lap = (time_-start_time_hand_)/duration_hand_;
-        sprintf(text_buf, "%ld turn%s", lap, lap > 1 ? "s" : " " );
+        snprintf(text_buf, 24, "%ld turn%s", lap, lap > 1 ? "s" : " " );
         label_size = ImGui::CalcTextSize(text_buf, NULL);
         ImGui::SetCursorScreenPos(circle_center + ImVec2(0.f, circle_radius * -0.7f) - label_size/2);
         ImGui::Text("%s", text_buf);
 
-        sprintf(text_buf, "%s", GstToolkit::time_to_string(duration_hand_-(time_-start_time_hand_)%duration_hand_, GstToolkit::TIME_STRING_READABLE).c_str() );
+        snprintf(text_buf, 24, "%s", GstToolkit::time_to_string(duration_hand_-(time_-start_time_hand_)%duration_hand_, GstToolkit::TIME_STRING_READABLE).c_str() );
         label_size = ImGui::CalcTextSize(text_buf, NULL);
         ImGui::SetCursorScreenPos(circle_center - ImVec2(0.f, circle_radius * -0.7f) - label_size/2);
         ImGui::Text("%s", text_buf);

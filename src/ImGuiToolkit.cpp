@@ -48,7 +48,7 @@ std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 void ImGuiToolkit::ButtonOpenUrl( const char* label, const char* url, const ImVec2& size_arg )
 {
     char _label[512];
-    sprintf( _label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, label );
+    snprintf( _label, 512, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, label );
 
     if ( ImGui::Button(_label, size_arg) )
         SystemToolkit::open(url);
@@ -1313,7 +1313,7 @@ bool ImGuiToolkit::EditPlotLines (const char* label, float *array, int values_co
 
     // plot lines
     char buf[128];
-    sprintf(buf, "##Lines%s", label);
+    snprintf(buf, 128, "##Lines%s", label);
 
     ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
     ImGui::PlotLines(buf, array, values_count, 0, NULL, values_min, values_max, size);
@@ -1439,7 +1439,7 @@ bool ImGuiToolkit::EditPlotHistoLines (const char* label, float *histogram_array
     ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_ModalWindowDimBg]); // a dark color
     char buf[128];
-    sprintf(buf, "##Histo%s", label);
+    snprintf(buf, 128, "##Histo%s", label);
     ImGui::PlotHistogram(buf, histogram_array, values_count, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(2);
 
@@ -1447,7 +1447,7 @@ bool ImGuiToolkit::EditPlotHistoLines (const char* label, float *histogram_array
 
     // plot (transparent) lines
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
-    sprintf(buf, "##Lines%s", label);
+    snprintf(buf, 128, "##Lines%s", label);
     ImGui::PlotLines(buf, lines_array, values_count, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(1);
 
@@ -1515,7 +1515,7 @@ void ImGuiToolkit::ShowPlotHistoLines (const char* label, float *histogram_array
     ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0, 0, 0, 250));
     char buf[128];
-    sprintf(buf, "##Histo%s", label);
+    snprintf(buf, 128, "##Histo%s", label);
     ImGui::PlotHistogram(buf, histogram_array, values_count, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(2);
 
@@ -1523,7 +1523,7 @@ void ImGuiToolkit::ShowPlotHistoLines (const char* label, float *histogram_array
 
     // plot lines
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
-    sprintf(buf, "##Lines%s", label);
+    snprintf(buf, 128, "##Lines%s", label);
     ImGui::PlotLines(buf, lines_array, values_count, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(1);
 
@@ -1947,7 +1947,7 @@ bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const
 {
     bool ret = false;
     char hiddenlabel[256];
-    sprintf(hiddenlabel, "##%s", label);
+    snprintf(hiddenlabel, 256, "##%s", label);
 
     // Draw the label with default font
     ImVec2 pos_top = ImGui::GetCursorPos();
@@ -1987,7 +1987,7 @@ bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const
 void ImGuiToolkit::CodeMultiline(const char* label, const std::string &str, float width)
 {
     char hiddenlabel[256];
-    sprintf(hiddenlabel, "##%s", label);
+    snprintf(hiddenlabel, 256, "##%s", label);
 
     ImGuiToolkit::PushFont(FONT_MONO);
     static ImVec2 onechar = ImGui::CalcTextSize("C");
