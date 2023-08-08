@@ -20,6 +20,8 @@
 #include <iostream>
 #include <iomanip>
 
+#include <gst/gst.h>
+
 // ImGui
 #include "ImGuiToolkit.h"
 #include "imgui_internal.h"
@@ -423,8 +425,8 @@ void SourceControlWindow::Render()
                 ImGui::EndMenu();
             }
             // TODO finalize pipeline editor
-//            if (ImGui::MenuItem(ICON_FA_HAT_WIZARD "  gst pipeline"))
-//                mediaplayer_edit_pipeline_ = true;
+            if (ImGui::MenuItem(ICON_FA_MAGIC "  Video effect"))
+                mediaplayer_edit_pipeline_ = true;
 
             ImGui::EndMenu();
         }
@@ -1792,73 +1794,147 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::EndPopup();
     }
 
-
+    static std::string _effect_description = "";
+    static bool _effect_description_changed = false;
     if (mediaplayer_edit_pipeline_) {
-        ImGui::OpenPopup("Edit gstreamer pipeline");
+        // open dialog
+        ImGui::OpenPopup(ICON_FA_MAGIC "  Video effect");
         mediaplayer_edit_pipeline_ = false;
+        // initialize dialog
+        _effect_description = mediaplayer_active_->videoEffect();
+        _effect_description_changed = true;
     }
     const ImVec2 mpp_dialog_size(buttons_width_ * 3.f, buttons_height_ * 6);
     ImGui::SetNextWindowSize(mpp_dialog_size, ImGuiCond_Always);
     const ImVec2 mpp_dialog_pos = top + rendersize * 0.5f  - mpp_dialog_size * 0.5f;
     ImGui::SetNextWindowPos(mpp_dialog_pos, ImGuiCond_Always);
-    if (ImGui::BeginPopupModal("Edit gstreamer pipeline", NULL, ImGuiWindowFlags_NoResize))
+    if (ImGui::BeginPopupModal(ICON_FA_MAGIC "  Video effect", NULL, ImGuiWindowFlags_NoResize))
     {
-        bool update_new_source = false;
         const ImVec2 pos = ImGui::GetCursorPos();
         const ImVec2 area = ImGui::GetContentRegionAvail();
-
+        static uint _status = 0;  // 0:unknown, 1:ok, 2:error
+        static std::string _status_message = "";
         static std::vector< std::pair< std::string, std::string> > _examples = { {"Primary color", "frei0r-filter-primaries" },
-                                                                                 {"Histogram", "frei0r-filter-rgb-parade"},
+                                                                                 {"Histogram", "frei0r-filter-rgb-parade mix=0.5"},
                                                                                  {"Emboss", "frei0r-filter-emboss"},
-                                                                                 {"B&W", "frei0r-filter-bw0r"},
-                                                                                 {"Gamma", "frei0r-filter-gamma gamma=0.5"},
-                                                                                 {"Broken tv", "frei0r-filter-nosync0r "}
+                                                                                 {"Denoise", "frei0r-filter-hqdn3d spatial=0.05 temporal=0.1"},
+                                                                                 {"Thermal", "coloreffects preset=heat"},
+                                                                                 {"Afterimage", "streaktv"}
                                                                                };
-        static std::string _description = _examples[0].second;
-        static ImVec2 fieldsize(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 100);
+        static ImVec2 fieldsize(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 70);
         static int numlines = 0;
         const ImGuiContext& g = *GImGui;
-        fieldsize.y = MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y;
+        fieldsize.y = MAX(2.5, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y;
 
         ImGui::Spacing();
-        ImGui::Text("Enter pipeline element and apply:");
+        ImGui::Text("Enter a gstreamer video effect description and apply.\nLeave empty for no effect.");
+        ImGui::SameLine();
+        ImGuiToolkit::HelpToolTip("Video effects are directly integrated in the gstreamer pipeline "
+                                  "and performed on CPU (might be slow). Vimix recommends using "
+                                  "GPU accelerated filters by cloning the source.");
         ImGui::Spacing();
 
         // Editor
-        if ( ImGuiToolkit::InputCodeMultiline("Filter", &_description, fieldsize, &numlines) )
-            update_new_source = true;
+        if ( ImGuiToolkit::InputCodeMultiline("Effect", &_effect_description, fieldsize, &numlines) )
+            _effect_description_changed = true;
+        if ( ImGui::IsItemActive() )
+            _status = 0;
 
         // Local menu for list of examples
         ImVec2 pos_bot = ImGui::GetCursorPos();
         ImGui::SetCursorPos( pos_bot + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -ImGui::GetFrameHeightWithSpacing()));
-        if (ImGui::BeginCombo("##Examples", "Examples", ImGuiComboFlags_NoPreview))  {
-            ImGui::TextDisabled("Gstreamer examples");
-            ImGui::Separator();
+        if (ImGui::BeginCombo("##ExamplesVideoEffect", "ExamplesVideoEffect", ImGuiComboFlags_NoPreview | ImGuiComboFlags_HeightLarge))  {
+            ImGui::TextDisabled("Examples");
             for (auto it = _examples.begin(); it != _examples.end(); ++it) {
                 if (ImGui::Selectable( it->first.c_str() ) ) {
-                    _description = it->second;
-                    update_new_source = true;
+                    _effect_description = it->second;
+                    _effect_description_changed = true;
                 }
             }
+            ImGui::Separator();
+            ImGui::TextDisabled("Explore online");
+            if (ImGui::Selectable( ICON_FA_EXTERNAL_LINK_ALT " Frei0r" ) )
+                SystemToolkit::open("https://gstreamer.freedesktop.org/documentation/frei0r");
+            if (ImGui::Selectable( ICON_FA_EXTERNAL_LINK_ALT " Effectv" ) )
+                SystemToolkit::open("https://gstreamer.freedesktop.org/documentation/effectv");
+            if (ImGui::Selectable( ICON_FA_EXTERNAL_LINK_ALT " Gaudi" ) )
+                SystemToolkit::open("https://gstreamer.freedesktop.org/documentation/gaudieffects");
+            if (ImGui::Selectable( ICON_FA_EXTERNAL_LINK_ALT " Geometric" ) )
+                SystemToolkit::open("https://gstreamer.freedesktop.org/documentation/geometrictransform");
             ImGui::EndCombo();
         }
+        // Local menu for clearing
+        ImGui::SameLine();
+        if ( ImGuiToolkit::ButtonIcon(11,13,"Clear") ) {
+            _effect_description = "";
+            _effect_description_changed = true;
+        }
 
-        // TODO use update_new_source
+        // if desciption changed, start a timeout to test the pipeline
+        if ( _effect_description_changed ){
+            // reset to status 'unknown' and no message
+            _status = 0;
+            _status_message.clear();
+
+            // No description, no effect
+            if ( _effect_description.empty() ) {
+                _status = 1;
+                _status_message = "(no video effect)";
+            }
+            // has a description, we test it
+            else {
+                GError *error = NULL;
+                GstElement *effect = gst_parse_launch( _effect_description.c_str(), &error);
+                // on error
+                if (effect == NULL || error != NULL) {
+                    _status = 2;
+                    if (error != NULL)
+                        _status_message = error->message;
+                    g_clear_error (&error);
+                    if (effect)
+                        gst_object_unref(effect);
+                }
+                // on success
+                else
+                    _status = 1;
+            }
+            // done
+            _effect_description_changed = false;
+        }
+
+        // display message line
+        if (_status > 1) {
+            // On Error
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.2, 0.2, 0.95f));
+            ImGui::Text("Error - %s", _status_message.c_str());
+            ImGui::PopStyleColor(1);
+        }
+        else if (_status > 0) {
+            // All ok
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.2, 1.0, 0.2, 0.85f));
+            ImGui::Text("Ok %s", _status_message.c_str());
+            ImGui::PopStyleColor(1);
+        }
 
         bool close = false;
         ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
         if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(area.x * 0.3f, 0)))
             close = true;
         ImGui::SetCursorPos(pos + ImVec2(area.x * 0.7f, area.y - buttons_height_));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
-        if (ImGui::Button(ICON_FA_CHECK "  Apply", ImVec2(area.x * 0.3f, 0))
-                || ImGui::IsKeyPressedMap(ImGuiKey_Enter)  || ImGui::IsKeyPressedMap(ImGuiKey_KeyPadEnter) ) {
-            close = true;
+        // on success status, offer to apply
+        if (_status == 1) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+            if (ImGui::Button(ICON_FA_CHECK "  Apply", ImVec2(area.x * 0.3f, 0))
+                    || ImGui::IsKeyPressedMap(ImGuiKey_Enter)  || ImGui::IsKeyPressedMap(ImGuiKey_KeyPadEnter) ) {
+                close = true;
 
-            // apply to pipeline
-            mediaplayer_active_->setVideoEffect(_description);
+                // apply to pipeline
+                mediaplayer_active_->setVideoEffect(_effect_description);
+            }
+            ImGui::PopStyleColor(1);
         }
-        ImGui::PopStyleColor(1);
+        else
+            ImGuiToolkit::ButtonDisabled(ICON_FA_CHECK "  Apply", ImVec2(area.x * 0.3f, 0));
 
         if (close)
             ImGui::CloseCurrentPopup();

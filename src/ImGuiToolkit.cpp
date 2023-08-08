@@ -1949,6 +1949,12 @@ bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const
     char hiddenlabel[256];
     sprintf(hiddenlabel, "##%s", label);
 
+    // Draw the label with default font
+    ImVec2 pos_top = ImGui::GetCursorPos();
+    ImGui::SetCursorPosX(pos_top.x + size.x + 8);
+    ImGui::Text("%s", label);
+
+    // Draw code with mono font
     ImGuiToolkit::PushFont(FONT_MONO);
     static ImVec2 onechar = ImGui::CalcTextSize("C");
 
@@ -1958,9 +1964,11 @@ bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const
     // work on a string wrapped to the number of chars in a line
     std::string edited = wrapp( *str, (size_t) floor(size.x / onechar.x) - 1);
 
+    ImGui::SetCursorPos(pos_top);
+
     // Input text into std::string with callback
     ImGui::InputTextMultiline(hiddenlabel, (char*)edited.c_str(), edited.capacity() + 1, size, flags, InputTextCallback, &edited);
-    if (ImGui::IsItemDeactivatedAfterEdit() ){
+    if (ImGui::IsItemDeactivated() ){
         // unwrap after edit
         *str = unwrapp(edited);
         // return number of lines
@@ -1972,10 +1980,6 @@ bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const
         *numline = std::count(edited.begin(), edited.end(), '\n') + 1;
 
     ImGui::PopFont();
-
-    // show label
-    ImGui::SameLine();
-    ImGui::Text("%s", label);
 
     return ret;
 }
