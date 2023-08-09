@@ -118,7 +118,11 @@ public:
     /**
      * True if its an image
      * */
-    bool isImage() const;
+    bool isImage() const;   
+    /**
+     * True if it has only one frame
+     * */
+    bool singleFrame() const;
     /**
      * Pause / Play
      * Can play backward if play speed is negative
@@ -269,8 +273,10 @@ public:
      */
     static std::list<MediaPlayer*> registered() { return registered_; }
     static std::list<MediaPlayer*>::const_iterator begin() { return registered_.cbegin(); }
-    static std::list<MediaPlayer*>::const_iterator end()   { return registered_.cend(); }
-
+    static std::list<MediaPlayer*>::const_iterator end()   { return registered_.cend(); }    
+    /**
+     * Discoverer to check uri and get media info
+     * */
     static MediaInfo UriDiscoverer(const std::string &uri);
     std::string log() const { return media_.log; }
 

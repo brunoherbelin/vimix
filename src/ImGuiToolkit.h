@@ -24,7 +24,7 @@ namespace ImGuiToolkit
     void ShowIconsWindow(bool* p_open);
 
     // buttons and gui items with icon
-    bool ButtonIcon (int i, int j, const char* tooltip = nullptr);
+    bool ButtonIcon (int i, int j, const char* tooltip = nullptr, bool expanded = false);
     bool ButtonIconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltip = nullptr);
     bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips);
     bool MenuItemIcon (int i, int j, const char* label, const char* shortcut = nullptr, bool selected = false, bool enabled = true);

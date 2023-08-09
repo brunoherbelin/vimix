@@ -89,7 +89,7 @@ public:
      * */
     bool enabled() const;
     /**
-     * True if its an image
+     * True if it has only one frame
      * */
     bool singleFrame() const;
     /**

@@ -573,7 +573,7 @@ void PlayFastForward::update(Source *s, float dt)
         if (ms != nullptr) {
             MediaPlayer *mp = ms->mediaplayer();
             // works only if media player is enabled and valid
-            if (mp && mp->isEnabled() && !mp->isImage()) {
+            if (mp && mp->isEnabled() && !mp->singleFrame()) {
                 media_ = mp;
                 playspeed_ = media_->playSpeed();
             }

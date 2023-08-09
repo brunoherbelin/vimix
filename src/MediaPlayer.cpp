@@ -352,6 +352,13 @@ void MediaPlayer::execute_open()
         video_filter_available_ = false;
     }
 
+    // hack to simulate a playable and seekable stream with an image
+    if (media_.isimage && !singleFrame()) {
+        media_.seekable = true;
+        video_filter_ = "imagefreeze";
+        video_filter_available_ = false;
+    }
+
     // Add a filter to playbin if provided
     if ( !video_filter_.empty()) {
         // try to create the pipeline element given
@@ -403,7 +410,7 @@ void MediaPlayer::execute_open()
     callbacks.new_event = NULL;
 #endif
     callbacks.new_preroll = callback_new_preroll;
-    if (media_.isimage) {
+    if (singleFrame()) {
         callbacks.eos = NULL;
         callbacks.new_sample = NULL;
     }
@@ -434,8 +441,8 @@ void MediaPlayer::execute_open()
         return;
     }
 
-    // in case discoverer failed to get duration
-    if (timeline_.end() == GST_CLOCK_TIME_NONE) {
+    // in case discoverer failed to get duration of a video
+    if (!media_.isimage && timeline_.end() == GST_CLOCK_TIME_NONE) {
         gint64 d = GST_CLOCK_TIME_NONE;
         if ( gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &d) )
             timeline_.setEnd(d);
@@ -445,7 +452,7 @@ void MediaPlayer::execute_open()
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
               SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(), media_.width, media_.height);
 
-    if (!isImage())
+    if (!singleFrame())
         Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
                   timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
 
@@ -506,6 +513,12 @@ void MediaPlayer::execute_open()
         description += std::to_string(media_.framerate_d) + " ! ";
     }
 
+    // hack to simulate a playable and seekable stream with an image
+    if (media_.isimage && !singleFrame()) {
+        media_.seekable = true;
+        description += "imagefreeze ! ";
+    }
+
     // set app sink
     description += "queue ! appsink name=sink";
 
@@ -563,7 +576,7 @@ void MediaPlayer::execute_open()
     callbacks.new_event = NULL;
 #endif
     callbacks.new_preroll = callback_new_preroll;
-    if (media_.isimage) {
+    if (singleFrame()) {
         callbacks.eos = NULL;
         callbacks.new_sample = NULL;
     }
@@ -591,8 +604,8 @@ void MediaPlayer::execute_open()
         return;
     }
 
-    // in case discoverer failed to get duration
-    if (timeline_.end() == GST_CLOCK_TIME_NONE) {
+    // in case discoverer failed to get duration of a video
+    if (!media_.isimage && timeline_.end() == GST_CLOCK_TIME_NONE) {
         gint64 d = GST_CLOCK_TIME_NONE;
         if ( gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &d) )
             timeline_.setEnd(d);
@@ -602,7 +615,7 @@ void MediaPlayer::execute_open()
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
               SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(), media_.width, media_.height);
 
-    if (!isImage())
+    if (!singleFrame())
         Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
                   timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
 
@@ -783,6 +796,11 @@ bool MediaPlayer::isImage() const
     return media_.isimage;
 }
 
+bool MediaPlayer::singleFrame() const
+{
+    return timeline_.end() == GST_CLOCK_TIME_NONE;
+}
+
 std::string MediaPlayer::decoderName()
 {
     if (decoder_name_.empty()) {
@@ -856,8 +874,8 @@ void MediaPlayer::execute_play_command(bool on)
 
 void MediaPlayer::play(bool on)
 {
-    // ignore if disabled, and cannot play an image
-    if (!enabled_ || media_.isimage || pending_)
+    // ignore if disabled, and cannot play a single frame
+    if (!enabled_ || pending_ || singleFrame())
         return;
 
     // Metronome
@@ -881,7 +899,7 @@ void MediaPlayer::play(bool on)
 bool MediaPlayer::isPlaying(bool testpipeline) const
 {
     // image cannot play
-    if (media_.isimage)
+    if (singleFrame())
         return false;
 
     // if not ready yet, answer with requested state
@@ -1032,7 +1050,7 @@ void MediaPlayer::init_texture(guint index)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    if (!media_.isimage) {
+    if ( !singleFrame() ) {
 
         // set pbo image size
         pbo_size_ = media_.height * media_.width * 4;
@@ -1146,9 +1164,10 @@ void MediaPlayer::update()
                 if (media_.valid) {
                     if (!media_.log.empty())
                         Log::Info("'%s' : %s", uri().c_str(), media_.log.c_str());
-
-                    timeline_.setEnd( media_.end );
-                    timeline_.setStep( media_.dt );
+                    if (!media_.isimage) {
+                        timeline_.setEnd( media_.end );
+                        timeline_.setStep( media_.dt );
+                    }
                     execute_open();
                 }
                 else {
@@ -1163,7 +1182,7 @@ void MediaPlayer::update()
     }
 
     // prevent unnecessary updates: disabled or already filled image
-    if ( (!enabled_ && !force_update_) || (media_.isimage && textureindex_>0 ) )
+    if ( (!enabled_ && !force_update_) || (singleFrame() && textureindex_>0 ) )
         return;
 
     // local variables before trying to update
@@ -1222,10 +1241,15 @@ void MediaPlayer::update()
         // do NOT do another seek yet
     }
     // otherwise check for need to seek (pipeline management)
-    else {
-        // manage timeline: test if position falls into a gap
+    else if (position_ != GST_CLOCK_TIME_NONE) {
+        // manage timeline:
         TimeInterval gap;
-        if (position_ != GST_CLOCK_TIME_NONE && timeline_.getGapAt(position_, gap)) {
+        // ensure we remain within the begin to end range
+        if (position_ > timeline_.last() || position_ < timeline_.first()) {
+            need_loop = true;
+        }
+        // test if position falls into a gap
+        else if (timeline_.getGapAt(position_, gap)) {
             // if in a gap, seek to next section
             if (gap.is_valid()) {
                 // jump in one or the other direction
@@ -1339,7 +1363,7 @@ void MediaPlayer::setPlaySpeed(double s)
         rate_ = SIGN(rate_) * MIN_PLAY_SPEED;
 
     // discard if too early or not possible
-    if (media_.isimage || !media_.seekable || pipeline_ == nullptr)
+    if (pipeline_ == nullptr || !media_.seekable)
         return;
 
     //
@@ -1352,7 +1376,7 @@ void MediaPlayer::setPlaySpeed(double s)
     //  are GST_CLOCK_TIME_NONE, the playback direction does not change
     //  and the seek is not flushing. (Since: 1.18)
     // if all conditions to use GST_SEEK_FLAG_INSTANT_RATE_CHANGE are met
-    if ( rate_change_ == RATE_CHANGE_INSTANT &&  !change_direction ) {
+    if ( rate_change_ == RATE_CHANGE_INSTANT && !change_direction && !media_.isimage) {
 
         int seek_flags = GST_SEEK_FLAG_INSTANT_RATE_CHANGE;
         seek_flags |= GST_SEEK_FLAG_TRICKMODE;

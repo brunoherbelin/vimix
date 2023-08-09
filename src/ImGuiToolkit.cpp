@@ -204,24 +204,44 @@ void ImGuiToolkit::Icon(int i, int j, bool enabled)
     ImGui::Image((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, tint_color);
 }
 
-bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip)
+bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip, bool expanded)
 {
-    // icons.dds is a 20 x 20 grid of icons 
-    if (textureicons == 0)
-        textureicons = Resource::getTextureDDS("images/icons.dds");
-
-    ImVec2 uv0( static_cast<float>(i) * 0.05, static_cast<float>(j) * 0.05 );
-    ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
-
-    ImGui::PushID( i*20 + j);
     ImGuiContext& g = *GImGui;
-    bool ret =  ImGui::ImageButton((void*)(intptr_t)textureicons,
-                                   ImVec2(g.FontSize, g.FontSize),
-                                   uv0, uv1, g.Style.FramePadding.y);
-    ImGui::PopID();
+    bool ret = false;
 
-    if (tooltip != nullptr && ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip(tooltip);
+    if (expanded) {
+        // make some space
+        char space_buf[] = "                                                ";
+        const ImVec2 space_size = ImGui::CalcTextSize(" ", NULL);
+        const int space_num = static_cast<int>( ceil(g.FontSize / space_size.x) );
+        space_buf[space_num]='\0';
+
+        char text_buf[256];
+        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, tooltip);
+
+        ImVec2 draw_pos = ImGui::GetCursorScreenPos() + g.Style.FramePadding * 0.5;
+        ret = ImGui::Button(text_buf);
+
+        // overlay of icon on top of first item
+        _drawIcon(draw_pos, i, j);
+    }
+    else {
+        // icons.dds is a 20 x 20 grid of icons
+        if (textureicons == 0)
+            textureicons = Resource::getTextureDDS("images/icons.dds");
+
+        ImVec2 uv0( static_cast<float>(i) * 0.05, static_cast<float>(j) * 0.05 );
+        ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
+
+        ImGui::PushID( i*20 + j);
+        ret = ImGui::ImageButton((void*)(intptr_t)textureicons,
+                                 ImVec2(g.FontSize, g.FontSize),
+                                 uv0, uv1, g.Style.FramePadding.y);
+        ImGui::PopID();
+
+        if (tooltip != nullptr && ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip(tooltip);
+    }
 
     return ret;
 }

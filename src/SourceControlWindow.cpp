@@ -372,61 +372,85 @@ void SourceControlWindow::Render()
         //
         // Menu for video Mediaplayer control
         //
-        if (ImGui::BeginMenu(ICON_FA_FILM " Video", mediaplayer_active_) )
+        if (ImGui::BeginMenu(ICON_FA_PHOTO_VIDEO " Media", mediaplayer_active_) )
         {
-            if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
-                mediaplayer_active_->reopen();
-            if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect", nullptr,
-                                           false, mediaplayer_active_->videoEffectAvailable()) )
-                mediaplayer_edit_pipeline_ = true;
-            if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "   On deactivation"))
-            {
-                bool option = !mediaplayer_active_->rewindOnDisabled();
-                if (ImGui::MenuItem(ICON_FA_STOP "  Stop", NULL, &option ))
-                    mediaplayer_active_->setRewindOnDisabled(false);
-                option = mediaplayer_active_->rewindOnDisabled();
-                if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", NULL, &option ))
-                    mediaplayer_active_->setRewindOnDisabled(true);
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
-            {
-                bool hwdec = !mediaplayer_active_->softwareDecodingForced();
-                if (ImGui::MenuItem("Auto", "", &hwdec ))
-                    mediaplayer_active_->setSoftwareDecodingForced(false);
-                hwdec = mediaplayer_active_->softwareDecodingForced();
-                if (ImGui::MenuItem("Disabled", "", &hwdec ))
-                    mediaplayer_active_->setSoftwareDecodingForced(true);
-                ImGui::EndMenu();
-            }
-            ImGui::Separator();
-            ImGui::TextDisabled("Timeline");
-            if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset")){
-                mediaplayer_timeline_zoom_ = 1.f;
-                mediaplayer_active_->timeline()->clearFading();
-                mediaplayer_active_->timeline()->clearGaps();
-                std::ostringstream oss;
-                oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
-                oss << ": Reset timeline";
-                Action::manager().store(oss.str());
-            }
+            if ( !mediaplayer_active_->singleFrame() ) {
+                if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
+                    mediaplayer_active_->reopen();
+                if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect", nullptr,
+                                               false, mediaplayer_active_->videoEffectAvailable()) )
+                    mediaplayer_edit_pipeline_ = true;
+                if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
+                {
+                    bool hwdec = !mediaplayer_active_->softwareDecodingForced();
+                    if (ImGui::MenuItem("Auto", "", &hwdec ))
+                        mediaplayer_active_->setSoftwareDecodingForced(false);
+                    hwdec = mediaplayer_active_->softwareDecodingForced();
+                    if (ImGui::MenuItem("Disabled", "", &hwdec ))
+                        mediaplayer_active_->setSoftwareDecodingForced(true);
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "   On deactivation"))
+                {
+                    bool option = !mediaplayer_active_->rewindOnDisabled();
+                    if (ImGui::MenuItem(ICON_FA_STOP "  Stop", NULL, &option ))
+                        mediaplayer_active_->setRewindOnDisabled(false);
+                    option = mediaplayer_active_->rewindOnDisabled();
+                    if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", NULL, &option ))
+                        mediaplayer_active_->setRewindOnDisabled(true);
+                    ImGui::EndMenu();
+                }
+                ImGui::Separator();
+                ImGui::TextDisabled("Timeline");
 
-            if (ImGui::MenuItem(LABEL_EDIT_FADING))
-                mediaplayer_edit_fading_ = true;
+                if ( mediaplayer_active_->isImage()) {
+                    if ( ImGuiToolkit::MenuItemIcon(1, 14, "Remove")){
+                        // set empty timeline
+                        Timeline tl;
+                        mediaplayer_active_->setTimeline(tl);
+                        mediaplayer_active_->play(false);
+                        // re-open the image with NO timeline
+                        mediaplayer_active_->reopen();
+                        mediaplayer_active_ = nullptr;
+                    }
 
-            if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
-            {
-                Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
-                bool active = sync == Metronome::SYNC_NONE;
-                if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", NULL, active ))
-                    mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_NONE);
-                active = sync == Metronome::SYNC_BEAT;
-                if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", NULL, active ))
-                    mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_BEAT);
-                active = sync == Metronome::SYNC_PHASE;
-                if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", NULL, active ))
-                    mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
-                ImGui::EndMenu();
+                    if ( ImGui::MenuItem(ICON_FA_HOURGLASS_HALF "  Duration")){
+                        mediaplayer_set_duration_ = true;
+                    }
+                }
+
+                if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset")){
+                    mediaplayer_timeline_zoom_ = 1.f;
+                    mediaplayer_active_->timeline()->clearFading();
+                    mediaplayer_active_->timeline()->clearGaps();
+                    std::ostringstream oss;
+                    oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
+                    oss << ": Reset timeline";
+                    Action::manager().store(oss.str());
+                }
+
+                if (ImGui::MenuItem(LABEL_EDIT_FADING))
+                    mediaplayer_edit_fading_ = true;
+
+                if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
+                {
+                    Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
+                    bool active = sync == Metronome::SYNC_NONE;
+                    if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", NULL, active ))
+                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_NONE);
+                    active = sync == Metronome::SYNC_BEAT;
+                    if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", NULL, active ))
+                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_BEAT);
+                    active = sync == Metronome::SYNC_PHASE;
+                    if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", NULL, active ))
+                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
+                    ImGui::EndMenu();
+                }
+            }
+            else {
+                if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
+                    mediaplayer_active_->reopen();
+
             }
 
             ImGui::EndMenu();
@@ -640,7 +664,7 @@ void SourceControlWindow::RenderSelection(size_t i)
         for (auto source = selection_.begin(); source != selection_.end(); ++source) {
             // collect durations of all media sources
             MediaSource *ms = dynamic_cast<MediaSource *>(*source);
-            if (ms != nullptr && !ms->mediaplayer()->isImage())
+            if (ms != nullptr && !ms->mediaplayer()->singleFrame())
                 durations.push_back(static_cast<guint64>(static_cast<double>(ms->mediaplayer()->timeline()->sectionsDuration()) / fabs(ms->mediaplayer()->playSpeed())));
             // compute the displayed width of frames of this source, and keep the max to align afterwards
             float w = 1.5f * timeline_height_ * (*source)->frame()->aspectRatio();
@@ -677,7 +701,7 @@ void SourceControlWindow::RenderSelection(size_t i)
 
                 // get media source
                 MediaSource *ms = dynamic_cast<MediaSource *>(*source);
-                if (ms == nullptr || ms->mediaplayer()->isImage()) {
+                if (ms == nullptr || ms->mediaplayer()->singleFrame()) {
                     // leave the source in the list and continue
                     ++source;
                     continue;
@@ -1284,7 +1308,7 @@ void SourceControlWindow::RenderSelectedSources()
         std::string label(ICON_FA_PLUS_CIRCLE);
         if (space > buttons_width_) { // enough space to show full button with label text
             label += LABEL_STORE_SELECTION;
-            width = buttons_width_;
+            width = buttons_width_ - ImGui::GetTextLineHeightWithSpacing();
         }
         ImGui::SameLine(0, space -width);
         ImGui::SetNextItemWidth(width);
@@ -1385,6 +1409,47 @@ void SourceControlWindow::RenderSingleSource(Source *s)
         /// Play button bar
         ///
         DrawButtonBar(bottom, rendersize.x);
+
+        // If possibly a media source, but is not playable
+        // then offer to make it playable by adding a timeline
+        if ( ms != nullptr )
+        {
+            if (ms->mediaplayer()->isImage()) {
+
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
+
+                float space = ImGui::GetContentRegionAvail().x;
+                float width = buttons_height_ ;
+                if (space > buttons_width_)
+                    width = buttons_width_ - ImGui::GetTextLineHeightWithSpacing();
+                ImGui::SameLine(0, space -width);
+                ImGui::SetNextItemWidth(width);
+                if (ImGuiToolkit::ButtonIcon( 0, 14, LABEL_ADD_TIMELINE, space > buttons_width_ )) {
+
+                    // activate mediaplayer
+                    mediaplayer_active_ = ms->mediaplayer();
+
+                    // set timeline to default 1 second
+                    Timeline tl;
+                    TimeInterval interval(0, GST_SECOND);
+                    // set fixed framerate to 25 FPS
+                    tl.setTiming( interval, 40 * GST_MSECOND);
+                    mediaplayer_active_->setTimeline(tl);
+
+                    // set to play
+                    mediaplayer_active_->play(true);
+
+                    // re-open the image with a timeline
+                    mediaplayer_active_->reopen();
+
+                    // open dialog to set duration
+                    mediaplayer_set_duration_ = true;
+                }
+
+                ImGui::PopStyleColor(2);
+            }
+        }
     }
 }
 
@@ -1746,6 +1811,9 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     }
 
 
+    ///
+    /// Dialog to edit timeline fade in and out
+    ///
     if (mediaplayer_edit_fading_) {
         ImGui::OpenPopup(LABEL_EDIT_FADING);
         mediaplayer_edit_fading_ = false;
@@ -1824,11 +1892,14 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::EndPopup();
     }
 
+    ///
+    /// Dialog to set gstreamer video effect
+    ///
     static std::string _effect_description = "";
     static bool _effect_description_changed = false;
     if (mediaplayer_edit_pipeline_) {
         // open dialog
-        ImGui::OpenPopup("Gstreamer Video effect");
+        ImGui::OpenPopup(DIALOG_GST_EFFECT);
         mediaplayer_edit_pipeline_ = false;
         // initialize dialog
         _effect_description = mediaplayer_active_->videoEffect();
@@ -1838,7 +1909,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     ImGui::SetNextWindowSize(mpp_dialog_size, ImGuiCond_Always);
     const ImVec2 mpp_dialog_pos = top + rendersize * 0.5f  - mpp_dialog_size * 0.5f;
     ImGui::SetNextWindowPos(mpp_dialog_pos, ImGuiCond_Always);
-    if (ImGui::BeginPopupModal("Gstreamer Video effect", NULL, ImGuiWindowFlags_NoResize))
+    if (ImGui::BeginPopupModal(DIALOG_GST_EFFECT, NULL, ImGuiWindowFlags_NoResize))
     {
         const ImVec2 pos = ImGui::GetCursorPos();
         const ImVec2 area = ImGui::GetContentRegionAvail();
@@ -1966,6 +2037,58 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         else
             ImGuiToolkit::ButtonDisabled(ICON_FA_CHECK "  Apply", ImVec2(area.x * 0.3f, 0));
 
+        if (close)
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
+    ////
+    ///  Dialog to set timeline duration
+    ///
+    static double timeline_duration_ = 0.0;
+    if (mediaplayer_set_duration_) {
+        mediaplayer_set_duration_ = false;
+        // open dialog
+        if (mediaplayer_active_) {
+            // get current duration of mediaplayer
+            GstClockTime end = mediaplayer_active_->timeline()->end();
+            timeline_duration_ = (double) ( GST_TIME_AS_MSECONDS(end) ) / 1000.f;
+            // open dialog to change duration
+            ImGui::OpenPopup(DIALOG_TIMELINE_DURATION);
+        }
+    }
+    const ImVec2 tld_dialog_size(buttons_width_ * 2.f, buttons_height_ * 4);
+    ImGui::SetNextWindowSize(tld_dialog_size, ImGuiCond_Always);
+    const ImVec2 tld_dialog_pos = top + rendersize * 0.5f  - tld_dialog_size * 0.5f;
+    ImGui::SetNextWindowPos(tld_dialog_pos, ImGuiCond_Always);
+    if (ImGui::BeginPopupModal(DIALOG_TIMELINE_DURATION, NULL, ImGuiWindowFlags_NoResize))
+    {
+        const ImVec2 pos = ImGui::GetCursorPos();
+        const ImVec2 area = ImGui::GetContentRegionAvail();
+
+        ImGui::Spacing();
+        ImGui::Text("Set the duration of the timeline");
+        ImGui::Spacing();
+
+        // get current timeline
+        Timeline tl = *mediaplayer_active_->timeline();
+        ImGui::InputDouble("second", &timeline_duration_, 1.0f, 10.0f, "%.2f");
+        timeline_duration_ = ABS(timeline_duration_);
+
+        bool close = false;
+        ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
+        if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(area.x * 0.3f, 0)))
+            close = true;
+        ImGui::SetCursorPos(pos + ImVec2(area.x * 0.7f, area.y - buttons_height_));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+        if (ImGui::Button(ICON_FA_CHECK "  Apply", ImVec2(area.x * 0.3f, 0))
+                || ImGui::IsKeyPressedMap(ImGuiKey_Enter)  || ImGui::IsKeyPressedMap(ImGuiKey_KeyPadEnter) ) {
+            // change timeline end
+            mediaplayer_active_->timeline()->setEnd( GST_MSECOND * (GstClockTime) ( timeline_duration_ * 1000.f ) );
+            // close dialog
+            close = true;
+        }
+        ImGui::PopStyleColor(1);
         if (close)
             ImGui::CloseCurrentPopup();
         ImGui::EndPopup();

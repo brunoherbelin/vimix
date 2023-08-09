@@ -410,7 +410,7 @@ void SessionVisitor::visit(MediaPlayer &n)
     XMLElement *newelement = xmlDoc_->NewElement("MediaPlayer");
     newelement->SetAttribute("id", n.id());
 
-    if (!n.isImage()) {
+    if (!n.singleFrame()) {
         newelement->SetAttribute("play", n.isPlaying());
         newelement->SetAttribute("loop", (int) n.loop());
         newelement->SetAttribute("speed", n.playSpeed());
@@ -421,6 +421,9 @@ void SessionVisitor::visit(MediaPlayer &n)
 
         // timeline
         XMLElement *timelineelement = xmlDoc_->NewElement("Timeline");
+        timelineelement->SetAttribute("begin", n.timeline()->begin());
+        timelineelement->SetAttribute("end", n.timeline()->end());
+        timelineelement->SetAttribute("step", n.timeline()->step());
 
         // gaps in timeline
         XMLElement *gapselement = xmlDoc_->NewElement("Gaps");

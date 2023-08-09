@@ -851,7 +851,21 @@ void SessionLoader::visit(MediaPlayer &n)
         XMLElement *timelineelement = mediaplayerNode->FirstChildElement("Timeline");
         if (timelineelement) {
             Timeline tl;
-            tl.setTiming( n.timeline()->interval(), n.timeline()->step());
+
+            TimeInterval interval_(n.timeline()->interval());
+            if (interval_.is_valid())
+                tl.setTiming( interval_, n.timeline()->step());
+            else {
+                GstClockTime b = GST_CLOCK_TIME_NONE;
+                GstClockTime e = GST_CLOCK_TIME_NONE;
+                GstClockTime s = GST_CLOCK_TIME_NONE;
+                timelineelement->QueryUnsigned64Attribute("begin", &b);
+                timelineelement->QueryUnsigned64Attribute("end", &e);
+                timelineelement->QueryUnsigned64Attribute("step", &s);
+                interval_ = TimeInterval(b,e);
+                tl.setTiming( interval_, s);
+            }
+
             XMLElement *gapselement = timelineelement->FirstChildElement("Gaps");
             if (gapselement) {
                 XMLElement* gap = gapselement->FirstChildElement("Interval");

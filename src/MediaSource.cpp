@@ -154,7 +154,7 @@ void MediaSource::play (bool on)
 
 bool MediaSource::playable () const
 {
-    return !mediaplayer_->isImage();
+    return !mediaplayer_->singleFrame();
 }
 
 void MediaSource::replay ()

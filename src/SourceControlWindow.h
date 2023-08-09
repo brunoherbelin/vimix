@@ -48,6 +48,7 @@ class SourceControlWindow : public WorkspaceWindow
     // Render a single media player
     MediaPlayer *mediaplayer_active_;
     bool mediaplayer_edit_fading_;
+    bool mediaplayer_set_duration_;
     bool mediaplayer_edit_pipeline_;
     bool mediaplayer_mode_;
     bool mediaplayer_slider_pressed_;
