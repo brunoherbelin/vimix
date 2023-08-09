@@ -258,6 +258,7 @@ public:
      * */
     void setVideoEffect(const std::string &pipeline_element);
     inline std::string videoEffect() { return video_filter_; }
+    inline bool videoEffectAvailable() { return video_filter_available_; }
     /**
      * Accept visitors
      * */
@@ -302,6 +303,7 @@ private:
     bool rewind_on_disable_;
     bool force_software_decoding_;
     std::string decoder_name_;
+    bool video_filter_available_;
     std::string video_filter_;
 
     // Play speed

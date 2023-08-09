@@ -376,7 +376,8 @@ void SourceControlWindow::Render()
         {
             if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
                 mediaplayer_active_->reopen();
-            if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect") )
+            if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect", nullptr,
+                                           false, mediaplayer_active_->videoEffectAvailable()) )
                 mediaplayer_edit_pipeline_ = true;
             if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "   On deactivation"))
             {

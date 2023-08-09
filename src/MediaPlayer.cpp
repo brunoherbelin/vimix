@@ -68,6 +68,7 @@ MediaPlayer::MediaPlayer()
     rate_change_ = RATE_CHANGE_NONE;
     decoder_name_ = "";
     video_filter_ = "";
+    video_filter_available_ = true;
     position_ = GST_CLOCK_TIME_NONE;
     loop_ = LoopMode::LOOP_REWIND;
 
@@ -346,8 +347,10 @@ void MediaPlayer::execute_open()
     g_object_set( G_OBJECT (pipeline_), "flags", flags, NULL);
 
     // hack to compensate for lack of PTS in gif animations
-    if (media_.codec_name.compare("image/gst-libav-gif") == 0)
-        video_filter_ = "videorate";
+    if (media_.codec_name.compare("image/gst-libav-gif") == 0) {
+        video_filter_ = "videorate rate=1.0";
+        video_filter_available_ = false;
+    }
 
     // Add a filter to playbin if provided
     if ( !video_filter_.empty()) {
