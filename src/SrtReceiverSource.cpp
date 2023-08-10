@@ -54,7 +54,7 @@ std::string SrtReceiverSource::uri() const
 
 void SrtReceiverSource::accept(Visitor& v)
 {
-    Source::accept(v);
+    StreamSource::accept(v);
     v.visit(*this);
 }
 

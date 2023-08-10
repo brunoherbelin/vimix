@@ -57,6 +57,7 @@ public:
      * Open a media using gstreamer pipeline keyword
      * */
     void open(const std::string &gstreamer_description, guint w = 0, guint h = 0);
+    void reopen ();
     /**
      * Get description string
      * */
@@ -144,6 +145,12 @@ public:
      * */
     std::string decoderName();
     /**
+     * Option to automatically rewind each time the player is disabled
+     * (i.e. when enable(false) is called )
+     * */
+    inline void setRewindOnDisabled(bool on) { rewind_on_disable_ = on; }
+    inline bool rewindOnDisabled() const { return rewind_on_disable_; }
+    /**
      * Get logs
      * */
     std::string log() const { return log_; }
@@ -176,6 +183,7 @@ protected:
     std::atomic<bool> opened_;
     std::atomic<bool> failed_;
     bool enabled_;
+    bool rewind_on_disable_;
     std::string decoder_name_;
 
     // fps counter

@@ -26,6 +26,7 @@ public:
     MultiFile ();
     void open (const MultiFileSequence &sequence, uint framerate = 30);
     void close () override;
+    void rewind () override;
 
     // dynamic change of gstreamer multifile source properties
     void setProperties(int begin, int end, int loop);

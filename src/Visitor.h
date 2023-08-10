@@ -30,6 +30,7 @@ class ImageProcessingShader;
 
 class Source;
 class MediaSource;
+class StreamSource;
 class PatternSource;
 class DeviceSource;
 class GenericStreamSource;
@@ -101,6 +102,7 @@ public:
     virtual void visit (MixingGroup&) {}
     virtual void visit (Source&) {}
     virtual void visit (MediaSource&) {}
+    virtual void visit (StreamSource&) {}
     virtual void visit (NetworkSource&) {}
     virtual void visit (SrtReceiverSource&) {}
     virtual void visit (GenericStreamSource&) {}

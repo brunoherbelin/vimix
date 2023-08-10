@@ -36,7 +36,6 @@
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
-#include "StreamSource.h"
 #include "RenderSource.h"
 #include "Session.h"
 #include "ImageShader.h"
@@ -1167,6 +1166,24 @@ void SessionLoader::visit (RenderSource& s)
 
     // set session
     s.setSession( session_ );
+}
+
+void SessionLoader::visit(Stream &n)
+{
+    XMLElement* streamNode = xmlCurrent_->FirstChildElement("Stream");
+
+    if (streamNode) {
+        bool rewind_on_disabled = false;
+        streamNode->QueryBoolAttribute("rewind_on_disabled", &rewind_on_disabled);
+        n.setRewindOnDisabled(rewind_on_disabled);
+    }
+}
+
+void SessionLoader::visit (StreamSource& s)
+{
+    // set config stream
+    if (s.stream() != nullptr)
+        s.stream()->accept(*this);
 }
 
 void SessionLoader::visit (PatternSource& s)

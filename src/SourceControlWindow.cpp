@@ -375,8 +375,8 @@ void SourceControlWindow::Render()
         if (ImGui::BeginMenu(ICON_FA_PHOTO_VIDEO " Media", mediaplayer_active_) )
         {
             if ( !mediaplayer_active_->singleFrame() ) {
-                if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
-                    mediaplayer_active_->reopen();
+//                if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
+//                    mediaplayer_active_->reopen();
                 if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect", nullptr,
                                                false, mediaplayer_active_->videoEffectAvailable()) )
                     mediaplayer_edit_pipeline_ = true;
@@ -388,16 +388,6 @@ void SourceControlWindow::Render()
                     hwdec = mediaplayer_active_->softwareDecodingForced();
                     if (ImGui::MenuItem("Disabled", "", &hwdec ))
                         mediaplayer_active_->setSoftwareDecodingForced(true);
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu(ICON_FA_SNOWFLAKE "   On deactivation"))
-                {
-                    bool option = !mediaplayer_active_->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_STOP "  Stop", NULL, &option ))
-                        mediaplayer_active_->setRewindOnDisabled(false);
-                    option = mediaplayer_active_->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_FAST_BACKWARD "  Rewind & Stop", NULL, &option ))
-                        mediaplayer_active_->setRewindOnDisabled(true);
                     ImGui::EndMenu();
                 }
                 ImGui::Separator();
@@ -1410,8 +1400,10 @@ void SourceControlWindow::RenderSingleSource(Source *s)
         ///
         DrawButtonBar(bottom, rendersize.x);
 
-        // If possibly a media source, but is not playable
-        // then offer to make it playable by adding a timeline
+        ///
+        /// Special possibly : selected a media source that is not playable
+        /// then offer to make it playable by adding a timeline
+        ///
         if ( ms != nullptr )
         {
             if (ms->mediaplayer()->isImage()) {
@@ -1448,6 +1440,43 @@ void SourceControlWindow::RenderSingleSource(Source *s)
                 }
 
                 ImGui::PopStyleColor(2);
+            }
+        }
+        ///
+        ///  Not a media source, but playable source
+        ///  Offer context menu if it is a Stream source
+        ///
+        else if ( s->active() && s->playable() ) {
+            StreamSource *ss = dynamic_cast<StreamSource *>(s);
+            if ( ss != nullptr ) {
+
+                static uint counter_menu_timeout = 0;
+
+                ImGui::SameLine();
+                ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.4f);
+                if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+                    counter_menu_timeout=0;
+                    ImGui::OpenPopup( "MenuStreamOptions" );
+                }
+
+                if (ImGui::BeginPopup( "MenuStreamOptions" ))
+                {
+                    // NB: ss is playable (tested above), and thus ss->stream() is not null
+                    if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" )) {
+                        ss->stream()->reopen();
+                    }
+                    bool option = ss->stream()->rewindOnDisabled();
+                    if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option )) {
+                        ss->stream()->setRewindOnDisabled(option);
+                    }
+
+                    if (ImGui::IsWindowHovered())
+                        counter_menu_timeout=0;
+                    else if (++counter_menu_timeout > 10)
+                        ImGui::CloseCurrentPopup();
+
+                    ImGui::EndPopup();
+                }
             }
         }
     }
@@ -1740,7 +1769,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.4f);
         if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             counter_menu_timeout=0;
-            ImGui::OpenPopup( "MenuPlaySpeed" );
+            ImGui::OpenPopup( "MenuMediaPlayerOptions" );
         }
 
         // restore buttons style
@@ -1784,7 +1813,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         DrawButtonBar(bottom, rendersize.x);
     }
 
-    if (ImGui::BeginPopup( "MenuPlaySpeed" ))
+    if (ImGui::BeginPopup( "MenuMediaPlayerOptions" ))
     {
         if (ImGuiToolkit::MenuItemIcon(8,0, "Play forward", nullptr, current_play_speed>0)) {
             mediaplayer_active_->setPlaySpeed( ABS(mediaplayer_active_->playSpeed()) );
@@ -1800,6 +1829,15 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             mediaplayer_active_->setPlaySpeed(1.0);
             oss << ": Speed x 1.0";
             Action::manager().store(oss.str());
+        }
+        ImGui::Separator();
+
+        if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
+            mediaplayer_active_->reopen();
+
+        bool option = mediaplayer_active_->rewindOnDisabled();
+        if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option )) {
+            mediaplayer_active_->setRewindOnDisabled(option);
         }
 
         if (ImGui::IsWindowHovered())

@@ -405,6 +405,18 @@ void SessionVisitor::visit(FrameBufferSurface &)
     xmlCurrent_->SetAttribute("type", "FrameBufferSurface");
 }
 
+void SessionVisitor::visit(Stream &n)
+{
+    XMLElement *newelement = xmlDoc_->NewElement("Stream");
+    newelement->SetAttribute("id", n.id());
+
+    if (!n.singleFrame()) {
+        newelement->SetAttribute("rewind_on_disabled", n.rewindOnDisabled());
+    }
+
+    xmlCurrent_->InsertEndChild(newelement);
+}
+
 void SessionVisitor::visit(MediaPlayer &n)
 {
     XMLElement *newelement = xmlDoc_->NewElement("MediaPlayer");
@@ -806,6 +818,12 @@ void SessionVisitor::visit (CloneSource& s)
     cloneNode->InsertEndChild(xmlCurrent_);
 
     xmlCurrent_ = cloneNode;  // parent for next visits (other subtypes of Source)
+}
+
+void SessionVisitor::visit (StreamSource& s)
+{
+    if (s.stream() != nullptr)
+        s.stream()->accept(*this);
 }
 
 void SessionVisitor::visit (PatternSource& s)

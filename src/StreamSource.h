@@ -41,6 +41,9 @@ public:
     // pure virtual interface
     virtual Stream *stream() const = 0;
 
+    // Source interface
+    virtual void accept (Visitor& v) override;
+
 protected:
     void init() override;
 
