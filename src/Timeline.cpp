@@ -101,6 +101,7 @@ void Timeline::setStep(GstClockTime dt)
 void Timeline::setTiming(TimeInterval interval, GstClockTime step)
 {
     timing_ = interval;
+    first_ = GST_CLOCK_TIME_NONE;
     if (step != GST_CLOCK_TIME_NONE)
         step_ = step;
 }
@@ -113,6 +114,9 @@ GstClockTime Timeline::next(GstClockTime time) const
     if (getGapAt(time, gap) && gap.is_valid())
         next_time = gap.end;
 
+    if ( first_ != GST_CLOCK_TIME_NONE && next_time < first_ )
+        next_time = first_;
+
     return next_time;
 }
 
@@ -122,6 +126,9 @@ GstClockTime Timeline::previous(GstClockTime time) const
     TimeInterval gap;
     if (getGapAt(time, gap) && gap.is_valid())
         prev_time = gap.begin;
+
+    if ( first_ != GST_CLOCK_TIME_NONE && prev_time < first_ )
+        prev_time = first_;
 
     return prev_time;
 }

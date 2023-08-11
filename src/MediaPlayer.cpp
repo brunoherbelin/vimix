@@ -1495,6 +1495,9 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
             // set the start position (i.e. pts of first frame we got)
             if (timeline_.first() == GST_CLOCK_TIME_NONE) {
                 timeline_.setFirst(buf->pts);
+                // add a gap to show that before
+                if (buf->pts > 0 && !timeline_.gapAt( buf->pts ))
+                    timeline_.addGap(0, buf->pts);
             }
         }
         // full but invalid frame : will be deleted next iteration
