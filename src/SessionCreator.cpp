@@ -854,7 +854,8 @@ void SessionLoader::visit(MediaPlayer &n)
             TimeInterval interval_(n.timeline()->interval());
             if (interval_.is_valid())
                 tl.setTiming( interval_, n.timeline()->step());
-            else {
+            else
+            {
                 GstClockTime b = GST_CLOCK_TIME_NONE;
                 GstClockTime e = GST_CLOCK_TIME_NONE;
                 GstClockTime s = GST_CLOCK_TIME_NONE;
@@ -862,7 +863,8 @@ void SessionLoader::visit(MediaPlayer &n)
                 timelineelement->QueryUnsigned64Attribute("end", &e);
                 timelineelement->QueryUnsigned64Attribute("step", &s);
                 interval_ = TimeInterval(b,e);
-                tl.setTiming( interval_, s);
+                if (interval_.is_valid())
+                    tl.setTiming( interval_, s);
             }
 
             XMLElement *gapselement = timelineelement->FirstChildElement("Gaps");

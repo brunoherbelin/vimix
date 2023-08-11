@@ -1164,10 +1164,8 @@ void MediaPlayer::update()
                 if (media_.valid) {
                     if (!media_.log.empty())
                         Log::Info("'%s' : %s", uri().c_str(), media_.log.c_str());
-                    if (!media_.isimage) {
-                        timeline_.setEnd( media_.end );
-                        timeline_.setStep( media_.dt );
-                    }
+                    if (!media_.isimage)
+                        timeline_.setTiming( TimeInterval(0, media_.end), media_.dt);
                     execute_open();
                 }
                 else {
