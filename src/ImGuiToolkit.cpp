@@ -777,6 +777,9 @@ bool ImGuiToolkit::SliderTiming (const char* label, uint* ms, uint v_min, uint v
 
 void ImGuiToolkit::RenderTimeline (ImVec2 min_bbox, ImVec2 max_bbox, guint64 begin, guint64 end, guint64 step, bool verticalflip)
 {
+    if (begin == GST_CLOCK_TIME_NONE || end == GST_CLOCK_TIME_NONE || step == GST_CLOCK_TIME_NONE)
+        return;
+
     const ImRect timeline_bbox(min_bbox, max_bbox);
     const ImGuiWindow* window = ImGui::GetCurrentWindow();
     static guint64 optimal_tick_marks[NUM_MARKS + LABEL_TICK_INCREMENT] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE, 60 * MINUTE };

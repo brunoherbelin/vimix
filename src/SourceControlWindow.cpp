@@ -372,76 +372,56 @@ void SourceControlWindow::Render()
         //
         // Menu for video Mediaplayer control
         //
-        if (ImGui::BeginMenu(ICON_FA_PHOTO_VIDEO " Media", mediaplayer_active_) )
+        if (ImGui::BeginMenu(ICON_FA_FILM " Timeline", mediaplayer_active_) )
         {
-            if ( !mediaplayer_active_->singleFrame() ) {
-//                if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
-//                    mediaplayer_active_->reopen();
-                if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect", nullptr,
-                                               false, mediaplayer_active_->videoEffectAvailable()) )
-                    mediaplayer_edit_pipeline_ = true;
-                if (ImGui::BeginMenu(ICON_FA_MICROCHIP "  Hardware decoding"))
-                {
-                    bool hwdec = !mediaplayer_active_->softwareDecodingForced();
-                    if (ImGui::MenuItem("Auto", "", &hwdec ))
-                        mediaplayer_active_->setSoftwareDecodingForced(false);
-                    hwdec = mediaplayer_active_->softwareDecodingForced();
-                    if (ImGui::MenuItem("Disabled", "", &hwdec ))
-                        mediaplayer_active_->setSoftwareDecodingForced(true);
-                    ImGui::EndMenu();
-                }
-                ImGui::Separator();
-                ImGui::TextDisabled("Timeline");
-
-                if ( mediaplayer_active_->isImage()) {
-                    if ( ImGuiToolkit::MenuItemIcon(1, 14, "Remove")){
-                        // set empty timeline
-                        Timeline tl;
-                        mediaplayer_active_->setTimeline(tl);
-                        mediaplayer_active_->play(false);
-                        // re-open the image with NO timeline
-                        mediaplayer_active_->reopen();
-                        mediaplayer_active_ = nullptr;
-                    }
-
-                    if ( ImGui::MenuItem(ICON_FA_HOURGLASS_HALF "  Duration")){
-                        mediaplayer_set_duration_ = true;
-                    }
-                }
-
-                if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset")){
-                    mediaplayer_timeline_zoom_ = 1.f;
-                    mediaplayer_active_->timeline()->clearFading();
-                    mediaplayer_active_->timeline()->clearGaps();
-                    std::ostringstream oss;
-                    oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
-                    oss << ": Reset timeline";
-                    Action::manager().store(oss.str());
-                }
-
-                if (ImGui::MenuItem(LABEL_EDIT_FADING))
-                    mediaplayer_edit_fading_ = true;
-
-                if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
-                {
-                    Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
-                    bool active = sync == Metronome::SYNC_NONE;
-                    if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", NULL, active ))
-                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_NONE);
-                    active = sync == Metronome::SYNC_BEAT;
-                    if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", NULL, active ))
-                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_BEAT);
-                    active = sync == Metronome::SYNC_PHASE;
-                    if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", NULL, active ))
-                        mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
-                    ImGui::EndMenu();
-                }
-            }
-            else {
-                if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
+            if ( mediaplayer_active_->isImage()) {
+                if ( ImGuiToolkit::MenuItemIcon(1, 14, "Remove")){
+                    // set empty timeline
+                    Timeline tl;
+                    mediaplayer_active_->setTimeline(tl);
+                    mediaplayer_active_->play(false);
+                    // re-open the image with NO timeline
                     mediaplayer_active_->reopen();
+                    mediaplayer_active_ = nullptr;
+                }
 
+                if ( ImGui::MenuItem(ICON_FA_HOURGLASS_HALF "  Duration")){
+                    mediaplayer_set_duration_ = true;
+                }
             }
+
+            if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset")){
+                mediaplayer_timeline_zoom_ = 1.f;
+                mediaplayer_active_->timeline()->clearFading();
+                mediaplayer_active_->timeline()->clearGaps();
+                std::ostringstream oss;
+                oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
+                oss << ": Reset timeline";
+                Action::manager().store(oss.str());
+            }
+
+            if (ImGui::MenuItem(LABEL_EDIT_FADING))
+                mediaplayer_edit_fading_ = true;
+
+            if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
+            {
+                Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
+                bool active = sync == Metronome::SYNC_NONE;
+                if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", NULL, active ))
+                    mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_NONE);
+                active = sync == Metronome::SYNC_BEAT;
+                if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", NULL, active ))
+                    mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_BEAT);
+                active = sync == Metronome::SYNC_PHASE;
+                if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", NULL, active ))
+                    mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
+                ImGui::EndMenu();
+            }
+
+            ImGui::Separator();
+            if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect", nullptr,
+                                           false, mediaplayer_active_->videoEffectAvailable()) )
+                mediaplayer_edit_pipeline_ = true;
 
             ImGui::EndMenu();
         }
