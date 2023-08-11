@@ -674,6 +674,7 @@ void ImGuiVisitor::visit (MediaSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     if (ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip( s.path().c_str() );
@@ -766,6 +767,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     if (ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip( s.path().c_str() );
@@ -856,6 +858,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     // Show list of sources in text bloc (multi line, dark background)
     ImGuiTextBuffer listofsources;
@@ -899,6 +902,7 @@ void ImGuiVisitor::visit (RenderSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     // loopback provenance
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1280,6 +1284,7 @@ void ImGuiVisitor::visit (CloneSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     if ( !s.failed() ) {
 
@@ -1346,6 +1351,7 @@ void ImGuiVisitor::visit (PatternSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::BeginCombo("##Patterns", Pattern::get(s.pattern()->type()).label.c_str(), ImGuiComboFlags_HeightLarge) )
@@ -1392,7 +1398,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
-
+    ImGui::Spacing();
 
     if ( !s.failed() ) {
 
@@ -1443,6 +1449,7 @@ void ImGuiVisitor::visit (NetworkSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1474,6 +1481,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1571,6 +1579,7 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1615,6 +1624,7 @@ void ImGuiVisitor::visit (SrtReceiverSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
 
