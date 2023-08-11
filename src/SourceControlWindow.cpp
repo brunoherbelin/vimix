@@ -382,7 +382,6 @@ void SourceControlWindow::Render()
                     mediaplayer_active_->play(false);
                     // re-open the image with NO timeline
                     mediaplayer_active_->reopen();
-                    mediaplayer_active_ = nullptr;
                 }
 
                 if ( ImGui::MenuItem(ICON_FA_HOURGLASS_HALF "  Duration")){
