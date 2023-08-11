@@ -798,7 +798,9 @@ bool MediaPlayer::isImage() const
 
 bool MediaPlayer::singleFrame() const
 {
-    return timeline_.end() == GST_CLOCK_TIME_NONE;
+    if (media_.isimage)
+        return timeline_.end() == GST_CLOCK_TIME_NONE;
+    return false;
 }
 
 std::string MediaPlayer::decoderName()
