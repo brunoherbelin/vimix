@@ -405,21 +405,37 @@ void SessionVisitor::visit(FrameBufferSurface &)
     xmlCurrent_->SetAttribute("type", "FrameBufferSurface");
 }
 
+void SessionVisitor::visit(Stream &n)
+{
+    XMLElement *newelement = xmlDoc_->NewElement("Stream");
+    newelement->SetAttribute("id", n.id());
+
+    if (!n.singleFrame()) {
+        newelement->SetAttribute("rewind_on_disabled", n.rewindOnDisabled());
+    }
+
+    xmlCurrent_->InsertEndChild(newelement);
+}
+
 void SessionVisitor::visit(MediaPlayer &n)
 {
     XMLElement *newelement = xmlDoc_->NewElement("MediaPlayer");
     newelement->SetAttribute("id", n.id());
 
-    if (!n.isImage()) {
+    if (!n.singleFrame()) {
         newelement->SetAttribute("play", n.isPlaying());
         newelement->SetAttribute("loop", (int) n.loop());
         newelement->SetAttribute("speed", n.playSpeed());
+        newelement->SetAttribute("video_effect", n.videoEffect().c_str());
         newelement->SetAttribute("software_decoding", n.softwareDecodingForced());
         newelement->SetAttribute("rewind_on_disabled", n.rewindOnDisabled());
         newelement->SetAttribute("sync_to_metronome", (int) n.syncToMetronome());
 
         // timeline
         XMLElement *timelineelement = xmlDoc_->NewElement("Timeline");
+        timelineelement->SetAttribute("begin", n.timeline()->begin());
+        timelineelement->SetAttribute("end", n.timeline()->end());
+        timelineelement->SetAttribute("step", n.timeline()->step());
 
         // gaps in timeline
         XMLElement *gapselement = xmlDoc_->NewElement("Gaps");
@@ -802,6 +818,12 @@ void SessionVisitor::visit (CloneSource& s)
     cloneNode->InsertEndChild(xmlCurrent_);
 
     xmlCurrent_ = cloneNode;  // parent for next visits (other subtypes of Source)
+}
+
+void SessionVisitor::visit (StreamSource& s)
+{
+    if (s.stream() != nullptr)
+        s.stream()->accept(*this);
 }
 
 void SessionVisitor::visit (PatternSource& s)

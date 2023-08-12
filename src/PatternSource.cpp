@@ -163,7 +163,7 @@ void PatternSource::setPattern(uint type, glm::ivec2 resolution)
 
 void PatternSource::accept(Visitor& v)
 {
-    Source::accept(v);
+    StreamSource::accept(v);
     v.visit(*this);
 }
 

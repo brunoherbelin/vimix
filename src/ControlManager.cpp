@@ -1151,29 +1151,29 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
     // return status of all listed sources (up to N)
     for (; i < Mixer::manager().numSource() && i < (int) N; ++i) {
         // send status of currently selected
-        sprintf(oscaddr, OSC_PREFIX OSC_CURRENT "/%d", i);
+        snprintf(oscaddr, 128, OSC_PREFIX OSC_CURRENT "/%d", i);
         p << osc::BeginMessage( oscaddr ) << (index_current == i ? 1.f : 0.f) << osc::EndMessage;
 
         // send status of alpha
-        sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
+        snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
         p << osc::BeginMessage( oscaddr ) << Mixer::manager().sourceAtIndex(i)->alpha() << osc::EndMessage;
 
         // send name
-        sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
+        snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
         p << osc::BeginMessage( oscaddr ) <<  Mixer::manager().sourceAtIndex(i)->name().c_str() << osc::EndMessage;
     }
     // zeros for non listed sources
     for (; i < (int) N ; ++i) {
         // reset status of currently selected
-        sprintf(oscaddr, OSC_PREFIX OSC_CURRENT "/%d", i);
+        snprintf(oscaddr, 128, OSC_PREFIX OSC_CURRENT "/%d", i);
         p << osc::BeginMessage( oscaddr ) <<  0.f << osc::EndMessage;
 
         // reset status of alpha
-        sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
+        snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
         p << osc::BeginMessage( oscaddr ) <<  0.f << osc::EndMessage;
 
         /// name
-        sprintf(oscaddr, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
+        snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
         p << osc::BeginMessage( oscaddr ) <<  "" << osc::EndMessage;
     }
 
@@ -1203,7 +1203,7 @@ void Control::sendBatchStatus(const IpEndpointName &remoteEndpoint)
     // batch list
     for (auto plit = pl.begin(); plit != pl.end(); ++plit, ++i) {
 
-        sprintf(oscaddr, OSC_PREFIX "/batch#%d/index" , i);
+        snprintf(oscaddr, 128, OSC_PREFIX "/batch#%d/index" , i);
         p << osc::BeginMessage( oscaddr );
 
         for (auto id = plit->begin(); id != plit->end(); ++id) {
@@ -1217,7 +1217,7 @@ void Control::sendBatchStatus(const IpEndpointName &remoteEndpoint)
     i = 0;
     for (auto plit = pl.begin(); plit != pl.end(); ++plit, ++i) {
 
-        sprintf(oscaddr, OSC_PREFIX "/batch#%d" OSC_SOURCE_ALPHA, i);
+        snprintf(oscaddr, 128, OSC_PREFIX "/batch#%d" OSC_SOURCE_ALPHA, i);
         p << osc::BeginMessage( oscaddr );
 
         for (auto id = plit->begin(); id != plit->end(); ++id) {

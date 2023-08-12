@@ -129,6 +129,16 @@ void MultiFile::close ()
     Stream::close();
 }
 
+void MultiFile::rewind ()
+{
+    if (src_) {
+        int begin = 0;
+        g_object_get (src_, "start-index", &begin, NULL);
+        setIndex (begin);
+    }
+    Stream::rewind();
+}
+
 void MultiFile::setIndex(int val)
 {
     if (src_) {
@@ -219,10 +229,8 @@ void MultiFileSource::setRange (int begin, int end)
 
 void MultiFileSource::replay ()
 {
-    if (multifile()) {
-        multifile()->setIndex (begin_);
-        stream_->rewind();
-    }
+    if (multifile())
+        multifile()->rewind();
 }
 
 guint64 MultiFileSource::playtime () const
@@ -240,7 +248,7 @@ guint64 MultiFileSource::playtime () const
 
 void MultiFileSource::accept (Visitor& v)
 {
-    Source::accept(v);
+    StreamSource::accept(v);
     v.visit(*this);
 }
 

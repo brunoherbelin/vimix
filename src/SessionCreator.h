@@ -45,6 +45,7 @@ public:
 
     // Elements with attributes
     void visit (MediaPlayer& n) override;
+    void visit (Stream& n) override;
     void visit (Shader& n) override;
     void visit (ImageShader& n) override;
     void visit (MaskShader& n) override;
@@ -53,6 +54,7 @@ public:
     // Sources
     void visit (Source& s) override;
     void visit (MediaSource& s) override;
+    void visit (StreamSource& s) override;
     void visit (SessionFileSource& s) override;
     void visit (SessionGroupSource& s) override;
     void visit (RenderSource& s) override;

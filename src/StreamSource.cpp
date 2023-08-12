@@ -68,7 +68,7 @@ std::list<std::string> GenericStreamSource::gstElements() const
 
 void GenericStreamSource::accept(Visitor& v)
 {
-    Source::accept(v);
+    StreamSource::accept(v);
     v.visit(*this);
 }
 
@@ -196,4 +196,10 @@ void StreamSource::update(float dt)
     // update stream
     if ( stream_ )
         stream_->update();
+}
+
+void StreamSource::accept(Visitor& v)
+{
+    Source::accept(v);
+    v.visit(*this);
 }

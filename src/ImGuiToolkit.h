@@ -24,7 +24,7 @@ namespace ImGuiToolkit
     void ShowIconsWindow(bool* p_open);
 
     // buttons and gui items with icon
-    bool ButtonIcon (int i, int j, const char* tooltip = nullptr);
+    bool ButtonIcon (int i, int j, const char* tooltip = nullptr, bool expanded = false);
     bool ButtonIconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltip = nullptr);
     bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips);
     bool MenuItemIcon (int i, int j, const char* label, const char* shortcut = nullptr, bool selected = false, bool enabled = true);
@@ -94,6 +94,17 @@ namespace ImGuiToolkit
     bool WindowButton(const char* window_name, ImVec2 window_pos, const char* text);
     void WindowDragFloat(const char* window_name, ImVec2 window_pos, float* v, float v_speed, float v_min, float v_max, const char* format);
 
+    // Helper functions for imgui window aspect-ratio constraints
+    struct CustomConstraints
+    {
+        static void AspectRatio(ImGuiSizeCallbackData* data) {
+            float *ar = (float*) data->UserData;
+            data->DesiredSize.y = (data->CurrentSize.x / (*ar)) + 35.f;
+        }
+        static void Square(ImGuiSizeCallbackData* data) {
+            data->DesiredSize.x = data->DesiredSize.y = (data->DesiredSize.x > data->DesiredSize.y ? data->DesiredSize.x : data->DesiredSize.y);
+        }
+    };
 }
 
 #endif // __IMGUI_TOOLKIT_H_

@@ -526,7 +526,7 @@ void DeviceSource::setActive (bool on)
 
 void DeviceSource::accept(Visitor& v)
 {
-    Source::accept(v);
+    StreamSource::accept(v);
     v.visit(*this);
 }
 

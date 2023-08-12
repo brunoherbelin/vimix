@@ -36,7 +36,6 @@
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
-#include "StreamSource.h"
 #include "RenderSource.h"
 #include "Session.h"
 #include "ImageShader.h"
@@ -851,7 +850,23 @@ void SessionLoader::visit(MediaPlayer &n)
         XMLElement *timelineelement = mediaplayerNode->FirstChildElement("Timeline");
         if (timelineelement) {
             Timeline tl;
-            tl.setTiming( n.timeline()->interval(), n.timeline()->step());
+
+            TimeInterval interval_(n.timeline()->interval());
+            if (interval_.is_valid())
+                tl.setTiming( interval_, n.timeline()->step());
+            else
+            {
+                GstClockTime b = GST_CLOCK_TIME_NONE;
+                GstClockTime e = GST_CLOCK_TIME_NONE;
+                GstClockTime s = GST_CLOCK_TIME_NONE;
+                timelineelement->QueryUnsigned64Attribute("begin", &b);
+                timelineelement->QueryUnsigned64Attribute("end", &e);
+                timelineelement->QueryUnsigned64Attribute("step", &s);
+                interval_ = TimeInterval(b,e);
+                if (interval_.is_valid())
+                    tl.setTiming( interval_, s);
+            }
+
             XMLElement *gapselement = timelineelement->FirstChildElement("Gaps");
             if (gapselement) {
                 XMLElement* gap = gapselement->FirstChildElement("Interval");
@@ -874,6 +889,10 @@ void SessionLoader::visit(MediaPlayer &n)
 
         // change play status only if different id (e.g. new media player)
         if ( n.id() != id__ ) {
+
+            const char *pFilter = mediaplayerNode->Attribute("video_effect");
+            if (pFilter)
+                n.setVideoEffect(std::string(pFilter));
 
             double speed = 1.0;
             mediaplayerNode->QueryDoubleAttribute("speed", &speed);
@@ -1078,6 +1097,9 @@ void SessionLoader::visit (MediaSource& s)
 
     // set config media player
     s.mediaplayer()->accept(*this);
+
+    // add a callback to activate play speed
+    s.call( new PlaySpeed( s.mediaplayer()->playSpeed() ) );
 }
 
 void SessionLoader::visit (SessionFileSource& s)
@@ -1146,6 +1168,24 @@ void SessionLoader::visit (RenderSource& s)
 
     // set session
     s.setSession( session_ );
+}
+
+void SessionLoader::visit(Stream &n)
+{
+    XMLElement* streamNode = xmlCurrent_->FirstChildElement("Stream");
+
+    if (streamNode) {
+        bool rewind_on_disabled = false;
+        streamNode->QueryBoolAttribute("rewind_on_disabled", &rewind_on_disabled);
+        n.setRewindOnDisabled(rewind_on_disabled);
+    }
+}
+
+void SessionLoader::visit (StreamSource& s)
+{
+    // set config stream
+    if (s.stream() != nullptr)
+        s.stream()->accept(*this);
 }
 
 void SessionLoader::visit (PatternSource& s)

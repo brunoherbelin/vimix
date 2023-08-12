@@ -674,6 +674,7 @@ void ImGuiVisitor::visit (MediaSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     if (ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip( s.path().c_str() );
@@ -684,26 +685,54 @@ void ImGuiVisitor::visit (MediaSource& s)
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
-            std::string decoder = s.mediaplayer()->decoderName();
-            if ( decoder.compare("software") != 0) {
-                decoder = "Hardware decoder\n" + decoder;
-                ImGuiToolkit::Indication(decoder.c_str(), 13, 2);
-            }
-            else
-                ImGuiToolkit::Indication("Software decoder", 14, 2);
-            top.x += ImGui::GetFrameHeight();
-            ImGui::SetCursorPos(top);
             std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
             if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
             top.x += ImGui::GetFrameHeight();
         }
-
         ImGui::SetCursorPos(top);
         if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
 
         ImGui::SetCursorPos(botom);
+
+        // Selector for Hardware or software decoding, if available
+        if ( Settings::application.render.gpu_decoding ) {
+
+            MediaPlayer *mp = s.mediaplayer();
+            if (mp) {
+                // Build string information on decoder name with icon HW/SW
+                bool hwdec = !mp->softwareDecodingForced();
+                std::string decoder = mp->decoderName();
+                if (hwdec) {
+                    if ( decoder.compare("software") != 0)
+                        decoder = ICON_FA_MICROCHIP " Hardware (" + decoder + ")";
+                    else
+                        decoder = ICON_FA_COGS " Software";
+                }
+                else
+                    decoder = ICON_FA_COGS " Software only";
+                // Combo selector shoing the current state and the option to choose
+                // between auto select and forced software decoding
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::BeginCombo("Decoding", decoder.c_str() ) )
+                {
+                    if (ImGui::Selectable( ICON_FA_MICROCHIP " / " ICON_FA_COGS " Auto select", &hwdec ))
+                        mp->setSoftwareDecodingForced(false);
+                    hwdec = mp->softwareDecodingForced();
+                    if (ImGui::Selectable( ICON_FA_COGS " Software only", &hwdec ))
+                        mp->setSoftwareDecodingForced(true);
+                    ImGui::EndCombo();
+                }
+            }
+        }
+        else {
+            // info of software only decoding if disabled
+            ImGuiToolkit::Icon(14,2,false);
+            ImGui::SameLine();
+            ImGui::TextDisabled("Hardware decoding disabled");
+        }
+
     }
     else {
         // failed
@@ -738,6 +767,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     if (ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip( s.path().c_str() );
@@ -828,6 +858,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     // Show list of sources in text bloc (multi line, dark background)
     ImGuiTextBuffer listofsources;
@@ -871,6 +902,7 @@ void ImGuiVisitor::visit (RenderSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     // loopback provenance
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1252,6 +1284,7 @@ void ImGuiVisitor::visit (CloneSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     if ( !s.failed() ) {
 
@@ -1318,6 +1351,7 @@ void ImGuiVisitor::visit (PatternSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::BeginCombo("##Patterns", Pattern::get(s.pattern()->type()).label.c_str(), ImGuiComboFlags_HeightLarge) )
@@ -1364,7 +1398,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
-
+    ImGui::Spacing();
 
     if ( !s.failed() ) {
 
@@ -1415,6 +1449,7 @@ void ImGuiVisitor::visit (NetworkSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1446,6 +1481,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1543,6 +1579,7 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1587,6 +1624,7 @@ void ImGuiVisitor::visit (SrtReceiverSource& s)
     s.accept(info);
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
+    ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
 

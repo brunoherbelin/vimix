@@ -75,7 +75,7 @@ struct AppLog
 
         // normal title
         char window_title[1024];
-        sprintf(window_title, "%s ###LOGVIMIX", title);
+        snprintf(window_title, 1024, "%s ###LOGVIMIX", title);
 
         if (*p_open) {
             // if open but Collapsed, create title of window with last line of logs
@@ -84,7 +84,7 @@ struct AppLog
                 size_t lenght =  LineOffsets[LineOffsets.Size-1] - LineOffsets[LineOffsets.Size-2] - 1;
                 memset(lastlogline, '\0', 128);
                 memcpy(lastlogline, Buf.begin() + LineOffsets[LineOffsets.Size-2], MIN(127, lenght));
-                sprintf(window_title, "%s - %s ###LOGVIMIX", title, lastlogline);
+                snprintf(window_title, 1024, "%s - %s ###LOGVIMIX", title, lastlogline);
             }
         }
 

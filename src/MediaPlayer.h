@@ -118,7 +118,11 @@ public:
     /**
      * True if its an image
      * */
-    bool isImage() const;
+    bool isImage() const;   
+    /**
+     * True if it has only one frame
+     * */
+    bool singleFrame() const;
     /**
      * Pause / Play
      * Can play backward if play speed is negative
@@ -253,6 +257,13 @@ public:
     inline void setSyncToMetronome(Metronome::Synchronicity s) { metro_sync_ = s; }
     inline Metronome::Synchronicity syncToMetronome() const { return metro_sync_; }
     /**
+     * Adds a video effect into the gstreamer pipeline
+     * NB: setVideoEffect reopens the video
+     * */
+    void setVideoEffect(const std::string &pipeline_element);
+    inline std::string videoEffect() { return video_filter_; }
+    inline bool videoEffectAvailable() { return video_filter_available_; }
+    /**
      * Accept visitors
      * */
     void accept(Visitor& v);
@@ -262,12 +273,13 @@ public:
      */
     static std::list<MediaPlayer*> registered() { return registered_; }
     static std::list<MediaPlayer*>::const_iterator begin() { return registered_.cbegin(); }
-    static std::list<MediaPlayer*>::const_iterator end()   { return registered_.cend(); }
-
+    static std::list<MediaPlayer*>::const_iterator end()   { return registered_.cend(); }    
+    /**
+     * Discoverer to check uri and get media info
+     * */
     static MediaInfo UriDiscoverer(const std::string &uri);
     std::string log() const { return media_.log; }
 
-    bool setEffect(const std::string &pipeline_element);
 
 private:
 
@@ -284,7 +296,6 @@ private:
 
     // GST & Play status
     GstClockTime position_;
-    gdouble rate_;
     LoopMode loop_;
     GstState desired_state_;
     GstElement *pipeline_;
@@ -297,8 +308,19 @@ private:
     bool enabled_;
     bool rewind_on_disable_;
     bool force_software_decoding_;
-    bool force_basic_speedchange_;
     std::string decoder_name_;
+    bool video_filter_available_;
+    std::string video_filter_;
+
+    // Play speed
+    gdouble rate_;
+    typedef enum  {
+        RATE_CHANGE_NONE = 0,
+        RATE_CHANGE_INSTANT = 1,
+        RATE_CHANGE_FLUSH = 2
+    } RateChangeMode;
+    RateChangeMode rate_change_;
+
     Metronome::Synchronicity metro_sync_;
 
     // fps counter

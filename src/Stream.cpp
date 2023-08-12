@@ -53,6 +53,7 @@ Stream::Stream()
     single_frame_ = false;
     live_ = false;
     failed_ = false;
+    rewind_on_disable_ = false;
     decoder_name_ = "";
 
     // start index in frame_ stack
@@ -216,6 +217,15 @@ void Stream::open(const std::string &gstreamer_description, guint w, guint h)
 
 }
 
+void Stream::reopen()
+{
+    // re-openning is meaningfull only if it was already open
+    if (pipeline_ != nullptr) {
+        // reload : terminate pipeline and re-create it
+        close();
+        execute_open();
+    }
+}
 
 std::string Stream::description() const
 {
@@ -406,6 +416,10 @@ void Stream::enable(bool on)
         return;
 
     if ( enabled_ != on ) {
+
+        // option to automatically rewind each time the player is disabled
+        if (!on && rewind_on_disable_ && desired_state_ == GST_STATE_PLAYING)
+            rewind();
 
         enabled_ = on;
 

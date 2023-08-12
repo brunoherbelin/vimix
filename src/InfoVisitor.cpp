@@ -98,14 +98,14 @@ void InfoVisitor::visit(MediaPlayer &mp)
             oss << SystemToolkit::filename(mp.filename()) << std::endl;
             oss << mp.media().codec_name.substr(0, mp.media().codec_name.find_first_of(" (,")) << ", ";
             oss << mp.width() << " x " << mp.height();
-            if (!mp.isImage() && mp.frameRate() > 0.)
+            if (!mp.singleFrame() && mp.frameRate() > 0.)
                 oss << ", " << std::fixed << std::setprecision(0) << mp.frameRate() << " fps";
         }
         else {
             oss << mp.filename() << std::endl;
             oss << mp.media().codec_name << std::endl;
             oss << mp.width() << " x " << mp.height() ;
-            if (!mp.isImage() && mp.frameRate() > 0.)
+            if (!mp.singleFrame() && mp.frameRate() > 0.)
                 oss << ", " << std::fixed << std::setprecision(1) << mp.frameRate() << " fps";
         }
     }

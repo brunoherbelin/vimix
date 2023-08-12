@@ -48,7 +48,7 @@ std::map <ImGuiToolkit::font_style, ImFont*>fontmap;
 void ImGuiToolkit::ButtonOpenUrl( const char* label, const char* url, const ImVec2& size_arg )
 {
     char _label[512];
-    sprintf( _label, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, label );
+    snprintf( _label, 512, "%s  %s", ICON_FA_EXTERNAL_LINK_ALT, label );
 
     if ( ImGui::Button(_label, size_arg) )
         SystemToolkit::open(url);
@@ -204,24 +204,44 @@ void ImGuiToolkit::Icon(int i, int j, bool enabled)
     ImGui::Image((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, tint_color);
 }
 
-bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip)
+bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip, bool expanded)
 {
-    // icons.dds is a 20 x 20 grid of icons 
-    if (textureicons == 0)
-        textureicons = Resource::getTextureDDS("images/icons.dds");
-
-    ImVec2 uv0( static_cast<float>(i) * 0.05, static_cast<float>(j) * 0.05 );
-    ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
-
-    ImGui::PushID( i*20 + j);
     ImGuiContext& g = *GImGui;
-    bool ret =  ImGui::ImageButton((void*)(intptr_t)textureicons,
-                                   ImVec2(g.FontSize, g.FontSize),
-                                   uv0, uv1, g.Style.FramePadding.y);
-    ImGui::PopID();
+    bool ret = false;
 
-    if (tooltip != nullptr && ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip(tooltip);
+    if (expanded) {
+        // make some space
+        char space_buf[] = "                                                ";
+        const ImVec2 space_size = ImGui::CalcTextSize(" ", NULL);
+        const int space_num = static_cast<int>( ceil(g.FontSize / space_size.x) );
+        space_buf[space_num]='\0';
+
+        char text_buf[256];
+        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, tooltip);
+
+        ImVec2 draw_pos = ImGui::GetCursorScreenPos() + g.Style.FramePadding * 0.5;
+        ret = ImGui::Button(text_buf);
+
+        // overlay of icon on top of first item
+        _drawIcon(draw_pos, i, j);
+    }
+    else {
+        // icons.dds is a 20 x 20 grid of icons
+        if (textureicons == 0)
+            textureicons = Resource::getTextureDDS("images/icons.dds");
+
+        ImVec2 uv0( static_cast<float>(i) * 0.05, static_cast<float>(j) * 0.05 );
+        ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
+
+        ImGui::PushID( i*20 + j);
+        ret = ImGui::ImageButton((void*)(intptr_t)textureicons,
+                                 ImVec2(g.FontSize, g.FontSize),
+                                 uv0, uv1, g.Style.FramePadding.y);
+        ImGui::PopID();
+
+        if (tooltip != nullptr && ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip(tooltip);
+    }
 
     return ret;
 }
@@ -757,6 +777,9 @@ bool ImGuiToolkit::SliderTiming (const char* label, uint* ms, uint v_min, uint v
 
 void ImGuiToolkit::RenderTimeline (ImVec2 min_bbox, ImVec2 max_bbox, guint64 begin, guint64 end, guint64 step, bool verticalflip)
 {
+    if (begin == GST_CLOCK_TIME_NONE || end == GST_CLOCK_TIME_NONE || step == GST_CLOCK_TIME_NONE)
+        return;
+
     const ImRect timeline_bbox(min_bbox, max_bbox);
     const ImGuiWindow* window = ImGui::GetCurrentWindow();
     static guint64 optimal_tick_marks[NUM_MARKS + LABEL_TICK_INCREMENT] = { 100 * MILISECOND, 500 * MILISECOND, 1 * SECOND, 2 * SECOND, 5 * SECOND, 10 * SECOND, 20 * SECOND, 1 * MINUTE, 2 * MINUTE, 5 * MINUTE, 10 * MINUTE, 60 * MINUTE, 60 * MINUTE };
@@ -1313,7 +1336,7 @@ bool ImGuiToolkit::EditPlotLines (const char* label, float *array, int values_co
 
     // plot lines
     char buf[128];
-    sprintf(buf, "##Lines%s", label);
+    snprintf(buf, 128, "##Lines%s", label);
 
     ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
     ImGui::PlotLines(buf, array, values_count, 0, NULL, values_min, values_max, size);
@@ -1439,7 +1462,7 @@ bool ImGuiToolkit::EditPlotHistoLines (const char* label, float *histogram_array
     ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_ModalWindowDimBg]); // a dark color
     char buf[128];
-    sprintf(buf, "##Histo%s", label);
+    snprintf(buf, 128, "##Histo%s", label);
     ImGui::PlotHistogram(buf, histogram_array, values_count, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(2);
 
@@ -1447,7 +1470,7 @@ bool ImGuiToolkit::EditPlotHistoLines (const char* label, float *histogram_array
 
     // plot (transparent) lines
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
-    sprintf(buf, "##Lines%s", label);
+    snprintf(buf, 128, "##Lines%s", label);
     ImGui::PlotLines(buf, lines_array, values_count, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(1);
 
@@ -1515,7 +1538,7 @@ void ImGuiToolkit::ShowPlotHistoLines (const char* label, float *histogram_array
     ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0, 0, 0, 250));
     char buf[128];
-    sprintf(buf, "##Histo%s", label);
+    snprintf(buf, 128, "##Histo%s", label);
     ImGui::PlotHistogram(buf, histogram_array, values_count, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(2);
 
@@ -1523,7 +1546,7 @@ void ImGuiToolkit::ShowPlotHistoLines (const char* label, float *histogram_array
 
     // plot lines
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
-    sprintf(buf, "##Lines%s", label);
+    snprintf(buf, 128, "##Lines%s", label);
     ImGui::PlotLines(buf, lines_array, values_count, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(1);
 
@@ -1947,8 +1970,14 @@ bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const
 {
     bool ret = false;
     char hiddenlabel[256];
-    sprintf(hiddenlabel, "##%s", label);
+    snprintf(hiddenlabel, 256, "##%s", label);
 
+    // Draw the label with default font
+    ImVec2 pos_top = ImGui::GetCursorPos();
+    ImGui::SetCursorPosX(pos_top.x + size.x + 8);
+    ImGui::Text("%s", label);
+
+    // Draw code with mono font
     ImGuiToolkit::PushFont(FONT_MONO);
     static ImVec2 onechar = ImGui::CalcTextSize("C");
 
@@ -1958,9 +1987,11 @@ bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const
     // work on a string wrapped to the number of chars in a line
     std::string edited = wrapp( *str, (size_t) floor(size.x / onechar.x) - 1);
 
+    ImGui::SetCursorPos(pos_top);
+
     // Input text into std::string with callback
     ImGui::InputTextMultiline(hiddenlabel, (char*)edited.c_str(), edited.capacity() + 1, size, flags, InputTextCallback, &edited);
-    if (ImGui::IsItemDeactivatedAfterEdit() ){
+    if (ImGui::IsItemDeactivated() ){
         // unwrap after edit
         *str = unwrapp(edited);
         // return number of lines
@@ -1973,17 +2004,13 @@ bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const
 
     ImGui::PopFont();
 
-    // show label
-    ImGui::SameLine();
-    ImGui::Text("%s", label);
-
     return ret;
 }
 
 void ImGuiToolkit::CodeMultiline(const char* label, const std::string &str, float width)
 {
     char hiddenlabel[256];
-    sprintf(hiddenlabel, "##%s", label);
+    snprintf(hiddenlabel, 256, "##%s", label);
 
     ImGuiToolkit::PushFont(FONT_MONO);
     static ImVec2 onechar = ImGui::CalcTextSize("C");

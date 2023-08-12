@@ -341,7 +341,7 @@ std::string NetworkSource::connection() const
 
 void NetworkSource::accept(Visitor& v)
 {
-    Source::accept(v);
+    StreamSource::accept(v);
     v.visit(*this);
 }
 
