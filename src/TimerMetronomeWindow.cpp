@@ -299,7 +299,7 @@ void TimerMetronomeWindow::Render()
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
 
         guint64 lap = (time_-start_time_hand_)/duration_hand_;
-        snprintf(text_buf, 24, "%ld turn%s", lap, lap > 1 ? "s" : " " );
+        snprintf(text_buf, 24, "%lu turn%s", (unsigned long) lap, lap > 1 ? "s" : " " );
         label_size = ImGui::CalcTextSize(text_buf, NULL);
         ImGui::SetCursorScreenPos(circle_center + ImVec2(0.f, circle_radius * -0.7f) - label_size/2);
         ImGui::Text("%s", text_buf);

@@ -1023,7 +1023,7 @@ void ImGuiToolkit::RenderTimelineBPM (ImVec2 min_bbox, ImVec2 max_bbox, double t
         {
             // beat count label
             guint64 ticklabel = tick / time_beat;
-            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%ld", ticklabel);
+            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%lu", (unsigned long) ticklabel);
             ImVec2 label_size = ImGui::CalcTextSize(text_buf, NULL);
             ImVec2 mini = ImVec2( pos.x - label_size.x / 2.f, pos.y);
             ImVec2 maxi = ImVec2( pos.x + label_size.x / 2.f, pos.y);
