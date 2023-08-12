@@ -22,6 +22,7 @@
 #define WINDOW_TOOLBOX_DIST_TO_BORDER 10.f
 
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <sstream>
 #include <fstream>
@@ -3545,7 +3546,7 @@ void Navigator::RenderNewPannel()
                     ImGui::Text("Codec :");ImGui::SameLine(150);
                     ImGui::Text("%s", VideoRecorder::profile_name[ _video_recorder.profile() ] );
                     ImGui::Text("Frames :");ImGui::SameLine(150);
-                    ImGui::Text("%ld / %ld", _video_recorder.numFrames(), _video_recorder.files().size() );
+                    ImGui::Text("%lu / %lu", (unsigned long)_video_recorder.numFrames(), _video_recorder.files().size() );
 
                     ImGui::Spacing();
                     ImGui::ProgressBar(_video_recorder.progress());
