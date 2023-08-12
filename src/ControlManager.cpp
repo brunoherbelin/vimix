@@ -1275,7 +1275,12 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
             }
             Control::manager().input_access_.unlock();
         }
+#if defined(APPLE)
+        else if ( w != Rendering::manager().mainWindow().window() &&
+                 key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_SUPER  )
+#else
         else if ( key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
+#endif
         {
             Rendering::manager().window(w)->toggleFullscreen();
         }
