@@ -175,5 +175,5 @@ glm::ivec2 RenderSource::icon() const
 
 std::string RenderSource::info() const
 {
-    return "Rendering Output";
+    return "Display loopback";
 }

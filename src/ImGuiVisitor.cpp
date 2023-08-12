@@ -923,7 +923,7 @@ void ImGuiVisitor::visit (RenderSource& s)
         }
         // icon to open output view
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(ICON_FA_LAPTOP, "Show Output"))
+        if (ImGuiToolkit::IconButton(ICON_FA_LAPTOP, "Open Display"))
             Settings::application.widget.preview = true;
     }
     else

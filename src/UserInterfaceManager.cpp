@@ -68,7 +68,6 @@
 #include "Mixer.h"
 #include "Recorder.h"
 #include "SourceCallback.h"
-#include "CloneSource.h"
 #include "MediaSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
@@ -3103,14 +3102,11 @@ void Navigator::RenderSourcePannel(Source *s)
             // prepare panel for new source of same type
             MediaSource *file = dynamic_cast<MediaSource *>(s);
             MultiFileSource *sequence = dynamic_cast<MultiFileSource *>(s);
-            CloneSource *internal = dynamic_cast<CloneSource *>(s);
             PatternSource *generated = dynamic_cast<PatternSource *>(s);
             if (file != nullptr)
                 Settings::application.source.new_type = SOURCE_FILE;
             else if (sequence != nullptr)
                 Settings::application.source.new_type = SOURCE_SEQUENCE;
-            else if (internal != nullptr)
-                Settings::application.source.new_type = SOURCE_INTERNAL;
             else if (generated != nullptr)
                 Settings::application.source.new_type = SOURCE_GENERATED;
             else
@@ -3199,30 +3195,27 @@ void Navigator::RenderNewPannel()
         ImGui::Columns(5, NULL, false);
         bool selected_type[5] = {0};
         selected_type[Settings::application.source.new_type] = true;
-        if (ImGui::Selectable( ICON_FA_PHOTO_VIDEO, &selected_type[SOURCE_FILE], 0, iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( 2, 5, "##SOURCE_FILE", selected_type[SOURCE_FILE], iconsize)) {
             Settings::application.source.new_type = SOURCE_FILE;
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGui::Selectable( ICON_FA_IMAGES, &selected_type[SOURCE_SEQUENCE], 0, iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( 3, 9, "##SOURCE_SEQUENCE", selected_type[SOURCE_SEQUENCE], iconsize)) {
             Settings::application.source.new_type = SOURCE_SEQUENCE;
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGui::Selectable( ICON_FA_PLUG, &selected_type[SOURCE_CONNECTED], 0, iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( 10, 9, "##SOURCE_CONNECTED", selected_type[SOURCE_CONNECTED], iconsize)) {
             Settings::application.source.new_type = SOURCE_CONNECTED;
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGui::Selectable( ICON_FA_COGS, &selected_type[SOURCE_GENERATED], 0, iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( 11, 5, "##SOURCE_GENERATED", selected_type[SOURCE_GENERATED], iconsize)) {
             Settings::application.source.new_type = SOURCE_GENERATED;
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGui::Selectable( ICON_FA_RETWEET, &selected_type[SOURCE_INTERNAL], 0, iconsize)) {
-            Settings::application.source.new_type = SOURCE_INTERNAL;
-            clearNewPannel();
-        }
+
 
         ImGui::Columns(1);
         ImGui::PopStyleVar();
@@ -3437,7 +3430,7 @@ void Navigator::RenderNewPannel()
             static MultiFileRecorder _video_recorder;
             static int _fps = 25;
 
-            ImGui::Text("Create image sequence:");
+            ImGui::Text("Load image sequence:");
 
             // clic button to load file
             if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open multiple", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
@@ -3570,55 +3563,23 @@ void Navigator::RenderNewPannel()
 
 
         }
-        // Internal Source creator
-        else if (Settings::application.source.new_type == SOURCE_INTERNAL){
-
-            ImGui::Text("Loopback object:");
-
-            // fill new_source_preview with a new source
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##Source", "Select"))
-            {
-                std::string label = "Rendering Loopback";
-                if (ImGui::Selectable( label.c_str() )) {
-                    new_source_preview_.setSource( Mixer::manager().createSourceRender(), label);
-                }
-                SourceList::iterator iter;
-                for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter)
-                {
-                    label = std::string("Source ") + (*iter)->initials() + " - " + (*iter)->name();
-                    if (ImGui::Selectable( label.c_str() )) {
-                        label = std::string("Clone of ") + label;
-                        new_source_preview_.setSource( Mixer::manager().createSourceClone((*iter)->name(), false),label);
-                    }
-                }
-                ImGui::EndCombo();
-            }
-
-            // Indication
-            ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Create a source replicating internal vimix objects.\n"
-                                     ICON_FA_CARET_RIGHT " Loopback from output\n"
-                                     ICON_FA_CARET_RIGHT " Clone other sources");
-        }
-        // Generated Source creator
         else if (Settings::application.source.new_type == SOURCE_GENERATED){
 
             bool update_new_source = false;
 
-            ImGui::Text("Generate graphics:");
+            ImGui::Text("Generate graphic patterns:");
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", "Select", ImGuiComboFlags_HeightLarge))
             {
-                if ( ImGui::Selectable("Custom " ICON_FA_CARET_RIGHT) ) {
+                if ( ImGui::Selectable("Custom  " ICON_FA_PLAY_CIRCLE) ) {
                     update_new_source = true;
                     custom_pipeline = true;
                     pattern_type = -1;
                 }
                 for (int p = 0; p < (int) Pattern::count(); ++p){
                     pattern_descriptor pattern = Pattern::get(p);
-                    std::string label = pattern.label + (pattern.animated ? " " ICON_FA_CARET_RIGHT : " ");
+                    std::string label = pattern.label + (pattern.animated ? "  " ICON_FA_PLAY_CIRCLE : " ");
                     if (pattern.available && ImGui::Selectable( label.c_str(), p == pattern_type )) {
                         update_new_source = true;
                         custom_pipeline = false;
@@ -3715,6 +3676,10 @@ void Navigator::RenderNewPannel()
                     }
                 }
 
+                if ( ImGui::Selectable("Display Loopback") ) {
+                    new_source_preview_.setSource( Mixer::manager().createSourceRender(), "Display Loopback");
+                }
+
                 if ( ImGui::Selectable("SRT Broadcaster") ) {
                     new_source_preview_.setSource();
                     custom_connected = true;
@@ -3732,7 +3697,8 @@ void Navigator::RenderNewPannel()
             ImGuiToolkit::HelpToolTip("Create a source capturing video streams from connected devices or machines;\n"
                                      ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                      ICON_FA_CARET_RIGHT " screen capture\n"
-                                     ICON_FA_CARET_RIGHT " shared by vimix on local network\n"
+                                     ICON_FA_CARET_RIGHT " vimix display loopback\n"
+                                     ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network\n"
                                      ICON_FA_CARET_RIGHT " broadcasted with SRT over network.");
 
             if (custom_connected) {

@@ -541,9 +541,9 @@ bool ImGuiToolkit::ComboIcon (const char* label, int* current_item, std::vector<
         if ( ImGui::BeginCombo( label, text_buf, ImGuiComboFlags_None) ) {
             for (int p = 0; p < (int) items.size(); ++p){
                 ImGui::PushID((void*)(intptr_t)p);
-                if (ImGuiToolkit::SelectableIcon( "",
-                                                  std::get<0>( items.at(p) ),
+                if (ImGuiToolkit::SelectableIcon( std::get<0>( items.at(p) ),
                                                   std::get<1>( items.at(p) ),
+                                                  "",
                                                   p == *current_item) ) {
                     *current_item = p;
                     ret = true;
@@ -560,9 +560,9 @@ bool ImGuiToolkit::ComboIcon (const char* label, int* current_item, std::vector<
         if ( ImGui::BeginCombo( label, text_buf, ImGuiComboFlags_None) ) {
             for (int p = 0; p < (int) items.size(); ++p){
                 ImGui::PushID((void*)(intptr_t)p);
-                if (ImGuiToolkit::SelectableIcon( std::get<2>( items.at(p) ).c_str(),
-                                                  std::get<0>( items.at(p) ),
+                if (ImGuiToolkit::SelectableIcon( std::get<0>( items.at(p) ),
                                                   std::get<1>( items.at(p) ),
+                                                  std::get<2>( items.at(p) ).c_str(),
                                                   p == *current_item) ) {
                     *current_item = p;
                     ret = true;
@@ -579,7 +579,7 @@ bool ImGuiToolkit::ComboIcon (const char* label, int* current_item, std::vector<
     return ret;
 }
 
-bool ImGuiToolkit::SelectableIcon(const char* label, int i, int j, bool selected)
+bool ImGuiToolkit::SelectableIcon(int i, int j, const char* label, bool selected, const ImVec2 &size_arg)
 {
     ImGuiContext& g = *GImGui;
     ImVec2 draw_pos = ImGui::GetCursorScreenPos() - g.Style.FramePadding * 0.5;
@@ -588,15 +588,19 @@ bool ImGuiToolkit::SelectableIcon(const char* label, int i, int j, bool selected
     char space_buf[] = "                                                ";
     const ImVec2 space_size = ImGui::CalcTextSize(" ", NULL);
     const int space_num = static_cast<int>( ceil(g.FontSize / space_size.x) );
-    space_buf[space_num]='\0';
+    space_buf[space_num+1]='\0';
 
     char text_buf[256];
-    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, label);
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s%s", space_buf, label);
 
     // draw menu item
-    bool ret = ImGui::Selectable(text_buf, selected);
+    bool ret = ImGui::Selectable(text_buf, selected, ImGuiSelectableFlags_None, size_arg);
 
-    // overlay of icon on top of first item
+    // center icon vertically
+    draw_pos.y += size_arg.y > 0 ? (size_arg.y - space_size.y) * 0.5 : 0.0;
+    draw_pos.x += size_arg.x > 0 ? (size_arg.x - g.FontSize) * 0.5 : 0.0;
+
+    // overlay of icon on top of first item    
     _drawIcon(draw_pos, i, j);
 
     return ret;

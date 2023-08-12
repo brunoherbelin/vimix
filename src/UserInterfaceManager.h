@@ -77,7 +77,6 @@ public:
         SOURCE_SEQUENCE,
         SOURCE_CONNECTED,
         SOURCE_GENERATED,
-        SOURCE_INTERNAL,
         SOURCE_TYPES
     } NewSourceType;
 
