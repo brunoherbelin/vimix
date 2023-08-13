@@ -283,9 +283,11 @@ float LayerView::setDepth(Source *s, float d)
 
         // find the front-most souce in the workspace (behind FOREGROUND)
         for (NodeSet::iterator node = scene.ws()->begin(); node != scene.ws()->end(); ++node) {
+            // discard foreground
+            if ((*node)->translation_.z > LAYER_FOREGROUND )
+                break;
             // place in front of previous sources
             depth = MAX(depth, (*node)->translation_.z + LAYER_STEP);
-
             // in case node is already at max depth
             if ((*node)->translation_.z + DELTA_DEPTH > MAX_DEPTH )
                 (*node)->translation_.z -= DELTA_DEPTH;
