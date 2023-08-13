@@ -58,6 +58,7 @@
 #include "Mixer.h"
 #include "MixingGroup.h"
 #include "ActionManager.h"
+#include "Mixer.h"
 
 #include "imgui.h"
 #include "ImGuiToolkit.h"
@@ -493,25 +494,35 @@ void ImGuiVisitor::visit (Source& s)
         else
             ImGuiToolkit::Indication("Inactive", ICON_FA_SNOWFLAKE);
 
-        // Inform on workspace
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + ImGui::GetFrameHeightWithSpacing()) );
-        if (s.workspace() == Source::BACKGROUND)
-            ImGuiToolkit::Indication("in Background",10, 16);
-        else if (s.workspace() == Source::FOREGROUND)
-            ImGuiToolkit::Indication("in Foreground",12, 16);
-        else
-            ImGuiToolkit::Indication("in Workspace",11, 16);
-
         // Inform on link
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + ImGui::GetFrameHeightWithSpacing()) );
         if (s.mixingGroup() != nullptr) {
             if (ImGuiToolkit::IconButton(ICON_FA_LINK, "Linked")){
                 Mixer::selection().clear();
                 Mixer::selection().add( s.mixingGroup()->getCopy() );
+                UserInterface::manager().setView(View::MIXING);
             }
         }
         else
             ImGuiToolkit::Indication("not Linked", ICON_FA_UNLINK);
+
+        // Inform on workspace
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
+        static std::map< int, std::pair<int, std::string> > workspaces_ {
+            { Source::BACKGROUND,  {10, "in Background"}},
+            { Source::STAGE,  {11, "in Workspace"}},
+            { Source::FOREGROUND,  {12, "in Foreground"}}
+        };
+        // in Geometry view, offer to switch current workspace to the source workspace
+        if (Settings::application.current_view == View::GEOMETRY) {
+            if (ImGuiToolkit::IconButton( workspaces_[s.workspace()].first, 16, workspaces_[s.workspace()].second.c_str())) {
+                Settings::application.current_workspace=s.workspace();
+                Mixer::manager().setCurrentSource(s.id());
+            }
+        }
+        // otherwise in other views, just draw in indicator
+        else
+            ImGuiToolkit::Indication(workspaces_[s.workspace()].second.c_str(), workspaces_[s.workspace()].first, 16);
 
         // locking
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 3.f * ImGui::GetFrameHeightWithSpacing()) );

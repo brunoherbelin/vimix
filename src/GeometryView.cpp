@@ -240,7 +240,7 @@ void GeometryView::draw()
     scene.accept(draw_overlays);
 
     // 4. Draw control overlays of current source on top (if selected)
-    if (s != nullptr) {
+    if (s != nullptr && s->workspace() == Settings::application.current_workspace) {
         DrawVisitor dv(s->overlays_[mode_], projection);
         scene.accept(dv);
         // Always restore current source after draw
