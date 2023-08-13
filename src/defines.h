@@ -204,7 +204,7 @@
 #define SHORTCUT_FULLSCREEN   CTRL_MOD "F"
 #define TOOLTIP_MAIN          "Main menu "
 #define SHORTCUT_MAIN         "HOME"
-#define TOOLTIP_NEW_SOURCE    "New source "
+#define TOOLTIP_NEW_SOURCE    "Insert "
 #define SHORTCUT_NEW_SOURCE   "INS"
 #define TOOLTIP_HIDE          "Hide windows "
 #define TOOLTIP_SHOW          "Show windows "

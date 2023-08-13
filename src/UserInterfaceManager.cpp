@@ -3230,7 +3230,7 @@ void Navigator::RenderNewPannel()
             static DialogToolkit::OpenMediaDialog fileimportdialog("Open Media");
             static DialogToolkit::OpenFolderDialog folderimportdialog("Select Folder");
 
-            ImGui::Text("Load media file:");
+            ImGui::Text("Load media or session file:");
 
             // clic button to load file
             if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) )
@@ -3241,7 +3241,7 @@ void Navigator::RenderNewPannel()
                                                  ICON_FA_CARET_RIGHT " Video (*.mpg, *mov, *.avi, etc.)\n"
                                                  ICON_FA_CARET_RIGHT " Image (*.jpg, *.png, etc.)\n"
                                                  ICON_FA_CARET_RIGHT " Vector graphics (*.svg)\n"
-                                                 ICON_FA_CARET_RIGHT " vimix session (*.mix)\n"
+                                                 ICON_FA_CARET_RIGHT " Vimix session (*.mix)\n"
                                                  "\nNB: Equivalent to dropping the file in the workspace");
 
             // get media file if dialog finished
@@ -3430,7 +3430,7 @@ void Navigator::RenderNewPannel()
             static MultiFileRecorder _video_recorder;
             static int _fps = 25;
 
-            ImGui::Text("Load image sequence:");
+            ImGui::Text("Create image sequence:");
 
             // clic button to load file
             if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open multiple", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
@@ -3441,9 +3441,10 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Create a source displaying a sequence of images (PNG, JPG, TIF);\n"
+            ImGuiToolkit::HelpToolTip("Create a source displaying a sequence of images;\n"
                                      ICON_FA_CARET_RIGHT " files numbered consecutively\n"
-                                     ICON_FA_CARET_RIGHT " create a video from many images\n");
+                                     ICON_FA_CARET_RIGHT " create a video from many images\n"
+                                     "Supports PNG, JPG or TIF.");
 
             // return from thread for folder openning
             if (_selectImagesDialog.closed()) {
@@ -3591,7 +3592,8 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Create a source with graphics generated algorithmically.");
+            ImGuiToolkit::HelpToolTip("Create a source with graphics generated algorithmically.\n"
+                                      "Custom gstreamer pipelines are also possible.");
 
             if (custom_pipeline) {
                 static std::vector< std::pair< std::string, std::string> > _examples = { {"Videotest", "videotestsrc horizontal-speed=1 ! video/x-raw, width=640, height=480 " },
@@ -3656,7 +3658,7 @@ void Navigator::RenderNewPannel()
         // External source creator
         else if (Settings::application.source.new_type == SOURCE_CONNECTED){
 
-            ImGui::Text("Connect device or stream:");
+            ImGui::Text("Input device or stream:");
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##External", "Select "))
