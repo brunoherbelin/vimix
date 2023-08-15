@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of vimix - video live mixer
  *
  * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
@@ -25,7 +25,6 @@
 #include <gst/pbutils/pbutils.h>
 #include <gst/gst.h>
 
-
 #include "Log.h"
 #include "Decorations.h"
 #include "Stream.h"
@@ -35,17 +34,14 @@
 
 #ifndef NDEBUG
 #define DEVICE_DEBUG
-#define GST_DEVICE_DEBUG
 #endif
 
 
 
 #if defined(APPLE)
 std::string gst_plugin_device = "avfvideosrc";
-std::string gst_plugin_vidcap = "avfvideosrc capture-screen=true";
 #else
 std::string gst_plugin_device = "v4l2src";
-std::string gst_plugin_vidcap = "ximagesrc";
 #endif
 
 std::string pipelineForDevice(GstDevice *device, uint index)
@@ -119,7 +115,6 @@ private:
     std::string _name;
 };
 
-
 struct hasConnectedSource
 {
     inline bool operator()(const DeviceHandle &elem) const {
@@ -130,6 +125,29 @@ struct hasConnectedSource
 private:
     Source *s_;
 };
+
+std::string get_device_properties(GstDevice *device)
+{
+    std::ostringstream oss;
+
+    GstStructure *stru = gst_device_get_properties(device);
+    gint n =  gst_structure_n_fields (stru);
+    oss << "- " << gst_structure_get_name(stru) << " -" << std::endl;
+    for (gint i = 0; i < n; ++i) {
+        std::string name =  gst_structure_nth_field_name (stru, i);
+        if (name.find("device.path") !=std::string::npos || name.find("object.path") !=std::string::npos)
+            oss << "Path : " << gst_structure_get_string(stru, name.c_str()) << std::endl;
+        if (name.find("device.api") !=std::string::npos)
+            oss << "Api : " << gst_structure_get_string(stru, name.c_str()) << std::endl;
+        if (name.find("device.card") !=std::string::npos || name.find("cap.card") !=std::string::npos)
+            oss << "Card : " << gst_structure_get_string(stru, name.c_str()) << std::endl;
+        if (name.find("device.driver") !=std::string::npos || name.find("cap.driver") !=std::string::npos)
+            oss << "Driver : " << gst_structure_get_string(stru, name.c_str()) << std::endl;
+    }
+    gst_structure_free (stru);
+
+    return oss.str();
+}
 
 void Device::add(GstDevice *device)
 {
@@ -146,7 +164,7 @@ void Device::add(GstDevice *device)
     if ( handle == handles_.cend() ) {
 
         std::string p = pipelineForDevice(device, handles_.size());
-        DeviceConfigSet confs = getDeviceConfigs(p);
+        GstToolkit::PipelineConfigSet confs = GstToolkit::getPipelineConfigs(p);
 
         // add if not in the list and valid
         if (!p.empty() && !confs.empty()) {
@@ -154,12 +172,12 @@ void Device::add(GstDevice *device)
             dev.name = device_name;
             dev.pipeline = p;
             dev.configs = confs;
-            handles_.push_back(dev);
+            dev.properties = get_device_properties (device);
 #ifdef GST_DEVICE_DEBUG
-            gchar *stru = gst_structure_to_string( gst_device_get_properties(device) );
-            g_print("\nDevice %s plugged : %s\n", device_name, stru);
-            g_free (stru);
+            g_print("\n%s %s", device_name, gst_structure_to_string(stru) );
 #endif
+            handles_.push_back(dev);
+            Log::Info("Device %s plugged.", device_name);
         }
 
     }
@@ -174,33 +192,46 @@ void Device::remove(GstDevice *device)
     if (device==nullptr)
         return;
 
-    gchar *device_name = gst_device_get_display_name (device);
+    std::string devicename = gst_device_get_display_name (device);
 
     // lock before change
     access_.lock();
 
     // if a device with this name is listed
-    auto handle = std::find_if(handles_.cbegin(), handles_.cend(), hasDeviceName(device_name) );
+    auto handle = std::find_if(handles_.cbegin(), handles_.cend(), hasDeviceName(devicename) );
     if ( handle != handles_.cend() ) {
 
-        // remove the handle if there is no source connected
-        if (handle->connected_sources.empty())
-            handles_.erase(handle);
-        else {
-            // otherwise unplug all sources
-            for (auto sit = handle->connected_sources.begin(); sit != handle->connected_sources.end(); ++sit)
-                (*sit)->unplug();
-            // and inform user
-            Log::Warning("Device %s unplugged.", device_name);
-            // NB; the handle will be removed at the destruction of the last DeviceSource
+        // just inform the user if there is no source connected
+        if (handle->connected_sources.empty()) {
+            Log::Info("Device %s unplugged.", devicename.c_str());
         }
+        else {
+            // otherwise unplug all sources and close their streams
+            bool first = true;
+            for (auto sit = handle->connected_sources.begin(); sit != handle->connected_sources.end(); ++sit) {
+                // for the first connected source in the list
+                if (first) {
+                    // close the stream
+                    (*sit)->stream()->close();
+                    first = false;
+                } else {
+                    // all others set the stream to null, so it is not deleted in destructor of StreamSource
+                    (*sit)->stream_ = nullptr;
+                }
+                // all connected sources are set to unplugged
+                (*sit)->unplug();
+                // and finally inform user
+                Log::Warning("Device %s unplugged: sources %s disconnected.",
+                             devicename.c_str(), (*sit)->name().c_str());
+            }
+        }
+
+        // remove the handle
+        handles_.erase(handle);
     }
 
     // unlock access
     access_.unlock();
-
-
-    g_free (device_name);
 }
 
 Device::Device(): monitor_(nullptr), monitor_initialized_(false), monitor_unplug_event_(false)
@@ -228,26 +259,6 @@ void Device::launchMonitoring(Device *d)
         gst_object_unref (device);
     }
     g_list_free(devices);
-
-    // Try to get captrure screen
-    DeviceConfigSet confs = getDeviceConfigs(gst_plugin_vidcap);
-    if (!confs.empty()) {
-        DeviceConfig best = *confs.rbegin();
-        DeviceConfigSet confscreen;
-        // limit framerate to 30fps
-        best.fps_numerator = MIN( best.fps_numerator, 30);
-        best.fps_denominator = 1;
-        confscreen.insert(best);
-        // add to config list
-        d->access_.lock();
-
-        DeviceHandle dev;
-        dev.name = "Screen capture";
-        dev.pipeline = gst_plugin_vidcap;
-        dev.configs = confscreen;
-        d->handles_.push_back(dev);
-        d->access_.unlock();
-    }
 
     // monitor is initialized
     d->monitor_initialized_ = true;
@@ -343,9 +354,21 @@ std::string Device::description(int index)
     return ret;
 }
 
-DeviceConfigSet Device::config(int index)
+std::string Device::properties(int index)
 {
-    DeviceConfigSet ret;
+    std::string ret = "";
+
+    access_.lock();
+    if (index > -1 && index < (int) handles_.size())
+        ret = handles_[index].properties;
+    access_.unlock();
+
+    return ret;
+}
+
+GstToolkit::PipelineConfigSet Device::config(int index)
+{
+    GstToolkit::PipelineConfigSet ret;
 
     access_.lock();
     if (index > -1 && index < (int) handles_.size())
@@ -391,22 +414,27 @@ void DeviceSource::unsetDevice()
         // if this is the last source connected to the device handler
         // the stream will be removed by the ~StreamSource destructor
         // and the device handler should not keep reference to it
-        if (h->connected_sources.empty()) {
-            // if the cause of deletion is the unplugging of the device
-            if (unplugged_)
-                // remove the handle entirely
-                Device::manager().handles_.erase(h);
-            else
-                // otherwise just cancel the reference to the stream
-                h->stream = nullptr;
-        }
+        if (h->connected_sources.empty())
+            // cancel the reference to the stream
+            h->stream = nullptr;
+        else
         // else this means another DeviceSource is using this stream
         // and we should avoid to delete the stream in the ~StreamSource destructor
-        else
             stream_ = nullptr;
     }
+
+    device_ = "";
 }
 
+void DeviceSource::reconnect()
+{
+    // remember name
+    std::string d = device_;
+    // disconnect
+    unsetDevice();
+    // connect
+    setDevice(d);
+}
 
 void DeviceSource::setDevice(const std::string &devicename)
 {
@@ -422,17 +450,27 @@ void DeviceSource::setDevice(const std::string &devicename)
     if (!device_.empty())
         unsetDevice();
 
-    // remember device name
+    // if the stream referenced in this source remains after unsetDevice
+    if (stream_) {
+        delete stream_;
+        stream_ = nullptr;
+    }
+
+    // set new device name
     device_ = devicename;
 
     // check existence of a device handle with that name
     auto h = std::find_if(Device::manager().handles_.begin(), Device::manager().handles_.end(), hasDeviceName(device_));
+
+    // found a device handle
     if ( h != Device::manager().handles_.end()) {
 
-        // find if a DeviceHandle with this device name already has a stream
-        if ( h->stream != nullptr) {
+        // find if a DeviceHandle with this device name already has a stream that is open
+        if ( h->stream != nullptr ) {            
             // just use it !
             stream_ = h->stream;
+            // reinit to adapt to new stream
+            init();
         }
         else {
             // start filling in the gstreamer pipeline
@@ -440,16 +478,16 @@ void DeviceSource::setDevice(const std::string &devicename)
             pipeline << h->pipeline;
 
             // test the device and get config
-            DeviceConfigSet confs = h->configs;
+            GstToolkit::PipelineConfigSet confs = h->configs;
 #ifdef DEVICE_DEBUG
             Log::Info("Device %s supported configs:", devicename.c_str());
-            for( DeviceConfigSet::iterator it = confs.begin(); it != confs.end(); ++it ){
+            for( GstToolkit::PipelineConfigSet::iterator it = confs.begin(); it != confs.end(); ++it ){
                 float fps = static_cast<float>((*it).fps_numerator) / static_cast<float>((*it).fps_denominator);
                 Log::Info(" - %s %s %d x %d  %.1f fps", (*it).stream.c_str(), (*it).format.c_str(), (*it).width, (*it).height, fps);
             }
 #endif
             if (!confs.empty()) {
-                DeviceConfig best = *confs.rbegin();
+                GstToolkit::PipelineConfig best = *confs.rbegin();
                 float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
                 Log::Info("Device %s selected its optimal config: %s %s %dx%d@%.1ffps", device_.c_str(), best.stream.c_str(), best.format.c_str(), best.width, best.height, fps);
 
@@ -460,13 +498,12 @@ void DeviceSource::setDevice(const std::string &devicename)
                 pipeline << ",width=" << best.width;
                 pipeline << ",height=" << best.height;
 
+                // decode jpeg if needed
                 if ( best.stream.find("jpeg") != std::string::npos )
                     pipeline << " ! jpegdec";
 
-                if ( device_.find("Screen") != std::string::npos )
-                    pipeline << " ! videoconvert ! video/x-raw,format=RGB ! queue max-size-buffers=3";
-
-                pipeline << " ! videoconvert";
+                // always convert
+                pipeline << " ! queue ! videoconvert";
 
                 // delete and reset render buffer to enforce re-init of StreamSource
                 if (renderbuffer_)
@@ -474,8 +511,6 @@ void DeviceSource::setDevice(const std::string &devicename)
                 renderbuffer_ = nullptr;
 
                 // new stream
-                if (stream_)
-                    delete stream_;
                 stream_ = h->stream = new Stream;
 
                 // open gstreamer
@@ -492,7 +527,7 @@ void DeviceSource::setDevice(const std::string &devicename)
     }
     else {
         unplugged_ = true;
-        Log::Warning("No such device '%s'", device_.c_str());
+        Log::Warning("No device named '%s'", device_.c_str());
     }
 }
 
@@ -517,9 +552,7 @@ void DeviceSource::setActive (bool on)
                 }
                 stream_->enable(streamactive);
             }
-
         }
-
     }
 
 }
@@ -535,179 +568,15 @@ Source::Failure DeviceSource::failed() const
     return (unplugged_ || StreamSource::failed()) ? FAIL_CRITICAL : FAIL_NONE;
 }
 
-DeviceConfigSet Device::getDeviceConfigs(const std::string &src_description)
-{
-    DeviceConfigSet configs;
-
-    // create dummy pipeline to be tested
-    std::string description = src_description;
-    description += " name=devsrc ! fakesink name=sink";
-
-    // parse pipeline descriptor
-    GError *error = NULL;
-    GstElement *pipeline_ = gst_parse_launch (description.c_str(), &error);
-    if (error != NULL) {
-        Log::Warning("DeviceSource Could not construct test pipeline %s:\n%s", description.c_str(), error->message);
-        g_clear_error (&error);
-        return configs;
-    }
-
-    // get the pipeline element named "devsrc" from the Device class
-    GstElement *elem = gst_bin_get_by_name (GST_BIN (pipeline_), "devsrc");
-    if (elem) {
-
-        // initialize the pipeline
-        GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PAUSED);
-        if (ret != GST_STATE_CHANGE_FAILURE) {
-
-            // get the first pad and its content
-            GstIterator *iter = gst_element_iterate_src_pads(elem);
-            GValue vPad = G_VALUE_INIT;
-            GstPad* pad_ret = NULL;
-            if (gst_iterator_next(iter, &vPad) == GST_ITERATOR_OK)
-            {
-                pad_ret = GST_PAD(g_value_get_object(&vPad));
-                GstCaps *device_caps = gst_pad_query_caps (pad_ret, NULL);
-
-                // loop over all caps offered by the pad
-                int C = gst_caps_get_size(device_caps);
-                for (int c = 0; c < C; ++c) {
-                    // get GST cap
-                    GstStructure *decice_cap_struct = gst_caps_get_structure (device_caps, c);
-#ifdef GST_DEVICE_DEBUG
-                    gchar *capstext = gst_structure_to_string (decice_cap_struct);
-                    g_print("\nDevice caps: %s", capstext);
-                    g_free(capstext);
-#endif
-
-                    // fill our config
-                    DeviceConfig config;
-
-                    // not managing opengl texture-target types
-                    // TODO: support input devices texture-target video/x-raw(memory:GLMemory) for improved pipeline
-                    if ( gst_structure_has_field (decice_cap_struct, "texture-target"))
-                        continue;
-
-                    // NAME : typically video/x-raw or image/jpeg
-                    config.stream = gst_structure_get_name (decice_cap_struct);
-
-                    // FORMAT : typically BGRA or YUVY
-                    if ( gst_structure_has_field (decice_cap_struct, "format")) {
-                        // get generic value
-                        const GValue *val = gst_structure_get_value(decice_cap_struct, "format");
-
-                        // if its a list of format string
-                        if ( GST_VALUE_HOLDS_LIST(val)) {
-                            int N = gst_value_list_get_size(val);
-                            for (int n = 0; n < N; n++ ){
-                                std::string f = gst_value_serialize( gst_value_list_get_value(val, n) );
-
-                                // preference order : 1) RGBx, 2) JPEG, 3) ALL OTHER
-                                // select f if it contains R (e.g. for RGBx) and not already RGB in config
-                                if ( (f.find("R") != std::string::npos) && (config.format.find("R") == std::string::npos ) ) {
-                                    config.format = f;
-                                    break;
-                                }
-                                // default, take at least one if nothing yet in config
-                                else if ( config.format.empty() )
-                                    config.format = f;
-                            }
-
-                        }
-                        // single format
-                        else {
-                            config.format = gst_value_serialize(val);
-                        }
-                    }
-
-                    // FRAMERATE : can be a fraction of a list of fractions
-                    if ( gst_structure_has_field (decice_cap_struct, "framerate")) {
-
-                        // get generic value
-                        const GValue *val = gst_structure_get_value(decice_cap_struct, "framerate");
-                        // if its a single fraction
-                        if ( GST_VALUE_HOLDS_FRACTION(val)) {
-                            config.fps_numerator = gst_value_get_fraction_numerator(val);
-                            config.fps_denominator= gst_value_get_fraction_denominator(val);
-                        }
-                        // if its a range of fraction; take the max
-                        else if ( GST_VALUE_HOLDS_FRACTION_RANGE(val)) {
-                            config.fps_numerator = gst_value_get_fraction_numerator(gst_value_get_fraction_range_max(val));
-                            config.fps_denominator= gst_value_get_fraction_denominator(gst_value_get_fraction_range_max(val));
-                        }
-                        // deal otherwise with a list of fractions; find the max
-                        else if ( GST_VALUE_HOLDS_LIST(val)) {
-                            gdouble fps_max = 1.0;
-                            // loop over all fractions
-                            int N = gst_value_list_get_size(val);
-                            for (int i = 0; i < N; ++i ){
-                                const GValue *frac = gst_value_list_get_value(val, i);
-                                // read one fraction in the list
-                                if ( GST_VALUE_HOLDS_FRACTION(frac)) {
-                                    int n = gst_value_get_fraction_numerator(frac);
-                                    int d = gst_value_get_fraction_denominator(frac);
-                                    // keep only the higher FPS
-                                    gdouble f = 1.0;
-                                    gst_util_fraction_to_double( n, d, &f );
-                                    if ( f > fps_max ) {
-                                        config.fps_numerator = n;
-                                        config.fps_denominator = d;
-                                        fps_max = f;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    else {
-                        // default
-                        config.fps_numerator = 30;
-                        config.fps_denominator = 1;
-                    }
-
-                    // WIDTH and HEIGHT
-                    if ( gst_structure_has_field (decice_cap_struct, "width"))
-                        gst_structure_get_int (decice_cap_struct, "width", &config.width);
-                    if ( gst_structure_has_field (decice_cap_struct, "height"))
-                        gst_structure_get_int (decice_cap_struct, "height", &config.height);
-
-
-                    // add this config
-                    configs.insert(config);
-                }
-
-            }
-            gst_iterator_free(iter);
-
-            // terminate pipeline
-            gst_element_set_state (pipeline_, GST_STATE_NULL);
-        }
-
-        g_object_unref (elem);
-    }
-
-    gst_object_unref (pipeline_);
-
-    return configs;
-}
-
-
 glm::ivec2 DeviceSource::icon() const
 {
-    if ( device_.find("Screen") != std::string::npos )
-        return glm::ivec2(ICON_SOURCE_DEVICE_SCREEN);
-    else
-        return glm::ivec2(ICON_SOURCE_DEVICE);
+    return glm::ivec2(ICON_SOURCE_DEVICE);
 }
 
 std::string DeviceSource::info() const
 {
-    if ( device_.find("Screen") != std::string::npos )
-        return "Screen capture";
-    else
-        return "Device";
+    return "Device";
 }
-
-
 
 
 

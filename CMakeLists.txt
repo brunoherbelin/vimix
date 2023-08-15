@@ -89,6 +89,11 @@ if(UNIX)
         find_package(GTK 3.0 REQUIRED)
         macro_log_feature(GTK_FOUND "GTK" "GTK cross-platform widget toolkit" "http://www.gtk.org" TRUE)
 
+        find_package(X11 REQUIRED COMPONENTS xcb)
+        include_directories(
+            ${X11_INCLUDE_DIR}
+        )
+
     endif()
     add_definitions(-DUNIX)
 elseif(WIN32)

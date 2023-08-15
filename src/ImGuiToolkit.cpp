@@ -286,7 +286,7 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip, const char* sho
     if (window->SkipItems)
         return false;
 
-    ImGui::PushID( i * 20 + j );
+    ImGui::PushID( i * 20 + j  + ( tooltip ? window->GetID(tooltip) : 0) );
 
     // duplicate of ImGui::InvisibleButton to handle ImGuiButtonFlags_Repeat
     const ImGuiID id = window->GetID("##iconijbutton");

@@ -49,6 +49,7 @@
 #include "SessionSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "ScreenCaptureSource.h"
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
@@ -1369,7 +1370,7 @@ void ImGuiVisitor::visit (PatternSource& s)
     {
         for (uint p = 0; p < Pattern::count(); ++p){
             pattern_descriptor pattern = Pattern::get(p);
-            std::string label = pattern.label + (pattern.animated ? " " ICON_FA_CARET_RIGHT : " ");
+            std::string label = pattern.label + (pattern.animated ? "  " ICON_FA_PLAY_CIRCLE : " ");
             if (pattern.available && ImGui::Selectable( label.c_str(), p == s.pattern()->type() )) {
                 s.setPattern(p, s.pattern()->resolution());
                 info.reset();
@@ -1419,16 +1420,86 @@ void ImGuiVisitor::visit (DeviceSource& s)
             for (int d = 0; d < Device::manager().numDevices(); ++d){
                 std::string namedev = Device::manager().name(d);
                 if (ImGui::Selectable( namedev.c_str() )) {
-                    s.setDevice(namedev);
-                    info.reset();
-                    std::ostringstream oss;
-                    oss << s.name() << " Device " << namedev;
-                    Action::manager().store(oss.str());
+                    if ( namedev.compare(s.device())==0 )
+                        s.reconnect();
+                    else {
+                        s.setDevice(namedev);
+                        info.reset();
+                        std::ostringstream oss;
+                        oss << s.name() << " Device " << namedev;
+                        Action::manager().store(oss.str());
+                    }
                 }
             }
             ImGui::EndCombo();
         }
+        ImVec2 botom = ImGui::GetCursorPos();
 
+        // icon (>) to open player
+        if ( s.playable() ) {
+            ImGui::SetCursorPos(top);
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
+                UserInterface::manager().showSourceEditor(&s);
+            top.x += ImGui::GetFrameHeight();
+        }
+
+        // icon to show gstreamer properties
+        ImGui::SetCursorPos(top);
+        ImGuiToolkit::Icon(16, 16, false);
+        if (ImGui::IsItemHovered()) {
+            int index = Device::manager().index( s.device() );
+            std::string prop = Device::manager().properties( index );
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 14.0f);
+            ImGui::TextUnformatted( prop.c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
+
+        ImGui::SetCursorPos(botom);
+    }
+    else {
+
+        info.reset();
+
+    }
+
+}
+
+
+void ImGuiVisitor::visit (ScreenCaptureSource& s)
+{
+    ImVec2 top = ImGui::GetCursorPos();
+    top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
+    ImGui::PopTextWrapPos();
+    ImGui::Spacing();
+
+    if ( !s.failed() ) {
+
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::BeginCombo("Window", s.window().c_str()))
+        {
+            for (int d = 0; d < ScreenCapture::manager().numWindow(); ++d){
+                std::string namedev = ScreenCapture::manager().name(d);
+                if (ImGui::Selectable( namedev.c_str() )) {
+                    if ( namedev.compare(s.window())==0 )
+                        s.reconnect();
+                    else {
+                        s.setWindow(namedev);
+                        info.reset();
+                        std::ostringstream oss;
+                        oss << s.name() << " Window " << namedev;
+                        Action::manager().store(oss.str());
+                    }
+                }
+            }
+            ImGui::EndCombo();
+        }
         ImVec2 botom = ImGui::GetCursorPos();
 
         // icon (>) to open player
@@ -1441,10 +1512,14 @@ void ImGuiVisitor::visit (DeviceSource& s)
 
         ImGui::SetCursorPos(botom);
     }
-    else
+    else {
+
         info.reset();
 
+    }
+
 }
+
 
 void ImGuiVisitor::visit (NetworkSource& s)
 {

@@ -71,6 +71,7 @@
 #include "MediaSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "ScreenCaptureSource.h"
 #include "MultiFileSource.h"
 #include "ShmdataBroadcast.h"
 #include "VideoBroadcast.h"
@@ -2383,7 +2384,7 @@ void UserInterface::RenderHelp()
         ImGui::Text ("Connected webcam or frame grabber.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Screen"); ImGui::NextColumn();
-        ImGui::Text ("Screen capture.");
+        ImGui::Text ("Screen capture of the entire screen or a selected window.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_NETWORK); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Shared"); ImGui::NextColumn();
         ImGui::Text ("Connected stream from another vimix in the local network (shared output stream).");
@@ -2405,8 +2406,8 @@ void UserInterface::RenderHelp()
         ImGui::Text(ICON_FA_SYNC); ImGui::NextColumn();
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("Internal");ImGui::PopFont();
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Rendering"); ImGui::NextColumn();
-        ImGui::Text ("Displays the rendering output as a source, with or without loopback.");
+        ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Loopback"); ImGui::NextColumn();
+        ImGui::Text ("Loopback the rendering output as a source, with or without recursion.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_CLONE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Clone"); ImGui::NextColumn();
         ImGui::Text ("Clones the frames of a source into another one, and applies a filter on the way.");
@@ -2639,6 +2640,7 @@ void Navigator::clearNewPannel()
     pattern_type = -1;
     custom_pipeline = false;
     custom_connected = false;
+    custom_screencapture = false;
     sourceSequenceFiles.clear();
     sourceMediaFileCurrent.clear();
     new_media_mode_changed = true;
@@ -3661,30 +3663,57 @@ void Navigator::RenderNewPannel()
             ImGui::Text("Input device or stream:");
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##External", "Select "))
+            if (ImGui::BeginCombo("##ExternalConnected", "Select "))
             {
+                // 1. Loopback source
+                if ( ImGui::Selectable("Display Loopback") ) {
+                    custom_connected = false;
+                    custom_screencapture = false;
+                    new_source_preview_.setSource( Mixer::manager().createSourceRender(), "Display Loopback");
+                }
+
+                // 2. Screen capture (open selector if more than one window)
+                if (ScreenCapture::manager().numWindow() > 0) {
+                    std::string namewin = ScreenCapture::manager().name(0);
+                    if (ImGui::Selectable(namewin.c_str()) ) {
+                        custom_connected = false;
+                        if (ScreenCapture::manager().numWindow() > 1) {
+                            new_source_preview_.setSource();
+                            custom_screencapture = true;
+                        }
+                        else {
+                            new_source_preview_.setSource( Mixer::manager().createSourceScreen(namewin), namewin);
+                            custom_screencapture = false;
+                        }
+                    }
+                }
+
+                // 3. Network connected SRT
+                if ( ImGui::Selectable("SRT Broadcast") ) {
+                    new_source_preview_.setSource();
+                    custom_connected = true;
+                    custom_screencapture = false;
+                }
+
+                // 4. Devices
+                ImGui::Separator();
                 for (int d = 0; d < Device::manager().numDevices(); ++d){
                     std::string namedev = Device::manager().name(d);
                     if (ImGui::Selectable( namedev.c_str() )) {
                         custom_connected = false;
+                        custom_screencapture = false;
                         new_source_preview_.setSource( Mixer::manager().createSourceDevice(namedev), namedev);
                     }
                 }
+
+                // 5. Network connected vimix
                 for (int d = 1; d < Connection::manager().numHosts(); ++d){
                     std::string namehost = Connection::manager().info(d).name;
                     if (ImGui::Selectable( namehost.c_str() )) {
                         custom_connected = false;
+                        custom_screencapture = false;
                         new_source_preview_.setSource( Mixer::manager().createSourceNetwork(namehost), namehost);
                     }
-                }
-
-                if ( ImGui::Selectable("Display Loopback") ) {
-                    new_source_preview_.setSource( Mixer::manager().createSourceRender(), "Display Loopback");
-                }
-
-                if ( ImGui::Selectable("SRT Broadcaster") ) {
-                    new_source_preview_.setSource();
-                    custom_connected = true;
                 }
 
                 ImGui::EndCombo();
@@ -3697,11 +3726,11 @@ void Navigator::RenderNewPannel()
                 Device::manager().reload();
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Create a source capturing video streams from connected devices or machines;\n"
-                                     ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
-                                     ICON_FA_CARET_RIGHT " screen capture\n"
-                                     ICON_FA_CARET_RIGHT " vimix display loopback\n"
-                                     ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network\n"
-                                     ICON_FA_CARET_RIGHT " broadcasted with SRT over network.");
+                                      ICON_FA_CARET_RIGHT " vimix display loopback\n"
+                                      ICON_FA_CARET_RIGHT " screen capture\n"
+                                      ICON_FA_CARET_RIGHT " broadcasted with SRT over network.\n"
+                                      ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
+                                      ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network.");
 
             if (custom_connected) {
 
@@ -3782,6 +3811,22 @@ void Navigator::RenderNewPannel()
                 ImGui::PopStyleColor(3);
             }
 
+            if (custom_screencapture) {
+
+                ImGui::Text("\nWindow:");
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::BeginCombo("##ScreenCaptureSelect", "Select ", ImGuiComboFlags_HeightLarge))
+                {
+                    for (int d = 0; d < ScreenCapture::manager().numWindow(); ++d){
+                        std::string namewin = ScreenCapture::manager().name(d);
+                        if (ImGui::Selectable( namewin.c_str() )) {
+                            new_source_preview_.setSource( Mixer::manager().createSourceScreen(namewin), namewin);
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+            }
         }
 
         ImGui::NewLine();

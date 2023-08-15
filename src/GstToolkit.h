@@ -5,6 +5,7 @@
 
 #include <string>
 #include <list>
+#include <set>
 
 namespace GstToolkit
 {
@@ -29,6 +30,46 @@ std::string used_decoding_plugins(GstElement *gstbin);
 std::list<std::string> all_plugin_features(std::string pluginname);
 bool has_feature (std::string name);
 bool enable_feature (std::string name, bool enable);
+
+
+struct PipelineConfig {
+    gint width;
+    gint height;
+    gint fps_numerator;
+    gint fps_denominator;
+    std::string stream;
+    std::string format;
+
+    PipelineConfig() {
+        width = 0;
+        height = 0;
+        fps_numerator = 30;
+        fps_denominator = 1;
+        stream = "";
+        format = "";
+    }
+
+    inline bool operator < (const PipelineConfig b) const
+    {
+        int formatscore = this->format.find("R") != std::string::npos ? 2 : 1; // best score for RGBx
+        int b_formatscore = b.format.find("R") != std::string::npos ? 2 : 1;
+        float fps = static_cast<float>(this->fps_numerator) / static_cast<float>(this->fps_denominator);
+        float b_fps = static_cast<float>(b.fps_numerator) / static_cast<float>(b.fps_denominator);
+        return ( fps * static_cast<float>(this->height * formatscore) < b_fps * static_cast<float>(b.height * b_formatscore));
+    }
+};
+
+struct better_config_comparator
+{
+    inline bool operator () (const PipelineConfig a, const PipelineConfig b) const
+    {
+        return (a < b);
+    }
+};
+
+typedef std::set<PipelineConfig, better_config_comparator> PipelineConfigSet;
+
+PipelineConfigSet getPipelineConfigs(const std::string &src_description);
 
 }
 

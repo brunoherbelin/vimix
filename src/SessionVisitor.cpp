@@ -38,6 +38,7 @@ using namespace tinyxml2;
 #include "SessionSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "ScreenCaptureSource.h"
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
@@ -843,6 +844,12 @@ void SessionVisitor::visit (DeviceSource& s)
 {
     xmlCurrent_->SetAttribute("type", "DeviceSource");
     xmlCurrent_->SetAttribute("device", s.device().c_str() );
+}
+
+void SessionVisitor::visit (ScreenCaptureSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "ScreenCaptureSource");
+    xmlCurrent_->SetAttribute("window", s.window().c_str() );
 }
 
 void SessionVisitor::visit (NetworkSource& s)

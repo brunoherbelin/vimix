@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
+//#define GST_DEVICE_DEBUG
 
 #include <sstream>
 #include <iomanip>
@@ -306,3 +307,157 @@ std::string GstToolkit::used_decoding_plugins(GstElement *gstbin)
     return found;
 }
 
+
+GstToolkit::PipelineConfigSet GstToolkit::getPipelineConfigs(const std::string &src_description)
+{
+    PipelineConfigSet configs;
+
+    // create dummy pipeline to be tested
+    std::string description = src_description;
+    description += " name=devsrc ! fakesink name=sink";
+
+    // parse pipeline descriptor
+    GError *error = NULL;
+    GstElement *pipeline_ = gst_parse_launch (description.c_str(), &error);
+    if (error != NULL) {
+        g_printerr("DeviceSource Could not construct test pipeline %s:\n%s", description.c_str(), error->message);
+        g_clear_error (&error);
+        return configs;
+    }
+
+    // get the pipeline element named "devsrc" from the Device class
+    GstElement *elem = gst_bin_get_by_name (GST_BIN (pipeline_), "devsrc");
+    if (elem) {
+
+        // initialize the pipeline
+        GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PAUSED);
+        if (ret != GST_STATE_CHANGE_FAILURE) {
+
+            // get the first pad and its content
+            GstIterator *iter = gst_element_iterate_src_pads(elem);
+            GValue vPad = G_VALUE_INIT;
+            GstPad* pad_ret = NULL;
+            if (gst_iterator_next(iter, &vPad) == GST_ITERATOR_OK)
+            {
+                pad_ret = GST_PAD(g_value_get_object(&vPad));
+                GstCaps *device_caps = gst_pad_query_caps (pad_ret, NULL);
+
+                // loop over all caps offered by the pad
+                int C = gst_caps_get_size(device_caps);
+                for (int c = 0; c < C; ++c) {
+                    // get GST cap
+                    GstStructure *decice_cap_struct = gst_caps_get_structure (device_caps, c);
+#ifdef GST_DEVICE_DEBUG
+                    gchar *capstext = gst_structure_to_string (decice_cap_struct);
+                    g_print("\nPipeline caps: %s", capstext);
+                    g_free(capstext);
+#endif
+                    // fill our config
+                    PipelineConfig config;
+
+                    // not managing opengl texture-target types
+                    // TODO: support input devices texture-target video/x-raw(memory:GLMemory) for improved pipeline
+                    if ( gst_structure_has_field (decice_cap_struct, "texture-target"))
+                        continue;
+
+                    // NAME : typically video/x-raw or image/jpeg
+                    config.stream = gst_structure_get_name (decice_cap_struct);
+
+                    // FORMAT : typically BGRA or YUVY
+                    if ( gst_structure_has_field (decice_cap_struct, "format")) {
+                        // get generic value
+                        const GValue *val = gst_structure_get_value(decice_cap_struct, "format");
+
+                        // if its a list of format string
+                        if ( GST_VALUE_HOLDS_LIST(val)) {
+                            int N = gst_value_list_get_size(val);
+                            for (int n = 0; n < N; n++ ){
+                                std::string f = gst_value_serialize( gst_value_list_get_value(val, n) );
+
+                                // preference order : 1) RGBx, 2) JPEG, 3) ALL OTHER
+                                // select f if it contains R (e.g. for RGBx) and not already RGB in config
+                                if ( (f.find("R") != std::string::npos) && (config.format.find("R") == std::string::npos ) ) {
+                                    config.format = f;
+                                    break;
+                                }
+                                // default, take at least one if nothing yet in config
+                                else if ( config.format.empty() )
+                                    config.format = f;
+                            }
+
+                        }
+                        // single format
+                        else {
+                            config.format = gst_value_serialize(val);
+                        }
+                    }
+
+                    // FRAMERATE : can be a fraction of a list of fractions
+                    if ( gst_structure_has_field (decice_cap_struct, "framerate")) {
+
+                        // get generic value
+                        const GValue *val = gst_structure_get_value(decice_cap_struct, "framerate");
+                        // if its a single fraction
+                        if ( GST_VALUE_HOLDS_FRACTION(val)) {
+                            config.fps_numerator = gst_value_get_fraction_numerator(val);
+                            config.fps_denominator= gst_value_get_fraction_denominator(val);
+                        }
+                        // if its a range of fraction; take the max
+                        else if ( GST_VALUE_HOLDS_FRACTION_RANGE(val)) {
+                            config.fps_numerator = gst_value_get_fraction_numerator(gst_value_get_fraction_range_max(val));
+                            config.fps_denominator= gst_value_get_fraction_denominator(gst_value_get_fraction_range_max(val));
+                        }
+                        // deal otherwise with a list of fractions; find the max
+                        else if ( GST_VALUE_HOLDS_LIST(val)) {
+                            gdouble fps_max = 1.0;
+                            // loop over all fractions
+                            int N = gst_value_list_get_size(val);
+                            for (int i = 0; i < N; ++i ){
+                                const GValue *frac = gst_value_list_get_value(val, i);
+                                // read one fraction in the list
+                                if ( GST_VALUE_HOLDS_FRACTION(frac)) {
+                                    int n = gst_value_get_fraction_numerator(frac);
+                                    int d = gst_value_get_fraction_denominator(frac);
+                                    // keep only the higher FPS
+                                    gdouble f = 1.0;
+                                    gst_util_fraction_to_double( n, d, &f );
+                                    if ( f > fps_max ) {
+                                        config.fps_numerator = n;
+                                        config.fps_denominator = d;
+                                        fps_max = f;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        // default
+                        config.fps_numerator = 30;
+                        config.fps_denominator = 1;
+                    }
+
+                    // WIDTH and HEIGHT
+                    if ( gst_structure_has_field (decice_cap_struct, "width"))
+                        gst_structure_get_int (decice_cap_struct, "width", &config.width);
+                    if ( gst_structure_has_field (decice_cap_struct, "height"))
+                        gst_structure_get_int (decice_cap_struct, "height", &config.height);
+
+
+                    // add this config
+                    configs.insert(config);
+                }
+
+            }
+            gst_iterator_free(iter);
+
+            // terminate pipeline
+            gst_element_set_state (pipeline_, GST_STATE_NULL);
+        }
+
+        g_object_unref (elem);
+    }
+
+    gst_object_unref (pipeline_);
+
+    return configs;
+}

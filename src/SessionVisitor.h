@@ -65,6 +65,7 @@ public:
     void visit (RenderSource&) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
+    void visit (ScreenCaptureSource& s) override;
     void visit (NetworkSource& s) override;
     void visit (MixingGroup& s) override;
     void visit (MultiFileSource& s) override;

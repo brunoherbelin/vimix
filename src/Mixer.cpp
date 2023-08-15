@@ -47,6 +47,7 @@
 #include "MediaSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "ScreenCaptureSource.h"
 #include "MultiFileSource.h"
 #include "StreamSource.h"
 #include "NetworkSource.h"
@@ -386,6 +387,18 @@ Source * Mixer::createSourceDevice(const std::string &namedevice)
 
     // propose a new name based on pattern name
     s->setName( namedevice.substr(0, namedevice.find(" ")) );
+
+    return s;
+}
+
+Source * Mixer::createSourceScreen(const std::string &namewindow)
+{
+    // ready to create a source
+    ScreenCaptureSource *s = new ScreenCaptureSource;
+    s->setWindow(namewindow);
+
+    // propose a new name based on pattern name
+    s->setName( namewindow.substr(0, namewindow.find(" ")) );
 
     return s;
 }
