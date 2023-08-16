@@ -552,6 +552,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_video.ply
     ./rsc/mesh/icon_image.ply
     ./rsc/mesh/icon_render.ply
+    ./rsc/mesh/icon_pattern.ply
     ./rsc/mesh/icon_gear.ply
     ./rsc/mesh/icon_camera.ply
     ./rsc/mesh/icon_share.ply

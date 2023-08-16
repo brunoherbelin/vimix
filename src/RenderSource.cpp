@@ -30,7 +30,7 @@
 #include "RenderSource.h"
 
 std::vector< std::tuple<int, int, std::string> > RenderSource::ProvenanceMethod = {
-    { 16, 12, "Loopback" }, { 15, 12, "Non-recursive"}
+    { 16, 12, "Recursive" }, { 15, 12, "Non-recursive"}
 };
 
 RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr), rendered_surface_(nullptr),

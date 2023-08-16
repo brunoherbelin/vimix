@@ -448,8 +448,10 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[RENDER] = shadow;
         icons[GROUP]    = new Mesh("mesh/icon_group_vimix.ply");
         shadows[GROUP]  = shadow;
-        icons[PATTERN]  = new Mesh("mesh/icon_gear.ply");
+        icons[PATTERN]  = new Mesh("mesh/icon_pattern.ply");
         shadows[PATTERN]= shadow;
+        icons[GEAR]     = new Mesh("mesh/icon_gear.ply");
+        shadows[GEAR]   = shadow;
         icons[CAMERA]   = new Mesh("mesh/icon_camera.ply");
         shadows[CAMERA] = shadow;
         icons[SCREEN]   = new Mesh("mesh/icon_cube.ply");

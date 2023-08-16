@@ -2357,44 +2357,32 @@ void UserInterface::RenderHelp()
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
-        ImGui::Text(ICON_FA_PHOTO_VIDEO); ImGui::NextColumn();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("File");ImGui::PopFont();
-        ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_VIDEO); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Video"); ImGui::NextColumn();
-        ImGui::Text ("Video file (*.mpg, *mov, *.avi, etc.).");
+        ImGui::Text ("Video file (*.mpg, *mov, *.avi, etc.). Decoding can be optimized with hardware acceleration.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_IMAGE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Image"); ImGui::NextColumn();
         ImGui::Text ("Image file (*.jpg, *.png, etc.) or vector graphics (*.svg).");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_SESSION); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Session"); ImGui::NextColumn();
-        ImGui::Text ("Render a session (*.mix) as a source.");
-        ImGui::NextColumn();
-        ImGui::Separator();
-        ImGui::Text(ICON_FA_IMAGES); ImGui::NextColumn();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("Sequence");ImGui::PopFont();
+        ImGui::Text ("Render a session (*.mix) as a source. Recursion is limited.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_SEQUENCE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Sequence"); ImGui::NextColumn();
         ImGui::Text ("Set of images numbered sequentially (*.jpg, *.png, etc.).");
         ImGui::NextColumn();
-        ImGui::Separator();
-        ImGui::Text(ICON_FA_PLUG); ImGui::NextColumn();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("Connected");ImGui::PopFont();
-        ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_DEVICE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Device"); ImGui::NextColumn();
-        ImGui::Text ("Connected webcam or frame grabber.");
+        ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Loopback"); ImGui::NextColumn();
+        ImGui::Text ("Loopback the rendering output as a source, with or without recursion.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Screen"); ImGui::NextColumn();
         ImGui::Text ("Screen capture of the entire screen or a selected window.");
         ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_DEVICE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Device"); ImGui::NextColumn();
+        ImGui::Text ("Connected webcam or frame grabber. Highest resolution and framerate automatically selected.");
+        ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_NETWORK); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Shared"); ImGui::NextColumn();
-        ImGui::Text ("Connected stream from another vimix in the local network (shared output stream).");
+        ImGui::Text ("Connected stream from another vimix in the local network (peer-to-peer).");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_SRT); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("SRT"); ImGui::NextColumn();
         ImGui::Text ("Connected Secure Reliable Transport (SRT) stream emitted on the network (e.g. broadcasted by vimix).");
-        ImGui::NextColumn();
-        ImGui::Separator();
-        ImGui::Text(ICON_FA_COG); ImGui::NextColumn();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("Generated");ImGui::PopFont();
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_PATTERN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Pattern"); ImGui::NextColumn();
         ImGui::Text ("Algorithmically generated source; colors, grids, test patterns, timers...");
@@ -2402,15 +2390,8 @@ void UserInterface::RenderHelp()
         ImGuiToolkit::Icon(ICON_SOURCE_GSTREAMER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("GStreamer"); ImGui::NextColumn();
         ImGui::Text ("Custom gstreamer pipeline, as described in command line for gst-launch-1.0 (without the target sink).");
         ImGui::NextColumn();
-        ImGui::Separator();
-        ImGui::Text(ICON_FA_SYNC); ImGui::NextColumn();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD); ImGui::Text("Internal");ImGui::PopFont();
-        ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Loopback"); ImGui::NextColumn();
-        ImGui::Text ("Loopback the rendering output as a source, with or without recursion.");
-        ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_CLONE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Clone"); ImGui::NextColumn();
-        ImGui::Text ("Clones the frames of a source into another one, and applies a filter on the way.");
+        ImGui::Text ("Clones the frames of a source into another one and applies a GPU filter.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Bundle"); ImGui::NextColumn();
         ImGui::Text ("Bundles together several sources and renders them as an internal session.");
@@ -3202,7 +3183,7 @@ void Navigator::RenderNewPannel()
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon( 3, 9, "##SOURCE_SEQUENCE", selected_type[SOURCE_SEQUENCE], iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( ICON_SOURCE_SEQUENCE, "##SOURCE_SEQUENCE", selected_type[SOURCE_SEQUENCE], iconsize)) {
             Settings::application.source.new_type = SOURCE_SEQUENCE;
             clearNewPannel();
         }
@@ -3212,12 +3193,11 @@ void Navigator::RenderNewPannel()
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon( 11, 5, "##SOURCE_GENERATED", selected_type[SOURCE_GENERATED], iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( ICON_SOURCE_PATTERN, "##SOURCE_GENERATED", selected_type[SOURCE_GENERATED], iconsize)) {
             Settings::application.source.new_type = SOURCE_GENERATED;
             clearNewPannel();
         }
         ImGui::NextColumn();
-
 
         ImGui::Columns(1);
         ImGui::PopStyleVar();
@@ -3232,7 +3212,7 @@ void Navigator::RenderNewPannel()
             static DialogToolkit::OpenMediaDialog fileimportdialog("Open Media");
             static DialogToolkit::OpenFolderDialog folderimportdialog("Select Folder");
 
-            ImGui::Text("Load media or session file:");
+            ImGui::Text("Video, image & session files");
 
             // clic button to load file
             if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) )
@@ -3424,7 +3404,7 @@ void Navigator::RenderNewPannel()
             }
 
         }
-        // Folder Source creator
+        // Sequence Source creator
         else if (Settings::application.source.new_type == SOURCE_SEQUENCE){
 
             static DialogToolkit::MultipleImagesDialog _selectImagesDialog("Select multiple images");
@@ -3432,7 +3412,7 @@ void Navigator::RenderNewPannel()
             static MultiFileRecorder _video_recorder;
             static int _fps = 25;
 
-            ImGui::Text("Create image sequence:");
+            ImGui::Text("Image sequence");
 
             // clic button to load file
             if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open multiple", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
@@ -3566,11 +3546,12 @@ void Navigator::RenderNewPannel()
 
 
         }
+        // Generated patterns Source creator
         else if (Settings::application.source.new_type == SOURCE_GENERATED){
 
             bool update_new_source = false;
 
-            ImGui::Text("Generate graphic patterns:");
+            ImGui::Text("Patterns & generated graphics");
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", "Select", ImGuiComboFlags_HeightLarge))
@@ -3657,10 +3638,10 @@ void Navigator::RenderNewPannel()
                 }
             }
         }
-        // External source creator
+        // Input and connected source creator
         else if (Settings::application.source.new_type == SOURCE_CONNECTED){
 
-            ImGui::Text("Input device or stream:");
+            ImGui::Text("Input devices & streams");
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##ExternalConnected", "Select "))
@@ -3813,10 +3794,10 @@ void Navigator::RenderNewPannel()
 
             if (custom_screencapture) {
 
-                ImGui::Text("\nWindow:");
+                ImGui::Text("\nScreen Capture:");
 
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                if (ImGui::BeginCombo("##ScreenCaptureSelect", "Select ", ImGuiComboFlags_HeightLarge))
+                if (ImGui::BeginCombo("##ScreenCaptureSelect", "Select window", ImGuiComboFlags_HeightLarge))
                 {
                     for (int d = 0; d < ScreenCapture::manager().numWindow(); ++d){
                         std::string namewin = ScreenCapture::manager().name(d);
