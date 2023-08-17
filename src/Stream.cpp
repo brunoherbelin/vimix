@@ -212,9 +212,11 @@ void Stream::open(const std::string &gstreamer_description, guint w, guint h)
     if (isOpen())
         close();
 
+    // reset failed flag
+    failed_ = false;
+
     // open when ready
     discoverer_ = std::async(StreamDiscoverer, description_, w, h);
-
 }
 
 void Stream::reopen()
@@ -667,7 +669,7 @@ void Stream::update()
                 }
                 // invalid info; fail
                 else
-                    fail("Could not create stream: " + i.message);
+                    fail("Stream error : " + i.message);
             }
         }
         // wait next frame to display

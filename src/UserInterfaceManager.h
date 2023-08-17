@@ -84,7 +84,7 @@ public:
     void Render();
 
     bool pannelVisible();
-    void hidePannel();
+    void discardPannel();
     void showPannelSource(int index);
     int  selectedPannelSource();
     void togglePannelMenu();

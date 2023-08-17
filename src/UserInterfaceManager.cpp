@@ -220,7 +220,7 @@ uint64_t UserInterface::Runtime() const
 void UserInterface::setView(View::Mode mode)
 {
     Mixer::manager().setView(mode);
-    navigator.hidePannel();
+    navigator.discardPannel();
 }
 
 void UserInterface::handleKeyboard()
@@ -372,7 +372,7 @@ void UserInterface::handleKeyboard()
         // button esc : react to press and to release
         else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false )) {
             // hide pannel
-            navigator.hidePannel();
+            navigator.discardPannel();
             // toggle clear workspace
             WorkspaceWindow::toggleClearRestoreWorkspace();
             // ESC key is not yet maintained pressed
@@ -495,7 +495,7 @@ void UserInterface::handleMouse()
         else if ( ImGui::IsMouseDown(ImGuiMouseButton_Right))
         {
             Mixer::manager().unsetCurrentSource();
-            navigator.hidePannel();
+            navigator.discardPannel();
 //                glm::vec3 point = Rendering::manager().unProject(mousepos, Mixer::manager().currentView()->scene.root()->transform_ );
         }
 
@@ -556,13 +556,13 @@ void UserInterface::handleMouse()
                     else {
                         // unset current
                         Mixer::manager().unsetCurrentSource();
-                        navigator.hidePannel();
+                        navigator.discardPannel();
                     }
                 }
                 if (clear_selection) {
                     // unset current
                     Mixer::manager().unsetCurrentSource();
-                    navigator.hidePannel();
+                    navigator.discardPannel();
                     // clear selection
                     Mixer::selection().clear();
                 }
@@ -656,7 +656,7 @@ void UserInterface::handleMouse()
         // special case of one single source in area selection : make current after release
         if (view_drag && picked.first == nullptr && Mixer::selection().size() == 1) {
             Mixer::manager().setCurrentSource( Mixer::selection().front() );
-            navigator.hidePannel();
+            navigator.discardPannel();
         }
 
         view_drag = nullptr;
@@ -722,7 +722,7 @@ void UserInterface::selectSaveFilename()
         sessionsavedialog->open();
     }
 
-    navigator.hidePannel();
+    navigator.discardPannel();
 }
 
 void UserInterface::selectOpenFilename()
@@ -731,7 +731,7 @@ void UserInterface::selectOpenFilename()
     if (sessionopendialog)
         sessionopendialog->open();
 
-    navigator.hidePannel();
+    navigator.discardPannel();
 }
 
 void UserInterface::NewFrame()
@@ -848,10 +848,6 @@ void UserInterface::Render()
     if (shadercontrol.Visible())
         shadercontrol.Render();
 
-    // Logs
-    if (Settings::application.widget.logs)
-        Log::ShowLogWindow(&Settings::application.widget.logs);
-
     // stats in the corner
     if (Settings::application.widget.stats)
         RenderMetrics(&Settings::application.widget.stats,
@@ -869,6 +865,8 @@ void UserInterface::Render()
     // All other windows are simply not rendered if workspace is clear
     else {
         // windows
+        if (Settings::application.widget.logs)
+            Log::ShowLogWindow(&Settings::application.widget.logs);
         if (Settings::application.widget.help)
             RenderHelp();
         if (Settings::application.widget.toolbox)
@@ -935,22 +933,22 @@ void UserInterface::showMenuEdit()
             ImGui::SetClipboardText(copied_text.c_str());
             Mixer::manager().deleteSelection();
         }
-        navigator.hidePannel();
+        navigator.discardPannel();
     }
     if (ImGui::MenuItem( MENU_COPY, SHORTCUT_COPY, false, has_selection)) {
         std::string copied_text = Mixer::selection().clipboard();
         if (!copied_text.empty())
             ImGui::SetClipboardText(copied_text.c_str());
-        navigator.hidePannel();
+        navigator.discardPannel();
     }
     if (ImGui::MenuItem( MENU_PASTE, SHORTCUT_PASTE, false, has_clipboard)) {
         if (clipboard)
             Mixer::manager().paste(clipboard);
-        navigator.hidePannel();
+        navigator.discardPannel();
     }
     if (ImGui::MenuItem( MENU_SELECTALL, SHORTCUT_SELECTALL)) {
         Mixer::manager().view()->selectAll();
-        navigator.hidePannel();
+        navigator.discardPannel();
     }
 
     // GROUP
@@ -972,7 +970,7 @@ void UserInterface::showMenuFile()
     // NEW
     if (ImGui::MenuItem( MENU_NEW_FILE, SHORTCUT_NEW_FILE)) {
         Mixer::manager().close();
-        navigator.hidePannel();
+        navigator.discardPannel();
     }
     ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
     ImGui::Combo("Ratio", &Settings::application.render.ratio, RenderView::ratio_preset_name, IM_ARRAYSIZE(RenderView::ratio_preset_name) );
@@ -1005,12 +1003,12 @@ void UserInterface::showMenuFile()
         // launch file dialog to open a session file
         sessionimportdialog->open();
         // close pannel to select file
-        navigator.hidePannel();
+        navigator.discardPannel();
     }
 
     if (ImGui::MenuItem( MENU_SAVE_FILE, SHORTCUT_SAVE_FILE, false, currentfileopen)) {
         if (saveOrSaveAs())
-            navigator.hidePannel();
+            navigator.discardPannel();
     }
     if (ImGui::MenuItem( MENU_SAVEAS_FILE, SHORTCUT_SAVEAS_FILE))
         selectSaveFilename();
@@ -2644,7 +2642,7 @@ void Navigator::showPannelSource(int index)
     selected_index = index;
     // invalid index given
     if ( index < 0 )
-        hidePannel();
+        discardPannel();
     else {
         selected_button[index] = true;
         applyButtonSelection(index);
@@ -2695,7 +2693,7 @@ void Navigator::togglePannelAutoHide()
     }
     else {
         pannel_visible_ = true;
-        hidePannel();
+        discardPannel();
     }
 }
 
@@ -2704,11 +2702,24 @@ bool Navigator::pannelVisible()
     return pannel_visible_ || Settings::application.pannel_always_visible;
 }
 
-void Navigator::hidePannel()
+void Navigator::discardPannel()
 {
+    // in the 'always visible mode',
+    // discard the panel means cancel current action
     if ( Settings::application.pannel_always_visible ) {
 
-        if ( !selected_button[NAV_MENU] && !selected_button[NAV_TRANS] && !selected_button[NAV_NEW] )
+        // if panel is the 'Insert' new source
+        if ( selected_button[NAV_NEW] ) {
+            // cancel the current source creation
+            clearNewPannel();
+        }
+        // if panel is the 'Transition' session
+        else if ( selected_button[NAV_TRANS] ) {
+            // allows to hide pannel
+            clearButtonSelection();
+        }
+        // if panel shows a source (i.e. not NEW, TRANS nor MENU selected)
+        else if ( !selected_button[NAV_MENU] )
         {
             // get index of current source
             int idx = Mixer::manager().indexCurrentSource();
@@ -2729,6 +2740,8 @@ void Navigator::hidePannel()
                 showPannelSource( idx );
         }
     }
+    // in the general mode,
+    // discard means hide pannel
     else if ( pannel_visible_)
         clearButtonSelection();
 
@@ -3105,6 +3118,17 @@ void Navigator::RenderSourcePannel(Source *s)
             Mixer::manager().deleteSource(s);
             Action::manager().store(sname + std::string(": deleted"));
         }
+        if ( Mixer::manager().session()->failedSources().size() > 1 ) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
+            if ( ImGui::Button( ICON_FA_BACKSPACE " Delete all failed", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+                auto failedsources = Mixer::manager().session()->failedSources();
+                for (auto sit = failedsources.cbegin(); sit != failedsources.cend(); ++sit) {
+                    Mixer::manager().deleteSource( Mixer::manager().findSource( (*sit)->id() ) );
+                }
+            }
+            ImGui::PopStyleColor(1);
+        }
+
         ImGui::End();
     }
 }
@@ -3245,6 +3269,7 @@ void Navigator::RenderNewPannel()
             }
 
             // combo to offer lists
+            ImGui::Spacing();
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##SelectionNewMedia", BaseToolkit::truncated(Settings::application.recentImportFolders.path, 25).c_str() ))
             {
@@ -3450,7 +3475,7 @@ void Navigator::RenderNewPannel()
             // multiple files selected
             if (sourceSequenceFiles.size() > 1) {
 
-                ImGui::Text(" ");
+                ImGui::Spacing();
 
                 // show info sequence
                 ImGuiTextBuffer info;
@@ -3556,7 +3581,7 @@ void Navigator::RenderNewPannel()
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", "Select", ImGuiComboFlags_HeightLarge))
             {
-                if ( ImGui::Selectable("Custom  " ICON_FA_PLAY_CIRCLE) ) {
+                if ( ImGui::Selectable("Custom gstreamer " ICON_FA_CODE) ) {
                     update_new_source = true;
                     custom_pipeline = true;
                     pattern_type = -1;
@@ -3575,9 +3600,10 @@ void Navigator::RenderNewPannel()
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Create a source with graphics generated algorithmically.\n"
-                                      "Custom gstreamer pipelines are also possible.");
+            ImGuiToolkit::HelpToolTip("Create a source with patterns or graphics generated algorithmically. "
+                                      "Entering a custom gstreamer pipeline is also possible.");
 
+            ImGui::Spacing();
             if (custom_pipeline) {
                 static std::vector< std::pair< std::string, std::string> > _examples = { {"Videotest", "videotestsrc horizontal-speed=1 ! video/x-raw, width=640, height=480 " },
                                                                                          {"Checker", "videotestsrc pattern=checkers-8 ! video/x-raw, width=64, height=64 "},
@@ -3599,8 +3625,8 @@ void Navigator::RenderNewPannel()
                 // Local menu for list of examples
                 ImVec2 pos_bot = ImGui::GetCursorPos();
                 ImGui::SetCursorPos( pos_bot + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -ImGui::GetFrameHeightWithSpacing()));
-                if (ImGui::BeginCombo("##Examples", "Examples", ImGuiComboFlags_NoPreview))  {
-                    ImGui::TextDisabled("Gstreamer examples");
+                if (ImGui::BeginCombo("##Examples", "Examples", ImGuiComboFlags_NoPreview | ImGuiComboFlags_HeightLarge))  {
+                    ImGui::TextDisabled("Examples");
                     ImGui::Separator();
                     for (auto it = _examples.begin(); it != _examples.end(); ++it) {
                         if (ImGui::Selectable( it->first.c_str() ) ) {
@@ -3608,6 +3634,10 @@ void Navigator::RenderNewPannel()
                             update_new_source = true;
                         }
                     }
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Explore online");
+                    if (ImGui::Selectable( ICON_FA_EXTERNAL_LINK_ALT " Documentation" ) )
+                        SystemToolkit::open("https://gstreamer.freedesktop.org/documentation/tools/gst-launch.html?gi-language=c#pipeline-description");
                     ImGui::EndCombo();
                 }
                 ImGui::SetCursorPos(pos_bot);
@@ -3647,7 +3677,7 @@ void Navigator::RenderNewPannel()
             if (ImGui::BeginCombo("##ExternalConnected", "Select "))
             {
                 // 1. Loopback source
-                if ( ImGui::Selectable("Display Loopback") ) {
+                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_RENDER, "Display Loopback", false) ) {
                     custom_connected = false;
                     custom_screencapture = false;
                     new_source_preview_.setSource( Mixer::manager().createSourceRender(), "Display Loopback");
@@ -3656,7 +3686,7 @@ void Navigator::RenderNewPannel()
                 // 2. Screen capture (open selector if more than one window)
                 if (ScreenCapture::manager().numWindow() > 0) {
                     std::string namewin = ScreenCapture::manager().name(0);
-                    if (ImGui::Selectable(namewin.c_str()) ) {
+                    if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_DEVICE_SCREEN, namewin.c_str(), false) ) {
                         custom_connected = false;
                         if (ScreenCapture::manager().numWindow() > 1) {
                             new_source_preview_.setSource();
@@ -3670,7 +3700,7 @@ void Navigator::RenderNewPannel()
                 }
 
                 // 3. Network connected SRT
-                if ( ImGui::Selectable("SRT Broadcast") ) {
+                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_SRT, "SRT Broadcast", false) ) {
                     new_source_preview_.setSource();
                     custom_connected = true;
                     custom_screencapture = false;
@@ -3712,6 +3742,7 @@ void Navigator::RenderNewPannel()
                                       ICON_FA_CARET_RIGHT " broadcasted with SRT over network.\n"
                                       ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                       ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network.");
+            ImGui::Dummy(ImVec2(1, 1));
 
             if (custom_connected) {
 
@@ -3722,9 +3753,13 @@ void Navigator::RenderNewPannel()
                 static std::regex ipv4("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])");
                 static std::regex numport("([0-9]){4,6}");
 
-                ImGui::Text("\nCall an SRT broadcaster:");
-                ImGui::SetCursorPos(pos + ImVec2(0.f, 1.8f * ImGui::GetFrameHeight()) );
-                ImGuiToolkit::Indication("Set the IP and Port for connecting with Secure Reliable Transport (SRT) protocol to a video broadcaster that is waiting for connections (listener mode).", ICON_FA_GLOBE);
+                ImGui::Spacing();
+                ImGuiToolkit::Icon(ICON_SOURCE_SRT);
+                ImGui::SameLine();
+                ImGui::Text("SRT broadcast");
+                ImGui::SameLine();
+                ImGui::SetCursorPosX(pos.x);
+                ImGuiToolkit::HelpToolTip("Set the IP and Port for connecting with Secure Reliable Transport (SRT) protocol to a video broadcaster that is waiting for connections (listener mode).");
 
                 // Entry field for IP
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -3763,7 +3798,7 @@ void Navigator::RenderNewPannel()
                     ImVec2 pos_top = ImGui::GetCursorPos();
                     ImGui::SameLine();
                     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
-                    if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear list")) {
+                    if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear list of recent uri")) {
                         Settings::application.recentSRT.hosts.clear();
                         ip_ = Settings::application.recentSRT.default_host.first;
                         port_ = Settings::application.recentSRT.default_host.second;
@@ -3794,7 +3829,10 @@ void Navigator::RenderNewPannel()
 
             if (custom_screencapture) {
 
-                ImGui::Text("\nScreen Capture:");
+                ImGui::Spacing();
+                ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN);
+                ImGui::SameLine();
+                ImGui::Text("Screen Capture");
 
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 if (ImGui::BeginCombo("##ScreenCaptureSelect", "Select window", ImGuiComboFlags_HeightLarge))
@@ -4035,7 +4073,7 @@ void Navigator::RenderMainPannelVimix()
 
             // done the selection !
             if (done) {
-                hidePannel();
+                discardPannel();
                 _tooltip = 0;
                 _displayed_over = _file_over = sessions_list.end();
                 // reload the list next time
@@ -4057,7 +4095,7 @@ void Navigator::RenderMainPannelVimix()
         Mixer::manager().close(Settings::application.smooth_transition );
         if (Settings::application.smooth_transition)
             WorkspaceWindow::clearWorkspace();
-        hidePannel();
+        discardPannel();
     }
     if (ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip("New session", SHORTCUT_NEW_FILE);
@@ -4817,7 +4855,7 @@ void Navigator::RenderMainPannelSettings()
 void Navigator::RenderTransitionPannel()
 {
     if (Settings::application.current_view != View::TRANSITION) {
-        hidePannel();
+        discardPannel();
         return;
     }
 

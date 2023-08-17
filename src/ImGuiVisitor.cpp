@@ -756,7 +756,7 @@ void ImGuiVisitor::visit (MediaSource& s)
         ImGui::SetCursorPos(botom);
 
         // because sometimes the error comes from gpu decoding
-        if ( Settings::application.render.gpu_decoding )
+        if ( Settings::application.render.gpu_decoding && SystemToolkit::file_exists(s.path()) )
         {
             // offer to reload the source without hardware decoding
             if ( ImGui::Button( ICON_FA_REDO_ALT " Try again without\nhardware decoding", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
@@ -1393,7 +1393,11 @@ void ImGuiVisitor::visit (PatternSource& s)
             std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
             if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
                 UserInterface::manager().showSourceEditor(&s);
+            top.x += ImGui::GetFrameHeight();
         }
+        ImGui::SetCursorPos(top);
+        if (ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy"))
+            ImGui::SetClipboardText(Pattern::get( s.pattern()->type() ).pipeline.c_str());
     }
     else
         info.reset();
@@ -1663,28 +1667,43 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
     // stream info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + w);
     s.accept(info);
-    ImGui::Text("%s", info.str().c_str());
+    if ( !s.failed() )
+        ImGui::Text("%s", info.str().c_str());
+    else {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 0.9f));
+        ImGui::Text("%s", info.str().c_str());
+        ImGui::PopStyleColor(1);
+    }
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
+    // Prepare display pipeline text
+    static int numlines = 0;
+    const ImGuiContext& g = *GImGui;
+    ImVec2 fieldsize(w,  MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y);
+
+    // Editor
+    std::string _description = s.description();
+    if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines) ) {
+        info.reset();
+        s.setDescription(_description);
+        Action::manager().store( s.name() + ": Change pipeline");
+    }
     ImVec2 botom = ImGui::GetCursorPos();
 
+    // Actions on the pipeline
+    ImGui::SetCursorPos( ImVec2(top.x, botom.y - ImGui::GetFrameHeight()));
+    if (ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy"))
+        ImGui::SetClipboardText(_description.c_str());
+    ImGui::SetCursorPos( ImVec2(top.x + 0.9 * ImGui::GetFrameHeight(), botom.y - ImGui::GetFrameHeight()));
+    if (ImGuiToolkit::IconButton(ICON_FA_PASTE, "Paste")) {
+        _description = std::string ( ImGui::GetClipboardText() );
+        info.reset();
+        s.setDescription(_description);
+        Action::manager().store( s.name() + ": Change pipeline");
+    }
+
     if ( !s.failed() ) {
-
-        // Prepare display pipeline text
-        static int numlines = 0;
-        const ImGuiContext& g = *GImGui;
-        ImVec2 fieldsize(w,  MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y);
-
-        // Editor
-        std::string _description = s.description();
-        if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines) ) {
-            s.setDescription(_description);
-            Action::manager().store( s.name() + ": Change pipeline");
-        }
-
-        botom = ImGui::GetCursorPos();
-
         // icon (>) to open player
         if ( s.playable() ) {
             ImGui::SetCursorPos(top);
@@ -1693,8 +1712,6 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
                 UserInterface::manager().showSourceEditor(&s);
         }
     }
-    else
-        info.reset();
 
     ImGui::SetCursorPos(botom);
 }

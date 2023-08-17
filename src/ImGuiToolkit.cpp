@@ -1994,8 +1994,8 @@ bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const
     ImGui::SetCursorPos(pos_top);
 
     // Input text into std::string with callback
-    ImGui::InputTextMultiline(hiddenlabel, (char*)edited.c_str(), edited.capacity() + 1, size, flags, InputTextCallback, &edited);
-    if (ImGui::IsItemDeactivated() ){
+    if (ImGui::InputTextMultiline(hiddenlabel, (char*)edited.c_str(), edited.capacity() + 1, size, flags, InputTextCallback, &edited)
+        && ImGui::IsItemDeactivated() ){
         // unwrap after edit
         *str = unwrapp(edited);
         // return number of lines
