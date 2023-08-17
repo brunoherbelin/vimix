@@ -117,7 +117,7 @@ void RenderSource::update(float dt)
 
     if (!paused_ && session_ && rendered_output_) {
 
-        if (provenance_ == RENDER_EXCLUSIVE) {
+        if (provenance_ == RENDER_EXCLUSIVE || reset_) {
             // temporarily exclude this RenderSource from the rendering
             groups_[View::RENDERING]->visible_ = false;
             // simulate a rendering of the session in a framebuffer
@@ -128,6 +128,8 @@ void RenderSource::update(float dt)
             rendered_output_->end();
             // restore this RenderSource visibility
             groups_[View::RENDERING]->visible_ = true;
+            // done reset
+            reset_ = false;
         }
         // blit session frame to output
         else if (!session_->frame()->blit(rendered_output_))
@@ -150,6 +152,12 @@ void RenderSource::play (bool on)
 {
     // toggle state
     paused_ = !on;
+}
+
+void RenderSource::replay ()
+{
+    // request next frame to reset
+    reset_ = true;
 }
 
 glm::vec3 RenderSource::resolution() const
