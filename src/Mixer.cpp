@@ -220,13 +220,13 @@ void Mixer::update()
         SourceListUnique _failedsources = session_->failedSources();
         for(auto it = _failedsources.begin(); it != _failedsources.end(); ++it)  {
 
+            // intervention depends on the severity of the failure
+            Source::Failure fail = (*it)->failed();
+
             // only deal with sources that are still attached to mixer
             if ( attached( *it ) ) {
 
-                // intervention depends on the severity of the failure
-                Source::Failure fail = (*it)->failed();
-
-                // Attempt to repair BAD failed sources
+                // RETRY: Attempt to repair failed sources
                 // (can be automatically repaired without user intervention)
                 if (fail == Source::FAIL_RETRY) {
                     if ( !recreateSource( *it ) ) {
@@ -248,6 +248,15 @@ void Mixer::update()
                 }
                 // needs refresh after intervention
                 ++View::need_deep_update_;
+            }
+            // Source failed, was detached (after FAIL_CRITICAL) and got back to state FAIL_NONE
+            else if ( fail < Source::FAIL_CRITICAL ) {
+                // This looks like we should try to recreate it
+                if ( !recreateSource( *it ) ) {
+                    Log::Warning("Source '%s' definitely failed and could not be fixed.", (*it)->name().c_str());
+                    // delete failed source if could not recreate it
+                    deleteSource( *it );
+                }
             }
         }
     }

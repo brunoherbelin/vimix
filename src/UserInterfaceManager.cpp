@@ -3638,6 +3638,8 @@ void Navigator::RenderNewPannel()
                     ImGui::TextDisabled("Explore online");
                     if (ImGui::Selectable( ICON_FA_EXTERNAL_LINK_ALT " Documentation" ) )
                         SystemToolkit::open("https://gstreamer.freedesktop.org/documentation/tools/gst-launch.html?gi-language=c#pipeline-description");
+                    if (ImGui::Selectable( ICON_FA_EXTERNAL_LINK_ALT " Video test source" ) )
+                         SystemToolkit::open("https://gstreamer.freedesktop.org/documentation/videotestsrc/index.html?gi-language=c#videotestsrc-page");
                     ImGui::EndCombo();
                 }
                 ImGui::SetCursorPos(pos_bot);
