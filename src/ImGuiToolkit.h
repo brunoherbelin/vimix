@@ -20,6 +20,7 @@ namespace ImGuiToolkit
     bool IconButton (const char* icon, const char *tooltips = nullptr, const char *shortcut = nullptr);
     bool IconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips);
     bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
+    bool IconToggle (int i, int j, bool* toggle, const char *tooltip = nullptr, const char *shortcut = nullptr);
     bool IconToggle (const char* icon, bool* toggle, const char *tooltip = nullptr, const char *shortcut = nullptr);
     void ShowIconsWindow(bool* p_open);
 

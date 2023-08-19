@@ -437,6 +437,41 @@ bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* to
 }
 
 
+bool ImGuiToolkit::IconToggle(int i, int j, bool* toggle, const char *tooltip, const char* shortcut)
+{
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGui::PushID( i * 20 + j  + ( tooltip ? window->GetID(tooltip) : 0) );
+
+    float frame_height = ImGui::GetFrameHeight();
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+
+    // toggle action : operate on the whole area
+    bool ret = false;
+    ImGui::InvisibleButton("##iconijtogglebutton", ImVec2(frame_height, frame_height));
+    if (ImGui::IsItemClicked()) {
+        *toggle = !*toggle;
+        ret = true;
+    }
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(tooltip, shortcut);
+
+    ImGui::SetCursorScreenPos(draw_pos);
+
+    // draw with hovered color
+    const ImVec4* colors = ImGui::GetStyle().Colors;
+    ImGui::PushStyleColor( ImGuiCol_Text, *toggle ? colors[ImGuiCol_DragDropTarget] : colors[ImGuiCol_Text] );
+    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsItemHovered() ? colors[ImGuiCol_NavHighlight] : colors[ImGuiCol_Text] );
+//    ImGui::Text("%s", icon);
+    Icon(i, j, !ret);
+    ImGui::PopStyleColor(2);
+
+    ImGui::PopID();
+    return ret;
+}
+
 bool ImGuiToolkit::IconToggle(const char* icon, bool* toggle, const char *tooltip, const char* shortcut)
 {
     bool ret = false;

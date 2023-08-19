@@ -132,7 +132,6 @@ void Settings::Save(uint64_t runtime)
     applicationNode->SetAttribute("accent_color", application.accent_color);
     applicationNode->SetAttribute("smooth_transition", application.smooth_transition);
     applicationNode->SetAttribute("save_snapshot", application.save_version_snapshot);
-    applicationNode->SetAttribute("smooth_cursor", application.smooth_cursor);
     applicationNode->SetAttribute("action_history_follow_view", application.action_history_follow_view);
     applicationNode->SetAttribute("show_tooptips", application.show_tooptips);
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
@@ -214,6 +213,15 @@ void Settings::Save(uint64_t runtime)
     BrushNode->InsertEndChild( XMLElementFromGLM(&xmlDoc, application.brush) );
     pRoot->InsertEndChild(BrushNode);
 
+    // Pointer
+    XMLElement *PointerNode = xmlDoc.NewElement( "MousePointer" );
+    PointerNode->SetAttribute("mode", application.mouse_pointer);
+    for (size_t i = 0; i < application.mouse_pointer_strength.size(); ++i ) {
+        float v = application.mouse_pointer_strength[i];
+        PointerNode->InsertEndChild( XMLElementFromGLM(&xmlDoc, glm::vec2((float)i, v)) );
+    }
+    pRoot->InsertEndChild(PointerNode);
+
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
@@ -284,8 +292,6 @@ void Settings::Save(uint64_t runtime)
 
         // recent SRT hosts
         knownhosts->InsertEndChild( save_knownhost(application.recentSRT, "SRT", xmlDoc));
-
-
         pRoot->InsertEndChild(knownhosts);
     }
 
@@ -410,7 +416,6 @@ void Settings::Load()
         applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
         applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
         applicationNode->QueryBoolAttribute("save_snapshot", &application.save_version_snapshot);
-        applicationNode->QueryBoolAttribute("smooth_cursor", &application.smooth_cursor);
         applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
         applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
         applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
@@ -554,6 +559,20 @@ void Settings::Load()
     XMLElement * brushnode = pRoot->FirstChildElement("Brush");
     if (brushnode != nullptr) {
         tinyxml2::XMLElementToGLM( brushnode->FirstChildElement("vec3"), application.brush);
+    }
+
+    // Pointer
+    XMLElement * pointernode = pRoot->FirstChildElement("MousePointer");
+    if (pointernode != nullptr) {
+        pointernode->QueryIntAttribute("mode", &application.mouse_pointer);
+
+        XMLElement* strengthNode = pointernode->FirstChildElement("vec2");
+        for( ; strengthNode ; strengthNode = strengthNode->NextSiblingElement())
+        {
+            glm::vec2 val;
+            tinyxml2::XMLElementToGLM( strengthNode, val);
+            application.mouse_pointer_strength[ (size_t) ceil(val.x) ] = val.y;
+        }
     }
 
     // bloc views

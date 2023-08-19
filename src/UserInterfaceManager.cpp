@@ -76,6 +76,7 @@
 #include "ShmdataBroadcast.h"
 #include "VideoBroadcast.h"
 #include "MultiFileRecorder.h"
+#include "MousePointer.h"
 
 #include "UserInterfaceManager.h"
 
@@ -442,12 +443,9 @@ void UserInterface::handleKeyboard()
 
 void UserInterface::handleMouse()
 {
-
     ImGuiIO& io = ImGui::GetIO();
     glm::vec2 mousepos(io.MousePos.x * io.DisplayFramebufferScale.x, io.MousePos.y * io.DisplayFramebufferScale.y);
     mousepos = glm::clamp(mousepos, glm::vec2(0.f), glm::vec2(io.DisplaySize.x * io.DisplayFramebufferScale.x, io.DisplaySize.y * io.DisplayFramebufferScale.y));
-
-    static glm::vec2 mouse_smooth = mousepos;
 
     static glm::vec2 mouseclic[2];
     mouseclic[ImGuiMouseButton_Left] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Left].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Left].y* io.DisplayFramebufferScale.x);
@@ -474,15 +472,6 @@ void UserInterface::handleMouse()
     // if not on any window
     if ( !ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) && !ImGui::IsWindowFocused(ImGuiHoveredFlags_AnyWindow) )
     {
-        //
-        // Mouse wheel over background
-        //
-        if ( io.MouseWheel != 0) {
-            // scroll => zoom current view
-            Mixer::manager().view()->zoom( io.MouseWheel );
-        }
-        // TODO : zoom with center on source if over current
-
         //
         // RIGHT Mouse button
         //
@@ -512,7 +501,11 @@ void UserInterface::handleMouse()
             if ( !mousedown )
             {
                 mousedown = true;
-                mouse_smooth = mousepos;
+
+                // initiate Mouse pointer from position at mouse down event
+                MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
+                MousePointer::manager().active()->setStrength( Settings::application.mouse_pointer_strength[Settings::application.mouse_pointer] );
+                MousePointer::manager().active()->initiate(mousepos);
 
                 // ask the view what was picked
                 picked = Mixer::manager().view()->pick(mousepos);
@@ -592,17 +585,8 @@ void UserInterface::handleMouse()
             if (view_drag == Mixer::manager().view()) {
 
                 if ( picked.first != nullptr ) {
-                    // Smooth cursor
-                    if (Settings::application.smooth_cursor) {
-                        // TODO : physics implementation
-                        float smoothing = 10.f / ( MAX(io.Framerate, 1.f) );
-                        glm::vec2 d = mousepos - mouse_smooth;
-                        mouse_smooth += smoothing * d;
-                        ImVec2 start = ImVec2(mouse_smooth.x / io.DisplayFramebufferScale.x, mouse_smooth.y / io.DisplayFramebufferScale.y);
-                        ImGui::GetBackgroundDrawList()->AddLine(io.MousePos, start, ImGui::GetColorU32(ImGuiCol_HeaderActive), 5.f);
-                    }
-                    else
-                        mouse_smooth = mousepos;
+                    // Apply Mouse pointer filter
+                    MousePointer::manager().active()->update(mousepos, 1.f / ( MAX(io.Framerate, 1.f) ));
 
                     // action on current source
                     Source *current = Mixer::manager().currentSource();
@@ -612,19 +596,32 @@ void UserInterface::handleMouse()
                             // grab others from selection
                             for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
                                 if ( *it != current && !(*it)->locked() )
-                                    Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
+                                    Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left],
+                                                                  MousePointer::manager().active()->pos(), picked);
                             }
                         }
                         // grab current sources
-                        View::Cursor c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
+                        View::Cursor c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left],
+                                                                       MousePointer::manager().active()->pos(), picked);
                         SetMouseCursor(io.MousePos, c);
+
+                        // scrollwheel changes strength of Mouse Pointer
+                        if ( io.MouseWheel != 0) {
+                            MousePointer::manager().active()->setStrength( MousePointer::manager().active()->strength() + 0.1 * io.MouseWheel);
+                            Settings::application.mouse_pointer_strength[Settings::application.mouse_pointer] = MousePointer::manager().active()->strength();
+                        }
+
+                        // Draw Mouse pointer effect
+                        MousePointer::manager().active()->draw();
                     }
                     // action on other (non-source) elements in the view
                     else
                     {
-                        View::Cursor c = Mixer::manager().view()->grab(nullptr, mouseclic[ImGuiMouseButton_Left], mouse_smooth, picked);
+                        View::Cursor c = Mixer::manager().view()->grab(nullptr, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
                         SetMouseCursor(io.MousePos, c);
                     }
+
+
                 }
                 // Selection area
                 else {
@@ -639,6 +636,13 @@ void UserInterface::handleMouse()
                 }
 
             }
+        }
+        //
+        // Mouse wheel over background without source action
+        //
+        else if ( !mousedown && io.MouseWheel != 0) {
+            // scroll => zoom current view
+            Mixer::manager().view()->zoom( io.MouseWheel );
         }
     }
     else {
@@ -2770,7 +2774,7 @@ void Navigator::Render()
     height_ = ImGui::GetIO().DisplaySize.y;                          // cover vertically
     const float icon_width = width_ - 2.f * style.WindowPadding.x;         // icons keep padding
     const ImVec2 iconsize(icon_width, icon_width);
-    const float sourcelist_height = height_ - 5.5f * icon_width - 5.f * style.WindowPadding.y; // space for 4 icons of view
+    const float sourcelist_height = height_ - 6.5f * icon_width - 6.f * style.WindowPadding.y; // space for 4 icons of view
 
     // hack to show more sources if not enough space; make source icons smaller...
     ImVec2 sourceiconsize(icon_width, icon_width);
@@ -2886,6 +2890,10 @@ void Navigator::Render()
     if (ImGui::Begin("##navigatorViews", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollWithMouse))
     {
+        // Mouse pointer selector
+        RenderMousePointerSelector(iconsize);
+
+        // List of icons for View selection
         bool selected_view[View::INVALID] = { };
         selected_view[ Settings::application.current_view ] = true;
         int previous_view = Settings::application.current_view;
@@ -4606,6 +4614,80 @@ void Navigator::RenderMainPannelVimix()
         ImGui::EndPopup();
     }
 
+
+}
+
+
+void Navigator::RenderMousePointerSelector(const ImVec2 &size)
+{
+    ImGuiContext& g = *GImGui;
+    ImVec2 top = ImGui::GetCursorPos();
+
+    ///
+    /// interactive button of the given size: show menu if clic or mouse over
+    ///
+    static uint counter_menu_timeout = 0;
+    if ( ImGui::InvisibleButton("##MenuMousePointerButton", size) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) ) {
+
+        counter_menu_timeout=0;
+        ImGui::OpenPopup( "MenuMousePointer" );
+    }
+    ImVec2 bottom = ImGui::GetCursorScreenPos();
+
+    // Change color of icons depending on context menu status
+    const ImVec4* colors = ImGui::GetStyle().Colors;
+    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsPopupOpen("MenuMousePointer") ? colors[ImGuiCol_DragDropTarget] : colors[ImGuiCol_Text] );
+
+    // Draw centered icon of Mouse pointer
+    ImVec2 margin = (size - ImVec2(g.FontSize, g.FontSize)) * 0.42f;
+    ImGui::SetCursorPos( top + margin );
+
+    if ( Settings::application.mouse_pointer > 0 ) {
+        // icon with corner erased
+        ImGuiToolkit::Icon(ICON_POINTER_OPTION);
+
+        // Draw sub-icon of Mouse pointer type
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+        ImVec2 t = top + size - ImVec2(g.FontSize, g.FontSize) - ImVec2(g.Style.FramePadding.y, g.Style.FramePadding.y);
+        ImGui::SetCursorPos( t );
+        std::tuple<int, int, std::string> mode = Pointer::Modes.at( (size_t) Settings::application.mouse_pointer);
+        ImGuiToolkit::Icon(std::get<0>(mode), std::get<1>(mode));
+        ImGui::PopFont();
+    }
+    else
+        // standard icon
+        ImGuiToolkit::Icon(ICON_POINTER_DEFAULT);
+
+    // Revert
+    ImGui::PopStyleColor(1);
+    ImGui::SetCursorScreenPos(bottom);
+
+    ///
+    /// Render the Popup menu selector
+    ///
+    ImGui::SetNextWindowPos( bottom + ImVec2(size.x + g.Style.WindowPadding.x, -size.y), ImGuiCond_Always );
+    if (ImGui::BeginPopup( "MenuMousePointer" ))
+    {
+        // loop over all mouse pointer modes
+        for ( size_t m = Pointer::POINTER_DEFAULT; m < Pointer::POINTER_INVALID; ++m) {
+            bool on = m == (size_t) Settings::application.mouse_pointer;
+            std::tuple<int, int, std::string> mode = Pointer::Modes.at(m);
+            // show icon of mouse mode and set mouse pointer if selected
+            if (ImGuiToolkit::IconToggle( std::get<0>(mode), std::get<1>(mode), &on, std::get<2>(mode).c_str()) )
+                Settings::application.mouse_pointer = (int) m;
+            // space between icons
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+        }
+
+        // timer to close menu like a tooltip
+        if (ImGui::IsWindowHovered())
+            counter_menu_timeout=0;
+        else if (++counter_menu_timeout > 10)
+            ImGui::CloseCurrentPopup();
+
+        ImGui::EndPopup();
+    }
+
 }
 
 void Navigator::RenderMainPannelSettings()
@@ -4637,9 +4719,6 @@ void Navigator::RenderMainPannelSettings()
             Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 2.f);
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
         }
-        ImGuiToolkit::HelpToolTip("Cursor filter that makes movement smoother when manipulating a source.");
-        ImGui::SameLine();
-        ImGuiToolkit::ButtonSwitch( ICON_FA_MOUSE_POINTER "  Smooth cursor", &Settings::application.smooth_cursor);
 
         //
         // Recording preferences

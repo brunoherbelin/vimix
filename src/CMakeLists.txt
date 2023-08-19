@@ -96,6 +96,7 @@ set(VMIX_SRCS
     MultiFileRecorder.cpp
     DisplaysView.cpp
     ScreenCaptureSource.cpp
+    MousePointer.cpp
 )
 
 #####
