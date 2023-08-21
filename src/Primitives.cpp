@@ -192,7 +192,7 @@ void Points::accept(Visitor& v)
 
 
 
-HLine::HLine(float linewidth): Primitive(new Shader), width(linewidth)
+HLine::HLine(float linewidth, Shader *s): Primitive(s), width(linewidth)
 {
     //                      1       3
     //                      +-------+        ^
@@ -216,9 +216,6 @@ HLine::HLine(float linewidth): Primitive(new Shader), width(linewidth)
 
     // default scale
     scale_.y = width;
-
-    //default color
-    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
 
 HLine::~HLine()
@@ -271,13 +268,10 @@ void HLine::draw(glm::mat4 modelview, glm::mat4 projection)
     scale_.y = (float) width / vec.y;
     update(0);
 
-    // change color
-    shader_->color = color;
-
     Primitive::draw(modelview, projection);
 }
 
-VLine::VLine(float linewidth): Primitive(new Shader), width(linewidth)
+VLine::VLine(float linewidth, Shader *s): Primitive(s), width(linewidth)
 {
     points_ = std::vector<glm::vec3> { glm::vec3( 0.f, -1.f, 0.f ),
             glm::vec3( 0.001f, -0.999f, 0.f ),
@@ -293,9 +287,6 @@ VLine::VLine(float linewidth): Primitive(new Shader), width(linewidth)
 
     // default scale
     scale_.x = width;
-
-    // default color
-    color = glm::vec4( 1.f, 1.f, 1.f, 1.f);
 }
 
 VLine::~VLine()
@@ -348,45 +339,53 @@ void VLine::draw(glm::mat4 modelview, glm::mat4 projection)
     scale_.x = width / vec.x;
     update(0);
 
-    // change color
-    shader_->color = color;
-
     Primitive::draw(modelview, projection);
 }
 
 LineSquare::LineSquare(float linewidth) : Group()
 {
-    top_    = new HLine(linewidth);
+    shader__ = new Shader;
+
+    top_    = new HLine(linewidth, shader__);
     top_->translation_ = glm::vec3(0.f, 1.f, 0.f);
     attach(top_);
-    bottom_ = new HLine(linewidth);
+    bottom_ = new HLine(linewidth, shader__);
     bottom_->translation_ = glm::vec3(0.f, -1.f, 0.f);
     attach(bottom_);
-    left_   = new VLine(linewidth);
+    left_   = new VLine(linewidth, shader__);
     left_->translation_ = glm::vec3(-1.f, 0.f, 0.f);
     attach(left_);
-    right_  = new VLine(linewidth);
+    right_  = new VLine(linewidth, shader__);
     right_->translation_ = glm::vec3(1.f, 0.f, 0.f);
     attach(right_);
 }
 
-
 LineSquare::LineSquare(const LineSquare &square)
 {
-    top_    = new HLine(square.top_->width);
+    shader__ = new Shader;
+    shader__->color = square.color();
+
+    top_    = new HLine(square.top_->width, shader__);
     top_->translation_ = glm::vec3(0.f, 1.f, 0.f);
     attach(top_);
-    bottom_ = new HLine(square.bottom_->width);
+    bottom_ = new HLine(square.bottom_->width, shader__);
     bottom_->translation_ = glm::vec3(0.f, -1.f, 0.f);
     attach(bottom_);
-    left_   = new VLine(square.left_->width);
+    left_   = new VLine(square.left_->width, shader__);
     left_->translation_ = glm::vec3(-1.f, 0.f, 0.f);
     attach(left_);
-    right_  = new VLine(square.right_->width);
+    right_  = new VLine(square.right_->width, shader__);
     right_->translation_ = glm::vec3(1.f, 0.f, 0.f);
     attach(right_);
+}
 
-    setColor(square.color());
+LineSquare::~LineSquare()
+{
+    top_->replaceShader(nullptr);
+    bottom_->replaceShader(nullptr);
+    left_->replaceShader(nullptr);
+    right_->replaceShader(nullptr);
+    delete shader__;
 }
 
 void LineSquare::setLineWidth(float v)
@@ -397,12 +396,74 @@ void LineSquare::setLineWidth(float v)
     right_->width = v;
 }
 
-void LineSquare::setColor(glm::vec4 c)
+LineGrid::LineGrid(size_t N, float step, float linewidth)
 {
-    top_->color = c;
-    bottom_->color = c;
-    left_->color = c;
-    right_->color = c;
+    shader__ = new Shader;
+    N = MAX(1, N);
+
+    for (size_t n = 0; n < N ; ++n) {
+        VLine *l = new VLine(linewidth, shader__);
+        l->translation_.x = (float)n * step;
+        l->scale_.y = (float)N * step;
+        attach(l);
+    }
+    for (size_t n = 1; n < N ; ++n) {
+        VLine *l = new VLine(linewidth, shader__);
+        l->translation_.x = (float)n * -step;
+        l->scale_.y = (float)N * step;
+        attach(l);
+    }
+    for (size_t n = 0; n < N ; ++n) {
+        HLine *l = new HLine(linewidth, shader__);
+        l->translation_.y = (float)n * step;
+        l->scale_.x = (float)N * step;
+        attach(l);
+    }
+    for (size_t n = 1; n < N ; ++n) {
+        HLine *l = new HLine(linewidth, shader__);
+        l->translation_.y = (float)n * -step;
+        l->scale_.x = (float)N * step;
+        attach(l);
+    }
+}
+
+LineGrid::~LineGrid()
+{
+    // prevent nodes from deleting the shader
+    for (NodeSet::iterator node = begin(); node != end(); ++node) {
+        Primitive *p = dynamic_cast<Primitive *>(*node);
+        if (p)
+            p->replaceShader(nullptr);
+    }
+    delete shader__;
+}
+
+void LineGrid::setLineWidth(float v)
+{
+    for (NodeSet::iterator node = begin(); node != end(); ++node) {
+        VLine *vl = dynamic_cast<VLine *>(*node);
+        if (vl) {
+            vl->width = v;
+            continue;
+        }
+        HLine *hl = dynamic_cast<HLine *>(*node);
+        if (hl)
+            hl->width = v;
+    }
+}
+
+float LineGrid::lineWidth() const
+{
+    Node *n = front();
+    if (n) {
+        VLine *vl = dynamic_cast<VLine *>(n);
+        if (vl)
+            return vl->width;
+        HLine *hl = dynamic_cast<HLine *>(n);
+        if (hl)
+            return hl->width;
+    }
+    return 0.f;
 }
 
 LineStrip::LineStrip(const std::vector<glm::vec2> &path, float linewidth) : Primitive(new Shader),

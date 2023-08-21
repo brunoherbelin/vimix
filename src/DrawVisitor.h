@@ -1,9 +1,16 @@
 #ifndef DRAWVISITOR_H
 #define DRAWVISITOR_H
 
-#include "GlmToolkit.h"
+#include <vector>
+#include <glm/glm.hpp>
 #include "Visitor.h"
 
+///
+/// \brief The DrawVisitor is typically called on a scene.
+/// It traverses its root and draws only the nodes
+/// listed in the constructor. The nodes listed must already
+/// be in the hierarchy of the scene
+///
 class DrawVisitor : public Visitor
 {
     glm::mat4 modelview_;
@@ -25,5 +32,32 @@ public:
     void visit(Group& n) override;
     void visit(Switch& n) override;
 };
+
+
+///
+/// \brief The ColorVisitor changes the colors of
+/// all nodes that can draw (e.g. primitive, decorations)
+/// to the given color
+///
+class ColorVisitor : public Visitor
+{
+    glm::vec4 color_;
+
+public:
+    ColorVisitor(glm::vec4 color);
+
+    void visit(Scene& n) override;
+    void visit(Node& n) override;
+    void visit(Group& n) override;
+    void visit(Switch& n) override;
+
+    void visit(Primitive& ) override;
+    void visit(Frame& ) override;
+    void visit(Handles& ) override;
+    void visit(Symbol& ) override;
+    void visit(Disk& ) override;
+    void visit(Character& ) override;
+};
+
 
 #endif // DRAWVISITOR_H

@@ -178,8 +178,8 @@ public:
     void sort();
     NodeSet::iterator begin();
     NodeSet::iterator end();
-    Node *front();
-    Node *back();
+    Node *front() const;
+    Node *back() const;
 
 protected:
     NodeSet children_;

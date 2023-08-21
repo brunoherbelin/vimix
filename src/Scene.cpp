@@ -230,10 +230,10 @@ void Primitive::replaceShader( Shader *newshader )
             color = shader_->color;
             delete shader_;
         }
-        shader_ = newshader;
         shader_->iTransform = iTransform;
         shader_->color = color;
     }
+    shader_ = newshader;
 }
 
 //
@@ -267,7 +267,6 @@ void Group::attach(Node *child)
         child->refcount_++;
     }
 }
-
 
 void Group::sort()
 {
@@ -338,17 +337,17 @@ NodeSet::iterator Group::end()
 }
 
 
-Node *Group::front()
+Node *Group::front() const
 {
     if (!children_.empty())
-        return *children_.rbegin();
+        return *children_.crbegin();
     return nullptr;
 }
 
-Node *Group::back()
+Node *Group::back() const
 {
     if (!children_.empty())
-        return *children_.begin();
+        return *children_.cbegin();
     return nullptr;
 }
 

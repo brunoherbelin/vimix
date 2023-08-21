@@ -21,9 +21,12 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "Decorations.h"
 #include "defines.h"
-#include "DrawVisitor.h"
 #include "Scene.h"
+#include "Primitives.h"
+
+#include "DrawVisitor.h"
 
 
 DrawVisitor::DrawVisitor(Node *nodetodraw, glm::mat4 projection, bool force): force_(force)
@@ -115,3 +118,65 @@ void DrawVisitor::visit(Switch &n)
 void DrawVisitor::visit(Primitive &)
 {
 }
+
+
+
+ColorVisitor::ColorVisitor(glm::vec4 color): color_(color)
+{
+
+}
+void ColorVisitor::visit(Node &)
+{
+}
+
+void ColorVisitor::visit(Group &n)
+{
+    // traverse children
+    for (NodeSet::iterator node = n.begin(); node != n.end(); ++node) {
+        (*node)->accept(*this);
+    }
+}
+
+void ColorVisitor::visit(Scene &n)
+{
+    n.root()->accept(*this);
+}
+
+void ColorVisitor::visit(Switch &n)
+{
+    n.activeChild()->accept(*this);
+}
+
+void ColorVisitor::visit(Primitive &p)
+{
+    p.shader()->color = color_;
+}
+
+void ColorVisitor::visit(Frame &d)
+{
+    d.color = color_;
+}
+
+void ColorVisitor::visit(Handles &d)
+{
+    d.color = color_;
+}
+
+void ColorVisitor::visit(Symbol &d)
+{
+    d.color = color_;
+}
+
+void ColorVisitor::visit(Disk &d)
+{
+    d.color = color_;
+}
+
+void ColorVisitor::visit(Character &d)
+{
+    d.color = color_;
+}
+
+
+
+

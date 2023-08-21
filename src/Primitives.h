@@ -108,13 +108,12 @@ class HLine : public Primitive {
 
 public:
 
-    HLine(float width = 1.f);
+    HLine(float width = 1.f, Shader *s = new Shader);
     virtual ~HLine();
 
     void init () override;
     void draw(glm::mat4 modelview, glm::mat4 projection) override;
 
-    glm::vec4 color;
     float width;
 };
 
@@ -122,13 +121,12 @@ class VLine : public Primitive {
 
 public:
 
-    VLine(float width = 1.f);
+    VLine(float width = 1.f, Shader *s = new Shader);
     virtual ~VLine();
 
     void init () override;
     void draw(glm::mat4 modelview, glm::mat4 projection) override;
 
-    glm::vec4 color;
     float width;
 };
 
@@ -137,18 +135,38 @@ public:
  */
 class LineSquare : public Group {
 
+    Shader *shader__;
     HLine *top_, *bottom_;
     VLine *left_, *right_;
 
 public:
     LineSquare(float linewidth = 1.f);
     LineSquare(const LineSquare &square);
+    virtual ~LineSquare();
 
     void setLineWidth(float v);
     inline float lineWidth() const { return top_->width; }
 
-    void setColor(glm::vec4 c);
-    inline glm::vec4 color() const { return top_->color; }
+    inline void setColor(glm::vec4 c) { shader__->color = c; }
+    inline glm::vec4 color() const { return shader__->color; }
+};
+
+/**
+ * @brief The Grid class is a group of NxN vertical and horizontal lines
+ */
+class LineGrid : public Group {
+
+    Shader *shader__;
+
+public:
+    LineGrid(size_t N, float step, float linewidth = 1.f);
+    ~LineGrid();
+
+    void setLineWidth(float v);
+    float lineWidth() const;
+
+    inline void setColor(glm::vec4 c) { shader__->color = c; }
+    inline glm::vec4 color() const { return shader__->color; }
 };
 
 /**
