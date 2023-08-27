@@ -683,68 +683,98 @@ View::Cursor MixingView::over (glm::vec2 pos)
 void MixingView::arrow (glm::vec2 movement)
 {
     static float accumulator = 0.f;
-    accumulator += dt_;
+    accumulator += dt_ * 0.2;
+    Source *current = Mixer::manager().currentSource();
 
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-    glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
-    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+    if (!current && !Mixer::selection().empty())
+        Mixer::manager().setCurrentSource( Mixer::selection().back() );
 
-    bool first = true;
-    glm::vec3 delta_translation(0.f);
-    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+    if (current) {
 
-        // individual move with SHIFT
-        if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
-            continue;
+        if (current_action_ongoing_) {
 
-        Group *sourceNode = (*it)->group(mode_);
-        glm::vec3 dest_translation(0.f);
+            glm::vec2 Position_from = glm::vec2( Rendering::manager().project(current->stored_status_->translation_, scene.root()->transform_) );
+            glm::vec2 Position_to   = Position_from + movement * accumulator;
 
-        if (first) {
-            // dest starts at current
-            dest_translation = sourceNode->translation_;
+            if ( current->mixinggroup_ != nullptr )
+                current->mixinggroup_->setAction( MixingGroup::ACTION_GRAB_ALL );
 
-            // + ALT : discrete displacement
-            if (UserInterface::manager().altModifier()) {
-                if (accumulator > 100.f) {
-                    dest_translation += glm::sign(gl_delta) * 0.1f;
-                    dest_translation.x = ROUND(dest_translation.x, 10.f);
-                    dest_translation.y = ROUND(dest_translation.y, 10.f);
-                    accumulator = 0.f;
-                }
-                else
-                    break;
-            }
-            else {
-                // normal case: dest += delta
-                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
-                accumulator = 0.f;
-            }
+            grab(current, Position_from, Position_to, std::make_pair(current->group(mode_), glm::vec2(0.f) ) );
 
-            // store action in history
-            std::ostringstream info;
-            if ((*it)->active()) {
-                info << "Alpha " << std::fixed << std::setprecision(3) << (*it)->blendingShader()->color.a << "  ";
-                info << ( ((*it)->blendingShader()->color.a > 0.f) ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
-            }
-            else
-                info << "Inactive  " << ICON_FA_SNOWFLAKE;
-            current_action_ = (*it)->name() + ": " + info.str();
-
-            // delta for others to follow
-            delta_translation = dest_translation - sourceNode->translation_;
         }
         else {
-            // dest = current + delta from first
-            dest_translation = sourceNode->translation_ + delta_translation;
+
+            initiate();
+            accumulator = 0.f;
         }
 
-        // apply & request update
-        sourceNode->translation_ = dest_translation;
-        (*it)->touch();
 
-        first = false;
     }
+    else
+        terminate(true);
+
+
+    //    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
+    //    glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
+    //    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+
+
+//    bool first = true;
+//    glm::vec3 delta_translation(0.f);
+//    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+
+//        // individual move with SHIFT
+//        if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
+//            continue;
+
+//        Group *sourceNode = (*it)->group(mode_);
+//        glm::vec3 dest_translation(0.f);
+
+//        if (first) {
+//            // dest starts at current
+//            dest_translation = sourceNode->translation_;
+
+//            // + ALT : discrete displacement
+//            if (UserInterface::manager().altModifier()) {
+//                if (accumulator > 100.f) {
+//                    dest_translation += glm::sign(gl_delta) * 0.1f;
+//                    dest_translation.x = ROUND(dest_translation.x, 10.f);
+//                    dest_translation.y = ROUND(dest_translation.y, 10.f);
+//                    accumulator = 0.f;
+//                }
+//                else
+//                    break;
+//            }
+//            else {
+//                // normal case: dest += delta
+//                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
+//                accumulator = 0.f;
+//            }
+
+//            // store action in history
+//            std::ostringstream info;
+//            if ((*it)->active()) {
+//                info << "Alpha " << std::fixed << std::setprecision(3) << (*it)->blendingShader()->color.a << "  ";
+//                info << ( ((*it)->blendingShader()->color.a > 0.f) ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
+//            }
+//            else
+//                info << "Inactive  " << ICON_FA_SNOWFLAKE;
+//            current_action_ = (*it)->name() + ": " + info.str();
+
+//            // delta for others to follow
+//            delta_translation = dest_translation - sourceNode->translation_;
+//        }
+//        else {
+//            // dest = current + delta from first
+//            dest_translation = sourceNode->translation_ + delta_translation;
+//        }
+
+//        // apply & request update
+//        sourceNode->translation_ = dest_translation;
+//        (*it)->touch();
+
+//        first = false;
+//    }
 
 }
 

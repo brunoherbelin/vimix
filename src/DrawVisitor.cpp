@@ -116,20 +116,6 @@ void DrawVisitor::visit(Switch &n)
     modelview_ = mv;
 }
 
-void DrawVisitor::visit(Primitive &)
-{
-}
-
-
-
-ColorVisitor::ColorVisitor(glm::vec4 color): color_(color)
-{
-
-}
-void ColorVisitor::visit(Node &)
-{
-}
-
 void ColorVisitor::visit(Group &n)
 {
     // traverse children
@@ -180,6 +166,30 @@ void ColorVisitor::visit(Character &d)
     d.color = color_;
 }
 
+void VisibleVisitor::visit(Node &n)
+{
+    n.visible_ = visible_;
+}
+
+void VisibleVisitor::visit(Group &n)
+{
+    // traverse children
+    for (NodeSet::iterator node = n.begin(); node != n.end(); ++node) {
+        (*node)->accept(*this);
+    }
+}
+
+void VisibleVisitor::visit(Scene &n)
+{
+    n.root()->accept(*this);
+}
+
+void VisibleVisitor::visit(Switch &n)
+{
+    for (uint c = 0; c < n.numChildren(); ++c) {
+        n.child(c)->accept(*this);
+    }
+}
 
 
 

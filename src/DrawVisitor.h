@@ -28,9 +28,9 @@ public:
 
     void visit(Scene& n) override;
     void visit(Node& n) override;
-    void visit(Primitive& ) override;
     void visit(Group& n) override;
     void visit(Switch& n) override;
+    void visit(Primitive& ) override {}
 };
 
 
@@ -44,10 +44,10 @@ class ColorVisitor : public Visitor
     glm::vec4 color_;
 
 public:
-    ColorVisitor(glm::vec4 color);
+    ColorVisitor(glm::vec4 color) : color_(color) {}
 
+    void visit(Node&) override {}
     void visit(Scene& n) override;
-    void visit(Node& n) override;
     void visit(Group& n) override;
     void visit(Switch& n) override;
 
@@ -59,5 +59,21 @@ public:
     void visit(Character& ) override;
 };
 
+///
+/// \brief The VisibleVisitor changes the visible flag of
+/// all nodes to the given value
+///
+class VisibleVisitor : public Visitor
+{
+    bool visible_;
+
+public:
+    VisibleVisitor(bool visible) : visible_(visible) {}
+
+    void visit(Scene& n) override;
+    void visit(Node& n) override;
+    void visit(Group& n) override;
+    void visit(Switch& n) override;
+};
 
 #endif // DRAWVISITOR_H

@@ -1533,63 +1533,63 @@ void TextureView::terminate(bool force)
 
 void TextureView::arrow (glm::vec2 movement)
 {
-    Source *s = Mixer::manager().currentSource();
-    if (s) {
-        static float accumulator = 0.f;
-        accumulator += dt_;
+//    Source *s = Mixer::manager().currentSource();
+//    if (s) {
+//        static float accumulator = 0.f;
+//        accumulator += dt_;
 
-        glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-        glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
-        glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+//        glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
+//        glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
+//        glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
-        Group *sourceNode = s->group(mode_);
-        glm::vec3 alt_move_ = sourceNode->translation_;
-        if (UserInterface::manager().altModifier()) {            
-            if (accumulator > 100.f)
-            {
-                // precise movement with SHIFT
-                if ( UserInterface::manager().shiftModifier() ) {
-                    alt_move_ += glm::sign(gl_delta) * 0.0011f;
-                    sourceNode->translation_.x = ROUND(alt_move_.x, 1000.f);
-                    sourceNode->translation_.y = ROUND(alt_move_.y, 1000.f);
-                }
-                else {
-                    alt_move_ += glm::sign(gl_delta) * 0.11f;
-                    sourceNode->translation_.x = ROUND(alt_move_.x, 10.f);
-                    sourceNode->translation_.y = ROUND(alt_move_.y, 10.f);
-                }
-                accumulator = 0.f;
-            }
-        }
-        else {
-            sourceNode->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
-            accumulator = 0.f;
-            alt_move_ = sourceNode->translation_;
-        }
+//        Group *sourceNode = s->group(mode_);
+//        glm::vec3 alt_move_ = sourceNode->translation_;
+//        if (UserInterface::manager().altModifier()) {
+//            if (accumulator > 100.f)
+//            {
+//                // precise movement with SHIFT
+//                if ( UserInterface::manager().shiftModifier() ) {
+//                    alt_move_ += glm::sign(gl_delta) * 0.0011f;
+//                    sourceNode->translation_.x = ROUND(alt_move_.x, 1000.f);
+//                    sourceNode->translation_.y = ROUND(alt_move_.y, 1000.f);
+//                }
+//                else {
+//                    alt_move_ += glm::sign(gl_delta) * 0.11f;
+//                    sourceNode->translation_.x = ROUND(alt_move_.x, 10.f);
+//                    sourceNode->translation_.y = ROUND(alt_move_.y, 10.f);
+//                }
+//                accumulator = 0.f;
+//            }
+//        }
+//        else {
+//            sourceNode->translation_ += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
+//            accumulator = 0.f;
+//            alt_move_ = sourceNode->translation_;
+//        }
 
-        // store action in history
-        std::ostringstream info;
-        info << "Texture Shift " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
-        info << ", "  << sourceNode->translation_.y ;
-        current_action_ = s->name() + ": " + info.str();
+//        // store action in history
+//        std::ostringstream info;
+//        info << "Texture Shift " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
+//        info << ", "  << sourceNode->translation_.y ;
+//        current_action_ = s->name() + ": " + info.str();
 
-        // request update
-        s->touch();
-    }
-    else if (edit_source_) {
-        if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
-            if (mask_cursor_paint_ > 0) {
-                glm::vec2 b = 0.02f * movement;
-                Settings::application.brush.x = CLAMP(Settings::application.brush.x+b.x, BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
-                Settings::application.brush.y = CLAMP(Settings::application.brush.y+b.y, BRUSH_MIN_PRESS, BRUSH_MAX_PRESS);
-            }
-        }
-        else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
-            if (mask_cursor_shape_ > 0) {
-                float b = -0.02f * movement.y;
-                edit_source_->maskShader()->blur = CLAMP(edit_source_->maskShader()->blur+b, SHAPE_MIN_BLUR, SHAPE_MAX_BLUR);
-                edit_source_->touch(Source::SourceUpdate_Mask);
-            }
-        }
-    }
+//        // request update
+//        s->touch();
+//    }
+//    else if (edit_source_) {
+//        if (edit_source_->maskShader()->mode == MaskShader::PAINT) {
+//            if (mask_cursor_paint_ > 0) {
+//                glm::vec2 b = 0.02f * movement;
+//                Settings::application.brush.x = CLAMP(Settings::application.brush.x+b.x, BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
+//                Settings::application.brush.y = CLAMP(Settings::application.brush.y+b.y, BRUSH_MIN_PRESS, BRUSH_MAX_PRESS);
+//            }
+//        }
+//        else if (edit_source_->maskShader()->mode == MaskShader::SHAPE) {
+//            if (mask_cursor_shape_ > 0) {
+//                float b = -0.02f * movement.y;
+//                edit_source_->maskShader()->blur = CLAMP(edit_source_->maskShader()->blur+b, SHAPE_MIN_BLUR, SHAPE_MAX_BLUR);
+//                edit_source_->touch(Source::SourceUpdate_Mask);
+//            }
+//        }
+//    }
 }

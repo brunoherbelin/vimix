@@ -1238,7 +1238,6 @@ void GeometryView::terminate(bool force)
         (*sit)->handles_[mode_][Handles::ROTATE]->visible_ = true;
         (*sit)->handles_[mode_][Handles::CROP]->visible_ = true;
         (*sit)->handles_[mode_][Handles::MENU]->visible_ = true;
-
     }
 
     overlay_selection_active_ = false;
@@ -1250,70 +1249,100 @@ void GeometryView::terminate(bool force)
 void GeometryView::arrow (glm::vec2 movement)
 {
     static float accumulator = 0.f;
-    accumulator += dt_;
+    accumulator += dt_ * 0.2f;
 
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-    glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
-    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+    Source *current = Mixer::manager().currentSource();
 
-    bool first = true;
-    glm::vec3 delta_translation(0.f);
-    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+    if (!current && !Mixer::selection().empty())
+        Mixer::manager().setCurrentSource( Mixer::selection().back() );
 
+    if (current) {
 
-        Group *sourceNode = (*it)->group(mode_);
-        glm::vec3 dest_translation(0.f);
+        if (current_action_ongoing_) {
 
-        if (first) {
-            // dest starts at current
-            dest_translation = sourceNode->translation_;
+            glm::vec2 Position_from = glm::vec2( Rendering::manager().project(current->stored_status_->translation_, scene.root()->transform_) );
+            glm::vec2 Position_to   = Position_from + movement * accumulator;
 
-            // + ALT : discrete displacement
-            if (UserInterface::manager().altModifier()) {
-                if (accumulator > 100.f) {
-                    // precise movement with SHIFT
-                    if ( UserInterface::manager().shiftModifier() ) {
-                        dest_translation += glm::sign(gl_delta) * 0.0011f;
-                        dest_translation.x = ROUND(dest_translation.x, 1000.f);
-                        dest_translation.y = ROUND(dest_translation.y, 1000.f);
-                    }
-                    else {
-                        dest_translation += glm::sign(gl_delta) * 0.11f;
-                        dest_translation.x = ROUND(dest_translation.x, 10.f);
-                        dest_translation.y = ROUND(dest_translation.y, 10.f);
-                    }
-                    accumulator = 0.f;
-                }
-                else
-                    break;
-            }
-            else
-            {
-                // normal case: dest += delta
-                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
-                accumulator = 0.f;
-            }
+            grab(current, Position_from, Position_to, std::make_pair(current->group(mode_), glm::vec2(0.f) ) );
 
-            // store action in history
-            std::ostringstream info;
-            info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
-            info << ", "  << sourceNode->translation_.y ;
-            current_action_ = (*it)->name() + ": " + info.str();
-
-            // delta for others to follow
-            delta_translation = dest_translation - sourceNode->translation_;
         }
         else {
-            // dest = current + delta from first
-            dest_translation = sourceNode->translation_ + delta_translation;
+
+            initiate();
+            accumulator = 0.f;
+
+            adaptGridToSource(current);
+
         }
 
-        // apply & request update
-        sourceNode->translation_ = dest_translation;
-        (*it)->touch();
-
-        first = false;
     }
+    else
+        terminate(true);
+
+
+
+//    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
+//    glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
+//    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+
+//    bool first = true;
+//    glm::vec3 delta_translation(0.f);
+//    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+
+
+//        Group *sourceNode = (*it)->group(mode_);
+//        glm::vec3 dest_translation(0.f);
+
+//        if (first) {
+//            // dest starts at current
+//            dest_translation = sourceNode->translation_;
+
+//            // + ALT : discrete displacement
+//            if (UserInterface::manager().altModifier()) {
+//                if (accumulator > 100.f) {
+//                    // precise movement with SHIFT
+//                    if ( UserInterface::manager().shiftModifier() ) {
+//                        dest_translation += glm::sign(gl_delta) * 0.0011f;
+//                        dest_translation.x = ROUND(dest_translation.x, 1000.f);
+//                        dest_translation.y = ROUND(dest_translation.y, 1000.f);
+//                    }
+//                    else {
+//                        dest_translation += glm::sign(gl_delta) * 0.11f;
+//                        dest_translation.x = ROUND(dest_translation.x, 10.f);
+//                        dest_translation.y = ROUND(dest_translation.y, 10.f);
+//                    }
+//                    accumulator = 0.f;
+//                }
+//                else
+//                    break;
+//            }
+//            else
+//            {
+//                // normal case: dest += delta
+//                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
+//                accumulator = 0.f;
+//            }
+
+//            // store action in history
+//            std::ostringstream info;
+//            info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
+//            info << ", "  << sourceNode->translation_.y ;
+//            current_action_ = (*it)->name() + ": " + info.str();
+
+//            // delta for others to follow
+//            delta_translation = dest_translation - sourceNode->translation_;
+//        }
+//        else {
+//            // dest = current + delta from first
+//            dest_translation = sourceNode->translation_ + delta_translation;
+//        }
+
+//        // apply & request update
+//        sourceNode->translation_ = dest_translation;
+//        (*it)->touch();
+
+//        first = false;
+//    }
 }
 
 void GeometryView::updateSelectionOverlay(glm::vec4 color)

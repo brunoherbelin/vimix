@@ -310,8 +310,8 @@ void UserInterface::handleKeyboard()
                 Mixer::manager().view()->selectAll();
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_R), false )) {
-            // toggle recording stop / start (or save and continue if + ALT modifier)
-            outputcontrol.ToggleRecord(alt_modifier_active);
+            // toggle recording stop / start (or save and continue if + SHIFT modifier)
+            outputcontrol.ToggleRecord(shift_modifier_active);
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_Z), false )) {
             if (shift_modifier_active)
@@ -444,8 +444,15 @@ void UserInterface::handleKeyboard()
 void UserInterface::handleMouse()
 {
     ImGuiIO& io = ImGui::GetIO();
-    glm::vec2 mousepos(io.MousePos.x * io.DisplayFramebufferScale.x, io.MousePos.y * io.DisplayFramebufferScale.y);
-    mousepos = glm::clamp(mousepos, glm::vec2(0.f), glm::vec2(io.DisplaySize.x * io.DisplayFramebufferScale.x, io.DisplaySize.y * io.DisplayFramebufferScale.y));
+
+    // get mouse coordinates and prevent invalid values
+    static glm::vec2 _prev_mousepos = glm::vec2(0.f);
+    glm::vec2 mousepos = _prev_mousepos;
+    if (io.MousePos.x > -1 && io.MousePos.y > -1) {
+        mousepos =  glm::vec2 (io.MousePos.x * io.DisplayFramebufferScale.x, io.MousePos.y * io.DisplayFramebufferScale.y);
+        mousepos = glm::clamp(mousepos, glm::vec2(0.f), glm::vec2(io.DisplaySize.x * io.DisplayFramebufferScale.x, io.DisplaySize.y * io.DisplayFramebufferScale.y));
+        _prev_mousepos = mousepos;
+    }
 
     static glm::vec2 mouseclic[2];
     mouseclic[ImGuiMouseButton_Left] = glm::vec2(io.MouseClickedPos[ImGuiMouseButton_Left].x * io.DisplayFramebufferScale.y, io.MouseClickedPos[ImGuiMouseButton_Left].y* io.DisplayFramebufferScale.x);
@@ -503,8 +510,12 @@ void UserInterface::handleMouse()
                 mousedown = true;
 
                 // initiate Mouse pointer from position at mouse down event
-                MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
-                MousePointer::manager().active()->setStrength( Settings::application.mouse_pointer_strength[Settings::application.mouse_pointer] );
+                if (alt_modifier_active || Settings::application.mouse_pointer_lock) {
+                    MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
+                    MousePointer::manager().active()->setStrength( Settings::application.mouse_pointer_strength[Settings::application.mouse_pointer] );
+                }
+                else
+                    MousePointer::manager().setActiveMode( Pointer::POINTER_DEFAULT );
 
                 // ask the view what was picked
                 picked = Mixer::manager().view()->pick(mousepos);
@@ -2893,44 +2904,77 @@ void Navigator::Render()
         RenderMousePointerSelector(iconsize);
 
         // List of icons for View selection
+        static uint view_options_timeout = 0;
+        static ImVec2 view_options_pos = ImGui::GetCursorScreenPos();
+
         bool selected_view[View::INVALID] = { };
         selected_view[ Settings::application.current_view ] = true;
         int previous_view = Settings::application.current_view;
+
         if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[View::MIXING], 0, iconsize))
         {
             UserInterface::manager().setView(View::MIXING);
-            view_pannel_visible = previous_view == Settings::application.current_view;
+            if (previous_view == Settings::application.current_view) {
+                ImGui::OpenPopup( "PopupViewOptions" );
+                view_options_pos = ImGui::GetCursorScreenPos();
+            }
         }
-        if (ImGui::IsItemHovered())
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             tooltip = {"Mixing ", "F1"};
+            view_options_timeout = 0;
+        }
+
         if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[View::GEOMETRY], 0, iconsize))
         {
             UserInterface::manager().setView(View::GEOMETRY);
-            view_pannel_visible = previous_view == Settings::application.current_view;
+            if (previous_view == Settings::application.current_view) {
+                ImGui::OpenPopup( "PopupViewOptions" );
+                view_options_pos = ImGui::GetCursorScreenPos();
+            }
         }
-        if (ImGui::IsItemHovered())
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             tooltip = {"Geometry ", "F2"};
+            view_options_timeout = 0;
+        }
+
         if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[View::LAYER], 0, iconsize))
         {
             UserInterface::manager().setView(View::LAYER);
-            view_pannel_visible = previous_view == Settings::application.current_view;
+            if (previous_view == Settings::application.current_view) {
+                ImGui::OpenPopup( "PopupViewOptions" );
+                view_options_pos = ImGui::GetCursorScreenPos();
+            }
         }
-        if (ImGui::IsItemHovered())
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             tooltip = {"Layers ", "F3"};
+            view_options_timeout = 0;
+        }
+
         if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[View::TEXTURE], 0, iconsize))
         {
             UserInterface::manager().setView(View::TEXTURE);
-            view_pannel_visible = previous_view == Settings::application.current_view;
+            if (previous_view == Settings::application.current_view) {
+                ImGui::OpenPopup( "PopupViewOptions" );
+                view_options_pos = ImGui::GetCursorScreenPos();
+            }
         }
-        if (ImGui::IsItemHovered())
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             tooltip = {"Texturing ", "F4"};
+            view_options_timeout = 0;
+        }
+
         if (ImGui::Selectable( ICON_FA_TV, &selected_view[View::DISPLAYS], 0, iconsize))
         {
             UserInterface::manager().setView(View::DISPLAYS);
-            view_pannel_visible = previous_view == Settings::application.current_view;
+            if (previous_view == Settings::application.current_view) {
+                ImGui::OpenPopup( "PopupViewOptions" );
+                view_options_pos = ImGui::GetCursorScreenPos();
+            }
         }
-        if (ImGui::IsItemHovered())
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             tooltip = {"Displays  ", "F5"};
+            view_options_timeout = 0;
+        }
 
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SetCursorPos(pos + ImVec2(0.f, style.WindowPadding.y));
@@ -2950,6 +2994,9 @@ void Navigator::Render()
 
         ImGui::PopFont();
 
+        // render the "PopupViewOptions"
+        RenderViewOptions(&view_options_timeout, view_options_pos, iconsize);
+
         ImGui::End();
     }
 
@@ -2963,10 +3010,6 @@ void Navigator::Render()
     }
     else
         _timeout_tooltip = 0;
-
-    // Rendering of special side pannel for view zoom
-    if ( view_pannel_visible && !pannel_visible_ )
-        RenderViewPannel( ImVec2(width_, sourcelist_height), ImVec2(width_*0.8f, height_ - sourcelist_height) );
 
     ImGui::PopStyleVar();
     ImGui::PopFont();
@@ -3019,38 +3062,38 @@ void Navigator::Render()
 
 }
 
-void Navigator::RenderViewPannel(ImVec2 draw_pos , ImVec2 draw_size)
+void Navigator::RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2 &size)
 {
-    ImGui::SetNextWindowPos( draw_pos, ImGuiCond_Always );
-    ImGui::SetNextWindowSize( draw_size, ImGuiCond_Always );
-    ImGui::SetNextWindowBgAlpha(0.95f); // Transparent background
-    if (ImGui::Begin("##ViewPannel", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav))
+    ImGuiContext& g = *GImGui;
+
+    ImGui::SetNextWindowPos( pos + ImVec2(size.x + g.Style.WindowPadding.x, -size.y), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(size.x * 7.f, size.y), ImGuiCond_Always );
+    if (ImGui::BeginPopup( "PopupViewOptions" ))
     {
-        ImGui::SetCursorPosX(10.f);
-        ImGui::SetCursorPosY(10.f);
+        // vertical padding
+        ImGui::SetCursorPosY( ImGui::GetCursorPosY() + g.Style.WindowPadding.y * 0.5f );
+
+        // reset zoom
         if (ImGuiToolkit::IconButton(8,7)) {
-            // reset zoom
             Mixer::manager().view((View::Mode)Settings::application.current_view)->recenter();
         }
 
-        draw_size.x *= 0.5;
-        ImGui::SetCursorPosX( 10.f);
-        draw_size.y -= ImGui::GetCursorPosY() + 10.f;
+        // percent zoom slider
         int percent_zoom = Mixer::manager().view((View::Mode)Settings::application.current_view)->size();
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1, 0.1, 0.1, 0.95));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14, 0.14, 0.14, 0.95));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.14, 0.14, 0.14, 0.95));
-        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.9, 0.9, 0.9, 0.95));
-        if (ImGui::VSliderInt("##z", draw_size, &percent_zoom, 0, 100, "") )
-        {
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(-1.f);
+        if (ImGui::SliderInt("##zoom", &percent_zoom, 0, 100, "%d %%" )) {
             Mixer::manager().view((View::Mode)Settings::application.current_view)->resize(percent_zoom);
         }
-        ImGui::PopStyleColor(4);
-        if (ImGui::IsItemActive() || ImGui::IsItemHovered())
-            ImGui::SetTooltip("Zoom %d %%", percent_zoom);
-        ImGui::End();
-    }
 
+        // timer to close popup like a tooltip
+        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+            *timeout=0;
+        else if ( (*timeout)++ > 10)
+            ImGui::CloseCurrentPopup();
+
+        ImGui::EndPopup();
+    }
 }
 
 // Source pannel : *s was checked before
@@ -4626,13 +4669,17 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
     /// interactive button of the given size: show menu if clic or mouse over
     ///
     static uint counter_menu_timeout = 0;
-    if ( ImGui::InvisibleButton("##MenuMousePointerButton", size) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) ) {
+    if ( ImGui::InvisibleButton("##MenuMousePointerButton", size) /*|| ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)*/ ) {
 
-        counter_menu_timeout=0;
         if (enabled)
             ImGui::OpenPopup( "MenuMousePointer" );
     }
     ImVec2 bottom = ImGui::GetCursorScreenPos();
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+        ImGuiToolkit::ToolTip("Alternative cursor", "ALT");
+        counter_menu_timeout=0;
+    }
 
     // Change color of icons depending on context menu status
     const ImVec4* colors = ImGui::GetStyle().Colors;
@@ -4642,10 +4689,10 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
         ImGui::PushStyleColor( ImGuiCol_Text, colors[ImGuiCol_TextDisabled] );
 
     // Draw centered icon of Mouse pointer
-    ImVec2 margin = (size - ImVec2(g.FontSize, g.FontSize)) * 0.42f;
+    ImVec2 margin = (size - ImVec2(g.FontSize, g.FontSize)) * 0.5f;
     ImGui::SetCursorPos( top + margin );
 
-    if ( Settings::application.mouse_pointer > 0 ) {
+    if ( UserInterface::manager().altModifier() || Settings::application.mouse_pointer_lock) {
         // icon with corner erased
         ImGuiToolkit::Icon(ICON_POINTER_OPTION);
 
@@ -4672,7 +4719,7 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
     if (ImGui::BeginPopup( "MenuMousePointer" ))
     {
         // loop over all mouse pointer modes
-        for ( size_t m = Pointer::POINTER_DEFAULT; m < Pointer::POINTER_INVALID; ++m) {
+        for ( size_t m = Pointer::POINTER_GRID; m < Pointer::POINTER_INVALID; ++m) {
             bool on = m == (size_t) Settings::application.mouse_pointer;
             std::tuple<int, int, std::string> mode = Pointer::Modes.at(m);
             // show icon of mouse mode and set mouse pointer if selected
@@ -4681,6 +4728,16 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
             // space between icons
             ImGui::SameLine(0, IMGUI_SAME_LINE);
         }
+
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+        ImGui::SetCursorPosY(margin.y);
+        ImGui::TextDisabled(" |");
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGuiToolkit::ButtonToggle(Settings::application.mouse_pointer_lock ? ICON_FA_LOCK " ALT LOCK" : ICON_FA_UNLOCK " ALT LOCK",
+                                   &Settings::application.mouse_pointer_lock,
+                                   "Activate the selected alternative mouse pointer by pressing the ALT key.\n\n"
+                                   ICON_FA_LOCK " ALT LOCK keeps the alternative mouse pointer active.");
+        ImGui::PopFont();
 
         // timer to close menu like a tooltip
         if (ImGui::IsWindowHovered())

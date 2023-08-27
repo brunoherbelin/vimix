@@ -216,6 +216,7 @@ void Settings::Save(uint64_t runtime)
     // Pointer
     XMLElement *PointerNode = xmlDoc.NewElement( "MousePointer" );
     PointerNode->SetAttribute("mode", application.mouse_pointer);
+    PointerNode->SetAttribute("lock", application.mouse_pointer_lock);
     PointerNode->SetAttribute("proportional_grid", application.proportional_grid);
     for (size_t i = 0; i < application.mouse_pointer_strength.size(); ++i ) {
         float v = application.mouse_pointer_strength[i];
@@ -566,6 +567,7 @@ void Settings::Load()
     XMLElement * pointernode = pRoot->FirstChildElement("MousePointer");
     if (pointernode != nullptr) {
         pointernode->QueryIntAttribute("mode", &application.mouse_pointer);
+        pointernode->QueryBoolAttribute("lock", &application.mouse_pointer_lock);
         pointernode->QueryBoolAttribute("proportional_grid", &application.proportional_grid);
 
         XMLElement* strengthNode = pointernode->FirstChildElement("vec2");

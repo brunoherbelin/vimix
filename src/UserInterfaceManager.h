@@ -69,7 +69,7 @@ class Navigator
     void RenderMainPannelSettings();
     void RenderTransitionPannel();
     void RenderNewPannel();
-    void RenderViewPannel(ImVec2 draw_pos, ImVec2 draw_size);
+    void RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2 &size);
     void RenderMousePointerSelector(const ImVec2 &size);
 
 public:

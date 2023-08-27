@@ -386,62 +386,62 @@ View::Cursor LayerView::over (glm::vec2 pos)
 
 void LayerView::arrow (glm::vec2 movement)
 {
-    static float accumulator = 0.f;
-    accumulator += dt_;
+//    static float accumulator = 0.f;
+//    accumulator += dt_;
 
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-    glm::vec3 gl_Position_to   = Rendering::manager().unProject(glm::vec2(movement.x-movement.y, 0.f), scene.root()->transform_);
-    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+//    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
+//    glm::vec3 gl_Position_to   = Rendering::manager().unProject(glm::vec2(movement.x-movement.y, 0.f), scene.root()->transform_);
+//    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
 
-    bool first = true;
-    glm::vec3 delta_translation(0.f);
-    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+//    bool first = true;
+//    glm::vec3 delta_translation(0.f);
+//    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
 
-        // individual move with SHIFT
-        if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
-            continue;
+//        // individual move with SHIFT
+//        if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
+//            continue;
 
-        Group *sourceNode = (*it)->group(mode_);
-        glm::vec3 dest_translation(0.f);
+//        Group *sourceNode = (*it)->group(mode_);
+//        glm::vec3 dest_translation(0.f);
 
-        if (first) {
-            // dest starts at current
-            dest_translation = sourceNode->translation_;
+//        if (first) {
+//            // dest starts at current
+//            dest_translation = sourceNode->translation_;
 
-            // + ALT : discrete displacement
-            if (UserInterface::manager().altModifier()) {
-                if (accumulator > 100.f) {
-                    dest_translation += glm::sign(gl_delta) * 0.21f;
-                    dest_translation.x = ROUND(dest_translation.x, 10.f);
-                    accumulator = 0.f;
-                }
-                else
-                    break;
-            }
-            else {
-                // normal case: dest += delta
-                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
-                accumulator = 0.f;
-            }
+//            // + ALT : discrete displacement
+//            if (UserInterface::manager().altModifier()) {
+//                if (accumulator > 100.f) {
+//                    dest_translation += glm::sign(gl_delta) * 0.21f;
+//                    dest_translation.x = ROUND(dest_translation.x, 10.f);
+//                    accumulator = 0.f;
+//                }
+//                else
+//                    break;
+//            }
+//            else {
+//                // normal case: dest += delta
+//                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
+//                accumulator = 0.f;
+//            }
 
-            // store action in history
-            std::ostringstream info;
-            info << "Depth " << std::fixed << std::setprecision(2) << (*it)->depth() << "  ";
-            current_action_ = (*it)->name() + ": " + info.str();
+//            // store action in history
+//            std::ostringstream info;
+//            info << "Depth " << std::fixed << std::setprecision(2) << (*it)->depth() << "  ";
+//            current_action_ = (*it)->name() + ": " + info.str();
 
-            // delta for others to follow
-            delta_translation = dest_translation - sourceNode->translation_;
-        }
-        else {
-            // dest = current + delta from first
-            dest_translation = sourceNode->translation_ + delta_translation;
-        }
+//            // delta for others to follow
+//            delta_translation = dest_translation - sourceNode->translation_;
+//        }
+//        else {
+//            // dest = current + delta from first
+//            dest_translation = sourceNode->translation_ + delta_translation;
+//        }
 
-        // apply & request update
-        setDepth( *it,  MAX( -dest_translation.x, 0.f) );
+//        // apply & request update
+//        setDepth( *it,  MAX( -dest_translation.x, 0.f) );
 
-        first = false;
-    }
+//        first = false;
+//    }
 }
 
 
