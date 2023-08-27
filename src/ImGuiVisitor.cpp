@@ -810,7 +810,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         std::ostringstream oss;
         int f = 100 - int(s.session()->fading() * 100.f);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderInt("##Fading", &f, 0, 100, f > 99 ? "None" : "%d %%") )
+        if (ImGui::SliderInt("##Fading", &f, 0, 100, f > 99 ? ICON_FA_ADJUST " None" : ICON_FA_ADJUST " %d %%") )
             s.session()->setFadingTarget( float(100 - f) * 0.01f );
         if (ImGui::IsItemDeactivatedAfterEdit()){
             oss << s.name() << ": Fading " << f << " %";

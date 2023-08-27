@@ -505,7 +505,6 @@ void UserInterface::handleMouse()
                 // initiate Mouse pointer from position at mouse down event
                 MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
                 MousePointer::manager().active()->setStrength( Settings::application.mouse_pointer_strength[Settings::application.mouse_pointer] );
-                MousePointer::manager().active()->initiate(mousepos);
 
                 // ask the view what was picked
                 picked = Mixer::manager().view()->pick(mousepos);
@@ -517,6 +516,9 @@ void UserInterface::handleMouse()
                 }
                 // something was picked
                 else {
+                    // initiate the pointer effect
+                    MousePointer::manager().active()->initiate(mousepos);
+
                     // get if a source was picked
                     Source *s = Mixer::manager().findSource(picked.first);
                     if (s != nullptr)
@@ -585,42 +587,37 @@ void UserInterface::handleMouse()
             if (view_drag == Mixer::manager().view()) {
 
                 if ( picked.first != nullptr ) {
+
                     // Apply Mouse pointer filter
+                    // + scrollwheel changes strength
+                    if ( io.MouseWheel != 0) {
+                        MousePointer::manager().active()->incrementStrength(0.1 * io.MouseWheel);
+                        Settings::application.mouse_pointer_strength[Settings::application.mouse_pointer] = MousePointer::manager().active()->strength();
+                    }
                     MousePointer::manager().active()->update(mousepos, 1.f / ( MAX(io.Framerate, 1.f) ));
 
                     // action on current source
+                    View::Cursor c;
                     Source *current = Mixer::manager().currentSource();
                     if (current)
                     {
-                        if (!shift_modifier_active) {
-                            // grab others from selection
-                            for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
-                                if ( *it != current && !(*it)->locked() )
-                                    Mixer::manager().view()->grab(*it, mouseclic[ImGuiMouseButton_Left],
-                                                                  MousePointer::manager().active()->pos(), picked);
-                            }
-                        }
                         // grab current sources
-                        View::Cursor c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left],
-                                                                       MousePointer::manager().active()->pos(), picked);
-                        SetMouseCursor(io.MousePos, c);
-
-                        // scrollwheel changes strength of Mouse Pointer
-                        if ( io.MouseWheel != 0) {
-                            MousePointer::manager().active()->setStrength( MousePointer::manager().active()->strength() + 0.1 * io.MouseWheel);
-                            Settings::application.mouse_pointer_strength[Settings::application.mouse_pointer] = MousePointer::manager().active()->strength();
-                        }
-
-                        // Draw Mouse pointer effect
-                        MousePointer::manager().active()->draw();
+                        c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left],
+                                                          MousePointer::manager().active()->pos(), picked);
                     }
                     // action on other (non-source) elements in the view
                     else
                     {
-                        View::Cursor c = Mixer::manager().view()->grab(nullptr, mouseclic[ImGuiMouseButton_Left], mousepos, picked);
-                        SetMouseCursor(io.MousePos, c);
+                        // grab picked object
+                        c = Mixer::manager().view()->grab(nullptr, mouseclic[ImGuiMouseButton_Left],
+                                                          MousePointer::manager().active()->pos(), picked);
                     }
 
+                    // Set cursor appearance
+                    SetMouseCursor(io.MousePos, c);
+
+                    // Draw Mouse pointer effect
+                    MousePointer::manager().active()->draw();
 
                 }
                 // Selection area
@@ -650,6 +647,7 @@ void UserInterface::handleMouse()
         if (mousedown || view_drag)
             Mixer::manager().view()->terminate();
 
+
         view_drag = nullptr;
         mousedown = false;
     }
@@ -667,6 +665,7 @@ void UserInterface::handleMouse()
         mousedown = false;
         picked = { nullptr, glm::vec2(0.f) };
         Mixer::manager().view()->terminate();
+        MousePointer::manager().active()->terminate();
         SetMouseCursor(io.MousePos);
     }
 }
@@ -4622,7 +4621,7 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
 {
     ImGuiContext& g = *GImGui;
     ImVec2 top = ImGui::GetCursorPos();
-
+    bool enabled = Settings::application.current_view < View::TRANSITION;
     ///
     /// interactive button of the given size: show menu if clic or mouse over
     ///
@@ -4630,13 +4629,17 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
     if ( ImGui::InvisibleButton("##MenuMousePointerButton", size) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) ) {
 
         counter_menu_timeout=0;
-        ImGui::OpenPopup( "MenuMousePointer" );
+        if (enabled)
+            ImGui::OpenPopup( "MenuMousePointer" );
     }
     ImVec2 bottom = ImGui::GetCursorScreenPos();
 
     // Change color of icons depending on context menu status
     const ImVec4* colors = ImGui::GetStyle().Colors;
-    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsPopupOpen("MenuMousePointer") ? colors[ImGuiCol_DragDropTarget] : colors[ImGuiCol_Text] );
+    if (enabled)
+        ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsPopupOpen("MenuMousePointer") ? colors[ImGuiCol_DragDropTarget] : colors[ImGuiCol_Text] );
+    else
+        ImGui::PushStyleColor( ImGuiCol_Text, colors[ImGuiCol_TextDisabled] );
 
     // Draw centered icon of Mouse pointer
     ImVec2 margin = (size - ImVec2(g.FontSize, g.FontSize)) * 0.42f;
@@ -4709,6 +4712,8 @@ void Navigator::RenderMainPannelSettings()
         if (ImGui::RadioButton("##Color", &v, v)){
             Settings::application.accent_color = (v+1)%3;
             ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+            // ask Views to update
+            View::need_deep_update_++;
         }
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Change accent color");
@@ -4719,6 +4724,9 @@ void Navigator::RenderMainPannelSettings()
             Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 2.f);
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
         }
+        ImGuiToolkit::Indication("Scale the mouse pointer guiding grid to match aspect ratio.", ICON_FA_BORDER_NONE);
+        ImGui::SameLine();
+        ImGuiToolkit::ButtonSwitch( "Scaled grid", &Settings::application.proportional_grid);
 
         //
         // Recording preferences

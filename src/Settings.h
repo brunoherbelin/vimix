@@ -271,6 +271,7 @@ struct Application
     int  accent_color;
     bool save_version_snapshot;
     bool smooth_transition;
+    bool proportional_grid;
     int  mouse_pointer;
     std::vector<float> mouse_pointer_strength;
     bool action_history_follow_view;
@@ -337,6 +338,7 @@ struct Application
         accent_color = 0;
         smooth_transition = false;
         save_version_snapshot = false;
+        proportional_grid = true;
         mouse_pointer = 0;
         mouse_pointer_strength = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
         action_history_follow_view = false;

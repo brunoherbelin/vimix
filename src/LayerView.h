@@ -3,6 +3,14 @@
 
 #include "View.h"
 
+class LayerGrid : public Grid
+{
+    Switch *perspective_grids_;
+public:
+    LayerGrid(Group *parent);
+    Group *root () override;
+};
+
 class LayerView : public View
 {
 public:

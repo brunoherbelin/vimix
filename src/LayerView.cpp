@@ -78,11 +78,17 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     persp_right_->translation_.x = 1.f;
     scene.bg()->attach(persp_right_);
 
+    // replace grid with appropriate one
+    if (grid) delete grid;
+    grid = new LayerGrid(scene.root());
 }
 
 
 void LayerView::draw()
 {
+    // Display grid
+    grid->root()->visible_ = (grid->active() && current_action_ongoing_);
+
     View::draw();
 
     // initialize the verification of the selection
@@ -187,12 +193,16 @@ void LayerView::update(float dt)
         float s = CLAMP(scene.root()->scale_.x, LAYER_MIN_SCALE, LAYER_MAX_SCALE);
         scene.root()->scale_.x = s;
         scene.root()->scale_.y = s;
+
+        // change grid color
+        ImVec4 c = ImGuiToolkit::HighlightColor();
+        grid->setColor( glm::vec4(c.x, c.y, c.z, 0.3) );
     }
 
     if (Mixer::manager().view() == this )
     {
         // update the selection overlay
-        ImVec4 c = ImGuiToolkit::HighlightColor();
+        const ImVec4 c = ImGuiToolkit::HighlightColor();
         updateSelectionOverlay(glm::vec4(c.x, c.y, c.z, c.w));
     }
 
@@ -318,12 +328,25 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     // compute delta translation
     glm::vec3 dest_translation = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
-    // discretized translation with ALT
-    if (UserInterface::manager().altModifier())
-        dest_translation.x = ROUND(dest_translation.x, 5.f);
+    // snap to grid (polar)
+    if (grid->active())
+        dest_translation = grid->snap(dest_translation * 0.5f) * 2.f;
 
     // apply change
     float d = setDepth( s,  MAX( -dest_translation.x, 0.f) );
+
+    //
+    // grab all others in selection
+    //
+    // compute effective depth translation of current source s
+    float dp = s->group(mode_)->translation_.z - s->stored_status_->translation_.z;
+    // loop over selection
+    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+        if ( *it != s && !(*it)->locked() ) {
+            // set depth and request update
+            setDepth( *it, (*it)->stored_status_->translation_.z + dp);
+        }
+    }
 
     // store action in history
     std::ostringstream info;
@@ -437,3 +460,59 @@ void LayerView::updateSelectionOverlay(glm::vec4 color)
         overlay_selection_frame_->scale_ = glm::vec3(1.f) + glm::vec3(0.07f, 0.07f, 1.f) / overlay_selection_->scale_;
     }
 }
+
+LayerGrid::LayerGrid(Group *parent) : Grid(parent)
+{
+    root_ = new Group;
+    root_->visible_ = false;
+    parent_->attach(root_);
+
+    // create custom grids specific for layers in diagonal
+    perspective_grids_ = new Switch;
+    root_->attach(perspective_grids_);
+
+    // Generate groups for all units
+    for (uint u = UNIT_PRECISE; u <= UNIT_ONE; u = u + 1) {
+        Group *g = new Group;
+        float d = MIN_DEPTH;
+        // Fill background
+        for (; d < LAYER_BACKGROUND ; d += Grid::ortho_units_[u] * 2.f) {
+            HLine *l = new HLine(3.f);
+            l->translation_.x = -d +1.f;
+            l->translation_.y = -d / LAYER_PERSPECTIVE - 1.f;
+            l->scale_.x = 3.5f;
+            g->attach(l);
+        }
+        // Fill workspace
+        for (; d < LAYER_FOREGROUND ; d += Grid::ortho_units_[u] * 2.f) {
+            HLine *l = new HLine(3.f);
+            l->translation_.x = -d +1.f;
+            l->translation_.y = -d / LAYER_PERSPECTIVE - 1.15f;
+            l->scale_.x = 3.5f;
+            g->attach(l);
+        }
+        // Fill foreground
+        for (; d < MAX_DEPTH ; d += Grid::ortho_units_[u] * 2.f) {
+            HLine *l = new HLine(3.f);
+            l->translation_.x = -d +1.f;
+            l->translation_.y = -d / LAYER_PERSPECTIVE - 1.3f;
+            l->scale_.x = 3.5f;
+            g->attach(l);
+        }
+        // add this group to the grids
+        perspective_grids_->attach(g);
+    }
+
+    // not visible at init
+//    setColor( glm::vec4(0.f) );
+}
+
+Group *LayerGrid::root ()
+{
+    //adjust the grid to the unit scale
+    perspective_grids_->setActive(unit_);
+
+    // return the node to draw
+    return root_;
+}
+

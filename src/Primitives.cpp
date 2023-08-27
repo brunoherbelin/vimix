@@ -466,7 +466,7 @@ float LineGrid::lineWidth() const
     return 0.f;
 }
 
-LineStrip::LineStrip(const std::vector<glm::vec2> &path, float linewidth) : Primitive(new Shader),
+LineStrip::LineStrip(const std::vector<glm::vec2> &path, float linewidth, Shader *s) : Primitive(s),
     arrayBuffer_(0), path_(path)
 {
     linewidth_ = 0.002f * linewidth;
@@ -558,6 +558,9 @@ void LineStrip::init()
 
 void LineStrip::updatePath()
 {
+    if (!vao_)
+        return;
+
     // redo points_ array
     points_.clear();
     for(size_t i = 1; i < path_.size(); ++i)
@@ -621,7 +624,7 @@ void LineStrip::accept(Visitor& v)
 }
 
 
-LineLoop::LineLoop(const std::vector<glm::vec2> &path, float linewidth) : LineStrip(path, linewidth)
+LineLoop::LineLoop(const std::vector<glm::vec2> &path, float linewidth, Shader *s) : LineStrip(path, linewidth, s)
 {
     // close linestrip loop
     glm::vec3 begin = glm::vec3(path_[path_.size()-1], 0.f);
@@ -648,6 +651,9 @@ LineLoop::LineLoop(const std::vector<glm::vec2> &path, float linewidth) : LineSt
 
 void LineLoop::updatePath()
 {
+    if (!vao_)
+        return;
+
     glm::vec3 begin;
     glm::vec3 end;
     glm::vec3 dir;
@@ -690,19 +696,154 @@ void LineLoop::updatePath()
     bbox_.extend(points_);
 }
 
-#define LINE_CIRCLE_DENSITY 72
+// statically defined line loop drawing a circle (72 points)
+std::vector<glm::vec2> _circle_loop = {
+    {1.000000, 0.000000},
+    {0.996087, 0.088380},
+    {0.984378, 0.176069},
+    {0.964965, 0.262379},
+    {0.938000, 0.346636},
+    {0.903694, 0.428180},
+    {0.862315, 0.506373},
+    {0.814187, 0.580603},
+    {0.759687, 0.650289},
+    {0.699242, 0.714885},
+    {0.633324, 0.773887},
+    {0.562449, 0.826832},
+    {0.487173, 0.873306},
+    {0.408084, 0.912945},
+    {0.325801, 0.945439},
+    {0.240968, 0.970533},
+    {0.154249, 0.988032},
+    {0.066323, 0.997798},
+    {-0.022122, 0.999756},
+    {-0.110394, 0.993888},
+    {-0.197802, 0.980242},
+    {-0.283662, 0.958925},
+    {-0.367302, 0.930102},
+    {-0.448067, 0.894000},
+    {-0.525325, 0.850902},
+    {-0.598472, 0.801144},
+    {-0.666936, 0.745116},
+    {-0.730179, 0.683256},
+    {-0.787708, 0.616049},
+    {-0.839072, 0.544021},
+    {-0.883869, 0.467734},
+    {-0.921749, 0.387788},
+    {-0.952415, 0.304806},
+    {-0.975627, 0.219439},
+    {-0.991203, 0.132354},
+    {-0.999022, 0.044233},
+    {-0.999022, -0.044233},
+    {-0.991203, -0.132354},
+    {-0.975627, -0.219439},
+    {-0.952415, -0.304806},
+    {-0.921749, -0.387788},
+    {-0.883870, -0.467734},
+    {-0.839072, -0.544021},
+    {-0.787708, -0.616049},
+    {-0.730179, -0.683256},
+    {-0.666936, -0.745116},
+    {-0.598473, -0.801144},
+    {-0.525325, -0.850902},
+    {-0.448067, -0.894001},
+    {-0.367302, -0.930102},
+    {-0.283662, -0.958925},
+    {-0.197802, -0.980243},
+    {-0.110394, -0.993888},
+    {-0.022122, -0.999756},
+    {0.066323, -0.997799},
+    {0.154249, -0.988033},
+    {0.240968, -0.970534},
+    {0.325801, -0.945439},
+    {0.408084, -0.912945},
+    {0.487173, -0.873306},
+    {0.562450, -0.826832},
+    {0.633324, -0.773887},
+    {0.699242, -0.714886},
+    {0.759688, -0.650289},
+    {0.814188, -0.580603},
+    {0.862315, -0.506373},
+    {0.903694, -0.428180},
+    {0.938001, -0.346636},
+    {0.964966, -0.262379},
+    {0.984379, -0.176068},
+    {0.996088, -0.088380}
+};
 
-LineCircle::LineCircle(float linewidth) : LineLoop(std::vector<glm::vec2>(LINE_CIRCLE_DENSITY), linewidth)
+LineCircle::LineCircle(float linewidth, Shader *s) : LineLoop(_circle_loop, linewidth, s)
 {
-    static float a =  glm::two_pi<float>() / static_cast<float>(LINE_CIRCLE_DENSITY-1);
-    // loop to build a circle
-    glm::vec3 P(1.f, 0.f, 0.f);
+    //    static float a =  glm::two_pi<float>() / static_cast<float>(LINE_CIRCLE_DENSITY-1);
+    //    // loop to build a circle
+    //    glm::vec3 P(1.f, 0.f, 0.f);
 
-    for (int i = 0; i < LINE_CIRCLE_DENSITY - 1; i++ ){
-        path_[i] = glm::vec2(P);
-        P = glm::rotateZ(P, a);
-    }
-    updatePath();
+    //    for (int i = 0; i < LINE_CIRCLE_DENSITY - 1; i++ ){
+    //        path_[i] = glm::vec2(P);
+    //        g_printerr("{%f, %f},\n", path_[i].x, path_[i].y);
+    //        P = glm::rotateZ(P, a);
+    //    }
 }
 
+
+LineCircleGrid::LineCircleGrid(float angle_step, size_t N, float step, float linewidth)
+{
+    shader__ = new Shader;
+    N = MAX(1, N);
+    step = MAX(0.01, step);
+
+    // Draw N concentric circles
+    for (size_t n = 1; n < N ; ++n) {
+        float scale = (float) n * step;
+        LineCircle *l = new LineCircle(linewidth / scale, shader__);
+        l->scale_ = glm::vec3( scale, scale, 1.f);
+        // add cirle to group
+        attach(l);
+    }
+
+    // Draw radius lines every angle step
+    glm::vec3 O(0.f, 0.f, 0.f);
+    glm::vec3 P(1.f, 0.f, 0.f);
+    std::vector<glm::vec2> points;
+    for (int a = 0 ; a < (int)( (2.f * M_PI) / angle_step ) + 1 ; ++a ){
+        points.push_back(O);
+        P = glm::rotateZ(P, angle_step);
+        points.push_back(P);
+    }
+    // add to group
+    LineStrip *radius = new LineStrip(points, linewidth * 0.5f, shader__);
+    radius->scale_ = glm::vec3( glm::vec2( (float) N * step ), 1.f);
+    attach(radius);
+}
+
+LineCircleGrid::~LineCircleGrid()
+{
+    // prevent nodes from deleting the shader
+    for (NodeSet::iterator node = begin(); node != end(); ++node) {
+        Primitive *p = dynamic_cast<Primitive *>(*node);
+        if (p)
+            p->replaceShader(nullptr);
+    }
+    delete shader__;
+}
+
+void LineCircleGrid::setLineWidth(float v)
+{
+    for (NodeSet::iterator node = begin(); node != end(); ++node) {
+        LineStrip *vl = dynamic_cast<LineStrip *>(*node);
+        if (vl)
+            vl->setLineWidth(v);
+    }
+}
+
+float LineCircleGrid::lineWidth() const
+{
+    Node *n = front();
+
+    if (n) {
+        LineStrip *vl = dynamic_cast<LineStrip *>(n);
+        if (vl)
+            return vl->lineWidth();
+    }
+    return 0.f;
+}
 

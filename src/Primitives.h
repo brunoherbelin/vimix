@@ -175,7 +175,7 @@ public:
 class LineStrip : public Primitive {
 
 public:
-    LineStrip(const std::vector<glm::vec2> &path, float linewidth = 1.f);
+    LineStrip(const std::vector<glm::vec2> &path, float linewidth = 1.f, Shader *s = new Shader);
     virtual ~LineStrip();
 
     virtual void init () override;
@@ -202,7 +202,7 @@ protected:
 class LineLoop : public LineStrip {
 
 public:
-    LineLoop(const std::vector<glm::vec2> &path, float linewidth = 1.f);
+    LineLoop(const std::vector<glm::vec2> &path, float linewidth = 1.f, Shader *s = new Shader);
 
 protected:
     void updatePath() override;
@@ -215,10 +215,28 @@ protected:
 class LineCircle : public LineLoop {
 
 public:
-    LineCircle(float linewidth = 1.f);
+    LineCircle(float linewidth = 1.f, Shader *s = new Shader);
 
 };
 
+
+/**
+ * @brief The LineCircle class is a circular LineLoop (diameter = 1.0)
+ */
+class LineCircleGrid : public Group {
+
+    Shader *shader__;
+
+public:
+    LineCircleGrid(float angle_step, size_t N, float step, float linewidth = 1.f);
+    ~LineCircleGrid();
+
+    void setLineWidth(float v);
+    float lineWidth() const;
+
+    inline void setColor(glm::vec4 c) { shader__->color = c; }
+    inline glm::vec4 color() const { return shader__->color; }
+};
 
 
 #endif // PRIMITIVES_H

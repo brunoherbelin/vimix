@@ -1041,8 +1041,8 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
     return ret;
 }
 
-View::Cursor DisplaysView::over (glm::vec2 pos)
-{
+//View::Cursor DisplaysView::over (glm::vec2 pos, bool)
+//{
 //    output_zoomarea_->visible_ = false;
 
 //    if ( display_action_ == 2 ) {
@@ -1116,8 +1116,8 @@ View::Cursor DisplaysView::over (glm::vec2 pos)
 
 //    }
 
-    return Cursor();
-}
+//    return Cursor();
+//}
 
 bool DisplaysView::doubleclic (glm::vec2 P)
 {

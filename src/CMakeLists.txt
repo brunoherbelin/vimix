@@ -97,6 +97,7 @@ set(VMIX_SRCS
     DisplaysView.cpp
     ScreenCaptureSource.cpp
     MousePointer.cpp
+    Grid.cpp
 )
 
 #####

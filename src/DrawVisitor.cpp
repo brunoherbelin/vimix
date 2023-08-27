@@ -24,7 +24,6 @@
 #include "Decorations.h"
 #include "defines.h"
 #include "Scene.h"
-#include "Primitives.h"
 
 #include "DrawVisitor.h"
 
@@ -64,6 +63,7 @@ void DrawVisitor::visit(Node &n)
     // found this node in the list of targets: draw it
     if (it != targets_.end()) {
 
+        // remove this node from list of targets
         targets_.erase(it);
 
         for (int i = 0; i < num_duplicat_; ++i) {
@@ -76,6 +76,7 @@ void DrawVisitor::visit(Node &n)
     // restore visibility
     n.visible_ = v;
 
+    // no need to traverse deeper if alls nodes were drawn
     if (targets_.empty()) return;
 
     // update transform
@@ -85,7 +86,7 @@ void DrawVisitor::visit(Node &n)
 
 void DrawVisitor::visit(Group &n)
 {
-    // no need to traverse deeper if this node was drawn already
+    // no need to traverse deeper if alls nodes were drawn
     if (targets_.empty()) return;
 
     // traverse children
@@ -105,7 +106,7 @@ void DrawVisitor::visit(Scene &n)
 
 void DrawVisitor::visit(Switch &n)
 {
-    // no need to traverse deeper if this node was drawn already
+    // no need to traverse deeper if alls nodes were drawn
     if (targets_.empty()) return;
 
     // traverse acive child
@@ -144,7 +145,9 @@ void ColorVisitor::visit(Scene &n)
 
 void ColorVisitor::visit(Switch &n)
 {
-    n.activeChild()->accept(*this);
+    for (uint c = 0; c < n.numChildren(); ++c) {
+        n.child(c)->accept(*this);
+    }
 }
 
 void ColorVisitor::visit(Primitive &p)
