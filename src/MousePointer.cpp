@@ -62,32 +62,32 @@ void PointerGrid::terminate()
 
 void PointerLinear::update(const glm::vec2 &pos, float dt)
 {
+    current_ = pos;
+
     float speed = POINTER_LINEAR_MIN_SPEED + (POINTER_LINEAR_MAX_SPEED - POINTER_LINEAR_MIN_SPEED) * strength_;
 
-    glm::vec2 delta = pos - pos_ ;
+    glm::vec2 delta = pos - target_ ;
     if (glm::length(delta) > 10.f )
-        pos_ += glm::normalize(delta) * (speed * dt);
+        target_ += glm::normalize(delta) * (speed * dt);
 }
 
 void PointerLinear::draw()
 {
-    ImGuiIO& io = ImGui::GetIO();
     const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
-    const glm::vec2 start = glm::vec2( io.MousePos.x, io.MousePos.y);
-    const ImVec2 _end = IMVEC(pos_);
+    const ImVec2 _end = IMVEC(target_);
 
     // draw line
-    ImGui::GetBackgroundDrawList()->AddLine(io.MousePos, _end, color, POINTER_LINEAR_THICKNESS);
+    ImGui::GetBackgroundDrawList()->AddLine(IMVEC(current_), _end, color, POINTER_LINEAR_THICKNESS);
     ImGui::GetBackgroundDrawList()->AddCircleFilled(_end, 6.0, color);
 
     // direction vector
-    glm::vec2 delta = start - pos_;
+    glm::vec2 delta = current_ - target_;
     float l = glm::length(delta);
     delta = glm::normalize( delta );
 
     // draw dots regularly to show speed
     for (float p = 0.f; p < l; p += 200.f * (strength_ + 0.1f)) {
-        glm::vec2 point = start - delta * p;
+        glm::vec2 point = current_ - delta * p;
         ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC(point), 4.0, color);
     }
 
@@ -96,9 +96,9 @@ void PointerLinear::draw()
         glm::vec2 ortho = glm::normalize( glm::vec2( glm::cross( glm::vec3(delta, 0.f), glm::vec3(0.f, 0.f, 1.f)) ));
         ortho *= POINTER_LINEAR_ARROW;
         delta *= POINTER_LINEAR_ARROW;
-        const glm::vec2 pointA = start - delta + ortho * 0.5f;
-        const glm::vec2 pointB = start - delta - ortho * 0.5f;
-        ImGui::GetBackgroundDrawList()->AddTriangleFilled(io.MousePos, IMVEC(pointA), IMVEC(pointB), color);
+        const glm::vec2 pointA = current_ - delta + ortho * 0.5f;
+        const glm::vec2 pointB = current_ - delta - ortho * 0.5f;
+        ImGui::GetBackgroundDrawList()->AddTriangleFilled(IMVEC(current_), IMVEC(pointA), IMVEC(pointB), color);
     }
 }
 
@@ -108,6 +108,7 @@ void PointerLinear::draw()
 
 void PointerWiggly::update(const glm::vec2 &pos, float)
 {
+    current_ = pos;
     float radius = POINTER_WIGGLY_MIN_RADIUS + (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
 
     // change pos to a random point in a close radius
@@ -115,39 +116,38 @@ void PointerWiggly::update(const glm::vec2 &pos, float)
 
     // smooth a little and apply
     const float emaexp = 2.0 / float( POINTER_WIGGLY_SMOOTHING + 1);
-    pos_ = emaexp * p + (1.f - emaexp) * pos_;
+    target_ = emaexp * p + (1.f - emaexp) * target_;
 }
 
 void PointerWiggly::draw()
 {
-    ImGuiIO& io = ImGui::GetIO();
     const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
-    ImGui::GetBackgroundDrawList()->AddLine(io.MousePos, IMVEC(pos_), color, 5.f);
+    ImGui::GetBackgroundDrawList()->AddLine(IMVEC(current_), IMVEC(target_), color, 5.f);
 
     const float radius = POINTER_WIGGLY_MIN_RADIUS + (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
-    ImGui::GetBackgroundDrawList()->AddCircle(io.MousePos, radius * 0.5f, color, 0, 2.f + 4.f * strength_);
+    ImGui::GetBackgroundDrawList()->AddCircle(IMVEC(current_), radius * 0.5f, color, 0, 2.f + 4.f * strength_);
 }
 
 #define POINTER_METRONOME_RADIUS 30.f
 
 void PointerMetronome::update(const glm::vec2 &pos, float dt)
 {
+    current_ = pos;
     if ( Metronome::manager().timeToBeat() < std::chrono::milliseconds( (uint)floor(dt * 1000.f) )) {
-        pos_ = pos;
+        target_ = pos;
     }
 }
 
 void PointerMetronome::draw()
 {
-    ImGuiIO& io = ImGui::GetIO();
     const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
-    ImGui::GetBackgroundDrawList()->AddLine(io.MousePos, IMVEC(pos_), color, 4.f);
-    ImGui::GetBackgroundDrawList()->AddCircle(io.MousePos, POINTER_METRONOME_RADIUS, color, 0, 3.f);
-    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC(pos_), 6.0, color);
+    ImGui::GetBackgroundDrawList()->AddLine(IMVEC(current_), IMVEC(target_), color, 4.f);
+    ImGui::GetBackgroundDrawList()->AddCircle(IMVEC(current_), POINTER_METRONOME_RADIUS, color, 0, 3.f);
+    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC(target_), 6.0, color);
 
     double t = Metronome::manager().phase();
     t -= floor(t);
-    ImGui::GetBackgroundDrawList()->AddCircleFilled(io.MousePos, t * POINTER_METRONOME_RADIUS, color, 0);
+    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC(current_), t * POINTER_METRONOME_RADIUS, color, 0);
 }
 
 #define POINTER_SPRING_MIN_MASS 6.f
@@ -161,6 +161,8 @@ void PointerSpring::initiate(const glm::vec2 &pos)
 
 void PointerSpring::update(const glm::vec2 &pos, float dt)
 {
+    current_ = pos;
+
     // percentage of loss of energy at every update
     const float viscousness = 0.75;
     // force applied on the mass, as percent of the Maximum mass
@@ -171,13 +173,13 @@ void PointerSpring::update(const glm::vec2 &pos, float dt)
     const float mass = POINTER_SPRING_MAX_MASS - (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
 
     // compute delta betwen initial and current position
-    glm::vec2 delta = pos - pos_;
+    glm::vec2 delta = pos - target_;
     // apply force on velocity : spring stiffness / mass
     velocity_ += delta * ( (POINTER_SPRING_MAX_MASS * stiffness) / mass );
     // apply damping dynamics
     velocity_ -= damping * dt * glm::normalize(delta);
     // compute new position : add velocity x time
-    pos_ += dt * velocity_;
+    target_ += dt * velocity_;
     // diminish velocity by viscousness of substrate
     // (loss of energy between updates)
     velocity_ *= viscousness;
@@ -185,31 +187,29 @@ void PointerSpring::update(const glm::vec2 &pos, float dt)
 
 void PointerSpring::draw()
 {
-    ImGuiIO& io = ImGui::GetIO();
     const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
+    const glm::vec2 delta = target_ - current_;
 
-    glm::vec2 _start = glm::vec2( io.MousePos.x, io.MousePos.y );
-    const glm::vec2 delta = pos_ - _start;
     glm::vec2 ortho = glm::normalize( glm::vec2( glm::cross( glm::vec3(delta, 0.f), glm::vec3(0.f, 0.f, 1.f)) ));
     ortho *= 0.05f * glm::length( velocity_ );
 
     // draw a wave with 3 bezier
-    glm::vec2 _third = _start + delta * 1.f / 9.f + ortho;
-    glm::vec2 _twothird = _start + delta * 2.f / 9.f - ortho;
-    glm::vec2 _end = _start + delta * 3.f / 9.f;
-    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC(_start), IMVEC(_third), IMVEC(_twothird), IMVEC(_end), color, 5.f);
+    glm::vec2 _third = current_ + delta * 1.f / 9.f + ortho;
+    glm::vec2 _twothird = current_ + delta * 2.f / 9.f - ortho;
+    glm::vec2 _end = current_ + delta * 3.f / 9.f;
+    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC(current_), IMVEC(_third), IMVEC(_twothird), IMVEC(_end), color, 5.f);
 
-    _start = _end;
-    _third = _start + delta  * 1.f / 9.f + ortho;
-    _twothird = _start + delta * 2.f / 9.f - ortho;
-    _end = _start + delta * 3.f / 9.f;
-    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC(_start), IMVEC(_third), IMVEC(_twothird), IMVEC(_end), color, 5.f);
+    current_ = _end;
+    _third = current_ + delta  * 1.f / 9.f + ortho;
+    _twothird = current_ + delta * 2.f / 9.f - ortho;
+    _end = current_ + delta * 3.f / 9.f;
+    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC(current_), IMVEC(_third), IMVEC(_twothird), IMVEC(_end), color, 5.f);
 
-    _start = _end;
-    _third = _start + delta  * 1.f / 9.f + ortho;
-    _twothird = _start + delta * 2.f / 9.f - ortho;
-    _end = pos_;
-    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC(_start), IMVEC(_third), IMVEC(_twothird), IMVEC(_end), color, 5.f);
+    current_ = _end;
+    _third = current_ + delta  * 1.f / 9.f + ortho;
+    _twothird = current_ + delta * 2.f / 9.f - ortho;
+    _end = target_;
+    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC(current_), IMVEC(_third), IMVEC(_twothird), IMVEC(_end), color, 5.f);
 
     // represent the weight with a filled circle
     const float mass = POINTER_SPRING_MAX_MASS - (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;

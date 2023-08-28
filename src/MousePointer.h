@@ -40,10 +40,10 @@ public:
 
     Pointer() : strength_(0.5) {}
     virtual ~Pointer() {}
-    inline glm::vec2 pos() { return pos_; }
+    inline glm::vec2 pos() { return target_; }
 
-    virtual void initiate(const glm::vec2 &pos) { pos_ = pos; }
-    virtual void update(const glm::vec2 &pos, float) { pos_ = pos; }
+    virtual void initiate(const glm::vec2 &pos) { current_ = target_ = pos; }
+    virtual void update(const glm::vec2 &pos, float) { current_ = target_ = pos; }
     virtual void terminate() {}
     virtual void draw() {}
 
@@ -52,7 +52,8 @@ public:
     inline float strength() const             { return strength_; }
 
 protected:
-    glm::vec2 pos_;
+    glm::vec2 current_;
+    glm::vec2 target_;
     float strength_;
 };
 
