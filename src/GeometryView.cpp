@@ -40,6 +40,7 @@
 #include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
+#include "MousePointer.h"
 
 #include "GeometryView.h"
 
@@ -1246,10 +1247,15 @@ void GeometryView::terminate(bool force)
     adaptGridToSource();
 }
 
+#define MAX_DURATION 1000.f
+#define MIN_SPEED_A 0.005f
+#define MAX_SPEED_A 0.5f
+
 void GeometryView::arrow (glm::vec2 movement)
 {
-    static float accumulator = 0.f;
-    accumulator += dt_ * 0.2f;
+    static float _duration = 0.f;
+    static glm::vec2 _from(0.f);
+    static glm::vec2 _displacement(0.f);
 
     Source *current = Mixer::manager().currentSource();
 
@@ -1260,89 +1266,54 @@ void GeometryView::arrow (glm::vec2 movement)
 
         if (current_action_ongoing_) {
 
-            glm::vec2 Position_from = glm::vec2( Rendering::manager().project(current->stored_status_->translation_, scene.root()->transform_) );
-            glm::vec2 Position_to   = Position_from + movement * accumulator;
+            // add movement to displacement
+            _duration += dt_;
+            const float speed = MIN_SPEED_A + (MAX_SPEED_A - MIN_SPEED_A) * glm::min(1.f,_duration / MAX_DURATION);
+            _displacement += movement * dt_ * speed;
 
-            grab(current, Position_from, Position_to, std::make_pair(current->group(mode_), glm::vec2(0.f) ) );
+            // set coordinates of target
+            glm::vec2 _to  = _from + _displacement;
 
+            // update mouse pointer action
+            MousePointer::manager().active()->update(_to, dt_ / 1000.f);
+
+            // simulate mouse grab
+            grab(current, _from, MousePointer::manager().active()->target(),
+                 std::make_pair(current->group(mode_), glm::vec2(0.f) ) );
+
+            // draw mouse pointer effect
+            MousePointer::manager().active()->draw();
         }
         else {
 
+            if (UserInterface::manager().altModifier() || Settings::application.mouse_pointer_lock)
+                MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
+            else
+                MousePointer::manager().setActiveMode( Pointer::POINTER_DEFAULT );
+
+            // reset
+            _duration = 0.f;
+            _displacement = glm::vec2(0.f);
+
+            // initiate view action and store status of source
             initiate();
-            accumulator = 0.f;
 
-            adaptGridToSource(current);
+            // get coordinates of source and set this as start of mouse position
+            _from = glm::vec2( Rendering::manager().project(current->group(mode_)->translation_, scene.root()->transform_) );
 
+            // Initiate mouse pointer action
+            MousePointer::manager().active()->initiate(_from);
         }
-
     }
-    else
+    else {
         terminate(true);
 
+        // reset
+        _duration = 0.f;
+        _from = glm::vec2(0.f);
+        _displacement = glm::vec2(0.f);
+    }
 
-
-//    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-//    glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
-//    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
-
-//    bool first = true;
-//    glm::vec3 delta_translation(0.f);
-//    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
-
-
-//        Group *sourceNode = (*it)->group(mode_);
-//        glm::vec3 dest_translation(0.f);
-
-//        if (first) {
-//            // dest starts at current
-//            dest_translation = sourceNode->translation_;
-
-//            // + ALT : discrete displacement
-//            if (UserInterface::manager().altModifier()) {
-//                if (accumulator > 100.f) {
-//                    // precise movement with SHIFT
-//                    if ( UserInterface::manager().shiftModifier() ) {
-//                        dest_translation += glm::sign(gl_delta) * 0.0011f;
-//                        dest_translation.x = ROUND(dest_translation.x, 1000.f);
-//                        dest_translation.y = ROUND(dest_translation.y, 1000.f);
-//                    }
-//                    else {
-//                        dest_translation += glm::sign(gl_delta) * 0.11f;
-//                        dest_translation.x = ROUND(dest_translation.x, 10.f);
-//                        dest_translation.y = ROUND(dest_translation.y, 10.f);
-//                    }
-//                    accumulator = 0.f;
-//                }
-//                else
-//                    break;
-//            }
-//            else
-//            {
-//                // normal case: dest += delta
-//                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
-//                accumulator = 0.f;
-//            }
-
-//            // store action in history
-//            std::ostringstream info;
-//            info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
-//            info << ", "  << sourceNode->translation_.y ;
-//            current_action_ = (*it)->name() + ": " + info.str();
-
-//            // delta for others to follow
-//            delta_translation = dest_translation - sourceNode->translation_;
-//        }
-//        else {
-//            // dest = current + delta from first
-//            dest_translation = sourceNode->translation_ + delta_translation;
-//        }
-
-//        // apply & request update
-//        sourceNode->translation_ = dest_translation;
-//        (*it)->touch();
-
-//        first = false;
-//    }
 }
 
 void GeometryView::updateSelectionOverlay(glm::vec4 color)

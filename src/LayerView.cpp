@@ -38,6 +38,7 @@
 #include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
+#include "MousePointer.h"
 
 #include "LayerView.h"
 
@@ -386,62 +387,63 @@ View::Cursor LayerView::over (glm::vec2 pos)
 
 void LayerView::arrow (glm::vec2 movement)
 {
-//    static float accumulator = 0.f;
-//    accumulator += dt_;
+    static glm::vec2 _from(0.f);
+    static glm::vec2 _displacement(0.f);
 
-//    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-//    glm::vec3 gl_Position_to   = Rendering::manager().unProject(glm::vec2(movement.x-movement.y, 0.f), scene.root()->transform_);
-//    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+    Source *current = Mixer::manager().currentSource();
 
-//    bool first = true;
-//    glm::vec3 delta_translation(0.f);
-//    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+    if (!current && !Mixer::selection().empty())
+        Mixer::manager().setCurrentSource( Mixer::selection().back() );
 
-//        // individual move with SHIFT
-//        if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
-//            continue;
+    if (current) {
 
-//        Group *sourceNode = (*it)->group(mode_);
-//        glm::vec3 dest_translation(0.f);
+        if (current_action_ongoing_) {
 
-//        if (first) {
-//            // dest starts at current
-//            dest_translation = sourceNode->translation_;
+            // add movement to displacement
+            movement.x += movement.y * -0.5f;
+            _displacement += glm::vec2(movement.x, -0.5f * movement.x) * dt_ * 0.2f;
 
-//            // + ALT : discrete displacement
-//            if (UserInterface::manager().altModifier()) {
-//                if (accumulator > 100.f) {
-//                    dest_translation += glm::sign(gl_delta) * 0.21f;
-//                    dest_translation.x = ROUND(dest_translation.x, 10.f);
-//                    accumulator = 0.f;
-//                }
-//                else
-//                    break;
-//            }
-//            else {
-//                // normal case: dest += delta
-//                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
-//                accumulator = 0.f;
-//            }
+            // set coordinates of target
+            glm::vec2 _to  = _from + _displacement;
 
-//            // store action in history
-//            std::ostringstream info;
-//            info << "Depth " << std::fixed << std::setprecision(2) << (*it)->depth() << "  ";
-//            current_action_ = (*it)->name() + ": " + info.str();
+            // update mouse pointer action
+            MousePointer::manager().active()->update(_to, dt_ / 1000.f);
 
-//            // delta for others to follow
-//            delta_translation = dest_translation - sourceNode->translation_;
-//        }
-//        else {
-//            // dest = current + delta from first
-//            dest_translation = sourceNode->translation_ + delta_translation;
-//        }
+            // simulate mouse grab
+            grab(current, _from, MousePointer::manager().active()->target(),
+                 std::make_pair(current->group(mode_), glm::vec2(0.f) ) );
 
-//        // apply & request update
-//        setDepth( *it,  MAX( -dest_translation.x, 0.f) );
+            // draw mouse pointer effect
+            MousePointer::manager().active()->draw();
+        }
+        else {
 
-//        first = false;
-//    }
+            if (UserInterface::manager().altModifier() || Settings::application.mouse_pointer_lock)
+                MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
+            else
+                MousePointer::manager().setActiveMode( Pointer::POINTER_DEFAULT );
+
+            // initiate view action and store status of source
+            initiate();
+
+            // get coordinates of source and set this as start of mouse position
+            _from = glm::vec2( Rendering::manager().project(current->group(mode_)->translation_, scene.root()->transform_) );
+            _displacement = glm::vec2(0.f);
+
+            // Initiate mouse pointer action
+            MousePointer::manager().active()->initiate(_from);
+        }
+
+    }
+    else {
+
+        terminate(true);
+
+        _from = glm::vec2(0.f);
+        _displacement = glm::vec2(0.f);
+
+    }
+
 }
 
 

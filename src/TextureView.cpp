@@ -40,6 +40,7 @@
 #include "UserInterfaceManager.h"
 #include "ActionManager.h"
 #include "DialogToolkit.h"
+#include "MousePointer.h"
 
 #include "TextureView.h"
 
@@ -1531,8 +1532,71 @@ void TextureView::terminate(bool force)
     adaptGridToSource();
 }
 
+#define MAX_DURATION 1000.f
+#define MIN_SPEED_A 0.005f
+#define MAX_SPEED_A 0.5f
+
 void TextureView::arrow (glm::vec2 movement)
 {
+    static float _duration = 0.f;
+    static glm::vec2 _from(0.f);
+    static glm::vec2 _displacement(0.f);
+
+    Source *current = Mixer::manager().currentSource();
+
+    if (!current && !Mixer::selection().empty())
+        Mixer::manager().setCurrentSource( Mixer::selection().back() );
+
+    if (current) {
+
+        if (current_action_ongoing_) {
+
+            // add movement to displacement
+            _duration += dt_;
+            const float speed = MIN_SPEED_A + (MAX_SPEED_A - MIN_SPEED_A) * glm::min(1.f,_duration / MAX_DURATION);
+            _displacement += movement * dt_ * speed;
+
+            // set coordinates of target
+            glm::vec2 _to  = _from + _displacement;
+
+            // update mouse pointer action
+            MousePointer::manager().active()->update(_to, dt_ / 1000.f);
+
+            // simulate mouse grab
+            grab(current, _from, MousePointer::manager().active()->target(),
+                 std::make_pair(current->group(mode_), glm::vec2(0.f) ) );
+
+            // draw mouse pointer effect
+            MousePointer::manager().active()->draw();
+        }
+        else {
+
+            if (UserInterface::manager().altModifier() || Settings::application.mouse_pointer_lock)
+                MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
+            else
+                MousePointer::manager().setActiveMode( Pointer::POINTER_DEFAULT );
+
+            // initiate view action and store status of source
+            initiate();
+
+            // get coordinates of source and set this as start of mouse position
+            _from = glm::vec2( Rendering::manager().project(current->group(mode_)->translation_, scene.root()->transform_) );
+            _displacement = glm::vec2(0.f);
+
+            // Initiate mouse pointer action
+            MousePointer::manager().active()->initiate(_from);
+        }
+
+    }
+    else {
+
+        terminate(true);
+
+        _from = glm::vec2(0.f);
+        _displacement = glm::vec2(0.f);
+
+    }
+
 //    Source *s = Mixer::manager().currentSource();
 //    if (s) {
 //        static float accumulator = 0.f;

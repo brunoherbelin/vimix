@@ -1130,8 +1130,14 @@ bool DisplaysView::doubleclic (glm::vec2 P)
     return false;
 }
 
+#define MAX_DURATION 1000.f
+#define MIN_SPEED_D 0.1f
+#define MAX_SPEED_D 2.f
+
 void DisplaysView::arrow (glm::vec2 movement)
 {
+    static float _duration = 0.f;
+
     // grab only works on current window if not fullscreen
     if (current_window_ > -1 && !Settings::application.windows[current_window_+1].fullscreen) {
 
@@ -1147,10 +1153,13 @@ void DisplaysView::arrow (glm::vec2 movement)
 
             // initiate (terminated at key release)
             current_action_ongoing_ = true;
+            _duration = 0.f;
         }
 
         // add movement vector to position (pixel precision)
-        p += movement ; //* (dt_ * 0.5f);
+        _duration += dt_;
+        const float speed = MIN_SPEED_D + (MAX_SPEED_D - MIN_SPEED_D) * glm::min(1.f,_duration / MAX_DURATION);
+        p += movement * dt_ * speed; //* (dt_ * 0.5f);
 
         // discretized translation with ALT
         if (UserInterface::manager().altModifier()) {

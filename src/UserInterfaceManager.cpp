@@ -416,8 +416,8 @@ void UserInterface::handleKeyboard()
                   ImGui::IsKeyDown( GLFW_KEY_UP    ) ||
                   ImGui::IsKeyDown( GLFW_KEY_DOWN  ) ){
             glm::vec2 delta(0.f, 0.f);
-            delta.x += ImGui::IsKeyDown( GLFW_KEY_RIGHT ) ? 1.f : ImGui::IsKeyDown( GLFW_KEY_LEFT ) ? -1.f : 0.f;
-            delta.y += ImGui::IsKeyDown( GLFW_KEY_DOWN ) ? 1.f : ImGui::IsKeyDown( GLFW_KEY_UP ) ? -1.f : 0.f;
+            delta.x += (int) ImGui::IsKeyDown( GLFW_KEY_RIGHT ) - (int) ImGui::IsKeyDown( GLFW_KEY_LEFT );
+            delta.y += (int) ImGui::IsKeyDown( GLFW_KEY_DOWN )  - (int) ImGui::IsKeyDown( GLFW_KEY_UP );
             Mixer::manager().view()->arrow( delta );
         }
         else if ( ImGui::IsKeyReleased( GLFW_KEY_LEFT  ) ||
@@ -425,8 +425,8 @@ void UserInterface::handleKeyboard()
                   ImGui::IsKeyReleased( GLFW_KEY_UP    ) ||
                   ImGui::IsKeyReleased( GLFW_KEY_DOWN  ) ){
             Mixer::manager().view()->terminate(true);
+            MousePointer::manager().active()->terminate();
         }
-
     }
 
     // special case: CTRL + TAB is ALT + TAB in OSX
@@ -614,14 +614,14 @@ void UserInterface::handleMouse()
                     {
                         // grab current sources
                         c = Mixer::manager().view()->grab(current, mouseclic[ImGuiMouseButton_Left],
-                                                          MousePointer::manager().active()->pos(), picked);
+                                                          MousePointer::manager().active()->target(), picked);
                     }
                     // action on other (non-source) elements in the view
                     else
                     {
                         // grab picked object
                         c = Mixer::manager().view()->grab(nullptr, mouseclic[ImGuiMouseButton_Left],
-                                                          MousePointer::manager().active()->pos(), picked);
+                                                          MousePointer::manager().active()->target(), picked);
                     }
 
                     // Set cursor appearance

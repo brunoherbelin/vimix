@@ -40,7 +40,7 @@ public:
 
     Pointer() : strength_(0.5) {}
     virtual ~Pointer() {}
-    inline glm::vec2 pos() { return target_; }
+    inline glm::vec2 target() const { return target_; }
 
     virtual void initiate(const glm::vec2 &pos) { current_ = target_ = pos; }
     virtual void update(const glm::vec2 &pos, float) { current_ = target_ = pos; }

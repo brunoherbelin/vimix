@@ -68,9 +68,10 @@ void PointerLinear::update(const glm::vec2 &pos, float dt)
 
     float speed = POINTER_LINEAR_MIN_SPEED + (POINTER_LINEAR_MAX_SPEED - POINTER_LINEAR_MIN_SPEED) * strength_;
 
-    glm::vec2 delta = pos - target_ ;
+    glm::vec2 delta = current_ - target_ ;
+
     if (glm::length(delta) > 10.f )
-        target_ += glm::normalize(delta) * (speed * dt);
+        target_ += glm::normalize(delta) * (speed * glm::max(dt,0.001f) );
 }
 
 void PointerLinear::draw()
@@ -179,9 +180,9 @@ void PointerSpring::update(const glm::vec2 &pos, float dt)
     // apply force on velocity : spring stiffness / mass
     velocity_ += delta * ( (POINTER_SPRING_MAX_MASS * stiffness) / mass );
     // apply damping dynamics
-    velocity_ -= damping * dt * glm::normalize(delta);
+    velocity_ -= damping * glm::max(dt,0.001f) * glm::normalize(delta);
     // compute new position : add velocity x time
-    target_ += dt * velocity_;
+    target_ += glm::max(dt,0.001f) * velocity_;
     // diminish velocity by viscousness of substrate
     // (loss of energy between updates)
     velocity_ *= viscousness;
