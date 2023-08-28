@@ -1,4 +1,4 @@
-#ifndef VMIX_DEFINES_H
+﻿#ifndef VMIX_DEFINES_H
 #define VMIX_DEFINES_H
 
 #define APP_NAME "vimix"
@@ -33,7 +33,6 @@
 #define EXP100(val) (exp(log(10.0)/50.0*(float)(val))-1.0)
 #define EUCLIDEAN(P1, P2) sqrt((P1.x() - P2.x()) * (P1.x() - P2.x()) + (P1.y() - P2.y()) * (P1.y() - P2.y()))
 #define ROUND(val, factor) float( int( val * factor ) ) / factor;
-#define IMVEC(v) ImVec2( v.x, v.y )
 
 #define SCENE_UNIT 5.f
 #define MIN_SCALE 0.01f

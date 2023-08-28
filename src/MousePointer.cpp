@@ -28,6 +28,8 @@
 //#include "RenderingManager.h"
 #include "MousePointer.h"
 
+#define IMVEC_IO(v) ImVec2( v.x / ImGui::GetIO().DisplayFramebufferScale.x, v.y / ImGui::GetIO().DisplayFramebufferScale.y)
+
 std::vector< std::tuple<int, int, std::string> > Pointer::Modes = {
     { ICON_POINTER_DEFAULT, std::string("Default") },
     { ICON_POINTER_GRID,    std::string("Grid") },
@@ -74,10 +76,10 @@ void PointerLinear::update(const glm::vec2 &pos, float dt)
 void PointerLinear::draw()
 {
     const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
-    const ImVec2 _end = IMVEC(target_);
+    const ImVec2 _end = IMVEC_IO(target_);
 
     // draw line
-    ImGui::GetBackgroundDrawList()->AddLine(IMVEC(current_), _end, color, POINTER_LINEAR_THICKNESS);
+    ImGui::GetBackgroundDrawList()->AddLine(IMVEC_IO(current_), _end, color, POINTER_LINEAR_THICKNESS);
     ImGui::GetBackgroundDrawList()->AddCircleFilled(_end, 6.0, color);
 
     // direction vector
@@ -88,7 +90,7 @@ void PointerLinear::draw()
     // draw dots regularly to show speed
     for (float p = 0.f; p < l; p += 200.f * (strength_ + 0.1f)) {
         glm::vec2 point = current_ - delta * p;
-        ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC(point), 4.0, color);
+        ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC_IO(point), 4.0, color);
     }
 
     // draw arrow head
@@ -98,7 +100,7 @@ void PointerLinear::draw()
         delta *= POINTER_LINEAR_ARROW;
         const glm::vec2 pointA = current_ - delta + ortho * 0.5f;
         const glm::vec2 pointB = current_ - delta - ortho * 0.5f;
-        ImGui::GetBackgroundDrawList()->AddTriangleFilled(IMVEC(current_), IMVEC(pointA), IMVEC(pointB), color);
+        ImGui::GetBackgroundDrawList()->AddTriangleFilled(IMVEC_IO(current_), IMVEC_IO(pointA), IMVEC_IO(pointB), color);
     }
 }
 
@@ -122,10 +124,10 @@ void PointerWiggly::update(const glm::vec2 &pos, float)
 void PointerWiggly::draw()
 {
     const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
-    ImGui::GetBackgroundDrawList()->AddLine(IMVEC(current_), IMVEC(target_), color, 5.f);
+    ImGui::GetBackgroundDrawList()->AddLine(IMVEC_IO(current_), IMVEC_IO(target_), color, 5.f);
 
     const float radius = POINTER_WIGGLY_MIN_RADIUS + (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
-    ImGui::GetBackgroundDrawList()->AddCircle(IMVEC(current_), radius * 0.5f, color, 0, 2.f + 4.f * strength_);
+    ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), radius * 0.5f, color, 0, 2.f + 4.f * strength_);
 }
 
 #define POINTER_METRONOME_RADIUS 30.f
@@ -141,13 +143,13 @@ void PointerMetronome::update(const glm::vec2 &pos, float dt)
 void PointerMetronome::draw()
 {
     const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
-    ImGui::GetBackgroundDrawList()->AddLine(IMVEC(current_), IMVEC(target_), color, 4.f);
-    ImGui::GetBackgroundDrawList()->AddCircle(IMVEC(current_), POINTER_METRONOME_RADIUS, color, 0, 3.f);
-    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC(target_), 6.0, color);
+    ImGui::GetBackgroundDrawList()->AddLine(IMVEC_IO(current_), IMVEC_IO(target_), color, 4.f);
+    ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), POINTER_METRONOME_RADIUS, color, 0, 3.f);
+    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC_IO(target_), 6.0, color);
 
     double t = Metronome::manager().phase();
     t -= floor(t);
-    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC(current_), t * POINTER_METRONOME_RADIUS, color, 0);
+    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC_IO(current_), t * POINTER_METRONOME_RADIUS, color, 0);
 }
 
 #define POINTER_SPRING_MIN_MASS 6.f
@@ -197,23 +199,23 @@ void PointerSpring::draw()
     glm::vec2 _third = current_ + delta * 1.f / 9.f + ortho;
     glm::vec2 _twothird = current_ + delta * 2.f / 9.f - ortho;
     glm::vec2 _end = current_ + delta * 3.f / 9.f;
-    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC(current_), IMVEC(_third), IMVEC(_twothird), IMVEC(_end), color, 5.f);
+    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC_IO(current_), IMVEC_IO(_third), IMVEC_IO(_twothird), IMVEC_IO(_end), color, 5.f);
 
     current_ = _end;
     _third = current_ + delta  * 1.f / 9.f + ortho;
     _twothird = current_ + delta * 2.f / 9.f - ortho;
     _end = current_ + delta * 3.f / 9.f;
-    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC(current_), IMVEC(_third), IMVEC(_twothird), IMVEC(_end), color, 5.f);
+    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC_IO(current_), IMVEC_IO(_third), IMVEC_IO(_twothird), IMVEC_IO(_end), color, 5.f);
 
     current_ = _end;
     _third = current_ + delta  * 1.f / 9.f + ortho;
     _twothird = current_ + delta * 2.f / 9.f - ortho;
     _end = target_;
-    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC(current_), IMVEC(_third), IMVEC(_twothird), IMVEC(_end), color, 5.f);
+    ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC_IO(current_), IMVEC_IO(_third), IMVEC_IO(_twothird), IMVEC_IO(_end), color, 5.f);
 
     // represent the weight with a filled circle
     const float mass = POINTER_SPRING_MAX_MASS - (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
-    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC(_end), mass, color, 0);
+    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC_IO(_end), mass, color, 0);
 }
 
 
@@ -227,37 +229,3 @@ MousePointer::MousePointer() : mode_(Pointer::POINTER_DEFAULT)
     pointer_[Pointer::POINTER_METRONOME] = new PointerMetronome;
 }
 
-
-//void PointerGrid::draw()
-//{
-
-
-////    const float scale = Mixer::manager().view()->grid->unit();
-////    const ImU32 color = ImGui::GetColorU32(ImGuiCol_Header);
-//    glm::vec2 newpos = Mixer::manager().view()->grid->approx(pos_);
-//    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC(newpos), 9.0, ImGui::GetColorU32(ImGuiCol_HeaderActive));
-//    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC(pos_), 6.0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
-
-////    // draw points of grid
-////    for (float x = -2.f ; x < 2.1f ; x += 1.f ) {
-////        for (float y = -2.f ; y < 2.1f ; y += 1.f ) {
-////            glm::vec2 G = pos_ + scene_x_ * ( x * scale ) + scene_y_ * ( y * scale );
-////            ImGui::GetBackgroundDrawList()->AddCircleFilled(ImVec2(G.x, G.y), 4.0, color);
-////        }
-////    }
-
-////    // draw lines of grid
-////    for (float x = -2.f ; x < 2.1f ; x += 1.f ) {
-////        glm::vec2 A = pos_ + scene_x_ * ( x * scale ) + scene_y_ * ( -3.f * scale );
-////        glm::vec2 B = pos_ + scene_x_ * ( x * scale ) + scene_y_ * ( 3.f * scale );
-////        ImGui::GetBackgroundDrawList()->AddLine(IMVEC(A), IMVEC(B), color, 2.5f);
-////    }
-////    for (float y = -2.f ; y < 2.1f ; y += 1.f ) {
-////        glm::vec2 A = pos_ + scene_x_ * ( -3.f * scale ) + scene_y_ * ( y * scale );
-////        glm::vec2 B = pos_ + scene_x_ * ( 3.f * scale ) + scene_y_ * ( y * scale );
-////        ImGui::GetBackgroundDrawList()->AddLine(IMVEC(A), IMVEC(B), color, 2.5f);
-////    }
-
-////    ImGui::GetBackgroundDrawList()->AddLine(ImVec2(P.x, P.y), ImVec2(Y.x, Y.y), color, POINTER_GRID_THICKNESS);
-
-//}
