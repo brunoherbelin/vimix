@@ -37,7 +37,7 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #define GLFW_EXPOSE_NATIVE_GLX
 #endif
-#include <GLFW/glfw3native.h>
+//#include <GLFW/glfw3native.h>
 
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale
 #include <glm/ext/matrix_clip_space.hpp> // glm::perspective
@@ -1023,6 +1023,7 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     //
     // default render black
     //
+    (void) Resource::getTextureWhite(); // init white texture too
     textureid_ = Resource::getTextureBlack();
 
     return true;

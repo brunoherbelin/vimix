@@ -137,9 +137,9 @@ void Primitive::init()
     glBindVertexArray( vao_ );
 
     // compute the memory needs for points
-    std::size_t sizeofPoints = sizeof(glm::vec3) * points_.size();
-    std::size_t sizeofColors = sizeof(glm::vec4) * colors_.size();
-    std::size_t sizeofTexCoords = sizeof(glm::vec2) * texCoords_.size();
+    std::size_t sizeofPoints = sizeof(glm::fvec3) * points_.size();
+    std::size_t sizeofColors = sizeof(glm::fvec4) * colors_.size();
+    std::size_t sizeofTexCoords = sizeof(glm::fvec2) * texCoords_.size();
 
     // setup the array buffers for vertices
     glBindBuffer( GL_ARRAY_BUFFER, arrayBuffer_ );
@@ -151,16 +151,16 @@ void Primitive::init()
 
     // setup the element array for the triangle indices
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer_);
-    std::size_t sizeofIndices = indices_.size() * sizeof(uint);
+    std::size_t sizeofIndices = indices_.size() * sizeof(GLuint);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeofIndices, &(indices_[0]), GL_STATIC_DRAW);
 
     // explain how to read attributes 0, 1 and 2 (for point, color and textcoord respectively)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0 );
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::fvec3), (void *)0 );
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), (void *)(sizeofPoints) );
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(glm::fvec4), (void *)(sizeofPoints) );
     glEnableVertexAttribArray(1);
     if ( sizeofTexCoords ) {
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void *)(sizeofPoints + sizeofColors) );
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(glm::fvec2), (void *)(sizeofPoints + sizeofColors) );
         glEnableVertexAttribArray(2);
     }
 
