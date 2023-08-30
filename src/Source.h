@@ -27,6 +27,10 @@
 #define ICON_SOURCE_GSTREAMER 16, 16
 #define ICON_SOURCE_SRT 14, 5
 #define ICON_SOURCE 13, 11
+#define ICON_WORKSPACE_BACKGROUND 10, 16
+#define ICON_WORKSPACE_CENTRAL 11, 16
+#define ICON_WORKSPACE_FOREGROUND 12, 16
+#define ICON_WORKSPACE 13, 16
 
 class Visitor;
 class SourceCallback;
@@ -167,9 +171,10 @@ public:
 
     // Workspace
     typedef enum {
-        BACKGROUND = 0,
-        STAGE      = 1,
-        FOREGROUND = 2
+        WORKSPACE_BACKGROUND = 0,
+        WORKSPACE_CENTRAL    = 1,
+        WORKSPACE_FOREGROUND = 2,
+        WORKSPACE_ANY        = 3
     } Workspace;
     inline Workspace workspace () const { return workspace_; }
 

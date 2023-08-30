@@ -355,7 +355,7 @@ struct Application
         shm_socket_path = "";
         pannel_current_session_mode = 0;
         current_view = 1;
-        current_workspace= 1;
+        current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
         num_output_windows = 1;
         windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);

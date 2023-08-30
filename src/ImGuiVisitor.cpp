@@ -510,9 +510,9 @@ void ImGuiVisitor::visit (Source& s)
         // Inform on workspace
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
         static std::map< int, std::pair<int, std::string> > workspaces_ {
-            { Source::BACKGROUND,  {10, "in Background"}},
-            { Source::STAGE,  {11, "in Workspace"}},
-            { Source::FOREGROUND,  {12, "in Foreground"}}
+            { Source::WORKSPACE_BACKGROUND,  {10, "in Background"}},
+            { Source::WORKSPACE_CENTRAL,  {11, "in Workspace"}},
+            { Source::WORKSPACE_FOREGROUND,  {12, "in Foreground"}}
         };
         // in Geometry view, offer to switch current workspace to the source workspace
         if (Settings::application.current_view == View::GEOMETRY) {

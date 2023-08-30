@@ -2312,7 +2312,7 @@ void UserInterface::RenderHelp()
         ImGui::Text(ICON_FA_OBJECT_UNGROUP "  Geometry"); ImGui::NextColumn();
         ImGui::Text ("Move, scale, rotate or crop sources to place them in the output frame.");
         ImGui::NextColumn();
-        ImGui::Text(ICON_FA_LAYER_GROUP "  Layers"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_WORKSPACE); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Layers"); ImGui::NextColumn();
         ImGui::Text ("Organize the rendering order of sources, from background to foreground.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_CHESS_BOARD "  Texturing"); ImGui::NextColumn();
@@ -2499,7 +2499,7 @@ void UserInterface::RenderHelp()
         ImGui::Text("F2"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_OBJECT_UNGROUP " Geometry view"); ImGui::NextColumn();
         ImGui::Text("F3"); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_LAYER_GROUP " Layers view"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_WORKSPACE); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Layers view"); ImGui::NextColumn();
         ImGui::Text("F4"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CHESS_BOARD " Texturing view"); ImGui::NextColumn();
         ImGui::Text("F5"); ImGui::NextColumn();
@@ -2907,7 +2907,7 @@ void Navigator::Render()
         static uint view_options_timeout = 0;
         static ImVec2 view_options_pos = ImGui::GetCursorScreenPos();
 
-        bool selected_view[View::INVALID] = { };
+        bool selected_view[View::INVALID] = {0};
         selected_view[ Settings::application.current_view ] = true;
         int previous_view = Settings::application.current_view;
 
@@ -2937,8 +2937,9 @@ void Navigator::Render()
             view_options_timeout = 0;
         }
 
-        if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[View::LAYER], 0, iconsize))
+        if (ImGuiToolkit::SelectableIcon(ICON_WORKSPACE, "", selected_view[View::LAYER], iconsize))
         {
+            Settings::application.current_view = View::LAYER;
             UserInterface::manager().setView(View::LAYER);
             if (previous_view == Settings::application.current_view) {
                 ImGui::OpenPopup( "PopupViewOptions" );

@@ -229,11 +229,12 @@ void GeometryView::draw()
     // only sources in the current workspace
     std::vector<Node *> surfaces;
     std::vector<Node *> overlays;
+    uint workspaces_counts_[Source::WORKSPACE_ANY+1] = {0};
     for (auto source_iter = Mixer::manager().session()->begin();
          source_iter != Mixer::manager().session()->end(); ++source_iter) {
         // if it is in the current workspace
-        if ((*source_iter)->workspace() == Settings::application.current_workspace) {
-//            if ((*source_iter)->blendingShader()->color.a > 0.f) // TODO: option to hide non visible
+        if (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
+                (*source_iter)->workspace() == Settings::application.current_workspace) {
             {
             // will draw its surface
             surfaces.push_back((*source_iter)->groups_[mode_]);
@@ -242,6 +243,9 @@ void GeometryView::draw()
             overlays.push_back((*source_iter)->locker_);
             }
         }
+        // count number of sources per workspace
+        workspaces_counts_[(*source_iter)->workspace()]++;
+        workspaces_counts_[Source::WORKSPACE_ANY]++;
     }
 
     // 0. prepare projection for draw visitors
@@ -260,7 +264,8 @@ void GeometryView::draw()
     scene.accept(draw_overlays);
 
     // 4. Draw control overlays of current source on top (if selected)
-    if (s != nullptr && s->workspace() == Settings::application.current_workspace) {
+    if (s != nullptr && (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
+                         s->workspace() == Settings::application.current_workspace) ) {
         DrawVisitor dv(s->overlays_[mode_], projection);
         scene.accept(dv);
         // Always restore current source after draw
@@ -296,14 +301,22 @@ void GeometryView::draw()
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 0.56f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
 
-        static std::vector< std::tuple<int, int, std::string> > _workspaces = {
-            {10, 16, "Only sources in Background layer"},
-            {11, 16, "Only sources in Workspace layer"},
-            {12, 16, "Only sources in Foreground layer"}
+        static std::vector< std::string > _tooltips = {
+            {"Sources in Background layers"},
+            {"Sources in Workspace layers"},
+            {"Sources in Foreground layers"},
+            {"Sources in every layers (total)"}
+        };
+        std::vector< std::tuple<int, int, std::string> > _workspaces = {
+            {ICON_WORKSPACE_BACKGROUND, std::to_string( workspaces_counts_[Source::WORKSPACE_BACKGROUND] )},
+            {ICON_WORKSPACE_CENTRAL,    std::to_string( workspaces_counts_[Source::WORKSPACE_CENTRAL] )},
+            {ICON_WORKSPACE_FOREGROUND, std::to_string( workspaces_counts_[Source::WORKSPACE_FOREGROUND] )},
+            {ICON_WORKSPACE,            std::to_string( workspaces_counts_[Source::WORKSPACE_ANY] )}
         };
         ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
-        if ( ImGuiToolkit::ComboIcon ("##WORKSPACE", &Settings::application.current_workspace, _workspaces, true) ){
-             ++View::need_deep_update_;
+        if ( ImGuiToolkit::ComboIcon ("##WORKSPACE", &Settings::application.current_workspace, _workspaces, _tooltips) ){
+            // need full update
+            Mixer::manager().setView(mode_);
         }
 
         ImGui::PopStyleColor(6);
@@ -503,7 +516,8 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
         // keep current source active if it is clicked
         Source *current = Mixer::manager().currentSource();
         if (current != nullptr) {
-            if (current->workspace() != Settings::application.current_workspace){
+            if (Settings::application.current_workspace < Source::WORKSPACE_ANY &&
+                    current->workspace() != Settings::application.current_workspace){
                 current = nullptr;
             }
             else {
@@ -575,7 +589,8 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     // get if a source was picked
                     Source *s = Mixer::manager().findSource((*itp).first);
                     // accept picked sources in current workspaces
-                    if ( s!=nullptr && s->workspace() == Settings::application.current_workspace) {
+                    if ( s!=nullptr && (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
+                                        s->workspace() == Settings::application.current_workspace) ) {
                         if ( s->locked() && !UserInterface::manager().ctrlModifier() )
                             continue;
                         // a non-locked source is picked (anywhere)
@@ -614,7 +629,8 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
 
 bool GeometryView::canSelect(Source *s) {
 
-    return ( s!=nullptr && View::canSelect(s) && s->ready() && s->active() && s->workspace() == Settings::application.current_workspace);
+    return ( s!=nullptr && View::canSelect(s) && s->ready() && s->active() &&
+            (Settings::application.current_workspace == Source::WORKSPACE_ANY || s->workspace() == Settings::application.current_workspace) );
 }
 
 

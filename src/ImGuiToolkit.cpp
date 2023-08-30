@@ -556,7 +556,8 @@ bool ImGuiToolkit::ButtonIconMultistate(std::vector<std::pair<int, int> > icons,
     return ret;
 }
 
-bool ImGuiToolkit::ComboIcon (const char* label, int* current_item, std::vector< std::tuple<int, int, std::string> > items, bool tooltiptext)
+bool ImGuiToolkit::ComboIcon (const char* label, int* current_item,
+                              std::vector< std::tuple<int, int, std::string> > items, std::vector<std::string> tooltips)
 {
     bool ret = false;
     ImGuiContext& g = *GImGui;
@@ -571,41 +572,22 @@ bool ImGuiToolkit::ComboIcon (const char* label, int* current_item, std::vector<
     space_buf[space_num]='\0';
 
     char text_buf[256];
-    if (tooltiptext) {
-        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", space_buf);
-        if ( ImGui::BeginCombo( label, text_buf, ImGuiComboFlags_None) ) {
-            for (int p = 0; p < (int) items.size(); ++p){
-                ImGui::PushID((void*)(intptr_t)p);
-                if (ImGuiToolkit::SelectableIcon( std::get<0>( items.at(p) ),
-                                                  std::get<1>( items.at(p) ),
-                                                  "",
-                                                  p == *current_item) ) {
-                    *current_item = p;
-                    ret = true;
-                }
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip(std::get<2>( items.at(p) ).c_str());
-                ImGui::PopID();
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, std::get<2>( items.at(*current_item) ).c_str());
+    if ( ImGui::BeginCombo( label, text_buf, ImGuiComboFlags_None) ) {
+        for (int p = 0; p < (int) items.size(); ++p){
+            ImGui::PushID((void*)(intptr_t)p);
+            if (ImGuiToolkit::SelectableIcon( std::get<0>( items.at(p) ),
+                                              std::get<1>( items.at(p) ),
+                                              std::get<2>( items.at(p) ).c_str(),
+                                              p == *current_item) ) {
+                *current_item = p;
+                ret = true;
             }
-            ImGui::EndCombo();
+            if (ImGui::IsItemHovered() && p < (int) tooltips.size() )
+                ImGuiToolkit::ToolTip( tooltips.at(p).c_str() );
+            ImGui::PopID();
         }
-    }
-    else {
-        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, std::get<2>( items.at(*current_item) ).c_str());
-        if ( ImGui::BeginCombo( label, text_buf, ImGuiComboFlags_None) ) {
-            for (int p = 0; p < (int) items.size(); ++p){
-                ImGui::PushID((void*)(intptr_t)p);
-                if (ImGuiToolkit::SelectableIcon( std::get<0>( items.at(p) ),
-                                                  std::get<1>( items.at(p) ),
-                                                  std::get<2>( items.at(p) ).c_str(),
-                                                  p == *current_item) ) {
-                    *current_item = p;
-                    ret = true;
-                }
-                ImGui::PopID();
-            }
-            ImGui::EndCombo();
-        }
+        ImGui::EndCombo();
     }
 
     // overlay of icon on top of first item

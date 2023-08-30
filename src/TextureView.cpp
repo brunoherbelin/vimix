@@ -320,7 +320,7 @@ View::Cursor TextureView::over (glm::vec2 pos)
     mask_cursor_square_->visible_ = false;
     mask_cursor_crop_->visible_   = false;
 
-    if (edit_source_ != nullptr)
+    if (edit_source_ != nullptr && edit_source_->ready())
     {
         // coordinates of mouse in scene reference frame
         glm::vec3 scene_pos = Rendering::manager().unProject(pos, scene.root()->transform_);
