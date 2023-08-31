@@ -132,10 +132,12 @@
 
 #ifdef APPLE
 #define CTRL_MOD "Cmd+"
-#define ALT_MOD "Option+"
+#define ALT_MOD "option"
+#define ALT_LOCK " OPT LOCK"
 #else
 #define CTRL_MOD "Ctrl+"
-#define ALT_MOD "Alt+"
+#define ALT_MOD "Alt"
+#define ALT_LOCK " ALT LOCK"
 #endif
 
 #define MENU_NEW_FILE         ICON_FA_FILE "  New"

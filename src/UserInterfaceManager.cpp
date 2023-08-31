@@ -4678,7 +4678,7 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
     ImVec2 bottom = ImGui::GetCursorScreenPos();
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-        ImGuiToolkit::ToolTip("Alternative cursor", "ALT");
+        ImGuiToolkit::ToolTip("Snap cursor", ALT_MOD);
         counter_menu_timeout=0;
     }
 
@@ -4734,10 +4734,10 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
         ImGui::SetCursorPosY(margin.y);
         ImGui::TextDisabled(" |");
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGuiToolkit::ButtonToggle(Settings::application.mouse_pointer_lock ? ICON_FA_LOCK " ALT LOCK" : ICON_FA_UNLOCK " ALT LOCK",
+        ImGuiToolkit::ButtonToggle(Settings::application.mouse_pointer_lock ? ICON_FA_LOCK ALT_LOCK : ICON_FA_UNLOCK ALT_LOCK,
                                    &Settings::application.mouse_pointer_lock,
-                                   "Activate the selected alternative mouse pointer by pressing the ALT key.\n\n"
-                                   ICON_FA_LOCK " ALT LOCK keeps the alternative mouse pointer active.");
+                                   "Activate the selected snap mouse pointer by pressing the [" ALT_MOD "] key.\n\n"
+                                   ICON_FA_LOCK ALT_LOCK " keeps the snap mouse pointer active.");
         ImGui::PopFont();
 
         // timer to close menu like a tooltip
