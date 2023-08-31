@@ -164,7 +164,8 @@ public:
     inline bool shiftModifier() const  { return shift_modifier_active; }
 
     void showPannel(int id = 0);
-    void showSourcePanel(Source *s);
+    void setSourceInPanel(int index);
+    void setSourceInPanel(Source *s);
     Source *sourceInPanel();
     void showSourceEditor(Source *s);
 

@@ -339,6 +339,26 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_I), false )) {
             Settings::application.widget.inputs = !Settings::application.widget.inputs;
         }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_0 ))
+            Mixer::selection().toggle( Mixer::manager().sourceAtIndex( 0 ) );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_1 ))
+            Mixer::selection().toggle( Mixer::manager().sourceAtIndex( 1 ) );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_2 ))
+            Mixer::selection().toggle( Mixer::manager().sourceAtIndex( 2 ) );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_3 ))
+            Mixer::selection().toggle( Mixer::manager().sourceAtIndex( 3 ) );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_4 ))
+            Mixer::selection().toggle( Mixer::manager().sourceAtIndex( 4 ) );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_5 ))
+            Mixer::selection().toggle( Mixer::manager().sourceAtIndex( 5 ) );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_6 ))
+            Mixer::selection().toggle( Mixer::manager().sourceAtIndex( 6 ) );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_7 ))
+            Mixer::selection().toggle( Mixer::manager().sourceAtIndex( 7 ) );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_8 ))
+            Mixer::selection().toggle( Mixer::manager().sourceAtIndex( 8 ) );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_9 ))
+            Mixer::selection().toggle( Mixer::manager().sourceAtIndex( 9 ) );
 
     }
     // No CTRL modifier
@@ -355,6 +375,8 @@ void UserInterface::handleKeyboard()
             setView(View::TEXTURE);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F5, false ))
             setView(View::DISPLAYS);
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F6,  false ))
+            show_output_fullview = true;
         else if (ImGui::IsKeyPressed( GLFW_KEY_F9, false ))
             StartScreenshot();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
@@ -388,9 +410,6 @@ void UserInterface::handleKeyboard()
             WorkspaceWindow::restoreWorkspace();
             esc_repeat_ = false;
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F6,  false )) {
-            show_output_fullview = true;
-        }
         // Space bar
         else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false ))
             // Space bar to toggle play / pause
@@ -398,6 +417,26 @@ void UserInterface::handleKeyboard()
         // Backspace to delete source
         else if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
             Mixer::manager().deleteSelection();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_0 ))
+            setSourceInPanel( 0 );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_1 ))
+            setSourceInPanel( 1 );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_2 ))
+            setSourceInPanel( 2 );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_3 ))
+            setSourceInPanel( 3 );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_4 ))
+            setSourceInPanel( 4 );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_5 ))
+            setSourceInPanel( 5 );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_6 ))
+            setSourceInPanel( 6 );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_7 ))
+            setSourceInPanel( 7 );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_8 ))
+            setSourceInPanel( 8 );
+        else if (ImGui::IsKeyPressed( GLFW_KEY_9 ))
+            setSourceInPanel( 9 );
         // button tab to select next
         else if ( !alt_modifier_active && ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
             // cancel selection
@@ -1166,11 +1205,19 @@ int UserInterface::RenderViewNavigator(int *shift)
     return target_index;
 }
 
-void UserInterface::showSourcePanel(Source *s)
+void UserInterface::setSourceInPanel(int index)
+{
+    Mixer::manager().setCurrentIndex(index);
+    if (navigator.pannelVisible())
+        navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+}
+
+void UserInterface::setSourceInPanel(Source *s)
 {
     if (s) {
         Mixer::manager().setCurrentSource( s );
-        navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+        if (navigator.pannelVisible())
+            navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
     }
 }
 
@@ -1196,10 +1243,9 @@ void UserInterface::showSourceEditor(Source *s)
         if (!s->failed()) {
             sourcecontrol.setVisible(true);
             sourcecontrol.resetActiveSelection();
-            return;
         }
         else
-            showSourcePanel(s);
+            setSourceInPanel(s);
     }
 }
 
