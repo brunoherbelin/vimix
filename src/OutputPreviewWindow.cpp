@@ -224,7 +224,8 @@ void OutputPreviewWindow::Render()
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
                 // Preview and output menu
-                ImGui::MenuItem( MENU_LARGEPREVIEW, SHORTCUT_LARGEPREVIEW, &UserInterface::manager().show_output_fullview);
+                if (ImGuiToolkit::MenuItemIcon(ICON_PREVIEW, MENU_PREVIEW, SHORTCUT_PREVIEW) )
+                    UserInterface::manager().show_output_fullview = true;
                 ImGui::MenuItem( MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE, &Settings::application.render.disabled);
 
                 // Display window manager menu
@@ -570,7 +571,7 @@ void OutputPreviewWindow::Render()
             h += (Settings::application.accept_connections ? 1.f : 0.f);
             draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + imagesize.x, draw_pos.y + h * r), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(draw_pos);
-            ImGui::Text(" " ICON_FA_LAPTOP "  %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
+            ImGui::Text(" " ICON_FA_DESKTOP "  %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
             if (Settings::application.accept_connections)
                 ImGui::Text( "  " ICON_FA_SHARE_ALT_SQUARE "   Available as %s (%ld peer connected)",
                              Connection::manager().info().name.c_str(),

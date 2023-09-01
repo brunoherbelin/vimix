@@ -128,7 +128,7 @@
 #define IMGUI_TITLE_HELP ICON_FA_LIFE_RING "  Help"
 #define IMGUI_TITLE_TOOLBOX ICON_FA_HAMSA "  Guru Toolbox"
 #define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Shader Editor"
-#define IMGUI_TITLE_PREVIEW ICON_FA_LAPTOP "  Display"
+#define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Display"
 
 #ifdef APPLE
 #define CTRL_MOD "Cmd+"
@@ -180,8 +180,9 @@
 #define SHORTCUT_CAPTURE_GUI  "F9"
 #define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable"
 #define SHORTCUT_OUTPUTDISABLE "F12"
-#define MENU_LARGEPREVIEW     ICON_FA_EXPAND_ARROWS_ALT "   Large preview"
-#define SHORTCUT_LARGEPREVIEW "F6"
+#define ICON_PREVIEW          4, 15
+#define MENU_PREVIEW          "Preview"
+#define SHORTCUT_PREVIEW      "F6"
 #define MENU_CLOSE            ICON_FA_TIMES "   Close"
 #define DIALOG_FAILED_SOURCE  ICON_FA_EXCLAMATION_TRIANGLE " Source failure"
 

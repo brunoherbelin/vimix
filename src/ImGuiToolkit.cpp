@@ -610,6 +610,8 @@ bool ImGuiToolkit::SelectableIcon(int i, int j, const char* label, bool selected
     char text_buf[256];
     ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s%s", space_buf, label);
 
+    ImGui::PushID( i * 20 + j  + ImGui::GetID("##SelectableIcon") );
+
     // draw menu item
     bool ret = ImGui::Selectable(text_buf, selected, ImGuiSelectableFlags_None, size_arg);
 
@@ -619,6 +621,8 @@ bool ImGuiToolkit::SelectableIcon(int i, int j, const char* label, bool selected
 
     // overlay of icon on top of first item    
     _drawIcon(draw_pos, i, j);
+
+    ImGui::PopID();
 
     return ret;
 }

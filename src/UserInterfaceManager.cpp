@@ -1292,6 +1292,15 @@ void UserInterface::RenderOutputView()
             // draw inspector (magnifying glass)
             if ( _inspector && ImGui::IsItemHovered()  )
                 DrawInspector(output->texture(), imagesize, imagesize, draw_pos);
+
+            // closing icon
+            ImGui::SetCursorScreenPos(draw_pos + ImVec2(IMGUI_SAME_LINE, IMGUI_SAME_LINE));
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            if ( ImGuiToolkit::IconButton(ICON_FA_TIMES, "Close preview") )
+                show_output_fullview = false;
+            if ( ImGui::IsItemHovered()  )
+                _inspector = false;
+            ImGui::PopFont();
         }
 
         // local keyboard handler (because focus is captured by modal dialog)
@@ -2352,6 +2361,10 @@ void UserInterface::RenderHelp()
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
+        ImGui::Text(ICON_FA_MOUSE_POINTER "  Snap cursor"); ImGui::NextColumn();
+        ImGui::Text ("Snapping mouse cursors modify the mouse effective position to enhace the movement: e.g. snap to grid, move on a line, or trigger on metronome. "
+                     "They are activated with the [" ALT_MOD "] key" );
+        ImGui::NextColumn();
         ImGui::Text(ICON_FA_BULLSEYE "  Mixing"); ImGui::NextColumn();
         ImGui::Text ("Adjust opacity of sources, visible in the center and transparent on the side. Sources are de-activated outside of darker circle.");
         ImGui::NextColumn();
@@ -2359,7 +2372,7 @@ void UserInterface::RenderHelp()
         ImGui::Text ("Move, scale, rotate or crop sources to place them in the output frame.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_WORKSPACE); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Layers"); ImGui::NextColumn();
-        ImGui::Text ("Organize the rendering order of sources, from background to foreground.");
+        ImGui::Text ("Organize the rendering order of sources in depth, from background to foreground.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_CHESS_BOARD "  Texturing"); ImGui::NextColumn();
         ImGui::Text ("Apply masks or freely paint the texture on the source surface. Repeat or crop the graphics.");
@@ -2379,7 +2392,7 @@ void UserInterface::RenderHelp()
         ImGui::PushTextWrapPos(width_window );
 
         ImGui::Text(IMGUI_TITLE_PREVIEW); ImGui::NextColumn();
-        ImGui::Text ("Preview the output displayed in the rendering window. Control video recording and streaming.");
+        ImGui::Text ("Preview the output displayed in the rendering window(s). Control video recording and streaming.");
         ImGui::NextColumn();
         ImGui::Text(IMGUI_TITLE_MEDIAPLAYER); ImGui::NextColumn();
         ImGui::Text ("Play, pause, rewind videos or dynamic sources. Control play duration, speed and synchronize multiple videos.");
@@ -2540,6 +2553,10 @@ void UserInterface::RenderHelp()
         ImGui::Text(ICON_FA_BACKSPACE " Delete source"); ImGui::NextColumn();
         ImGui::Text("TAB"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_EXCHANGE_ALT " Switch Current source"); ImGui::NextColumn();
+        ImGui::Text("[ 0 ][ i ]..[ 9 ]"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_HASHTAG " Switch to source at index i"); ImGui::NextColumn();
+        ImGui::Text(ALT_MOD); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_MOUSE_POINTER "  Activate Snap mouse cursor"); ImGui::NextColumn();
         ImGui::Text("F1"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_BULLSEYE " Mixing view"); ImGui::NextColumn();
         ImGui::Text("F2"); ImGui::NextColumn();
@@ -2550,13 +2567,15 @@ void UserInterface::RenderHelp()
         ImGui::Text(ICON_FA_CHESS_BOARD " Texturing view"); ImGui::NextColumn();
         ImGui::Text("F5"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_TV " Displays view"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PREVIEW); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview output (toggle or long press)"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_FULLSCREEN); ImGui::NextColumn();
         ImGui::Text(ICON_FA_EXPAND_ALT " " TOOLTIP_FULLSCREEN " window"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_OUTPUT); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_LAPTOP " " TOOLTIP_OUTPUT "window"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_DESKTOP " " TOOLTIP_OUTPUT "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_PLAYER); ImGui::NextColumn();
         ImGui::Text(ICON_FA_PLAY_CIRCLE " " TOOLTIP_PLAYER "window" ); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_TIMER); ImGui::NextColumn();
@@ -2566,7 +2585,7 @@ void UserInterface::RenderHelp()
         ImGui::Text(SHORTCUT_SHADEREDITOR); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CODE " " TOOLTIP_SHADEREDITOR "window"); ImGui::NextColumn();
         ImGui::Text("ESC"); ImGui::NextColumn();
-        ImGui::Text(" Hide / Show all windows"); ImGui::NextColumn();
+        ImGui::Text(" Hide / Show all windows (toggle or long press)"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_NEW_FILE); ImGui::NextColumn();
         ImGui::Text(MENU_NEW_FILE " session"); ImGui::NextColumn();
@@ -2596,8 +2615,6 @@ void UserInterface::RenderHelp()
         ImGui::Text(MENU_CAPTUREFRAME " display"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_OUTPUTDISABLE); ImGui::NextColumn();
         ImGui::Text(MENU_OUTPUTDISABLE " display output"); ImGui::NextColumn();
-        ImGui::Text(SHORTCUT_LARGEPREVIEW); ImGui::NextColumn();
-        ImGui::Text(MENU_LARGEPREVIEW " of output"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_RECORD); ImGui::NextColumn();
         ImGui::Text(MENU_RECORD " Output"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_RECORDCONT); ImGui::NextColumn();
@@ -3010,9 +3027,12 @@ void Navigator::Render()
             view_options_timeout = 0;
         }
 
-        if (ImGui::Selectable( ICON_FA_TV, &selected_view[View::DISPLAYS], 0, iconsize))
+        int j = Settings::application.render.disabled ? 8 : 7;
+        if (ImGuiToolkit::SelectableIcon(10, j, "", selected_view[View::DISPLAYS], iconsize))
+//        if (ImGui::Selectable( ICON_FA_TV, &selected_view[View::DISPLAYS], 0, iconsize))
         {
             UserInterface::manager().setView(View::DISPLAYS);
+            Settings::application.current_view = View::DISPLAYS;
             if (previous_view == Settings::application.current_view) {
                 ImGui::OpenPopup( "PopupViewOptions" );
                 view_options_pos = ImGui::GetCursorScreenPos();
@@ -4649,7 +4669,7 @@ void Navigator::RenderMainPannelVimix()
 
     ImGui::SameLine(0, 0.5f * ImGui::GetTextLineHeight());
     on = Settings::application.widget.preview;
-    if (ImGuiToolkit::IconToggle( ICON_FA_LAPTOP, &on, TOOLTIP_OUTPUT, SHORTCUT_OUTPUT))
+    if (ImGuiToolkit::IconToggle( ICON_FA_DESKTOP, &on, TOOLTIP_OUTPUT, SHORTCUT_OUTPUT))
         UserInterface::manager().outputcontrol.setVisible(on);
 
     ImGui::SameLine(0, ImGui::GetTextLineHeight());

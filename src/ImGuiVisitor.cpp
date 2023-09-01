@@ -935,7 +935,7 @@ void ImGuiVisitor::visit (RenderSource& s)
         }
         // icon to open output view
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(ICON_FA_LAPTOP, "Open Display"))
+        if (ImGuiToolkit::IconButton(ICON_FA_DESKTOP, "Open Display"))
             Settings::application.widget.preview = true;
     }
     else
