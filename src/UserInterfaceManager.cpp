@@ -2649,6 +2649,11 @@ void UserInterface::RenderHelp()
 ///
 /// NAVIGATOR
 ///
+///
+
+std::vector< std::pair<int, int> > Navigator::icons_ordering_files = { {2,12}, {3,12}, {4,12}, {5,12} };
+std::vector< std::string > Navigator::tooltips_ordering_files = { "Alphabetical", "Invert alphabetical", "Older files first", "Recent files first" };
+
 Navigator::Navigator()
 {
     // default geometry
@@ -3480,7 +3485,8 @@ void Navigator::RenderNewPannel()
                 // MODE LIST FOLDER
                 else if ( new_media_mode == MEDIA_FOLDER) {
                     // show list of media files in folder
-                    sourceMediaFiles = SystemToolkit::list_directory( Settings::application.recentImportFolders.path, { MEDIA_FILES_PATTERN });
+                    sourceMediaFiles = SystemToolkit::list_directory( Settings::application.recentImportFolders.path, { MEDIA_FILES_PATTERN },
+                                                                      (SystemToolkit::Ordering) Settings::application.orderingImportFolder);
                 }
                 // indicate the list changed (do not change at every frame)
                 new_media_mode_changed = false;
@@ -3524,9 +3530,10 @@ void Navigator::RenderNewPannel()
                 ImGui::ListBoxFooter();
             }
 
+            // Supplementary icons to manage the list
+            ImVec2 pos_bot = ImGui::GetCursorPos();
+            // Bottom Right side of the list: helper and options of Recent Recordings
             if (new_media_mode == MEDIA_RECORDING) {
-                // Bottom Right side of the list: helper and options
-                ImVec2 pos_bot = ImGui::GetCursorPos();
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
                 ImGuiToolkit::HelpToolTip("Recently recorded videos (lastest on top). Clic on a filename to open.\n\n"
                                          ICON_FA_CHEVRON_CIRCLE_RIGHT "  Auto-preload prepares this panel with the "
@@ -3541,9 +3548,18 @@ void Navigator::RenderNewPannel()
                         new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceMediaFileCurrent), label);
                     }
                 }
-                // come back...
-                ImGui::SetCursorPos(pos_bot);
             }
+            // Top right of Media folder list
+            else if (new_media_mode == MEDIA_FOLDER) {
+                // ordering list
+                ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y) );
+                ImGui::PushID("##new_media_mode_changed");
+                if ( ImGuiToolkit::IconMultistate(icons_ordering_files, &Settings::application.orderingImportFolder, tooltips_ordering_files) )
+                    new_media_mode_changed = true;
+                ImGui::PopID();
+            }
+            // come back...
+            ImGui::SetCursorPos(pos_bot);
 
         }
         // Sequence Source creator
@@ -4103,14 +4119,18 @@ void Navigator::RenderMainPannelVimix()
             // show list of recent sessions
             Settings::application.recentSessions.validate();
             sessions_list = Settings::application.recentSessions.filenames;
-            Settings::application.recentSessions.changed = false;
+            SystemToolkit::reorder_file_list( sessions_list, (SystemToolkit::Ordering) Settings::application.orderingSessions);
         }
         // selection MODE 1 : LIST FOLDER
         else if ( selection_session_mode == 1) {
             // show list of vimix files in folder
-            sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, { VIMIX_FILE_PATTERN });
+            sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, { VIMIX_FILE_PATTERN },
+                                                           (SystemToolkit::Ordering) Settings::application.orderingSessions);
         }
+
         // indicate the list changed (do not change at every frame)
+        Settings::application.recentSessions.changed = false;
+        Settings::application.recentFolders.changed = false;
         selection_session_mode_changed = false;
         _file_over = sessions_list.end();
         _displayed_over = sessions_list.end();
@@ -4219,8 +4239,16 @@ void Navigator::RenderMainPannelVimix()
     if (ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip("New session", SHORTCUT_NEW_FILE);
 
+    // ordering list
+    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetFrameHeightWithSpacing()) );
+    ImGui::PushID("##selection_session_mode_changed");
+    if ( ImGuiToolkit::IconMultistate(icons_ordering_files, &Settings::application.orderingSessions, tooltips_ordering_files) )
+        selection_session_mode_changed = true;
+    ImGui::PopID();
+
+    // help indicator
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-    ImGuiToolkit::HelpToolTip("Here are listed either all recent files or all the sessions files inside a selected folder (*.mix) .\n\n"
+    ImGuiToolkit::HelpToolTip("Here are listed either the recent files or all the sessions files (*.mix) in a selected folder.\n\n"
                              "Double-clic on a filename to open the session.\n\n"
                              ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition "
                              "performs cross fading to the opened session.");
@@ -4261,35 +4289,6 @@ void Navigator::RenderMainPannelVimix()
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             ImGui::InputText("##Info", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
             ImGui::PopStyleColor(1);
-
-            // Kept for later? Larger info box with more details on the session file...
-            //            ImGuiTextBuffer info;
-            //            if (!sessionfilename.empty())
-            //                info.appendf("%s\n", SystemToolkit::filename(sessionfilename).c_str());
-            //            else
-            //                info.append("<unsaved>\n");
-            //            info.appendf("%dx%dpx", output->width(), output->height());
-            //            if (p.x > -1)
-            //                info.appendf(", %s", FrameBuffer::aspect_ratio_name[p.x]);
-            //            // content info
-            //            const uint N = Mixer::manager().session()->numSource();
-            //            if (N > 1)
-            //                info.appendf("\n%d sources", N);
-            //            else if (N > 0)
-            //                info.append("\n1 source");
-            //            const size_t M = MediaPlayer::registered().size();
-            //            if (M > 0) {
-            //                info.appendf("\n%d media files:", M);
-            //                for (auto mit = MediaPlayer::begin(); mit != MediaPlayer::end(); ++mit)
-            //                    info.appendf("\n- %s", SystemToolkit::filename((*mit)->filename()).c_str());
-            //            }
-            //            // Show info text bloc (multi line, dark background)
-            //            ImGuiToolkit::PushFont( ImGuiToolkit::FONT_MONO );
-            //            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-            //            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            //            ImGui::InputTextMultiline("##Info", (char *)info.c_str(), info.size(), ImVec2(IMGUI_RIGHT_ALIGN, 2*ImGui::GetTextLineHeightWithSpacing()), ImGuiInputTextFlags_ReadOnly);
-            //            ImGui::PopStyleColor(1);
-            //            ImGui::PopFont();
 
             // change resolution (height only)
             // get parameters to edit resolution
@@ -4375,7 +4374,7 @@ void Navigator::RenderMainPannelVimix()
             // Thumbnail
             static Thumbnail _file_thumbnail;
             static FrameBufferImage *thumbnail = nullptr;
-            if ( ImGui::Button( ICON_FA_TAG "  New thumbnail", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+            if ( ImGui::Button( ICON_FA_TAG "  Create thumbnail", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
                 Mixer::manager().session()->setThumbnail();
                 thumbnail = nullptr;
             }
@@ -4647,8 +4646,8 @@ void Navigator::RenderMainPannelVimix()
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
         ImGuiToolkit::HelpToolTip("Previous versions of the session (latest on top). "
                                  "Double-clic on a version to restore it.\n\n"
-                                 ICON_FA_CODE_BRANCH "  Iterative saving automatically "
-                                 "keeps a version each time a session is saved.");
+                                 ICON_FA_CODE_BRANCH "  With iterative saving on, a new version "
+                                 "is kept each time the session is saved.");
         // toggle button for versioning
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
         ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot,"Iterative saving");
@@ -4803,8 +4802,8 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
         ImGui::SameLine(0, IMGUI_SAME_LINE * 3);
         ImGuiToolkit::ButtonToggle(Settings::application.mouse_pointer_lock ? ICON_FA_LOCK ALT_LOCK : ICON_FA_UNLOCK ALT_LOCK,
                                    &Settings::application.mouse_pointer_lock,
-                                   "Activate the selected snap mouse pointer by pressing the [" ALT_MOD "] key.\n\n"
-                                   ICON_FA_LOCK ALT_LOCK " keeps the snap mouse pointer active.");
+                                   "Activate the selected Snap mouse cursor by pressing the [" ALT_MOD "] key.\n\n"
+                                   ICON_FA_LOCK ALT_LOCK " keeps the Snap mouse cursor active.");
 
         // slider to adjust strength of the mouse pointer
         ImGui::SetNextItemWidth( IMGUI_RIGHT_ALIGN );
@@ -4821,12 +4820,15 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
         }
         // special case of GRID
         else {
-            static const char* grid_names[Grid::UNIT_ONE+1] = { "Precise (0.05)", "Small (0.1)", "Default (0.2)", "Large (0.5)", "Huge (1.0)"};
+            static const char* grid_names[Grid::UNIT_ONE+1] = { "Precise", "Small", "Default", "Large", "Huge"};
             int grid_current = (Grid::Units) round( *val * 4.f) ;
             const char* grid_current_name = (grid_current >= 0 && grid_current <= Grid::UNIT_ONE) ?
                         grid_names[grid_current] : "Unknown";
-            if (ImGui::SliderInt("##slidergrid", &grid_current, 0, Grid::UNIT_ONE, grid_current_name) ) {
+            if (ImGui::SliderInt("##slidergrid", &grid_current, 0, Grid::UNIT_ONE, grid_current_name) )
                 *val = (float) grid_current * 0.25f;
+            if (ImGui::IsItemHovered() && g.IO.MouseWheel != 0.f ){
+                *val += 0.25f * g.IO.MouseWheel;
+                *val = CLAMP( *val, 0.f, 1.f);
             }
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);

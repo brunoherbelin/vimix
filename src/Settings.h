@@ -321,10 +321,12 @@ struct Application
     std::vector<WindowConfig> windows;
 
     // recent files histories
+    int orderingSessions;
     History recentSessions;
     History recentFolders;
     History recentImport;
     History recentImportFolders;
+    int orderingImportFolder;
     History recentRecordings;
     std::map< std::string, std::string > dialogRecentFolder;
 
@@ -361,6 +363,8 @@ struct Application
         windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
         windows[0].w = 1600;
         windows[0].h = 900;
+        orderingSessions = 3;
+        orderingImportFolder = 3;
     }
 
 };

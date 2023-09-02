@@ -110,6 +110,9 @@ private:
     MediaCreateMode new_media_mode;
     bool new_media_mode_changed;
     Source *source_to_replace;
+
+    static std::vector< std::pair<int, int> > icons_ordering_files;
+    static std::vector< std::string > tooltips_ordering_files;
 };
 
 class ToolBox
