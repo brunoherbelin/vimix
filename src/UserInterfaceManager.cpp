@@ -4767,7 +4767,7 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
         ImVec2 t = top + size - ImVec2(g.FontSize, g.FontSize) - ImVec2(g.Style.FramePadding.y, g.Style.FramePadding.y);
         ImGui::SetCursorPos( t );
-        std::tuple<int, int, std::string> mode = Pointer::Modes.at( (size_t) Settings::application.mouse_pointer);
+        std::tuple<int, int, std::string, std::string> mode = Pointer::Modes.at( (size_t) Settings::application.mouse_pointer);
         ImGuiToolkit::Icon(std::get<0>(mode), std::get<1>(mode));
         ImGui::PopFont();
     }
@@ -4788,7 +4788,7 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
         // loop over all mouse pointer modes
         for ( size_t m = Pointer::POINTER_GRID; m < Pointer::POINTER_INVALID; ++m) {
             bool on = m == (size_t) Settings::application.mouse_pointer;
-            std::tuple<int, int, std::string> mode = Pointer::Modes.at(m);
+            const std::tuple<int, int, std::string, std::string> mode = Pointer::Modes.at(m);
             // show icon of mouse mode and set mouse pointer if selected
             if (ImGuiToolkit::IconToggle( std::get<0>(mode), std::get<1>(mode), &on, std::get<2>(mode).c_str()) )
                 Settings::application.mouse_pointer = (int) m;
@@ -4797,17 +4797,45 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
         }
 
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+
+        // button to lock the ALT activation
         ImGui::SetCursorPosY(margin.y);
-        ImGui::TextDisabled(" |");
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SameLine(0, IMGUI_SAME_LINE * 3);
         ImGuiToolkit::ButtonToggle(Settings::application.mouse_pointer_lock ? ICON_FA_LOCK ALT_LOCK : ICON_FA_UNLOCK ALT_LOCK,
                                    &Settings::application.mouse_pointer_lock,
                                    "Activate the selected snap mouse pointer by pressing the [" ALT_MOD "] key.\n\n"
                                    ICON_FA_LOCK ALT_LOCK " keeps the snap mouse pointer active.");
+
+        // slider to adjust strength of the mouse pointer
+        ImGui::SetNextItemWidth( IMGUI_RIGHT_ALIGN );
+        float *val = &Settings::application.mouse_pointer_strength[ Settings::application.mouse_pointer ];
+        // General case
+        if (Settings::application.mouse_pointer != Pointer::POINTER_GRID) {
+            int percent = *val * 100.f;
+            if (ImGui::SliderInt( "##sliderstrenght", &percent, 0, 100, percent < 1 ? "Min" : "%d%%") )
+                *val = 0.01f * (float) percent;
+            if (ImGui::IsItemHovered() && g.IO.MouseWheel != 0.f ){
+                *val += 0.1f * g.IO.MouseWheel;
+                *val = CLAMP( *val, 0.f, 1.f);
+            }
+        }
+        // special case of GRID
+        else {
+            static const char* grid_names[Grid::UNIT_ONE+1] = { "Precise (0.05)", "Small (0.1)", "Default (0.2)", "Large (0.5)", "Huge (1.0)"};
+            int grid_current = (Grid::Units) round( *val * 4.f) ;
+            const char* grid_current_name = (grid_current >= 0 && grid_current <= Grid::UNIT_ONE) ?
+                        grid_names[grid_current] : "Unknown";
+            if (ImGui::SliderInt("##slidergrid", &grid_current, 0, Grid::UNIT_ONE, grid_current_name) ) {
+                *val = (float) grid_current * 0.25f;
+            }
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton( std::get<3>(Pointer::Modes.at(Settings::application.mouse_pointer)).c_str() ))
+            *val = 0.5f;
         ImGui::PopFont();
 
         // timer to close menu like a tooltip
-        if (ImGui::IsWindowHovered())
+        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
             counter_menu_timeout=0;
         else if (++counter_menu_timeout > 10)
             ImGui::CloseCurrentPopup();

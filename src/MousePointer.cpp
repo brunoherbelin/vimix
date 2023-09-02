@@ -21,7 +21,6 @@
 
 #include "imgui.h"
 
-#include "defines.h"
 #include "Metronome.h"
 #include "View.h"
 #include "Mixer.h"
@@ -30,13 +29,13 @@
 
 #define IMVEC_IO(v) ImVec2( v.x / ImGui::GetIO().DisplayFramebufferScale.x, v.y / ImGui::GetIO().DisplayFramebufferScale.y)
 
-std::vector< std::tuple<int, int, std::string> > Pointer::Modes = {
-    { ICON_POINTER_DEFAULT, std::string("Default") },
-    { ICON_POINTER_GRID,    std::string("Grid") },
-    { ICON_POINTER_LINEAR,  std::string("Linear") },
-    { ICON_POINTER_SPRING,  std::string("Spring") },
-    { ICON_POINTER_WIGGLY,  std::string("Wiggly") },
-    { ICON_POINTER_METRONOME, std::string("Metronome") }
+std::vector< std::tuple<int, int, std::string, std::string> > Pointer::Modes = {
+    { ICON_POINTER_DEFAULT, "Default", "Default" },
+    { ICON_POINTER_GRID,    "Grid",    "Step" },
+    { ICON_POINTER_LINEAR,  "Line",    "Speed" },
+    { ICON_POINTER_SPRING,  "Spring",  "Mass" },
+    { ICON_POINTER_WIGGLY,  "Wiggly",  "Radius" },
+    { ICON_POINTER_METRONOME, "Metronome", "Jump" }
 };
 
 void PointerGrid::initiate(const glm::vec2&)
@@ -106,7 +105,7 @@ void PointerLinear::draw()
 }
 
 #define POINTER_WIGGLY_MIN_RADIUS 3.f
-#define POINTER_WIGGLY_MAX_RADIUS 300.f
+#define POINTER_WIGGLY_MAX_RADIUS 400.f
 #define POINTER_WIGGLY_SMOOTHING 10
 
 void PointerWiggly::update(const glm::vec2 &pos, float)
@@ -131,14 +130,28 @@ void PointerWiggly::draw()
     ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), radius * 0.5f, color, 0, 2.f + 4.f * strength_);
 }
 
-#define POINTER_METRONOME_RADIUS 30.f
+#define POINTER_METRONOME_RADIUS 36.f
+
+void PointerMetronome::initiate(const glm::vec2 &pos)
+{
+    Pointer::initiate(pos);
+    beat_pos_ = pos;
+}
 
 void PointerMetronome::update(const glm::vec2 &pos, float dt)
 {
     current_ = pos;
-    if ( Metronome::manager().timeToBeat() < std::chrono::milliseconds( (uint)floor(dt * 1000.f) )) {
-        target_ = pos;
-    }
+    // aim for the position at the cursor at each beat
+    if ( Metronome::manager().timeToBeat() < std::chrono::milliseconds( (uint)ceil(dt * 1000.f) ))
+        beat_pos_ = pos;
+
+    // calculate min jump ratio for current fps and current tempo
+    // and considering it takes 10 frames to reach the beat_pos,
+    float ratio = 10.f / ((60.f / Metronome::manager().tempo()) / glm::max(dt,0.001f));
+
+    // animate the target cursor position to reach beat_pos_
+    glm::vec2 delta = target_ - beat_pos_;
+    target_ -= delta * (ratio + strength_ * (1.f-ratio) );
 }
 
 void PointerMetronome::draw()
@@ -148,13 +161,13 @@ void PointerMetronome::draw()
     ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), POINTER_METRONOME_RADIUS, color, 0, 3.f);
     ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC_IO(target_), 6.0, color);
 
-    double t = Metronome::manager().phase();
+    double t = Metronome::manager().beats();
     t -= floor(t);
     ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC_IO(current_), t * POINTER_METRONOME_RADIUS, color, 0);
 }
 
 #define POINTER_SPRING_MIN_MASS 6.f
-#define POINTER_SPRING_MAX_MASS 40.f
+#define POINTER_SPRING_MAX_MASS 60.f
 
 void PointerSpring::initiate(const glm::vec2 &pos)
 {
@@ -167,13 +180,13 @@ void PointerSpring::update(const glm::vec2 &pos, float dt)
     current_ = pos;
 
     // percentage of loss of energy at every update
-    const float viscousness = 0.75;
+    const float viscousness = 0.7;
     // force applied on the mass, as percent of the Maximum mass
     const float stiffness = 0.8;
     // damping : opposite direction of force, non proportional to mass
     const float damping = 60.0;
     // mass as a percentage of min to max
-    const float mass = POINTER_SPRING_MAX_MASS - (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
+    const float mass = POINTER_SPRING_MIN_MASS + (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
 
     // compute delta betwen initial and current position
     glm::vec2 delta = pos - target_;
@@ -215,7 +228,7 @@ void PointerSpring::draw()
     ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC_IO(current_), IMVEC_IO(_third), IMVEC_IO(_twothird), IMVEC_IO(_end), color, 5.f);
 
     // represent the weight with a filled circle
-    const float mass = POINTER_SPRING_MAX_MASS - (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
+    const float mass = POINTER_SPRING_MIN_MASS + (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
     ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC_IO(_end), mass, color, 0);
 }
 

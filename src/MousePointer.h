@@ -36,7 +36,7 @@ public:
         POINTER_METRONOME,
         POINTER_INVALID
     } Mode;
-    static std::vector< std::tuple<int, int, std::string> > Modes;
+    static std::vector< std::tuple<int, int, std::string, std::string> > Modes;
 
     Pointer() : strength_(0.5) {}
     virtual ~Pointer() {}
@@ -49,7 +49,7 @@ public:
 
     inline void  setStrength(float percent)   { strength_ = glm::clamp(percent, 0.f, 1.f); }
     inline void  incrementStrength(float inc) { setStrength( strength_ + inc); }
-    inline float strength() const             { return strength_; }
+    inline float strength() const            { return strength_; }
 
 protected:
     glm::vec2 current_;
@@ -67,7 +67,6 @@ public:
     void initiate(const glm::vec2&) override;
     void update(const glm::vec2 &pos, float) override;
     void terminate() override;
-//    void draw() override;
 };
 
 ///
@@ -114,8 +113,10 @@ public:
 ///
 class PointerMetronome : public Pointer
 {
+    glm::vec2 beat_pos_;
 public:
     PointerMetronome() {}
+    void initiate(const glm::vec2 &pos) override;
     void update(const glm::vec2 &pos, float dt) override;
     void draw() override;
 };
