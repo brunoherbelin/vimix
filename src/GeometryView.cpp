@@ -574,7 +574,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     // get if a source was picked
                     Source *s = Mixer::manager().findSource((*itp).first);
                     // lock icon of a source (not current) is picked : unlock
-                    if ( s!=nullptr && (*itp).first == s->lock_) {
+                    if ( s != nullptr && s->locked() && (*itp).first == s->lock_) {
                         lock(s, false);
                         pick = { s->locker_, (*itp).second };
                         break;
@@ -591,14 +591,17 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     // accept picked sources in current workspaces
                     if ( s!=nullptr && (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
                                         s->workspace() == Settings::application.current_workspace) ) {
-                        if ( s->locked() && !UserInterface::manager().ctrlModifier() )
-                            continue;
-                        // a non-locked source is picked (anywhere)
-                        // not in an active selection? don't pick this one!
-                        if ( Mixer::selection().size() > 1 && !Mixer::selection().contains(s))
-                            continue;
-                        // yeah, pick this one (NB: locker_ is just a node in Geometry that is detected)
-                        pick = { s->locker_,  (*itp).second };
+                        if ( !UserInterface::manager().ctrlModifier() ) {
+                            // source is locked; can't move
+                            if ( s->locked() )
+                                continue;
+                            // a non-locked source is picked (anywhere)
+                            // not in an active selection? don't pick this one!
+                            if ( Mixer::selection().size() > 1 && !Mixer::selection().contains(s) )
+                                continue;
+                        }
+                        // yeah, pick this one
+                        pick = { s->group(mode_),  (*itp).second };
                         break;
                     }
                     // not a source picked
