@@ -587,7 +587,7 @@ void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])
         Mixer::manager().addSource ( Mixer::manager().createSourceFile( filename ) );        
     }
     if (i>0) {
-        UserInterface::manager().showPannel();
+        UserInterface::manager().showPannel(  Mixer::manager().numSource() );
         Rendering::manager().mainWindow().show();
     }
 }

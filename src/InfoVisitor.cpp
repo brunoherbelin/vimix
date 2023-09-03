@@ -165,13 +165,14 @@ void InfoVisitor::visit (SessionFileSource& s)
             oss << "Child session (" << numsource << "), RGB" << std::endl;
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
+
+        current_id_ = s.id();
     }
     else {
         oss << s.path() << std::endl << std::endl << "Failed to load.";
     }
 
     information_ = oss.str();
-    current_id_ = s.id();
 }
 
 void InfoVisitor::visit (SessionGroupSource& s)
@@ -199,13 +200,13 @@ void InfoVisitor::visit (SessionGroupSource& s)
             oss << (s.session()->frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA" : "RGB") << std::endl;
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
+        current_id_ = s.id();
     }
     else {
-        oss << "Empty bundle.";
+        oss << std::endl << "Empty bundle.";
     }
 
     information_ = oss.str();
-    current_id_ = s.id();
 }
 
 void InfoVisitor::visit (RenderSource& s)
@@ -253,12 +254,12 @@ void InfoVisitor::visit (CloneSource& s)
             oss << std::get<2>(FrameBufferFilter::Types[s.filter()->type()]) << " filter" << std::endl;
             oss << s.frame()->width() << " x " << s.frame()->height();
         }
+        current_id_ = s.id();
     }
     else
         oss << "Undefined";
 
     information_ = oss.str();
-    current_id_ = s.id();
 }
 
 void InfoVisitor::visit (PatternSource& s)

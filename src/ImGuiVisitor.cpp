@@ -708,11 +708,11 @@ void ImGuiVisitor::visit (MediaSource& s)
 
         ImGui::SetCursorPos(botom);
 
-        // Selector for Hardware or software decoding, if available
-        if ( Settings::application.render.gpu_decoding ) {
+        MediaPlayer *mp = s.mediaplayer();
+        if (mp && !mp->isImage()) {
+            // Selector for Hardware or software decoding, if available
+            if ( Settings::application.render.gpu_decoding ) {
 
-            MediaPlayer *mp = s.mediaplayer();
-            if (mp) {
                 // Build string information on decoder name with icon HW/SW
                 bool hwdec = !mp->softwareDecodingForced();
                 std::string decoder = mp->decoderName();
@@ -737,12 +737,12 @@ void ImGuiVisitor::visit (MediaSource& s)
                     ImGui::EndCombo();
                 }
             }
-        }
-        else {
-            // info of software only decoding if disabled
-            ImGuiToolkit::Icon(14,2,false);
-            ImGui::SameLine();
-            ImGui::TextDisabled("Hardware decoding disabled");
+            else {
+                // info of software only decoding if disabled
+                ImGuiToolkit::Icon(14,2,false);
+                ImGui::SameLine();
+                ImGui::TextDisabled("Hardware decoding disabled");
+            }
         }
 
     }
@@ -786,69 +786,89 @@ void ImGuiVisitor::visit (SessionFileSource& s)
 
     ImVec2 botom = ImGui::GetCursorPos();
 
-    if ( !s.failed() && s.session() != nullptr && s.session()->ready()) {
-        // versions
-        SessionSnapshots *versions = s.session()->snapshots();
-        if (versions->keys_.size()>0) {
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("Version", ICON_FA_CODE_BRANCH " Select" ) )
-            {
-                for (auto v = versions->keys_.crbegin() ; v != versions->keys_.crend(); ++v){
-                    std::string label = std::to_string(*v);
-                    const tinyxml2::XMLElement *snap = versions->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(*v).c_str() );
-                    if (snap)
-                        label = snap->Attribute("label");
-                    if (ImGui::Selectable( label.c_str() )) {
-                        s.session()->applySnapshot(*v);
+    if ( !s.failed() && s.session() != nullptr ) {
+
+        if ( s.active() && s.session()->ready() ) {
+            // versions
+            SessionSnapshots *versions = s.session()->snapshots();
+            if (versions->keys_.size()>0) {
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::BeginCombo("Version", ICON_FA_CODE_BRANCH " Select" ) )
+                {
+                    for (auto v = versions->keys_.crbegin() ; v != versions->keys_.crend(); ++v){
+                        std::string label = std::to_string(*v);
+                        const tinyxml2::XMLElement *snap = versions->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(*v).c_str() );
+                        if (snap)
+                            label = snap->Attribute("label");
+                        if (ImGui::Selectable( label.c_str() )) {
+                            s.session()->applySnapshot(*v);
+                        }
                     }
+                    ImGui::EndCombo();
                 }
-                ImGui::EndCombo();
             }
+
+            // fading
+            std::ostringstream oss;
+            int f = 100 - int(s.session()->fading() * 100.f);
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::SliderInt("##Fading", &f, 0, 100, f > 99 ? ICON_FA_ADJUST " None" : ICON_FA_ADJUST " %d %%") )
+                s.session()->setFadingTarget( float(100 - f) * 0.01f );
+            if (ImGui::IsItemDeactivatedAfterEdit()){
+                oss << s.name() << ": Fading " << f << " %";
+                Action::manager().store(oss.str());
+            }
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton("Fading")) {
+                s.session()->setFadingTarget(0.f);
+                oss << s.name() << ": Fading 0 %";
+                Action::manager().store(oss.str());
+            }
+
+            // import
+            if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import all", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+                Mixer::manager().import( &s );
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::Text("Sources");
+
+            // file open
+            if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+                Mixer::manager().set( s.detach() );
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::Text("Session");
+
+            botom = ImGui::GetCursorPos();
+
+            // icon (>) to open player
+            if ( s.playable() ) {
+                ImGui::SetCursorPos(top);
+                std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+                if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
+                    UserInterface::manager().showSourceEditor(&s);
+                top.x += ImGui::GetFrameHeight();
+            }
+
         }
+        else
+        {
+            // file open
+            if ( ImGui::Button( ICON_FA_ARROW_CIRCLE_RIGHT " Transition", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+            {
+                TransitionView *tv = static_cast<TransitionView*>(Mixer::manager().view(View::TRANSITION));
+                tv->attach(&s);
+                Mixer::manager().setView(View::TRANSITION);
+                WorkspaceWindow::clearWorkspace();
+            }
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::Text("Session");
 
-        // fading
-        std::ostringstream oss;
-        int f = 100 - int(s.session()->fading() * 100.f);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderInt("##Fading", &f, 0, 100, f > 99 ? ICON_FA_ADJUST " None" : ICON_FA_ADJUST " %d %%") )
-            s.session()->setFadingTarget( float(100 - f) * 0.01f );
-        if (ImGui::IsItemDeactivatedAfterEdit()){
-            oss << s.name() << ": Fading " << f << " %";
-            Action::manager().store(oss.str());
-        }
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (ImGuiToolkit::TextButton("Fading")) {
-            s.session()->setFadingTarget(0.f);
-            oss << s.name() << ": Fading 0 %";
-            Action::manager().store(oss.str());
-        }
-
-        // import
-        if ( ImGui::Button( ICON_FA_FILE_EXPORT " Import all", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-            Mixer::manager().import( &s );
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Sources");
-
-        // file open
-        if ( ImGui::Button( ICON_FA_FILE_UPLOAD " Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-            Mixer::manager().set( s.detach() );
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Session");
-
-        botom = ImGui::GetCursorPos();
-
-        // icon (>) to open player
-        if ( s.playable() ) {
-            ImGui::SetCursorPos(top);
-            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
-            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
-                UserInterface::manager().showSourceEditor(&s);
-            top.x += ImGui::GetFrameHeight();
+            botom = ImGui::GetCursorPos();
         }
 
         ImGui::SetCursorPos(top);
         if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
+
     }
     else
         info.reset();

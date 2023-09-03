@@ -166,7 +166,7 @@ public:
     inline bool altModifier() const  { return alt_modifier_active; }
     inline bool shiftModifier() const  { return shift_modifier_active; }
 
-    void showPannel(int id = 0);
+    void showPannel(int id = -1);
     void setSourceInPanel(int index);
     void setSourceInPanel(Source *s);
     Source *sourceInPanel();

@@ -163,6 +163,7 @@ void TransitionView::update(float dt)
             if (d > 0.2f) {
                 Mixer::manager().setView(View::MIXING);
                 WorkspaceWindow::restoreWorkspace();
+                UserInterface::manager().showPannel(NAV_MENU);
             }
         }
     }

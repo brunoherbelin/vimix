@@ -2757,12 +2757,17 @@ void Navigator::togglePannelNew()
     selected_button[NAV_NEW] = !selected_button[NAV_NEW];
     applyButtonSelection(NAV_NEW);
     new_media_mode_changed = true;
+
+    if (Settings::application.pannel_always_visible)
+        showPannelSource( Mixer::manager().numSource() );
+
 }
 
 void Navigator::togglePannelAutoHide()
 {
     // toggle variable
     Settings::application.pannel_always_visible = !Settings::application.pannel_always_visible;
+
     // initiate change
     if (Settings::application.pannel_always_visible) {
         int current = Mixer::manager().indexCurrentSource();
@@ -4374,7 +4379,7 @@ void Navigator::RenderMainPannelVimix()
             // Thumbnail
             static Thumbnail _file_thumbnail;
             static FrameBufferImage *thumbnail = nullptr;
-            if ( ImGui::Button( ICON_FA_TAG "  Create thumbnail", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+            if ( ImGui::Button( ICON_FA_TAG "  Set thumbnail", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
                 Mixer::manager().session()->setThumbnail();
                 thumbnail = nullptr;
             }
@@ -4397,7 +4402,7 @@ void Navigator::RenderMainPannelVimix()
             if (Mixer::manager().session()->thumbnail()) {
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
                 ImGui::SameLine();
-                if (ImGuiToolkit::IconButton(ICON_FA_BACKSPACE, "Remove thumbnail")) {
+                if (ImGuiToolkit::IconButton(ICON_FA_BACKSPACE, "Clear thumbnail")) {
                     Mixer::manager().session()->resetThumbnail();
                     _file_thumbnail.reset();
                     thumbnail = nullptr;

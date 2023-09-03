@@ -166,6 +166,12 @@ void GeometryView::update(float dt)
                 (*node)->scale_.x = aspect_ratio;
             }
             output_surface_->setTextureIndex( output->texture() );
+
+            // set grid aspect ratio
+            if (Settings::application.proportional_grid)
+                translation_grid_->setAspectRatio( output->aspectRatio() );
+            else
+                translation_grid_->setAspectRatio( 1.f );
         }
 
         // prevent invalid scaling
@@ -177,12 +183,6 @@ void GeometryView::update(float dt)
         const ImVec4 c = ImGuiToolkit::HighlightColor();
         translation_grid_->setColor( glm::vec4(c.x, c.y, c.z, 0.3) );
         rotation_grid_->setColor( glm::vec4(c.x, c.y, c.z, 0.3) );
-
-        // set grid aspect ratio
-        if (Settings::application.proportional_grid)
-            translation_grid_->setAspectRatio( Mixer::manager().session()->frame()->aspectRatio() );
-        else
-            translation_grid_->setAspectRatio( 1.f );
     }
 
     // the current view is the geometry view
