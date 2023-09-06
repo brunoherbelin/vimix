@@ -88,9 +88,12 @@ void FrameBuffer::init()
         g_printerr("Framebuffer %d created (%d x %d) - ", framebufferid_, attrib_.viewport.x, attrib_.viewport.y);
 #endif
 
-    // take settings into account: no multisampling if application multisampling is level 0
+// Always disable multisampling under Mac OSX (unsupported OpenGL feature)
+#ifndef TARGET_OS_OSX
+    // or take settings into account: no multisampling if application multisampling is level 0
     if ( Settings::application.render.multisampling < 1 )
-        flags_ &= ~FrameBuffer_multisampling;
+#endif
+    flags_ &= ~FrameBuffer_multisampling;
 
     if (flags_ & FrameBuffer_multisampling){
 

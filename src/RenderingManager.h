@@ -69,7 +69,6 @@ public:
     // draw a framebuffer
     bool draw(FrameBuffer *fb);
     inline uint texture() const {return textureid_; }
-    void swap();
 
     // fullscreen
     bool isFullscreen ();
