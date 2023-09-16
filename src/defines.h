@@ -15,6 +15,8 @@
 
 #define VIMIX_FILE_EXT "mix"
 #define VIMIX_FILE_PATTERN "*.mix"
+#define VIMIX_PLAYLIST_FILE_EXT "lix"
+#define VIMIX_PLAYLIST_FILE_PATTERN "*.lix"
 #define MEDIA_FILES_PATTERN "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov",\
     "*.mkv", "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg",\
     "*.flv", "*.hevc", "*.asf", "*.jpg", "*.png",  "*.gif",\
@@ -140,7 +142,7 @@
 #define ALT_LOCK " ALT LOCK"
 #endif
 
-#define MENU_NEW_FILE         ICON_FA_FILE "  New"
+#define MENU_NEW_FILE         ICON_FA_FILE "+ New"
 #define SHORTCUT_NEW_FILE     CTRL_MOD "W"
 #define MENU_OPEN_FILE        ICON_FA_FILE_UPLOAD "  Open"
 #define SHORTCUT_OPEN_FILE    CTRL_MOD "O"
@@ -186,19 +188,22 @@
 #define MENU_CLOSE            ICON_FA_TIMES "   Close"
 #define DIALOG_FAILED_SOURCE  ICON_FA_EXCLAMATION_TRIANGLE " Source failure"
 
-#define MENU_NOTE             ICON_FA_STICKY_NOTE "   Add sticky note"
 #define MENU_METRICS          ICON_FA_TACHOMETER_ALT "  Metrics"
 #define MENU_SOURCE_TOOL      ICON_FA_WRENCH "  Source toolbar"
 #define MENU_HELP             ICON_FA_LIFE_RING "  Help"
 #define SHORTCUT_HELP         CTRL_MOD "H"
 #define MENU_LOGS             ICON_FA_LIST_UL "  Logs"
 #define SHORTCUT_LOGS         CTRL_MOD "L"
+#define MENU_PLAYER           ICON_FA_PLAY_CIRCLE "  Player "
 #define TOOLTIP_PLAYER        "Player "
 #define SHORTCUT_PLAYER       CTRL_MOD "P"
+#define MENU_OUTPUT           ICON_FA_DESKTOP " Display "
 #define TOOLTIP_OUTPUT        "Display "
 #define SHORTCUT_OUTPUT       CTRL_MOD "D"
+#define MENU_TIMER            ICON_FA_CLOCK "  Timer "
 #define TOOLTIP_TIMER         "Timer "
 #define SHORTCUT_TIMER        CTRL_MOD "T"
+#define MENU_INPUTS           ICON_FA_HAND_PAPER "  Inputs mapping "
 #define TOOLTIP_INPUTS        "Inputs mapping "
 #define SHORTCUT_INPUTS       CTRL_MOD "I"
 #define TOOLTIP_SHADEREDITOR  "Shader Editor "

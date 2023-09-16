@@ -100,7 +100,7 @@ void ImGuiToolkit::ButtonDisabled(const char* label, const ImVec2 &size_arg)
     ImGui::PopStyleColor(1);
 }
 
-bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* shortcut)
+bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* tooltip, bool rightalign)
 {
     bool ret = false;
 
@@ -119,7 +119,7 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* sho
     float radius = height * 0.50f;
 
     // toggle action : operate on the whole area
-    ImGui::InvisibleButton(label, ImVec2(frame_width - frame_height, frame_height));
+    ImGui::InvisibleButton(label, ImVec2(frame_width, frame_height));
     if (ImGui::IsItemClicked()) {
         *toggle = !*toggle;
         ret = true;
@@ -143,19 +143,19 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* sho
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBg], colors[ImGuiCol_TabActive], t));
 
     // draw help text if present
-    if (shortcut) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
-        ImGui::RenderText(draw_pos, shortcut);
-        ImGui::PopStyleColor(1);
-    }
+    if (tooltip != nullptr && ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(tooltip);
+
+    // right alignment
+    float alignment = rightalign ? width + g.Style.FramePadding.x : 3.5f * ImGui::GetTextLineHeightWithSpacing();
 
     // draw the label right aligned
     const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
-    ImVec2 text_pos = draw_pos + ImVec2(frame_width -3.8f * ImGui::GetTextLineHeightWithSpacing() -label_size.x, 0.f);
+    ImVec2 text_pos = draw_pos + ImVec2(frame_width -alignment - g.Style.ItemSpacing.x -label_size.x, 0.f);
     ImGui::RenderText(text_pos, label);
 
     // draw switch after the text
-    ImVec2 p = draw_pos + ImVec2(frame_width -3.5f * ImGui::GetTextLineHeightWithSpacing(), 0.f);
+    ImVec2 p = draw_pos + ImVec2(frame_width -alignment, 0.f);
     draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
     draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 250));
 

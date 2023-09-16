@@ -16,6 +16,7 @@
 #include "TimerMetronomeWindow.h"
 #include "InputMappingWindow.h"
 #include "ShaderEditWindow.h"
+#include "Playlist.h"
 
 
 struct ImVec2;
@@ -48,8 +49,8 @@ class Navigator
     float padding_width_;
 
     // behavior pannel
-    bool show_config_;
     bool pannel_visible_;
+    int  pannel_main_mode_;
     float pannel_alpha_;
     bool view_pannel_visible;
     bool selected_button[NAV_COUNT];
@@ -63,12 +64,13 @@ class Navigator
     void applyButtonSelection(int index);
 
     // side pannels
-    void RenderSourcePannel(Source *s);
-    void RenderMainPannel();
-    void RenderMainPannelVimix();
+    void RenderSourcePannel(Source *s, const ImVec2 &iconsize);
+    void RenderMainPannel(const ImVec2 &iconsize);
+    void RenderMainPannelSession();
+    void RenderMainPannelPlaylist();
     void RenderMainPannelSettings();
-    void RenderTransitionPannel();
-    void RenderNewPannel();
+    void RenderTransitionPannel(const ImVec2 &iconsize);
+    void RenderNewPannel(const ImVec2 &iconsize);
     void RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2 &size);
     void RenderMousePointerSelector(const ImVec2 &size);
 
@@ -198,6 +200,10 @@ protected:
     DialogToolkit::OpenSessionDialog *sessionimportdialog;
     DialogToolkit::SaveSessionDialog *sessionsavedialog;
 
+    // Favorites and playlists
+    Playlist favorites;
+    std::string playlists_path;
+
     // objects and windows
     Navigator navigator;
     ToolBox toolbox;
@@ -209,6 +215,7 @@ protected:
 
     void showMenuFile();
     void showMenuEdit();
+    void showMenuWindows();
     bool saveOrSaveAs(bool force_versioning = false);
     void selectSaveFilename();
     void selectOpenFilename();

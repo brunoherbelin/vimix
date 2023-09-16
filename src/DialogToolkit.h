@@ -30,24 +30,10 @@ public:
     static bool busy() { return busy_; }
 };
 
-class OpenImageDialog : public FileDialog
-{
-public:
-    OpenImageDialog(const std::string &name) : FileDialog(name) {}
-    void open();
-};
-
 class OpenSessionDialog : public FileDialog
 {
 public:
     OpenSessionDialog(const std::string &name) : FileDialog(name) {}
-    void open();
-};
-
-class OpenMediaDialog : public FileDialog
-{
-public:
-    OpenMediaDialog(const std::string &name) : FileDialog(name) {}
     void open();
 };
 
@@ -59,10 +45,50 @@ public:
     void open();
 };
 
+class MultipleSessionsDialog : public FileDialog
+{
+    std::list<std::string> pathlist_;
+    std::vector< std::future< std::list<std::string> > > promisedlist_;
+public:
+    MultipleSessionsDialog(const std::string &name) : FileDialog(name) {}
+    void open() override;
+    bool closed() override;
+    inline std::list<std::string> files() const { return pathlist_; }
+};
+
+class OpenPlaylistDialog : public FileDialog
+{
+public:
+    OpenPlaylistDialog(const std::string &name) : FileDialog(name) {}
+    void open();
+};
+
+class SavePlaylistDialog : public FileDialog
+{
+public:
+    SavePlaylistDialog(const std::string &name) : FileDialog(name) {}
+    void setFolder(std::string path);
+    void open();
+};
+
+class OpenMediaDialog : public FileDialog
+{
+public:
+    OpenMediaDialog(const std::string &name) : FileDialog(name) {}
+    void open();
+};
+
 class OpenFolderDialog : public FileDialog
 {
 public:
     OpenFolderDialog(const std::string &name) : FileDialog(name) {}
+    void open();
+};
+
+class OpenImageDialog : public FileDialog
+{
+public:
+    OpenImageDialog(const std::string &name) : FileDialog(name) {}
     void open();
 };
 

@@ -912,7 +912,7 @@ void SourceControlWindow::RenderSelection(size_t i)
 
     ImGui::SameLine();
     ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.3f);
-    if (ImGui::Button(ICON_FA_MINUS_CIRCLE)) {
+    if (ImGui::Button(ICON_FA_TIMES_CIRCLE)) {
         resetActiveSelection();
         Mixer::manager().session()->deleteBatch(i);
     }

@@ -129,16 +129,19 @@ struct History
     bool load_at_start;
     bool save_on_exit;
     bool changed;
+    int  ordering;
 
     History() {
-        path = IMGUI_LABEL_RECENT_FILES;
+        path = "";
         front_is_valid = false;
         load_at_start = true;
         save_on_exit = true;
         changed = false;
+        ordering = 3;
     }
-    void push(const std::string &filename);
-    void remove(const std::string &filename);
+    void push   (const std::string &filename);
+    void remove (const std::string &filename);
+    void assign (const std::string &filename);
     void validate();
 };
 
@@ -278,6 +281,8 @@ struct Application
     bool action_history_follow_view;
     bool show_tooptips;
 
+    int  pannel_main_mode;
+    int  pannel_playlist_mode;
     int  pannel_current_session_mode;
     bool pannel_always_visible;
 
@@ -321,12 +326,11 @@ struct Application
     std::vector<WindowConfig> windows;
 
     // recent files histories
-    int orderingSessions;
     History recentSessions;
+    History recentPlaylists;
     History recentFolders;
     History recentImport;
     History recentImportFolders;
-    int orderingImportFolder;
     History recentRecordings;
     std::map< std::string, std::string > dialogRecentFolder;
 
@@ -355,6 +359,8 @@ struct Application
         loopback_camera = 0;
         shm_method = 0;
         shm_socket_path = "";
+        pannel_main_mode = 0;
+        pannel_playlist_mode = 0;
         pannel_current_session_mode = 0;
         current_view = 1;
         current_workspace= 3;
@@ -363,8 +369,6 @@ struct Application
         windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
         windows[0].w = 1600;
         windows[0].h = 900;
-        orderingSessions = 3;
-        orderingImportFolder = 3;
     }
 
 };

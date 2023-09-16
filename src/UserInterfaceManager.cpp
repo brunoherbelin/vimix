@@ -77,6 +77,7 @@
 #include "VideoBroadcast.h"
 #include "MultiFileRecorder.h"
 #include "MousePointer.h"
+#include "Playlist.h"
 
 #include "UserInterfaceManager.h"
 
@@ -200,6 +201,14 @@ bool UserInterface::Init()
     std::string inifile = SystemToolkit::full_filename(SystemToolkit::settings_path(), "imgui.ini");
     std::snprintf(inifilepath, 2048, "%s", inifile.c_str() );
     io.IniFilename = inifilepath;
+
+    // load favorites
+    favorites.load( SystemToolkit::full_filename(SystemToolkit::settings_path(), "favorites.lix") );
+    playlists_path = SystemToolkit::full_filename(SystemToolkit::settings_path(), "playlists");
+    if ( !SystemToolkit::file_exists(playlists_path)) {
+        if ( !SystemToolkit::create_directory(playlists_path) )
+            playlists_path = SystemToolkit::home_path();
+    }
 
     // init dialogs
     sessionopendialog   = new DialogToolkit::OpenSessionDialog("Open Session");
@@ -957,6 +966,9 @@ void UserInterface::Render()
 
 void UserInterface::Terminate()
 {
+    // save favorites
+    favorites.save();
+
     // restore windows position for saving
     WorkspaceWindow::restoreWorkspace(true);
 
@@ -1016,6 +1028,33 @@ void UserInterface::showMenuEdit()
         // create a new group session with all sources
         Mixer::manager().ungroupAll();
     }
+}
+
+void UserInterface::showMenuWindows()
+{
+    if ( ImGui::MenuItem( MENU_OUTPUT, SHORTCUT_OUTPUT, &Settings::application.widget.preview) )
+        UserInterface::manager().outputcontrol.setVisible(Settings::application.widget.preview);
+
+    if ( ImGui::MenuItem( MENU_PLAYER, SHORTCUT_PLAYER, &Settings::application.widget.media_player) )
+        UserInterface::manager().sourcecontrol.setVisible(Settings::application.widget.media_player);
+
+    if ( ImGui::MenuItem( MENU_TIMER, SHORTCUT_TIMER, &Settings::application.widget.timer) )
+        UserInterface::manager().timercontrol.setVisible(Settings::application.widget.timer);
+
+    if ( ImGui::MenuItem( MENU_INPUTS, SHORTCUT_INPUTS, &Settings::application.widget.inputs) )
+        UserInterface::manager().inputscontrol.setVisible(Settings::application.widget.inputs);
+
+    ImGui::Separator();
+
+    // Show Help
+    ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP, &Settings::application.widget.help );
+    // Show Logs
+    ImGui::MenuItem( MENU_LOGS, SHORTCUT_LOGS, &Settings::application.widget.logs );
+    // Enable / disable source toolbar
+    ImGui::MenuItem( MENU_SOURCE_TOOL, NULL, &Settings::application.widget.source_toolbar );
+    // Enable / disable metrics toolbar
+    ImGui::MenuItem( MENU_METRICS, NULL, &Settings::application.widget.stats );
+
 }
 
 void UserInterface::showMenuFile()
@@ -2409,9 +2448,6 @@ void UserInterface::RenderHelp()
         ImGui::Text(ICON_FA_TACHOMETER_ALT "  Metrics"); ImGui::NextColumn();
         ImGui::Text ("Monitoring of metrics on the system (e.g. FPS, RAM) and runtime (e.g. session duration).");
         ImGui::NextColumn();
-        ImGui::Text(ICON_FA_STICKY_NOTE "  Sticky note"); ImGui::NextColumn();
-        ImGui::Text ("Place sticky notes into your session. Does nothing, just keeps notes and reminders.");
-        ImGui::NextColumn();
         ImGui::Text(IMGUI_TITLE_LOGS); ImGui::NextColumn();
         ImGui::Text ("History of program logs, with information on success and failure of commands.");
         ImGui::NextColumn();
@@ -2663,7 +2699,7 @@ Navigator::Navigator()
     padding_width_ = 100;
 
     // clean start
-    show_config_ = false;
+    pannel_main_mode_ = Settings::application.pannel_main_mode;
     pannel_visible_ = false;
     pannel_alpha_ = 0.85f;
     view_pannel_visible = false;
@@ -2692,7 +2728,7 @@ void Navigator::applyButtonSelection(int index)
     // set visible if button is active
     pannel_visible_ = status;
 
-    show_config_ = false;
+    pannel_main_mode_ = Settings::application.pannel_main_mode;
 }
 
 void Navigator::clearNewPannel()
@@ -2740,7 +2776,7 @@ void Navigator::showConfig()
 {
     selected_button[NAV_MENU] = true;
     applyButtonSelection(NAV_MENU);
-    show_config_ = true;
+    pannel_main_mode_ = 2;
 }
 
 void Navigator::togglePannelMenu()
@@ -2834,7 +2870,7 @@ void Navigator::discardPannel()
 
     pannel_visible_ = false;
     view_pannel_visible = false;
-    show_config_ = false;
+    pannel_main_mode_ = Settings::application.pannel_main_mode;
 }
 
 void Navigator::Render()
@@ -2874,9 +2910,12 @@ void Navigator::Render()
 
         if (Settings::application.current_view != View::TRANSITION) {
 
-            // the "=" icon for menu
-            if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize))
+            // the vimix icon for menu
+            if (ImGuiToolkit::SelectableIcon(2, 16, "", selected_button[NAV_MENU], iconsize)) {
+                selected_button[NAV_MENU] = true;
+//            if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize)) {
                 applyButtonSelection(NAV_MENU);
+            }
             if (ImGui::IsItemHovered())
                 tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN};
 
@@ -3105,17 +3144,17 @@ void Navigator::Render()
         // pannel menu
         if (selected_button[NAV_MENU])
         {
-            RenderMainPannel();
+            RenderMainPannel(iconsize);
         }
         // pannel to manage transition
         else if (selected_button[NAV_TRANS])
         {
-            RenderTransitionPannel();
+            RenderTransitionPannel(iconsize);
         }
         // pannel to create a source
         else if (selected_button[NAV_NEW])
         {
-            RenderNewPannel();
+            RenderNewPannel(iconsize);
         }
         // pannel to configure a selected source
         else
@@ -3124,12 +3163,12 @@ void Navigator::Render()
                 showPannelSource(NAV_MENU);
             // most often, render current sources
             else if ( selected_index == Mixer::manager().indexCurrentSource())
-                RenderSourcePannel(Mixer::manager().currentSource());
+                RenderSourcePannel(Mixer::manager().currentSource(), iconsize);
             // rarely its not the current source that is selected
             else {
                 SourceList::iterator cs = Mixer::manager().session()->at( selected_index );
                 if (cs != Mixer::manager().session()->end() )
-                    RenderSourcePannel( *cs );
+                    RenderSourcePannel(*cs, iconsize);
             }
         }
     }
@@ -3174,30 +3213,32 @@ void Navigator::RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2
 }
 
 // Source pannel : *s was checked before
-void Navigator::RenderSourcePannel(Source *s)
+void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
 {
     if (s == nullptr || Settings::application.current_view == View::TRANSITION)
         return;
 
     // Next window is a side pannel
+    const ImGuiStyle& style = ImGui::GetStyle();
     ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
     ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
     ImGui::SetNextWindowBgAlpha( pannel_alpha_ ); // Transparent background
     if (ImGui::Begin("##navigatorSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
-        ImGui::SetCursorPosY(IMGUI_TOP_ALIGN);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetCursorPosY(0.5f * (iconsize.y - ImGui::GetTextLineHeight()));
         ImGui::Text("Source");
-        ImGui::PopFont();
 
         // index indicator
-        ImGui::SetCursorPos(ImVec2(pannel_width_ - 2 * ImGui::GetTextLineHeight(), 15.f));
+        ImGui::SetCursorPos(ImVec2(pannel_width_ - 2 * ImGui::GetTextLineHeight(), IMGUI_TOP_ALIGN));
         ImGui::TextDisabled("#%d", Mixer::manager().indexCurrentSource());
+
+        ImGui::PopFont();
 
         // name
         std::string sname = s->name();
-        ImGui::SetCursorPosY(width_);
+        ImGui::SetCursorPosY(width_ - style.WindowPadding.x);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::InputText("Name", &sname) ){
             Mixer::manager().renameSource(s, sname);
@@ -3297,14 +3338,12 @@ void Navigator::setNewMedia(MediaCreateMode mode, std::string path)
     new_source_preview_.setSource();
 }
 
-void Navigator::RenderNewPannel()
+void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 {
     if (Settings::application.current_view == View::TRANSITION)
         return;
 
     const ImGuiStyle& style = ImGui::GetStyle();
-    const float icon_width = width_ - 2.f * style.WindowPadding.x;
-    const ImVec2 iconsize(icon_width, icon_width);
 
     // Next window is a side pannel
     ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
@@ -3313,8 +3352,8 @@ void Navigator::RenderNewPannel()
     if (ImGui::Begin("##navigatorNewSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
-        ImGui::SetCursorPosY(10);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetCursorPosY(0.5f * (iconsize.y - ImGui::GetTextLineHeight()));
         if (source_to_replace != nullptr)
             ImGui::Text("Replace");
         else
@@ -3355,7 +3394,7 @@ void Navigator::RenderNewPannel()
         ImGui::PopFont();
 
         // Edit menu
-        ImGui::SetCursorPosY(width_ * 1.9f);
+        ImGui::SetCursorPosY(2.f * width_ - style.WindowPadding.x);
 
         // File Source creation
         if (Settings::application.source.new_type == SOURCE_FILE) {
@@ -3417,7 +3456,7 @@ void Navigator::RenderNewPannel()
                     }
                 }
                 // Add a folder for MEDIA_FOLDER
-                if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Add Folder") ) {
+                if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " List directory") ) {
                     folderimportdialog.open();
                 }
                 ImGui::EndCombo();
@@ -3429,36 +3468,8 @@ void Navigator::RenderNewPannel()
                 setNewMedia(MEDIA_FOLDER, folderimportdialog.path());
             }
 
-            // icons to clear lists or discarc folder
+            // position on top of list
             ImVec2 pos_top = ImGui::GetCursorPos();
-            ImGui::SameLine();
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
-            if ( new_media_mode == MEDIA_FOLDER ) {
-                if (ImGuiToolkit::IconButton( ICON_FA_FOLDER_MINUS, "Discard folder")) {
-                    Settings::application.recentImportFolders.filenames.remove(Settings::application.recentImportFolders.path);
-                    if (Settings::application.recentImportFolders.filenames.empty())
-                        // revert mode RECENT
-                        setNewMedia(MEDIA_RECENT);
-                    else
-                        setNewMedia(MEDIA_FOLDER, Settings::application.recentImportFolders.filenames.front());
-                }
-            }
-            else if ( new_media_mode == MEDIA_RECORDING ) {
-                if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear list")) {
-                    Settings::application.recentRecordings.filenames.clear();
-                    Settings::application.recentRecordings.front_is_valid = false;
-                    setNewMedia(MEDIA_RECORDING);
-                }
-            }
-            else if ( new_media_mode == MEDIA_RECENT ) {
-                if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear list")) {
-                    Settings::application.recentImport.filenames.clear();
-                    Settings::application.recentImport.front_is_valid = false;
-                    setNewMedia(MEDIA_RECENT);
-                }
-            }
-            ImGui::PopStyleVar();
-            ImGui::SetCursorPos(pos_top);
 
             // change session list if changed
             if (new_media_mode_changed || Settings::application.recentImport.changed || Settings::application.recentRecordings.changed) {
@@ -3491,7 +3502,7 @@ void Navigator::RenderNewPannel()
                 else if ( new_media_mode == MEDIA_FOLDER) {
                     // show list of media files in folder
                     sourceMediaFiles = SystemToolkit::list_directory( Settings::application.recentImportFolders.path, { MEDIA_FILES_PATTERN },
-                                                                      (SystemToolkit::Ordering) Settings::application.orderingImportFolder);
+                                                                      (SystemToolkit::Ordering) Settings::application.recentImportFolders.ordering);
                 }
                 // indicate the list changed (do not change at every frame)
                 new_media_mode_changed = false;
@@ -3537,8 +3548,15 @@ void Navigator::RenderNewPannel()
 
             // Supplementary icons to manage the list
             ImVec2 pos_bot = ImGui::GetCursorPos();
-            // Bottom Right side of the list: helper and options of Recent Recordings
             if (new_media_mode == MEDIA_RECORDING) {
+                // Clear list
+                ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y) );
+                if (ImGuiToolkit::IconButton( 12, 14, "Clear list")) {
+                    Settings::application.recentRecordings.filenames.clear();
+                    Settings::application.recentRecordings.front_is_valid = false;
+                    setNewMedia(MEDIA_RECORDING);
+                }
+                // Bottom Right side of the list: helper and options of Recent Recordings
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
                 ImGuiToolkit::HelpToolTip("Recently recorded videos (lastest on top). Clic on a filename to open.\n\n"
                                          ICON_FA_CHEVRON_CIRCLE_RIGHT "  Auto-preload prepares this panel with the "
@@ -3554,14 +3572,32 @@ void Navigator::RenderNewPannel()
                     }
                 }
             }
-            // Top right of Media folder list
             else if (new_media_mode == MEDIA_FOLDER) {
-                // ordering list
+                // close list
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y) );
+                if (ImGuiToolkit::IconButton( 4, 5, "Close directory")) {
+                    Settings::application.recentImportFolders.filenames.remove(Settings::application.recentImportFolders.path);
+                    if (Settings::application.recentImportFolders.filenames.empty())
+                        // revert mode RECENT
+                        setNewMedia(MEDIA_RECENT);
+                    else
+                        setNewMedia(MEDIA_FOLDER, Settings::application.recentImportFolders.filenames.front());
+                }
+                // ordering list
+                ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetFrameHeightWithSpacing()) );
                 ImGui::PushID("##new_media_mode_changed");
-                if ( ImGuiToolkit::IconMultistate(icons_ordering_files, &Settings::application.orderingImportFolder, tooltips_ordering_files) )
+                if ( ImGuiToolkit::IconMultistate(icons_ordering_files, &Settings::application.recentImportFolders.ordering, tooltips_ordering_files) )
                     new_media_mode_changed = true;
                 ImGui::PopID();
+            }
+            else if ( new_media_mode == MEDIA_RECENT ) {
+                // Clear list
+                ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y) );
+                if (ImGuiToolkit::IconButton( 12, 14, "Clear list")) {
+                    Settings::application.recentImport.filenames.clear();
+                    Settings::application.recentImport.front_is_valid = false;
+                    setNewMedia(MEDIA_RECENT);
+                }
             }
             // come back...
             ImGui::SetCursorPos(pos_bot);
@@ -4014,723 +4050,6 @@ void Navigator::RenderNewPannel()
     }
 }
 
-void Navigator::RenderMainPannelVimix()
-{
-    // TITLE
-    ImGui::SetCursorPosY(IMGUI_TOP_ALIGN);
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    ImGui::Text(APP_NAME);
-    ImGui::PopFont();
-
-    // MENU
-    ImGui::SameLine();
-    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN) );
-    if (ImGui::BeginMenu("File"))
-    {
-        UserInterface::manager().showMenuFile();
-        ImGui::EndMenu();
-    }
-    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + ImGui::GetTextLineHeightWithSpacing()) );
-    if (ImGui::BeginMenu("Edit"))
-    {
-        UserInterface::manager().showMenuEdit();
-        ImGui::EndMenu();
-    }
-
-    ImGui::SetCursorPosY(width_);
-
-    //
-    // SESSION panel
-    //
-    ImGui::Text("Sessions");
-    static bool selection_session_mode_changed = true;
-    static int selection_session_mode = (Settings::application.recentFolders.path == IMGUI_LABEL_RECENT_FILES) ? 0 : 1;
-    static DialogToolkit::OpenFolderDialog customFolder("Open Folder");
-
-    // Show combo box of quick selection modes
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if (ImGui::BeginCombo("##SelectionSession", BaseToolkit::truncated(Settings::application.recentFolders.path, 25).c_str() )) {
-
-        // Mode 0 : recent files
-        if (ImGui::Selectable( ICON_FA_LIST_OL IMGUI_LABEL_RECENT_FILES) ) {
-             Settings::application.recentFolders.path = IMGUI_LABEL_RECENT_FILES;
-             selection_session_mode = 0;
-             selection_session_mode_changed = true;
-        }
-        // Mode 1 : known folders
-        for(auto foldername = Settings::application.recentFolders.filenames.begin();
-            foldername != Settings::application.recentFolders.filenames.end(); foldername++) {
-            std::string f = std::string(ICON_FA_FOLDER) + " " + BaseToolkit::truncated( *foldername, 40);
-            if (ImGui::Selectable( f.c_str() )) {
-                // remember which path was selected
-                Settings::application.recentFolders.path.assign(*foldername);
-                // set mode
-                selection_session_mode = 1;
-                selection_session_mode_changed = true;
-            }
-        }
-        // Add a folder
-        if (ImGui::Selectable( ICON_FA_FOLDER_PLUS " Open Folder") )
-            customFolder.open();
-        ImGui::EndCombo();
-    }
-
-    // return from thread for folder openning
-    if (customFolder.closed() && !customFolder.path().empty()) {
-        Settings::application.recentFolders.push(customFolder.path());
-        Settings::application.recentFolders.path.assign(customFolder.path());
-        selection_session_mode = 1;
-        selection_session_mode_changed = true;
-    }
-
-    // icon to clear list
-    ImVec2 pos_top = ImGui::GetCursorPos();
-    ImGui::SameLine();
-    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
-    if ( selection_session_mode == 1) {
-        if (ImGuiToolkit::IconButton( ICON_FA_FOLDER_MINUS, "Discard folder")) {
-            Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);
-            if (Settings::application.recentFolders.filenames.empty()) {
-                Settings::application.recentFolders.path.assign(IMGUI_LABEL_RECENT_FILES);
-                selection_session_mode = 0;
-            }
-            else
-                Settings::application.recentFolders.path = Settings::application.recentFolders.filenames.front();
-            // reload the list next time
-            selection_session_mode_changed = true;
-        }
-    }
-    else {
-        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear list of recent files")) {
-            Settings::application.recentSessions.filenames.clear();
-            Settings::application.recentSessions.front_is_valid = false;
-            // reload the list next time
-            selection_session_mode_changed = true;
-        }
-    }
-    ImGui::PopStyleVar();
-    ImGui::SetCursorPos(pos_top);
-
-    // fill the session list depending on the mode
-    static std::list<std::string> sessions_list;
-    static std::list<std::string>::iterator _file_over = sessions_list.end();
-    static std::list<std::string>::iterator _displayed_over = sessions_list.end();
-
-    // change session list if changed
-    if (selection_session_mode_changed || Settings::application.recentSessions.changed || Settings::application.recentFolders.changed) {
-
-        // selection MODE 0 ; RECENT sessions
-        if ( selection_session_mode == 0) {
-            // show list of recent sessions
-            Settings::application.recentSessions.validate();
-            sessions_list = Settings::application.recentSessions.filenames;
-            SystemToolkit::reorder_file_list( sessions_list, (SystemToolkit::Ordering) Settings::application.orderingSessions);
-        }
-        // selection MODE 1 : LIST FOLDER
-        else if ( selection_session_mode == 1) {
-            // show list of vimix files in folder
-            sessions_list = SystemToolkit::list_directory( Settings::application.recentFolders.path, { VIMIX_FILE_PATTERN },
-                                                           (SystemToolkit::Ordering) Settings::application.orderingSessions);
-        }
-
-        // indicate the list changed (do not change at every frame)
-        Settings::application.recentSessions.changed = false;
-        Settings::application.recentFolders.changed = false;
-        selection_session_mode_changed = false;
-        _file_over = sessions_list.end();
-        _displayed_over = sessions_list.end();
-    }
-
-    {
-        static uint _tooltip = 0;
-        ++_tooltip;
-
-        // display the sessions list and detect if one was selected (double clic)
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::ListBoxHeader("##Sessions", sessions_list.size(), CLAMP(sessions_list.size(), 4, 8)) ) {
-
-            bool done = false;
-            int count_over = 0;
-            ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
-
-            for(auto it = sessions_list.begin(); it != sessions_list.end(); ++it) {
-
-                if (it->empty())
-                    continue;
-
-                std::string shortname = SystemToolkit::filename(*it);
-                if (ImGui::Selectable( shortname.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick, size )) {
-                    // open on double clic
-                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) /*|| file_selected == it*/) {
-                        Mixer::manager().open( *it, Settings::application.smooth_transition );
-                        if (Settings::application.smooth_transition)
-                            WorkspaceWindow::clearWorkspace();
-                        done = true;
-                    }
-                    else
-                        // show tooltip on clic
-                        _tooltip = 100;
-
-                }
-                if (ImGui::IsItemHovered())
-                    _file_over = it;
-
-                if (_tooltip > 60 && _file_over != sessions_list.end() && count_over < 1) {
-
-                    static std::string _file_info = "";
-                    static Thumbnail _file_thumbnail;
-                    static bool with_tag_ = false;
-
-                    // load info only if changed from the one already displayed
-                    if (_displayed_over != _file_over) {
-                        _displayed_over = _file_over;
-                        SessionInformation info = SessionCreator::info(*_displayed_over);
-                        _file_info = info.description;
-                        if (info.thumbnail) {
-                            // set image content to thumbnail display
-                            _file_thumbnail.fill( info.thumbnail );
-                            with_tag_ = info.user_thumbnail_;
-                            delete info.thumbnail;
-                        } else
-                            _file_thumbnail.reset();
-                    }
-
-                    if ( !_file_info.empty()) {
-
-                        ImGui::BeginTooltip();
-                        ImVec2 p_ = ImGui::GetCursorScreenPos();
-                        _file_thumbnail.Render(size.x);
-                        ImGui::Text("%s", _file_info.c_str());
-                        if (with_tag_) {
-                            ImGui::SetCursorScreenPos(p_ + ImVec2(6, 6));
-                            ImGui::Text(ICON_FA_TAG);
-                        }
-                        ImGui::EndTooltip();
-                    }
-                    else
-                        selection_session_mode_changed = true;
-
-                    ++count_over; // prevents display twice on item overlap
-                }
-            }
-            ImGui::ListBoxFooter();
-
-            // done the selection !
-            if (done) {
-                discardPannel();
-                _tooltip = 0;
-                _displayed_over = _file_over = sessions_list.end();
-                // reload the list next time
-                selection_session_mode_changed = true;
-            }
-        }
-        // cancel tooltip and mouse over on mouse exit
-        if ( !ImGui::IsItemHovered()) {
-            _tooltip = 0;
-            _displayed_over = _file_over = sessions_list.end();
-        }
-    }
-
-    ImVec2 pos_bot = ImGui::GetCursorPos();
-
-    // Right side of the list: helper and options
-    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y));
-    if ( ImGuiToolkit::IconButton( ICON_FA_FILE " +" )) {
-        Mixer::manager().close(Settings::application.smooth_transition );
-        if (Settings::application.smooth_transition)
-            WorkspaceWindow::clearWorkspace();
-        discardPannel();
-    }
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip("New session", SHORTCUT_NEW_FILE);
-
-    // ordering list
-    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetFrameHeightWithSpacing()) );
-    ImGui::PushID("##selection_session_mode_changed");
-    if ( ImGuiToolkit::IconMultistate(icons_ordering_files, &Settings::application.orderingSessions, tooltips_ordering_files) )
-        selection_session_mode_changed = true;
-    ImGui::PopID();
-
-    // help indicator
-    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-    ImGuiToolkit::HelpToolTip("Here are listed either the recent files or all the sessions files (*.mix) in a selected folder.\n\n"
-                             "Double-clic on a filename to open the session.\n\n"
-                             ICON_FA_ARROW_CIRCLE_RIGHT "  Smooth transition "
-                             "performs cross fading to the opened session.");
-    // toggle button for smooth transition
-    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-    ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition, "Smooth transition");
-    // come back...
-    ImGui::SetCursorPos(pos_bot);
-
-    //
-    // Status
-    //
-    ImGuiToolkit::Spacing();
-    ImGui::Text("Current session");
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("##Selectpanelsession", &Settings::application.pannel_current_session_mode,
-                 ICON_FA_CODE_BRANCH "  Versions\0" ICON_FA_HISTORY " Undo history\0" ICON_FA_FILE_ALT "  Properties\0");
-    pos_bot = ImGui::GetCursorPos();
-
-    //
-    // Current 2. PROPERTIES
-    //
-    if (Settings::application.pannel_current_session_mode > 1) {
-
-        std::string sessionfilename = Mixer::manager().session()->filename();
-
-        // Information and resolution
-        const FrameBuffer *output = Mixer::manager().session()->frame();
-        if (output)
-        {
-            // Show info text bloc (dark background)
-            ImGuiTextBuffer info;
-            if (sessionfilename.empty())
-                info.appendf("<unsaved>");
-            else
-                info.appendf("%s", SystemToolkit::filename(sessionfilename).c_str());
-            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            ImGui::InputText("##Info", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
-            ImGui::PopStyleColor(1);
-
-            // change resolution (height only)
-            // get parameters to edit resolution
-            glm::ivec2 preset = RenderView::presetFromResolution(output->resolution());
-            glm::ivec2 custom = glm::ivec2(output->resolution());
-            if (preset.x > -1) {
-                // cannot change resolution when recording
-                if ( UserInterface::manager().outputcontrol.isRecording() ) {
-                    // show static info (same size than combo)
-                    static char dummy_str[512];
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    snprintf(dummy_str, 512, "%s", RenderView::ratio_preset_name[preset.x]);
-                    ImGui::InputText("Ratio", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                    if (preset.x < RenderView::AspectRatio_Custom) {
-                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                        snprintf(dummy_str, 512, "%s", RenderView::height_preset_name[preset.y]);
-                        ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                    } else {
-                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                        snprintf(dummy_str, 512, "%d", custom.x);
-                        ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                        snprintf(dummy_str, 512, "%d", custom.y);
-                        ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                    }
-                    ImGui::PopStyleColor(1);
-                }
-                // offer to change filename, ratio and resolution
-                else {
-                    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
-                    ImGui::SameLine();
-                    if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save as" )) {
-                        UserInterface::manager().selectSaveFilename();
-                    }
-                    if (!sessionfilename.empty()) {
-
-                        ImGui::SameLine();
-                        if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
-                            SystemToolkit::open(SystemToolkit::path_filename(sessionfilename));
-                    }
-                    ImGui::SetCursorScreenPos(draw_pos);
-                    // combo boxes to select aspect rario
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    if (ImGui::Combo("Ratio", &preset.x, RenderView::ratio_preset_name, IM_ARRAYSIZE(RenderView::ratio_preset_name) ) )
-                    {
-                        // change to custom aspect ratio: propose 1:1
-                        glm::vec3 res = glm::vec3(custom.y, custom.y, 0.f);
-                        // else, change to preset aspect ratio
-                        if (preset.x < RenderView::AspectRatio_Custom)
-                            res = RenderView::resolutionFromPreset(preset.x, preset.y);
-                        // change resolution
-                        Mixer::manager().setResolution(res);
-                    }
-                    //  - preset aspect ratio : propose preset height
-                    if (preset.x < RenderView::AspectRatio_Custom) {
-                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                        if (ImGui::Combo("Height", &preset.y, RenderView::height_preset_name, IM_ARRAYSIZE(RenderView::height_preset_name) ) )
-                        {
-                            glm::vec3 res = RenderView::resolutionFromPreset(preset.x, preset.y);
-                            Mixer::manager().setResolution(res);
-                        }
-                    }
-                    //  - custom aspect ratio : input width and height
-                    else {
-                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);                        
-                        ImGui::InputInt("Width", &custom.x, 100, 500);
-                        if (ImGui::IsItemDeactivatedAfterEdit())
-                            Mixer::manager().setResolution( glm::vec3(custom, 0.f));
-                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                        ImGui::InputInt("Height", &custom.y, 100, 500);
-                        if (ImGui::IsItemDeactivatedAfterEdit())
-                            Mixer::manager().setResolution( glm::vec3(custom, 0.f));
-
-                    }
-                }
-            }
-        }
-
-        // the session file exists
-        if (!sessionfilename.empty())
-        {
-            // Thumbnail
-            static Thumbnail _file_thumbnail;
-            static FrameBufferImage *thumbnail = nullptr;
-            if ( ImGui::Button( ICON_FA_TAG "  Set thumbnail", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
-                Mixer::manager().session()->setThumbnail();
-                thumbnail = nullptr;
-            }
-            pos_bot = ImGui::GetCursorPos();
-            if (ImGui::IsItemHovered()){
-                // thumbnail changed
-                if (thumbnail != Mixer::manager().session()->thumbnail()) {
-                    _file_thumbnail.reset();
-                    thumbnail = Mixer::manager().session()->thumbnail();
-                    if (thumbnail != nullptr)
-                        _file_thumbnail.fill( thumbnail );
-                }
-                if (_file_thumbnail.filled()) {
-                    ImGui::BeginTooltip();
-                    _file_thumbnail.Render(230);
-                    ImGui::Text("Thumbnail used in the\nlist of Sessions above.");
-                    ImGui::EndTooltip();
-                }
-            }
-            if (Mixer::manager().session()->thumbnail()) {
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
-                ImGui::SameLine();
-                if (ImGuiToolkit::IconButton(ICON_FA_BACKSPACE, "Clear thumbnail")) {
-                    Mixer::manager().session()->resetThumbnail();
-                    _file_thumbnail.reset();
-                    thumbnail = nullptr;
-                }
-                ImGui::PopStyleVar();
-            }
-            ImGui::SetCursorPos( pos_bot );
-        }
-
-    }
-    //
-    // Current 1. UNDO History
-    //
-    else if (Settings::application.pannel_current_session_mode > 0) {
-
-        static uint _over = 0;
-        static uint64_t _displayed_over = 0;
-        static bool _tooltip = 0;
-
-        ImGui::SameLine();
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
-        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear history")) {
-            Action::manager().init();
-        }
-        ImGui::PopStyleVar();
-        // come back...
-        ImGui::SetCursorPos(pos_bot);
-
-        pos_top = ImGui::GetCursorPos();
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::ListBoxHeader("##UndoHistory", Action::manager().max(), CLAMP(Action::manager().max(), 4, 8)) ) {
-
-            int count_over = 0;
-            ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
-
-            for (uint i = Action::manager().max(); i > 0; --i) {
-
-                if (ImGui::Selectable( Action::manager().label(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick, size )) {
-                    // go to on double clic
-                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-                        Action::manager().stepTo(i);
-                    else
-                        // show tooltip on clic
-                        _tooltip = true;
-                }
-                // mouse over
-                if (ImGui::IsItemHovered())
-                    _over = i;
-
-                // if mouse over (only once)
-                if (_tooltip && _over > 0 && count_over < 1) {
-                    static std::string text = "";
-                    static Thumbnail _undo_thumbnail;
-                    // load label and thumbnail only if current changed
-                    if (_displayed_over != _over) {
-                        _displayed_over = _over;
-                        text = Action::manager().label(_over);
-                        if (text.find_first_of(':') < text.size())
-                            text = text.insert( text.find_first_of(':') + 1, 1, '\n');
-                        FrameBufferImage *im = Action::manager().thumbnail(_over);
-                        if (im) {
-                            // set image content to thumbnail display
-                            _undo_thumbnail.fill( im );
-                            delete im;
-                        }
-                        else
-                            _undo_thumbnail.reset();
-                    }
-                    // draw thumbnail in tooltip
-                    ImGui::BeginTooltip();
-                    _undo_thumbnail.Render(size.x);
-                    ImGui::Text("%s", text.c_str());
-                    ImGui::EndTooltip();
-                    ++count_over; // prevents display twice on item overlap
-                }
-
-            }
-            ImGui::ListBoxFooter();
-        }
-        // cancel tooltip and mouse over on mouse exit
-        if ( !ImGui::IsItemHovered()) {
-            _tooltip = false;
-            _displayed_over = _over = 0;
-        }
-
-        pos_bot = ImGui::GetCursorPos();
-
-        // right buttons
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
-        if ( Action::manager().current() > 1 ) {
-            if ( ImGuiToolkit::IconButton( ICON_FA_UNDO ) )
-                Action::manager().undo();
-        } else
-            ImGui::TextDisabled( ICON_FA_UNDO );
-
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetTextLineHeightWithSpacing() + 4));
-        if ( Action::manager().current() < Action::manager().max() ) {
-            if ( ImGuiToolkit::IconButton( ICON_FA_REDO ))
-                Action::manager().redo();
-        } else
-            ImGui::TextDisabled( ICON_FA_REDO );
-
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view, "Show in view");
-    }
-    //
-    // Current 0. VERSIONS
-    //
-    else {
-        static uint64_t _over = 0;
-        static bool _tooltip = 0;
-
-        ImGui::SameLine();
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.7);
-        if (ImGuiToolkit::IconButton( ICON_FA_BACKSPACE, "Clear versions")) {
-            Action::manager().clearSnapshots();
-        }
-        ImGui::PopStyleVar();
-        // come back...
-        ImGui::SetCursorPos(pos_bot);
-
-        // list snapshots
-        std::list<uint64_t> snapshots = Action::manager().snapshots();
-        pos_top = ImGui::GetCursorPos();
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::ListBoxHeader("##Snapshots", snapshots.size(), CLAMP(snapshots.size(), 4, 8)) ) {
-
-            static uint64_t _selected = 0;
-            static Thumbnail _snap_thumbnail;
-            static std::string _snap_label = "";
-            static std::string _snap_date = "";
-
-            int count_over = 0;
-            ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
-            for (auto snapit = snapshots.rbegin(); snapit != snapshots.rend(); ++snapit)
-            {
-                // entry
-                ImVec2 pos = ImGui::GetCursorPos();
-
-                // context menu icon on currently hovered item
-                if ( _over == *snapit ) {
-                    // open context menu
-                    ImGui::SetCursorPos(ImVec2(size.x-ImGui::GetTextLineHeight()/2.f, pos.y));
-                    if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) ) {
-                        // current list item
-                        Action::manager().open(*snapit);
-                        // open menu
-                        ImGui::OpenPopup( "MenuSnapshot" );
-                    }
-                    // show tooltip and select on mouse over menu icon
-                    if (ImGui::IsItemHovered()) {
-                        _selected = *snapit;
-                        _tooltip = true;
-                    }
-                    ImGui::SetCursorPos(pos);
-                }
-
-                // snapshot item
-                if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), (*snapit == _selected), ImGuiSelectableFlags_AllowDoubleClick, size )) {
-                    // shot tooltip on clic
-                    _tooltip = true;
-                    // trigger snapshot on double clic
-                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-                        Action::manager().restore(*snapit);
-                }
-                // mouse over
-                if (ImGui::IsItemHovered()) {
-                    _over = *snapit;
-                    _selected = 0;
-                }
-
-                // if mouse over (only once)
-                if (_tooltip && _over > 0 && count_over < 1) {
-                    static uint64_t current_over = 0;
-                    // load label and thumbnail only if current changed
-                    if (current_over != _over) {
-                        _snap_label = Action::manager().label(_over);
-                        _snap_date  = "Version of " + readable_date_time_string(Action::manager().date(_over));
-                        FrameBufferImage *im = Action::manager().thumbnail(_over);
-                        if (im) {
-                            // set image content to thumbnail display
-                            _snap_thumbnail.fill( im );
-                            delete im;
-                        }
-                        else
-                            _snap_thumbnail.reset();
-                        current_over = _over;
-                    }
-                    // draw thumbnail in tooltip
-                    ImGui::BeginTooltip();
-                    _snap_thumbnail.Render(size.x);
-                    ImGui::Text("%s", _snap_date.c_str());
-                    ImGui::EndTooltip();
-                    ++count_over; // prevents display twice on item overlap
-                }
-            }
-
-            // context menu on currently open snapshot
-            uint64_t current = Action::manager().currentSnapshot();
-            if (ImGui::BeginPopup( "MenuSnapshot" ) && current > 0 )
-            {
-                _selected = current;
-                // snapshot thumbnail
-                _snap_thumbnail.Render(size.x);
-                // snapshot editable label
-                ImGui::SetNextItemWidth(size.x);
-                if ( ImGuiToolkit::InputText("##Rename", &_snap_label ) )
-                    Action::manager().setLabel( current, _snap_label);
-                // snapshot actions
-                if (ImGui::Selectable( ICON_FA_ANGLE_DOUBLE_RIGHT "    Restore", false, 0, size ))
-                    Action::manager().restore();
-                if (ImGui::Selectable( ICON_FA_CODE_BRANCH "-    Remove", false, 0, size ))
-                    Action::manager().remove();
-                // export option if possible
-                std::string filename = Mixer::manager().session()->filename();
-                if (filename.size()>0) {
-                    if (ImGui::Selectable( ICON_FA_FILE_DOWNLOAD "     Export", false, 0, size )) {
-                        Action::manager().saveas(filename);
-                    }
-                }
-                ImGui::EndPopup();
-            }
-            else
-                _selected = 0;
-
-            // end list snapshots
-            ImGui::ListBoxFooter();
-        }
-        // cancel tooltip and mouse over on mouse exit
-        if ( !ImGui::IsItemHovered()) {
-            _tooltip = false;
-            _over = 0;
-        }
-
-        // Right panel buton
-        pos_bot = ImGui::GetCursorPos();
-
-        // right buttons
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
-        if ( ImGuiToolkit::IconButton( ICON_FA_FILE_DOWNLOAD " +")) {
-            UserInterface::manager().saveOrSaveAs(true);
-        }
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Save & Keep version");
-
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-        ImGuiToolkit::HelpToolTip("Previous versions of the session (latest on top). "
-                                 "Double-clic on a version to restore it.\n\n"
-                                 ICON_FA_CODE_BRANCH "  With iterative saving on, a new version "
-                                 "is kept each time the session is saved.");
-        // toggle button for versioning
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot,"Iterative saving");
-
-        ImGui::SetCursorPos( pos_bot );
-    }
-
-    //
-    // Buttons to show WINDOWS
-    //
-    ImGuiToolkit::Spacing();
-    ImGui::Text("Windows");
-    ImGui::Spacing();
-
-
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    bool on = false;
-
-    ImGui::SameLine(0, 0.5f * ImGui::GetTextLineHeight());
-    on = Settings::application.widget.preview;
-    if (ImGuiToolkit::IconToggle( ICON_FA_DESKTOP, &on, TOOLTIP_OUTPUT, SHORTCUT_OUTPUT))
-        UserInterface::manager().outputcontrol.setVisible(on);
-
-    ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    on = Settings::application.widget.media_player;
-    if (ImGuiToolkit::IconToggle( ICON_FA_PLAY_CIRCLE, &on, TOOLTIP_PLAYER, SHORTCUT_PLAYER))
-        UserInterface::manager().sourcecontrol.setVisible(on);
-
-    ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    on = Settings::application.widget.timer;
-    if (ImGuiToolkit::IconToggle( ICON_FA_CLOCK, &on, TOOLTIP_TIMER, SHORTCUT_TIMER))
-        UserInterface::manager().timercontrol.setVisible(on);
-
-    ImGui::SameLine(0, ImGui::GetTextLineHeight());
-    on = Settings::application.widget.inputs;
-    if (ImGuiToolkit::IconToggle( ICON_FA_HAND_PAPER, &on, TOOLTIP_INPUTS, SHORTCUT_INPUTS))
-        UserInterface::manager().inputscontrol.setVisible(on);
-
-    ImGui::SameLine(0, ImGui::GetTextLineHeight() - IMGUI_SAME_LINE);
-    static uint counter_menu_timeout = 0;
-    const ImVec4* colors = ImGui::GetStyle().Colors;
-    ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsPopupOpen("MenuToolboxWindows") ? colors[ImGuiCol_DragDropTarget] : colors[ImGuiCol_Text] );
-    if ( ImGuiToolkit::IconButton( " " ICON_FA_ELLIPSIS_V " " ) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) ) {
-        counter_menu_timeout=0;
-        ImGui::OpenPopup( "MenuToolboxWindows" );
-    }
-    ImGui::PopStyleColor(1);
-
-    ImGui::PopFont();
-
-    if (ImGui::BeginPopup( "MenuToolboxWindows" ))
-    {
-        // Enable / disable source toolbar
-        ImGui::MenuItem( MENU_SOURCE_TOOL, NULL, &Settings::application.widget.source_toolbar );
-        // Enable / disable metrics toolbar
-        ImGui::MenuItem( MENU_METRICS, NULL, &Settings::application.widget.stats );
-        // Add sticky note
-        if (ImGui::MenuItem( MENU_NOTE ))
-            Mixer::manager().session()->addNote();
-        // Show help
-        if (ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP) )
-            Settings::application.widget.help = true;
-        // Show Logs
-        if (ImGui::MenuItem( MENU_LOGS, SHORTCUT_LOGS) )
-            Settings::application.widget.logs = true;
-        // timer to close menu like a tooltip
-        if (ImGui::IsWindowHovered())
-            counter_menu_timeout=0;
-        else if (++counter_menu_timeout > 10)
-            ImGui::CloseCurrentPopup();
-
-        ImGui::EndPopup();
-    }
-
-
-}
-
-
 void Navigator::RenderMousePointerSelector(const ImVec2 &size)
 {
     ImGuiContext& g = *GImGui;
@@ -4852,19 +4171,968 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
 
 }
 
+void Navigator::RenderMainPannelSession()
+{
+    const float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+    const float preview_height = 4.5f * ImGui::GetFrameHeightWithSpacing();
+    const float space = ImGui::GetStyle().ItemSpacing.y;
+
+    //
+    // Session
+    //
+    ImGui::Text("Session");
+
+    std::string sessions_current = Mixer::manager().session()->filename();
+    if (sessions_current.empty())
+        sessions_current = "<unsaved>";
+    else
+        sessions_current = SystemToolkit::filename(sessions_current);
+
+    //
+    // Show combo box of recent files
+    //
+    static std::list<std::string> sessions_list;
+    // get list of recent sessions when it changed, not at every frame
+    if (Settings::application.recentSessions.changed) {
+        Settings::application.recentSessions.changed = false;
+        Settings::application.recentSessions.validate();
+        sessions_list = Settings::application.recentSessions.filenames;
+    }
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if (ImGui::BeginCombo("##RecentSessions", sessions_current.c_str() )) {
+        // list all sessions in recent list
+        for(auto it = sessions_list.begin(); it != sessions_list.end(); ++it) {
+            if (ImGui::Selectable( SystemToolkit::filename(*it).c_str() ) ) {
+                Mixer::manager().open( *it );
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text( "%s", (*it).c_str() );
+                ImGui::EndTooltip();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImVec2 pos = ImGui::GetCursorPos();
+    ImGui::SameLine();
+    if ( Mixer::manager().session()->filename().empty()) {
+        if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save as"))
+            UserInterface::manager().saveOrSaveAs();
+    } else {
+        if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
+            SystemToolkit::open(SystemToolkit::path_filename(Mixer::manager().session()->filename()));
+    }
+    ImGui::SetCursorPos(pos);
+
+    //
+    // Preview session
+    //
+    Session *se = Mixer::manager().session();
+    float width = preview_width;
+    float height = se->frame()->projectionArea().y * width / ( se->frame()->projectionArea().x * se->frame()->aspectRatio());
+    if (height > preview_height - space) {
+        height = preview_height - space;
+        width = height * se->frame()->aspectRatio() * ( se->frame()->projectionArea().x / se->frame()->projectionArea().y);
+    }
+    // centered image
+    ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
+    ImGui::Image((void*)(uintptr_t) se->frame()->texture(), ImVec2(width, height));
+
+    // right side options for session
+    if (!Mixer::manager().session()->filename().empty()) {
+
+        //
+        // Right align icon top : heart to add to favorites
+        //
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + space) );
+        // if session is in favorites
+        if ( UserInterface::manager().favorites.has( Mixer::manager().session()->filename() ) > 0 ) {
+            // offer to remove from favorites
+            if ( ImGuiToolkit::IconButton( 15, 4 , "Remove from favorites")) {
+                UserInterface::manager().favorites.remove( Mixer::manager().session()->filename() );
+            }
+        }
+        // else session is not in favorites, offer to add
+        else if ( ImGuiToolkit::IconButton( 16, 4 , "Add to favorites")) {
+            UserInterface::manager().favorites.add( Mixer::manager().session()->filename() );
+        }
+
+        //
+        // Right align icon middle : sticky note
+        //
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - 2.f * ImGui::GetFrameHeightWithSpacing()) );
+        if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE " +", "Add a sticky note")) {
+            Mixer::manager().session()->addNote();
+        }
+
+        //
+        // Right align bottom icon : thumbnail of session file, on/off
+        //
+        static Thumbnail _session_thumbnail;
+        static FrameBufferImage *_thumbnail = nullptr;
+        bool _user_thumbnail = Mixer::manager().session()->thumbnail() != nullptr;
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
+        if (ImGuiToolkit::IconToggle(2, 8, 7, 8, &_user_thumbnail)) {
+            if (_user_thumbnail)
+                Mixer::manager().session()->setThumbnail();
+            else {
+                Mixer::manager().session()->resetThumbnail();
+                _session_thumbnail.reset();
+            }
+            _thumbnail = nullptr;
+        }
+        if (ImGui::IsItemHovered()){
+            // thumbnail changed
+            if (_thumbnail != Mixer::manager().session()->thumbnail()) {
+                _session_thumbnail.reset();
+                _thumbnail = Mixer::manager().session()->thumbnail();
+                if (_thumbnail != nullptr)
+                    _session_thumbnail.fill( _thumbnail );
+            }
+            ImGui::BeginTooltip();
+            if (_session_thumbnail.filled()) {
+                _session_thumbnail.Render(230);
+                ImGui::Text(" Custom thumbnail");
+            }
+            else {
+                ImGui::Text(" No thumbnail ");
+            }
+            ImGui::EndTooltip();
+        }
+    }
+
+    //
+    // Menu for actions on current session
+    ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::Combo("##Selectpanelsession", &Settings::application.pannel_current_session_mode,
+                 ICON_FA_CODE_BRANCH "  Versions\0" ICON_FA_HISTORY " Undo history\0" ICON_FA_BORDER_STYLE "  Resolution\0");
+    ImVec2 pos_bot = ImGui::GetCursorPos();   
+
+    //
+    // Current 2. RESOLUTION
+    //
+    if (Settings::application.pannel_current_session_mode > 1) {
+
+        // Information and resolution
+        const FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output)  {
+            // change resolution (height only)
+            // get parameters to edit resolution
+            glm::ivec2 preset = RenderView::presetFromResolution(output->resolution());
+            glm::ivec2 custom = glm::ivec2(output->resolution());
+            if (preset.x > -1) {
+                // cannot change resolution when recording
+                if ( UserInterface::manager().outputcontrol.isRecording() ) {
+                    // show static info (same size than combo)
+                    static char dummy_str[512];
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    snprintf(dummy_str, 512, "%s", RenderView::ratio_preset_name[preset.x]);
+                    ImGui::InputText("Ratio", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    if (preset.x < RenderView::AspectRatio_Custom) {
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        snprintf(dummy_str, 512, "%s", RenderView::height_preset_name[preset.y]);
+                        ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    } else {
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        snprintf(dummy_str, 512, "%d", custom.x);
+                        ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        snprintf(dummy_str, 512, "%d", custom.y);
+                        ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    }
+                    ImGui::PopStyleColor(1);
+                }
+                // offer to change filename, ratio and resolution
+                else {
+                    // combo boxes to select aspect rario
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    if (ImGui::Combo("Ratio", &preset.x, RenderView::ratio_preset_name, IM_ARRAYSIZE(RenderView::ratio_preset_name) ) )  {
+                        // change to custom aspect ratio: propose 1:1
+                        glm::vec3 res = glm::vec3(custom.y, custom.y, 0.f);
+                        // else, change to preset aspect ratio
+                        if (preset.x < RenderView::AspectRatio_Custom)
+                            res = RenderView::resolutionFromPreset(preset.x, preset.y);
+                        // change resolution
+                        Mixer::manager().setResolution(res);
+                    }
+                    //  - preset aspect ratio : propose preset height
+                    if (preset.x < RenderView::AspectRatio_Custom) {
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        if (ImGui::Combo("Height", &preset.y, RenderView::height_preset_name, IM_ARRAYSIZE(RenderView::height_preset_name) ) )   {
+                            glm::vec3 res = RenderView::resolutionFromPreset(preset.x, preset.y);
+                            Mixer::manager().setResolution(res);
+                        }
+                        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        static char dummy_str[512];
+                        snprintf(dummy_str, 512, "%d", custom.x );
+                        ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                        ImGui::PopStyleColor(1);
+                    }
+                    //  - custom aspect ratio : input width and height
+                    else {
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        ImGui::InputInt("Height", &custom.y, 100, 500);
+                        if (ImGui::IsItemDeactivatedAfterEdit())
+                            Mixer::manager().setResolution( glm::vec3(custom, 0.f));                        
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        ImGui::InputInt("Width", &custom.x, 100, 500);
+                        if (ImGui::IsItemDeactivatedAfterEdit())
+                            Mixer::manager().setResolution( glm::vec3(custom, 0.f));
+                    }
+                }
+            }
+        }
+    }
+    //
+    // Current 1. UNDO History
+    //
+    else if (Settings::application.pannel_current_session_mode > 0) {
+
+        static uint _over = 0;
+        static uint64_t _displayed_over = 0;
+        static bool _tooltip = 0;
+
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y -ImGui::GetFrameHeight() ));
+        if ( Action::manager().current() > 1 ) {
+            if ( ImGuiToolkit::IconButton( ICON_FA_UNDO, "Undo" ) )
+                Action::manager().undo();
+        } else
+            ImGui::TextDisabled( ICON_FA_UNDO );
+        ImGui::SameLine();
+        if ( Action::manager().current() < Action::manager().max() ) {
+            if ( ImGuiToolkit::IconButton( ICON_FA_REDO, "Redo" ))
+                Action::manager().redo();
+        } else
+            ImGui::TextDisabled( ICON_FA_REDO );
+
+        // come back...
+        ImGui::SetCursorPos(pos_bot);
+
+        ImVec2 pos_top = ImGui::GetCursorPos();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if ( ImGui::ListBoxHeader("##UndoHistory", Action::manager().max(), CLAMP(Action::manager().max(), 4, 8)) ) {
+
+            int count_over = 0;
+            ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
+
+            for (uint i = Action::manager().max(); i > 0; --i) {
+
+                if (ImGui::Selectable( Action::manager().label(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick, size )) {
+                    // go to on double clic
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                        Action::manager().stepTo(i);
+                    else
+                        // show tooltip on clic
+                        _tooltip = true;
+                }
+                // mouse over
+                if (ImGui::IsItemHovered())
+                    _over = i;
+
+                // if mouse over (only once)
+                if (_tooltip && _over > 0 && count_over < 1) {
+                    static std::string text = "";
+                    static Thumbnail _undo_thumbnail;
+                    // load label and thumbnail only if current changed
+                    if (_displayed_over != _over) {
+                        _displayed_over = _over;
+                        text = Action::manager().label(_over);
+                        if (text.find_first_of(':') < text.size())
+                            text = text.insert( text.find_first_of(':') + 1, 1, '\n');
+                        FrameBufferImage *im = Action::manager().thumbnail(_over);
+                        if (im) {
+                            // set image content to thumbnail display
+                            _undo_thumbnail.fill( im );
+                            delete im;
+                        }
+                        else
+                            _undo_thumbnail.reset();
+                    }
+                    // draw thumbnail in tooltip
+                    ImGui::BeginTooltip();
+                    _undo_thumbnail.Render(size.x);
+                    ImGui::Text("%s", text.c_str());
+                    ImGui::EndTooltip();
+                    ++count_over; // prevents display twice on item overlap
+                }
+
+            }
+            ImGui::ListBoxFooter();
+        }
+        // cancel tooltip and mouse over on mouse exit
+        if ( !ImGui::IsItemHovered()) {
+            _tooltip = false;
+            _displayed_over = _over = 0;
+        }
+
+        pos_bot = ImGui::GetCursorPos();
+
+        // right buttons
+        if ( Action::manager().max() > 1 ) {
+            ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
+            if (ImGuiToolkit::IconButton( 12, 14, "Clear history"))
+                Action::manager().init();
+        }
+
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
+        ImGuiToolkit::HelpToolTip("History of actions (latest on top). "
+                                 "Double-clic on an action to restore its status.\n\n"
+                                 ICON_FA_MAP_MARKED_ALT "  Enable Show in view to automatically "
+                                 "navigate to the view when the action is undone/redone.");
+        // toggle button for shhow in view
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
+        ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view, "Show in view");
+    }
+    //
+    // Current 0. VERSIONS
+    //
+    else {
+        static uint64_t _over = 0;
+        static bool _tooltip = 0;
+
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y -ImGui::GetFrameHeight() ));
+        if ( ImGuiToolkit::IconButton( ICON_FA_FILE_DOWNLOAD " +")) {
+            UserInterface::manager().saveOrSaveAs(true);
+        }
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Save & Keep version");
+        // come back...
+        ImGui::SetCursorPos(pos_bot);
+
+        // list snapshots
+        std::list<uint64_t> snapshots = Action::manager().snapshots();
+        ImVec2 pos_top = ImGui::GetCursorPos();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if ( ImGui::ListBoxHeader("##Snapshots", snapshots.size(), CLAMP(snapshots.size(), 4, 8)) ) {
+
+            static uint64_t _selected = 0;
+            static Thumbnail _snap_thumbnail;
+            static std::string _snap_label = "";
+            static std::string _snap_date = "";
+
+            int count_over = 0;
+            ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
+            for (auto snapit = snapshots.rbegin(); snapit != snapshots.rend(); ++snapit)
+            {
+                // entry
+                ImVec2 pos = ImGui::GetCursorPos();
+
+                // context menu icon on currently hovered item
+                if ( _over == *snapit ) {
+                    // open context menu
+                    ImGui::SetCursorPos(ImVec2(size.x-ImGui::GetTextLineHeight()/2.f, pos.y));
+                    if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) ) {
+                        // current list item
+                        Action::manager().open(*snapit);
+                        // open menu
+                        ImGui::OpenPopup( "MenuSnapshot" );
+                    }
+                    // show tooltip and select on mouse over menu icon
+                    if (ImGui::IsItemHovered()) {
+                        _selected = *snapit;
+                        _tooltip = true;
+                    }
+                    ImGui::SetCursorPos(pos);
+                }
+
+                // snapshot item
+                if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), (*snapit == _selected), ImGuiSelectableFlags_AllowDoubleClick, size )) {
+                    // shot tooltip on clic
+                    _tooltip = true;
+                    // trigger snapshot on double clic
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                        Action::manager().restore(*snapit);
+                }
+                // mouse over
+                if (ImGui::IsItemHovered()) {
+                    _over = *snapit;
+                    _selected = 0;
+                }
+
+                // if mouse over (only once)
+                if (_tooltip && _over > 0 && count_over < 1) {
+                    static uint64_t current_over = 0;
+                    // load label and thumbnail only if current changed
+                    if (current_over != _over) {
+                        _snap_label = Action::manager().label(_over);
+                        _snap_date  = "Version of " + readable_date_time_string(Action::manager().date(_over));
+                        FrameBufferImage *im = Action::manager().thumbnail(_over);
+                        if (im) {
+                            // set image content to thumbnail display
+                            _snap_thumbnail.fill( im );
+                            delete im;
+                        }
+                        else
+                            _snap_thumbnail.reset();
+                        current_over = _over;
+                    }
+                    // draw thumbnail in tooltip
+                    ImGui::BeginTooltip();
+                    _snap_thumbnail.Render(size.x);
+                    ImGui::Text("%s", _snap_date.c_str());
+                    ImGui::EndTooltip();
+                    ++count_over; // prevents display twice on item overlap
+                }
+            }
+
+            // context menu on currently open snapshot
+            uint64_t current = Action::manager().currentSnapshot();
+            if (ImGui::BeginPopup( "MenuSnapshot" ) && current > 0 )
+            {
+                _selected = current;
+                // snapshot thumbnail
+                _snap_thumbnail.Render(size.x);
+                // snapshot editable label
+                ImGui::SetNextItemWidth(size.x);
+                if ( ImGuiToolkit::InputText("##Rename", &_snap_label ) )
+                    Action::manager().setLabel( current, _snap_label);
+                // snapshot actions
+                if (ImGui::Selectable( ICON_FA_ANGLE_DOUBLE_RIGHT "    Restore", false, 0, size ))
+                    Action::manager().restore();
+                if (ImGui::Selectable( ICON_FA_CODE_BRANCH "-    Remove", false, 0, size ))
+                    Action::manager().remove();
+                // export option if possible
+                std::string filename = Mixer::manager().session()->filename();
+                if (filename.size()>0) {
+                    if (ImGui::Selectable( ICON_FA_FILE_DOWNLOAD "     Export", false, 0, size )) {
+                        Action::manager().saveas(filename);
+                    }
+                }
+                ImGui::EndPopup();
+            }
+            else
+                _selected = 0;
+
+            // end list snapshots
+            ImGui::ListBoxFooter();
+        }
+        // cancel tooltip and mouse over on mouse exit
+        if ( !ImGui::IsItemHovered()) {
+            _tooltip = false;
+            _over = 0;
+        }
+
+        // Right panel buton
+        pos_bot = ImGui::GetCursorPos();
+
+        // right buttons
+        if (!snapshots.empty()) {
+            ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
+            if (ImGuiToolkit::IconButton( 12, 14, "Clear list"))
+                Action::manager().clearSnapshots();
+        }
+
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
+        ImGuiToolkit::HelpToolTip("Previous versions of the session (latest on top). "
+                                 "Double-clic on a version to restore it.\n\n"
+                                 ICON_FA_CODE_BRANCH "  With iterative saving enabled, a new version "
+                                 "is kept each time the session is saved.");
+        // toggle button for versioning
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
+        ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot,"Iterative saving");
+
+        ImGui::SetCursorPos( pos_bot );
+    }
+
+}
+
+#define PLAYLIST_FAVORITES ICON_FA_HEART " Favorites"
+
+void Navigator::RenderMainPannelPlaylist()
+{
+    //
+    // SESSION panel
+    //
+    ImGui::Text("Playlists");
+
+    // currently active playlist and folder
+    static std::string playlist_header = PLAYLIST_FAVORITES;
+    static Playlist active_playlist;
+    static std::list<std::string> folder_session_files;
+
+    // file dialogs to open / save playlist files and folders
+    static DialogToolkit::OpenFolderDialog customFolder("Open Folder");
+    static DialogToolkit::MultipleSessionsDialog selectSessions("Select vimix sessions");
+
+    //    static DialogToolkit::OpenPlaylistDialog openPlaylist("Open Playlist");
+    //    static DialogToolkit::SavePlaylistDialog savePlaylist("Save Playlist");
+
+    //    // return from thread for playlist file openning
+    //    if (openPlaylist.closed() && !openPlaylist.path().empty()) {
+    //        Settings::application.recentPlaylists.push(openPlaylist.path());
+    //        Settings::application.recentPlaylists.assign(openPlaylist.path());
+    //        Settings::application.pannel_playlist_mode = 1;
+    //    }
+
+    //    ImGui::SameLine();
+    //    ImGui::SetCursorPosX( pannel_width_ IMGUI_RIGHT_ALIGN);
+    //    if ( ImGuiToolkit::IconButton( 16, 3, "Create playlist")) {
+    //        savePlaylist.open();
+    //    }
+    //    if (savePlaylist.closed() && !savePlaylist.path().empty()) {
+    //        Settings::application.recentPlaylists.push(savePlaylist.path());
+    //        Settings::application.recentPlaylists.assign(savePlaylist.path());
+    //        Settings::application.pannel_playlist_mode = 1;
+    //    }
+
+
+    // return from thread for folder openning
+    if (customFolder.closed() && !customFolder.path().empty()) {
+        Settings::application.recentFolders.push(customFolder.path());
+        Settings::application.recentFolders.assign(customFolder.path());
+        Settings::application.pannel_playlist_mode = 2;
+    }
+
+    // load the list of session in playlist, only once when list changed
+    if (Settings::application.recentPlaylists.changed) {
+        Settings::application.recentPlaylists.changed = false;
+        Settings::application.recentPlaylists.validate();
+        // load list
+        if ( !Settings::application.recentPlaylists.path.empty())
+            active_playlist.load( Settings::application.recentPlaylists.path );
+    }
+
+    // get list of vimix files in folder, only once when list changed
+    if (Settings::application.recentFolders.changed) {
+        Settings::application.recentFolders.changed = false;
+        Settings::application.recentFolders.validate();
+        // list directory
+        if ( !Settings::application.recentFolders.path.empty())
+            folder_session_files = SystemToolkit::list_directory( Settings::application.recentFolders.path, { VIMIX_FILE_PATTERN },
+                                                       (SystemToolkit::Ordering) Settings::application.recentFolders.ordering);
+    }
+
+    //
+    // Show combo box of quick selection of recent playlist / directory
+    //
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if (ImGui::BeginCombo("##SelectionPlaylist", playlist_header.c_str(), ImGuiComboFlags_HeightLarge )) {
+
+        // Mode 0 : Favorite playlist
+        if (ImGuiToolkit::SelectableIcon( 16, 4, "Favorites", false) ) {
+            Settings::application.pannel_playlist_mode = 0;
+        }
+        // Mode 1 : Playlists
+        for(auto playlistname = Settings::application.recentPlaylists.filenames.begin();
+            playlistname != Settings::application.recentPlaylists.filenames.end(); playlistname++) {
+            if (ImGuiToolkit::SelectableIcon( 12, 3, SystemToolkit::base_filename( *playlistname ).c_str(), false )) {
+                // remember which path was selected
+                Settings::application.recentPlaylists.assign(*playlistname);
+                // set mode
+                Settings::application.pannel_playlist_mode = 1;
+            }
+        }
+        // Mode 2 : known folders
+        for(auto foldername = Settings::application.recentFolders.filenames.begin();
+            foldername != Settings::application.recentFolders.filenames.end(); foldername++) {
+            if (ImGuiToolkit::SelectableIcon( 6, 5, BaseToolkit::truncated( *foldername, 40).c_str(), false) ) {
+                // remember which path was selected
+                Settings::application.recentFolders.assign(*foldername);
+                // set mode
+                Settings::application.pannel_playlist_mode = 2;
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    //
+    // icon to create new playlist
+    //
+    ImVec2 pos_top = ImGui::GetCursorPos();
+    ImVec2 pos_right = ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - ImGui::GetFrameHeight());
+    ImGui::SetCursorPos( pos_right );
+    if (ImGuiToolkit::IconButton( 13, 3, "Create playlist")) {
+        ImGui::OpenPopup("new_playlist_popup");
+    }
+
+    //
+    // icon to list directory
+    //
+    pos_right.x += ImGui::GetTextLineHeightWithSpacing() + IMGUI_SAME_LINE;
+    ImGui::SetCursorPos( pos_right );
+    if (ImGuiToolkit::IconButton( 5, 5, "List directory")) {
+       customFolder.open();
+    }
+
+    ImGui::SetCursorPos(pos_top);
+
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const ImVec2 list_size = ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN -2.f * style.WindowPadding.x,
+                               7.f * (ImGui::GetTextLineHeightWithSpacing() + style.FramePadding.y ) + style.FramePadding.y);
+    ImVec2 item_size = ImVec2( list_size.x -2.f * style.FramePadding.x, ImGui::GetTextLineHeightWithSpacing());
+
+    std::string session_hovered_ = "";
+    std::string session_triggered_ = "";
+    static uint session_tooltip_ = 0;
+    ++session_tooltip_;
+
+    //
+    // Show session list depending on the mode
+    //
+    // selection MODE 0 ; FAVORITES
+    //
+    if ( Settings::application.pannel_playlist_mode == 0) {
+
+        // set header
+        playlist_header = PLAYLIST_FAVORITES;
+
+        // how many session files in favorite playlist
+        size_t index_max = UserInterface::manager().favorites.size();
+        item_size.x -= index_max > 7 ? style.ScrollbarSize : 0.f;
+
+        // display the sessions list and detect if one was selected (double clic)
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::ListBoxHeader("##Favorites", list_size) ) {
+
+            // list session files in favorite playlist
+            for (size_t index = 0; index < index_max; ++index) {
+                // get name of session file at index
+                std::string session_file = UserInterface::manager().favorites.at(index);
+
+                // unique ID for item (filename can be at different index)
+                ImGui::PushID( session_file.c_str() );
+
+                // item to select
+                ImGui::BeginGroup();
+                if (ImGui::Selectable( SystemToolkit::filename(session_file).c_str(), false,
+                                       ImGuiSelectableFlags_AllowDoubleClick, item_size )) {
+                    // trigger on double clic
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                        session_triggered_ = session_file;
+                    }
+                    // show tooltips on single clic
+                    else
+                        session_tooltip_ = 100;
+                }
+                if (ImGui::IsItemActive()) {
+                    ImGui::SameLine( item_size.x - 2.f * style.ScrollbarSize );
+                    ImGuiToolkit::Icon( 8, 15 );
+                }
+                ImGui::EndGroup();
+                ImGui::PopID();
+                // what item is hovered for tooltip
+                if (ImGui::IsItemHovered())
+                    session_hovered_ = session_file;
+                // simple drag to reorder
+                else if (ImGui::IsItemActive())
+                {
+                    size_t index_next = index + (ImGui::GetMouseDragDelta(0).y < -2.f * style.ItemSpacing.y ? -1 : ImGui::GetMouseDragDelta(0).y > 2.f * style.ItemSpacing.y ? 1 : 0);
+                    if ( index_next < index_max && index != index_next ) {
+                        // reorder in list
+                        UserInterface::manager().favorites.move(index, index_next);
+                        UserInterface::manager().favorites.save();
+                        // cancel tooltip during drag
+                        session_tooltip_ = 0;
+                        // reset drag
+                        ImGui::ResetMouseDragDelta();
+                    }
+                }
+            }
+
+            ImGui::ListBoxFooter();
+        }
+        // cancel tooltip and mouse over on mouse exit
+        if ( !ImGui::IsItemHovered())
+            session_tooltip_ = 0;
+
+    }
+    //
+    // selection MODE 1 : PLAYLISTS
+    //
+    else if ( Settings::application.pannel_playlist_mode == 1) {
+
+        // set header
+        if (Settings::application.recentPlaylists.path.empty())
+            Settings::application.pannel_playlist_mode = 0;
+        else
+            playlist_header = std::string(ICON_FA_STAR) + " " + SystemToolkit::base_filename(Settings::application.recentPlaylists.path);
+
+        // how many session files in favorite playlist
+        size_t index_max = active_playlist.size();
+        size_t index_to_remove = index_max;
+        item_size.x -= ImGui::GetTextLineHeight() + style.ItemSpacing.x ;
+        item_size.x -= index_max > 6 ? style.ScrollbarSize : 0.f;
+
+        // display the sessions list and detect if one was selected (double clic)
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::ListBoxHeader("##Playlist", list_size) ) {
+
+            // list session files in favorite playlist
+            for (size_t index = 0; index < index_max; ++index) {
+
+                // get name of session file at index
+                std::string session_file = active_playlist.at(index);
+
+                // unique ID for item (filename can be at different index)
+                ImGui::PushID( session_file.c_str() );
+
+                // item to select
+                ImGui::BeginGroup();
+                if (ImGui::Selectable( SystemToolkit::filename(session_file).c_str(), false,
+                                       ImGuiSelectableFlags_AllowDoubleClick, item_size )) {
+                    // trigger on double clic
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                        session_triggered_ = session_file;
+                    }
+                    // show tooltips on single clic
+                    else
+                        session_tooltip_ = 100;
+                }
+                ImGui::SameLine();
+                if (ImGui::IsItemActive()) {
+                    ImGuiToolkit::IconButton( 8, 15 );
+                }
+                else {
+                    if ( ImGuiToolkit::IconButton( 19, 4, "Remove") )
+                        index_to_remove = index;
+                }
+                ImGui::EndGroup();
+                ImGui::PopID();
+
+                // what item is hovered for tooltip
+                if (ImGui::IsItemHovered())
+                    session_hovered_ = session_file;
+                // simple drag to reorder
+                else if (ImGui::IsItemActive())
+                {
+                    size_t index_next = index + (ImGui::GetMouseDragDelta(0).y < -2.f * style.ItemSpacing.y ? -1 : ImGui::GetMouseDragDelta(0).y > 2.f * style.ItemSpacing.y ? 1 : 0);
+                    if ( index_next < index_max && index != index_next ) {
+                        // reorder in list and save new status
+                        active_playlist.move(index, index_next);
+                        active_playlist.save();
+                        // cancel tooltip during drag
+                        session_tooltip_ = 0;
+                        // reset drag
+                        ImGui::ResetMouseDragDelta();
+                    }
+                }
+            }
+
+            ImGui::ListBoxFooter();
+        }
+        // cancel tooltip and mouse over on mouse exit
+        if ( !ImGui::IsItemHovered())
+            session_tooltip_ = 0;
+
+        // Remove
+        if ( index_to_remove < index_max ) {
+            active_playlist.remove( index_to_remove );
+            active_playlist.save();
+        }
+
+        // Right side of the list : close and save
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y));
+        if (ImGuiToolkit::IconButton( 14, 3, "Delete playlist")) {
+            ImGui::OpenPopup("delete_playlist_popup");
+        }
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + 1.5f * ImGui::GetTextLineHeightWithSpacing()));
+        if ( ImGuiToolkit::IconButton( 18, 4, "Add sessions")) {
+            selectSessions.open();
+        }
+
+        // return from thread for sessions multiple selection
+        if (selectSessions.closed() && !selectSessions.files().empty()) {
+            active_playlist.add(selectSessions.files());
+            active_playlist.save();
+        }
+
+    }
+    //
+    // selection MODE 2 : LIST FOLDER
+    //
+    else if ( Settings::application.pannel_playlist_mode == 2) {
+
+        // set header
+        if (Settings::application.recentFolders.path.empty())
+            Settings::application.pannel_playlist_mode = 0;
+        else
+            playlist_header = std::string(ICON_FA_FOLDER) + " " + BaseToolkit::truncated(Settings::application.recentFolders.path, 40);
+
+        // how many listed
+        item_size.x -= folder_session_files.size() > 7 ? style.ScrollbarSize : 0.f;
+
+        // display the sessions list and detect if one was selected (double clic)
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::ListBoxHeader("##FolderList", list_size) ) {
+
+            // list session files in folder
+            for(auto it = folder_session_files.begin(); it != folder_session_files.end(); ++it) {
+                // item to select
+                if (ImGui::Selectable( SystemToolkit::filename(*it).c_str(), false,
+                                       ImGuiSelectableFlags_AllowDoubleClick, item_size )) {
+                    // trigger on double clic
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                        session_triggered_ = *it;
+                    }
+                    // show tooltips on clic
+                    else
+                        session_tooltip_ = 100;
+                }
+                if (ImGui::IsItemHovered())
+                    session_hovered_ = *it;
+            }
+
+            ImGui::ListBoxFooter();
+        }
+        // cancel tooltip and mouse over on mouse exit
+        if ( !ImGui::IsItemHovered())
+            session_tooltip_ = 0;
+
+        // ordering list
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y) );
+        if (ImGuiToolkit::IconButton( 4, 5, "Close directory")) {
+            Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);
+            if (Settings::application.recentFolders.filenames.empty())
+                Settings::application.pannel_playlist_mode = 0;
+            else
+                Settings::application.recentFolders.assign( Settings::application.recentFolders.filenames.front() );
+        }
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetTextLineHeightWithSpacing()));
+        ImGui::PushID("##folder_ordering_changed");
+        if ( ImGuiToolkit::IconMultistate(icons_ordering_files, &Settings::application.recentFolders.ordering, tooltips_ordering_files) )
+            Settings::application.recentFolders.changed = true;
+        ImGui::PopID();
+
+    }
+
+    //
+    // Tooltip to show Session thumbnail
+    //
+    if (session_tooltip_ > 60 && !session_hovered_.empty()) {
+
+        static std::string _current_hovered = "";
+        static std::string _file_info = "";
+        static Thumbnail _file_thumbnail;
+        static bool with_tag_ = false;
+
+        // load info only if changed from the one already displayed
+        if (session_hovered_ != _current_hovered) {
+            _current_hovered = session_hovered_;
+            SessionInformation info = SessionCreator::info(_current_hovered);
+            _file_info = info.description;
+            if (info.thumbnail) {
+                // set image content to thumbnail display
+                _file_thumbnail.fill( info.thumbnail );
+                with_tag_ = info.user_thumbnail_;
+                delete info.thumbnail;
+            } else
+                _file_thumbnail.reset();
+        }
+
+        if ( !_file_info.empty()) {
+
+            ImGui::BeginTooltip();
+            ImVec2 p_ = ImGui::GetCursorScreenPos();
+            _file_thumbnail.Render(240);
+            ImGui::Text("%s", _file_info.c_str());
+            if (with_tag_) {
+                ImGui::SetCursorScreenPos(p_ + ImVec2(6, 6));
+                ImGui::Text(ICON_FA_TAG);
+            }
+            ImGui::EndTooltip();
+        }
+    }
+
+    //
+    // Double clic to trigger openning of session
+    //
+    if (!session_triggered_.empty()) {
+        Mixer::manager().open( session_triggered_, Settings::application.smooth_transition );
+        if (Settings::application.smooth_transition)
+            WorkspaceWindow::clearWorkspace();
+    }
+    // help indicator
+    pos_top.y += list_size.y;
+    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
+    ImGuiToolkit::HelpToolTip("Double-clic on a filename to open the session.\n\n"
+                              ICON_FA_ARROW_CIRCLE_RIGHT "  enable Smooth transition "
+                                                         "to perform a cross fading with the current session.");
+    // toggle button for smooth transition
+    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - ImGui::GetFrameHeightWithSpacing()) );
+    ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition, "Smooth transition");
+
+    //
+    // Popup window to create playlist
+    //
+    if (ImGui::BeginPopup("new_playlist_popup", ImGuiWindowFlags_NoMove))
+    {
+        static bool withcopy = false;
+        char text_buf[64] = "";
+        ImGui::SetNextItemWidth(200);
+        if ( ImGui::InputTextWithHint("Name", "[Enter] to validate", text_buf, 64, ImGuiInputTextFlags_EnterReturnsTrue) ) {
+
+            std::string filename = std::string(text_buf);
+
+            if ( !filename.empty() ) {
+                filename += "."  VIMIX_PLAYLIST_FILE_EXT;
+                filename = SystemToolkit::full_filename( UserInterface::manager().playlists_path, filename);
+
+                // create and fill the playlist
+                Playlist tmp;
+                if (withcopy) {
+                    if (Settings::application.pannel_playlist_mode == 0)
+                        tmp = UserInterface::manager().favorites;
+                    else if (Settings::application.pannel_playlist_mode == 1)
+                        tmp = active_playlist;
+                    else if (Settings::application.pannel_playlist_mode == 2)
+                        tmp.add(folder_session_files);
+                }
+                tmp.saveAs( filename );
+
+                // set mode to Playlist mode
+                Settings::application.recentPlaylists.push(filename);
+                Settings::application.recentPlaylists.assign(filename);
+                Settings::application.pannel_playlist_mode = 1;
+
+                ImGui::CloseCurrentPopup();
+            }
+        }
+
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
+        ImGuiToolkit::ButtonSwitch("Copy content", &withcopy, NULL, true );
+        ImGui::PopFont();
+
+        ImGui::EndPopup();
+    }
+
+    //
+    // Popup window to delete playlist
+    //
+    if (ImGui::BeginPopup("delete_playlist_popup", ImGuiWindowFlags_NoMove))
+    {
+        std::string question = "Yes, delete '";
+        question += SystemToolkit::base_filename(Settings::application.recentPlaylists.path) + "' ";
+        if ( ImGui::Button( question.c_str() )) {
+            // delete the file
+            SystemToolkit::remove_file(Settings::application.recentPlaylists.path);
+
+            // remove from the list
+            Settings::application.recentPlaylists.filenames.remove(Settings::application.recentPlaylists.path);
+            if (Settings::application.recentPlaylists.filenames.empty())
+                Settings::application.pannel_playlist_mode = 0;
+            else
+                Settings::application.recentPlaylists.assign( Settings::application.recentPlaylists.filenames.front() );
+
+            ImGui::CloseCurrentPopup();
+        }
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
+        ImGui::Text("This cannot be undone");
+        ImGui::PopFont();
+
+        ImGui::EndPopup();
+    }
+
+}
+
 void Navigator::RenderMainPannelSettings()
 {
-        // TITLE
-        ImGui::SetCursorPosY(IMGUI_TOP_ALIGN);
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::Text("Settings");
-        ImGui::PopFont();
-        ImGui::SetCursorPosY(width_);
-
         //
         // Appearance
         //
-        ImGui::Text("Appearance");
+        ImGui::Text("Settings");
         int v = Settings::application.accent_color;
         ImGui::Spacing();
         ImGui::SetCursorPosX(0.5f * width_);
@@ -4890,7 +5158,7 @@ void Navigator::RenderMainPannelSettings()
         //
         // Recording preferences
         //
-        ImGui::Text("Record");
+        ImGui::TextDisabled("Recording");
 
         // select CODEC and FPS
         ImGui::SetCursorPosX(width_);
@@ -4930,7 +5198,7 @@ void Navigator::RenderMainPannelSettings()
         // Steaming preferences
         //
         ImGuiToolkit::Spacing();
-        ImGui::Text("Stream");
+        ImGui::TextDisabled("Stream");
 
         ImGuiToolkit::Indication("Peer-to-peer sharing local network\n\n"
                                  "vimix can stream JPEG (default) or H264 (less bandwidth, higher encoding cost)", ICON_FA_SHARE_ALT_SQUARE);
@@ -5006,7 +5274,7 @@ void Navigator::RenderMainPannelSettings()
         // OSC preferences
         //
         ImGuiToolkit::Spacing();
-        ImGui::Text("OSC");
+        ImGui::TextDisabled("OSC");
 
         char msg[256];
         ImFormatString(msg, IM_ARRAYSIZE(msg), "Open Sound Control\n\n"
@@ -5061,7 +5329,7 @@ void Navigator::RenderMainPannelSettings()
 //        ImGuiToolkit::HelpMarker("If you encounter some rendering issues on your machine, "
 //                                 "you can try to disable some of the OpenGL optimizations below.");
 //        ImGui::SameLine();
-        ImGui::Text("System");
+        ImGui::TextDisabled("System");
 
         static bool need_restart = false;
         static bool vsync = (Settings::application.render.vsync > 0);
@@ -5077,9 +5345,8 @@ void Navigator::RenderMainPannelSettings()
         else
             ImGui::TextDisabled("Hardware en/decoding unavailable");
 
-        change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
-
 #ifndef NDEBUG
+        change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
 #endif
         if (change) {
@@ -5100,7 +5367,7 @@ void Navigator::RenderMainPannelSettings()
 
 }
 
-void Navigator::RenderTransitionPannel()
+void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
 {
     if (Settings::application.current_view != View::TRANSITION) {
         discardPannel();
@@ -5114,8 +5381,8 @@ void Navigator::RenderTransitionPannel()
     if (ImGui::Begin("##navigatorTrans", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
         // TITLE
-        ImGui::SetCursorPosY(IMGUI_TOP_ALIGN);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetCursorPosY(0.5f * (iconsize.y - ImGui::GetTextLineHeight()));
         ImGui::Text("Transition");
         ImGui::PopFont();
 
@@ -5170,8 +5437,10 @@ void Navigator::RenderTransitionPannel()
     }
 }
 
-void Navigator::RenderMainPannel()
+void Navigator::RenderMainPannel(const ImVec2 &iconsize)
 {
+    const ImGuiStyle& style = ImGui::GetStyle();
+
     if (Settings::application.current_view == View::TRANSITION)
         return;
 
@@ -5185,15 +5454,66 @@ void Navigator::RenderMainPannel()
         ImGui::SetScrollX(0);
 
         //
-        // Panel content depends on show_config_
+        // TITLE
         //
-        if (show_config_)
-            RenderMainPannelSettings();
-        else
-            RenderMainPannelVimix();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetCursorPosY(0.5f * (iconsize.y - ImGui::GetTextLineHeight()));
+        ImGui::Text("Vimix");
 
         //
-        // Icon and About vimix
+        // Panel Mode selector
+        //
+        //
+        ImGui::SetCursorPosY(width_ - style.WindowPadding.x);
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
+        ImGui::Columns(5, NULL, false);
+        bool selected_panel_mode[5] = {0};
+        selected_panel_mode[pannel_main_mode_] = true;
+        if (ImGuiToolkit::SelectableIcon( 7, 1, "##SESSION_FILE", selected_panel_mode[0], iconsize))
+            Settings::application.pannel_main_mode = pannel_main_mode_ = 0;
+        ImGui::NextColumn();
+        if (ImGuiToolkit::SelectableIcon( 4, 8, "##SESSION_PLAYLIST", selected_panel_mode[1], iconsize))
+            Settings::application.pannel_main_mode = pannel_main_mode_ = 1;
+        ImGui::NextColumn();
+        if (ImGuiToolkit::SelectableIcon( 13, 5, "##SETTINGS", selected_panel_mode[2], iconsize))
+            pannel_main_mode_ = 2;
+        ImGui::Columns(1);
+        ImGui::PopStyleVar();
+        ImGui::PopFont();
+
+        //
+        // Panel Menu
+        //
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN) );
+        if (ImGui::BeginMenu("File")) {
+            UserInterface::manager().showMenuFile();
+            ImGui::EndMenu();
+        }
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + ImGui::GetTextLineHeightWithSpacing()) );
+        if (ImGui::BeginMenu("Edit")) {
+            UserInterface::manager().showMenuEdit();
+            ImGui::EndMenu();
+        }
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + 2.f * ImGui::GetTextLineHeightWithSpacing()) );
+        if (ImGui::BeginMenu("View")) {
+            UserInterface::manager().showMenuWindows();
+            ImGui::EndMenu();
+        }
+
+        ImGui::SetCursorPosY(2.f * width_ - style.WindowPadding.x);
+
+        //
+        // Panel content
+        //
+        if (pannel_main_mode_ == 0)
+            RenderMainPannelSession();
+        else if (pannel_main_mode_ == 1)
+            RenderMainPannelPlaylist();
+        else
+            RenderMainPannelSettings();
+
+        //
+        // About vimix
         //
         ImGuiContext& g = *GImGui;
         const ImVec2 rightcorner(pannel_width_ + width_, height_);
@@ -5220,13 +5540,6 @@ void Navigator::RenderMainPannel()
             }
             ImGui::PopStyleColor();
         }
-
-        //
-        // Settings icon (non scollable) in Bottom-right corner
-        //
-        ImGui::SetCursorScreenPos( rightcorner - ImVec2(button_height, button_height));
-        const char *tooltip[2] = {"Settings", "Settings"};
-        ImGuiToolkit::IconToggle(13,5,12,5, &show_config_, tooltip);
 
         ImGui::End();
     }

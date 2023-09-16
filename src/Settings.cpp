@@ -41,6 +41,7 @@ XMLElement *save_history(Settings::History &h, const char *nodename, XMLDocument
     pElement->SetAttribute("autoload", h.load_at_start);
     pElement->SetAttribute("autosave", h.save_on_exit);
     pElement->SetAttribute("valid", h.front_is_valid);
+    pElement->SetAttribute("ordering", h.ordering);
     for(auto it = h.filenames.cbegin();
         it != h.filenames.cend(); ++it) {
         XMLElement *fileNode = xmlDoc.NewElement("path");
@@ -135,6 +136,8 @@ void Settings::Save(uint64_t runtime)
     applicationNode->SetAttribute("action_history_follow_view", application.action_history_follow_view);
     applicationNode->SetAttribute("show_tooptips", application.show_tooptips);
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
+    applicationNode->SetAttribute("pannel_main_mode", application.pannel_main_mode);
+    applicationNode->SetAttribute("pannel_playlist_mode", application.pannel_playlist_mode);
     applicationNode->SetAttribute("pannel_history_mode", application.pannel_current_session_mode);
     applicationNode->SetAttribute("pannel_always_visible", application.pannel_always_visible);
     applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
@@ -262,6 +265,9 @@ void Settings::Save(uint64_t runtime)
         recent->InsertEndChild( save_history(application.recentSessions, "Session", xmlDoc));
 
         // recent session folders
+        recent->InsertEndChild( save_history(application.recentPlaylists, "Playlist", xmlDoc));
+
+        // recent session folders
         recent->InsertEndChild( save_history(application.recentFolders, "Folder", xmlDoc));
 
         // recent import media uri
@@ -353,6 +359,9 @@ void load_history(Settings::History &h, const char *nodename, XMLElement *root)
         pElement->QueryBoolAttribute("autoload", &h.load_at_start);
         pElement->QueryBoolAttribute("autosave", &h.save_on_exit);
         pElement->QueryBoolAttribute("valid", &h.front_is_valid);
+        pElement->QueryIntAttribute("ordering", &h.ordering);
+
+        h.changed = true;
     }
 }
 
@@ -403,11 +412,11 @@ void Settings::Load()
     else if (XMLResultError(eResult))
         return;
 
+
     // first element should be called by the application name
     XMLElement *pRoot = xmlDoc.FirstChildElement(application.name.c_str());
     if (pRoot == nullptr)
         return;
-
     // runtime
     pRoot->QueryUnsigned64Attribute("runtime", &application.total_runtime);
 
@@ -422,6 +431,8 @@ void Settings::Load()
         applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
         applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
         applicationNode->QueryBoolAttribute("pannel_always_visible", &application.pannel_always_visible);
+        applicationNode->QueryIntAttribute("pannel_main_mode", &application.pannel_main_mode);
+        applicationNode->QueryIntAttribute("pannel_playlist_mode", &application.pannel_playlist_mode);
         applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_current_session_mode);
         applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
         applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
@@ -618,6 +629,9 @@ void Settings::Load()
             // recent session filenames
             load_history(application.recentSessions, "Session", pElement);
 
+            // recent session playlist
+            load_history(application.recentPlaylists, "Playlist", pElement);
+
             // recent session folders
             load_history(application.recentFolders, "Folder", pElement);
 
@@ -686,6 +700,12 @@ void Settings::Load()
 
 }
 
+void Settings::History::assign(const string &filename)
+{
+    path.assign(filename);
+    changed = true;
+}
+
 void Settings::History::push(const string &filename)
 {
     if (filename.empty()) {
@@ -717,6 +737,9 @@ void Settings::History::validate()
             ++fit;
         else
             fit = filenames.erase(fit);
+    }
+    if (!path.empty() && !SystemToolkit::file_exists( path )) {
+        path = "";
     }
 }
 

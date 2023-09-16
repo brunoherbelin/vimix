@@ -526,8 +526,8 @@ void ImGuiVisitor::visit (Source& s)
             ImGuiToolkit::Indication(workspaces_[s.workspace()].second.c_str(), workspaces_[s.workspace()].first, 16);
 
         // locking
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 3.f * ImGui::GetFrameHeightWithSpacing()) );
-        const char *tooltip[2] = {"Unlocked", "Locked"};
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
+        static const char *tooltip[2] = {"Unlocked", "Locked"};
         bool l = s.locked();
         if (ImGuiToolkit::IconToggle(15,6,17,6, &l, tooltip ) ) {
             s.setLocked(l);

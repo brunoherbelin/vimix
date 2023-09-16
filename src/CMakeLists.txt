@@ -98,6 +98,7 @@ set(VMIX_SRCS
     ScreenCaptureSource.cpp
     MousePointer.cpp
     Grid.cpp
+    Playlist.cpp
 )
 
 #####
