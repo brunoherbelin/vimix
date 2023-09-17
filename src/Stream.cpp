@@ -106,7 +106,7 @@ std::string Stream::decoderName()
 
 guint Stream::texture() const
 {
-    if (!textureindex_)
+    if (!textureindex_ || !textureinitialized_)
         return Resource::getTextureBlack();
 
     return textureindex_;
@@ -202,9 +202,6 @@ StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
 
 void Stream::open(const std::string &gstreamer_description, guint w, guint h)
 {
-    if ( w != width_ || h != height_ )
-        textureinitialized_ = false;
-
     // set gstreamer pipeline source
     description_ = gstreamer_description;
 
@@ -238,6 +235,7 @@ void Stream::execute_open()
 {
     // reset
     opened_ = false;
+    textureinitialized_ = false;
 
     // Add custom app sink to the gstreamer pipeline
     std::string description = description_;
@@ -369,7 +367,6 @@ void Stream::close()
 
     // un-ready
     opened_ = false;
-    textureinitialized_ = false;
 
     // clean up GST
     if (pipeline_ != nullptr) {

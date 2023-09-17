@@ -51,6 +51,11 @@ void GenericStreamSource::setDescription(const std::string &desc)
     stream_->open(gst_description_ + " ! queue max-size-buffers=10 ! videoconvert" );
     stream_->play(true);
 
+    // delete and reset render buffer to enforce re-init of StreamSource
+    if (renderbuffer_)
+        delete renderbuffer_;
+    renderbuffer_ = nullptr;
+
     // will be ready after init and one frame rendered
     ready_ = false;
 }
