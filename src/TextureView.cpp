@@ -755,15 +755,20 @@ void TextureView::draw()
                 if (mask_cursor_paint_ > 0) {
 
                     ImGui::SameLine(0, 50);
-                    ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
-                    const char* items[] = { ICON_FA_CIRCLE, ICON_FA_SQUARE };
-                    static int item = 0;
-                    item = (int) round(Settings::application.brush.z);
-                    if(ImGui::Combo("##BrushShape", &item, items, IM_ARRAYSIZE(items))) {
-                        Settings::application.brush.z = float(item);
-                    }
+                    if (ImGui::Button(ICON_FA_PEN ICON_FA_SORT_DOWN ))
+                        ImGui::OpenPopup("brush_shape_popup");
                     if (ImGui::IsItemHovered())
                         ImGuiToolkit::ToolTip("Shape");
+                    if (ImGui::BeginPopup( "brush_shape_popup" ))
+                    {
+                        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                        if (ImGui::Selectable( ICON_FA_CIRCLE "  Circle"))
+                            Settings::application.brush.z = 0.f;
+                        if (ImGui::Selectable( ICON_FA_SQUARE "   Square"))
+                            Settings::application.brush.z = 1.f;
+                        ImGui::PopFont();
+                        ImGui::EndPopup();
+                    }
 
                     ImGui::SameLine();
                     show_cursor_forced_ = false;
@@ -778,7 +783,7 @@ void TextureView::draw()
                         int pixel_size = int(Settings::application.brush.x * edit_source_->frame()->height() );
                         show_cursor_forced_ = true;
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                        ImGuiToolkit::Indication("Large  ", 16, 1, ICON_FA_ARROW_RIGHT);
+                        ImGuiToolkit::Indication("Large  ", 16, 1);
                         if (ImGui::VSliderInt("##BrushSize", ImVec2(30,260), &pixel_size, pixel_size_min, pixel_size_max, "") ){
                             Settings::application.brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
                         }
@@ -787,7 +792,7 @@ void TextureView::draw()
                             ImGui::Text("%d px", pixel_size);
                             ImGui::EndTooltip();
                         }
-                        ImGuiToolkit::Indication("Small  ", 15, 1, ICON_FA_ARROW_LEFT);
+                        ImGuiToolkit::Indication("Small  ", 15, 1);
                         ImGui::PopFont();
                         ImGui::EndPopup();
                     }
@@ -804,14 +809,14 @@ void TextureView::draw()
                     if (ImGui::BeginPopup("brush_pressure_popup", ImGuiWindowFlags_NoMove))
                     {
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                        ImGuiToolkit::Indication("Light  ", ICON_FA_FEATHER_ALT, ICON_FA_ARROW_UP);
+                        ImGuiToolkit::Indication("Light  ", ICON_FA_FEATHER_ALT);
                         ImGui::VSliderFloat("##BrushPressure", ImVec2(30,260), &Settings::application.brush.y, BRUSH_MAX_PRESS, BRUSH_MIN_PRESS, "", 0.3f);
                         if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
                             ImGui::BeginTooltip();
                             ImGui::Text("%.1f%%", Settings::application.brush.y * 100.0);
                             ImGui::EndTooltip();
                         }
-                        ImGuiToolkit::Indication("Heavy  ", ICON_FA_WEIGHT_HANGING, ICON_FA_ARROW_DOWN);
+                        ImGuiToolkit::Indication("Heavy  ", ICON_FA_WEIGHT_HANGING);
                         ImGui::PopFont();
                         ImGui::EndPopup();
                     }
@@ -924,7 +929,10 @@ void TextureView::draw()
                         ImGuiToolkit::ToolTip("Select shape");
 
                     ImGui::SameLine(0, 20);
-                    if (ImGui::Button(ICON_FA_RADIATION_ALT ICON_FA_SORT_DOWN ))
+
+                    char buf[128];
+                    snprintf(buf, 128, "%d%%" ICON_FA_SORT_DOWN, blur_percent);
+                    if (ImGui::Button(buf))
                         ImGui::OpenPopup("shape_smooth_popup");
                     if (ImGui::IsItemHovered())
                         ImGuiToolkit::ToolTip("Blur");
@@ -932,7 +940,7 @@ void TextureView::draw()
                     {
                         static bool smoothchanged = false;
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                        ImGuiToolkit::Indication("Blured ", 7, 16, ICON_FA_ARROW_UP);
+                        ImGuiToolkit::Indication("Blurry ", 7, 16);
                         if (ImGui::VSliderInt("##shapeblur", ImVec2(30,260), &blur_percent, 0, 100, "") ){
                             edit_source_->maskShader()->blur = float(blur_percent) / 100.f;
                             edit_source_->touch(Source::SourceUpdate_Mask);
@@ -948,10 +956,10 @@ void TextureView::draw()
                         }
                         if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
                             ImGui::BeginTooltip();
-                            ImGui::Text("%.d%%", blur_percent);
+                            ImGui::Text("%.d%% blur", blur_percent);
                             ImGui::EndTooltip();
                         }
-                        ImGuiToolkit::Indication("Sharp ", 8, 16, ICON_FA_ARROW_DOWN);
+                        ImGuiToolkit::Indication("Sharp ", 8, 16);
                         ImGui::PopFont();
                         ImGui::EndPopup();
                     }

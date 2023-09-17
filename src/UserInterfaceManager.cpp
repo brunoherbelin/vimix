@@ -3573,6 +3573,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 }
             }
             else if (new_media_mode == MEDIA_FOLDER) {
+                ImGui::PushID("##new_media_directory_actions");
                 // close list
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y) );
                 if (ImGuiToolkit::IconButton( 4, 5, "Close directory")) {
@@ -3585,7 +3586,6 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 }
                 // ordering list
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetFrameHeightWithSpacing()) );
-                ImGui::PushID("##new_media_mode_changed");
                 if ( ImGuiToolkit::IconMultistate(icons_ordering_files, &Settings::application.recentImportFolders.ordering, tooltips_ordering_files) )
                     new_media_mode_changed = true;
                 ImGui::PopID();
@@ -4219,7 +4219,7 @@ void Navigator::RenderMainPannelSession()
         if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save as"))
             UserInterface::manager().saveOrSaveAs();
     } else {
-        if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
+        if (ImGuiToolkit::IconButton(2, 5, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(Mixer::manager().session()->filename()));
     }
     ImGui::SetCursorPos(pos);
@@ -4981,7 +4981,9 @@ void Navigator::RenderMainPannelPlaylist()
         if ( !ImGui::IsItemHovered())
             session_tooltip_ = 0;
 
-        // ordering list
+        // Closing and ordering button
+        ImGui::PushID("##playlist_directory_actions");
+        // close list
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y) );
         if (ImGuiToolkit::IconButton( 4, 5, "Close directory")) {
             Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);
@@ -4990,8 +4992,8 @@ void Navigator::RenderMainPannelPlaylist()
             else
                 Settings::application.recentFolders.assign( Settings::application.recentFolders.filenames.front() );
         }
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetTextLineHeightWithSpacing()));
-        ImGui::PushID("##folder_ordering_changed");
+        // ordering list
+        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetFrameHeightWithSpacing()));
         if ( ImGuiToolkit::IconMultistate(icons_ordering_files, &Settings::application.recentFolders.ordering, tooltips_ordering_files) )
             Settings::application.recentFolders.changed = true;
         ImGui::PopID();

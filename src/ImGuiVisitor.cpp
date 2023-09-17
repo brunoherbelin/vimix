@@ -481,9 +481,10 @@ void ImGuiVisitor::visit (Source& s)
             width = height * s.frame()->aspectRatio() * ( s.frame()->projectionArea().x / s.frame()->projectionArea().y);
         }
         // centered image
-        ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
-        ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
-
+        if (s.ready()) {
+            ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
+            ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
+        }
         // inform on visibility status
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y ) );
         if (s.active()) {
@@ -703,7 +704,7 @@ void ImGuiVisitor::visit (MediaSource& s)
             top.x += ImGui::GetFrameHeight();
         }
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
+        if (ImGuiToolkit::IconButton(2, 5, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
 
         ImGui::SetCursorPos(botom);
@@ -866,7 +867,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         }
 
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
+        if (ImGuiToolkit::IconButton(2, 5, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
 
     }
@@ -1668,7 +1669,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
 
     // offer to open file browser at location
     ImGui::SetCursorPos(top);
-    if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Show in finder"))
+    if (ImGuiToolkit::IconButton(2, 5, "Show in finder"))
         SystemToolkit::open(SystemToolkit::path_filename( s.sequence().location ));
 
     ImGui::SetCursorPos(botom);

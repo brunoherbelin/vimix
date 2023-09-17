@@ -1097,10 +1097,13 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_
     ///
     const ImVec2 top_image = top + corner;
     ImGui::SetCursorScreenPos(top_image);
-    // 100% opacity for the image (ensure true colors)
-    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
-    DrawSource(s, framesize, top_image, true, with_inspector);
-    ImGui::PopStyleVar();
+
+    if (s->ready()) {
+        // 100% opacity for the image (ensure true colors)
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
+        DrawSource(s, framesize, top_image, true, with_inspector);
+        ImGui::PopStyleVar();
+    }
 
     return ImRect( top_image, top_image + framesize);
 }
@@ -1125,7 +1128,8 @@ int SourceControlWindow::SourceButton(Source *s, ImVec2 framesize)
     ImU32 icon_color = ImGui::GetColorU32(ImGuiCol_NavWindowingHighlight);
 
     // 1. draw texture of source
-    DrawSource(s, framesize, frame_top);
+    if (s->ready())
+        DrawSource(s, framesize, frame_top);
 
     // 2. interactive centered button Play / Pause
     if (s->active() && s->playable()) {
