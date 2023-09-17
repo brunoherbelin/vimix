@@ -116,7 +116,7 @@ SourceCore& SourceCore::operator= (SourceCore const& other)
 
 
 Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(nullptr),
-    active_(true), locked_(false), need_update_(SourceUpdate_None), dt_(16.f), workspace_(STAGE)
+    active_(true), locked_(false), need_update_(SourceUpdate_None), dt_(16.f), workspace_(WORKSPACE_CENTRAL)
 {
     // create unique id
     if (id_ == 0)
@@ -804,14 +804,14 @@ void Source::update(float dt)
             // adjust vertical position of icon depending on workspace
             if (groups_[View::LAYER]->translation_.x < -LAYER_FOREGROUND) {
                 groups_[View::LAYER]->translation_.y -= 0.3f;
-                workspace_ = Source::FOREGROUND;
+                workspace_ = Source::WORKSPACE_FOREGROUND;
             }
             else if (groups_[View::LAYER]->translation_.x < -LAYER_BACKGROUND) {
                 groups_[View::LAYER]->translation_.y -= 0.15f;
-                workspace_ = Source::STAGE;
+                workspace_ = Source::WORKSPACE_CENTRAL;
             }
             else
-                workspace_ = Source::BACKGROUND;
+                workspace_ = Source::WORKSPACE_BACKGROUND;
 
             // MODIFY depth based on LAYER node
             groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;

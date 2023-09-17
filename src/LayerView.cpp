@@ -38,6 +38,7 @@
 #include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
+#include "MousePointer.h"
 
 #include "LayerView.h"
 
@@ -78,11 +79,17 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     persp_right_->translation_.x = 1.f;
     scene.bg()->attach(persp_right_);
 
+    // replace grid with appropriate one
+    if (grid) delete grid;
+    grid = new LayerGrid(scene.root());
 }
 
 
 void LayerView::draw()
 {
+    // Display grid
+    grid->root()->visible_ = (grid->active() && current_action_ongoing_);
+
     View::draw();
 
     // initialize the verification of the selection
@@ -187,12 +194,16 @@ void LayerView::update(float dt)
         float s = CLAMP(scene.root()->scale_.x, LAYER_MIN_SCALE, LAYER_MAX_SCALE);
         scene.root()->scale_.x = s;
         scene.root()->scale_.y = s;
+
+        // change grid color
+        ImVec4 c = ImGuiToolkit::HighlightColor();
+        grid->setColor( glm::vec4(c.x, c.y, c.z, 0.3) );
     }
 
     if (Mixer::manager().view() == this )
     {
         // update the selection overlay
-        ImVec4 c = ImGuiToolkit::HighlightColor();
+        const ImVec4 c = ImGuiToolkit::HighlightColor();
         updateSelectionOverlay(glm::vec4(c.x, c.y, c.z, c.w));
     }
 
@@ -283,9 +294,11 @@ float LayerView::setDepth(Source *s, float d)
 
         // find the front-most souce in the workspace (behind FOREGROUND)
         for (NodeSet::iterator node = scene.ws()->begin(); node != scene.ws()->end(); ++node) {
+            // discard foreground
+            if ((*node)->translation_.z > LAYER_FOREGROUND )
+                break;
             // place in front of previous sources
             depth = MAX(depth, (*node)->translation_.z + LAYER_STEP);
-
             // in case node is already at max depth
             if ((*node)->translation_.z + DELTA_DEPTH > MAX_DEPTH )
                 (*node)->translation_.z -= DELTA_DEPTH;
@@ -316,12 +329,25 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     // compute delta translation
     glm::vec3 dest_translation = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
 
-    // discretized translation with ALT
-    if (UserInterface::manager().altModifier())
-        dest_translation.x = ROUND(dest_translation.x, 5.f);
+    // snap to grid (polar)
+    if (grid->active())
+        dest_translation = grid->snap(dest_translation * 0.5f) * 2.f;
 
     // apply change
     float d = setDepth( s,  MAX( -dest_translation.x, 0.f) );
+
+    //
+    // grab all others in selection
+    //
+    // compute effective depth translation of current source s
+    float dp = s->group(mode_)->translation_.z - s->stored_status_->translation_.z;
+    // loop over selection
+    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+        if ( *it != s && !(*it)->locked() ) {
+            // set depth and request update
+            setDepth( *it, (*it)->stored_status_->translation_.z + dp);
+        }
+    }
 
     // store action in history
     std::ostringstream info;
@@ -346,7 +372,7 @@ View::Cursor LayerView::over (glm::vec2 pos)
     //
     //    Source *s = Mixer::manager().findSource(pick.first);
     Source *s = Mixer::manager().currentSource();
-    if (s != nullptr) {
+    if (s != nullptr && s->ready()) {
 
         s->symbol_->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f );
         const ImVec4 h = ImGuiToolkit::HighlightColor();
@@ -361,62 +387,63 @@ View::Cursor LayerView::over (glm::vec2 pos)
 
 void LayerView::arrow (glm::vec2 movement)
 {
-    static float accumulator = 0.f;
-    accumulator += dt_;
+    static glm::vec2 _from(0.f);
+    static glm::vec2 _displacement(0.f);
 
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-    glm::vec3 gl_Position_to   = Rendering::manager().unProject(glm::vec2(movement.x-movement.y, 0.f), scene.root()->transform_);
-    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+    Source *current = Mixer::manager().currentSource();
 
-    bool first = true;
-    glm::vec3 delta_translation(0.f);
-    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); it++) {
+    if (!current && !Mixer::selection().empty())
+        Mixer::manager().setCurrentSource( Mixer::selection().back() );
 
-        // individual move with SHIFT
-        if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
-            continue;
+    if (current) {
 
-        Group *sourceNode = (*it)->group(mode_);
-        glm::vec3 dest_translation(0.f);
+        if (current_action_ongoing_) {
 
-        if (first) {
-            // dest starts at current
-            dest_translation = sourceNode->translation_;
+            // add movement to displacement
+            movement.x += movement.y * -0.5f;
+            _displacement += glm::vec2(movement.x, -0.5f * movement.x) * dt_ * 0.2f;
 
-            // + ALT : discrete displacement
-            if (UserInterface::manager().altModifier()) {
-                if (accumulator > 100.f) {
-                    dest_translation += glm::sign(gl_delta) * 0.21f;
-                    dest_translation.x = ROUND(dest_translation.x, 10.f);
-                    accumulator = 0.f;
-                }
-                else
-                    break;
-            }
-            else {
-                // normal case: dest += delta
-                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
-                accumulator = 0.f;
-            }
+            // set coordinates of target
+            glm::vec2 _to  = _from + _displacement;
 
-            // store action in history
-            std::ostringstream info;
-            info << "Depth " << std::fixed << std::setprecision(2) << (*it)->depth() << "  ";
-            current_action_ = (*it)->name() + ": " + info.str();
+            // update mouse pointer action
+            MousePointer::manager().active()->update(_to, dt_ / 1000.f);
 
-            // delta for others to follow
-            delta_translation = dest_translation - sourceNode->translation_;
+            // simulate mouse grab
+            grab(current, _from, MousePointer::manager().active()->target(),
+                 std::make_pair(current->group(mode_), glm::vec2(0.f) ) );
+
+            // draw mouse pointer effect
+            MousePointer::manager().active()->draw();
         }
         else {
-            // dest = current + delta from first
-            dest_translation = sourceNode->translation_ + delta_translation;
+
+            if (UserInterface::manager().altModifier() || Settings::application.mouse_pointer_lock)
+                MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
+            else
+                MousePointer::manager().setActiveMode( Pointer::POINTER_DEFAULT );
+
+            // initiate view action and store status of source
+            initiate();
+
+            // get coordinates of source and set this as start of mouse position
+            _from = glm::vec2( Rendering::manager().project(current->group(mode_)->translation_, scene.root()->transform_) );
+            _displacement = glm::vec2(0.f);
+
+            // Initiate mouse pointer action
+            MousePointer::manager().active()->initiate(_from);
         }
 
-        // apply & request update
-        setDepth( *it,  MAX( -dest_translation.x, 0.f) );
-
-        first = false;
     }
+    else {
+
+        terminate(true);
+
+        _from = glm::vec2(0.f);
+        _displacement = glm::vec2(0.f);
+
+    }
+
 }
 
 
@@ -435,3 +462,59 @@ void LayerView::updateSelectionOverlay(glm::vec4 color)
         overlay_selection_frame_->scale_ = glm::vec3(1.f) + glm::vec3(0.07f, 0.07f, 1.f) / overlay_selection_->scale_;
     }
 }
+
+LayerGrid::LayerGrid(Group *parent) : Grid(parent)
+{
+    root_ = new Group;
+    root_->visible_ = false;
+    parent_->attach(root_);
+
+    // create custom grids specific for layers in diagonal
+    perspective_grids_ = new Switch;
+    root_->attach(perspective_grids_);
+
+    // Generate groups for all units
+    for (uint u = UNIT_PRECISE; u <= UNIT_ONE; u = u + 1) {
+        Group *g = new Group;
+        float d = MIN_DEPTH;
+        // Fill background
+        for (; d < LAYER_BACKGROUND ; d += Grid::ortho_units_[u] * 2.f) {
+            HLine *l = new HLine(3.f);
+            l->translation_.x = -d +1.f;
+            l->translation_.y = -d / LAYER_PERSPECTIVE - 1.f;
+            l->scale_.x = 3.5f;
+            g->attach(l);
+        }
+        // Fill workspace
+        for (; d < LAYER_FOREGROUND ; d += Grid::ortho_units_[u] * 2.f) {
+            HLine *l = new HLine(3.f);
+            l->translation_.x = -d +1.f;
+            l->translation_.y = -d / LAYER_PERSPECTIVE - 1.15f;
+            l->scale_.x = 3.5f;
+            g->attach(l);
+        }
+        // Fill foreground
+        for (; d < MAX_DEPTH ; d += Grid::ortho_units_[u] * 2.f) {
+            HLine *l = new HLine(3.f);
+            l->translation_.x = -d +1.f;
+            l->translation_.y = -d / LAYER_PERSPECTIVE - 1.3f;
+            l->scale_.x = 3.5f;
+            g->attach(l);
+        }
+        // add this group to the grids
+        perspective_grids_->attach(g);
+    }
+
+    // not visible at init
+//    setColor( glm::vec4(0.f) );
+}
+
+Group *LayerGrid::root ()
+{
+    //adjust the grid to the unit scale
+    perspective_grids_->setActive(unit_);
+
+    // return the node to draw
+    return root_;
+}
+

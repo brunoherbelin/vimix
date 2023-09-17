@@ -280,6 +280,70 @@ string SystemToolkit::full_filename(const std::string& path, const string &filen
     return fullfilename;
 }
 
+unsigned long SystemToolkit::file_modification_time(const std::string& path)
+{
+    if (file_exists(path)) {
+        struct stat statsfile;
+        // fill statistics of given file path
+        if( stat( path.c_str(), &statsfile) > -1 ) {
+            // return modification time
+            return (unsigned long) statsfile.st_mtime;
+        }
+    }
+
+    return 0;
+}
+
+std::string SystemToolkit::file_modification_time_string(const std::string& path)
+{
+    ostringstream oss;
+
+    if (file_exists(path)) {
+        struct stat statsfile;
+        // fill statistics of given file path
+        if( stat( path.c_str(), &statsfile) > -1 ) {
+            // read modification time
+            tm *datetime = localtime(&statsfile.st_mtime);
+            ostringstream oss;
+            oss << setw(4) << setfill('0') << to_string(datetime->tm_year + 1900);
+            oss << setw(2) << setfill('0') << to_string(datetime->tm_mon + 1);
+            oss << setw(2) << setfill('0') << to_string(datetime->tm_mday );
+            oss << setw(2) << setfill('0') << to_string(datetime->tm_hour );
+            oss << setw(2) << setfill('0') << to_string(datetime->tm_min );
+            oss << setw(2) << setfill('0') << to_string(datetime->tm_sec );
+        }
+
+    }
+
+    return oss.str();
+}
+
+
+void SystemToolkit::reorder_file_list(std::list<string> &filelist, Ordering m)
+{
+    if ( m >= DATE ) {
+        auto dateComparator = [](const std::string &a, const std::string &b) {
+            return SystemToolkit::file_modification_time(a) < SystemToolkit::file_modification_time(b);
+        };
+        filelist.sort( dateComparator );
+        if ( m == DATE_INVERSE )
+            filelist.reverse();
+    }
+    else  {
+        auto alphaComparator = [](const std::string &a, const std::string &b) {
+            std::string _a = a;
+            std::string _b = b;
+            std::transform(_a.begin(), _a.end(), _a.begin(), ::tolower);
+            std::transform(_b.begin(), _b.end(), _b.begin(), ::tolower);
+            return _a < _b;
+        };
+        filelist.sort( alphaComparator );
+        if ( m == ALPHA_INVERSE )
+            filelist.reverse();
+    }
+}
+
+
 bool SystemToolkit::file_exists(const string& path)
 {
     if (path.empty())
@@ -307,7 +371,7 @@ string SystemToolkit::path_directory(const string& path)
     return directorypath;
 }
 
-list<string> SystemToolkit::list_directory(const string& path, const list<string>& patterns)
+list<string> SystemToolkit::list_directory(const string& path, const list<string>& patterns, Ordering m)
 {
     list<string> ls;
 
@@ -329,7 +393,7 @@ list<string> SystemToolkit::list_directory(const string& path, const list<string
         closedir (dir);
     }
 
-    ls.sort();
+    reorder_file_list( ls, m );
 
     return ls;
 }

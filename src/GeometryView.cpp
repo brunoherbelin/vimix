@@ -26,6 +26,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtx/vector_angle.hpp>
+#include <glm/gtx/component_wise.hpp>
 
 #include "ImGuiToolkit.h"
 
@@ -39,6 +40,7 @@
 #include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
+#include "MousePointer.h"
 
 #include "GeometryView.h"
 
@@ -138,6 +140,12 @@ GeometryView::GeometryView() : View(GEOMETRY)
     overlay_selection_rotate_ = nullptr;
     overlay_selection_stored_status_ = nullptr;
     overlay_selection_active_ = false;
+
+    // replace grid with appropriate one
+    translation_grid_ = new TranslationGrid(scene.root());
+    rotation_grid_ = new RotationGrid(scene.root());
+    if (grid) delete grid;
+    grid = translation_grid_;
 }
 
 void GeometryView::update(float dt)
@@ -158,12 +166,23 @@ void GeometryView::update(float dt)
                 (*node)->scale_.x = aspect_ratio;
             }
             output_surface_->setTextureIndex( output->texture() );
+
+            // set grid aspect ratio
+            if (Settings::application.proportional_grid)
+                translation_grid_->setAspectRatio( output->aspectRatio() );
+            else
+                translation_grid_->setAspectRatio( 1.f );
         }
 
         // prevent invalid scaling
         float s = CLAMP(scene.root()->scale_.x, GEOMETRY_MIN_SCALE, GEOMETRY_MAX_SCALE);
         scene.root()->scale_.x = s;
         scene.root()->scale_.y = s;
+
+        // change grid color
+        const ImVec4 c = ImGuiToolkit::HighlightColor();
+        translation_grid_->setColor( glm::vec4(c.x, c.y, c.z, 0.3) );
+        rotation_grid_->setColor( glm::vec4(c.x, c.y, c.z, 0.3) );
     }
 
     // the current view is the geometry view
@@ -171,6 +190,7 @@ void GeometryView::update(float dt)
     {
         ImVec4 c = ImGuiToolkit::HighlightColor();
         updateSelectionOverlay(glm::vec4(c.x, c.y, c.z, c.w));
+
 //        overlay_selection_icon_->visible_ = false;
     }
 }
@@ -209,11 +229,12 @@ void GeometryView::draw()
     // only sources in the current workspace
     std::vector<Node *> surfaces;
     std::vector<Node *> overlays;
+    uint workspaces_counts_[Source::WORKSPACE_ANY+1] = {0};
     for (auto source_iter = Mixer::manager().session()->begin();
          source_iter != Mixer::manager().session()->end(); ++source_iter) {
         // if it is in the current workspace
-        if ((*source_iter)->workspace() == Settings::application.current_workspace) {
-//            if ((*source_iter)->blendingShader()->color.a > 0.f) // TODO: option to hide non visible
+        if (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
+                (*source_iter)->workspace() == Settings::application.current_workspace) {
             {
             // will draw its surface
             surfaces.push_back((*source_iter)->groups_[mode_]);
@@ -222,6 +243,9 @@ void GeometryView::draw()
             overlays.push_back((*source_iter)->locker_);
             }
         }
+        // count number of sources per workspace
+        workspaces_counts_[(*source_iter)->workspace()]++;
+        workspaces_counts_[Source::WORKSPACE_ANY]++;
     }
 
     // 0. prepare projection for draw visitors
@@ -240,7 +264,8 @@ void GeometryView::draw()
     scene.accept(draw_overlays);
 
     // 4. Draw control overlays of current source on top (if selected)
-    if (s != nullptr) {
+    if (s != nullptr && (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
+                         s->workspace() == Settings::application.current_workspace) ) {
         DrawVisitor dv(s->overlays_[mode_], projection);
         scene.accept(dv);
         // Always restore current source after draw
@@ -250,6 +275,12 @@ void GeometryView::draw()
     // 5. Finally, draw overlays of view
     DrawVisitor draw_foreground(scene.fg(), projection);
     scene.accept(draw_foreground);
+
+    // 6. Display grid
+    if (grid->active() && current_action_ongoing_) {
+        DrawVisitor draw_grid(grid->root(), projection, true);
+        scene.accept(draw_grid);
+    }
 
     // display interface
     // Locate window at upper right corner
@@ -270,32 +301,22 @@ void GeometryView::draw()
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 0.56f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
 
-//        bool on = Settings::application.current_workspace == Source::BACKGROUND;
-//        if ( ImGuiToolkit::ButtonIconToggle(10,16,10,16, &on, "Background") ) {
-//            Settings::application.current_workspace = Source::BACKGROUND;
-//            ++View::need_deep_update_;
-//        }
-//        ImGui::SameLine(0, IMGUI_SAME_LINE);
-//        on = Settings::application.current_workspace == Source::STAGE;
-//        if ( ImGuiToolkit::ButtonIconToggle(11,16,11,16, &on, "Workspace") ) {
-//            Settings::application.current_workspace = Source::STAGE;
-//            ++View::need_deep_update_;
-//        }
-//        ImGui::SameLine(0, IMGUI_SAME_LINE);
-//        on = Settings::application.current_workspace == Source::FOREGROUND;
-//        if ( ImGuiToolkit::ButtonIconToggle(12,16,12,16, &on, "Foreground") ) {
-//            Settings::application.current_workspace = Source::FOREGROUND;
-//            ++View::need_deep_update_;
-//        }
-
-        static std::vector< std::tuple<int, int, std::string> > _workspaces = {
-            {10, 16, "Background"},
-            {11, 16, "Workspace"},
-            {12, 16, "Foreground"}
+        static std::vector< std::string > _tooltips = {
+            {"Sources in Background layers"},
+            {"Sources in Workspace layers"},
+            {"Sources in Foreground layers"},
+            {"Sources in every layers (total)"}
+        };
+        std::vector< std::tuple<int, int, std::string> > _workspaces = {
+            {ICON_WORKSPACE_BACKGROUND, std::to_string( workspaces_counts_[Source::WORKSPACE_BACKGROUND] )},
+            {ICON_WORKSPACE_CENTRAL,    std::to_string( workspaces_counts_[Source::WORKSPACE_CENTRAL] )},
+            {ICON_WORKSPACE_FOREGROUND, std::to_string( workspaces_counts_[Source::WORKSPACE_FOREGROUND] )},
+            {ICON_WORKSPACE,            std::to_string( workspaces_counts_[Source::WORKSPACE_ANY] )}
         };
         ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
-        if ( ImGuiToolkit::ComboIcon ("##WORKSPACE", &Settings::application.current_workspace, _workspaces, true) ){
-             ++View::need_deep_update_;
+        if ( ImGuiToolkit::ComboIcon ("##WORKSPACE", &Settings::application.current_workspace, _workspaces, _tooltips) ){
+            // need full update
+            Mixer::manager().setView(mode_);
         }
 
         ImGui::PopStyleColor(6);
@@ -427,6 +448,56 @@ void GeometryView::draw()
     }
 }
 
+void GeometryView::adaptGridToSource(Source *s, Node *picked)
+{
+    // Reset by default
+    rotation_grid_->root()->translation_ = glm::vec3(0.f);
+    rotation_grid_->root()->scale_ = glm::vec3(1.f);
+    translation_grid_->root()->translation_ = glm::vec3(0.f);
+    translation_grid_->root()->rotation_.z  = 0.f;
+
+    if (s != nullptr && picked != nullptr) {
+        if (picked == s->handles_[mode_][Handles::ROTATE]) {
+            // shift grid at center of source
+            rotation_grid_->root()->translation_ = s->group(mode_)->translation_;
+            rotation_grid_->root()->scale_.x = glm::length(
+                        glm::vec2(s->frame()->aspectRatio() * s->group(mode_)->scale_.x,
+                                  s->group(mode_)->scale_.y) );
+            rotation_grid_->root()->scale_.y = rotation_grid_->root()->scale_.x;
+            // Swap grid to rotation grid
+            rotation_grid_->setActive( grid->active() );
+            translation_grid_->setActive( false );
+            grid = rotation_grid_;
+            return;
+        }
+        else if ( picked == s->handles_[mode_][Handles::RESIZE] ||
+                  picked == s->handles_[mode_][Handles::RESIZE_V] ||
+                  picked == s->handles_[mode_][Handles::RESIZE_H] ){
+            translation_grid_->root()->translation_ = glm::vec3(0.f);
+            translation_grid_->root()->rotation_.z = s->group(mode_)->rotation_.z;
+            // Swap grid to translation grid
+            translation_grid_->setActive( grid->active() );
+            rotation_grid_->setActive( false );
+            grid = translation_grid_;
+        }
+        else if ( picked == s->handles_[mode_][Handles::SCALE] ||
+                  picked == s->handles_[mode_][Handles::CROP] ){
+            translation_grid_->root()->translation_ = s->group(mode_)->translation_;
+            translation_grid_->root()->rotation_.z = s->group(mode_)->rotation_.z;
+            // Swap grid to translation grid
+            translation_grid_->setActive( grid->active() );
+            rotation_grid_->setActive( false );
+            grid = translation_grid_;
+        }
+    }
+    else {
+        // Default:
+        // Grid in scene global coordinate
+        translation_grid_->setActive( grid->active()  );
+        rotation_grid_->setActive( false );
+        grid = translation_grid_;
+    }
+}
 
 std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
 {
@@ -437,7 +508,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
     glm::vec3 scene_point_ = Rendering::manager().unProject(P);
 
     // picking visitor traverses the scene
-    PickingVisitor pv(scene_point_);
+    PickingVisitor pv(scene_point_, false);
     scene.accept(pv);
 
     // picking visitor found nodes?
@@ -445,7 +516,8 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
         // keep current source active if it is clicked
         Source *current = Mixer::manager().currentSource();
         if (current != nullptr) {
-            if (current->workspace() != Settings::application.current_workspace){
+            if (Settings::application.current_workspace < Source::WORKSPACE_ANY &&
+                    current->workspace() != Settings::application.current_workspace){
                 current = nullptr;
             }
             else {
@@ -457,6 +529,8 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     if ( is_in_source( current ) ){
                         // a node in the current source was clicked !
                         pick = *itp;
+                        // adapt grid to prepare grab action
+                        adaptGridToSource(current, pick.first);
                         break;
                     }
                 }
@@ -464,6 +538,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                 // OR the selection contains multiple sources and actions on single source are disabled
                 if (itp == pv.rend() || Mixer::selection().size() > 1) {
                     current = nullptr;
+                    pick = { nullptr, glm::vec2(0.f) };
                 }
                 // picking on the menu handle: show context menu
                 else if ( pick.first == current->handles_[mode_][Handles::MENU] ) {
@@ -499,7 +574,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     // get if a source was picked
                     Source *s = Mixer::manager().findSource((*itp).first);
                     // lock icon of a source (not current) is picked : unlock
-                    if ( s!=nullptr && (*itp).first == s->lock_) {
+                    if ( s != nullptr && s->locked() && (*itp).first == s->lock_) {
                         lock(s, false);
                         pick = { s->locker_, (*itp).second };
                         break;
@@ -514,15 +589,19 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     // get if a source was picked
                     Source *s = Mixer::manager().findSource((*itp).first);
                     // accept picked sources in current workspaces
-                    if ( s!=nullptr && s->workspace() == Settings::application.current_workspace) {
-                        if ( s->locked() && !UserInterface::manager().ctrlModifier() )
-                            continue;
-                        // a non-locked source is picked (anywhere)
-                        // not in an active selection? don't pick this one!
-                        if ( Mixer::selection().size() > 1 && !Mixer::selection().contains(s))
-                            continue;
-                        // yeah, pick this one (NB: locker_ is just a node in Geometry that is detected)
-                        pick = { s->locker_,  (*itp).second };
+                    if ( s!=nullptr && (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
+                                        s->workspace() == Settings::application.current_workspace) ) {
+                        if ( !UserInterface::manager().ctrlModifier() ) {
+                            // source is locked; can't move
+                            if ( s->locked() )
+                                continue;
+                            // a non-locked source is picked (anywhere)
+                            // not in an active selection? don't pick this one!
+                            if ( Mixer::selection().size() > 1 && !Mixer::selection().contains(s) )
+                                continue;
+                        }
+                        // yeah, pick this one
+                        pick = { s->group(mode_),  (*itp).second };
                         break;
                     }
                     // not a source picked
@@ -553,7 +632,8 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
 
 bool GeometryView::canSelect(Source *s) {
 
-    return ( s!=nullptr && View::canSelect(s) && s->ready() && s->active() && s->workspace() == Settings::application.current_workspace);
+    return ( s!=nullptr && View::canSelect(s) && s->ready() && s->active() &&
+            (Settings::application.current_workspace == Source::WORKSPACE_ANY || s->workspace() == Settings::application.current_workspace) );
 }
 
 
@@ -581,7 +661,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     // grab coordinates in scene-View reference frame
     glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
-    glm::vec3 scene_translation = scene_to - scene_from;
 
     // No source is given
     if (!s) {
@@ -613,6 +692,24 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 overlay_scaling_->color = overlay_selection_icon_->color;
                 overlay_scaling_cross_->color = overlay_selection_icon_->color;
 
+                //
+                // Manipulate the scaling handle in the SCENE coordinates to apply grid snap
+                //
+                if ( grid->active() ) {
+                    glm::vec3 handle = glm::vec3(1.f, -1.f, 0.f);
+                    // Compute handle coordinates into SCENE reference frame
+                    handle = overlay_selection_stored_status_->transform_ * glm::vec4( handle, 1.f );
+                    // move the handle we hold by the mouse translation (in scene reference frame)
+                    handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * glm::vec4( handle, 1.f );
+                    // snap handle coordinates to grid (if active)
+                    handle = grid->snap(handle);
+                    // Compute handle coordinates back in SOURCE reference frame
+                    handle = glm::inverse(overlay_selection_stored_status_->transform_) * glm::vec4( handle,  1.f );
+                    // The scaling factor is computed by dividing new handle coordinates with the ones before transform
+                    glm::vec3 handle_scaling = glm::vec3(handle) / glm::vec3(1.f, -1.f, 1.f);
+                    S = glm::scale(glm::identity<glm::mat4>(), handle_scaling);
+                }
+
                 // apply to selection overlay
                 glm::vec4 vec = S * glm::vec4( overlay_selection_stored_status_->scale_, 0.f );
                 overlay_selection_->scale_ = glm::vec3(vec);
@@ -639,34 +736,48 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 overlay_rotation_fix_->copyTransform(overlay_rotation_);
                 overlay_rotation_fix_->color = overlay_selection_icon_->color;
 
-                // cancel out scaling with SHIFT modifier key
-                if (UserInterface::manager().shiftModifier()) {
-                    overlay_rotation_fix_->visible_ = true;
-                    float scale_factor = glm::length( glm::vec2( overlay_selection_->scale_ ) ) / glm::length( glm::vec2( overlay_selection_stored_status_->scale_ ) );
-                    S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale_factor, scale_factor, 1.f));
-                }
+                // Swap grid to rotation, shifted at center of source
+                rotation_grid_->setActive( grid->active() );
+                translation_grid_->setActive( false );
+                grid = rotation_grid_;
+                grid->root()->translation_ = overlay_selection_stored_status_->translation_;
+
+                // prepare variables
+                const float diagonal = glm::length( glm::vec2(overlay_selection_stored_status_->scale_));
+                glm::vec2 handle_polar = glm::vec2( diagonal, 0.f);
 
                 // compute rotation angle
                 float angle = glm::orientedAngle( glm::normalize(glm::vec2(selection_from)), glm::normalize(glm::vec2(selection_to)));
+                handle_polar.y = overlay_selection_stored_status_->rotation_.z + angle;
+
+                // compute scaling of diagonal to reach new coordinates
+                handle_polar.x *= factor;
+
+                // snap polar coordiantes (diagonal lenght, angle)
+                if ( grid->active() ) {
+                    handle_polar = glm::round( handle_polar / grid->step() ) * grid->step();
+                    // prevent null size
+                    handle_polar.x = glm::max( grid->step().x,  handle_polar.x );
+                }
+
+                // cancel scaling with SHIFT modifier key
+                if (UserInterface::manager().shiftModifier()) {
+                    overlay_rotation_fix_->visible_ = true;
+                    handle_polar.x = 1.f;
+                }
+                else
+                    handle_polar.x /= diagonal ;
+
+                S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(handle_polar.x, handle_polar.x, 1.f));
 
                 // apply to selection overlay
                 glm::vec4 vec = S * glm::vec4( overlay_selection_stored_status_->scale_, 0.f );
                 overlay_selection_->scale_ = glm::vec3(vec);
-                overlay_selection_->rotation_.z = overlay_selection_stored_status_->rotation_.z + angle;
-
-                // POST-CORRECTION ; discretized rotation with ALT
-                if (UserInterface::manager().altModifier()) {
-                    int degrees = int(  glm::degrees(overlay_selection_->rotation_.z) );
-                    degrees = (degrees / 10) * 10;
-                    overlay_selection_->rotation_.z = glm::radians( float(degrees) );
-                    angle = overlay_selection_->rotation_.z - overlay_selection_stored_status_->rotation_.z;
-                    overlay_rotation_clock_->visible_ = true;
-                    overlay_rotation_clock_->copyTransform(overlay_rotation_);
-                    overlay_rotation_clock_tic_->color = overlay_selection_icon_->color;
-                }
+                overlay_selection_->rotation_.z = handle_polar.y;
 
                 // apply to selection sources
                 // NB: complete transform matrix (right to left) : move to center, rotate, scale and move back
+                angle = handle_polar.y - overlay_selection_stored_status_->rotation_.z;
                 glm::mat4 R = glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3(0.f, 0.f, 1.f) );
                 glm::mat4 M = T * S * R * glm::inverse(T);
                 applySelectionTransform(M);
@@ -686,35 +797,28 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
 
     // make sure matrix transform of stored status is updated
     s->stored_status_->update(0);
+
     // grab coordinates in source-root reference frame
-    glm::vec4 source_from = glm::inverse(s->stored_status_->transform_) * glm::vec4( scene_from,  1.f );
-    glm::vec4 source_to   = glm::inverse(s->stored_status_->transform_) * glm::vec4( scene_to,  1.f );
-    glm::vec3 source_scaling     = glm::vec3(source_to) / glm::vec3(source_from);
+    const glm::mat4 source_scale = glm::scale(glm::identity<glm::mat4>(),
+                                              glm::vec3(1.f / s->frame()->aspectRatio(), 1.f, 1.f));
+    const glm::mat4 scene_to_source_transform = source_scale * glm::inverse(s->stored_status_->transform_);
+    const glm::mat4 source_to_scene_transform = glm::inverse(scene_to_source_transform);
 
     // which manipulation to perform?
     std::ostringstream info;
     if (pick.first)  {
+
         // which corner was picked ?
         glm::vec2 corner = glm::round(pick.second);
 
-        // transform from source center to corner
-        glm::mat4 T = GlmToolkit::transform(glm::vec3(corner.x, corner.y, 0.f), glm::vec3(0.f, 0.f, 0.f),
-                                            glm::vec3(1.f / s->frame()->aspectRatio(), 1.f, 1.f));
+        // keep transform from source center to opposite corner
+        const glm::mat4 source_to_corner_transform = glm::translate(glm::identity<glm::mat4>(), glm::vec3(corner, 0.f));
 
         // transformation from scene to corner:
-        glm::mat4 scene_to_corner_transform = T * glm::inverse(s->stored_status_->transform_);
-        glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
+        const glm::mat4 scene_to_corner_transform = source_to_corner_transform * scene_to_source_transform;
+        const glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
 
-        // compute cursor movement in corner reference frame
-        glm::vec4 corner_from = scene_to_corner_transform * glm::vec4( scene_from,  1.f );
-        glm::vec4 corner_to   = scene_to_corner_transform * glm::vec4( scene_to,  1.f );
-        // operation of scaling in corner reference frame
-        glm::vec3 corner_scaling = glm::vec3(corner_to) / glm::vec3(corner_from);
-
-        // convert source position in corner reference frame
-        glm::vec4 center = scene_to_corner_transform * glm::vec4( s->stored_status_->translation_, 1.f);
-
-        // picking on the resizing handles in the corners
+        // picking on the resizing handles in the corners RESIZE CORNER
         if ( pick.first == s->handles_[mode_][Handles::RESIZE] ) {
 
             // hide all other grips
@@ -726,47 +830,48 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             s->handles_[mode_][Handles::MENU]->visible_ = false;
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE]->overlayActiveCorner(-corner);
-            // RESIZE CORNER
+
+            //
+            // Manipulate the handle in the SCENE coordinates to apply grid snap
+            //
+            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
+            // move the corner we hold by the mouse translation (in scene reference frame)
+            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
+            // snap handle coordinates to grid (if active)
+            if ( grid->active() )
+                handle = grid->snap(handle);
+            // Compute coordinates coordinates back in CORNER reference frame
+            handle = scene_to_corner_transform * handle;
+            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
+            glm::vec2 corner_scaling = glm::vec2(handle) / glm::vec2(corner * 2.f);
+
             // proportional SCALING with SHIFT
             if (UserInterface::manager().shiftModifier()) {
-                // calculate proportional scaling factor
-                float factor = glm::length( glm::vec2( corner_to ) ) / glm::length( glm::vec2( corner_from ) );
-                // scale node
-                sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(factor, factor, 1.f);
-                // discretized scaling with ALT
-                if (UserInterface::manager().altModifier()) {
-                    sourceNode->scale_.x = ROUND(sourceNode->scale_.x, 10.f);
-                    factor = sourceNode->scale_.x / s->stored_status_->scale_.x;
-                    sourceNode->scale_.y = s->stored_status_->scale_.y * factor;
-                }
-                // update corner scaling to apply to center coordinates
-                corner_scaling = sourceNode->scale_ / s->stored_status_->scale_;
+                corner_scaling = glm::vec2(glm::compMax(corner_scaling));
             }
-            // non-proportional CORNER RESIZE  (normal case)
-            else {
-                // scale node
-                sourceNode->scale_ = s->stored_status_->scale_ * corner_scaling;
-                // discretized scaling with ALT
-                if (UserInterface::manager().altModifier()) {
-                    sourceNode->scale_.x = ROUND(sourceNode->scale_.x, 10.f);
-                    sourceNode->scale_.y = ROUND(sourceNode->scale_.y, 10.f);
-                    corner_scaling = sourceNode->scale_ / s->stored_status_->scale_;
-                }
-            }
-            // transform source center (in corner reference frame)
-            center = glm::scale(glm::identity<glm::mat4>(), corner_scaling) * center;
+
+            // Apply scaling to the source
+            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
+
+            //
+            // Adjust translation
+            //
+            // The center of the source in CORNER reference frame
+            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
+            // scale center of source in CORNER reference frame
+            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
             // convert center back into scene reference frame
-            center = corner_to_scene_transform * center;
-            // apply to node
-            sourceNode->translation_ = glm::vec3(center);
+            corner_center = corner_to_scene_transform * corner_center;
+            // Apply scaling to the source
+            sourceNode->translation_ = glm::vec3(corner_center);
+
             // show cursor depending on diagonal (corner picked)
-            T = glm::rotate(glm::identity<glm::mat4>(), s->stored_status_->rotation_.z, glm::vec3(0.f, 0.f, 1.f));
+            glm::mat4 T = glm::rotate(glm::identity<glm::mat4>(), s->stored_status_->rotation_.z, glm::vec3(0.f, 0.f, 1.f));
             T = glm::scale(T, s->stored_status_->scale_);
             corner = T * glm::vec4( corner, 0.f, 0.f );
             ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
             info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
-
         }
         // picking on the BORDER RESIZING handles left or right
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE_H] ) {
@@ -780,29 +885,42 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             s->handles_[mode_][Handles::MENU]->visible_ = false;
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE_H]->overlayActiveCorner(-corner);
-            // SHIFT: HORIZONTAL SCALE to restore source aspect ratio
+
+            //
+            // Manipulate the handle in the SCENE coordinates to apply grid snap
+            //
+            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
+            // move the corner we hold by the mouse translation (in scene reference frame)
+            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
+            // snap handle coordinates to grid (if active)
+            if ( grid->active() )
+                handle = grid->snap(handle);
+            // Compute coordinates coordinates back in CORNER reference frame
+            handle = scene_to_corner_transform * handle;
+            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
+            glm::vec2 corner_scaling =  glm::vec2(handle.x, 1.f) / glm::vec2(corner.x * 2.f, 1.f);
+
+            // Apply scaling to the source
+            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
+
+            // SHIFT: restore previous aspect ratio
             if (UserInterface::manager().shiftModifier()) {
-                sourceNode->scale_.x = ABS(sourceNode->scale_.y) * SIGN(sourceNode->scale_.x);
-                corner_scaling = sourceNode->scale_ / s->stored_status_->scale_;
+                float ar = s->stored_status_->scale_.y / s->stored_status_->scale_.x;
+                sourceNode->scale_.y = ar * sourceNode->scale_.x;
             }
-            // HORIZONTAL RESIZE (normal case)
-            else {
-                // x scale only
-                corner_scaling = glm::vec3(corner_scaling.x, 1.f, 1.f);
-                // scale node
-                sourceNode->scale_ = s->stored_status_->scale_ * corner_scaling;
-                // POST-CORRECTION ; discretized scaling with ALT
-                if (UserInterface::manager().altModifier()) {
-                    sourceNode->scale_.x = ROUND(sourceNode->scale_.x, 10.f);
-                    corner_scaling = sourceNode->scale_ / s->stored_status_->scale_;
-                }
-            }
-            // transform source center (in corner reference frame)
-            center = glm::scale(glm::identity<glm::mat4>(), corner_scaling) * center;
+
+            //
+            // Adjust translation
+            //
+            // The center of the source in CORNER reference frame
+            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
+            // scale center of source in CORNER reference frame
+            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
             // convert center back into scene reference frame
-            center = corner_to_scene_transform * center;
-            // apply to node
-            sourceNode->translation_ = glm::vec3(center);
+            corner_center = corner_to_scene_transform * corner_center;
+            // Apply scaling to the source
+            sourceNode->translation_ = glm::vec3(corner_center);
+
             // show cursor depending on angle
             float c = tan(sourceNode->rotation_.z);
             ret.type = ABS(c) > 1.f ? Cursor_ResizeNS : Cursor_ResizeEW;
@@ -821,29 +939,42 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             s->handles_[mode_][Handles::MENU]->visible_ = false;
             // inform on which corner should be overlayed (opposite)
             s->handles_[mode_][Handles::RESIZE_V]->overlayActiveCorner(-corner);
-            // SHIFT: VERTICAL SCALE to restore source aspect ratio
+
+            //
+            // Manipulate the handle in the SCENE coordinates to apply grid snap
+            //
+            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
+            // move the corner we hold by the mouse translation (in scene reference frame)
+            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
+            // snap handle coordinates to grid (if active)
+            if ( grid->active() )
+                handle = grid->snap(handle);
+            // Compute coordinates coordinates back in CORNER reference frame
+            handle = scene_to_corner_transform * handle;
+            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
+            glm::vec2 corner_scaling =  glm::vec2(1.f, handle.y) / glm::vec2(1.f, corner.y * 2.f);
+
+            // Apply scaling to the source
+            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
+
+            // SHIFT: restore previous aspect ratio
             if (UserInterface::manager().shiftModifier()) {
-                sourceNode->scale_.y = ABS(sourceNode->scale_.x) * SIGN(sourceNode->scale_.y);
-                corner_scaling = sourceNode->scale_ / s->stored_status_->scale_;
+                float ar = s->stored_status_->scale_.x / s->stored_status_->scale_.y;
+                sourceNode->scale_.x = ar * sourceNode->scale_.y;
             }
-            // VERTICAL RESIZE (normal case)
-            else {
-                // y scale only
-                corner_scaling = glm::vec3(1.f, corner_scaling.y, 1.f);
-                // scale node
-                sourceNode->scale_ = s->stored_status_->scale_ * corner_scaling;
-                // POST-CORRECTION ; discretized scaling with ALT
-                if (UserInterface::manager().altModifier()) {
-                    sourceNode->scale_.y = ROUND(sourceNode->scale_.y, 10.f);
-                    corner_scaling = sourceNode->scale_ / s->stored_status_->scale_;
-                }
-            }
-            // transform source center (in corner reference frame)
-            center = glm::scale(glm::identity<glm::mat4>(), corner_scaling) * center;
+
+            //
+            // Adjust translation
+            //
+            // The center of the source in CORNER reference frame
+            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
+            // scale center of source in CORNER reference frame
+            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
             // convert center back into scene reference frame
-            center = corner_to_scene_transform * center;
-            // apply to node
-            sourceNode->translation_ = glm::vec3(center);
+            corner_center = corner_to_scene_transform * corner_center;
+            // Apply scaling to the source
+            sourceNode->translation_ = glm::vec3(corner_center);
+
             // show cursor depending on angle
             float c = tan(sourceNode->rotation_.z);
             ret.type = ABS(c) > 1.f ? Cursor_ResizeEW : Cursor_ResizeNS;
@@ -868,22 +999,32 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             overlay_scaling_->translation_.y = s->stored_status_->translation_.y;
             overlay_scaling_->rotation_.z = s->stored_status_->rotation_.z;
             overlay_scaling_->update(0);
-            // PROPORTIONAL ONLY
+
+            //
+            // Manipulate the scaling handle in the SCENE coordinates to apply grid snap
+            //
+            glm::vec3 handle = glm::vec3( glm::round(pick.second), 0.f);
+            // Compute handle coordinates into SCENE reference frame
+            handle = source_to_scene_transform * glm::vec4( handle, 1.f );
+            // move the handle we hold by the mouse translation (in scene reference frame)
+            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * glm::vec4( handle, 1.f );
+            // snap handle coordinates to grid (if active)
+            if ( grid->active() )
+                handle = grid->snap(handle);
+            // Compute handle coordinates back in SOURCE reference frame
+            handle = scene_to_source_transform * glm::vec4( handle,  1.f );
+            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
+            glm::vec2 handle_scaling = glm::vec2(handle) / glm::round(pick.second);
+
+            // proportional SCALING with SHIFT
             if (UserInterface::manager().shiftModifier()) {
-                float factor = glm::length( glm::vec2( source_to ) ) / glm::length( glm::vec2( source_from ) );
-                source_scaling = glm::vec3(factor, factor, 1.f);
+                handle_scaling = glm::vec2(glm::compMax(handle_scaling));
                 overlay_scaling_cross_->visible_ = true;
                 overlay_scaling_cross_->copyTransform(overlay_scaling_);
             }
-            // apply center scaling
-            sourceNode->scale_ = s->stored_status_->scale_ * source_scaling;
-            // POST-CORRECTION ; discretized scaling with ALT
-            if (UserInterface::manager().altModifier()) {
-                sourceNode->scale_.x = ROUND(sourceNode->scale_.x, 10.f);
-                sourceNode->scale_.y = ROUND(sourceNode->scale_.y, 10.f);
-                overlay_scaling_grid_->visible_ = true;
-                overlay_scaling_grid_->copyTransform(overlay_scaling_);
-            }
+            // Apply scaling to the source
+            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(handle_scaling, 1.f);
+
             // show cursor depending on diagonal
             corner = glm::sign(sourceNode->scale_);
             ret.type = (corner.x * corner.y) > 0.f ? Cursor_ResizeNWSE : Cursor_ResizeNESW;
@@ -908,22 +1049,35 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             overlay_crop_->rotation_.z = s->stored_status_->rotation_.z;
             overlay_crop_->update(0);
             overlay_crop_->visible_ = true;
-            // PROPORTIONAL ONLY
+
+            //
+            // Manipulate the scaling handle in the SCENE coordinates to apply grid snap
+            //
+            glm::vec3 handle = glm::vec3( glm::round(pick.second), 0.f);
+            // Compute handle coordinates into SCENE reference frame
+            handle = source_to_scene_transform * glm::vec4( handle, 1.f );
+            // move the handle we hold by the mouse translation (in scene reference frame)
+            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * glm::vec4( handle, 1.f );
+            // snap handle coordinates to grid (if active)
+            if ( grid->active() )
+                handle = grid->snap(handle);
+            // Compute handle coordinates back in SOURCE reference frame
+            handle = scene_to_source_transform * glm::vec4( handle,  1.f );
+            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
+            glm::vec2 handle_scaling = glm::vec2(handle)/ glm::round(pick.second);
+
+            // proportional SCALING with SHIFT
             if (UserInterface::manager().shiftModifier()) {
-                float factor = glm::length( glm::vec2( source_to ) ) / glm::length( glm::vec2( source_from ) );
-                source_scaling = glm::vec3(factor, factor, 1.f);
+                handle_scaling = glm::vec2(glm::compMax(handle_scaling));
             }
-            // calculate crop of framebuffer
-            sourceNode->crop_ = s->stored_status_->crop_ * source_scaling;
-            // POST-CORRECTION ; discretized crop with ALT
-            if (UserInterface::manager().altModifier()) {
-                sourceNode->crop_.x = ROUND(sourceNode->crop_.x, 10.f);
-                sourceNode->crop_.y = ROUND(sourceNode->crop_.y, 10.f);
-            }
+
+            // Apply scaling to the CROP node of source
+            sourceNode->crop_ = s->stored_status_->crop_ * glm::vec3(handle_scaling, 1.f);
             // CLAMP crop values
             sourceNode->crop_.x = CLAMP(sourceNode->crop_.x, 0.1f, 1.f);
             sourceNode->crop_.y = CLAMP(sourceNode->crop_.y, 0.1f, 1.f);
-            // apply center scaling
+
+            // Apply scaling to the source
             s->frame()->setProjectionArea( glm::vec2(sourceNode->crop_) );
             sourceNode->scale_ = s->stored_status_->scale_ * (sourceNode->crop_ / s->stored_status_->crop_);
             // show cursor depending on diagonal
@@ -947,70 +1101,109 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             overlay_rotation_->translation_.x = s->stored_status_->translation_.x;
             overlay_rotation_->translation_.y = s->stored_status_->translation_.y;
             overlay_rotation_->update(0);
-            overlay_rotation_fix_->visible_ = true;
+            overlay_rotation_fix_->visible_ = false;
             overlay_rotation_fix_->copyTransform(overlay_rotation_);
             overlay_rotation_clock_->visible_ = false;
-            // rotation center to center of source (disregarding scale)
-            glm::mat4 M = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
-            source_from = glm::inverse(M) * glm::vec4( scene_from,  1.f );
-            source_to   = glm::inverse(M) * glm::vec4( scene_to,  1.f );
-            // compute rotation angle
-            float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
-            // apply rotation on Z axis
-            sourceNode->rotation_ = s->stored_status_->rotation_ + glm::vec3(0.f, 0.f, angle);
-
-            // POST-CORRECTION ; discretized rotation with ALT
-            int degrees = int(  glm::degrees(sourceNode->rotation_.z) );
-            if (UserInterface::manager().altModifier()) {
-                degrees = (degrees / 10) * 10;
-                sourceNode->rotation_.z = glm::radians( float(degrees) );
-                overlay_rotation_clock_->visible_ = true;
-                overlay_rotation_clock_->copyTransform(overlay_rotation_);
-                info << "Angle " << degrees << UNICODE_DEGREE;
-            }
-            else
-                info << "Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << UNICODE_DEGREE;
-
             overlay_rotation_clock_hand_->visible_ = true;
             overlay_rotation_clock_hand_->translation_.x = s->stored_status_->translation_.x;
             overlay_rotation_clock_hand_->translation_.y = s->stored_status_->translation_.y;
+
+            // prepare variables
+            const float diagonal = glm::length( glm::vec2(s->frame()->aspectRatio() * s->stored_status_->scale_.x, s->stored_status_->scale_.y));
+            glm::vec2 handle_polar = glm::vec2(diagonal, 0.f);
+
+            // rotation center to center of source (disregarding scale)
+            glm::mat4 M = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
+            glm::vec3 source_from = glm::inverse(M) * glm::vec4( scene_from,  1.f );
+            glm::vec3 source_to   = glm::inverse(M) * glm::vec4( scene_to,  1.f );
+
+            // compute rotation angle on Z axis
+            float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
+            handle_polar.y = s->stored_status_->rotation_.z + angle;
+            info << "Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << UNICODE_DEGREE;
+
+            // compute scaling of diagonal to reach new coordinates
+            handle_polar.x *= glm::length( glm::vec2(source_to) ) / glm::length( glm::vec2(source_from) );
+
+            // snap polar coordiantes (diagonal lenght, angle)
+            if ( grid->active() ) {
+                handle_polar = glm::round( handle_polar / grid->step() ) * grid->step();
+                // prevent null size
+                handle_polar.x = glm::max( grid->step().x,  handle_polar.x );
+            }
+
+            // Cancel scaling diagonal with SHIFT
+            if (UserInterface::manager().shiftModifier()) {
+                handle_polar.x = diagonal;
+                overlay_rotation_fix_->visible_ = true;
+            } else {
+                info << std::endl << "   Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+                info << " x "  << sourceNode->scale_.y ;
+            }
+
+            // apply after snap
+            sourceNode->rotation_ = glm::vec3(0.f, 0.f, handle_polar.y);
+            handle_polar.x /= diagonal ;
+            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(handle_polar.x, handle_polar.x, 1.f);
+
+            // update overlay
             overlay_rotation_clock_hand_->rotation_.z = sourceNode->rotation_.z;
             overlay_rotation_clock_hand_->update(0);
 
             // show cursor for rotation
             ret.type = Cursor_Hand;
-            // + SHIFT = no scaling /  NORMAL = with scaling
-            if (!UserInterface::manager().shiftModifier()) {
-                // compute scaling to match cursor
-                float factor = glm::length( glm::vec2( source_to ) ) / glm::length( glm::vec2( source_from ) );
-                source_scaling = glm::vec3(factor, factor, 1.f);
-                // apply center scaling
-                sourceNode->scale_ = s->stored_status_->scale_ * source_scaling;
-                info << std::endl << "   Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-                info << " x "  << sourceNode->scale_.y ;
-                overlay_rotation_fix_->visible_ = false;
-            }
         }
         // picking anywhere but on a handle: user wants to move the source
         else {
-            ret.type = Cursor_ResizeAll;
-            sourceNode->translation_ = s->stored_status_->translation_ + scene_translation;
-            // discretized translation with ALT
-            if (UserInterface::manager().altModifier()) {
-                sourceNode->translation_.x = ROUND(sourceNode->translation_.x, 10.f);
-                sourceNode->translation_.y = ROUND(sourceNode->translation_.y, 10.f);                
-                // Show grid overlay for POSITION
-                overlay_position_cross_->visible_ = true;
-                overlay_position_cross_->translation_.x = sourceNode->translation_.x;
-                overlay_position_cross_->translation_.y = sourceNode->translation_.y;
-                overlay_position_cross_->update(0);
+
+            // Default is to grab the center (0,0) of the source
+            glm::vec3 handle(0.f);
+            glm::vec3 offset(0.f);
+
+            // Snap corner with SHIFT
+            if (UserInterface::manager().shiftModifier()) {
+                // get corner closest representative of the quadrant of the picking point
+                handle = glm::vec3( glm::sign(pick.second), 0.f);
+                // remember the offset for adjustment of translation to this corner
+                offset = source_to_scene_transform * glm::vec4(handle, 0.f);
             }
+
+            // Compute target coordinates of manipulated handle into SCENE reference frame
+            glm::vec3 source_target = source_to_scene_transform * glm::vec4(handle, 1.f);
+
+            // apply translation of target in SCENE
+            source_target = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * glm::vec4(source_target, 1.f);
+
+            // snap coordinates to grid (if active)
+            if ( grid->active() )
+                // snap coordinate in scene
+                source_target = grid->snap(source_target);
+
+            // Apply translation to the source
+            sourceNode->translation_ = source_target - offset;
+
+            //
+            // grab all others in selection
+            //
+            // compute effective translation of current source s
+            source_target = sourceNode->translation_ - s->stored_status_->translation_;
+            // loop over selection
+            for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+                if ( *it != s && !(*it)->locked() ) {
+                    // translate and request update
+                    (*it)->group(mode_)->translation_ = (*it)->stored_status_->translation_ + source_target;
+                    (*it)->touch();
+                }
+            }
+
             // Show center overlay for POSITION
             overlay_position_->visible_ = true;
             overlay_position_->translation_.x = sourceNode->translation_.x;
             overlay_position_->translation_.y = sourceNode->translation_.y;
             overlay_position_->update(0);
+
             // Show move cursor
+            ret.type = Cursor_ResizeAll;
             info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
             info << ", "  << sourceNode->translation_.y ;
         }
@@ -1068,74 +1261,78 @@ void GeometryView::terminate(bool force)
     }
 
     overlay_selection_active_ = false;
+
+    // reset grid
+    adaptGridToSource();
 }
+
+#define MAX_DURATION 1000.f
+#define MIN_SPEED_A 0.005f
+#define MAX_SPEED_A 0.5f
 
 void GeometryView::arrow (glm::vec2 movement)
 {
-    static float accumulator = 0.f;
-    accumulator += dt_;
+    static float _duration = 0.f;
+    static glm::vec2 _from(0.f);
+    static glm::vec2 _displacement(0.f);
 
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-    glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
-    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+    Source *current = Mixer::manager().currentSource();
 
-    bool first = true;
-    glm::vec3 delta_translation(0.f);
-    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+    if (!current && !Mixer::selection().empty())
+        Mixer::manager().setCurrentSource( Mixer::selection().back() );
 
+    if (current) {
 
-        Group *sourceNode = (*it)->group(mode_);
-        glm::vec3 dest_translation(0.f);
+        if (current_action_ongoing_) {
 
-        if (first) {
-            // dest starts at current
-            dest_translation = sourceNode->translation_;
+            // add movement to displacement
+            _duration += dt_;
+            const float speed = MIN_SPEED_A + (MAX_SPEED_A - MIN_SPEED_A) * glm::min(1.f,_duration / MAX_DURATION);
+            _displacement += movement * dt_ * speed;
 
-            // + ALT : discrete displacement
-            if (UserInterface::manager().altModifier()) {
-                if (accumulator > 100.f) {
-                    // precise movement with SHIFT
-                    if ( UserInterface::manager().shiftModifier() ) {
-                        dest_translation += glm::sign(gl_delta) * 0.0011f;
-                        dest_translation.x = ROUND(dest_translation.x, 1000.f);
-                        dest_translation.y = ROUND(dest_translation.y, 1000.f);
-                    }
-                    else {
-                        dest_translation += glm::sign(gl_delta) * 0.11f;
-                        dest_translation.x = ROUND(dest_translation.x, 10.f);
-                        dest_translation.y = ROUND(dest_translation.y, 10.f);
-                    }
-                    accumulator = 0.f;
-                }
-                else
-                    break;
-            }
-            else {
-                // normal case: dest += delta
-                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
-                accumulator = 0.f;
-            }
+            // set coordinates of target
+            glm::vec2 _to  = _from + _displacement;
 
-            // store action in history
-            std::ostringstream info;
-            info << "Position " << std::fixed << std::setprecision(3) << sourceNode->translation_.x;
-            info << ", "  << sourceNode->translation_.y ;
-            current_action_ = (*it)->name() + ": " + info.str();
+            // update mouse pointer action
+            MousePointer::manager().active()->update(_to, dt_ / 1000.f);
 
-            // delta for others to follow
-            delta_translation = dest_translation - sourceNode->translation_;
+            // simulate mouse grab
+            grab(current, _from, MousePointer::manager().active()->target(),
+                 std::make_pair(current->group(mode_), glm::vec2(0.f) ) );
+
+            // draw mouse pointer effect
+            MousePointer::manager().active()->draw();
         }
         else {
-            // dest = current + delta from first
-            dest_translation = sourceNode->translation_ + delta_translation;
+
+            if (UserInterface::manager().altModifier() || Settings::application.mouse_pointer_lock)
+                MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
+            else
+                MousePointer::manager().setActiveMode( Pointer::POINTER_DEFAULT );
+
+            // reset
+            _duration = 0.f;
+            _displacement = glm::vec2(0.f);
+
+            // initiate view action and store status of source
+            initiate();
+
+            // get coordinates of source and set this as start of mouse position
+            _from = glm::vec2( Rendering::manager().project(current->group(mode_)->translation_, scene.root()->transform_) );
+
+            // Initiate mouse pointer action
+            MousePointer::manager().active()->initiate(_from);
         }
-
-        // apply & request update
-        sourceNode->translation_ = dest_translation;
-        (*it)->touch();
-
-        first = false;
     }
+    else {
+        terminate(true);
+
+        // reset
+        _duration = 0.f;
+        _from = glm::vec2(0.f);
+        _displacement = glm::vec2(0.f);
+    }
+
 }
 
 void GeometryView::updateSelectionOverlay(glm::vec4 color)

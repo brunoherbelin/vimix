@@ -73,7 +73,6 @@ public:
     void initiate () override;
     void terminate (bool force = false) override;
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
-    Cursor over (glm::vec2) override;
     void arrow (glm::vec2) override;
     bool doubleclic (glm::vec2) override;
 

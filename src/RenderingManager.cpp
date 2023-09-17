@@ -37,7 +37,7 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #define GLFW_EXPOSE_NATIVE_GLX
 #endif
-#include <GLFW/glfw3native.h>
+//#include <GLFW/glfw3native.h>
 
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale
 #include <glm/ext/matrix_clip_space.hpp> // glm::perspective
@@ -469,6 +469,9 @@ void Rendering::draw()
         request_screenshot_ = false;
     }
 
+    glfwSwapBuffers(main_.window());
+
+
     // draw output windows and count number of success
     int count = 0;
     for (auto it = outputs_.begin(); it != outputs_.end(); ++it) {
@@ -482,11 +485,6 @@ void Rendering::draw()
         outputs_[count].init( count+1, main_.window());
         outputs_[count].show();
     }
-
-    // swap all GL buffers at once
-    main_.swap();
-    for (auto it = outputs_.begin(); it != outputs_.end(); ++it)
-        it->swap();
 
     // software framerate limiter < 62 FPS
     {
@@ -587,7 +585,7 @@ void Rendering::FileDropped(GLFWwindow *, int path_count, const char* paths[])
         Mixer::manager().addSource ( Mixer::manager().createSourceFile( filename ) );        
     }
     if (i>0) {
-        UserInterface::manager().showPannel();
+        UserInterface::manager().showPannel(  Mixer::manager().numSource() );
         Rendering::manager().mainWindow().show();
     }
 }
@@ -1007,6 +1005,9 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
         glDisable(GL_MULTISAMPLE);
         // clear to black
         window_attributes_.clear_color = glm::vec4(0.f, 0.f, 0.f, 1.f);
+
+        glfwShowWindow(window_);
+
     }
     else {
         //  vsync on main window
@@ -1023,6 +1024,7 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     //
     // default render black
     //
+    (void) Resource::getTextureWhite(); // init white texture too
     textureid_ = Resource::getTextureBlack();
 
     return true;
@@ -1067,8 +1069,10 @@ void RenderingWindow::show()
 
 void RenderingWindow::makeCurrent()
 {
-    if (!window_)
+    if (!window_) {
+        g_printerr("RenderingWindow::makeCurrent() not initialized yet.");
         return;
+    }
 
     // handle window resize
     glfwGetFramebufferSize(window_, &(window_attributes_.viewport.x), &(window_attributes_.viewport.y));
@@ -1083,13 +1087,6 @@ void RenderingWindow::makeCurrent()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void RenderingWindow::swap()
-{
-    if (window_)
-        // swap buffer
-        glfwSwapBuffers(window_);
-
-}
 
 FilteringProgram whitebalance("Whitebalance", "shaders/filters/whitebalance.glsl", "", { { "Red", 1.0}, { "Green", 1.0}, { "Blue", 1.0}, { "Temperature", 0.5} });
 
@@ -1187,6 +1184,9 @@ bool RenderingWindow::draw(FrameBuffer *fb)
 
         // restore attribs
         Rendering::manager().popAttrib();
+
+        glfwSwapBuffers(window_);
+
     }
 
     return true;

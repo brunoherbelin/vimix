@@ -21,9 +21,11 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "Decorations.h"
 #include "defines.h"
-#include "DrawVisitor.h"
 #include "Scene.h"
+
+#include "DrawVisitor.h"
 
 
 DrawVisitor::DrawVisitor(Node *nodetodraw, glm::mat4 projection, bool force): force_(force)
@@ -61,6 +63,7 @@ void DrawVisitor::visit(Node &n)
     // found this node in the list of targets: draw it
     if (it != targets_.end()) {
 
+        // remove this node from list of targets
         targets_.erase(it);
 
         for (int i = 0; i < num_duplicat_; ++i) {
@@ -73,6 +76,7 @@ void DrawVisitor::visit(Node &n)
     // restore visibility
     n.visible_ = v;
 
+    // no need to traverse deeper if alls nodes were drawn
     if (targets_.empty()) return;
 
     // update transform
@@ -82,7 +86,7 @@ void DrawVisitor::visit(Node &n)
 
 void DrawVisitor::visit(Group &n)
 {
-    // no need to traverse deeper if this node was drawn already
+    // no need to traverse deeper if alls nodes were drawn
     if (targets_.empty()) return;
 
     // traverse children
@@ -102,7 +106,7 @@ void DrawVisitor::visit(Scene &n)
 
 void DrawVisitor::visit(Switch &n)
 {
-    // no need to traverse deeper if this node was drawn already
+    // no need to traverse deeper if alls nodes were drawn
     if (targets_.empty()) return;
 
     // traverse acive child
@@ -112,6 +116,80 @@ void DrawVisitor::visit(Switch &n)
     modelview_ = mv;
 }
 
-void DrawVisitor::visit(Primitive &)
+void ColorVisitor::visit(Group &n)
 {
+    // traverse children
+    for (NodeSet::iterator node = n.begin(); node != n.end(); ++node) {
+        (*node)->accept(*this);
+    }
 }
+
+void ColorVisitor::visit(Scene &n)
+{
+    n.root()->accept(*this);
+}
+
+void ColorVisitor::visit(Switch &n)
+{
+    for (uint c = 0; c < n.numChildren(); ++c) {
+        n.child(c)->accept(*this);
+    }
+}
+
+void ColorVisitor::visit(Primitive &p)
+{
+    p.shader()->color = color_;
+}
+
+void ColorVisitor::visit(Frame &d)
+{
+    d.color = color_;
+}
+
+void ColorVisitor::visit(Handles &d)
+{
+    d.color = color_;
+}
+
+void ColorVisitor::visit(Symbol &d)
+{
+    d.color = color_;
+}
+
+void ColorVisitor::visit(Disk &d)
+{
+    d.color = color_;
+}
+
+void ColorVisitor::visit(Character &d)
+{
+    d.color = color_;
+}
+
+void VisibleVisitor::visit(Node &n)
+{
+    n.visible_ = visible_;
+}
+
+void VisibleVisitor::visit(Group &n)
+{
+    // traverse children
+    for (NodeSet::iterator node = n.begin(); node != n.end(); ++node) {
+        (*node)->accept(*this);
+    }
+}
+
+void VisibleVisitor::visit(Scene &n)
+{
+    n.root()->accept(*this);
+}
+
+void VisibleVisitor::visit(Switch &n)
+{
+    for (uint c = 0; c < n.numChildren(); ++c) {
+        n.child(c)->accept(*this);
+    }
+}
+
+
+

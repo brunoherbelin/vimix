@@ -3,7 +3,14 @@
 
 #include "View.h"
 
-//class MixingGroup;
+class MixingGrid : public Grid
+{
+    Switch *polar_grids_;
+
+public:
+    MixingGrid(Group *parent);
+    Group *root () override;
+};
 
 class MixingView : public View
 {
@@ -37,7 +44,6 @@ private:
     Group *slider_arrows_;
     Disk *button_white_;
     Disk *button_black_;
-//    Disk *stashCircle_;
     Mesh *mixingCircle_;
     Mesh *circle_;
     Mesh *limbo_;

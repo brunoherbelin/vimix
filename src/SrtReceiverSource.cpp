@@ -43,6 +43,11 @@ void SrtReceiverSource::setConnection(const std::string &ip, const std::string &
     stream_->open(description);
     stream_->play(true);
 
+    // delete and reset render buffer to enforce re-init of StreamSource
+    if (renderbuffer_)
+        delete renderbuffer_;
+    renderbuffer_ = nullptr;
+
     // will be ready after init and one frame rendered
     ready_ = false;
 }

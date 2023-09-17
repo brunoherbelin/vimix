@@ -157,6 +157,11 @@ void PatternSource::setPattern(uint type, glm::ivec2 resolution)
     // play gstreamer
     stream_->play(true);
 
+    // delete and reset render buffer to enforce re-init of StreamSource
+    if (renderbuffer_)
+        delete renderbuffer_;
+    renderbuffer_ = nullptr;
+
     // will be ready after init and one frame rendered
     ready_ = false;
 }

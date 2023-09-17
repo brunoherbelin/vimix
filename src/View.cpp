@@ -39,13 +39,16 @@
 
 uint View::need_deep_update_ = 1;
 
-View::View(Mode m) : mode_(m), current_action_ongoing_(false), dt_(16.f)
+View::View(Mode m) : grid(nullptr), mode_(m), current_action_ongoing_(false), dt_(16.f)
 {
     show_context_menu_ = MENU_NONE;
 
     overlay_selection_ = nullptr;
     overlay_selection_frame_ = nullptr;
     overlay_selection_icon_ = nullptr;
+
+    // detault grid
+    grid = new Grid(scene.root());
 }
 
 void View::restoreSettings()
@@ -296,4 +299,3 @@ void View::lock(Source *s, bool on)
     else
         Action::manager().store(s->name() + std::string(": unlock."));
 }
-

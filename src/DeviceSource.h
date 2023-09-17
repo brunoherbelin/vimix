@@ -4,11 +4,15 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <map>
 
+#include "GstToolkit.h"
 #include "StreamSource.h"
 
 class DeviceSource : public StreamSource
 {
+    friend class Device;
+
 public:
     DeviceSource(uint64_t id = 0);
     ~DeviceSource();
@@ -24,10 +28,13 @@ public:
     // specific interface
     void setDevice(const std::string &devicename);
     inline std::string device() const { return device_; }
-    void unplug() { unplugged_ = true; }
+    void reconnect();
 
     glm::ivec2 icon() const override;
-    std::string info() const override;
+    inline std::string info() const override;
+
+protected:
+    void unplug() { unplugged_ = true; }
 
 private:
     std::string device_;
@@ -35,48 +42,12 @@ private:
     void unsetDevice();
 };
 
-struct DeviceConfig {
-    gint width;
-    gint height;
-    gint fps_numerator;
-    gint fps_denominator;
-    std::string stream;
-    std::string format;
-
-    DeviceConfig() {
-        width = 0;
-        height = 0;
-        fps_numerator = 30;
-        fps_denominator = 1;
-        stream = "";
-        format = "";
-    }
-
-    inline bool operator < (const DeviceConfig b) const
-    {
-        int formatscore = this->format.find("R") != std::string::npos ? 2 : 1; // best score for RGBx
-        int b_formatscore = b.format.find("R") != std::string::npos ? 2 : 1;
-        float fps = static_cast<float>(this->fps_numerator) / static_cast<float>(this->fps_denominator);
-        float b_fps = static_cast<float>(b.fps_numerator) / static_cast<float>(b.fps_denominator);
-        return ( fps * static_cast<float>(this->height * formatscore) < b_fps * static_cast<float>(b.height * b_formatscore));
-    }
-};
-
-struct better_device_comparator
-{
-    inline bool operator () (const DeviceConfig a, const DeviceConfig b) const
-    {
-        return (a < b);
-    }
-};
-
-typedef std::set<DeviceConfig, better_device_comparator> DeviceConfigSet;
-
 struct DeviceHandle {
 
     std::string name;
     std::string pipeline;
-    DeviceConfigSet configs;
+    std::string properties;
+    GstToolkit::PipelineConfigSet configs;
 
     Stream *stream;
     std::list<DeviceSource *> connected_sources;
@@ -106,21 +77,21 @@ public:
     int numDevices () ;
     std::string name (int index) ;
     std::string description (int index) ;
-    DeviceConfigSet config (int index) ;
+    std::string properties (int index) ;
+    GstToolkit::PipelineConfigSet config (int index) ;
 
     int  index  (const std::string &device);
-    bool exists (const std::string &device) ;
+    bool exists (const std::string &device);
     void reload ();
 
     static gboolean callback_device_monitor (GstBus *, GstMessage *, gpointer);
-    static DeviceConfigSet getDeviceConfigs(const std::string &src_description);
 
 private:
 
     static void launchMonitoring(Device *d);
     static bool initialized();
-    void remove(GstDevice *device);
     void add(GstDevice *device);
+    void remove(GstDevice *device);
 
     std::mutex access_;
     std::vector< DeviceHandle > handles_;

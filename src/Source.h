@@ -15,18 +15,22 @@
 
 #define ICON_SOURCE_VIDEO 18, 13
 #define ICON_SOURCE_IMAGE 4, 9
-#define ICON_SOURCE_DEVICE_SCREEN 19, 1
+#define ICON_SOURCE_DEVICE_SCREEN 0, 2
 #define ICON_SOURCE_DEVICE 2, 14
 #define ICON_SOURCE_SEQUENCE 3, 9
 #define ICON_SOURCE_NETWORK 18, 11
-#define ICON_SOURCE_PATTERN 11, 5
+#define ICON_SOURCE_PATTERN 5, 3
 #define ICON_SOURCE_SESSION 19, 6
 #define ICON_SOURCE_GROUP 10, 6
-#define ICON_SOURCE_RENDER 0, 2
+#define ICON_SOURCE_RENDER 19, 1
 #define ICON_SOURCE_CLONE 9, 2
 #define ICON_SOURCE_GSTREAMER 16, 16
 #define ICON_SOURCE_SRT 14, 5
 #define ICON_SOURCE 13, 11
+#define ICON_WORKSPACE_BACKGROUND 10, 16
+#define ICON_WORKSPACE_CENTRAL 11, 16
+#define ICON_WORKSPACE_FOREGROUND 12, 16
+#define ICON_WORKSPACE 13, 16
 
 class Visitor;
 class SourceCallback;
@@ -167,9 +171,10 @@ public:
 
     // Workspace
     typedef enum {
-        BACKGROUND = 0,
-        STAGE      = 1,
-        FOREGROUND = 2
+        WORKSPACE_BACKGROUND = 0,
+        WORKSPACE_CENTRAL    = 1,
+        WORKSPACE_FOREGROUND = 2,
+        WORKSPACE_ANY        = 3
     } Workspace;
     inline Workspace workspace () const { return workspace_; }
 

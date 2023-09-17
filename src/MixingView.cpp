@@ -39,6 +39,7 @@
 #include "BoundingBoxVisitor.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
+#include "MousePointer.h"
 
 #include "MixingView.h"
 
@@ -154,12 +155,9 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_MIN_THRESHOLD)
     tmp->shader()->color = glm::vec4( COLOR_CIRCLE_ARROW, 0.1f );
     slider_arrows_->attach(tmp);
 
-//    stashCircle_ = new Disk();
-//    stashCircle_->scale_ = glm::vec3(0.5f, 0.5f, 1.f);
-//    stashCircle_->translation_ = glm::vec3(2.f, -1.0f, 0.f);
-//    stashCircle_->color = glm::vec4( COLOR_STASH_CIRCLE, 0.6f );
-//    scene.bg()->attach(stashCircle_);
-
+    // replace grid with appropriate one
+    if (grid) delete grid;
+    grid = new MixingGrid(scene.root());
 }
 
 
@@ -168,6 +166,9 @@ void MixingView::draw()
     // set texture
     if (mixingCircle_->texture() == 0)
         mixingCircle_->setTexture(textureMixingQuadratic());
+
+    // Display grid
+    grid->root()->visible_ = (grid->active() && current_action_ongoing_);
 
     // temporarily force shaders to use opacity blending for rendering icons
     Shader::force_blending_opacity = true;
@@ -378,6 +379,10 @@ void MixingView::update(float dt)
         float s = CLAMP(scene.root()->scale_.x, MIXING_MIN_SCALE, MIXING_MAX_SCALE);
         scene.root()->scale_.x = s;
         scene.root()->scale_.y = s;
+
+        // change grid color
+        const ImVec4 c = ImGuiToolkit::HighlightColor();
+        grid->setColor( glm::vec4(c.x, c.y, c.z, 0.3) );
     }
 
     // the current view is the mixing view
@@ -396,7 +401,7 @@ void MixingView::update(float dt)
         mixingCircle_->shader()->color = glm::vec4(f, f, f, 1.f);
 
         // update the selection overlay
-        ImVec4 c = ImGuiToolkit::HighlightColor();
+        const ImVec4 c = ImGuiToolkit::HighlightColor();
         updateSelectionOverlay(glm::vec4(c.x, c.y, c.z, c.w));
     }
 
@@ -495,6 +500,10 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     // No source is given
     if (!s) {
 
+        // snap to grid (polar)
+        if (grid->active())
+            gl_Position_to = grid->snap(gl_Position_to);
+
         // if interaction with slider
         if (pick.first == slider_) {
 
@@ -544,8 +553,15 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     //
     // Interaction with source
     //
-    // compute delta translation
-    s->group(mode_)->translation_ = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
+    // compute position after translation
+    glm::vec3 newpos = s->stored_status_->translation_ + gl_Position_to - gl_Position_from;
+
+    // snap to grid (polar)
+    if (grid->active())
+        newpos = grid->snap(newpos);
+
+    // apply translation
+    s->group(mode_)->translation_ = newpos;
 
     // manage mixing group
     if (s->mixinggroup_ != nullptr  ) {
@@ -563,22 +579,19 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     // request update
     s->touch();
 
-//    // trying to enter stash
-//    if ( glm::distance( glm::vec2(s->group(mode_)->translation_), glm::vec2(stashCircle_->translation_)) < stashCircle_->scale_.x) {
-
-//        // refuse to put an active source in stash
-//        if (s->active())
-//            s->group(mode_)->translation_ = s->stored_status_->translation_;
-//        else {
-//            Mixer::manager().conceal(s);
-//            s->group(mode_)->scale_ = glm::vec3(MIXING_ICON_SCALE) - glm::vec3(0.1f, 0.1f, 0.f);
-//        }
-//    }
-//    else if ( Mixer::manager().concealed(s) ) {
-//        Mixer::manager().uncover(s);
-//        s->group(mode_)->scale_ = glm::vec3(MIXING_ICON_SCALE);
-//    }
-
+    //
+    // grab all others from selection
+    //
+    // compute effective translation of current source s
+    newpos = s->group(mode_)->translation_ - s->stored_status_->translation_;
+    // loop over selection
+    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+        if ( *it != s && !(*it)->locked() && ( s->mixinggroup_ == nullptr || !s->mixinggroup_->contains(*it)) ) {
+            // translate and request update
+            (*it)->group(mode_)->translation_ = (*it)->stored_status_->translation_ + newpos;
+            (*it)->touch();
+        }
+    }
 
     std::ostringstream info;
     if (s->active()) {
@@ -590,6 +603,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
 
     // store action in history
     current_action_ = s->name() + ": " + info.str();
+
 
     // update cursor
     ret.info = info.str();
@@ -667,70 +681,77 @@ View::Cursor MixingView::over (glm::vec2 pos)
     return ret;
 }
 
+#define MAX_DURATION 1000.f
+#define MIN_SPEED_M 0.005f
+#define MAX_SPEED_M 0.5f
+
 void MixingView::arrow (glm::vec2 movement)
 {
-    static float accumulator = 0.f;
-    accumulator += dt_;
+    static float _duration = 0.f;
+    static glm::vec2 _from(0.f);
+    static glm::vec2 _displacement(0.f);
 
-    glm::vec3 gl_Position_from = Rendering::manager().unProject(glm::vec2(0.f), scene.root()->transform_);
-    glm::vec3 gl_Position_to   = Rendering::manager().unProject(movement, scene.root()->transform_);
-    glm::vec3 gl_delta = gl_Position_to - gl_Position_from;
+    Source *current = Mixer::manager().currentSource();
 
-    bool first = true;
-    glm::vec3 delta_translation(0.f);
-    for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+    if (!current && !Mixer::selection().empty())
+        Mixer::manager().setCurrentSource( Mixer::selection().back() );
 
-        // individual move with SHIFT
-        if ( !Source::isCurrent(*it) && UserInterface::manager().shiftModifier() )
-            continue;
+    if (current) {
 
-        Group *sourceNode = (*it)->group(mode_);
-        glm::vec3 dest_translation(0.f);
+        if (current_action_ongoing_) {
 
-        if (first) {
-            // dest starts at current
-            dest_translation = sourceNode->translation_;
+            // TODO : precise movement ?
 
-            // + ALT : discrete displacement
-            if (UserInterface::manager().altModifier()) {
-                if (accumulator > 100.f) {
-                    dest_translation += glm::sign(gl_delta) * 0.1f;
-                    dest_translation.x = ROUND(dest_translation.x, 10.f);
-                    dest_translation.y = ROUND(dest_translation.y, 10.f);
-                    accumulator = 0.f;
-                }
-                else
-                    break;
-            }
-            else {
-                // normal case: dest += delta
-                dest_translation += gl_delta * ARROWS_MOVEMENT_FACTOR * dt_;
-                accumulator = 0.f;
-            }
+            // add movement to displacement
+            _duration += dt_;
+            const float speed = MIN_SPEED_M + (MAX_SPEED_M - MIN_SPEED_M) * glm::min(1.f,_duration / MAX_DURATION);
+            _displacement += movement * dt_ * speed;
 
-            // store action in history
-            std::ostringstream info;
-            if ((*it)->active()) {
-                info << "Alpha " << std::fixed << std::setprecision(3) << (*it)->blendingShader()->color.a << "  ";
-                info << ( ((*it)->blendingShader()->color.a > 0.f) ? ICON_FA_EYE : ICON_FA_EYE_SLASH);
-            }
-            else
-                info << "Inactive  " << ICON_FA_SNOWFLAKE;
-            current_action_ = (*it)->name() + ": " + info.str();
+            // set coordinates of target
+            glm::vec2 _to  = _from + _displacement;
 
-            // delta for others to follow
-            delta_translation = dest_translation - sourceNode->translation_;
+            // update mouse pointer action
+            MousePointer::manager().active()->update(_to, dt_ / 1000.f);
+
+            if (current->mixinggroup_ != nullptr )
+                current->mixinggroup_->setAction( MixingGroup::ACTION_GRAB_ALL );
+
+            // simulate mouse grab
+            grab(current, _from, MousePointer::manager().active()->target(),
+                 std::make_pair(current->group(mode_), glm::vec2(0.f) ) );
+
+            // draw mouse pointer effect
+            MousePointer::manager().active()->draw();
         }
         else {
-            // dest = current + delta from first
-            dest_translation = sourceNode->translation_ + delta_translation;
+
+            if (UserInterface::manager().altModifier() || Settings::application.mouse_pointer_lock)
+                MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
+            else
+                MousePointer::manager().setActiveMode( Pointer::POINTER_DEFAULT );
+
+            // reset
+            _duration = 0.f;
+            _displacement = glm::vec2(0.f);
+
+            // initiate view action and store status of source
+            initiate();
+
+            // get coordinates of source and set this as start of mouse position
+            _from = glm::vec2( Rendering::manager().project(current->group(mode_)->translation_, scene.root()->transform_) );
+
+            // Initiate mouse pointer action
+            MousePointer::manager().active()->initiate(_from);
         }
 
-        // apply & request update
-        sourceNode->translation_ = dest_translation;
-        (*it)->touch();
+    }
+    else {
+        terminate(true);
 
-        first = false;
+        // reset
+        _duration = 0.f;
+        _from = glm::vec2(0.f);
+        _displacement = glm::vec2(0.f);
     }
 
 }
@@ -834,3 +855,56 @@ uint textureMixingQuadratic()
     }
     return texid;
 }
+
+
+MixingGrid::MixingGrid(Group *parent) : Grid(parent, Grid::GRID_POLAR)
+{
+    root_ = new Group;
+    root_->visible_ = false;
+    parent_->attach(root_);
+
+    polar_grids_ = new Switch;    
+    polar_grids_->attach(new LineCircleGrid(Grid::polar_units_[UNIT_PRECISE], 50,
+                                            Grid::ortho_units_[UNIT_PRECISE], 0.5f));
+    polar_grids_->attach(new LineCircleGrid(Grid::polar_units_[UNIT_SMALL], 30,
+                                            Grid::ortho_units_[UNIT_SMALL], 0.5f));
+    polar_grids_->attach(new LineCircleGrid(Grid::polar_units_[UNIT_DEFAULT], 15,
+                                            Grid::ortho_units_[UNIT_DEFAULT], 0.5f));
+    polar_grids_->attach(new LineCircleGrid(Grid::polar_units_[UNIT_LARGE],  6,
+                                            Grid::ortho_units_[UNIT_LARGE], 0.5f));
+    polar_grids_->attach(new LineCircleGrid(Grid::polar_units_[UNIT_ONE],  3,
+                                            Grid::ortho_units_[UNIT_ONE], 0.5f));
+    root_->attach(polar_grids_);
+
+    // not visible at init
+    setColor( glm::vec4(0.f) );
+}
+
+Group *MixingGrid::root ()
+{
+    //adjust the grid to the unit scale
+    polar_grids_->setActive(unit_);
+
+    // return the node to draw
+    return root_;
+}
+
+
+
+
+//    // trying to enter stash
+//    if ( glm::distance( glm::vec2(s->group(mode_)->translation_), glm::vec2(stashCircle_->translation_)) < stashCircle_->scale_.x) {
+
+//        // refuse to put an active source in stash
+//        if (s->active())
+//            s->group(mode_)->translation_ = s->stored_status_->translation_;
+//        else {
+//            Mixer::manager().conceal(s);
+//            s->group(mode_)->scale_ = glm::vec3(MIXING_ICON_SCALE) - glm::vec3(0.1f, 0.1f, 0.f);
+//        }
+//    }
+//    else if ( Mixer::manager().concealed(s) ) {
+//        Mixer::manager().uncover(s);
+//        s->group(mode_)->scale_ = glm::vec3(MIXING_ICON_SCALE);
+//    }
+

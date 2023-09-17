@@ -20,6 +20,7 @@ namespace ImGuiToolkit
     bool IconButton (const char* icon, const char *tooltips = nullptr, const char *shortcut = nullptr);
     bool IconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips);
     bool IconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[] = nullptr);
+    bool IconToggle (int i, int j, bool* toggle, const char *tooltip = nullptr, const char *shortcut = nullptr);
     bool IconToggle (const char* icon, bool* toggle, const char *tooltip = nullptr, const char *shortcut = nullptr);
     void ShowIconsWindow(bool* p_open);
 
@@ -28,12 +29,12 @@ namespace ImGuiToolkit
     bool ButtonIconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltip = nullptr);
     bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips);
     bool MenuItemIcon (int i, int j, const char* label, const char* shortcut = nullptr, bool selected = false, bool enabled = true);
-    bool SelectableIcon(const char* label, int i, int j, bool selected = false);
-    bool ComboIcon (const char* label, int* current_item, std::vector<std::tuple<int, int, std::string> > items, bool tooltiptext = false);
+    bool SelectableIcon(int i, int j, const char* label, bool selected, const ImVec2& size_arg = ImVec2(0,0));
+    bool ComboIcon (const char* label, int* current_item, std::vector<std::tuple<int, int, std::string> > items, std::vector<std::string> tooltips = {});
 
     // buttons
     bool ButtonToggle  (const char* label, bool* toggle, const char *tooltip = nullptr);
-    bool ButtonSwitch  (const char* label, bool* toggle, const char *shortcut = nullptr);
+    bool ButtonSwitch  (const char* label, bool* toggle, const char *tooltip = nullptr, bool rightalign = false);
     void ButtonOpenUrl (const char* label, const char* url, const ImVec2& size_arg = ImVec2(0,0));
     void ButtonDisabled(const char* label, const ImVec2& size_arg = ImVec2(0,0));
     bool TextButton    (const char* text, const char *tooltip = nullptr, const char *shortcut = nullptr);

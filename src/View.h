@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 
 #include "Scene.h"
+#include "Grid.h"
 
 class Session;
 class SessionFileSource;
@@ -16,7 +17,6 @@ class Frame;
 class Disk;
 class Handles;
 class Source;
-
 
 class View
 {
@@ -98,6 +98,9 @@ public:
 
     // accessible scene
     Scene scene;
+
+    // Grid used to snap mouse pointer
+    Grid *grid;
 
     // reordering scene when necessary
     static uint need_deep_update_;

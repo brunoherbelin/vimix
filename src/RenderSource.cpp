@@ -30,7 +30,7 @@
 #include "RenderSource.h"
 
 std::vector< std::tuple<int, int, std::string> > RenderSource::ProvenanceMethod = {
-    { 16, 12, "Loopback" }, { 15, 12, "Non-recursive"}
+    { 16, 12, "Recursive" }, { 15, 12, "Non-recursive"}
 };
 
 RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr), rendered_surface_(nullptr),
@@ -117,7 +117,7 @@ void RenderSource::update(float dt)
 
     if (!paused_ && session_ && rendered_output_) {
 
-        if (provenance_ == RENDER_EXCLUSIVE) {
+        if (provenance_ == RENDER_EXCLUSIVE || reset_) {
             // temporarily exclude this RenderSource from the rendering
             groups_[View::RENDERING]->visible_ = false;
             // simulate a rendering of the session in a framebuffer
@@ -128,6 +128,8 @@ void RenderSource::update(float dt)
             rendered_output_->end();
             // restore this RenderSource visibility
             groups_[View::RENDERING]->visible_ = true;
+            // done reset
+            reset_ = false;
         }
         // blit session frame to output
         else if (!session_->frame()->blit(rendered_output_))
@@ -150,6 +152,12 @@ void RenderSource::play (bool on)
 {
     // toggle state
     paused_ = !on;
+}
+
+void RenderSource::replay ()
+{
+    // request next frame to reset
+    reset_ = true;
 }
 
 glm::vec3 RenderSource::resolution() const
@@ -175,5 +183,5 @@ glm::ivec2 RenderSource::icon() const
 
 std::string RenderSource::info() const
 {
-    return "Rendering Output";
+    return "Display loopback";
 }

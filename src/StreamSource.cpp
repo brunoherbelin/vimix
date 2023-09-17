@@ -45,11 +45,16 @@ void GenericStreamSource::setDescription(const std::string &desc)
 {
     gst_description_ = desc;
     gst_elements_ = BaseToolkit::splitted(desc, '!');
-    Log::Notify("Creating Source with Stream description '%s'", gst_description_.c_str());
+    Log::Info("Source '%s' set pipeline to '%s'", name().c_str(), gst_description_.c_str());
 
     // open gstreamer
     stream_->open(gst_description_ + " ! queue max-size-buffers=10 ! videoconvert" );
     stream_->play(true);
+
+    // delete and reset render buffer to enforce re-init of StreamSource
+    if (renderbuffer_)
+        delete renderbuffer_;
+    renderbuffer_ = nullptr;
 
     // will be ready after init and one frame rendered
     ready_ = false;

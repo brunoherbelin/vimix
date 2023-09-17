@@ -21,7 +21,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_access.hpp>
-#include <glm/gtx/vector_angle.hpp>
 
 #include "ImGuiToolkit.h"
 
@@ -164,6 +163,7 @@ void TransitionView::update(float dt)
             if (d > 0.2f) {
                 Mixer::manager().setView(View::MIXING);
                 WorkspaceWindow::restoreWorkspace();
+                UserInterface::manager().showPannel(NAV_MENU);
             }
         }
     }

@@ -29,6 +29,7 @@ public:
     PickingVisitor(glm::vec3 selectionstart, glm::vec3 selection_end, bool force = false);
 
     bool empty() const {return nodes_.empty(); }
+    size_t count() const {return nodes_.size(); }
     std::pair<Node *, glm::vec2> back() const { return nodes_.back(); }
     std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator rbegin() { return nodes_.rbegin(); }
     std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator rend()   { return nodes_.rend(); }

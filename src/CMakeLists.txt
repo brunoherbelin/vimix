@@ -95,6 +95,10 @@ set(VMIX_SRCS
     SrtReceiverSource.cpp
     MultiFileRecorder.cpp
     DisplaysView.cpp
+    ScreenCaptureSource.cpp
+    MousePointer.cpp
+    Grid.cpp
+    Playlist.cpp
 )
 
 #####
@@ -134,6 +138,8 @@ ELSE(APPLE)
 
     set(PLATFORM_LIBS
         GTK::GTK
+        X11::X11
+        X11::xcb
     )
 
 ENDIF(APPLE)

@@ -1,4 +1,4 @@
-#ifndef VMIX_DEFINES_H
+﻿#ifndef VMIX_DEFINES_H
 #define VMIX_DEFINES_H
 
 #define APP_NAME "vimix"
@@ -15,6 +15,8 @@
 
 #define VIMIX_FILE_EXT "mix"
 #define VIMIX_FILE_PATTERN "*.mix"
+#define VIMIX_PLAYLIST_FILE_EXT "lix"
+#define VIMIX_PLAYLIST_FILE_PATTERN "*.lix"
 #define MEDIA_FILES_PATTERN "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov",\
     "*.mkv", "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg",\
     "*.flv", "*.hevc", "*.asf", "*.jpg", "*.png",  "*.gif",\
@@ -128,17 +130,19 @@
 #define IMGUI_TITLE_HELP ICON_FA_LIFE_RING "  Help"
 #define IMGUI_TITLE_TOOLBOX ICON_FA_HAMSA "  Guru Toolbox"
 #define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Shader Editor"
-#define IMGUI_TITLE_PREVIEW ICON_FA_LAPTOP "  Display"
+#define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Display"
 
 #ifdef APPLE
 #define CTRL_MOD "Cmd+"
-#define ALT_MOD "Option+"
+#define ALT_MOD "option"
+#define ALT_LOCK " OPT LOCK"
 #else
 #define CTRL_MOD "Ctrl+"
-#define ALT_MOD "Alt+"
+#define ALT_MOD "Alt"
+#define ALT_LOCK " ALT LOCK"
 #endif
 
-#define MENU_NEW_FILE         ICON_FA_FILE "  New"
+#define MENU_NEW_FILE         ICON_FA_FILE "+ New"
 #define SHORTCUT_NEW_FILE     CTRL_MOD "W"
 #define MENU_OPEN_FILE        ICON_FA_FILE_UPLOAD "  Open"
 #define SHORTCUT_OPEN_FILE    CTRL_MOD "O"
@@ -170,7 +174,7 @@
 #define MENU_RECORD           ICON_FA_CIRCLE "  Record"
 #define SHORTCUT_RECORD       CTRL_MOD "R"
 #define MENU_RECORDCONT       ICON_FA_STOP_CIRCLE "  Save & continue"
-#define SHORTCUT_RECORDCONT   CTRL_MOD "Alt+R"
+#define SHORTCUT_RECORDCONT   CTRL_MOD "Shift+R"
 #define MENU_CAPTUREFRAME     ICON_FA_CAMERA_RETRO "  Capture frame"
 #define SHORTCUT_CAPTURE_DISPLAY "F11"
 #define SHORTCUT_CAPTURE_PLAYER "F10"
@@ -178,24 +182,28 @@
 #define SHORTCUT_CAPTURE_GUI  "F9"
 #define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable"
 #define SHORTCUT_OUTPUTDISABLE "F12"
-#define MENU_LARGEPREVIEW     ICON_FA_EXPAND_ARROWS_ALT "   Large preview"
-#define SHORTCUT_LARGEPREVIEW "F6"
+#define ICON_PREVIEW          4, 15
+#define MENU_PREVIEW          "Preview"
+#define SHORTCUT_PREVIEW      "F6"
 #define MENU_CLOSE            ICON_FA_TIMES "   Close"
 #define DIALOG_FAILED_SOURCE  ICON_FA_EXCLAMATION_TRIANGLE " Source failure"
 
-#define MENU_NOTE             ICON_FA_STICKY_NOTE "   Add sticky note"
 #define MENU_METRICS          ICON_FA_TACHOMETER_ALT "  Metrics"
 #define MENU_SOURCE_TOOL      ICON_FA_WRENCH "  Source toolbar"
 #define MENU_HELP             ICON_FA_LIFE_RING "  Help"
 #define SHORTCUT_HELP         CTRL_MOD "H"
 #define MENU_LOGS             ICON_FA_LIST_UL "  Logs"
 #define SHORTCUT_LOGS         CTRL_MOD "L"
+#define MENU_PLAYER           ICON_FA_PLAY_CIRCLE "  Player "
 #define TOOLTIP_PLAYER        "Player "
 #define SHORTCUT_PLAYER       CTRL_MOD "P"
+#define MENU_OUTPUT           ICON_FA_DESKTOP " Display "
 #define TOOLTIP_OUTPUT        "Display "
 #define SHORTCUT_OUTPUT       CTRL_MOD "D"
+#define MENU_TIMER            ICON_FA_CLOCK "  Timer "
 #define TOOLTIP_TIMER         "Timer "
 #define SHORTCUT_TIMER        CTRL_MOD "T"
+#define MENU_INPUTS           ICON_FA_HAND_PAPER "  Inputs mapping "
 #define TOOLTIP_INPUTS        "Inputs mapping "
 #define SHORTCUT_INPUTS       CTRL_MOD "I"
 #define TOOLTIP_SHADEREDITOR  "Shader Editor "
@@ -204,7 +212,7 @@
 #define SHORTCUT_FULLSCREEN   CTRL_MOD "F"
 #define TOOLTIP_MAIN          "Main menu "
 #define SHORTCUT_MAIN         "HOME"
-#define TOOLTIP_NEW_SOURCE    "New source "
+#define TOOLTIP_NEW_SOURCE    "Insert "
 #define SHORTCUT_NEW_SOURCE   "INS"
 #define TOOLTIP_HIDE          "Hide windows "
 #define TOOLTIP_SHOW          "Show windows "

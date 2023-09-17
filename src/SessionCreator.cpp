@@ -33,6 +33,7 @@
 #include "StreamSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "ScreenCaptureSource.h"
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
@@ -432,6 +433,9 @@ void SessionLoader::load(XMLElement *sessionNode)
                 else if ( std::string(pType) == "DeviceSource") {
                     load_source = new DeviceSource(id_xml_);
                 }
+                else if ( std::string(pType) == "ScreenCaptureSource") {
+                    load_source = new ScreenCaptureSource(id_xml_);
+                }
                 else if ( std::string(pType) == "NetworkSource") {
                     load_source = new NetworkSource(id_xml_);
                 }
@@ -614,6 +618,9 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
             }
             else if ( std::string(pType) == "DeviceSource") {
                 load_source = new DeviceSource(id__);
+            }
+            else if ( std::string(pType) == "ScreenCaptureSource") {
+                load_source = new ScreenCaptureSource(id__);
             }
             else if ( std::string(pType) == "NetworkSource") {
                 load_source = new NetworkSource(id__);
@@ -1209,6 +1216,16 @@ void SessionLoader::visit (DeviceSource& s)
     // change only if different device
     if ( devname != s.device() )
         s.setDevice(devname);
+}
+
+
+void SessionLoader::visit (ScreenCaptureSource& s)
+{
+    std::string winname = std::string ( xmlCurrent_->Attribute("window") );
+
+    // change only if different window
+    if ( winname != s.window() )
+        s.setWindow(winname);
 }
 
 

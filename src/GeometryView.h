@@ -3,6 +3,7 @@
 
 #include "View.h"
 
+
 class GeometryView : public View
 {
 public:
@@ -43,6 +44,10 @@ private:
     Handles *overlay_selection_rotate_;
 
     void applySelectionTransform(glm::mat4 M);
+
+    void adaptGridToSource(Source *s = nullptr, Node *picked = nullptr);
+    TranslationGrid *translation_grid_;
+    RotationGrid *rotation_grid_;
 };
 
 

@@ -36,6 +36,7 @@
 #include "SessionSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "ScreenCaptureSource.h"
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
@@ -164,13 +165,14 @@ void InfoVisitor::visit (SessionFileSource& s)
             oss << "Child session (" << numsource << "), RGB" << std::endl;
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
+
+        current_id_ = s.id();
     }
     else {
         oss << s.path() << std::endl << std::endl << "Failed to load.";
     }
 
     information_ = oss.str();
-    current_id_ = s.id();
 }
 
 void InfoVisitor::visit (SessionGroupSource& s)
@@ -198,13 +200,13 @@ void InfoVisitor::visit (SessionGroupSource& s)
             oss << (s.session()->frame()->flags() & FrameBuffer::FrameBuffer_alpha ? "RGBA" : "RGB") << std::endl;
             oss << s.session()->frame()->width() << " x " << s.session()->frame()->height();
         }
+        current_id_ = s.id();
     }
     else {
-        oss << "Empty bundle.";
+        oss << std::endl << "Empty bundle.";
     }
 
     information_ = oss.str();
-    current_id_ = s.id();
 }
 
 void InfoVisitor::visit (RenderSource& s)
@@ -252,12 +254,12 @@ void InfoVisitor::visit (CloneSource& s)
             oss << std::get<2>(FrameBufferFilter::Types[s.filter()->type()]) << " filter" << std::endl;
             oss << s.frame()->width() << " x " << s.frame()->height();
         }
+        current_id_ = s.id();
     }
     else
         oss << "Undefined";
 
     information_ = oss.str();
-    current_id_ = s.id();
 }
 
 void InfoVisitor::visit (PatternSource& s)
@@ -296,9 +298,9 @@ void InfoVisitor::visit (DeviceSource& s)
 
     std::ostringstream oss;
 
-    DeviceConfigSet confs = Device::manager().config( Device::manager().index(s.device()));
+    GstToolkit::PipelineConfigSet confs = Device::manager().config( Device::manager().index(s.device()));
     if ( !confs.empty()) {
-        DeviceConfig best = *confs.rbegin();
+        GstToolkit::PipelineConfig best = *confs.rbegin();
         float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
 
         if (brief_) {
@@ -321,6 +323,41 @@ void InfoVisitor::visit (DeviceSource& s)
     information_ = oss.str();
     current_id_ = s.id();
 }
+
+
+void InfoVisitor::visit (ScreenCaptureSource& s)
+{
+    if (current_id_ == s.id())
+        return;
+
+    std::ostringstream oss;
+
+    GstToolkit::PipelineConfigSet confs = ScreenCapture::manager().config( ScreenCapture::manager().index(s.window()));
+    if ( !confs.empty()) {
+        GstToolkit::PipelineConfig best = *confs.rbegin();
+        float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
+
+        if (brief_) {
+            oss << best.stream << " " << best.format  << ", ";
+            oss << best.width << " x " << best.height << ", ";
+            oss << std::fixed << std::setprecision(0) << fps << "fps";
+        }
+        else {
+            oss << s.window() << std::endl;
+            oss << ScreenCapture::manager().description( ScreenCapture::manager().index(s.window()));
+            oss << ", " << best.stream << " " << best.format  << std::endl;
+            oss << best.width << " x " << best.height << ", ";
+            oss << std::fixed << std::setprecision(1) << fps << " fps";
+        }
+    }
+    else {
+        oss << s.window() << " not available.";
+    }
+
+    information_ = oss.str();
+    current_id_ = s.id();
+}
+
 
 void InfoVisitor::visit (NetworkSource& s)
 {

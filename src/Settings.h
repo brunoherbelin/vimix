@@ -129,16 +129,19 @@ struct History
     bool load_at_start;
     bool save_on_exit;
     bool changed;
+    int  ordering;
 
     History() {
-        path = IMGUI_LABEL_RECENT_FILES;
+        path = "";
         front_is_valid = false;
         load_at_start = true;
         save_on_exit = true;
         changed = false;
+        ordering = 3;
     }
-    void push(const std::string &filename);
-    void remove(const std::string &filename);
+    void push   (const std::string &filename);
+    void remove (const std::string &filename);
+    void assign (const std::string &filename);
     void validate();
 };
 
@@ -271,10 +274,15 @@ struct Application
     int  accent_color;
     bool save_version_snapshot;
     bool smooth_transition;
-    bool smooth_cursor;
+    bool proportional_grid;
+    int  mouse_pointer;
+    bool mouse_pointer_lock;
+    std::vector<float> mouse_pointer_strength;
     bool action_history_follow_view;
     bool show_tooptips;
 
+    int  pannel_main_mode;
+    int  pannel_playlist_mode;
     int  pannel_current_session_mode;
     bool pannel_always_visible;
 
@@ -319,6 +327,7 @@ struct Application
 
     // recent files histories
     History recentSessions;
+    History recentPlaylists;
     History recentFolders;
     History recentImport;
     History recentImportFolders;
@@ -336,7 +345,10 @@ struct Application
         accent_color = 0;
         smooth_transition = false;
         save_version_snapshot = false;
-        smooth_cursor = false;
+        proportional_grid = true;
+        mouse_pointer = 1;
+        mouse_pointer_lock = false;
+        mouse_pointer_strength = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
         action_history_follow_view = false;
         show_tooptips = true;
         accept_connections = false;
@@ -347,9 +359,11 @@ struct Application
         loopback_camera = 0;
         shm_method = 0;
         shm_socket_path = "";
+        pannel_main_mode = 0;
+        pannel_playlist_mode = 0;
         pannel_current_session_mode = 0;
         current_view = 1;
-        current_workspace= 1;
+        current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
         num_output_windows = 1;
         windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);

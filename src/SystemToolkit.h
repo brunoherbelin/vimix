@@ -49,9 +49,6 @@ namespace SystemToolkit
     // tests if dir is a directory and return its path, empty string otherwise
     std::string path_directory(const std::string& path);
 
-    // list all files of a directory mathing the given filter extension (if any)
-    std::list<std::string> list_directory(const std::string& path, const std::list<std::string> &patterns);
-
     // builds a path relative to 'relativeTo' to reach file at 'absolutePath' (e.g. /a/b/c/d rel to /a/b/e -> ../c/d)
     std::string path_relative_to_path(const std::string& absolutePath, const std::string& relativeTo);
 
@@ -63,6 +60,23 @@ namespace SystemToolkit
 
     // generates a filename at given path, with basename and date prefix
     std::string filename_dateprefix(const std::string& path, const std::string& base, const std::string& extension);
+
+    // Get modification time of file, as string YYYYMMDDHHmmss
+    unsigned long file_modification_time(const std::string& path);
+    std::string file_modification_time_string(const std::string& path);
+
+
+    typedef enum {
+        ALPHA = 0,
+        ALPHA_INVERSE = 1,
+        DATE = 2,
+        DATE_INVERSE = 3
+    } Ordering;
+    //
+    void reorder_file_list(std::list<std::string> &filelist, Ordering m);
+
+    // list all files of a directory mathing the given filter extension (if any)
+    std::list<std::string> list_directory(const std::string& path, const std::list<std::string> &patterns, Ordering m = ALPHA);
 
     // true of file exists
     bool file_exists(const std::string& path);

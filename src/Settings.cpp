@@ -41,6 +41,7 @@ XMLElement *save_history(Settings::History &h, const char *nodename, XMLDocument
     pElement->SetAttribute("autoload", h.load_at_start);
     pElement->SetAttribute("autosave", h.save_on_exit);
     pElement->SetAttribute("valid", h.front_is_valid);
+    pElement->SetAttribute("ordering", h.ordering);
     for(auto it = h.filenames.cbegin();
         it != h.filenames.cend(); ++it) {
         XMLElement *fileNode = xmlDoc.NewElement("path");
@@ -132,10 +133,11 @@ void Settings::Save(uint64_t runtime)
     applicationNode->SetAttribute("accent_color", application.accent_color);
     applicationNode->SetAttribute("smooth_transition", application.smooth_transition);
     applicationNode->SetAttribute("save_snapshot", application.save_version_snapshot);
-    applicationNode->SetAttribute("smooth_cursor", application.smooth_cursor);
     applicationNode->SetAttribute("action_history_follow_view", application.action_history_follow_view);
     applicationNode->SetAttribute("show_tooptips", application.show_tooptips);
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
+    applicationNode->SetAttribute("pannel_main_mode", application.pannel_main_mode);
+    applicationNode->SetAttribute("pannel_playlist_mode", application.pannel_playlist_mode);
     applicationNode->SetAttribute("pannel_history_mode", application.pannel_current_session_mode);
     applicationNode->SetAttribute("pannel_always_visible", application.pannel_always_visible);
     applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
@@ -214,6 +216,17 @@ void Settings::Save(uint64_t runtime)
     BrushNode->InsertEndChild( XMLElementFromGLM(&xmlDoc, application.brush) );
     pRoot->InsertEndChild(BrushNode);
 
+    // Pointer
+    XMLElement *PointerNode = xmlDoc.NewElement( "MousePointer" );
+    PointerNode->SetAttribute("mode", application.mouse_pointer);
+    PointerNode->SetAttribute("lock", application.mouse_pointer_lock);
+    PointerNode->SetAttribute("proportional_grid", application.proportional_grid);
+    for (size_t i = 0; i < application.mouse_pointer_strength.size(); ++i ) {
+        float v = application.mouse_pointer_strength[i];
+        PointerNode->InsertEndChild( XMLElementFromGLM(&xmlDoc, glm::vec2((float)i, v)) );
+    }
+    pRoot->InsertEndChild(PointerNode);
+
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
@@ -252,6 +265,9 @@ void Settings::Save(uint64_t runtime)
         recent->InsertEndChild( save_history(application.recentSessions, "Session", xmlDoc));
 
         // recent session folders
+        recent->InsertEndChild( save_history(application.recentPlaylists, "Playlist", xmlDoc));
+
+        // recent session folders
         recent->InsertEndChild( save_history(application.recentFolders, "Folder", xmlDoc));
 
         // recent import media uri
@@ -284,8 +300,6 @@ void Settings::Save(uint64_t runtime)
 
         // recent SRT hosts
         knownhosts->InsertEndChild( save_knownhost(application.recentSRT, "SRT", xmlDoc));
-
-
         pRoot->InsertEndChild(knownhosts);
     }
 
@@ -345,6 +359,9 @@ void load_history(Settings::History &h, const char *nodename, XMLElement *root)
         pElement->QueryBoolAttribute("autoload", &h.load_at_start);
         pElement->QueryBoolAttribute("autosave", &h.save_on_exit);
         pElement->QueryBoolAttribute("valid", &h.front_is_valid);
+        pElement->QueryIntAttribute("ordering", &h.ordering);
+
+        h.changed = true;
     }
 }
 
@@ -395,11 +412,11 @@ void Settings::Load()
     else if (XMLResultError(eResult))
         return;
 
+
     // first element should be called by the application name
     XMLElement *pRoot = xmlDoc.FirstChildElement(application.name.c_str());
     if (pRoot == nullptr)
         return;
-
     // runtime
     pRoot->QueryUnsigned64Attribute("runtime", &application.total_runtime);
 
@@ -410,11 +427,12 @@ void Settings::Load()
         applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
         applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
         applicationNode->QueryBoolAttribute("save_snapshot", &application.save_version_snapshot);
-        applicationNode->QueryBoolAttribute("smooth_cursor", &application.smooth_cursor);
         applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
         applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
         applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
         applicationNode->QueryBoolAttribute("pannel_always_visible", &application.pannel_always_visible);
+        applicationNode->QueryIntAttribute("pannel_main_mode", &application.pannel_main_mode);
+        applicationNode->QueryIntAttribute("pannel_playlist_mode", &application.pannel_playlist_mode);
         applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_current_session_mode);
         applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
         applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
@@ -556,6 +574,22 @@ void Settings::Load()
         tinyxml2::XMLElementToGLM( brushnode->FirstChildElement("vec3"), application.brush);
     }
 
+    // Pointer
+    XMLElement * pointernode = pRoot->FirstChildElement("MousePointer");
+    if (pointernode != nullptr) {
+        pointernode->QueryIntAttribute("mode", &application.mouse_pointer);
+        pointernode->QueryBoolAttribute("lock", &application.mouse_pointer_lock);
+        pointernode->QueryBoolAttribute("proportional_grid", &application.proportional_grid);
+
+        XMLElement* strengthNode = pointernode->FirstChildElement("vec2");
+        for( ; strengthNode ; strengthNode = strengthNode->NextSiblingElement())
+        {
+            glm::vec2 val;
+            tinyxml2::XMLElementToGLM( strengthNode, val);
+            application.mouse_pointer_strength[ (size_t) ceil(val.x) ] = val.y;
+        }
+    }
+
     // bloc views
     {
         XMLElement * pElement = pRoot->FirstChildElement("Views");
@@ -594,6 +628,9 @@ void Settings::Load()
         {
             // recent session filenames
             load_history(application.recentSessions, "Session", pElement);
+
+            // recent session playlist
+            load_history(application.recentPlaylists, "Playlist", pElement);
 
             // recent session folders
             load_history(application.recentFolders, "Folder", pElement);
@@ -663,6 +700,12 @@ void Settings::Load()
 
 }
 
+void Settings::History::assign(const string &filename)
+{
+    path.assign(filename);
+    changed = true;
+}
+
 void Settings::History::push(const string &filename)
 {
     if (filename.empty()) {
@@ -694,6 +737,9 @@ void Settings::History::validate()
             ++fit;
         else
             fit = filenames.erase(fit);
+    }
+    if (!path.empty() && !SystemToolkit::file_exists( path )) {
+        path = "";
     }
 }
 

@@ -43,7 +43,6 @@ private:
     Frame *background_frame_;
     Mesh *horizontal_mark_;
     Mesh *vertical_mark_;
-    bool show_scale_;
     Group *mask_node_;
     Frame *mask_square_;
     Mesh *mask_circle_;
@@ -69,6 +68,10 @@ private:
     glm::vec3 stored_mask_size_;
     bool show_cursor_forced_;
 
+    void adaptGridToSource(Source *s = nullptr, Node *picked = nullptr);
+    glm::vec3 scene_brush_pos;
+    TranslationGrid *translation_grid_;
+    RotationGrid *rotation_grid_;
 };
 
 #endif // TEXTUREVIEW_H

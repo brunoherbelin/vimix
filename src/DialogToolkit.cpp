@@ -140,6 +140,54 @@ void DialogToolkit::OpenSessionDialog::open()
     }
 }
 
+std::list<std::string> selectSessionsFileDialog(const std::string &label,const std::string &path);
+void DialogToolkit::MultipleSessionsDialog::open()
+{
+    if ( !busy_ && promisedlist_.empty() ) {
+        promisedlist_.emplace_back( std::async(std::launch::async, selectSessionsFileDialog, id_,
+                                           Settings::application.dialogRecentFolder[id_]) );
+        busy_ = true;
+    }
+}
+
+bool DialogToolkit::MultipleSessionsDialog::closed()
+{
+    if ( !promisedlist_.empty() ) {
+        // check that file dialog thread finished
+        if (promisedlist_.back().wait_for(timeout) == std::future_status::ready ) {
+            // get the filename from this file dialog
+            std::list<std::string>  list = promisedlist_.back().get();
+            if (!list.empty()) {
+                // selected a filenames
+                pathlist_ = list;
+                path_ = list.front();
+                // save path location
+                Settings::application.dialogRecentFolder[id_] = SystemToolkit::path_filename(path_);
+            }
+            else {
+                pathlist_.clear();
+                path_.clear();
+            }
+            // done with this file dialog
+            promisedlist_.pop_back();
+            busy_ = false;
+            return true;
+        }
+    }
+    return false;
+}
+
+
+std::string openPlaylistFileDialog(const std::string &label, const std::string &path);
+void DialogToolkit::OpenPlaylistDialog::open()
+{
+    if ( !busy_ && promises_.empty() ) {
+        promises_.emplace_back( std::async(std::launch::async, openPlaylistFileDialog, id_,
+                                           Settings::application.dialogRecentFolder[id_]) );
+        busy_ = true;
+    }
+}
+
 std::string openMediaFileDialog(const std::string &label, const std::string &path);
 void DialogToolkit::OpenMediaDialog::open()
 {
@@ -161,6 +209,21 @@ void DialogToolkit::SaveSessionDialog::open()
 }
 
 void DialogToolkit::SaveSessionDialog::setFolder(std::string path)
+{
+    Settings::application.dialogRecentFolder[id_] = SystemToolkit::path_filename( path );
+}
+
+std::string savePlaylistFileDialog(const std::string &label, const std::string &path);
+void DialogToolkit::SavePlaylistDialog::open()
+{
+    if ( !busy_ && promises_.empty() ) {
+        promises_.emplace_back( std::async(std::launch::async, savePlaylistFileDialog, id_,
+                                           Settings::application.dialogRecentFolder[id_]) );
+        busy_ = true;
+    }
+}
+
+void DialogToolkit::SavePlaylistDialog::setFolder(std::string path)
 {
     Settings::application.dialogRecentFolder[id_] = SystemToolkit::path_filename( path );
 }
@@ -227,7 +290,7 @@ std::string saveSessionFileDialog(const std::string &label, const std::string &p
 #if USE_TINYFILEDIALOG
     char const * save_file_name;
 
-    save_file_name = tinyfd_saveFileDialog( label.c_str(), path.c_str(), 1, save_pattern, "vimix session");
+    save_file_name = tinyfd_saveFileDialog( label.c_str(), path.c_str(), 1, save_pattern, "vimix (MIX)");
 
     if (save_file_name)
         filename = std::string(save_file_name);
@@ -244,7 +307,7 @@ std::string saveSessionFileDialog(const std::string &label, const std::string &p
     gtk_file_chooser_set_do_overwrite_confirmation( GTK_FILE_CHOOSER(dialog), TRUE );
 
     // set file filters
-    add_filter_file_dialog(dialog, 1, save_pattern, "vimix session");
+    add_filter_file_dialog(dialog, 1, save_pattern, "vimix (MIX)");
     add_filter_any_file_dialog(dialog);
 
     // Set the default path
@@ -288,7 +351,7 @@ std::string openSessionFileDialog(const std::string &label, const std::string &p
 
 #if USE_TINYFILEDIALOG
     char const * open_file_name;
-    open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 1, open_pattern, "vimix session", 0);
+    open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 1, open_pattern, "vimix (MIX)", 0);
 
     if (open_file_name)
         filename = std::string(open_file_name);
@@ -304,7 +367,7 @@ std::string openSessionFileDialog(const std::string &label, const std::string &p
                                               "_Open", GTK_RESPONSE_ACCEPT,  NULL );
 
     // set file filters
-    add_filter_file_dialog(dialog, 1, open_pattern, "vimix session");
+    add_filter_file_dialog(dialog, 1, open_pattern, "vimix (MIX)");
     add_filter_any_file_dialog(dialog);
 
     // Set the default path
@@ -335,6 +398,205 @@ std::string openSessionFileDialog(const std::string &label, const std::string &p
 
     return filename;
 }
+
+
+std::list<std::string> selectSessionsFileDialog(const std::string &label,const std::string &path)
+{
+    std::list<std::string> files;
+
+    std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
+    char const * open_pattern[1] = { VIMIX_FILE_PATTERN };
+
+#if USE_TINYFILEDIALOG
+    char const * open_file_names;
+    open_file_names = tinyfd_openFileDialog(label.c_str(), startpath.c_str(), 1, open_pattern, "vimix (MIX)", 1);
+
+    if (open_file_names) {
+
+        const std::string& str (open_file_names);
+        const std::string& delimiters = "|";
+        // Skip delimiters at beginning.
+        std::string::size_type lastPos = str.find_first_not_of(delimiters, 0);
+
+        // Find first non-delimiter.
+        std::string::size_type pos = str.find_first_of(delimiters, lastPos);
+
+        while (std::string::npos != pos || std::string::npos != lastPos) {
+            // Found a token, add it to the vector.
+            files.push_back(str.substr(lastPos, pos - lastPos));
+
+            // Skip delimiters.
+            lastPos = str.find_first_not_of(delimiters, pos);
+
+            // Find next non-delimiter.
+            pos = str.find_first_of(delimiters, lastPos);
+        }
+    }
+#else
+
+    if (!gtk_init()) {
+        DialogToolkit::ErrorDialog("Could not initialize GTK+ for dialog");
+        return files;
+    }
+
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( label.c_str(),  NULL,
+                                              GTK_FILE_CHOOSER_ACTION_OPEN,
+                                              "_Cancel", GTK_RESPONSE_CANCEL,
+                                              "_Open", GTK_RESPONSE_ACCEPT,  NULL );
+
+    // set file filters
+    add_filter_file_dialog(dialog, 1, open_pattern, "vimix (MIX)");
+    add_filter_any_file_dialog(dialog);
+
+    // multiple files
+    gtk_file_chooser_set_select_multiple( GTK_FILE_CHOOSER(dialog), true );
+
+    // Set the default path
+    gtk_file_chooser_set_current_folder( GTK_FILE_CHOOSER(dialog), startpath.c_str() );
+    // ensure front and centered
+    gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
+    if (window_x > 0 && window_y > 0)
+        gtk_window_move( GTK_WINDOW(dialog), window_x, window_y);
+
+    // display and get filename
+    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
+        GSList *open_file_names = gtk_file_chooser_get_filenames( GTK_FILE_CHOOSER(dialog) );
+        while (open_file_names) {
+            files.push_back( (char *) open_file_names->data );
+            open_file_names = open_file_names->next;
+        }
+        g_slist_free( open_file_names );
+    }
+
+    // remember position
+    gtk_window_get_position( GTK_WINDOW(dialog), &window_x, &window_y);
+
+    // done
+    gtk_widget_destroy(dialog);
+    wait_for_event();
+#endif
+
+    return files;
+}
+
+
+std::string openPlaylistFileDialog(const std::string &label, const std::string &path)
+{
+    std::string filename = "";
+    std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
+    char const * open_pattern[1] = { VIMIX_PLAYLIST_FILE_PATTERN };
+
+#if USE_TINYFILEDIALOG
+    char const * open_file_name;
+    open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 1, open_pattern, "vimix playlist", 0);
+
+    if (open_file_name)
+        filename = std::string(open_file_name);
+#else
+    if (!gtk_init()) {
+        DialogToolkit::ErrorDialog("Could not initialize GTK+ for dialog");
+        return filename;
+    }
+
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( label.c_str(),  NULL,
+                                              GTK_FILE_CHOOSER_ACTION_OPEN,
+                                              "_Cancel", GTK_RESPONSE_CANCEL,
+                                              "_Open", GTK_RESPONSE_ACCEPT,  NULL );
+
+    // set file filters
+    add_filter_file_dialog(dialog, 1, open_pattern, "vimix playlist");
+    add_filter_any_file_dialog(dialog);
+
+    // Set the default path
+    gtk_file_chooser_set_current_folder( GTK_FILE_CHOOSER(dialog), startpath.c_str() );
+
+    // ensure front and centered
+    gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
+    if (window_x > 0 && window_y > 0)
+        gtk_window_move( GTK_WINDOW(dialog), window_x, window_y);
+
+    // display and get filename
+    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
+
+        char *open_file_name = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
+        if (open_file_name) {
+            filename = std::string(open_file_name);
+            g_free( open_file_name );
+        }
+    }
+
+    // remember position
+    gtk_window_get_position( GTK_WINDOW(dialog), &window_x, &window_y);
+
+    // done
+    gtk_widget_destroy(dialog);
+    wait_for_event();
+#endif
+
+    return filename;
+}
+
+
+std::string savePlaylistFileDialog(const std::string &label, const std::string &path)
+{
+    std::string filename = "";
+    char const * save_pattern[1] = { VIMIX_PLAYLIST_FILE_PATTERN };
+
+#if USE_TINYFILEDIALOG
+    char const * save_file_name;
+
+    save_file_name = tinyfd_saveFileDialog( label.c_str(), path.c_str(), 1, save_pattern, "vimix playlist");
+
+    if (save_file_name)
+        filename = std::string(save_file_name);
+#else
+    if (!gtk_init()) {
+        DialogToolkit::ErrorDialog("Could not initialize GTK+ for dialog");
+        return filename;
+    }
+
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( label.c_str(), NULL,
+                                          GTK_FILE_CHOOSER_ACTION_SAVE,
+                                          "_Cancel", GTK_RESPONSE_CANCEL,
+                                          "_Save", GTK_RESPONSE_ACCEPT, NULL );
+    gtk_file_chooser_set_do_overwrite_confirmation( GTK_FILE_CHOOSER(dialog), TRUE );
+
+    // set file filters
+    add_filter_file_dialog(dialog, 1, save_pattern, "vimix playlist");
+    add_filter_any_file_dialog(dialog);
+
+    // Set the default path
+    gtk_file_chooser_set_current_folder( GTK_FILE_CHOOSER(dialog), path.c_str() );
+
+    // ensure front and centered
+    gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
+    if (window_x > 0 && window_y > 0)
+        gtk_window_move( GTK_WINDOW(dialog), window_x, window_y);
+
+    // display and get filename
+    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
+
+        char *save_file_name = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
+        if (save_file_name) {
+            filename = std::string(save_file_name);
+            g_free( save_file_name );
+        }
+    }
+
+    // remember position
+    gtk_window_get_position( GTK_WINDOW(dialog), &window_x, &window_y);
+
+    // done
+    gtk_widget_destroy(dialog);
+    wait_for_event();
+#endif
+
+    if (!filename.empty() && !SystemToolkit::has_extension(filename, VIMIX_PLAYLIST_FILE_EXT ) )
+        filename += std::string(".") + VIMIX_PLAYLIST_FILE_EXT;
+
+    return filename;
+}
+
 
 
 std::string openMediaFileDialog(const std::string &label, const std::string &path)
@@ -511,7 +773,7 @@ std::list<std::string> selectImagesFileDialog(const std::string &label,const std
     std::list<std::string> files;
 
     std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
-    char const * open_pattern[6] = {  "*.jpg", "*.png", "*.tif" };
+    char const * open_pattern[3] = {  "*.jpg", "*.png", "*.tif" };
 
 #if USE_TINYFILEDIALOG
     char const * open_file_names;

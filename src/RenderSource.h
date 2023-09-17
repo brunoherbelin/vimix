@@ -15,7 +15,7 @@ public:
     void update (float dt) override;
     bool playing () const override { return !paused_; }
     void play (bool) override;
-    void replay () override {}
+    void replay () override;
     bool playable () const  override { return true; }
     guint64 playtime () const override { return runtime_; }
     Failure failed () const override;
@@ -50,6 +50,7 @@ protected:
 
     // control
     bool paused_;
+    bool reset_;
     RenderSourceProvenance provenance_;
 };
 
