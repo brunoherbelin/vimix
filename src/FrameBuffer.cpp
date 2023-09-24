@@ -88,12 +88,9 @@ void FrameBuffer::init()
         g_printerr("Framebuffer %d created (%d x %d) - ", framebufferid_, attrib_.viewport.x, attrib_.viewport.y);
 #endif
 
-// Always disable multisampling under Mac OSX (unsupported OpenGL feature)
-#ifndef TARGET_OS_OSX
-    // or take settings into account: no multisampling if application multisampling is level 0
+    // no multisampling if application multisampling is level 0 (tested at init)
     if ( Settings::application.render.multisampling < 1 )
-#endif
-    flags_ &= ~FrameBuffer_multisampling;
+        flags_ &= ~FrameBuffer_multisampling;
 
     if (flags_ & FrameBuffer_multisampling){
 
@@ -143,12 +140,14 @@ void FrameBuffer::init()
 #endif
     }
 
-    checkFramebufferStatus();
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+    if (  !checkFramebufferStatus() )
+        reset();
 #ifdef FRAMEBUFFER_DEBUG
-    g_printerr("~%d kB allocated\n", mem_usage_);
+    else
+         g_printerr("~%d kB allocated\n", mem_usage_);
 #endif
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 FrameBuffer::~FrameBuffer()
@@ -157,14 +156,23 @@ FrameBuffer::~FrameBuffer()
     g_printerr("Framebuffer %d deleted - ~%d kB freed\n", framebufferid_, mem_usage_);
 #endif
 
+    reset();
+}
+
+void FrameBuffer::reset()
+{
     if (framebufferid_)
         glDeleteFramebuffers(1, &framebufferid_);
+    framebufferid_ = 0;
     if (multisampling_framebufferid_)
         glDeleteFramebuffers(1, &multisampling_framebufferid_);
+    multisampling_framebufferid_ = 0;
     if (textureid_)
         glDeleteTextures(1, &textureid_);
+    textureid_ = 0;
     if (multisampling_textureid_)
         glDeleteTextures(1, &multisampling_textureid_);
+    multisampling_textureid_ = 0;
 }
 
 uint FrameBuffer::texture() const
@@ -312,8 +320,9 @@ bool FrameBuffer::blit(FrameBuffer *destination)
     return true;
 }
 
-void FrameBuffer::checkFramebufferStatus()
+bool FrameBuffer::checkFramebufferStatus()
 {
+    bool ret = false;
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     switch (status){
     case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
@@ -350,25 +359,29 @@ void FrameBuffer::checkFramebufferStatus()
         break;
     case GL_FRAMEBUFFER_COMPLETE:
         {
+            // success
+            ret = true;
+            // test available memory if created buffer is big (more than 8MB)
+            if ( mem_usage_ > 8000 ) {
 
-        // test available memory if created buffer is big (more than 8MB)
-        if ( mem_usage_ > 8000 ) {
+                // Obtain RAM usage in GPU (if possible)
+                glm::ivec2 RAM = Rendering::getGPUMemoryInformation();
 
-            // Obtain RAM usage in GPU (if possible)
-            glm::ivec2 RAM = Rendering::getGPUMemoryInformation();
-
-            // bad case: not enough RAM, we should warn the user
-            if ( uint(RAM.x) < mem_usage_ * 3 ) {
-                Log::Warning("Critical allocation of frame buffer: only %d kB RAM remaining in graphics card.", RAM.x );
-                if (RAM.y < INT_MAX)
-                    Log::Warning("Only %.1f %% of %d kB available.", 100.f*float(RAM.x)/float(RAM.y), RAM.y);
+                // bad case: not enough RAM, we should warn the user
+                if ( uint(RAM.x) < mem_usage_ * 3 ) {
+                    Log::Warning("Critical allocation of frame buffer: only %d kB RAM remaining in graphics card.", RAM.x );
+                    if (RAM.y < INT_MAX)
+                        Log::Warning("Only %.1f %% of %d kB available.", 100.f*float(RAM.x)/float(RAM.y), RAM.y);
+                }
             }
         }
-
-        }
+        break;
+    default:
+        Log::Warning(" GL_FRAMEBUFFER is in an UNKNOWN state.");
         break;
     }
 
+    return ret;
 }
 
 

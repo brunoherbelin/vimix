@@ -123,6 +123,24 @@ void Rendering::LinkPipeline( GstPipeline *pipeline )
 #endif
 
 
+bool openGLExtensionAvailable(const char *extensionname)
+{
+    bool ret = false;
+
+    GLint numExtensions = 0;
+    glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
+    for (int i = 0; i < numExtensions; ++i){
+        const GLubyte *ccc = glGetStringi(GL_EXTENSIONS, i);
+        //  extension available
+        if ( strcmp( (const char*)ccc, extensionname) == 0 ){
+            ret = true;
+            break;
+        }
+    }
+
+    return ret;
+}
+
 static void glfw_error_callback(int error, const char* description)
 {
     g_printerr("Glfw Error %d: %s\n",  error, description);
@@ -385,6 +403,13 @@ bool Rendering::init()
     if ( !main_.init(0) )
         return false;
 
+
+    unsigned int err = 0;
+
+    while((err = glGetError()) != GL_NO_ERROR){
+        fprintf(stderr, "394  error %d \n",  err );
+    }
+
     //
     // Output windows will be initialized in draw
     //
@@ -490,8 +515,8 @@ void Rendering::draw()
     {
         static GTimer *timer = g_timer_new ();
         double elapsed = g_timer_elapsed (timer, NULL) * 1000000.0;
-        if ( (elapsed < 16000.0) && (elapsed > 0.0) )
-            g_usleep( 16000 - (gulong)elapsed  );
+        if ( (elapsed < 15600.0) && (elapsed > 0.0) )
+            g_usleep( 15600 - (gulong)elapsed  );
         g_timer_start(timer);
     }
 }
@@ -989,34 +1014,41 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
 
     // We decide for byte aligned textures all over
     glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-    // This hint can improve the speed of texturing when perspective-correct texture coordinate interpolation isn't needed
-    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
-    // fast mipmaps (we are not really using mipmaps anyway)
-    glHint(GL_GENERATE_MIPMAP_HINT, GL_FASTEST);
+
     // acurate derivative for shader
     glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_NICEST);
+
+    // nice line smoothing
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+
+    // Enable Antialiasing multisampling for main window
+    if ( openGLExtensionAvailable( "GL_ARB_multisample" ) || openGLExtensionAvailable( "GL_EXT_multisample" )) {
+
+        if (Settings::application.render.multisampling > 0 && master_ == NULL) {
+            glEnable(GL_MULTISAMPLE);
+            if ( openGLExtensionAvailable( "GL_NV_multisample_filter_hint") )
+                glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
+        }
+        else
+            glDisable(GL_MULTISAMPLE);
+    }
+    else
+        Settings::application.render.multisampling = 0;
 
     // if not main window
     if ( master_ != NULL ) {
         // NO vsync on output windows
         glfwSwapInterval(0);
-        // no need for multisampling
-        glDisable(GL_MULTISAMPLE);
+
         // clear to black
         window_attributes_.clear_color = glm::vec4(0.f, 0.f, 0.f, 1.f);
 
         glfwShowWindow(window_);
-
     }
     else {
         //  vsync on main window
         glfwSwapInterval(Settings::application.render.vsync);
-        // Enable Antialiasing multisampling
-        if (Settings::application.render.multisampling > 0) {
-            glEnable(GL_MULTISAMPLE);
-            glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
-        }
+
         // clear to grey
         window_attributes_.clear_color = glm::vec4(COLOR_BGROUND, 1.f);
     }
@@ -1026,6 +1058,14 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     //
     (void) Resource::getTextureWhite(); // init white texture too
     textureid_ = Resource::getTextureBlack();
+
+    //
+    // capture possible init errors
+    //
+    unsigned int err = 0;
+    while((err = glGetError()) != GL_NO_ERROR){
+        Log::Warning("Error %d during OpenGL init.", err);
+    }
 
     return true;
 }
