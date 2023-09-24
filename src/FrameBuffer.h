@@ -96,7 +96,8 @@ public:
 
 private:
     void init();
-    void checkFramebufferStatus();
+    void reset();
+    bool checkFramebufferStatus();
 
     FrameBufferFlags flags_;
     RenderingAttrib attrib_;

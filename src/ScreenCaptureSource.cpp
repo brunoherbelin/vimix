@@ -452,7 +452,7 @@ void ScreenCaptureSource::setWindow(const std::string &windowname)
                 pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
 
                 // convert (force alpha to 1)
-                pipeline << " ! alpha alpha=1 ! queue ! videoconvertscale";
+                pipeline << " ! alpha alpha=1 ! queue ! videoconvert ! videoscale";
 
                 // delete and reset render buffer to enforce re-init of StreamSource
                 if (renderbuffer_)

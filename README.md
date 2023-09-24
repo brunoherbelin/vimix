@@ -128,5 +128,5 @@ Optionnal:
 
 #### OSX with Brew
 
-    brew install cmake libpng glfw gstreamer gst-libav gst-plugins-bad gst-plugins-base gst-plugins-good gst-plugins-ugly icu4c
+    ~$ brew install cmake libpng glfw gstreamer icu4c
 
