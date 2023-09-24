@@ -128,8 +128,8 @@ namespace ableton
 } // namespace ableton
 
 
-ableton::Link link_(120.);
-ableton::Engine engine_(link_);
+ableton::Link *link_ = new ableton::Link(120.);
+ableton::Engine engine_(*link_);
 
 Metronome::Metronome()
 {
@@ -154,19 +154,19 @@ void Metronome::terminate()
     Settings::application.timer.link_tempo = tempo();
 
     // disconnect
-    link_.enable(false);
+    link_->enable(false);
 }
 
 void Metronome::setEnabled (bool on)
 {
-    link_.enable(on);
-    Settings::application.timer.link_enabled = link_.isEnabled();
+    link_->enable(on);
+    Settings::application.timer.link_enabled = link_->isEnabled();
     Log::Info("Metronome Ableton Link %s", Settings::application.timer.link_enabled ? "Enabled" : "Disabled");
 }
 
 bool Metronome::enabled () const
 {
-    return link_.isEnabled();
+    return link_->isEnabled();
 }
 
 double Metronome::beats() const
@@ -268,5 +268,5 @@ float Metronome::timeToSync(Synchronicity sync)
 
 size_t Metronome::peers() const
 {
-    return link_.numPeers();
+    return link_->numPeers();
 }
