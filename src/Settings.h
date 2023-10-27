@@ -185,7 +185,7 @@ struct RenderConfig
     RenderConfig() {
         disabled = false;
         vsync = 1;
-        multisampling = 2;
+        multisampling = 3;
         ratio = 3;
         res = 1;
         custom_width = 1200;
