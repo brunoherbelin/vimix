@@ -1044,12 +1044,13 @@ void UserInterface::showMenuWindows()
     if ( ImGui::MenuItem( MENU_INPUTS, SHORTCUT_INPUTS, &Settings::application.widget.inputs) )
         UserInterface::manager().inputscontrol.setVisible(Settings::application.widget.inputs);
 
-    ImGui::Separator();
-
     // Show Help
     ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP, &Settings::application.widget.help );
     // Show Logs
     ImGui::MenuItem( MENU_LOGS, SHORTCUT_LOGS, &Settings::application.widget.logs );
+
+    ImGui::Separator();
+
     // Enable / disable source toolbar
     ImGui::MenuItem( MENU_SOURCE_TOOL, NULL, &Settings::application.widget.source_toolbar );
     // Enable / disable metrics toolbar
@@ -2045,13 +2046,6 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGui::Text("\nvimix is licensed under GNU GPL version 3 or later.\n" UNICODE_COPYRIGHT " 2019-2023 Bruno Herbelin.");
 
     ImGui::Spacing();
-
-    if ( ImGui::Button(MENU_HELP, ImVec2(250.f, 0.f)) )
-        Settings::application.widget.help = true;
-    ImGui::SameLine(0, 12);
-    if ( ImGui::Button(MENU_LOGS, ImVec2(250.f, 0.f)) )
-        Settings::application.widget.logs = true;
-
     ImGuiToolkit::ButtonOpenUrl("Visit vimix website", "https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
     ImGui::Spacing();
@@ -2080,7 +2074,7 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGuiToolkit::ButtonOpenUrl("glm", "https://glm.g-truc.net", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
     ImGui::NextColumn();
-    ImGuiToolkit::ButtonOpenUrl("OSCPack", "http://www.rossbencina.com/code/oscpack", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+    ImGuiToolkit::ButtonOpenUrl("OSCPack", "https://github.com/RossBencina/oscpack", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
     ImGui::NextColumn();
     ImGuiToolkit::ButtonOpenUrl("TinyXML2", "https://github.com/leethomason/tinyxml2.git", ImVec2(ImGui::GetContentRegionAvail().x, 0));
@@ -2442,17 +2436,17 @@ void UserInterface::RenderHelp()
         ImGui::Text(ICON_FA_HAND_PAPER "  Inputs"); ImGui::NextColumn();
         ImGui::Text ("Define how user inputs (e.g. keyboard, joystick) are mapped to custom actions in the session.");
         ImGui::NextColumn();
-        ImGui::Text(ICON_FA_WRENCH " Source toolbar"); ImGui::NextColumn();
+        ImGui::Text(IMGUI_TITLE_LOGS); ImGui::NextColumn();
+        ImGui::Text ("History of program logs, with information on success and failure of commands.");
+        ImGui::NextColumn();
+        ImGui::Text(IMGUI_TITLE_HELP); ImGui::NextColumn();
+        ImGui::Text ("Link to online documentation and list of concepts (this window).");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_WRENCH " Source"); ImGui::NextColumn();
         ImGui::Text ("Toolbar to show and edit alpha and geometry of the current source.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_TACHOMETER_ALT "  Metrics"); ImGui::NextColumn();
         ImGui::Text ("Monitoring of metrics on the system (e.g. FPS, RAM) and runtime (e.g. session duration).");
-        ImGui::NextColumn();
-        ImGui::Text(IMGUI_TITLE_LOGS); ImGui::NextColumn();
-        ImGui::Text ("History of program logs, with information on success and failure of commands.");
-        ImGui::NextColumn();
-        ImGui::Text(ICON_FA_COG "  Settings"); ImGui::NextColumn();
-        ImGui::Text ("Set user preferences and system settings.");
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
@@ -2844,23 +2838,28 @@ void Navigator::discardPannel()
         // if panel shows a source (i.e. not NEW, TRANS nor MENU selected)
         else if ( !selected_button[NAV_MENU] )
         {
-            // get index of current source
-            int idx = Mixer::manager().indexCurrentSource();
-            if (idx < 0) {
-                // no current source, try to get source previously in panel
-                Source *cs = Mixer::manager().sourceAtIndex( selected_index );
-                if ( cs )
-                    idx = selected_index;
-                else {
-                    // really no source is current, try to get one from user selection
-                    cs = Mixer::selection().front();
-                    if ( cs )
-                        idx = Mixer::manager().session()->index( Mixer::manager().session()->find(cs) );
-                }
-            }
-            // if current source or a selected source, show it's pannel
-            if (idx >= 0)
-                showPannelSource( idx );
+            // revert to menu panel
+            togglePannelMenu();
+
+/// ALTERNATIVE : stay on source panel
+//            // get index of current source
+//            int idx = Mixer::manager().indexCurrentSource();
+//            if (idx < 0) {
+//                // no current source, try to get source previously in panel
+//                Source *cs = Mixer::manager().sourceAtIndex( selected_index );
+//                if ( cs )
+//                    idx = selected_index;
+//                else {
+//                    // really no source is current, try to get one from user selection
+//                    cs = Mixer::selection().front();
+//                    if ( cs )
+//                        idx = Mixer::manager().session()->index( Mixer::manager().session()->find(cs) );
+//                }
+//            }
+//            // if current source or a selected source, show it's pannel
+//            if (idx >= 0)
+//                showPannelSource( idx );
+
         }
     }
     // in the general mode,
@@ -4214,15 +4213,17 @@ void Navigator::RenderMainPannelSession()
         ImGui::EndCombo();
     }
     ImVec2 pos = ImGui::GetCursorPos();
-    ImGui::SameLine();
-    if ( Mixer::manager().session()->filename().empty()) {
-        if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save as"))
-            UserInterface::manager().saveOrSaveAs();
-    } else {
-        if (ImGuiToolkit::IconButton(2, 5, "Show in finder"))
-            SystemToolkit::open(SystemToolkit::path_filename(Mixer::manager().session()->filename()));
-    }
-    ImGui::SetCursorPos(pos);
+//    ImGui::SameLine();
+//    if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save"))
+//        UserInterface::manager().saveOrSaveAs();
+////    if ( Mixer::manager().session()->filename().empty()) {
+////        if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save as"))
+////            UserInterface::manager().saveOrSaveAs();
+////    } else {
+////        if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+////            SystemToolkit::open(SystemToolkit::path_filename(Mixer::manager().session()->filename()));
+////    }
+//    ImGui::SetCursorPos(pos);
 
     //
     // Preview session
@@ -5188,9 +5189,10 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
                          VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
 
-        ImGuiToolkit::HelpToolTip("Priority when buffer is full and recorder has to skip frames;\n"
+        ImGuiToolkit::Indication("Priority when buffer is full and recorder has to skip frames;\n"
                                  ICON_FA_CARET_RIGHT " Duration:\n  Variable framerate, correct duration.\n"
-                                 ICON_FA_CARET_RIGHT " Framerate:\n  Correct framerate,  shorter duration.");
+                                 ICON_FA_CARET_RIGHT " Framerate:\n  Correct framerate,  shorter duration.",
+                                 ICON_FA_CHECK_DOUBLE);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -5349,7 +5351,7 @@ void Navigator::RenderMainPannelSettings()
 
 #ifndef NDEBUG
         change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
-        change |= ImGuiToolkit::ButtonSwitch( "Antialiasing framebuffer", &multi);
+        change |= ImGuiToolkit::ButtonSwitch( "Multisample antialiasing", &multi);
 #endif
         if (change) {
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||

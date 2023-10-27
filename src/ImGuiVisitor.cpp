@@ -704,13 +704,24 @@ void ImGuiVisitor::visit (MediaSource& s)
             top.x += ImGui::GetFrameHeight();
         }
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(2, 5, "Show in finder"))
+        if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
-
-        ImGui::SetCursorPos(botom);
 
         MediaPlayer *mp = s.mediaplayer();
         if (mp && !mp->isImage()) {
+
+            // information on gstreamer effect filter
+            if ( mp->videoEffectAvailable() &&  !mp->videoEffect().empty()) {
+                top.x += ImGui::GetFrameHeight();
+                ImGui::SetCursorPos(top);
+                std::string desc = mp->videoEffect();
+                desc = desc.substr(0, desc.find_first_of(' '));
+                desc = "Has gstreamer effect '" + desc + "'";
+                ImGuiToolkit::Indication(desc.c_str(),16,16);
+            }
+
+            ImGui::SetCursorPos(botom);
+
             // Selector for Hardware or software decoding, if available
             if ( Settings::application.render.gpu_decoding ) {
 
@@ -744,6 +755,7 @@ void ImGuiVisitor::visit (MediaSource& s)
                 ImGui::SameLine();
                 ImGui::TextDisabled("Hardware decoding disabled");
             }
+
         }
 
     }
@@ -867,7 +879,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         }
 
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(2, 5, "Show in finder"))
+        if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
 
     }
@@ -1669,7 +1681,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
 
     // offer to open file browser at location
     ImGui::SetCursorPos(top);
-    if (ImGuiToolkit::IconButton(2, 5, "Show in finder"))
+    if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
         SystemToolkit::open(SystemToolkit::path_filename( s.sequence().location ));
 
     ImGui::SetCursorPos(botom);
