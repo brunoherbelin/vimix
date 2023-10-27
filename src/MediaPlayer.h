@@ -142,6 +142,7 @@ public:
      * Set the speed factor for playing
      * Can be negative.
      * */
+    void setRate(double s);
     void setPlaySpeed(double s);
     /**
      * Loop Mode: Behavior when reaching an extremity

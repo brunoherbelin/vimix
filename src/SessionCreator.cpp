@@ -894,16 +894,21 @@ void SessionLoader::visit(MediaPlayer &n)
             n.setTimeline(tl);
         }
 
+        // change play rate: will be activated in SessionLoader::visit (MediaSource& s)
+        double speed = 1.0;
+        mediaplayerNode->QueryDoubleAttribute("speed", &speed);
+        n.setRate(speed);
+
+        // change video effect only if effect given is different
+        const char *pFilter = mediaplayerNode->Attribute("video_effect");
+        if (pFilter) {
+            if (n.videoEffect().compare(pFilter) != 0) {
+                n.setVideoEffect(pFilter);
+            }
+        }
+
         // change play status only if different id (e.g. new media player)
         if ( n.id() != id__ ) {
-
-            const char *pFilter = mediaplayerNode->Attribute("video_effect");
-            if (pFilter)
-                n.setVideoEffect(std::string(pFilter));
-
-            double speed = 1.0;
-            mediaplayerNode->QueryDoubleAttribute("speed", &speed);
-            n.setPlaySpeed(speed);
 
             int loop = 1;
             mediaplayerNode->QueryIntAttribute("loop", &loop);
@@ -921,13 +926,14 @@ void SessionLoader::visit(MediaPlayer &n)
             mediaplayerNode->QueryIntAttribute("sync_to_metronome", &sync_to_metronome);
             n.setSyncToMetronome( (Metronome::Synchronicity) sync_to_metronome);
 
+            /// obsolete
             // only read media player play attribute if the source has no play attribute (backward compatibility)
             if ( !xmlCurrent_->Attribute( "play" ) ) {
                 bool play = true;
                 mediaplayerNode->QueryBoolAttribute("play", &play);
                 n.play(play);
             }
-        }
+        }        
     }
 }
 

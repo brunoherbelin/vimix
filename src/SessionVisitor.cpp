@@ -424,7 +424,6 @@ void SessionVisitor::visit(MediaPlayer &n)
     newelement->SetAttribute("id", n.id());
 
     if (!n.singleFrame()) {
-        newelement->SetAttribute("play", n.isPlaying());
         newelement->SetAttribute("loop", (int) n.loop());
         newelement->SetAttribute("speed", n.playSpeed());
         newelement->SetAttribute("video_effect", n.videoEffect().c_str());

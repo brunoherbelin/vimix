@@ -131,6 +131,7 @@ void SourceControlWindow::Update()
 
         for (auto source = selectedsources.begin(); source != selectedsources.end(); ++source)
             (*source)->play( n_play < n_source );
+        Action::manager().store( n_play < n_source ? "Sources Play" : "Sources Pause" );
 
         play_toggle_request_ = false;
     }
@@ -393,6 +394,7 @@ void SourceControlWindow::Render()
                 mediaplayer_timeline_zoom_ = 1.f;
                 mediaplayer_active_->timeline()->clearFading();
                 mediaplayer_active_->timeline()->clearGaps();
+                mediaplayer_active_->setVideoEffect("");
                 std::ostringstream oss;
                 oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
                 oss << ": Reset timeline";
@@ -419,7 +421,8 @@ void SourceControlWindow::Render()
 
             ImGui::Separator();
             if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect", nullptr,
-                                           false, mediaplayer_active_->videoEffectAvailable()) )
+                                           !mediaplayer_active_->videoEffect().empty(),
+                                           mediaplayer_active_->videoEffectAvailable()) )
                 mediaplayer_edit_pipeline_ = true;
 
             ImGui::EndMenu();
@@ -685,8 +688,10 @@ void SourceControlWindow::RenderSelection(size_t i)
                 ImVec2 image_top = ImGui::GetCursorPos();
                 const ImVec2 framesize(1.5f * timeline_height_ * (*source)->frame()->aspectRatio(), 1.5f * timeline_height_);
                 int action = SourceButton(*source, framesize);
-                if (action > 1)
+                if (action > 1) {
                     (*source)->play( ! (*source)->playing() );
+                    Action::manager().store((*source)->playing() ? "Source Play" : "Source Pause" );
+                }
                 else if (action > 0)
                     UserInterface::manager().showSourceEditor(*source);
 
@@ -840,8 +845,10 @@ void SourceControlWindow::RenderSelection(size_t i)
                 ///
                 const ImVec2 framesize(1.5f * timeline_height_ * (*source)->frame()->aspectRatio(), 1.5f * timeline_height_);
                 int action = SourceButton(*source, framesize);
-                if (action > 1)
-                    (*source)->play( ! (*source)->playing() );
+                if (action > 1) {
+                    (*source)->play( ! (*source)->playing() );                    
+                    Action::manager().store((*source)->playing() ? "Source Play" : "Source Pause" );
+                }
                 else if (action > 0)
                     UserInterface::manager().showSourceEditor(*source);
 
@@ -1240,8 +1247,10 @@ void SourceControlWindow::RenderSelectedSources()
                 ImVec2 image_top = ImGui::GetCursorPos();
                 ImVec2 framesize(widthcolumn, widthcolumn / (*source)->frame()->aspectRatio());
                 int action = SourceButton(*source, framesize);
-                if (action > 1)
-                    (*source)->play( ! (*source)->playing() );
+                if (action > 1) {
+                    (*source)->play( ! (*source)->playing() );                    
+                    Action::manager().store((*source)->playing() ? "Source Play" : "Source Pause" );
+                }
                 else if (action > 0)
                     UserInterface::manager().showSourceEditor(*source);
 
@@ -1702,8 +1711,11 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         // display buttons Play/Stop depending on current playing mode
         ImGui::SameLine(0, h_space_);
         if (mediaplayer_mode_) {
-            if (ImGui::Button(ICON_FA_PAUSE))
+            if (ImGui::Button(ICON_FA_PAUSE)){
                 mediaplayer_mode_ = false;
+                oss << ": Pause";
+                Action::manager().store(oss.str());
+            }
             ImGui::SameLine(0, h_space_);
 
             ImGui::PushButtonRepeat(true);
@@ -1712,8 +1724,11 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::PopButtonRepeat();
         }
         else {
-            if (ImGui::Button(ICON_FA_PLAY))
+            if (ImGui::Button(ICON_FA_PLAY)) {
                 mediaplayer_mode_ = true;
+                oss << ": Play";
+                Action::manager().store(oss.str());
+            }
             ImGui::SameLine(0, h_space_);
 
             ImGui::PushButtonRepeat(true);
@@ -1926,7 +1941,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         _effect_description = mediaplayer_active_->videoEffect();
         _effect_description_changed = true;
     }
-    const ImVec2 mpp_dialog_size(buttons_width_ * 3.f, buttons_height_ * 6);
+    const ImVec2 mpp_dialog_size(buttons_width_ * 3.f, buttons_height_ * 6.2f);
     ImGui::SetNextWindowSize(mpp_dialog_size, ImGuiCond_Always);
     const ImVec2 mpp_dialog_pos = top + rendersize * 0.5f  - mpp_dialog_size * 0.5f;
     ImGui::SetNextWindowPos(mpp_dialog_pos, ImGuiCond_Always);
@@ -2028,7 +2043,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         if (_status > 1) {
             // On Error
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.2, 0.2, 0.95f));
-            ImGui::Text("Error - %s", _status_message.c_str());
+            ImGui::TextWrapped("Error - %s", _status_message.c_str());
             ImGui::PopStyleColor(1);
         }
         else if (_status > 0) {
@@ -2052,6 +2067,8 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
                 // apply to pipeline
                 mediaplayer_active_->setVideoEffect(_effect_description);
+                oss << " gst effect";
+                Action::manager().store(oss.str());
             }
             ImGui::PopStyleColor(1);
         }
@@ -2160,12 +2177,14 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
             if (ImGui::Button(ICON_FA_PAUSE) && enabled) {
                 for (auto source = selection_.begin(); source != selection_.end(); ++source)
                     (*source)->play(false);
+                Action::manager().store("Sources Pause");
             }
         }
         else {
             if (ImGui::Button(ICON_FA_PLAY) && enabled){
                 for (auto source = selection_.begin(); source != selection_.end(); ++source)
                     (*source)->play(true);
+                Action::manager().store("Sources Play");
             }
         }
     }
@@ -2174,11 +2193,13 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
         if (ImGui::Button(ICON_FA_PLAY) && enabled) {
             for (auto source = selection_.begin(); source != selection_.end(); ++source)
                 (*source)->play(true);
+            Action::manager().store("Sources Play");
         }
         ImGui::SameLine(0, h_space_);
         if (ImGui::Button(ICON_FA_PAUSE) && enabled) {
             for (auto source = selection_.begin(); source != selection_.end(); ++source)
                 (*source)->play(false);
+            Action::manager().store("Sources Pause");
         }
     }
     ImGui::SameLine(0, h_space_);

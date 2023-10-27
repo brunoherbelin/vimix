@@ -302,7 +302,7 @@ void MediaPlayer::open (const std::string & filename, const std::string &uri)
 void MediaPlayer::reopen()
 {
     // re-openning is meaningfull only if it was already open
-    if (pipeline_ != nullptr) {
+    if (pipeline_ != nullptr && opened_) {
         // reload : terminate pipeline and re-create it
         close();
         execute_open();
@@ -1348,7 +1348,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
 #endif
     }
     else
-        Log::Warning("MediaPlayer %s Seek failed", std::to_string(id_).c_str());
+        Log::Info("MediaPlayer %s Seek failed", std::to_string(id_).c_str());
 
     // Force update
     if (force) {
@@ -1359,6 +1359,15 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
 }
 
 
+void MediaPlayer::setRate(double s)
+{
+    // bound to interval [-MAX_PLAY_SPEED MAX_PLAY_SPEED]
+    rate_ = CLAMP(s, -MAX_PLAY_SPEED, MAX_PLAY_SPEED);
+    // skip interval [-MIN_PLAY_SPEED MIN_PLAY_SPEED]
+    if (ABS(rate_) < MIN_PLAY_SPEED)
+        rate_ = SIGN(rate_) * MIN_PLAY_SPEED;
+
+}
 
 void MediaPlayer::setPlaySpeed(double s)
 {
@@ -1367,11 +1376,7 @@ void MediaPlayer::setPlaySpeed(double s)
 #endif
 
     // Set rate to requested value (may be executed later)
-    // bound to interval [-MAX_PLAY_SPEED MAX_PLAY_SPEED]
-    rate_ = CLAMP(s, -MAX_PLAY_SPEED, MAX_PLAY_SPEED);
-    // skip interval [-MIN_PLAY_SPEED MIN_PLAY_SPEED]
-    if (ABS(rate_) < MIN_PLAY_SPEED)
-        rate_ = SIGN(rate_) * MIN_PLAY_SPEED;
+    setRate(s);
 
     // discard if too early or not possible
     if (pipeline_ == nullptr || !media_.seekable)

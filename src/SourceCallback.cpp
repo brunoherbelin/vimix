@@ -551,7 +551,7 @@ void PlaySpeed::writeValue(Source *s, float val)
 {
     // access media player if target source is a media source
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
-    if (ms != nullptr) {
+    if (ms != nullptr && ms->ready()) {
         ms->mediaplayer()->setPlaySpeed((double) val);
     }
 }
