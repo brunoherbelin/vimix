@@ -173,6 +173,14 @@ void MediaSource::update(float dt)
 
     // update video
     mediaplayer_->update();
+
+    // update audio
+    if (mediaplayer_->audioEnabled() ) {
+        // apply alpha as volume factor 1
+        mediaplayer_->setAudioVolumeFactor(1, alpha());
+        // apply opacity as volume factor 2
+        mediaplayer_->setAudioVolumeFactor(2, mediaplayer_->currentTimelineFading());
+    }
 }
 
 void MediaSource::render()

@@ -898,6 +898,9 @@ void SessionLoader::visit(MediaPlayer &n)
         int audiovolume = 100;
         mediaplayerNode->QueryIntAttribute("audio_volume", &audiovolume);
         n.setAudioVolume(audiovolume);
+        int audiomix = 0;
+        mediaplayerNode->QueryIntAttribute("audio_mix", &audiomix);
+        n.setAudioVolumeMix( (MediaPlayer::VolumeFactorsMix) audiomix);
         bool audioenabled = false;
         mediaplayerNode->QueryBoolAttribute("audio", &audioenabled);
         n.setAudioEnabled(audioenabled);

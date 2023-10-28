@@ -75,7 +75,10 @@ MediaPlayer::MediaPlayer()
 
     // default audio disabled
     audio_enabled_ = false;
-    audio_volume_ = 100;
+    audio_volume_[0] = 1.f;
+    audio_volume_[1] = 1.f;
+    audio_volume_[2] = 1.f;
+    audio_volume_mix_ = VOLUME_ONLY;
 
     // start index in frame_ stack
     write_index_ = 0;
@@ -483,6 +486,9 @@ void MediaPlayer::execute_open()
         Log::Info("MediaPlayer %s Audio track %s", std::to_string(id_).c_str(), audio_enabled_ ? "enabled" : "disabled");
 
     opened_ = true;
+
+    // set volume
+    setAudioVolume();
 
     // register media player
     MediaPlayer::registered_.push_back(this);
@@ -1686,8 +1692,6 @@ void MediaPlayer::setAudioEnabled(bool on)
         if (media_.hasaudio ) {
             // apply
             reopen();
-            // reset volume
-            setAudioVolume(audio_volume_);
         }
     }
 }
@@ -1695,12 +1699,50 @@ void MediaPlayer::setAudioEnabled(bool on)
 void MediaPlayer::setAudioVolume(int vol)
 {
     // set value
-    audio_volume_ = CLAMP(vol, 0, 100);
+    if ( !(vol < 0) )
+        audio_volume_[0] = CLAMP( (float)(vol) * 0.01f, 0.f, 1.f);
 
     // apply value
-    if (pipeline_ && media_.hasaudio)
-        gst_stream_volume_set_volume (GST_STREAM_VOLUME (pipeline_), GST_STREAM_VOLUME_FORMAT_LINEAR, gdouble(audio_volume_) * 0.01);
+    if (pipeline_ && media_.hasaudio) {
 
+        // base volume
+        gdouble new_vol = (gdouble) (audio_volume_[0]);
+
+        // apply factors
+        if ( audio_volume_mix_ == MediaPlayer::VOLUME_MULT_BOTH )
+            new_vol *= (gdouble) (audio_volume_[1] * audio_volume_[2]);
+        else if ( audio_volume_mix_ == MediaPlayer::VOLUME_MULT_2 )
+            new_vol *= (gdouble) (audio_volume_[2]);
+        else if ( audio_volume_mix_ == MediaPlayer::VOLUME_MULT_1 )
+            new_vol *= (gdouble) (audio_volume_[1]);
+
+        gst_stream_volume_set_volume (GST_STREAM_VOLUME (pipeline_), GST_STREAM_VOLUME_FORMAT_LINEAR, new_vol);
+    }
+}
+
+void MediaPlayer::setAudioVolumeMix(VolumeFactorsMix m)
+{
+    audio_volume_mix_ = m;
+    setAudioVolume();
+}
+
+void MediaPlayer::setAudioVolumeFactor(uint index, float value)
+{
+    if (index > 2)
+        return;
+
+    if ( ABS_DIFF( audio_volume_[index], value ) > EPSILON ) {
+
+        // set value
+        audio_volume_[index] = CLAMP(value, 0.f, 1.f);
+
+        // apply value
+        if ( audio_volume_mix_ == MediaPlayer::VOLUME_MULT_BOTH ||
+             (index == 1 && audio_volume_mix_ == MediaPlayer::VOLUME_MULT_1) ||
+             (index == 2 && audio_volume_mix_ == MediaPlayer::VOLUME_MULT_2) ) {
+            setAudioVolume();
+        }
+    }
 }
 
 //static void audio_changed_callback (GstElement *pipeline, MediaPlayer *mp)

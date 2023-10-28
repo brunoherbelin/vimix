@@ -796,11 +796,18 @@ void ImGuiVisitor::visit (MediaSource& s)
                     if (ImGuiToolkit::TextButton("Volume")) {
                         mp->setAudioVolume(100);
                     }
+
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    int m = mp->audioVolumeMix();
+                    if ( ImGui::Combo("##Multiplier", &m, "None\0Alpha\0Opacity\0Alpha * Opacity\0")  ) {
+                        mp->setAudioVolumeMix( (MediaPlayer::VolumeFactorsMix) m );
+                    }
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    if (ImGuiToolkit::TextButton("Multiplier")) {
+                        mp->setAudioVolumeMix( MediaPlayer::VOLUME_ONLY );
+                    }
                 }
-
             }
-
-
         }
 
     }

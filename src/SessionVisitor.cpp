@@ -426,6 +426,7 @@ void SessionVisitor::visit(MediaPlayer &n)
     if (n.audioAvailable()) {
         newelement->SetAttribute("audio", n.audioEnabled());
         newelement->SetAttribute("audio_volume", n.audioVolume());
+        newelement->SetAttribute("audio_mix", (int) n.audioVolumeMix());
     }
 
     if (!n.singleFrame()) {

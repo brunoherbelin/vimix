@@ -271,10 +271,20 @@ public:
      * NB: setAudioEnabled reopens the video
      * */
     void setAudioEnabled(bool on);
-    void setAudioVolume(int vol);
+    void setAudioVolume(int vol = -1);
+    void setAudioVolumeFactor(uint index, float value);
+    typedef enum  {
+        VOLUME_ONLY = 0,
+        VOLUME_MULT_1 = 1,
+        VOLUME_MULT_2 = 2,
+        VOLUME_MULT_BOTH = 3
+    } VolumeFactorsMix;
+    void setAudioVolumeMix(VolumeFactorsMix m);
+    inline VolumeFactorsMix audioVolumeMix() const { return audio_volume_mix_; }
     inline bool audioEnabled() const { return audio_enabled_; }
-    inline int  audioVolume()  const { return audio_volume_; }
+    inline int  audioVolume()  const { return (int) (audio_volume_[0] * 100.f); }
     inline bool audioAvailable() const { return media_.hasaudio; }
+
     /**
      * Accept visitors
      * */
@@ -320,11 +330,14 @@ private:
     bool enabled_;
     bool rewind_on_disable_;
     bool force_software_decoding_;
-    bool audio_enabled_;
-    int  audio_volume_;
     std::string decoder_name_;
     bool video_filter_available_;
     std::string video_filter_;
+
+    // audio
+    bool audio_enabled_;
+    float audio_volume_[3];
+    VolumeFactorsMix audio_volume_mix_;
 
     // Play speed
     gdouble rate_;
