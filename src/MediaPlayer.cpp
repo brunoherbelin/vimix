@@ -30,6 +30,7 @@
 #include "BaseToolkit.h"
 #include "GstToolkit.h"
 #include "Metronome.h"
+#include "Settings.h"
 
 #include "MediaPlayer.h"
 
@@ -71,6 +72,10 @@ MediaPlayer::MediaPlayer()
     video_filter_available_ = true;
     position_ = GST_CLOCK_TIME_NONE;
     loop_ = LoopMode::LOOP_REWIND;
+
+    // default audio disabled
+    audio_enabled_ = false;
+    audio_volume_ = 100;
 
     // start index in frame_ stack
     write_index_ = 0;
@@ -241,6 +246,11 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
                     video_stream_info.log = "No video stream";
 
                 gst_discoverer_stream_info_list_free(streams);
+
+                // test audio
+                GList *audios = gst_discoverer_info_get_audio_streams(info);
+                video_stream_info.hasaudio = g_list_length(audios) > 0 && Settings::application.accept_audio;
+                gst_discoverer_stream_info_list_free(audios);
             }
 
             if (info)
@@ -347,6 +357,8 @@ void MediaPlayer::execute_open()
     gint flags;
     // ENABLE ONLY VIDEO, NOT AUDIO AND TEXT SUBTITLES
     flags = GST_PLAY_FLAG_VIDEO;
+    if (media_.hasaudio && audio_enabled_)
+        flags |= GST_PLAY_FLAG_AUDIO;
     // ENABLE DEINTERLACING
     if (media_.interlaced)
         flags |= GST_PLAY_FLAG_DEINTERLACE;
@@ -466,6 +478,9 @@ void MediaPlayer::execute_open()
     if (!singleFrame())
         Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
                   timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
+
+    if (media_.hasaudio)
+        Log::Info("MediaPlayer %s Audio track %s", std::to_string(id_).c_str(), audio_enabled_ ? "enabled" : "disabled");
 
     opened_ = true;
 
@@ -1659,6 +1674,34 @@ void MediaPlayer::TimeCounter::tic ()
     }
 }
 
+
+void MediaPlayer::setAudioEnabled(bool on)
+{
+    // in case of change
+    if (audio_enabled_ != on) {
+        // toggle
+        audio_enabled_ = on;
+
+        // if openned
+        if (media_.hasaudio ) {
+            // apply
+            reopen();
+            // reset volume
+            setAudioVolume(audio_volume_);
+        }
+    }
+}
+
+void MediaPlayer::setAudioVolume(int vol)
+{
+    // set value
+    audio_volume_ = CLAMP(vol, 0, 100);
+
+    // apply value
+    if (pipeline_ && media_.hasaudio)
+        gst_stream_volume_set_volume (GST_STREAM_VOLUME (pipeline_), GST_STREAM_VOLUME_FORMAT_LINEAR, gdouble(audio_volume_) * 0.01);
+
+}
 
 //static void audio_changed_callback (GstElement *pipeline, MediaPlayer *mp)
 //{

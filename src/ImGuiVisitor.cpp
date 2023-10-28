@@ -743,9 +743,13 @@ void ImGuiVisitor::visit (MediaSource& s)
                 {
                     if (ImGui::Selectable( ICON_FA_MICROCHIP " / " ICON_FA_COGS " Auto select", &hwdec ))
                         mp->setSoftwareDecodingForced(false);
+                    if (ImGui::IsItemHovered() && !hwdec)
+                        ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
                     hwdec = mp->softwareDecodingForced();
                     if (ImGui::Selectable( ICON_FA_COGS " Software only", &hwdec ))
                         mp->setSoftwareDecodingForced(true);
+                    if (ImGui::IsItemHovered() && !hwdec)
+                        ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
                     ImGui::EndCombo();
                 }
             }
@@ -755,6 +759,47 @@ void ImGuiVisitor::visit (MediaSource& s)
                 ImGui::SameLine();
                 ImGui::TextDisabled("Hardware decoding disabled");
             }
+
+            // enable / disable audio if available
+            if (mp->audioAvailable()) {
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::BeginCombo("Audio", mp->audioEnabled() ? ICON_FA_VOLUME_UP " Enabled" : ICON_FA_VOLUME_MUTE " Disabled" ) )
+                {
+                    if (ImGui::Selectable( ICON_FA_VOLUME_UP " Enable", mp->audioEnabled() ))
+                        mp->setAudioEnabled(true);
+                    if (ImGui::IsItemHovered() && !mp->audioEnabled())
+                        ImGuiToolkit::ToolTip( "Changing audio will\nre-open the media" );
+
+                    if (ImGui::Selectable( ICON_FA_VOLUME_MUTE " Disable", !mp->audioEnabled() ))
+                        mp->setAudioEnabled(false);
+                    if (ImGui::IsItemHovered() && mp->audioEnabled())
+                        ImGuiToolkit::ToolTip( "Changing audio will\nre-open the media" );
+                    ImGui::EndCombo();
+                }
+
+                if (mp->audioEnabled()) {
+
+                    ImGuiIO& io = ImGui::GetIO();
+                    ///
+                    /// AUDIO VOLUME
+                    ///
+                    int vol = mp->audioVolume();
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    if ( ImGui::SliderInt("##Volume", &vol, 0, 100, "%d%%") )
+                        mp->setAudioVolume(vol);
+                    if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+                        vol = CLAMP(vol + int(10.f * io.MouseWheel), 0, 100);
+                        mp->setAudioVolume(vol);
+                    }
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    if (ImGuiToolkit::TextButton("Volume")) {
+                        mp->setAudioVolume(100);
+                    }
+                }
+
+            }
+
 
         }
 

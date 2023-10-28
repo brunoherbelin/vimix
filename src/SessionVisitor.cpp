@@ -423,6 +423,11 @@ void SessionVisitor::visit(MediaPlayer &n)
     XMLElement *newelement = xmlDoc_->NewElement("MediaPlayer");
     newelement->SetAttribute("id", n.id());
 
+    if (n.audioAvailable()) {
+        newelement->SetAttribute("audio", n.audioEnabled());
+        newelement->SetAttribute("audio_volume", n.audioVolume());
+    }
+
     if (!n.singleFrame()) {
         newelement->SetAttribute("loop", (int) n.loop());
         newelement->SetAttribute("speed", n.playSpeed());

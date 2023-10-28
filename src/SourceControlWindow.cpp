@@ -1511,7 +1511,11 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::PopStyleColor(1);
 
         ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));
-        ImGui::Text("%s", ms->initials());
+        if ( mediaplayer_active_->audioEnabled())
+            // Icon to inform audio decoding
+            ImGui::Text("%s " ICON_FA_VOLUME_UP, ms->initials());
+        else
+            ImGui::Text("%s", ms->initials());
         ImGui::PopFont();
     }
     if (!magnifying_glass) {
@@ -1531,6 +1535,12 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             draw_list->AddRectFilled(imgarea.GetTL(), imgarea.GetTL() + ImVec2(imgarea.GetWidth(), tooltip_height), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));
             ImGui::Text("%s", info_.str().c_str());
+
+            // Icon to inform audio decoding
+            if ( mediaplayer_active_->audioEnabled()) {
+                ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2( imgarea.GetWidth() - 2.f * ImGui::GetTextLineHeightWithSpacing(), 0.35f * tooltip_height));
+                ImGui::Text(ICON_FA_VOLUME_UP);
+            }
 
             // Icon to inform hardware decoding
             if ( mediaplayer_active_->decoderName().compare("software") != 0) {

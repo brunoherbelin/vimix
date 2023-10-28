@@ -37,6 +37,7 @@ struct MediaInfo {
     GstClockTime dt;
     GstClockTime end;
     std::string log;
+    bool hasaudio;
 
     MediaInfo() {
         width = par_width = 1;
@@ -49,6 +50,7 @@ struct MediaInfo {
         interlaced = false;
         seekable = false;
         valid = false;
+        hasaudio = false;
         dt  = GST_CLOCK_TIME_NONE;
         end = GST_CLOCK_TIME_NONE;
         log = "";
@@ -265,6 +267,15 @@ public:
     inline std::string videoEffect() { return video_filter_; }
     inline bool videoEffectAvailable() { return video_filter_available_; }
     /**
+     * Enables or disables audio
+     * NB: setAudioEnabled reopens the video
+     * */
+    void setAudioEnabled(bool on);
+    void setAudioVolume(int vol);
+    inline bool audioEnabled() const { return audio_enabled_; }
+    inline int  audioVolume()  const { return audio_volume_; }
+    inline bool audioAvailable() const { return media_.hasaudio; }
+    /**
      * Accept visitors
      * */
     void accept(Visitor& v);
@@ -309,6 +320,8 @@ private:
     bool enabled_;
     bool rewind_on_disable_;
     bool force_software_decoding_;
+    bool audio_enabled_;
+    int  audio_volume_;
     std::string decoder_name_;
     bool video_filter_available_;
     std::string video_filter_;

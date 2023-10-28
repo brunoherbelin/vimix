@@ -894,6 +894,14 @@ void SessionLoader::visit(MediaPlayer &n)
             n.setTimeline(tl);
         }
 
+        // audio
+        int audiovolume = 100;
+        mediaplayerNode->QueryIntAttribute("audio_volume", &audiovolume);
+        n.setAudioVolume(audiovolume);
+        bool audioenabled = false;
+        mediaplayerNode->QueryBoolAttribute("audio", &audioenabled);
+        n.setAudioEnabled(audioenabled);
+
         // change play rate: will be activated in SessionLoader::visit (MediaSource& s)
         double speed = 1.0;
         mediaplayerNode->QueryDoubleAttribute("speed", &speed);

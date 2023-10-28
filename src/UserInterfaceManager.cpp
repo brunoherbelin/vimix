@@ -5330,15 +5330,13 @@ void Navigator::RenderMainPannelSettings()
         // System preferences
         //
         ImGuiToolkit::Spacing();
-//        ImGuiToolkit::HelpMarker("If you encounter some rendering issues on your machine, "
-//                                 "you can try to disable some of the OpenGL optimizations below.");
-//        ImGui::SameLine();
         ImGui::TextDisabled("System");
 
         static bool need_restart = false;
         static bool vsync = (Settings::application.render.vsync > 0);
         static bool multi = (Settings::application.render.multisampling > 0);
         static bool gpu = Settings::application.render.gpu_decoding;
+        static bool audio = Settings::application.accept_audio;
         bool change = false;
         // hardware support deserves more explanation
         ImGuiToolkit::Indication("If enabled, tries to find a platform adapted hardware-accelerated "
@@ -5349,14 +5347,21 @@ void Navigator::RenderMainPannelSettings()
         else
             ImGui::TextDisabled("Hardware en/decoding unavailable");
 
+        // audio support deserves more explanation
+        ImGuiToolkit::Indication("If enabled, tries to find audio in openned videos "
+                                 "and allows enabling audio for each source.", ICON_FA_VOLUME_OFF);
+        ImGui::SameLine(0);
+        change |= ImGuiToolkit::ButtonSwitch( "Audio support", &audio);
+
 #ifndef NDEBUG
         change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Multisample antialiasing", &multi);
 #endif
         if (change) {
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
-                 multi != (Settings::application.render.multisampling > 0) ||
-                 gpu != Settings::application.render.gpu_decoding );
+                    multi != (Settings::application.render.multisampling > 0) ||
+                    gpu != Settings::application.render.gpu_decoding ||
+                    audio != Settings::application.accept_audio );
         }
         if (need_restart) {
             ImGuiToolkit::Spacing();
@@ -5364,6 +5369,7 @@ void Navigator::RenderMainPannelSettings()
                 Settings::application.render.vsync = vsync ? 1 : 0;
                 Settings::application.render.multisampling = multi ? 3 : 0;
                 Settings::application.render.gpu_decoding = gpu;
+                Settings::application.accept_audio = audio;
                 if (UserInterface::manager().TryClose())
                     Rendering::manager().close();
             }

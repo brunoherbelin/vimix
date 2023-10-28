@@ -295,6 +295,9 @@ struct Application
     int shm_method;
     std::string shm_socket_path;
 
+    // audio
+    bool accept_audio;
+
     // Settings of widgets
     WidgetsConfig widget;
 
@@ -369,6 +372,7 @@ struct Application
         windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
         windows[0].w = 1600;
         windows[0].h = 900;
+        accept_audio = true;
     }
 
 };
