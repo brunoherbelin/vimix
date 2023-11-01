@@ -207,7 +207,7 @@ void Connection::ask()
     osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
     p.Clear();
     p << osc::BeginMessage( OSC_PREFIX OSC_PING );
-    p << Connection::manager().connections_[0].port_handshake;
+    p << (osc::int32) Connection::manager().connections_[0].port_handshake;
     p << osc::EndMessage;
 
     UdpSocket socket;
@@ -277,9 +277,9 @@ void Connection::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 p.Clear();
                 p << osc::BeginMessage( OSC_PREFIX OSC_PONG );
                 p << Connection::manager().connections_[0].name.c_str();
-                p << Connection::manager().connections_[0].port_handshake;
-                p << Connection::manager().connections_[0].port_stream_request;
-                p << Connection::manager().connections_[0].port_osc;
+                p << (osc::int32) Connection::manager().connections_[0].port_handshake;
+                p << (osc::int32) Connection::manager().connections_[0].port_stream_request;
+                p << (osc::int32) Connection::manager().connections_[0].port_osc;
                 p << osc::EndMessage;
 
                 // send OSC message to port indicated by remote
@@ -327,7 +327,7 @@ void Connection::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
     catch( osc::Exception& e ){
         // any parsing errors such as unexpected argument types, or
         // missing arguments get thrown as exceptions.
-        Log::Info("error while parsing message '%s' from %s : %s", m.AddressPattern(), sender, e.what());
+        Log::Info("Error while parsing message '%s' from %s : %s", m.AddressPattern(), sender, e.what());
     }
 }
 
