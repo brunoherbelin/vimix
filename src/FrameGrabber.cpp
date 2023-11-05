@@ -320,7 +320,8 @@ void FrameGrabber::stop ()
     active_ = false;
 
     // send end of stream
-    gst_app_src_end_of_stream (src_);
+    gst_element_send_event (pipeline_, gst_event_new_eos ());
+
 }
 
 std::string FrameGrabber::info() const

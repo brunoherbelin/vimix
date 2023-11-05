@@ -193,6 +193,7 @@ void Settings::Save(uint64_t runtime)
     RecordNode->SetAttribute("buffering_mode", application.record.buffering_mode);
     RecordNode->SetAttribute("priority_mode", application.record.priority_mode);
     RecordNode->SetAttribute("naming_mode", application.record.naming_mode);
+    RecordNode->SetAttribute("audio_device", application.record.audio_device.c_str());
     pRoot->InsertEndChild(RecordNode);
 
     // Transition
@@ -500,6 +501,12 @@ void Settings::Load()
             application.record.path = std::string(path_);
         else
             application.record.path = SystemToolkit::home_path();
+
+        const char *dev_ = recordnode->Attribute("audio_device");
+        if (dev_)
+            application.record.audio_device = std::string(dev_);
+        else
+            application.record.audio_device = "";
     }
 
     // Source

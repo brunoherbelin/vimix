@@ -482,13 +482,13 @@ void MediaPlayer::execute_open()
         Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
                   timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
 
-    if (media_.hasaudio)
+    if (media_.hasaudio) {
         Log::Info("MediaPlayer %s Audio track %s", std::to_string(id_).c_str(), audio_enabled_ ? "enabled" : "disabled");
+        if (audio_enabled_)
+            setAudioVolume();
+    }
 
     opened_ = true;
-
-    // set volume
-    setAudioVolume();
 
     // register media player
     MediaPlayer::registered_.push_back(this);
@@ -1716,7 +1716,9 @@ void MediaPlayer::setAudioVolume(int vol)
         else if ( audio_volume_mix_ == MediaPlayer::VOLUME_MULT_1 )
             new_vol *= (gdouble) (audio_volume_[1]);
 
-        gst_stream_volume_set_volume (GST_STREAM_VOLUME (pipeline_), GST_STREAM_VOLUME_FORMAT_LINEAR, new_vol);
+
+        g_object_set ( G_OBJECT (pipeline_), "volume", new_vol, NULL);
+//        gst_stream_volume_set_volume (GST_STREAM_VOLUME (pipeline_), GST_STREAM_VOLUME_FORMAT_LINEAR, new_vol);
     }
 }
 

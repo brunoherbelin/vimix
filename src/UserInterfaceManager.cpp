@@ -78,6 +78,7 @@
 #include "MultiFileRecorder.h"
 #include "MousePointer.h"
 #include "Playlist.h"
+#include "Audio.h"
 
 #include "UserInterfaceManager.h"
 
@@ -5132,248 +5133,294 @@ void Navigator::RenderMainPannelPlaylist()
 
 void Navigator::RenderMainPannelSettings()
 {
-        //
-        // Appearance
-        //
-        ImGui::Text("Settings");
-        int v = Settings::application.accent_color;
-        ImGui::Spacing();
-        ImGui::SetCursorPosX(0.5f * width_);
-        if (ImGui::RadioButton("##Color", &v, v)){
-            Settings::application.accent_color = (v+1)%3;
-            ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
-            // ask Views to update
-            View::need_deep_update_++;
+    //
+    // Appearance
+    //
+    ImGui::Text("Settings");
+    int v = Settings::application.accent_color;
+    ImGui::Spacing();
+    ImGui::SetCursorPosX(0.5f * width_);
+    if (ImGui::RadioButton("##Color", &v, v)){
+        Settings::application.accent_color = (v+1)%3;
+        ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+        // ask Views to update
+        View::need_deep_update_++;
+    }
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip("Change accent color");
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(width_);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if ( ImGui::InputFloat("Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
+        Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 2.f);
+        ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+    }
+    ImGuiToolkit::Indication("Scale the mouse pointer guiding grid to match aspect ratio.", ICON_FA_BORDER_NONE);
+    ImGui::SameLine();
+    ImGuiToolkit::ButtonSwitch( "Scaled grid", &Settings::application.proportional_grid);
+
+    //
+    // Recording preferences
+    //
+    ImGui::TextDisabled("Recording");
+
+    // select CODEC and FPS
+    ImGui::SetCursorPosX(width_);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::Combo("Codec", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
+
+    ImGui::SetCursorPosX(width_);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::Combo("Framerate", &Settings::application.record.framerate_mode, VideoRecorder::framerate_preset_name, IM_ARRAYSIZE(VideoRecorder::framerate_preset_name) );
+
+    // compute number of frames in buffer and show warning sign if too low
+    const FrameBuffer *output = Mixer::manager().session()->frame();
+    if (output) {
+        guint64 nb = 0;
+        nb = VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode] / (output->width() * output->height() * 4);
+        char buf[512]; snprintf(buf, 512, "Buffer at %s can contain %ld frames (%dx%d), i.e. %.1f sec", VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode],
+                 (unsigned long)nb, output->width(), output->height(),
+                 (float)nb / (float) VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode] );
+        ImGuiToolkit::Indication(buf, 4, 6);
+        ImGui::SameLine(0);
+    }
+
+    ImGui::SetCursorPosX(width_);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
+                     VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
+
+    ImGuiToolkit::Indication("Priority when buffer is full and recorder has to skip frames;\n"
+                             ICON_FA_CARET_RIGHT " Duration:\n  Variable framerate, correct duration.\n"
+                             ICON_FA_CARET_RIGHT " Framerate:\n  Correct framerate,  shorter duration.",
+                             ICON_FA_CHECK_DOUBLE);
+    ImGui::SameLine(0);
+    ImGui::SetCursorPosX(width_);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Duration\0Framerate\0");
+
+    //
+    // AUDIO
+    //
+    if (Settings::application.accept_audio) {
+
+        // Displayed name of current audio device
+        std::string current_audio = "None";
+        if (!Settings::application.record.audio_device.empty()) {
+            if (Audio::manager().exists(Settings::application.record.audio_device))
+                current_audio = Settings::application.record.audio_device;
+            else
+                Settings::application.record.audio_device = "";
         }
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Change accent color");
-        ImGui::SameLine();
+
+        // help indication
+        ImGuiToolkit::Indication("Select the audio to merge into the recording;\n"
+                                 ICON_FA_MICROPHONE_ALT_SLASH " no audio\n "
+                                 ICON_FA_MICROPHONE_ALT "  a microphone input\n "
+                                 ICON_FA_VOLUME_DOWN "  an audio output",
+                                 ICON_FA_MUSIC);
+        ImGui::SameLine(0);
+
+        // Combo selector of audio device
         ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::InputFloat("Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
-            Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 2.f);
-            ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+        if (ImGui::BeginCombo("Audio", current_audio.c_str())) {
+            // No audio selection
+            if (ImGui::Selectable(ICON_FA_MICROPHONE_ALT_SLASH " None"))
+                Settings::application.record.audio_device = "";
+            // list of devices from Audio manager
+            for (int d = 0; d < Audio::manager().numDevices(); ++d) {
+                std::string namedev = Audio::manager().name(d);
+                std::string labeldev = (Audio::manager().is_monitor(d) ? ICON_FA_VOLUME_DOWN "  "
+                                                                       : ICON_FA_MICROPHONE_ALT "  ")
+                                       + namedev;
+                if (ImGui::Selectable(labeldev.c_str())) {
+                    Settings::application.record.audio_device = namedev;
+                }
+            }
+            ImGui::EndCombo();
         }
-        ImGuiToolkit::Indication("Scale the mouse pointer guiding grid to match aspect ratio.", ICON_FA_BORDER_NONE);
-        ImGui::SameLine();
-        ImGuiToolkit::ButtonSwitch( "Scaled grid", &Settings::application.proportional_grid);
+        if (!Settings::application.record.audio_device.empty() && ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip(current_audio.c_str());
 
-        //
-        // Recording preferences
-        //
-        ImGui::TextDisabled("Recording");
+    }
 
-        // select CODEC and FPS
-        ImGui::SetCursorPosX(width_);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("Codec", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
+    //
+    // Steaming preferences
+    //
+    ImGuiToolkit::Spacing();
+    ImGui::TextDisabled("Stream");
 
-        ImGui::SetCursorPosX(width_);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("Framerate", &Settings::application.record.framerate_mode, VideoRecorder::framerate_preset_name, IM_ARRAYSIZE(VideoRecorder::framerate_preset_name) );
+    ImGuiToolkit::Indication("Peer-to-peer sharing local network\n\n"
+                             "vimix can stream JPEG (default) or H264 (less bandwidth, higher encoding cost)", ICON_FA_SHARE_ALT_SQUARE);
+    ImGui::SameLine(0);
+    ImGui::SetCursorPosX(width_);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::Combo("P2P codec", &Settings::application.stream_protocol, "JPEG\0H264\0");
 
-        // compute number of frames in buffer and show warning sign if too low
-        const FrameBuffer *output = Mixer::manager().session()->frame();
-        if (output) {
-            guint64 nb = 0;
-            nb = VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode] / (output->width() * output->height() * 4);
-            char buf[512]; snprintf(buf, 512, "Buffer at %s can contain %ld frames (%dx%d), i.e. %.1f sec", VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode],
-                                   (unsigned long)nb, output->width(), output->height(),
-                                   (float)nb / (float) VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode] );
-            ImGuiToolkit::Indication(buf, 4, 6);
-            ImGui::SameLine(0);
-        }
+    if (VideoBroadcast::available()) {
+        char msg[256];
+        ImFormatString(msg, IM_ARRAYSIZE(msg), "SRT Broadcast\n\n"
+                                               "vimix listens to SRT requests on Port %d. "
+                                               "Example network addresses to call:\n"
+                                               " srt//%s:%d (localhost)\n"
+                                               " srt//%s:%d (local IP)",
+                       Settings::application.broadcast_port,
+                       NetworkToolkit::host_ips()[0].c_str(), Settings::application.broadcast_port,
+                       NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port );
 
-        ImGui::SetCursorPosX(width_);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
-                         VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
-
-        ImGuiToolkit::Indication("Priority when buffer is full and recorder has to skip frames;\n"
-                                 ICON_FA_CARET_RIGHT " Duration:\n  Variable framerate, correct duration.\n"
-                                 ICON_FA_CARET_RIGHT " Framerate:\n  Correct framerate,  shorter duration.",
-                                 ICON_FA_CHECK_DOUBLE);
+        ImGuiToolkit::Indication(msg, ICON_FA_GLOBE);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Duration\0Framerate\0");
-
-        //
-        // Steaming preferences
-        //
-        ImGuiToolkit::Spacing();
-        ImGui::TextDisabled("Stream");
-
-        ImGuiToolkit::Indication("Peer-to-peer sharing local network\n\n"
-                                 "vimix can stream JPEG (default) or H264 (less bandwidth, higher encoding cost)", ICON_FA_SHARE_ALT_SQUARE);
-        ImGui::SameLine(0);
-        ImGui::SetCursorPosX(width_);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("P2P codec", &Settings::application.stream_protocol, "JPEG\0H264\0");
-
-        if (VideoBroadcast::available()) {
-            char msg[256];
-            ImFormatString(msg, IM_ARRAYSIZE(msg), "SRT Broadcast\n\n"
-                                                   "vimix listens to SRT requests on Port %d. "
-                                                   "Example network addresses to call:\n"
-                                                   " srt//%s:%d (localhost)\n"
-                                                   " srt//%s:%d (local IP)",
-                           Settings::application.broadcast_port,
-                           NetworkToolkit::host_ips()[0].c_str(), Settings::application.broadcast_port,
-                    NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port );
-
-            ImGuiToolkit::Indication(msg, ICON_FA_GLOBE);
-            ImGui::SameLine(0);
-            ImGui::SetCursorPosX(width_);
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            char bufport[7] = "";
-            snprintf(bufport, 7, "%d", Settings::application.broadcast_port);
-            ImGui::InputTextWithHint("SRT Port", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
-            if (ImGui::IsItemDeactivatedAfterEdit()){
-                if ( BaseToolkit::is_a_number(bufport, &Settings::application.broadcast_port))
-                    Settings::application.broadcast_port = CLAMP(Settings::application.broadcast_port, 1029, 49150);
-            }
+        char bufport[7] = "";
+        snprintf(bufport, 7, "%d", Settings::application.broadcast_port);
+        ImGui::InputTextWithHint("SRT Port", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
+        if (ImGui::IsItemDeactivatedAfterEdit()){
+            if ( BaseToolkit::is_a_number(bufport, &Settings::application.broadcast_port))
+                Settings::application.broadcast_port = CLAMP(Settings::application.broadcast_port, 1029, 49150);
         }
+    }
 
-        if (ShmdataBroadcast::available()) {
-            std::string _shm_socket_file = Settings::application.shm_socket_path;
-            if (_shm_socket_file.empty() || !SystemToolkit::file_exists(_shm_socket_file))
-                _shm_socket_file = SystemToolkit::home_path();
-            _shm_socket_file = SystemToolkit::full_filename(_shm_socket_file, ".shm_vimix" + std::to_string(Settings::application.instance_id));
-
-            char msg[256];
-            if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
-                ImFormatString(msg, IM_ARRAYSIZE(msg), "Shared Memory\n\n"
-                                                       "vimix can share to RAM with "
-                                                       "gstreamer default 'shmsink' "
-                                                       "and with 'shmdatasink'.\n"
-                                                       "Socket file to connect to:\n%s\n",
-                               _shm_socket_file.c_str());
-            }
-            else {
-                ImFormatString(msg, IM_ARRAYSIZE(msg), "Shared Memory\n\n"
-                                                       "vimix can share to RAM with "
-                                                       "gstreamer 'shmsink'.\n"
-                                                       "Socket file to connect to:\n%s\n",
-                               _shm_socket_file.c_str());
-            }
-            ImGuiToolkit::Indication(msg, ICON_FA_MEMORY);
-            ImGui::SameLine(0);
-            ImGui::SetCursorPosX(width_);
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            char bufsocket[64] = "";
-            snprintf(bufsocket, 64, "%s", Settings::application.shm_socket_path.c_str());
-            ImGui::InputTextWithHint("SHM path", SystemToolkit::home_path().c_str(), bufsocket, 64);
-            if (ImGui::IsItemDeactivatedAfterEdit()) {
-                Settings::application.shm_socket_path = bufsocket;
-            }
-            if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
-                ImGui::SetCursorPosX(width_);
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::Combo("SHM plugin", &Settings::application.shm_method, "shmsink\0shmdatasink\0");
-            }
-        }
-
-        //
-        // OSC preferences
-        //
-        ImGuiToolkit::Spacing();
-        ImGui::TextDisabled("OSC");
+    if (ShmdataBroadcast::available()) {
+        std::string _shm_socket_file = Settings::application.shm_socket_path;
+        if (_shm_socket_file.empty() || !SystemToolkit::file_exists(_shm_socket_file))
+            _shm_socket_file = SystemToolkit::home_path();
+        _shm_socket_file = SystemToolkit::full_filename(_shm_socket_file, ".shm_vimix" + std::to_string(Settings::application.instance_id));
 
         char msg[256];
-        ImFormatString(msg, IM_ARRAYSIZE(msg), "Open Sound Control\n\n"
-                                               "vimix accepts OSC messages sent by UDP on Port %d and replies on Port %d."
-                                               "Example network addresses:\n"
-                                               " udp//%s:%d (localhost)\n"
-                                               " udp//%s:%d (local IP)",
-                Settings::application.control.osc_port_receive,
-                Settings::application.control.osc_port_send,
-                NetworkToolkit::host_ips()[0].c_str(), Settings::application.control.osc_port_receive,
-                NetworkToolkit::host_ips()[1].c_str(), Settings::application.control.osc_port_receive );
-        ImGuiToolkit::Indication(msg, ICON_FA_NETWORK_WIRED);
+        if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
+            ImFormatString(msg, IM_ARRAYSIZE(msg), "Shared Memory\n\n"
+                                                   "vimix can share to RAM with "
+                                                   "gstreamer default 'shmsink' "
+                                                   "and with 'shmdatasink'.\n"
+                                                   "Socket file to connect to:\n%s\n",
+                           _shm_socket_file.c_str());
+        }
+        else {
+            ImFormatString(msg, IM_ARRAYSIZE(msg), "Shared Memory\n\n"
+                                                   "vimix can share to RAM with "
+                                                   "gstreamer 'shmsink'.\n"
+                                                   "Socket file to connect to:\n%s\n",
+                           _shm_socket_file.c_str());
+        }
+        ImGuiToolkit::Indication(msg, ICON_FA_MEMORY);
         ImGui::SameLine(0);
-
         ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        char bufreceive[7] = "";
-        snprintf(bufreceive, 7, "%d", Settings::application.control.osc_port_receive);
-        ImGui::InputTextWithHint("Port in", "7000", bufreceive, 7, ImGuiInputTextFlags_CharsDecimal);
-        if (ImGui::IsItemDeactivatedAfterEdit()){
-            if ( BaseToolkit::is_a_number(bufreceive, &Settings::application.control.osc_port_receive)){
-                Settings::application.control.osc_port_receive = CLAMP(Settings::application.control.osc_port_receive, 1029, 49150);
-                Control::manager().init();
-            }
+        char bufsocket[64] = "";
+        snprintf(bufsocket, 64, "%s", Settings::application.shm_socket_path.c_str());
+        ImGui::InputTextWithHint("SHM path", SystemToolkit::home_path().c_str(), bufsocket, 64);
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            Settings::application.shm_socket_path = bufsocket;
         }
-
-        ImGui::SetCursorPosX(width_);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        char bufsend[7] = "";
-        snprintf(bufsend, 7, "%d", Settings::application.control.osc_port_send);
-        ImGui::InputTextWithHint("Port out", "7001", bufsend, 7, ImGuiInputTextFlags_CharsDecimal);
-        if (ImGui::IsItemDeactivatedAfterEdit()){
-            if ( BaseToolkit::is_a_number(bufsend, &Settings::application.control.osc_port_send)){
-                Settings::application.control.osc_port_send = CLAMP(Settings::application.control.osc_port_send, 1029, 49150);
-                Control::manager().init();
-            }
+        if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
+            ImGui::SetCursorPosX(width_);
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            ImGui::Combo("SHM plugin", &Settings::application.shm_method, "shmsink\0shmdatasink\0");
         }
+    }
 
-        ImGui::SetCursorPosX(width_);
-        const float w = IMGUI_RIGHT_ALIGN - ImGui::GetFrameHeightWithSpacing();
-        ImGuiToolkit::ButtonOpenUrl( "Edit", Settings::application.control.osc_filename.c_str(), ImVec2(w, 0) );
-        ImGui::SameLine(0, 6);
-        if ( ImGuiToolkit::IconButton(15, 12, "Reload") )
+    //
+    // OSC preferences
+    //
+    ImGuiToolkit::Spacing();
+    ImGui::TextDisabled("OSC");
+
+    char msg[256];
+    ImFormatString(msg, IM_ARRAYSIZE(msg), "Open Sound Control\n\n"
+                                           "vimix accepts OSC messages sent by UDP on Port %d and replies on Port %d."
+                                           "Example network addresses:\n"
+                                           " udp//%s:%d (localhost)\n"
+                                           " udp//%s:%d (local IP)",
+                   Settings::application.control.osc_port_receive,
+                   Settings::application.control.osc_port_send,
+                   NetworkToolkit::host_ips()[0].c_str(), Settings::application.control.osc_port_receive,
+                   NetworkToolkit::host_ips()[1].c_str(), Settings::application.control.osc_port_receive );
+    ImGuiToolkit::Indication(msg, ICON_FA_NETWORK_WIRED);
+    ImGui::SameLine(0);
+
+    ImGui::SetCursorPosX(width_);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    char bufreceive[7] = "";
+    snprintf(bufreceive, 7, "%d", Settings::application.control.osc_port_receive);
+    ImGui::InputTextWithHint("Port in", "7000", bufreceive, 7, ImGuiInputTextFlags_CharsDecimal);
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        if ( BaseToolkit::is_a_number(bufreceive, &Settings::application.control.osc_port_receive)){
+            Settings::application.control.osc_port_receive = CLAMP(Settings::application.control.osc_port_receive, 1029, 49150);
             Control::manager().init();
-        ImGui::SameLine();
-        ImGui::Text("Translator");
+        }
+    }
 
-        //
-        // System preferences
-        //
-        ImGuiToolkit::Spacing();
-        ImGui::TextDisabled("System");
+    ImGui::SetCursorPosX(width_);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    char bufsend[7] = "";
+    snprintf(bufsend, 7, "%d", Settings::application.control.osc_port_send);
+    ImGui::InputTextWithHint("Port out", "7001", bufsend, 7, ImGuiInputTextFlags_CharsDecimal);
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        if ( BaseToolkit::is_a_number(bufsend, &Settings::application.control.osc_port_send)){
+            Settings::application.control.osc_port_send = CLAMP(Settings::application.control.osc_port_send, 1029, 49150);
+            Control::manager().init();
+        }
+    }
 
-        static bool need_restart = false;
-        static bool vsync = (Settings::application.render.vsync > 0);
-        static bool multi = (Settings::application.render.multisampling > 0);
-        static bool gpu = Settings::application.render.gpu_decoding;
-        static bool audio = Settings::application.accept_audio;
-        bool change = false;
-        // hardware support deserves more explanation
-        ImGuiToolkit::Indication("If enabled, tries to find a platform adapted hardware-accelerated "
-                                 "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);
-        ImGui::SameLine(0);
-        if (Settings::application.render.gpu_decoding_available)
-            change |= ImGuiToolkit::ButtonSwitch( "Hardware en/decoding", &gpu);
-        else
-            ImGui::TextDisabled("Hardware en/decoding unavailable");
+    ImGui::SetCursorPosX(width_);
+    const float w = IMGUI_RIGHT_ALIGN - ImGui::GetFrameHeightWithSpacing();
+    ImGuiToolkit::ButtonOpenUrl( "Edit", Settings::application.control.osc_filename.c_str(), ImVec2(w, 0) );
+    ImGui::SameLine(0, 6);
+    if ( ImGuiToolkit::IconButton(15, 12, "Reload") )
+        Control::manager().init();
+    ImGui::SameLine();
+    ImGui::Text("Translator");
 
-        // audio support deserves more explanation
-        ImGuiToolkit::Indication("If enabled, tries to find audio in openned videos "
-                                 "and allows enabling audio for each source.", ICON_FA_VOLUME_OFF);
-        ImGui::SameLine(0);
-        change |= ImGuiToolkit::ButtonSwitch( "Audio support", &audio);
+    //
+    // System preferences
+    //
+    ImGuiToolkit::Spacing();
+    ImGui::TextDisabled("System");
+
+    static bool need_restart = false;
+    static bool vsync = (Settings::application.render.vsync > 0);
+    static bool multi = (Settings::application.render.multisampling > 0);
+    static bool gpu = Settings::application.render.gpu_decoding;
+    static bool audio = Settings::application.accept_audio;
+    bool change = false;
+    // hardware support deserves more explanation
+    ImGuiToolkit::Indication("If enabled, tries to find a platform adapted hardware-accelerated "
+                             "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);
+    ImGui::SameLine(0);
+    if (Settings::application.render.gpu_decoding_available)
+        change |= ImGuiToolkit::ButtonSwitch( "Hardware en/decoding", &gpu);
+    else
+        ImGui::TextDisabled("Hardware en/decoding unavailable");
+
+    // audio support deserves more explanation
+    ImGuiToolkit::Indication("If enabled, tries to find audio in openned videos "
+                             "and allows recording audio.", ICON_FA_VOLUME_OFF);
+    ImGui::SameLine(0);
+    change |= ImGuiToolkit::ButtonSwitch( "Audio (experimental)", &audio);
 
 #ifndef NDEBUG
-        change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
-        change |= ImGuiToolkit::ButtonSwitch( "Multisample antialiasing", &multi);
+    change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
+    change |= ImGuiToolkit::ButtonSwitch( "Multisample antialiasing", &multi);
 #endif
-        if (change) {
-            need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
-                    multi != (Settings::application.render.multisampling > 0) ||
-                    gpu != Settings::application.render.gpu_decoding ||
-                    audio != Settings::application.accept_audio );
+    if (change) {
+        need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
+                        multi != (Settings::application.render.multisampling > 0) ||
+                        gpu != Settings::application.render.gpu_decoding ||
+                        audio != Settings::application.accept_audio );
+    }
+    if (need_restart) {
+        ImGuiToolkit::Spacing();
+        if (ImGui::Button( ICON_FA_POWER_OFF "  Quit & restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
+            Settings::application.render.vsync = vsync ? 1 : 0;
+            Settings::application.render.multisampling = multi ? 3 : 0;
+            Settings::application.render.gpu_decoding = gpu;
+            Settings::application.accept_audio = audio;
+            if (UserInterface::manager().TryClose())
+                Rendering::manager().close();
         }
-        if (need_restart) {
-            ImGuiToolkit::Spacing();
-            if (ImGui::Button( ICON_FA_POWER_OFF "  Quit & restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
-                Settings::application.render.vsync = vsync ? 1 : 0;
-                Settings::application.render.multisampling = multi ? 3 : 0;
-                Settings::application.render.gpu_decoding = gpu;
-                Settings::application.accept_audio = audio;
-                if (UserInterface::manager().TryClose())
-                    Rendering::manager().close();
-            }
-        }
+    }
 
 }
 

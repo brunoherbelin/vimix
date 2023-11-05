@@ -33,7 +33,7 @@
 #include "DeviceSource.h"
 
 #ifndef NDEBUG
-#define DEVICE_DEBUG
+//#define DEVICE_DEBUG
 #endif
 
 
@@ -173,11 +173,12 @@ void Device::add(GstDevice *device)
             dev.pipeline = p;
             dev.configs = confs;
             dev.properties = get_device_properties (device);
-#ifdef GST_DEVICE_DEBUG
-            g_print("\n%s %s", device_name, gst_structure_to_string(stru) );
+#ifdef DEVICE_DEBUG
+            GstStructure *stru = gst_device_get_properties(device);
+            g_print("\n%s: %s\n", device_name, gst_structure_to_string(stru) );
 #endif
             handles_.push_back(dev);
-            Log::Info("Device %s plugged.", device_name);
+            Log::Info("Device '%s' is plugged-in.", device_name);
         }
 
     }
@@ -203,7 +204,7 @@ void Device::remove(GstDevice *device)
 
         // just inform the user if there is no source connected
         if (handle->connected_sources.empty()) {
-            Log::Info("Device %s unplugged.", devicename.c_str());
+            Log::Info("Device '%s' unplugged.", devicename.c_str());
         }
         else {
             // otherwise unplug all sources and close their streams
@@ -221,7 +222,7 @@ void Device::remove(GstDevice *device)
                 // all connected sources are set to unplugged
                 (*sit)->unplug();
                 // and finally inform user
-                Log::Warning("Device %s unplugged: sources %s disconnected.",
+                Log::Warning("Device '%s' unplugged: sources %s disconnected.",
                              devicename.c_str(), (*sit)->name().c_str());
             }
         }
@@ -234,7 +235,7 @@ void Device::remove(GstDevice *device)
     access_.unlock();
 }
 
-Device::Device(): monitor_(nullptr), monitor_initialized_(false), monitor_unplug_event_(false)
+Device::Device(): monitor_(nullptr), monitor_initialized_(false)
 {
     std::thread(launchMonitoring, this).detach();
 }

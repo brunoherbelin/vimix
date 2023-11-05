@@ -27,7 +27,7 @@ public:
 
     // specific interface
     void setDevice(const std::string &devicename);
-    inline std::string device() const { return device_; }
+    inline std::string  device() const { return device_; }
     void reconnect();
 
     glm::ivec2 icon() const override;
@@ -99,7 +99,6 @@ private:
     GstDeviceMonitor *monitor_;
     std::condition_variable monitor_initialization_;
     bool monitor_initialized_;
-    bool monitor_unplug_event_;
 
 };
 

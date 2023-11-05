@@ -99,6 +99,7 @@ set(VMIX_SRCS
     MousePointer.cpp
     Grid.cpp
     Playlist.cpp
+    Audio.cpp
 )
 
 #####

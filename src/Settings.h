@@ -107,6 +107,7 @@ struct RecordConfig
     int buffering_mode;
     int priority_mode;
     int naming_mode;
+    std::string audio_device;
 
     RecordConfig() : path("") {
         profile = 0;
@@ -117,6 +118,7 @@ struct RecordConfig
         buffering_mode = 2;
         priority_mode = 1;
         naming_mode = 1;
+        audio_device = "";
     }
 
 };
