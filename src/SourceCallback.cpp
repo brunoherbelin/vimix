@@ -627,8 +627,11 @@ float Seek::readValue(Source *s) const
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
     if (ms != nullptr) {
         GstClockTime media_position = ms->mediaplayer()->position();
-        if (GST_CLOCK_TIME_IS_VALID(media_position) && media_position > 0){
-            ret = GST_TIME_AS_SECONDS( static_cast<double>(media_position) );
+        GstClockTime media_duration = ms->mediaplayer()->timeline()->duration();
+        if (GST_CLOCK_TIME_IS_VALID(media_position) &&
+            GST_CLOCK_TIME_IS_VALID(media_duration) &&
+            media_duration > 0){
+            ret = (double) media_position / (double) media_duration;
         }
     }
 
@@ -641,11 +644,12 @@ void Seek::writeValue(Source *s, float val)
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
     if (ms != nullptr) {
         GstClockTime media_duration = ms->mediaplayer()->timeline()->duration();
-        GstClockTime t = (double) GST_SECOND * (double) val;
+        GstClockTime t = (double) media_duration * (double) val;
         if (GST_CLOCK_TIME_IS_VALID(t) &&
-                GST_CLOCK_TIME_IS_VALID(media_duration) &&
-                t < media_duration )
-            ms->mediaplayer()->seek( t );
+            GST_CLOCK_TIME_IS_VALID(media_duration) &&
+            media_duration > 0 &&
+            t <= media_duration )
+            ms->mediaplayer()->seek(t);
     }
 }
 
