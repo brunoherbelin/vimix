@@ -43,6 +43,7 @@ class CloneSource;
 class NetworkSource;
 class MixingGroup;
 class MultiFileSource;
+class TextSource;
 
 class FrameBufferFilter;
 class PassthroughFilter;
@@ -115,6 +116,7 @@ public:
     virtual void visit (RenderSource&) {}
     virtual void visit (CloneSource&) {}
     virtual void visit (MultiFileSource&) {}
+    virtual void visit (TextSource&) {}
 
     virtual void visit (FrameBufferFilter&) {}
     virtual void visit (PassthroughFilter&) {}

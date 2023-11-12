@@ -53,6 +53,7 @@
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
+#include "TextSource.h"
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
 #include "Settings.h"
@@ -809,7 +810,8 @@ void ImGuiVisitor::visit (MediaSource& s)
                 }
             }
         }
-
+        else
+            ImGui::SetCursorPos(botom);
     }
     else {
         // failed
@@ -1815,6 +1817,114 @@ void ImGuiVisitor::visit (SrtReceiverSource& s)
     ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
+
+    if ( !s.failed() ) {
+        // icon (>) to open player
+        if ( s.stream()->isOpen() ) {
+            ImGui::SetCursorPos(top);
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
+                UserInterface::manager().showSourceEditor(&s);
+        }
+        else
+            info.reset();
+    }
+    else
+        info.reset();
+
+    ImGui::SetCursorPos(botom);
+
+}
+
+
+void ImGuiVisitor::visit(TextSource &s)
+{
+    ImVec2 top = ImGui::GetCursorPos();
+    top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+    float w = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+
+    // network info
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x
+                           + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
+    ImGui::PopTextWrapPos();
+    ImGui::Spacing();
+
+    ImVec2 botom = ImGui::GetCursorPos();
+
+    TextContents *tc = s.contents();
+    if (tc) {
+        // Prepare display text
+        static int numlines = 0;
+        const ImGuiContext &g = *GImGui;
+        ImVec2 fieldsize(w, MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y);
+
+        // Editor
+        std::string _contents = tc->text();
+        // if the content is a subtitle file
+        if (tc->isSubtitle()) {
+            static char dummy_str[1024];
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            snprintf(dummy_str, 1024, "%s", _contents.c_str());
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGui::InputText("##Filesubtitle", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopStyleColor(1);
+            botom = ImGui::GetCursorPos();
+            // Action on the filename
+            ImGui::SetCursorPos(ImVec2(top.x, botom.y - ImGui::GetFrameHeight()));
+            if (ImGuiToolkit::IconButton(3, 5, "Open"))
+                SystemToolkit::open(_contents.c_str());
+        }
+        // general case of free text
+        else {
+            if (ImGuiToolkit::InputTextMultiline("Text", &_contents, fieldsize, &numlines)) {
+                info.reset();
+                tc->setText(_contents);
+                Action::manager().store(s.name() + ": Change text");
+            }
+            botom = ImGui::GetCursorPos();
+
+            // Actions on the text
+            ImGui::SetCursorPos(ImVec2(top.x, botom.y - ImGui::GetFrameHeight()));
+            if (ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy"))
+                ImGui::SetClipboardText(_contents.c_str());
+            ImGui::SetCursorPos(
+                ImVec2(top.x + 0.9 * ImGui::GetFrameHeight(), botom.y - ImGui::GetFrameHeight()));
+            if (ImGuiToolkit::IconButton(ICON_FA_PASTE, "Paste")) {
+                _contents = std::string(ImGui::GetClipboardText());
+                info.reset();
+                tc->setText(_contents);
+                Action::manager().store(s.name() + ": Change text");
+            }
+        }
+        // Properties
+        ImGui::SetCursorPos(botom);
+
+        std::string font = tc->fontDescriptor();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGuiToolkit::InputText("Font", &font);
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            tc->setFontDescriptor(font);
+            Action::manager().store( s.name() + " Change font");
+        }
+
+        int align = tc->halignment();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::Combo("Horizontal", &align, "Left\0Center\0Right\0Absolute\0")) {
+            tc->setHalignment(align);
+            Action::manager().store( s.name() + " Horizontal align");
+        }
+
+        align = tc->valignment();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::Combo("Vertical", &align, "Baseline\0Bottom\0top\0Absolute\0Center\0")) {
+            tc->setValignment(align);
+            Action::manager().store( s.name() + " Vertical align");
+        }
+
+        botom = ImGui::GetCursorPos();
+    }
 
     if ( !s.failed() ) {
         // icon (>) to open player

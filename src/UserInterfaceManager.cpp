@@ -2730,7 +2730,7 @@ void Navigator::clearNewPannel()
 {
     new_source_preview_.setSource();
     pattern_type = -1;
-    custom_pipeline = false;
+    generated_type = -1;
     custom_connected = false;
     custom_screencapture = false;
     sourceSequenceFiles.clear();
@@ -3748,6 +3748,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
         // Generated patterns Source creator
         else if (Settings::application.source.new_type == SOURCE_GENERATED){
 
+            static DialogToolkit::OpenSubtitleDialog subtitleopenialog("Open Subtitle");
             bool update_new_source = false;
 
             ImGui::Text("Patterns & generated graphics");
@@ -3757,7 +3758,12 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             {
                 if ( ImGui::Selectable("Custom gstreamer " ICON_FA_CODE) ) {
                     update_new_source = true;
-                    custom_pipeline = true;
+                    generated_type = 0;
+                    pattern_type = -1;
+                }
+                if ( ImGui::Selectable("Text " ICON_FA_CODE) ) {
+                    update_new_source = true;
+                    generated_type = 1;
                     pattern_type = -1;
                 }
                 for (int p = 0; p < (int) Pattern::count(); ++p){
@@ -3765,20 +3771,25 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     std::string label = pattern.label + (pattern.animated ? "  " ICON_FA_PLAY_CIRCLE : " ");
                     if (pattern.available && ImGui::Selectable( label.c_str(), p == pattern_type )) {
                         update_new_source = true;
-                        custom_pipeline = false;
+                        generated_type = 2;
                         pattern_type = p;
                     }
                 }
                 ImGui::EndCombo();
             }
 
+            static ImVec2 fieldsize(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 100);
+            static int numlines = 0;
+            const ImGuiContext& g = *GImGui;
+            fieldsize.y = MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y;
+
             // Indication
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Create a source with patterns or graphics generated algorithmically. "
-                                      "Entering a custom gstreamer pipeline is also possible.");
+                                      "Entering text or a custom gstreamer pipeline is also possible.");
 
             ImGui::Spacing();
-            if (custom_pipeline) {
+            if (generated_type == 0) {
                 static std::vector< std::pair< std::string, std::string> > _examples = { {"Videotest", "videotestsrc horizontal-speed=1 ! video/x-raw, width=640, height=480 " },
                                                                                          {"Checker", "videotestsrc pattern=checkers-8 ! video/x-raw, width=64, height=64 "},
                                                                                          {"Color", "videotestsrc pattern=gradient foreground-color= 0xff55f54f background-color= 0x000000 "},
@@ -3787,10 +3798,6 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                                                                          {"SRT listener", "srtsrc uri=\"srt://:5000?mode=listener\" ! decodebin "}
                                                                                        };
                 static std::string _description = _examples[0].second;
-                static ImVec2 fieldsize(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 100);
-                static int numlines = 0;
-                const ImGuiContext& g = *GImGui;
-                fieldsize.y = MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y;
 
                 // Editor
                 if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines) )
@@ -3801,7 +3808,6 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 ImGui::SetCursorPos( pos_bot + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -ImGui::GetFrameHeightWithSpacing()));
                 if (ImGui::BeginCombo("##Examples", "Examples", ImGuiComboFlags_NoPreview | ImGuiComboFlags_HeightLarge))  {
                     ImGui::TextDisabled("Examples");
-                    ImGui::Separator();
                     for (auto it = _examples.begin(); it != _examples.end(); ++it) {
                         if (ImGui::Selectable( it->first.c_str() ) ) {
                             _description = it->second;
@@ -3822,10 +3828,108 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     new_source_preview_.setSource( Mixer::manager().createSourceStream(_description), "Custom");
 
             }
+            // if text source selected
+            else if (generated_type == 1) {
+                static std::vector<std::pair<std::string, std::string> > _examples
+                    = {{"Hello", "Hello world!"},
+                       {"Italics", "<i>Text in italics</i>"},
+                       {"Multiline", "One\nTwo\nThree\nFour\nFive"},
+                       {"Code", "<tt>Monospace</tt>"}};
+                static std::string _contents = _examples[0].second;
+
+                // Editor
+                if (SystemToolkit::file_exists(_contents)) {
+                    static char dummy_str[1024];
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    snprintf(dummy_str, 1024, "%s", _contents.c_str());
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                    ImGui::InputText("##Filesubtitle",
+                                     dummy_str,
+                                     IM_ARRAYSIZE(dummy_str),
+                                     ImGuiInputTextFlags_ReadOnly);
+                    ImGui::PopStyleColor(1);
+                } else if (ImGuiToolkit::InputTextMultiline("Text", &_contents, fieldsize, &numlines))
+                    update_new_source = true;
+
+                // Local menu for list of examples
+                ImVec2 pos_bot = ImGui::GetCursorPos();
+                ImGui::SetCursorPos(
+                    pos_bot
+                    + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -ImGui::GetFrameHeightWithSpacing()));
+                if (ImGui::BeginCombo("##Examples",
+                                      "Examples",
+                                      ImGuiComboFlags_NoPreview | ImGuiComboFlags_HeightLarge)) {
+                    if (ImGui::Selectable(ICON_FA_FOLDER_OPEN " Open subtitle"))
+                         subtitleopenialog.open();
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Examples");
+                    for (auto it = _examples.begin(); it != _examples.end(); ++it) {
+                         if (ImGui::Selectable(it->first.c_str())) {
+                            _contents = it->second;
+                            update_new_source = true;
+                         }
+                    }
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Explore online");
+                    if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " Pango syntax"))
+                         SystemToolkit::open("https://docs.gtk.org/Pango/pango_markup.html");
+                    if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " Gstreamer"))
+                         SystemToolkit::open(
+                             "https://gstreamer.freedesktop.org/documentation/pango/"
+                             "textoverlay.html?gi-language=c#textoverlay-page");
+                    if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " SubRip files"))
+                         SystemToolkit::open("https://en.wikipedia.org/wiki/SubRip");
+                    ImGui::EndCombo();
+                }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGuiToolkit::Indication("More text layout options are available after source creation.", ICON_FA_INFO_CIRCLE);
+                ImGui::SetCursorPos(pos_bot);
+
+                // resolution
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::Combo("Ratio",
+                                 &Settings::application.source.ratio,
+                                 GlmToolkit::aspect_ratio_names,
+                                 IM_ARRAYSIZE(GlmToolkit::aspect_ratio_names)))
+                    update_new_source = true;
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::Combo("Height",
+                                 &Settings::application.source.res,
+                                 GlmToolkit::height_names,
+                                 IM_ARRAYSIZE(GlmToolkit::height_names)))
+                    update_new_source = true;
+
+                // get subtitle file if dialog finished
+                if (subtitleopenialog.closed()) {
+                    // get the filename from this file dialog
+                    std::string importpath = subtitleopenialog.path();
+                    // open file
+                    if (!importpath.empty()) {
+                         _contents = importpath;
+                         update_new_source = true;
+                    }
+                }
+
+                // take action
+                if (update_new_source) {
+                    glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);
+                    new_source_preview_.setSource(Mixer::manager().createSourceText(_contents, res), "Text");
+                }
+            }
             // if pattern selected
             else {
                 // resolution
                 if (pattern_type >= 0) {
+
+                    static char dummy_str[1024];
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    pattern_descriptor pattern = Pattern::get(pattern_type);
+                    snprintf(dummy_str, 1024, "%s", pattern.label.c_str());
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                    ImGui::InputText("Pattern", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                    ImGui::PopStyleColor(1);
+
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     if (ImGui::Combo("Ratio", &Settings::application.source.ratio,
                                      GlmToolkit::aspect_ratio_names, IM_ARRAYSIZE(GlmToolkit::aspect_ratio_names) ) )

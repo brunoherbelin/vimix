@@ -22,6 +22,7 @@
     "*.flv", "*.hevc", "*.asf", "*.jpg", "*.png",  "*.gif",\
     "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg,"
 #define IMAGES_FILES_PATTERN "*.jpg", "*.png", "*.bmp", "*.ppm", "*.gif"
+#define SUBTITLE_FILES_PATTERN "*.srt", "*.sub"
 
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))

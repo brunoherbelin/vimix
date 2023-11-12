@@ -1763,7 +1763,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
     colors[ImGuiCol_TextDisabled]           = ImVec4(0.55f, 0.55f, 0.55f, 1.00f);
     colors[ImGuiCol_WindowBg]               = ImVec4(0.13f, 0.13f, 0.13f, 0.94f);
     colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_PopupBg]                = ImVec4(0.10f, 0.10f, 0.10f, 0.90f);
+    colors[ImGuiCol_PopupBg]                = ImVec4(0.13f, 0.13f, 0.13f, 1.00f);
     colors[ImGuiCol_Border]                 = ImVec4(0.69f, 0.69f, 0.69f, 0.25f);
     colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     colors[ImGuiCol_FrameBg]                = ImVec4(0.39f, 0.39f, 0.39f, 0.55f);
@@ -1928,11 +1928,15 @@ bool ImGuiToolkit::InputText(const char* label, std::string* str, ImGuiInputText
     return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, InputTextCallback, str);
 }
 
-bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size)
+bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size, int *numline)
 {
     ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
 
     ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, str);
+
+    // number of lines
+    if (numline)
+        *numline = std::count(str->begin(), str->end(), '\n') + 1;
 
     return ImGui::IsItemDeactivatedAfterEdit();
 }

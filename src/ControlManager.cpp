@@ -32,6 +32,7 @@
 #include "BaseToolkit.h"
 #include "Mixer.h"
 #include "Source.h"
+#include "TextSource.h"
 #include "SourceCallback.h"
 #include "ImageProcessingShader.h"
 #include "ActionManager.h"
@@ -831,10 +832,20 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             target->call( new Seek( t ), true );
         }
         /// e.g. '/vimix/current/speed f 0.25'
-        else if ( attribute.compare(OSC_SOURCE_SPEED) == 0) {
+        else if (attribute.compare(OSC_SOURCE_SPEED) == 0) {
             float t = 0.f;
             arguments >> t >> osc::EndMessage;
-            target->call( new PlaySpeed( t ), true );
+            target->call(new PlaySpeed(t), true);
+        }
+        /// e.g. '/vimix/current/contents s text'
+        else if (attribute.compare(OSC_SOURCE_CONTENTS) == 0) {
+            // try by client name if given: remove all streams with that name
+            const char *label = nullptr;
+            arguments >> label >> osc::EndMessage;
+            TextSource *textsrc = dynamic_cast<TextSource *>(target);
+            if (textsrc && label) {
+                textsrc->contents()->setText(label);
+            }
         }
         /// e.g. '/vimix/name/sync'
         else if ( attribute.compare(OSC_SYNC) == 0) {

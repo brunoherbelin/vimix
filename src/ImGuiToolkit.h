@@ -75,7 +75,7 @@ namespace ImGuiToolkit
 
     // text input
     bool InputText(const char* label, std::string* str, ImGuiInputTextFlags flag = ImGuiInputTextFlags_CharsNoBlank);
-    bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0));
+    bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0), int *numline = NULL);
     void TextMultiline(const char* label, const std::string &str, float width);
 
     bool InputCodeMultiline(const char* label, std::string *str, const ImVec2& size = ImVec2(0, 0), int *numline = NULL);

@@ -32,6 +32,7 @@
 #include <tinyxml2.h>
 
 #include "ImageShader.h"
+#include "TextSource.h"
 #include "defines.h"
 #include "Settings.h"
 #include "Log.h"
@@ -432,6 +433,22 @@ Source * Mixer::createSourceSrt(const std::string &ip, const std::string &port)
 
     // propose a new name based on address
     s->setName(s->uri());
+
+    return s;
+}
+
+Source *Mixer::createSourceText(const std::string &contents, glm::ivec2 res)
+{
+    // ready to create a source
+    TextSource *s = new TextSource;
+    s->setContents(contents, res);
+
+    // propose a new name based on contents
+    std::string basestring = BaseToolkit::transliterate(contents);
+    basestring = BaseToolkit::splitted(basestring, '\n').front();
+    if (SystemToolkit::file_exists(basestring))
+        basestring = SystemToolkit::base_filename(basestring);
+    s->setName( basestring );
 
     return s;
 }

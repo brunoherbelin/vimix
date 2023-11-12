@@ -51,6 +51,7 @@
 #define OSC_SOURCE_ANGLE       "/angle"
 #define OSC_SOURCE_SEEK        "/seek"
 #define OSC_SOURCE_SPEED       "/speed"
+#define OSC_SOURCE_CONTENTS    "/contents"
 #define OSC_SOURCE_BRIGHTNESS  "/brightness"
 #define OSC_SOURCE_CONTRAST    "/contrast"
 #define OSC_SOURCE_SATURATION  "/saturation"

@@ -188,6 +188,16 @@ void DialogToolkit::OpenPlaylistDialog::open()
     }
 }
 
+std::string openSubtitleFileDialog(const std::string &label, const std::string &path);
+void DialogToolkit::OpenSubtitleDialog::open()
+{
+    if ( !busy_ && promises_.empty() ) {
+        promises_.emplace_back( std::async(std::launch::async, openSubtitleFileDialog, id_,
+                                          Settings::application.dialogRecentFolder[id_]) );
+        busy_ = true;
+    }
+}
+
 std::string openMediaFileDialog(const std::string &label, const std::string &path);
 void DialogToolkit::OpenMediaDialog::open()
 {
@@ -593,6 +603,63 @@ std::string savePlaylistFileDialog(const std::string &label, const std::string &
 
     if (!filename.empty() && !SystemToolkit::has_extension(filename, VIMIX_PLAYLIST_FILE_EXT ) )
         filename += std::string(".") + VIMIX_PLAYLIST_FILE_EXT;
+
+    return filename;
+}
+
+
+std::string openSubtitleFileDialog(const std::string &label, const std::string &path)
+{
+    std::string filename = "";
+    std::string startpath = SystemToolkit::file_exists(path) ? path : SystemToolkit::home_path();
+    char const * open_pattern[2] = { SUBTITLE_FILES_PATTERN };
+
+#if USE_TINYFILEDIALOG
+    char const * open_file_name;
+    open_file_name = tinyfd_openFileDialog( label.c_str(), startpath.c_str(), 2, open_pattern, "Subtitle (SRT, SUB)", 0);
+
+    if (open_file_name)
+        filename = std::string(open_file_name);
+#else
+    if (!gtk_init()) {
+        DialogToolkit::ErrorDialog("Could not initialize GTK+ for dialog");
+        return filename;
+    }
+
+    GtkWidget *dialog = gtk_file_chooser_dialog_new( label.c_str(),  NULL,
+                                                    GTK_FILE_CHOOSER_ACTION_OPEN,
+                                                    "_Cancel", GTK_RESPONSE_CANCEL,
+                                                    "_Open", GTK_RESPONSE_ACCEPT,  NULL );
+
+    // set file filters
+    add_filter_file_dialog(dialog, 2, open_pattern, "Subtitle (SRT, SUB)");
+    add_filter_any_file_dialog(dialog);
+
+    // Set the default path
+    gtk_file_chooser_set_current_folder( GTK_FILE_CHOOSER(dialog), startpath.c_str() );
+
+    // ensure front and centered
+    gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
+    if (window_x > 0 && window_y > 0)
+        gtk_window_move( GTK_WINDOW(dialog), window_x, window_y);
+
+    // display and get filename
+    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT ) {
+
+        char *open_file_name = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
+        if (open_file_name) {
+            filename = std::string(open_file_name);
+            g_free( open_file_name );
+        }
+    }
+
+    // remember position
+    gtk_window_get_position( GTK_WINDOW(dialog), &window_x, &window_y);
+
+    // done
+    gtk_widget_destroy(dialog);
+    wait_for_event();
+#endif
 
     return filename;
 }

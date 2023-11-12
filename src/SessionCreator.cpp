@@ -37,6 +37,7 @@
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
+#include "TextSource.h"
 #include "RenderSource.h"
 #include "Session.h"
 #include "ImageShader.h"
@@ -448,6 +449,9 @@ void SessionLoader::load(XMLElement *sessionNode)
                 else if ( std::string(pType) == "SrtReceiverSource") {
                     load_source = new SrtReceiverSource(id_xml_);
                 }
+                else if ( std::string(pType) == "TextSource") {
+                    load_source = new TextSource(id_xml_);
+                }
                 else if ( std::string(pType) == "CloneSource") {
                     cloneNodesToAdd.push_front(xmlCurrent_);
                 }
@@ -633,6 +637,9 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
             }
             else if ( std::string(pType) == "SrtReceiverSource") {
                 load_source = new SrtReceiverSource(id__);
+            }
+            else if ( std::string(pType) == "TextSource") {
+                load_source = new TextSource(id__);
             }
             else if ( std::string(pType) == "CloneSource") {
                 // clone from given origin
@@ -1222,8 +1229,68 @@ void SessionLoader::visit (PatternSource& s)
         tinyxml2::XMLElementToGLM( res->FirstChildElement("ivec2"), resolution);
 
     // change only if different pattern
-    if ( t != s.pattern()->type() )
+    if ( s.pattern() && t != s.pattern()->type() )
         s.setPattern(t, resolution);
+}
+
+void SessionLoader::visit(TextSource &s)
+{
+    bool value_changed = false;
+    std::string text;
+    glm::ivec2 resolution(800, 600);
+
+    XMLElement *_contents = xmlCurrent_->FirstChildElement("contents");
+    if ( s.contents() && _contents) {
+        // content can be an array of encoded text (to support strings with Pango styles <i>, <b>, etc.)
+        unsigned int len = 0;
+        const XMLElement *array = _contents->FirstChildElement("array");
+        if (array) {
+            array->QueryUnsignedAttribute("len", &len);
+            // ok, we got a size of data to load
+            if (len > 0) {
+                GString *data = g_string_new_len("", len);
+                if (XMLElementDecodeArray(array, data->str, data->len)) {
+                    text = std::string(data->str);
+                }
+                g_string_free(data, FALSE);
+            }
+        }
+        // content can also just be raw text
+        else {
+            const char *data = _contents->GetText();
+            if (data)
+                text = std::string(data);
+        }
+
+        value_changed |= s.contents()->text().compare(text) != 0;
+
+        // attributes of content
+        const char *font;
+        if (_contents->QueryStringAttribute("font-desc", &font) == XML_SUCCESS && font) {
+            if (s.contents()->fontDescriptor().compare(font) != 0) {
+                s.contents()->setFontDescriptor(font);
+            }
+        }
+        uint alignment = s.contents()->halignment();
+        _contents->QueryUnsignedAttribute("halignment", &alignment);
+        if (s.contents()->halignment() != alignment)
+            s.contents()->setHalignment(alignment);
+        alignment = s.contents()->valignment();
+        _contents->QueryUnsignedAttribute("valignment", &alignment);
+        if (s.contents()->valignment() != alignment)
+            s.contents()->setValignment(alignment);
+    }
+
+    XMLElement* res = xmlCurrent_->FirstChildElement("resolution");
+    if (res) {
+        tinyxml2::XMLElementToGLM( res->FirstChildElement("ivec2"), resolution);
+        value_changed |= resolution.x != (int) s.stream()->width() || resolution.y != (int) s.stream()->height();
+    }
+
+    // change only if different
+    if ( s.contents() && ( value_changed || s.contents()->text().empty() ) ) {
+        s.setContents( text, resolution );
+    }
 }
 
 void SessionLoader::visit (DeviceSource& s)

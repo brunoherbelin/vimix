@@ -42,6 +42,7 @@ using namespace tinyxml2;
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
+#include "TextSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "ImageFilter.h"
@@ -843,6 +844,37 @@ void SessionVisitor::visit (PatternSource& s)
         resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.pattern()->resolution() ) );
         xmlCurrent_->InsertEndChild(resolution);
     }
+}
+
+void SessionVisitor::visit (TextSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "TextSource");
+
+    if (s.contents()) {
+        XMLElement *contents = xmlDoc_->NewElement("contents");
+        // simple text node to store filename of subtitle
+        if (s.contents()->isSubtitle()) {
+            XMLText *text = xmlDoc_->NewText(s.contents()->text().c_str());
+            contents->InsertEndChild(text);
+        }
+        // encoded text node to store string with Pango style
+        else {
+            GString *data = g_string_new(s.contents()->text().c_str());
+            XMLElement *text = XMLElementEncodeArray(xmlDoc_, data->str, data->len);
+            contents->InsertEndChild(text);
+            g_string_free(data, FALSE);
+        }
+
+        contents->SetAttribute("font-desc", s.contents()->fontDescriptor().c_str() );
+        contents->SetAttribute("halignment", s.contents()->halignment() );
+        contents->SetAttribute("valignment", s.contents()->valignment() );
+
+        xmlCurrent_->InsertEndChild(contents);
+    }
+
+    XMLElement *resolution = xmlDoc_->NewElement("resolution");
+    resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, glm::ivec2(s.stream()->width(), s.stream()->height())) );
+    xmlCurrent_->InsertEndChild(resolution);
 }
 
 void SessionVisitor::visit (DeviceSource& s)

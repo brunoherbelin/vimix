@@ -2,6 +2,7 @@
 #define INFOVISITOR_H
 
 #include "Visitor.h"
+#include <cstdint>
 
 class InfoVisitor : public Visitor
 {
@@ -38,6 +39,7 @@ public:
     void visit (MultiFileSource& s) override;
     void visit (GenericStreamSource& s) override;
     void visit (SrtReceiverSource& s) override;
+    void visit (TextSource& s) override;
 };
 
 #endif // INFOVISITOR_H

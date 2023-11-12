@@ -65,6 +65,7 @@ public:
     void visit (MultiFileSource& s) override;
     void visit (GenericStreamSource& s) override;
     void visit (SrtReceiverSource& s) override;
+    void visit (TextSource& s) override;
 
     void visit (CloneSource& s) override;
     void visit (FrameBufferFilter&) override;

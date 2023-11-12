@@ -56,7 +56,7 @@ class Navigator
     bool selected_button[NAV_COUNT];
     int  selected_index;
     int  pattern_type;
-    bool custom_pipeline;
+    int  generated_type;
     bool custom_connected;
     bool custom_screencapture;
     void clearButtonSelection();

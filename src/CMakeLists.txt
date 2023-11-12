@@ -100,6 +100,7 @@ set(VMIX_SRCS
     Grid.cpp
     Playlist.cpp
     Audio.cpp
+    TextSource.cpp
 )
 
 #####

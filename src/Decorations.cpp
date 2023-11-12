@@ -460,6 +460,8 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[SHARE]  = shadow;
         icons[RECEIVE]  = new Mesh("mesh/icon_receive.ply");
         shadows[RECEIVE]= shadow;
+        icons[TEXT]     = new Mesh("mesh/icon_text.ply");
+        shadows[TEXT]   = shadow;
         icons[DOTS]     = new Mesh("mesh/icon_dots.ply");
         shadows[DOTS]   = nullptr;
         icons[BUSY]     = new Mesh("mesh/icon_circles.ply");
