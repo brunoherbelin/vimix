@@ -1878,7 +1878,7 @@ void ImGuiVisitor::visit(TextSource &s)
             ImGui::SetCursorPos(
                 ImVec2(top.x + 0.95 * ImGui::GetFrameHeight(), botom.y - ImGui::GetFrameHeight()));
             if (ImGuiToolkit::IconButton(ICON_FA_REDO_ALT, "Reload"))
-                tc->reopen();
+                s.reload();
         }
         // general case of free text : text editor
         else {

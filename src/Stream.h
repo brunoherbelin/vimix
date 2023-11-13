@@ -40,6 +40,8 @@ struct StreamInfo {
 
 class Stream {
 
+    friend class StreamSource;
+
 public:
     /**
      * Constructor of a GStreamer Stream
@@ -57,7 +59,6 @@ public:
      * Open a media using gstreamer pipeline keyword
      * */
     void open(const std::string &gstreamer_description, guint w = 0, guint h = 0);
-    void reopen ();
     /**
      * Get description string
      * */

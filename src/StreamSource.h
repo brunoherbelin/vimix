@@ -40,6 +40,7 @@ public:
 
     // pure virtual interface
     virtual Stream *stream() const = 0;
+    void reload ();
 
     // Source interface
     virtual void accept (Visitor& v) override;

@@ -103,6 +103,7 @@ Source::Failure StreamSource::failed() const
     return (stream_ != nullptr &&  stream_->failed()) ? FAIL_CRITICAL : FAIL_NONE;
 }
 
+
 uint StreamSource::texture() const
 {
     if (stream_ == nullptr)
@@ -185,6 +186,20 @@ void StreamSource::replay ()
 {
     if ( stream_ )
         stream_->rewind();
+}
+
+void StreamSource::reload()
+{
+    if (stream_) {
+        stream_->close();
+
+        // reset renderbuffer_
+        if (renderbuffer_)
+            delete renderbuffer_;
+        renderbuffer_ = nullptr;
+
+        stream_->execute_open();
+    }
 }
 
 guint64 StreamSource::playtime () const

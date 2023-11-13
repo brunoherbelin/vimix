@@ -1453,14 +1453,12 @@ void SourceControlWindow::RenderSingleSource(Source *s)
 
                 if (ImGui::BeginPopup( "MenuStreamOptions" ))
                 {
+                    if (ImGui::MenuItem(ICON_FA_REDO_ALT "  Reload"))
+                        ss->reload();
                     // NB: ss is playable (tested above), and thus ss->stream() is not null
-                    if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" )) {
-                        ss->stream()->reopen();
-                    }
                     bool option = ss->stream()->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option )) {
+                    if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option ))
                         ss->stream()->setRewindOnDisabled(option);
-                    }
 
                     if (ImGui::IsWindowHovered())
                         counter_menu_timeout=0;
@@ -1855,7 +1853,6 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         ImGui::EndPopup();
     }
-
 
     ///
     /// Dialog to edit timeline fade in and out
