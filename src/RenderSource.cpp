@@ -115,7 +115,7 @@ void RenderSource::update(float dt)
 
     Source::update(dt);
 
-    if (!paused_ && session_ && rendered_output_) {
+    if (active_ && !paused_ && session_ && rendered_output_) {
 
         if (provenance_ == RENDER_EXCLUSIVE || reset_) {
             // temporarily exclude this RenderSource from the rendering
