@@ -34,7 +34,7 @@ std::vector< std::tuple<int, int, std::string> > RenderSource::ProvenanceMethod 
 };
 
 RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr), rendered_surface_(nullptr),
-    paused_(false), provenance_(RENDER_TEXTURE)
+    paused_(false), reset_(true), provenance_(RENDER_TEXTURE)
 {
     // set symbol
     symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.75f, 0.75f, 0.01f));
@@ -115,35 +115,37 @@ void RenderSource::update(float dt)
 
     Source::update(dt);
 
-    if (active_ && !paused_ && session_ && rendered_output_) {
+    if (session_ && session_->ready() && rendered_output_) {
+        if ((active_ && !paused_) || reset_) {
+            if (provenance_ == RENDER_EXCLUSIVE || reset_ ) {
+                // temporarily exclude this RenderSource from the rendering
+                groups_[View::RENDERING]->visible_ = false;
+                // simulate a rendering of the session in a framebuffer
+                glm::mat4 P = glm::scale(projection,
+                                         glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
+                rendered_output_->begin();
+                // access to private RenderView in the session to call draw on the root of the scene
+                session_->render_.scene.root()->draw(glm::identity<glm::mat4>(), P);
+                rendered_output_->end();
+                // restore this RenderSource visibility
+                groups_[View::RENDERING]->visible_ = true;
+                // done reset
+                reset_ = false;
+            }
+            // blit session frame to output
+            else if (!session_->frame()->blit(rendered_output_))
+            {
+                // if failed (which should not happen),
+                // simulate a rendering of the session in a framebuffer
+                glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
+                rendered_output_->begin();
+                // access to private RenderView in the session to call draw on the root of the scene
+                session_->render_.scene.root()->draw(glm::identity<glm::mat4>(), P);
+                rendered_output_->end();
+            }
 
-        if (provenance_ == RENDER_EXCLUSIVE || reset_) {
-            // temporarily exclude this RenderSource from the rendering
-            groups_[View::RENDERING]->visible_ = false;
-            // simulate a rendering of the session in a framebuffer
-            glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
-            rendered_output_->begin();
-            // access to private RenderView in the session to call draw on the root of the scene
-            session_->render_.scene.root()->draw(glm::identity<glm::mat4>(), P);
-            rendered_output_->end();
-            // restore this RenderSource visibility
-            groups_[View::RENDERING]->visible_ = true;
-            // done reset
-            reset_ = false;
+            runtime_ = session_->runtime();
         }
-        // blit session frame to output
-        else if (!session_->frame()->blit(rendered_output_))
-        {
-            // if failed (which should not happen),
-            // simulate a rendering of the session in a framebuffer
-            glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
-            rendered_output_->begin();
-            // access to private RenderView in the session to call draw on the root of the scene
-            session_->render_.scene.root()->draw(glm::identity<glm::mat4>(), P);
-            rendered_output_->end();
-        }
-
-        runtime_ = session_->runtime();
     }
 
 }
