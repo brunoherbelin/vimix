@@ -866,8 +866,13 @@ void SessionVisitor::visit (TextSource& s)
         }
 
         contents->SetAttribute("font-desc", s.contents()->fontDescriptor().c_str() );
-        contents->SetAttribute("halignment", s.contents()->halignment() );
-        contents->SetAttribute("valignment", s.contents()->valignment() );
+        contents->SetAttribute("color", s.contents()->color() );
+        contents->SetAttribute("halignment", s.contents()->horizontalAlignment() );
+        contents->SetAttribute("valignment", s.contents()->verticalAlignment() );
+        contents->SetAttribute("outline", s.contents()->outline() );
+        contents->SetAttribute("outline-color", s.contents()->outlineColor() );
+        contents->SetAttribute("x", s.contents()->horizontalPadding() );
+        contents->SetAttribute("y", s.contents()->verticalPadding() );
 
         xmlCurrent_->InsertEndChild(contents);
     }

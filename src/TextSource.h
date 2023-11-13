@@ -18,23 +18,44 @@ public:
 
     void setFontDescriptor(const std::string &fd);
     inline std::string fontDescriptor() const { return fontdesc_; }
-    /* (0): left             - left
-     * (1): center           - center
-     * (2): right            - right
-     * (4): Absolute position clamped to canvas - position
-     * (5): Absolute position - absolute
+
+    /*
+     * ARGB integer color
      * */
-    void setHalignment(uint h);
-    inline uint halignment() const { return halignment_; }
-    /* (0): baseline         - baseline
-     * (1): bottom           - bottom
-     * (2): top              - top
-     * (3): Absolute position clamped to canvas - position
-     * (4): center           - center
-     * (5): Absolute position - absolute
+    void setColor(uint c);
+    inline uint color() const { return color_; }
+
+    /* (0): None
+     * (1): outline
+     * (2): outline and shadow
      * */
-    void setValignment(uint v);
-    inline uint valignment() const { return valignment_; }
+    void setOutline(uint v);
+    inline uint outline() const { return outline_; }
+    void setOutlineColor(uint c);
+    inline uint outlineColor() const { return outline_color_; }
+
+    /* (0): left
+     * (1): center
+     * (2): right
+     * (3): Absolute position
+     * */
+    void setHorizontalAlignment(uint h);
+    inline uint horizontalAlignment() const { return halignment_; }
+
+    void setHorizontalPadding(float x);
+    inline float horizontalPadding() const { return xalignment_; }
+
+    /* (0): bottom
+     * (1): top
+     * (2): center
+     * (3): Absolute position
+     * */
+    void setVerticalAlignment(uint v);
+    inline uint verticalAlignment() const { return valignment_; }
+
+    void setVerticalPadding(float y);
+    inline float verticalPadding() const { return yalignment_; }
+
 
 private:
     GstElement *src_;
@@ -44,8 +65,13 @@ private:
 
     std::string text_;
     std::string fontdesc_;
+    uint color_;
+    uint outline_;
+    uint outline_color_;
     uint halignment_;
     uint valignment_;
+    float xalignment_;
+    float yalignment_;
 };
 
 

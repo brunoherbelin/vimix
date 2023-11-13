@@ -77,9 +77,9 @@ bool TextContents::SubtitleDiscoverer(const std::string &path)
 
 TextContents::TextContents()
     : Stream(), src_(nullptr), txt_(nullptr),
-    halignment_(1), valignment_(4)
+    fontdesc_("arial 24"), color_(0xffffffff), outline_(2), outline_color_(4278190080),
+    halignment_(1), valignment_(2), xalignment_(0.f), yalignment_(0.f)
 {
-    fontdesc_ = "arial, 24";
 }
 
 void TextContents::execute_open()
@@ -155,9 +155,30 @@ void TextContents::execute_open()
             g_object_set(G_OBJECT(txt_), "text", text_.c_str(), NULL);
         }
 
-        g_object_set(G_OBJECT(txt_), "font-desc", fontdesc_.c_str(),  NULL);
-        g_object_set(G_OBJECT(txt_), "halignment", halignment_,  NULL);
-        g_object_set(G_OBJECT(txt_), "valignment", valignment_,  NULL);
+        g_object_set(G_OBJECT(txt_),
+                     "font-desc",
+                     fontdesc_.c_str(),
+                     "color",
+                     color_,
+                     "outline-color",
+                     outline_color_,
+                     "halignment",
+                     halignment_ < 3 ? halignment_ : 5,
+                     "line-alignment",
+                     halignment_ < 3 ? halignment_ : 1,
+                     "valignment",
+                     valignment_ < 2   ? valignment_ + 1
+                     : valignment_ > 2 ? 5
+                                       : 4,
+                     "draw-outline",
+                     outline_ > 0,
+                     "draw-shadow",
+                     outline_ > 1,
+                     "auto-resize",
+                     FALSE,
+                     NULL);
+        setHorizontalPadding(xalignment_);
+        setVerticalPadding(yalignment_);
     }
 
 
@@ -225,7 +246,7 @@ void TextContents::setText(const std::string &t)
         text_ = t;
         // apply if ready
         if (txt_)
-            g_object_set(G_OBJECT(txt_),"text", text_.c_str(),  NULL);
+            g_object_set(G_OBJECT(txt_), "text", text_.c_str(), NULL);
     }
 }
 
@@ -240,25 +261,96 @@ void TextContents::setFontDescriptor(const std::string &fd)
     }
 }
 
-void TextContents::setHalignment(uint h)
+void TextContents::setColor(uint c)
+{
+    if ( color_ != c ) {
+        // set value
+        color_ = c;
+        // apply if ready
+        if (txt_)
+            g_object_set(G_OBJECT(txt_), "color", color_, NULL);
+    }
+}
+
+
+void TextContents::setOutline(uint o)
+{
+    if (outline_ != o) {
+        // set value
+        outline_ = o;
+        // apply if ready
+        if (txt_) {
+            g_object_set(G_OBJECT(txt_),
+                         "draw-outline",
+                         outline_ > 0,
+                         "draw-shadow",
+                         outline_ > 1,
+                         NULL);
+        }
+    }
+}
+
+void TextContents::setOutlineColor(uint c)
+{
+    if ( outline_color_ != c ) {
+        // set value
+        outline_color_ = c;
+        // apply if ready
+        if (txt_)
+            g_object_set(G_OBJECT(txt_), "outline-color", outline_color_, NULL);
+    }
+}
+
+void TextContents::setHorizontalAlignment(uint h)
 {
     if ( halignment_ != h ) {
         // set value
         halignment_ = h;
         // apply if ready
-        if (txt_)
-            g_object_set(G_OBJECT(txt_),"halignment", halignment_,  NULL);
+        if (txt_) {
+            g_object_set(G_OBJECT(txt_),
+                         "halignment", halignment_ < 3 ? halignment_ : 4,
+                         "line-alignment", halignment_ < 3 ? halignment_ : 1,
+                         NULL);
+        }
     }
 }
 
-void TextContents::setValignment(uint v)
+void TextContents::setVerticalAlignment(uint v)
 {
     if ( valignment_ != v ) {
         // set value
         valignment_ = v;
         // apply if ready
-        if (txt_)
-            g_object_set(G_OBJECT(txt_),"valignment", valignment_,  NULL);
+        if (txt_) {
+            g_object_set(G_OBJECT(txt_),
+                         "valignment", valignment_ < 2 ? valignment_+1 : valignment_ > 2 ? 3 : 4,
+                         NULL);
+        }
+    }
+}
+
+void TextContents::setHorizontalPadding(float x)
+{
+    xalignment_ = x;
+    // apply if ready
+    if (txt_) {
+        if (halignment_ > 2)
+            g_object_set(G_OBJECT(txt_), "xpos", CLAMP(xalignment_, 0.f, 1.f), NULL);
+        else
+            g_object_set(G_OBJECT(txt_), "xpad", CLAMP((int)xalignment_, 0, 10000), NULL);
+    }
+}
+
+void TextContents::setVerticalPadding(float y)
+{
+    yalignment_ = y;
+    // apply if ready
+    if (txt_) {
+        if (valignment_ > 2)
+            g_object_set(G_OBJECT(txt_), "ypos", CLAMP(yalignment_, 0.f, 1.f), NULL);
+        else
+            g_object_set(G_OBJECT(txt_), "ypad", CLAMP((int)yalignment_, 0, 10000), NULL);
     }
 }
 

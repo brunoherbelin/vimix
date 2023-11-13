@@ -1271,14 +1271,34 @@ void SessionLoader::visit(TextSource &s)
                 s.contents()->setFontDescriptor(font);
             }
         }
-        uint alignment = s.contents()->halignment();
-        _contents->QueryUnsignedAttribute("halignment", &alignment);
-        if (s.contents()->halignment() != alignment)
-            s.contents()->setHalignment(alignment);
-        alignment = s.contents()->valignment();
-        _contents->QueryUnsignedAttribute("valignment", &alignment);
-        if (s.contents()->valignment() != alignment)
-            s.contents()->setValignment(alignment);
+        uint var = s.contents()->horizontalAlignment();
+        _contents->QueryUnsignedAttribute("halignment", &var);
+        if (s.contents()->horizontalAlignment() != var)
+            s.contents()->setHorizontalAlignment(var);
+        var = s.contents()->verticalAlignment();
+        _contents->QueryUnsignedAttribute("valignment", &var);
+        if (s.contents()->verticalAlignment() != var)
+            s.contents()->setVerticalAlignment(var);
+        var = s.contents()->color();
+        _contents->QueryUnsignedAttribute("color", &var);
+        if (s.contents()->color() != var)
+            s.contents()->setColor(var);
+        var = s.contents()->outline();
+        _contents->QueryUnsignedAttribute("outline", &var);
+        if (s.contents()->outline() != var)
+            s.contents()->setOutline(var);
+        var = s.contents()->outlineColor();
+        _contents->QueryUnsignedAttribute("outline-color", &var);
+        if (s.contents()->outlineColor() != var)
+            s.contents()->setOutlineColor(var);
+        float x = 0.f;
+        _contents->QueryFloatAttribute("x", &x);
+        if (s.contents()->horizontalPadding() != x)
+            s.contents()->setHorizontalPadding(x);
+        float y = 0.f;
+        _contents->QueryFloatAttribute("y", &y);
+        if (s.contents()->verticalPadding() != y)
+            s.contents()->setVerticalPadding(y);
     }
 
     XMLElement* res = xmlCurrent_->FirstChildElement("resolution");

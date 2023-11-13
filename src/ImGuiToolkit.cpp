@@ -246,10 +246,10 @@ bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip, bool expanded)
     return ret;
 }
 
-bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltip)
+bool ImGuiToolkit::ButtonIconToggle(int i, int j, bool* toggle, const char *tooltip)
 {
     bool ret = false;
-    ImGui::PushID( i * 20 + j + i_toggle * 20 + j_toggle);
+    ImGui::PushID( i * 20 + j);
 
     const ImVec4* colors = ImGui::GetStyle().Colors;
     const auto active = *toggle;
@@ -258,7 +258,7 @@ bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bo
         ImGui::PushStyleColor( ImGuiCol_ButtonHovered, colors[ImGuiCol_TabHovered] );
         ImGui::PushStyleColor( ImGuiCol_ButtonActive, colors[ImGuiCol_Tab] );
 
-        if ( ButtonIcon(i_toggle, j_toggle)) {
+        if ( ButtonIcon(i, j)) {
             *toggle = false;
             ret = true;
         }
@@ -2051,4 +2051,24 @@ void ImGuiToolkit::CodeMultiline(const char* label, const std::string &str, floa
 
     ImGui::SameLine();
     ImGui::Text("%s", label);
+}
+
+ImVec4 ImGuiToolkit::ColorConvertARGBToFloat4(ImU32 in)
+{
+    const float s = 1.0f/255.0f;
+    return ImVec4(
+        ((in >> IM_COL32_B_SHIFT) & 0xFF) * s,
+        ((in >> IM_COL32_G_SHIFT) & 0xFF) * s,
+        ((in >> IM_COL32_R_SHIFT) & 0xFF) * s,
+        ((in >> IM_COL32_A_SHIFT) & 0xFF) * s);
+}
+
+ImU32 ImGuiToolkit::ColorConvertFloat4ToARGB(const ImVec4& in)
+{
+    ImU32 out;
+    out  = ((ImU32)IM_F32_TO_INT8_SAT(in.x)) << IM_COL32_B_SHIFT;
+    out |= ((ImU32)IM_F32_TO_INT8_SAT(in.y)) << IM_COL32_G_SHIFT;
+    out |= ((ImU32)IM_F32_TO_INT8_SAT(in.z)) << IM_COL32_R_SHIFT;
+    out |= ((ImU32)IM_F32_TO_INT8_SAT(in.w)) << IM_COL32_A_SHIFT;
+    return out;
 }

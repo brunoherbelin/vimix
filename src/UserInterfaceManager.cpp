@@ -3832,13 +3832,13 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             else if (generated_type == 1) {
                 static std::vector<std::pair<std::string, std::string> > _examples
                     = {{"Hello", "Hello world!"},
-                       {"Italics", "<i>Text in italics</i>"},
-                       {"Multiline", "One\nTwo\nThree\nFour\nFive"},
-                       {"Code", "<tt>Monospace</tt>"}};
+                       {"Rich text", "Text in <i>italics</i> or <b>bold</b>"},
+                       {"Multiline", "One\nTwo\nThree\nFour\nFive"} };
                 static std::string _contents = _examples[0].second;
 
                 // Editor
-                if (SystemToolkit::file_exists(_contents)) {
+                if ( (SystemToolkit::has_extension(_contents, "srt") || SystemToolkit::has_extension(_contents, "sub") )
+                    && SystemToolkit::file_exists(_contents)) {
                     static char dummy_str[1024];
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     snprintf(dummy_str, 1024, "%s", _contents.c_str());
@@ -3873,10 +3873,6 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     ImGui::TextDisabled("Explore online");
                     if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " Pango syntax"))
                          SystemToolkit::open("https://docs.gtk.org/Pango/pango_markup.html");
-                    if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " Gstreamer"))
-                         SystemToolkit::open(
-                             "https://gstreamer.freedesktop.org/documentation/pango/"
-                             "textoverlay.html?gi-language=c#textoverlay-page");
                     if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " SubRip files"))
                          SystemToolkit::open("https://en.wikipedia.org/wiki/SubRip");
                     ImGui::EndCombo();

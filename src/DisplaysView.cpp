@@ -488,10 +488,10 @@ void DisplaysView::draw()
 
             // Output options
             ImGui::SameLine(0, 2.f * g.Style.FramePadding.x);
-            ImGuiToolkit::ButtonIconToggle(9,5,9,5, &Settings::application.windows[1+current_window_].scaled, "Custom fit");
+            ImGuiToolkit::ButtonIconToggle(9,5, &Settings::application.windows[1+current_window_].scaled, "Custom fit");
 
             ImGui::SameLine(0, g.Style.FramePadding.x);
-            ImGuiToolkit::ButtonIconToggle(11,1,11,1, &Settings::application.windows[1+current_window_].show_pattern, "Test pattern");
+            ImGuiToolkit::ButtonIconToggle(11,1, &Settings::application.windows[1+current_window_].show_pattern, "Test pattern");
 
             ImGui::SameLine(0, 1.5f * g.Style.FramePadding.x);
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
