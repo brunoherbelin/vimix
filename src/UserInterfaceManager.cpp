@@ -1547,7 +1547,7 @@ enum SourceToolbarFlags_
 
 void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode) {
 
-    if (!p_open || !p_border || !p_mode)
+    if (!p_open || !p_border || !p_mode || !Mixer::manager().session()->ready())
         return;
 
     Source *s = Mixer::manager().currentSource();
@@ -3873,12 +3873,12 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     ImGui::TextDisabled("Explore online");
                     if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " Pango syntax"))
                          SystemToolkit::open("https://docs.gtk.org/Pango/pango_markup.html");
-                    if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " SubRip files"))
+                    if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " SubRip file format"))
                          SystemToolkit::open("https://en.wikipedia.org/wiki/SubRip");
                     ImGui::EndCombo();
                 }
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGuiToolkit::Indication("More text layout options are available after source creation.", ICON_FA_INFO_CIRCLE);
+                ImGuiToolkit::Indication("Format and layout options will be available after source creation.", ICON_FA_INFO_CIRCLE);
                 ImGui::SetCursorPos(pos_bot);
 
                 // resolution

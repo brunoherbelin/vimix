@@ -1873,8 +1873,12 @@ void ImGuiVisitor::visit(TextSource &s)
             botom = ImGui::GetCursorPos();
             // Action on the filename
             ImGui::SetCursorPos(ImVec2(top.x, botom.y - ImGui::GetFrameHeight()));
-            if (ImGuiToolkit::IconButton(3, 5, "Open"))
+            if (ImGuiToolkit::IconButton(ICON_FA_EDIT, "Open in editor"))
                 SystemToolkit::open(_contents.c_str());
+            ImGui::SetCursorPos(
+                ImVec2(top.x + 0.95 * ImGui::GetFrameHeight(), botom.y - ImGui::GetFrameHeight()));
+            if (ImGuiToolkit::IconButton(ICON_FA_REDO_ALT, "Reload"))
+                tc->reopen();
         }
         // general case of free text : text editor
         else {

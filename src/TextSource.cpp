@@ -16,10 +16,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
-#include <string>
-#include <atomic>
-#include <mutex>
-#include <future>
 
 #include <gst/gst.h>
 #include <gst/pbutils/pbutils.h>
@@ -77,7 +73,7 @@ bool TextContents::SubtitleDiscoverer(const std::string &path)
 
 TextContents::TextContents()
     : Stream(), src_(nullptr), txt_(nullptr),
-    fontdesc_("arial 24"), color_(0xffffffff), outline_(2), outline_color_(4278190080),
+    fontdesc_(""), color_(0xffffffff), outline_(2), outline_color_(4278190080),
     halignment_(1), valignment_(2), xalignment_(0.f), yalignment_(0.f)
 {
 }
@@ -146,6 +142,7 @@ void TextContents::execute_open()
     txt_ = gst_bin_get_by_name(GST_BIN(pipeline_), "txt");
 
     if (txt_)  {
+        // if there is a src in the pipeline, it should be a file
         if (src_) {
             // set the location of the file
             g_object_set(G_OBJECT(src_), "location", text_.c_str(), NULL);
@@ -155,6 +152,13 @@ void TextContents::execute_open()
             g_object_set(G_OBJECT(txt_), "text", text_.c_str(), NULL);
         }
 
+        // Auto default font
+        if (fontdesc_.empty()) {
+            fontdesc_ = "sans ";
+            fontdesc_ += std::to_string( height_ / 10 );
+        }
+
+        // set text properties
         g_object_set(G_OBJECT(txt_),
                      "font-desc",
                      fontdesc_.c_str(),
@@ -281,10 +285,8 @@ void TextContents::setOutline(uint o)
         // apply if ready
         if (txt_) {
             g_object_set(G_OBJECT(txt_),
-                         "draw-outline",
-                         outline_ > 0,
-                         "draw-shadow",
-                         outline_ > 1,
+                         "draw-outline", outline_ > 0,
+                         "draw-shadow", outline_ > 1,
                          NULL);
         }
     }
