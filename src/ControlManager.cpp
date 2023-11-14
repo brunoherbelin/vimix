@@ -829,11 +829,23 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             arguments >> v >> osc::EndMessage;
             target->call( new SetPosterize( v ), true );
         }
-        /// e.g. '/vimix/current/seek f 0.25'
+        /// e.g. '/vimix/current/seek f 0.25' ; seek to 25% of duration
+        /// e.g. '/vimix/current/seek iiii 0 0 25 500' ; seek to time
         else if ( attribute.compare(OSC_SOURCE_SEEK) == 0) {
             float t = 0.f;
-            arguments >> t >> osc::EndMessage;
-            target->call( new Seek( t ), true );
+            bool read_time = false;
+            osc::ReceivedMessageArgumentStream args = arguments;
+            try {
+                arguments >> t >> osc::EndMessage;
+                target->call( new Seek(t), true);
+            } catch (osc::WrongArgumentTypeException &) {
+                read_time = true;
+            }
+            if (read_time) {
+                int hh, mm, ss, ms;
+                args >> hh >> mm >> ss >> ms >> osc::EndMessage;
+                target->call( new Seek( hh, mm, ss, ms ), true );
+            }
         }
         /// e.g. '/vimix/current/speed f 0.25'
         else if (attribute.compare(OSC_SOURCE_SPEED) == 0) {

@@ -1594,6 +1594,17 @@ void SessionLoader::visit (PlayFastForward &c)
     c.setDuration(d);
 }
 
+void SessionLoader::visit (Seek &c)
+{
+    uint64_t v = 0.f;
+    xmlCurrent_->QueryUnsigned64Attribute("value", &v);
+    c.setValue(v);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
+}
+
 void SessionLoader::visit (SetAlpha &c)
 {
     float a = 0.f;

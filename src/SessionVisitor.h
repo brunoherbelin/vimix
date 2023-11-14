@@ -97,6 +97,7 @@ public:
     void visit (Turn&) override;
     void visit (Play&) override;
     void visit (PlayFastForward&) override;
+    void visit (Seek&) override;
 
     static tinyxml2::XMLElement *NodeToXML(const Node &n, tinyxml2::XMLDocument *doc);
     static tinyxml2::XMLElement *ImageToXML(const FrameBufferImage *img, tinyxml2::XMLDocument *doc);

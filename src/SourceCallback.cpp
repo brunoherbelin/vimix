@@ -331,7 +331,7 @@ void SetAlpha::accept(Visitor& v)
     v.visit(*this);
 }
 
-Lock::Lock(bool on) : lock_(on)
+Lock::Lock(bool on) : SourceCallback(), lock_(on)
 {
 }
 
@@ -616,41 +616,79 @@ void PlayFastForward::accept(Visitor& v)
     v.visit(*this);
 }
 
-Seek::Seek(float t, float ms, bool r) : ValueSourceCallback(t, ms, r)
+Seek::Seek(glm::uint64 target, bool revert)
+    : SourceCallback()
+    , target_percent_(0.f)
+    , target_time_(target)
+    , bidirectional_(revert)
+{}
+
+Seek::Seek(float t)
+    : SourceCallback()
+    , target_percent_(t)
+    , target_time_(0)
+    , bidirectional_(false)
 {
+    target_percent_ = glm::clamp(target_percent_, 0.f, 1.f);
 }
 
-float Seek::readValue(Source *s) const
+Seek::Seek(int hh, int mm, int ss, int ms)
+    : SourceCallback()
+    , target_percent_(0.f)
+    , target_time_(0)
+    , bidirectional_(false)
 {
-    double ret = 0.f;
+    if (ms > 0)
+        target_time_ += GST_MSECOND * ms;
+    if (ss > 0)
+        target_time_ += GST_SECOND * ss;
+    if (mm > 0)
+        target_time_ += GST_SECOND * (mm * 60);
+    if (hh > 0)
+        target_time_ += GST_SECOND * (hh * 60 * 60);
+}
+
+void Seek::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+
     // access media player if target source is a media source
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
     if (ms != nullptr) {
-        GstClockTime media_position = ms->mediaplayer()->position();
+        // set target position
         GstClockTime media_duration = ms->mediaplayer()->timeline()->duration();
-        if (GST_CLOCK_TIME_IS_VALID(media_position) &&
-            GST_CLOCK_TIME_IS_VALID(media_duration) &&
-            media_duration > 0){
-            ret = (double) media_position / (double) media_duration;
-        }
-    }
+        GstClockTime t = (double) media_duration * (double) target_percent_;
+        if (target_time_ > 0)
+            t = target_time_;
 
-    return (float) ret;
-}
-
-void Seek::writeValue(Source *s, float val)
-{
-    // access media player if target source is a media source
-    MediaSource *ms = dynamic_cast<MediaSource *>(s);
-    if (ms != nullptr) {
-        GstClockTime media_duration = ms->mediaplayer()->timeline()->duration();
-        GstClockTime t = (double) media_duration * (double) val;
-        if (GST_CLOCK_TIME_IS_VALID(t) &&
-            GST_CLOCK_TIME_IS_VALID(media_duration) &&
-            media_duration > 0 &&
-            t <= media_duration )
+        // perform seek
+        if (GST_CLOCK_TIME_IS_VALID(t) && GST_CLOCK_TIME_IS_VALID(media_duration)
+            && media_duration > 0 && t <= media_duration)
             ms->mediaplayer()->seek(t);
     }
+
+    status_ = FINISHED;
+}
+
+SourceCallback *Seek::clone() const
+{
+    if (target_time_ > 0)
+        return new Seek(target_time_, bidirectional_);
+    return new Seek(target_percent_);
+}
+
+SourceCallback *Seek::reverse(Source *s) const
+{
+    MediaSource *ms = dynamic_cast<MediaSource *>(s);
+    if (ms != nullptr && bidirectional_)
+        return new Seek( ms->mediaplayer()->position() );
+    return nullptr;
+}
+
+void Seek::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
 }
 
 SetGeometry::SetGeometry(const Group *g, float ms, bool revert) : SourceCallback(),

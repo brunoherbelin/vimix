@@ -266,13 +266,27 @@ public:
     void accept (Visitor& v) override;
 };
 
-class Seek : public ValueSourceCallback
+class Seek : public SourceCallback
 {
-    float readValue(Source *s) const override;
-    void  writeValue(Source *s, float val) override;
+    float target_percent_;
+    glm::uint64 target_time_;
+    bool bidirectional_;
+
 public:
-    Seek (float t = 0.f, float ms = 0.f, bool revert = false);
+    Seek (glm::uint64 target = 0, bool revert = false);
+    Seek (float percent);
+    Seek (int hh, int mm, int ss, int ms);
+
+    glm::uint64 value () const { return target_time_; }
+    void  setValue (glm::uint64 t) { target_time_ = t; }
+    bool  bidirectional () const { return bidirectional_; }
+    void  setBidirectional (bool on) { bidirectional_ = on; }
+
+    void update (Source *s, float) override;
+    SourceCallback *clone() const override;
+    SourceCallback *reverse(Source *s) const override;
     CallbackType type () const override { return CALLBACK_SEEK; }
+    void accept (Visitor& v) override;
 };
 
 class ResetGeometry : public SourceCallback

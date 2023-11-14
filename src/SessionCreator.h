@@ -91,6 +91,7 @@ public:
     void visit (Turn&) override;
     void visit (Play&) override;
     void visit (PlayFastForward&) override;
+    void visit (Seek&) override;
 
     static void XMLToNode(const tinyxml2::XMLElement *xml, Node &n);
     static void XMLToSourcecore(tinyxml2::XMLElement *xml, SourceCore &s);

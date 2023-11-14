@@ -990,6 +990,12 @@ void SessionVisitor::visit (PlayFastForward &c)
     xmlCurrent_->SetAttribute("duration", c.duration());
 }
 
+void SessionVisitor::visit (Seek &c)
+{
+    xmlCurrent_->SetAttribute("value", (uint64_t) c.value());
+    xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
+}
+
 void SessionVisitor::visit (SetAlpha &c)
 {
     xmlCurrent_->SetAttribute("alpha", c.value());
