@@ -20,6 +20,7 @@ public:
     void play (bool on) override;
     bool playable () const  override;
     void replay () override;
+    void reload() override;
     guint64 playtime () const override;
     uint texture() const override;
     Failure failed() const override;

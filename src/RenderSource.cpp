@@ -162,6 +162,17 @@ void RenderSource::replay ()
     reset_ = true;
 }
 
+void RenderSource::reload ()
+{
+    // reset renderbuffer_
+    if (renderbuffer_)
+        delete renderbuffer_;
+    renderbuffer_ = nullptr;
+
+    // request next frame to reset
+    reset_ = true;
+}
+
 glm::vec3 RenderSource::resolution() const
 {
     if (rendered_output_ != nullptr)

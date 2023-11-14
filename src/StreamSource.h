@@ -34,13 +34,13 @@ public:
     void play (bool) override;
     bool playable () const  override;
     void replay () override;
+    void reload () override;
     guint64 playtime () const override;
     Failure failed() const override;
     uint texture() const override;
 
     // pure virtual interface
     virtual Stream *stream() const = 0;
-    void reload ();
 
     // Source interface
     virtual void accept (Visitor& v) override;

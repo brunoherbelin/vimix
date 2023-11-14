@@ -44,6 +44,7 @@ public:
 
     // SessionFile Source specific interface
     void load(const std::string &p = "", uint level = 0);
+    void reload () override;
 
     inline std::string path() const { return path_; }
 

@@ -612,6 +612,10 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_REPLAY) == 0) {
             target->call( new RePlay() );
         }
+        /// e.g. '/vimix/current/reload'
+        else if ( attribute.compare(OSC_SOURCE_RELOAD) == 0) {
+            target->reload();
+        }
         /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_LOCK) == 0) {
             float x = 1.f;

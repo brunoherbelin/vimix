@@ -209,6 +209,11 @@ void CloneSource::replay()
     filter_->reset();
 }
 
+void CloneSource::reload()
+{
+    replay();
+}
+
 guint64 CloneSource::playtime () const
 {
     if (filter_->type() != FrameBufferFilter::FILTER_PASSTHROUGH)

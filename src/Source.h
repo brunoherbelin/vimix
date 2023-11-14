@@ -184,6 +184,7 @@ public:
     virtual bool playing () const = 0;
     virtual void play (bool on) = 0;
     virtual void replay () {}
+    virtual void reload () {}
     virtual guint64 playtime () const { return 0; }
 
     // a Source shall informs if the source failed (i.e. shall be deleted)

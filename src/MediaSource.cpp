@@ -162,6 +162,11 @@ void MediaSource::replay ()
     mediaplayer_->rewind();
 }
 
+void MediaSource::reload ()
+{
+    mediaplayer_->reopen();
+}
+
 guint64 MediaSource::playtime () const
 {
     return mediaplayer_->position();

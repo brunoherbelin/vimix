@@ -112,7 +112,7 @@ FilteringProgram::FilteringProgram(const std::string &name, const std::string &f
 }
 
 FilteringProgram::FilteringProgram(const FilteringProgram &other) :
-    name_(other.name_), code_(other.code_), parameters_(other.parameters_), two_pass_filter_(other.two_pass_filter_)
+    name_(other.name_), code_(other.code_), two_pass_filter_(other.two_pass_filter_), parameters_(other.parameters_)
 {
 
 }

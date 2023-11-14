@@ -38,6 +38,7 @@
 #define OSC_SOURCE_PLAY        "/play"
 #define OSC_SOURCE_PAUSE       "/pause"
 #define OSC_SOURCE_REPLAY      "/replay"
+#define OSC_SOURCE_RELOAD      "/reload"
 #define OSC_SOURCE_ALPHA       "/alpha"
 #define OSC_SOURCE_LOOM        "/loom"
 #define OSC_SOURCE_TRANSPARENCY "/transparency"
