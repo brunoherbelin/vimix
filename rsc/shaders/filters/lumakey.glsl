@@ -4,6 +4,7 @@
  * (C) 2019-2022 Bruno Herbelin <bruno.herbelin@gmail.com>
  * Distributed under GNU GPL3+ License
 **/
+uniform float Luminance;
 uniform float Threshold;
 uniform float Tolerance;
 
@@ -43,5 +44,5 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     float L = dot(RGB, vec3(0.299, 0.587, 0.114));
 //    float L = lightness( RGB );
 
-    fragColor = vec4( RGB, smoothstep( Threshold, Threshold + Tolerance * Tolerance, L ) );
+    fragColor = vec4( RGB, smoothstep( Threshold, Threshold + Tolerance * Tolerance, abs(Luminance - L) ) );
 }

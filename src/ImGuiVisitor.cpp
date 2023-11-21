@@ -1358,6 +1358,34 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             Action::manager().store(oss.str());
         }
     }
+    // Luminance extra parameter
+    else {
+        float v = filter_parameters["Luminance"];
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderFloat( "##Luminance", &v, 0.f, 1.f, "%.2f")) {
+            f.setProgramParameter("Luminance", v);
+        }
+        if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+            v = CLAMP( v + 0.01f * io.MouseWheel, 0.f, 1.f);
+            f.setProgramParameter("Luminance", v);
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Luminance" << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Luminance" << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Luminance")) {
+            v = 0.f;
+            f.setProgramParameter("Luminance", v);
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Luminance" << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
+        }
+    }
 
 }
 
