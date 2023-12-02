@@ -21,7 +21,7 @@ confinement: strict # use 'strict' once you have the right plugs and slots
 
 apps:
   vimix:
-    extensions: [gnome]
+    extensions: [gnome-3-38]
     command: usr/bin/vimix
     plugs:
       - desktop
@@ -60,6 +60,10 @@ parts:
     -  libgstreamer1.0-dev
     -  libgstreamer-plugins-base1.0-dev
     -  libicu-dev
+    -  ableton-link-dev
+    -  libstb-dev
+    -  libtinyxml2-dev
+    -  libglm-dev
     stage-packages:
     -  libpng16-16
     -  libglu1-mesa
@@ -83,4 +87,5 @@ parts:
     -  libgpm2
     -  libslang2
     -  libicu70
+    -  libstb
 
