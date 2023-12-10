@@ -4230,11 +4230,11 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
                                    ICON_FA_LOCK ALT_LOCK " keeps the Snap mouse cursor active.");
 
         // slider to adjust strength of the mouse pointer
-        ImGui::SetNextItemWidth( IMGUI_RIGHT_ALIGN );
         float *val = &Settings::application.mouse_pointer_strength[ Settings::application.mouse_pointer ];
         // General case
         if (Settings::application.mouse_pointer != Pointer::POINTER_GRID) {
             int percent = *val * 100.f;
+            ImGui::SetNextItemWidth( IMGUI_RIGHT_ALIGN );
             if (ImGui::SliderInt( "##sliderstrenght", &percent, 0, 100, percent < 1 ? "Min" : "%d%%") )
                 *val = 0.01f * (float) percent;
             if (ImGui::IsItemHovered() && g.IO.MouseWheel != 0.f ){
@@ -4244,10 +4244,17 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
         }
         // special case of GRID
         else {
+            // toggle proportional grid
+            const char *tooltip_lock[2] = {"Square grid", "Aspect-ratio grid"};
+            if ( ImGuiToolkit::IconToggle(19, 2, 18, 2, &Settings::application.proportional_grid, tooltip_lock) )
+                View::need_deep_update_++;
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            // slider of 5 text values
             static const char* grid_names[Grid::UNIT_ONE+1] = { "Precise", "Small", "Default", "Large", "Huge"};
             int grid_current = (Grid::Units) round( *val * 4.f) ;
             const char* grid_current_name = (grid_current >= 0 && grid_current <= Grid::UNIT_ONE) ?
                         grid_names[grid_current] : "Unknown";
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::SliderInt("##slidergrid", &grid_current, 0, Grid::UNIT_ONE, grid_current_name) )
                 *val = (float) grid_current * 0.25f;
             if (ImGui::IsItemHovered() && g.IO.MouseWheel != 0.f ){
@@ -4255,6 +4262,7 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
                 *val = CLAMP( *val, 0.f, 1.f);
             }
         }
+        // Label & reset button
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton( std::get<3>(Pointer::Modes.at(Settings::application.mouse_pointer)).c_str() ))
             *val = 0.5f;
@@ -5255,9 +5263,6 @@ void Navigator::RenderMainPannelSettings()
         Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 2.f);
         ImGui::GetIO().FontGlobalScale = Settings::application.scale;
     }
-    ImGuiToolkit::Indication("Scale the mouse pointer guiding grid to match aspect ratio.", ICON_FA_BORDER_NONE);
-    ImGui::SameLine();
-    ImGuiToolkit::ButtonSwitch( "Scaled grid", &Settings::application.proportional_grid);
 
     //
     // Recording preferences
