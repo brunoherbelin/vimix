@@ -61,10 +61,6 @@ void InfoVisitor::visit(Node &n)
     oss << "Scale ( " << n.scale_.x << ", " << n.scale_.y  << " )" << std::endl;
     oss << "Angle " << std::setprecision(2) << n.rotation_.z * 180.f / M_PI << "\u00B0" << std::endl;
 
-    if (!brief_) {
-        oss << n.crop_.x << ", " << n.crop_.y << " Crop" << std::endl;
-    }
-
     information_ = oss.str();
 }
 

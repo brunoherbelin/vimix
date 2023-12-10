@@ -194,6 +194,7 @@ void MediaSource::render()
         init();
     else {
         // render the media player into frame buffer
+        // NB: this also applies the color correction shader
         renderbuffer_->begin();
         // apply fading
         texturesurface_->shader()->color = glm::vec4( glm::vec3(mediaplayer_->currentTimelineFading()), 1.f);

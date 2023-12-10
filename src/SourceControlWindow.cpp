@@ -1027,7 +1027,7 @@ void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider, 
         //
         // RIGHT of slider : post-processed image (after crop and color correction)
         //
-        ImVec2 cropsize = framesize * ImVec2 ( s->frame()->projectionArea().x, s->frame()->projectionArea().y);
+        ImVec2 cropsize = framesize * ImVec2 ( s->frame()->projectionSize().x, s->frame()->projectionSize().y);
         ImVec2 croptop  = (framesize - cropsize) * 0.5f;
         // no overlap of slider with cropped area
         if (slider.x < croptop.x) {

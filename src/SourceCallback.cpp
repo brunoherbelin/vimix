@@ -216,7 +216,7 @@ void ResetGeometry::update(Source *s, float dt)
 
         s->group(View::GEOMETRY)->scale_ = glm::vec3(1.f);
         s->group(View::GEOMETRY)->rotation_.z = 0;
-        s->group(View::GEOMETRY)->crop_ = glm::vec3(1.f);
+        s->group(View::GEOMETRY)->crop_ = glm::vec4(-1.f, 1.f, 1.f, -1.f);
         s->group(View::GEOMETRY)->translation_ = glm::vec3(0.f);
         s->touch();
 

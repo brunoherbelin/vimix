@@ -212,11 +212,17 @@ Handles::Handles(Type type) : Node(), type_(type)
     static Mesh *handle_corner   = new Mesh("mesh/border_handles_overlay.ply");
     static Mesh *handle_scale    = new Mesh("mesh/border_handles_scale.ply");
     static Mesh *handle_crop     = new Mesh("mesh/border_handles_crop.ply");
+    static Mesh *handle_shape    = new Mesh("mesh/border_handles_shape.ply");
     static Mesh *handle_menu     = new Mesh("mesh/border_handles_menu.ply");
     static Mesh *handle_lock     = new Mesh("mesh/border_handles_lock.ply");
     static Mesh *handle_unlock   = new Mesh("mesh/border_handles_lock_open.ply");
     static Mesh *handle_eyeslash = new Mesh("mesh/icon_eye_slash.ply");
     static Mesh *handle_shadow   = new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
+    static Mesh *handle_node     = new Mesh("mesh/border_handles_sharp.ply");
+
+    color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
+    corner_ = glm::vec2(0.f, 0.f);
+    shadow_ = handle_shadow;
 
     if ( type_ == Handles::ROTATE ) {
         handle_ = handle_rotation;
@@ -227,8 +233,11 @@ Handles::Handles(Type type) : Node(), type_(type)
     else if ( type_ == Handles::MENU ) {
         handle_ = handle_menu;
     }
-    else if ( type_ == Handles::CROP ) {
+    else if ( type_ == Handles::EDIT_CROP ) {
         handle_ = handle_crop;
+    }
+    else if ( type_ == Handles::EDIT_SHAPE ) {
+        handle_ = handle_shape;
     }
     else if ( type_ == Handles::LOCKED ) {
         handle_ = handle_lock;
@@ -239,13 +248,13 @@ Handles::Handles(Type type) : Node(), type_(type)
     else if ( type_ == Handles::EYESLASHED ) {
         handle_ = handle_eyeslash;
     }
+    else if ( type_ >= Handles::NODE_LOWER_LEFT  && type_ <= Handles::NODE_UPPER_RIGHT ) {
+        handle_ = handle_node;
+    }
     else {
         handle_ = handle_corner;
     }
 
-    color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
-    corner_ = glm::vec2(0.f, 0.f);
-    shadow_ = handle_shadow;
 }
 
 Handles::~Handles()
@@ -365,13 +374,13 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
         }
-        else if ( type_ == Handles::CROP ){
-            // one icon in bottom right corner
+        else if ( type_ == Handles::EDIT_CROP || type_ == Handles::EDIT_SHAPE ){
+            // one icon in bottom left corner
             // 1. Fixed displacement by (0.12,0.12) along the rotation..
             ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
-            glm::vec4 pos = ctm * glm::vec4(mirror.x * 0.12f, mirror.x * 0.12f, 0.f, 1.f);
+            glm::vec4 pos = ctm * glm::vec4(mirror.x * -0.13f, mirror.x * -0.12f, 0.f, 1.f);
             // 2. ..from the bottom left corner (-1,-1)
-            vec = ( modelview * glm::vec4(-1.f, -1.f, 0.f, 1.f) ) + pos;
+            vec = ( modelview * glm::vec4(-1.f, 1.f, 0.f, 1.f) ) + pos;
             ctm = GlmToolkit::transform(vec, rot, mirror);
             // 3. draw
             shadow_->draw( ctm, projection );
@@ -390,7 +399,7 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             handle_->draw( ctm, projection );
         }
         else if ( type_ == Handles::LOCKED || type_ == Handles::UNLOCKED ){
-            // one icon in top left corner
+            // one icon in bottom right corner
             // 1. Fixed displacement by (-0.12,0.12) along the rotation..
             ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
             glm::vec4 pos = ctm * glm::vec4( -0.12f, 0.12f, 0.f, 1.f);
@@ -411,6 +420,34 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             ctm = GlmToolkit::transform(vec, rot, mirror);
             // 3. draw
             shadow_->draw( ctm, projection );
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == Handles::NODE_LOWER_LEFT ) {
+            // 1. Corner
+            vec = modelview * glm::vec4(translation_.x - 1.f, translation_.y - 1.f, 0.f, 1.f) ;
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            // 2. draw
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == Handles::NODE_UPPER_LEFT ) {
+            // 1. Corner
+            vec = modelview * glm::vec4(translation_.x - 1.f, translation_.y + 1.f, 0.f, 1.f) ;
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            // 2. draw
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == Handles::NODE_LOWER_RIGHT ) {
+            // 1. Corner
+            vec = modelview * glm::vec4(translation_.x + 1.f, translation_.y - 1.f, 0.f, 1.f) ;
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            // 2. draw
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == Handles::NODE_UPPER_RIGHT ){
+            // 1. Corner
+            vec = modelview * glm::vec4(translation_.x + 1.f, translation_.y + 1.f, 0.f, 1.f) ;
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            // 2. draw
             handle_->draw( ctm, projection );
         }
     }
@@ -488,14 +525,15 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[CLOCK_H]= nullptr;
         icons[SQUARE]   = new Mesh("mesh/icon_square.ply");
         shadows[SQUARE] = nullptr;
-        icons[CROSS]    = new Mesh("mesh/icon_cross.ply");
-        shadows[CROSS]  = nullptr;
         icons[GRID]     = new Mesh("mesh/icon_grid.ply");
         shadows[GRID]   = nullptr;
+        icons[CROSS]    = new Mesh("mesh/icon_cross.ply");
+        shadows[CROSS]  = nullptr;
+        icons[MAGNET]    = new Mesh("mesh/icon_magnet.ply");
+        shadows[MAGNET]  = nullptr;
         icons[EMPTY]    = new Mesh("mesh/icon_empty.ply");
         shadows[EMPTY]  = shadow;
     }
-
 
     symbol_ = icons[type_];
     shadow_ = shadows[type_];

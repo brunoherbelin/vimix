@@ -4339,10 +4339,10 @@ void Navigator::RenderMainPannelSession()
     //
     Session *se = Mixer::manager().session();
     float width = preview_width;
-    float height = se->frame()->projectionArea().y * width / ( se->frame()->projectionArea().x * se->frame()->aspectRatio());
+    float height = se->frame()->projectionSize().y * width / ( se->frame()->projectionSize().x * se->frame()->aspectRatio());
     if (height > preview_height - space) {
         height = preview_height - space;
-        width = height * se->frame()->aspectRatio() * ( se->frame()->projectionArea().x / se->frame()->projectionArea().y);
+        width = height * se->frame()->aspectRatio() * ( se->frame()->projectionSize().x / se->frame()->projectionSize().y);
     }
     // centered image
     ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
@@ -5857,10 +5857,10 @@ void Thumbnail::Render(float width)
 #define SEGMENT_ARRAY_MAX 1000
 #define MAXSIZE 65535
 
+#include <glm/gtc/type_ptr.hpp>
 
 void ShowSandbox(bool* p_open)
 {
-    ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 260), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin( ICON_FA_BABY_CARRIAGE "  Sandbox", p_open))
     {
@@ -5871,46 +5871,65 @@ void ShowSandbox(bool* p_open)
     ImGui::Text("Testing sandox");
     ImGui::Separator();
 
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-    ImGui::Text("This text is in BOLD");
-    ImGui::PopFont();
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-    ImGui::Text("This text is in REGULAR");
-    ImGui::PopFont();
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
-    ImGui::Text("This text is in ITALIC");
-    ImGui::PopFont();
-
-    ImGui::Text("IMAGE of Font");
-
-    ImGuiToolkit::ImageGlyph(ImGuiToolkit::FONT_DEFAULT, 'v');
-    ImGui::SameLine();
-    ImGuiToolkit::ImageGlyph(ImGuiToolkit::FONT_BOLD, 'i');
-    ImGui::SameLine();
-    ImGuiToolkit::ImageGlyph(ImGuiToolkit::FONT_ITALIC, 'm');
-    ImGui::SameLine();
-    ImGuiToolkit::ImageGlyph(ImGuiToolkit::FONT_MONO, 'i');
-    ImGui::SameLine();
-    ImGuiToolkit::ImageGlyph(ImGuiToolkit::FONT_LARGE, 'x');
-
-    ImGui::Separator();
     ImGui::Text("Source list");
     Session *se = Mixer::manager().session();
     for (auto sit = se->begin(); sit != se->end(); ++sit) {
-
         ImGui::Text("[%s] %s ", std::to_string((*sit)->id()).c_str(), (*sit)->name().c_str());
     }
 
     ImGui::Separator();
-    static char str[128] = "";
-    ImGui::InputText("Command", str, IM_ARRAYSIZE(str));
-    if ( ImGui::Button("Execute") )
-        SystemToolkit::execute(str);
+    ImGui::Text("Current source");
 
-    static char str0[128] = "àöäüèáû вторая строчка";
-    ImGui::InputText("##inputtext", str0, IM_ARRAYSIZE(str0));
-    std::string tra = BaseToolkit::transliterate(std::string(str0));
-    ImGui::Text("Transliteration: '%s'", tra.c_str());
+    Source *so = Mixer::manager().currentSource();
+    if (so) {
+        glm::vec2 v = so->attractor(0);
+        if (ImGui::SliderFloat2("LL corner", glm::value_ptr(v), 0.0, 2.0))
+            so->setAttractor(0,v);
+        v = so->attractor(1);
+        if (ImGui::SliderFloat2("UL corner", glm::value_ptr(v), 0.0, 2.0))
+            so->setAttractor(1,v);
+        v = so->attractor(2);
+        if (ImGui::SliderFloat2("LR corner", glm::value_ptr(v), 0.0, 2.0))
+            so->setAttractor(2,v);
+        v = so->attractor(3);
+        if (ImGui::SliderFloat2("UR corner", glm::value_ptr(v), 0.0, 2.0))
+            so->setAttractor(3,v);
+    }
+
+
+//    ImGui::Separator();
+//    static char str[128] = "";
+//    ImGui::InputText("Command", str, IM_ARRAYSIZE(str));
+//    if ( ImGui::Button("Execute") )
+//        SystemToolkit::execute(str);
+
+
+    //    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+    //    ImGui::Text("This text is in BOLD");
+    //    ImGui::PopFont();
+    //    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+    //    ImGui::Text("This text is in REGULAR");
+    //    ImGui::PopFont();
+    //    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
+    //    ImGui::Text("This text is in ITALIC");
+    //    ImGui::PopFont();
+
+    //    ImGui::Text("IMAGE of Font");
+
+    //    ImGuiToolkit::ImageGlyph(ImGuiToolkit::FONT_DEFAULT, 'v');
+    //    ImGui::SameLine();
+    //    ImGuiToolkit::ImageGlyph(ImGuiToolkit::FONT_BOLD, 'i');
+    //    ImGui::SameLine();
+    //    ImGuiToolkit::ImageGlyph(ImGuiToolkit::FONT_ITALIC, 'm');
+    //    ImGui::SameLine();
+    //    ImGuiToolkit::ImageGlyph(ImGuiToolkit::FONT_MONO, 'i');
+    //    ImGui::SameLine();
+    //    ImGuiToolkit::ImageGlyph(ImGuiToolkit::FONT_LARGE, 'x');
+
+//    static char str0[128] = "àöäüèáû вторая строчка";
+//    ImGui::InputText("##inputtext", str0, IM_ARRAYSIZE(str0));
+//    std::string tra = BaseToolkit::transliterate(std::string(str0));
+//    ImGui::Text("Transliteration: '%s'", tra.c_str());
 
 //    ImGui::Separator();
 

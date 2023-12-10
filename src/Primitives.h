@@ -36,7 +36,20 @@ public:
 protected:
     uint textureindex_;
     bool mirror_;
+    void generate_mesh(size_t w, size_t h);
 };
+
+class MeshSurface : public Surface {
+
+public:
+    MeshSurface(Shader *s = new ImageShader);
+
+    void init () override;
+
+protected:
+    void generate_mesh(size_t w, size_t h);
+};
+
 
 
 /**
@@ -82,6 +95,22 @@ public:
 protected:
     FrameBuffer *frame_buffer_;
 };
+
+class FrameBufferMeshSurface : public MeshSurface {
+
+public:
+    FrameBufferMeshSurface(FrameBuffer *fb, Shader *s = new ImageShader);
+
+    void draw (glm::mat4 modelview, glm::mat4 projection) override;
+    void accept (Visitor& v) override;
+
+    inline void setFrameBuffer(FrameBuffer *fb) { frame_buffer_ = fb; }
+    inline FrameBuffer *frameBuffer() const { return frame_buffer_; }
+
+protected:
+    FrameBuffer *frame_buffer_;
+};
+
 
 /**
  * @brief The Points class is a Primitive to draw Points

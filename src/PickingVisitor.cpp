@@ -180,10 +180,10 @@ void PickingVisitor::visit(Handles &n)
         glm::vec4 pos = glm::inverse(ctm) * ( mirror * glm::vec4( 0.12f, -0.12f, 0.f, 0.f ) );
         picked  = glm::length( glm::vec2( 1.f, -1.f) + glm::vec2(pos) - glm::vec2(P) ) < 1.5f * scale;
     }
-    else if ( n.type() == Handles::CROP ){
-        // the icon for cropping is on the left bottom corner at (0.12, 0.12) in scene coordinates
-        glm::vec4 pos = glm::inverse(ctm) * ( mirror * glm::vec4( 0.12f, 0.12f, 0.f, 0.f ) );
-        picked  = glm::length( glm::vec2( -1.f, -1.f) + glm::vec2(pos) - glm::vec2(P) ) < 1.5f * scale;
+    else if ( n.type() == Handles::EDIT_CROP || n.type() == Handles::EDIT_SHAPE ){
+        // the icon for cropping is on the top bottom corner at (0.12, 0.12) in scene coordinates
+        glm::vec4 pos = glm::inverse(ctm) * ( mirror * glm::vec4( -0.13f, -0.12f, 0.f, 0.f ) );
+        picked  = glm::length( glm::vec2( -1.f, 1.f) + glm::vec2(pos) - glm::vec2(P) ) < 1.5f * scale;
     }
     else if ( n.type() == Handles::MENU ){
         // the icon for menu is on the left top corner at (-0.12, 0.12) in scene coordinates
@@ -194,6 +194,18 @@ void PickingVisitor::visit(Handles &n)
         // the icon for lock is on the right bottom corner at (-0.12, 0.12) in scene coordinates
         glm::vec4 pos = glm::inverse(ctm) * ( mirror * glm::vec4( -0.12f, 0.12f, 0.f, 0.f ) );
         picked  = glm::length( glm::vec2( 1.f, -1.f) + glm::vec2(pos) - glm::vec2(P) ) < 1.5f * scale;
+    }
+    else if ( n.type() == Handles::NODE_LOWER_LEFT ) {
+        picked  = glm::length( glm::vec2(-1.f, -1.f) - glm::vec2(P) ) < scale;
+    }
+    else if ( n.type() == Handles::NODE_UPPER_LEFT ) {
+        picked  = glm::length( glm::vec2(-1.f, 1.f) - glm::vec2(P) ) < scale;
+    }
+    else if ( n.type() == Handles::NODE_LOWER_RIGHT ) {
+        picked  = glm::length( glm::vec2(1.f, -1.f) - glm::vec2(P) ) < scale;
+    }
+    else if ( n.type() == Handles::NODE_UPPER_RIGHT ){
+        picked  = glm::length( glm::vec2(1.f, 1.f) - glm::vec2(P) ) < scale;
     }
 
     if ( picked )

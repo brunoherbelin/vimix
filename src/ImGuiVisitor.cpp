@@ -476,10 +476,10 @@ void ImGuiVisitor::visit (Source& s)
 
         // preview
         float width = preview_width;
-        float height = s.frame()->projectionArea().y * width / ( s.frame()->projectionArea().x * s.frame()->aspectRatio());
+        float height = s.frame()->projectionSize().y * width / ( s.frame()->projectionSize().x * s.frame()->aspectRatio());
         if (height > preview_height - space) {
             height = preview_height - space;
-            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionArea().x / s.frame()->projectionArea().y);
+            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionSize().x / s.frame()->projectionSize().y);
         }
         // centered image
         if (s.ready()) {
@@ -649,10 +649,10 @@ void ImGuiVisitor::visit (Source& s)
 
         // preview (black texture)
         float width = preview_width;
-        float height = s.frame()->projectionArea().y * width / ( s.frame()->projectionArea().x * s.frame()->aspectRatio());
+        float height = s.frame()->projectionSize().y * width / ( s.frame()->projectionSize().x * s.frame()->aspectRatio());
         if (height > preview_height - space) {
             height = preview_height - space;
-            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionArea().x / s.frame()->projectionArea().y);
+            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionSize().x / s.frame()->projectionSize().y);
         }
         // centered image
         ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );

@@ -39,7 +39,7 @@ FrameBuffer::FrameBuffer(glm::vec3 resolution, FrameBufferFlags flags): flags_(f
     textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0), mem_usage_(0)
 {
     attrib_.viewport = glm::ivec2(resolution);
-    setProjectionArea(glm::vec2(1.f, 1.f));
+    setProjectionArea(glm::vec4(-1.f, 1.f, 1.f, -1.f));
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, 0.f);
 }
 
@@ -47,7 +47,7 @@ FrameBuffer::FrameBuffer(uint width, uint height, FrameBufferFlags flags): flags
     textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0), mem_usage_(0)
 {
     attrib_.viewport = glm::ivec2(width, height);
-    setProjectionArea(glm::vec2(1.f, 1.f));
+    setProjectionArea(glm::vec4(-1.f, 1.f, 1.f, -1.f));
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, 0.f);
 }
 
@@ -390,18 +390,29 @@ glm::mat4 FrameBuffer::projection() const
     return projection_;
 }
 
-glm::vec2 FrameBuffer::projectionArea() const
+glm::vec4 FrameBuffer::projectionArea() const
 {
     return projection_area_;
 }
 
-void FrameBuffer::setProjectionArea(glm::vec2 c)
+glm::vec2 FrameBuffer::projectionSize() const
 {
-    projection_area_.x = CLAMP(c.x, 0.1f, 1.f);
-    projection_area_.y = CLAMP(c.y, 0.1f, 1.f);
-    projection_ = glm::ortho(-projection_area_.x, projection_area_.x, projection_area_.y, -projection_area_.y, -1.f, 1.f);
+    glm::vec2 size;
+    size.x = (projection_area_[1] - projection_area_[0]) * 0.5f;
+    size.y = (projection_area_[2] - projection_area_[3]) * 0.5f;
+    return size;
 }
 
+void FrameBuffer::setProjectionArea(glm::vec4 c)
+{
+    projection_area_ = glm::clamp(c, glm::vec4(-1.f, 0.1f, 0.1f, -1.f), glm::vec4(-0.1f, 1.f, 1.f, -0.1f));
+    projection_ = glm::ortho(projection_area_[0],
+                             projection_area_[1],
+                             projection_area_[2],
+                             projection_area_[3],
+                             -1.f,
+                             1.f);
+}
 
 FrameBufferImage::FrameBufferImage(int w, int h) :
     rgb(nullptr), width(w), height(h), is_stbi(false)

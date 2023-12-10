@@ -195,34 +195,66 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     overlays_[View::GEOMETRY] = new Group;
     overlays_[View::GEOMETRY]->translation_.z = 0.15;
     overlays_[View::GEOMETRY]->visible_ = false;
-    handles_[View::GEOMETRY][Handles::RESIZE] = new Handles(Handles::RESIZE);
-    handles_[View::GEOMETRY][Handles::RESIZE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    handles_[View::GEOMETRY][Handles::RESIZE]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::RESIZE]);
-    handles_[View::GEOMETRY][Handles::RESIZE_H] = new Handles(Handles::RESIZE_H);
-    handles_[View::GEOMETRY][Handles::RESIZE_H]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    handles_[View::GEOMETRY][Handles::RESIZE_H]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::RESIZE_H]);
-    handles_[View::GEOMETRY][Handles::RESIZE_V] = new Handles(Handles::RESIZE_V);
-    handles_[View::GEOMETRY][Handles::RESIZE_V]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    handles_[View::GEOMETRY][Handles::RESIZE_V]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::RESIZE_V]);
-    handles_[View::GEOMETRY][Handles::ROTATE] = new Handles(Handles::ROTATE);
-    handles_[View::GEOMETRY][Handles::ROTATE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    handles_[View::GEOMETRY][Handles::ROTATE]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::ROTATE]);
-    handles_[View::GEOMETRY][Handles::SCALE] = new Handles(Handles::SCALE);
-    handles_[View::GEOMETRY][Handles::SCALE]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    handles_[View::GEOMETRY][Handles::SCALE]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::SCALE]);
+    // menu and manipulation switch
     handles_[View::GEOMETRY][Handles::MENU] = new Handles(Handles::MENU);
-    handles_[View::GEOMETRY][Handles::MENU]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::MENU]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
     handles_[View::GEOMETRY][Handles::MENU]->translation_.z = 0.1;
     overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::MENU]);
-    handles_[View::GEOMETRY][Handles::CROP] = new Handles(Handles::CROP);
-    handles_[View::GEOMETRY][Handles::CROP]->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 1.f);
-    handles_[View::GEOMETRY][Handles::CROP]->translation_.z = 0.1;
-    overlays_[View::GEOMETRY]->attach(handles_[View::GEOMETRY][Handles::CROP]);
+
+    manipulator_ = new Switch;
+    overlays_[View::GEOMETRY]->attach(manipulator_);
+
+    Group *transform_manipulator = new Group;
+    manipulator_->attach(transform_manipulator);
+    handles_[View::GEOMETRY][Handles::RESIZE] = new Handles(Handles::RESIZE);
+    handles_[View::GEOMETRY][Handles::RESIZE]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::RESIZE]->translation_.z = 0.1;
+    transform_manipulator->attach(handles_[View::GEOMETRY][Handles::RESIZE]);
+    handles_[View::GEOMETRY][Handles::RESIZE_H] = new Handles(Handles::RESIZE_H);
+    handles_[View::GEOMETRY][Handles::RESIZE_H]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::RESIZE_H]->translation_.z = 0.1;
+    transform_manipulator->attach(handles_[View::GEOMETRY][Handles::RESIZE_H]);
+    handles_[View::GEOMETRY][Handles::RESIZE_V] = new Handles(Handles::RESIZE_V);
+    handles_[View::GEOMETRY][Handles::RESIZE_V]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::RESIZE_V]->translation_.z = 0.1;
+    transform_manipulator->attach(handles_[View::GEOMETRY][Handles::RESIZE_V]);
+    handles_[View::GEOMETRY][Handles::ROTATE] = new Handles(Handles::ROTATE);
+    handles_[View::GEOMETRY][Handles::ROTATE]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::ROTATE]->translation_.z = 0.1;
+    transform_manipulator->attach(handles_[View::GEOMETRY][Handles::ROTATE]);
+    handles_[View::GEOMETRY][Handles::SCALE] = new Handles(Handles::SCALE);
+    handles_[View::GEOMETRY][Handles::SCALE]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::SCALE]->translation_.z = 0.1;
+    transform_manipulator->attach(handles_[View::GEOMETRY][Handles::SCALE]);
+    handles_[View::GEOMETRY][Handles::EDIT_SHAPE] = new Handles(Handles::EDIT_SHAPE);
+    handles_[View::GEOMETRY][Handles::EDIT_SHAPE]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::EDIT_SHAPE]->translation_.z = 0.1;
+    transform_manipulator->attach(handles_[View::GEOMETRY][Handles::EDIT_SHAPE]);
+
+    Group *node_manipulator = new Group;
+    manipulator_->attach(node_manipulator);
+    handles_[View::GEOMETRY][Handles::NODE_LOWER_LEFT] = new Handles(Handles::NODE_LOWER_LEFT);
+    handles_[View::GEOMETRY][Handles::NODE_LOWER_LEFT]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::NODE_LOWER_LEFT]->translation_.z = 0.1;
+    node_manipulator->attach(handles_[View::GEOMETRY][Handles::NODE_LOWER_LEFT]);
+    handles_[View::GEOMETRY][Handles::NODE_UPPER_LEFT] = new Handles(Handles::NODE_UPPER_LEFT);
+    handles_[View::GEOMETRY][Handles::NODE_UPPER_LEFT]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE,  1.f);
+    handles_[View::GEOMETRY][Handles::NODE_UPPER_LEFT]->translation_.z = 0.1;
+    node_manipulator->attach(handles_[View::GEOMETRY][Handles::NODE_UPPER_LEFT]);
+    handles_[View::GEOMETRY][Handles::NODE_LOWER_RIGHT] = new Handles(Handles::NODE_LOWER_RIGHT);
+    handles_[View::GEOMETRY][Handles::NODE_LOWER_RIGHT]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE,  1.f);
+    handles_[View::GEOMETRY][Handles::NODE_LOWER_RIGHT]->translation_.z = 0.1;
+    node_manipulator->attach(handles_[View::GEOMETRY][Handles::NODE_LOWER_RIGHT]);
+    handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT] = new Handles(Handles::NODE_UPPER_RIGHT);
+    handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE,  1.f);
+    handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT]->translation_.z = 0.1;
+    node_manipulator->attach(handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT]);
+    handles_[View::GEOMETRY][Handles::EDIT_CROP] = new Handles(Handles::EDIT_CROP);
+    handles_[View::GEOMETRY][Handles::EDIT_CROP]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::EDIT_CROP]->translation_.z = 0.1;
+    node_manipulator->attach(handles_[View::GEOMETRY][Handles::EDIT_CROP]);
+
+    manipulator_->setActive(0);
 
     frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     frame->translation_.z = 0.1;
@@ -487,6 +519,7 @@ void Source::render()
         init();
     else {
         // render the view into frame buffer
+        // NB: this also applies the color correction shader
         renderbuffer_->begin();
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
@@ -507,9 +540,8 @@ void Source::attach(FrameBuffer *renderbuffer)
 
     // create rendersurface_ only once
     if ( rendersurface_ == nullptr) {
-
         // create the surfaces to draw the frame buffer in the views
-        rendersurface_ = new FrameBufferSurface(renderbuffer_, blendingshader_);
+        rendersurface_ = new FrameBufferMeshSurface(renderbuffer_, blendingshader_);
         groups_[View::RENDERING]->attach(rendersurface_);
         groups_[View::GEOMETRY]->attach(rendersurface_);
     }
@@ -662,7 +694,7 @@ float Source::alpha() const
 
 bool Source::textureTransformed () const
 {
-    return frame()->projectionArea() != glm::vec2(1.f) ||       // cropped
+    return frame()->projectionArea() != glm::vec4(-1.f, 1.f, 1.f, -1.f) ||       // cropped
            group(View::TEXTURE)->rotation_.z != 0.f ||          // rotation
            group(View::TEXTURE)->scale_ != glm::vec3(1.f) ||    // scaled
            group(View::TEXTURE)->translation_ != glm::vec3(0.f);// displaced
@@ -789,12 +821,25 @@ void Source::update(float dt)
             groups_[View::RENDERING]->scale_ = s;
 
             // MODIFY CROP projection based on GEOMETRY crop
-            renderbuffer_->setProjectionArea( glm::vec2(groups_[View::GEOMETRY]->crop_) );
+            renderbuffer_->setProjectionArea( groups_[View::GEOMETRY]->crop_ );
 
+            // TODO : should it be applied to MIXING view?
             // Mixing and layer icons scaled based on GEOMETRY crop
-            mixingsurface_->scale_ = groups_[View::GEOMETRY]->crop_;
-            mixingsurface_->scale_.x *= renderbuffer_->aspectRatio();
+            mixingsurface_->scale_.y = groups_[View::GEOMETRY]->crop_[1];
+            mixingsurface_->scale_.x = groups_[View::GEOMETRY]->crop_[2] * renderbuffer_->aspectRatio();
             mixingsurface_->update(dt_);
+
+            // update nodes distortion
+            blendingshader_->iNodes = groups_[View::GEOMETRY]->data_;
+
+            handles_[View::GEOMETRY][Handles::NODE_LOWER_LEFT]->translation_.x = groups_[View::GEOMETRY]->data_[0].x;
+            handles_[View::GEOMETRY][Handles::NODE_LOWER_LEFT]->translation_.y = groups_[View::GEOMETRY]->data_[0].y;
+            handles_[View::GEOMETRY][Handles::NODE_UPPER_LEFT]->translation_.x = groups_[View::GEOMETRY]->data_[1].x;
+            handles_[View::GEOMETRY][Handles::NODE_UPPER_LEFT]->translation_.y = groups_[View::GEOMETRY]->data_[1].y;
+            handles_[View::GEOMETRY][Handles::NODE_LOWER_RIGHT]->translation_.x = groups_[View::GEOMETRY]->data_[2].x;
+            handles_[View::GEOMETRY][Handles::NODE_LOWER_RIGHT]->translation_.y = groups_[View::GEOMETRY]->data_[2].y;
+            handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT]->translation_.x = groups_[View::GEOMETRY]->data_[3].x;
+            handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT]->translation_.y = groups_[View::GEOMETRY]->data_[3].y;
 
             // Layers icons are displayed in Perspective (diagonal)
             groups_[View::LAYER]->translation_.x = -groups_[View::LAYER]->translation_.z;
@@ -996,4 +1041,19 @@ void Source::clearMixingGroup()
 }
 
 
+glm::vec2 Source::attractor(size_t i) const
+{
+    glm::vec2 ret(0.f);
+    i = CLAMP(i, 0, 3);
+    ret.x = blendingshader_->iNodes[i].z;
+    ret.y = blendingshader_->iNodes[i].w;
+    return ret;
+}
+
+void Source::setAttractor(size_t i, glm::vec2 a)
+{
+    i = CLAMP(i, 0, 3);
+    blendingshader_->iNodes[i].z = a.x;
+    blendingshader_->iNodes[i].w = a.y;
+}
 

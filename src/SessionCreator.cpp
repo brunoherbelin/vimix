@@ -785,8 +785,23 @@ void SessionLoader::XMLToNode(const tinyxml2::XMLElement *xml, Node &n)
         if (rotationNode)
             tinyxml2::XMLElementToGLM( rotationNode->FirstChildElement("vec3"), n.rotation_);
         const XMLElement *cropNode = node->FirstChildElement("crop");
-        if (cropNode)
-            tinyxml2::XMLElementToGLM( cropNode->FirstChildElement("vec3"), n.crop_);
+        if (cropNode) {
+            const XMLElement *vecNode = cropNode->FirstChildElement("vec4");
+            if (vecNode)
+                tinyxml2::XMLElementToGLM(vecNode, n.crop_);
+            else {
+                // backward compatibility, read vec3
+                vecNode = cropNode->FirstChildElement("vec3");
+                if (vecNode) {
+                    glm::vec3 crop;
+                    tinyxml2::XMLElementToGLM(vecNode, crop);
+                    n.crop_ = glm::vec4(-crop.x, crop.x, crop.y, -crop.y);
+                }
+            }
+        }
+        const XMLElement *dataNode = node->FirstChildElement("data");
+        if (dataNode)
+            tinyxml2::XMLElementToGLM( dataNode->FirstChildElement("mat4"), n.data_);
     }
 }
 

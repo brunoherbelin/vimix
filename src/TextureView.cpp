@@ -1016,7 +1016,7 @@ void TextureView::draw()
             if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
                 s->group(mode_)->scale_ = glm::vec3(1.f);
                 s->group(mode_)->rotation_.z = 0;
-                s->group(mode_)->crop_ = glm::vec3(1.f);
+//                s->group(mode_)->crop_ = glm::vec3(1.f);
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
                 Action::manager().store(s->name() + std::string(": Texture Reset"));
@@ -1033,7 +1033,8 @@ void TextureView::draw()
             }
             if (ImGui::Selectable( ICON_FA_EXPAND_ALT "  Reset aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
-                s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
+                s->group(mode_)->scale_.x *= (s->group(mode_)->crop_[1] - s->group(mode_)->crop_[0]) /
+                                             (s->group(mode_)->crop_[2] - s->group(mode_)->crop_[3]);
                 s->touch();
                 Action::manager().store(s->name() + std::string(": Texture Reset aspect ratio"));
             }

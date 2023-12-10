@@ -294,6 +294,10 @@ XMLElement *SessionVisitor::NodeToXML(const Node &n, XMLDocument *doc)
     crop->InsertEndChild( XMLElementFromGLM(doc, n.crop_) );
     newelement->InsertEndChild(crop);
 
+    XMLElement *data = doc->NewElement("data");
+    data->InsertEndChild( XMLElementFromGLM(doc, n.data_) );
+    newelement->InsertEndChild(data);
+
     return newelement;
 }
 
