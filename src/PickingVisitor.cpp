@@ -160,12 +160,12 @@ void PickingVisitor::visit(Handles &n)
                    glm::length(glm::vec2(-1.f, +1.f)- glm::vec2(P)) < scale ||
                    glm::length(glm::vec2(-1.f, -1.f)- glm::vec2(P)) < scale );
     }
-    else if ( n.type() == Handles::RESIZE_H ){
+    else if ( n.type() == Handles::RESIZE_H || n.type() == Handles::CROP_H ){
         // left & right
         picked = ( glm::length(glm::vec2(+1.f, 0.f)- glm::vec2(P)) < scale ||
                    glm::length(glm::vec2(-1.f, 0.f)- glm::vec2(P)) < scale );
     }
-    else if ( n.type() == Handles::RESIZE_V ){
+    else if ( n.type() == Handles::RESIZE_V || n.type() == Handles::CROP_V ){
         // top & bottom
         picked = ( glm::length(glm::vec2(0.f, +1.f)- glm::vec2(P)) < scale ||
                    glm::length(glm::vec2(0.f, -1.f)- glm::vec2(P)) < scale );

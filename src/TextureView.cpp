@@ -561,6 +561,84 @@ void TextureView::adjustBackground()
 
 }
 
+/*
+ *
+void TextureView::adjustBackground()
+{
+    // by default consider edit source is null
+    mask_node_->visible_ = false;
+    float image_original_width = 1.f;
+    glm::vec2 edit_source_size = glm::vec2(1.f, 1.f);
+
+    glm::vec3 scale = glm::vec3(1.f);
+    glm::vec3 shift = glm::vec3(0.f);
+
+    preview_surface_->setTextureIndex( Resource::getTextureTransparent() );
+
+    // if its a valid index
+    if (edit_source_ != nullptr && edit_source_->ready()) {
+        // update rendering frame to match edit source AR
+        image_original_width = edit_source_->frame()->aspectRatio();
+        edit_source_size.y = edit_source_->groups_[View::GEOMETRY]->crop_[2] - edit_source_->groups_[View::GEOMETRY]->crop_[3];
+        edit_source_size.y *= 0.5f;
+        edit_source_size.x = edit_source_->groups_[View::GEOMETRY]->crop_[1] - edit_source_->groups_[View::GEOMETRY]->crop_[0];
+        edit_source_size.x *= 0.5f * edit_source_->frame()->aspectRatio();
+
+//        scale = edit_source_->mixingsurface_->scale_;
+        scale = glm::vec3(edit_source_size, 1.f);
+        preview_surface_->setTextureIndex( edit_source_->frame()->texture() );
+        preview_shader_->mask_texture = edit_source_->blendingShader()->mask_texture;
+        preview_surface_->scale_ = scale;
+
+//        preview_surface_->scale_ = glm::vec3(edit_source_size, 1.f);
+        preview_surface_->translation_ = glm::vec3((1.f + edit_source_->groups_[View::GEOMETRY]->crop_[0]) * image_original_width * 0.5f,
+                                                   (1.f - edit_source_->groups_[View::GEOMETRY]->crop_[2]) * -0.5f,
+                                                   1.f);
+
+        // mask appearance
+        mask_node_->visible_ = edit_source_->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0;
+
+        int shape = edit_source_->maskShader()->shape;
+        mask_circle_->visible_ = shape == MaskShader::ELLIPSE;
+        mask_square_->visible_ = shape == MaskShader::OBLONG || shape == MaskShader::RECTANGLE;
+        mask_horizontal_->visible_ = shape == MaskShader::HORIZONTAL;
+        mask_vertical_->visible_ = shape == MaskShader::VERTICAL;
+
+        // symetrical shapes
+        if ( shape < MaskShader::HORIZONTAL){
+            mask_node_->scale_ = scale * glm::vec3(edit_source_->maskShader()->size, 1.f);
+            mask_node_->translation_ = glm::vec3(0.f);
+        }
+        // vertical
+        else if ( shape > MaskShader::HORIZONTAL ) {
+            mask_node_->scale_ = glm::vec3(1.f, scale.y, 1.f);
+            mask_node_->translation_ = glm::vec3(edit_source_->maskShader()->size.x * scale.x, 0.f, 0.f);
+        }
+        // horizontal
+        else {
+            mask_node_->scale_ = glm::vec3(scale.x, 1.f, 1.f);
+            mask_node_->translation_ = glm::vec3(0.f, edit_source_->maskShader()->size.y * scale.y, 0.f);
+        }
+
+    }
+
+    // background scene
+    background_surface_->scale_.x = image_original_width;
+    background_surface_->scale_.y = 1.f;
+    background_frame_->scale_.x = image_original_width;
+    vertical_mark_->translation_.x = -image_original_width;
+
+    preview_frame_->translation_ = preview_surface_->translation_;
+    preview_checker_->translation_ = preview_surface_->translation_;
+    preview_frame_->scale_ = preview_surface_->scale_;
+    preview_checker_->scale_ = preview_surface_->scale_;
+    glm::mat4 Ar  = glm::scale(glm::identity<glm::mat4>(), scale );
+    static glm::mat4 Tra = glm::scale(glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f)), glm::vec3( 64.f, 64.f, 1.f));
+    preview_checker_->shader()->iTransform = Ar * Tra;
+
+}
+*/
+
 Source *TextureView::getEditOrCurrentSource()
 {
     // get current source

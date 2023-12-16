@@ -249,6 +249,14 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE,  1.f);
     handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT]->translation_.z = 0.1;
     node_manipulator->attach(handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT]);
+    handles_[View::GEOMETRY][Handles::CROP_H] = new Handles(Handles::CROP_H);
+    handles_[View::GEOMETRY][Handles::CROP_H]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::CROP_H]->translation_.z = 0.1;
+    node_manipulator->attach(handles_[View::GEOMETRY][Handles::CROP_H]);
+    handles_[View::GEOMETRY][Handles::CROP_V] = new Handles(Handles::CROP_V);
+    handles_[View::GEOMETRY][Handles::CROP_V]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::CROP_V]->translation_.z = 0.1;
+    node_manipulator->attach(handles_[View::GEOMETRY][Handles::CROP_V]);
     handles_[View::GEOMETRY][Handles::EDIT_CROP] = new Handles(Handles::EDIT_CROP);
     handles_[View::GEOMETRY][Handles::EDIT_CROP]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
     handles_[View::GEOMETRY][Handles::EDIT_CROP]->translation_.z = 0.1;

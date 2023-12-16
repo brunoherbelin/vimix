@@ -46,6 +46,8 @@ public:
         NODE_UPPER_LEFT,
         NODE_LOWER_RIGHT,
         NODE_UPPER_RIGHT,
+        CROP_H,
+        CROP_V,
         EDIT_CROP,
         EDIT_SHAPE,
         MENU,

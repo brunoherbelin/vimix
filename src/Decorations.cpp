@@ -219,6 +219,7 @@ Handles::Handles(Type type) : Node(), type_(type)
     static Mesh *handle_eyeslash = new Mesh("mesh/icon_eye_slash.ply");
     static Mesh *handle_shadow   = new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
     static Mesh *handle_node     = new Mesh("mesh/border_handles_sharp.ply");
+    static Mesh *handle_crop_h   = new Mesh("mesh/border_handles_arrows.ply");
 
     color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     corner_ = glm::vec2(0.f, 0.f);
@@ -250,6 +251,12 @@ Handles::Handles(Type type) : Node(), type_(type)
     }
     else if ( type_ >= Handles::NODE_LOWER_LEFT  && type_ <= Handles::NODE_UPPER_RIGHT ) {
         handle_ = handle_node;
+    }
+    else if ( type_ == Handles::CROP_H ) {
+        handle_ = handle_crop_h;
+    }
+    else if ( type_ == Handles::CROP_V ) {
+        handle_ = handle_crop_h;
     }
     else {
         handle_ = handle_corner;
@@ -448,6 +455,29 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             vec = modelview * glm::vec4(translation_.x + 1.f, translation_.y + 1.f, 0.f, 1.f) ;
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             // 2. draw
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == Handles::CROP_H ){
+            // left and right
+            vec = modelview * glm::vec4(1.f, 0.f, 0.f, 1.f);
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            handle_->draw( ctm, projection );
+
+            vec = modelview * glm::vec4(-1.f, 0.f, 0.f, 1.f);
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            handle_->draw( ctm, projection );
+
+        }
+        else if ( type_ == Handles::CROP_V ){
+            // top and bottom
+            vec = modelview * glm::vec4(0.f, 1.f, 0.f, 1.f);
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            ctm = glm::rotate(ctm, M_PI_2f, glm::vec3(0.f, 0.f, 1.f));
+            handle_->draw( ctm, projection );
+
+            vec = modelview * glm::vec4(0.f, -1.f, 0.f, 1.f);
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            ctm = glm::rotate(ctm, M_PI_2f, glm::vec3(0.f, 0.f, 1.f));
             handle_->draw( ctm, projection );
         }
     }
