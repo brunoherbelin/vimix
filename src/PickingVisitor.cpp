@@ -207,6 +207,11 @@ void PickingVisitor::visit(Handles &n)
     else if ( n.type() == Handles::NODE_UPPER_RIGHT ){
         picked  = glm::length( glm::vec2(1.f, 1.f) - glm::vec2(P) ) < scale;
     }
+    else if ( n.type() == Handles::ROUNDING ){
+        // the icon for rotation is on the right top corner at (0., 0.13) in scene coordinates
+        glm::vec4 pos = glm::inverse(ctm) * ( mirror * glm::vec4( 0.f, 0.13f, 0.f, 0.f ) );
+        picked  = glm::length( glm::vec2( 1.f, 1.f) + glm::vec2(pos) - glm::vec2(P) ) < 1.5f * scale;
+    }
 
     if ( picked )
         // add this to the nodes picked

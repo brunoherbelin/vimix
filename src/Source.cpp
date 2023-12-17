@@ -257,6 +257,10 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     handles_[View::GEOMETRY][Handles::CROP_V]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
     handles_[View::GEOMETRY][Handles::CROP_V]->translation_.z = 0.1;
     node_manipulator->attach(handles_[View::GEOMETRY][Handles::CROP_V]);
+    handles_[View::GEOMETRY][Handles::ROUNDING] = new Handles(Handles::ROUNDING);
+    handles_[View::GEOMETRY][Handles::ROUNDING]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::ROUNDING]->translation_.z = 0.1;
+    node_manipulator->attach(handles_[View::GEOMETRY][Handles::ROUNDING]);
     handles_[View::GEOMETRY][Handles::EDIT_CROP] = new Handles(Handles::EDIT_CROP);
     handles_[View::GEOMETRY][Handles::EDIT_CROP]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
     handles_[View::GEOMETRY][Handles::EDIT_CROP]->translation_.z = 0.1;
@@ -833,8 +837,10 @@ void Source::update(float dt)
 
             // TODO : should it be applied to MIXING view?
             // Mixing and layer icons scaled based on GEOMETRY crop
-            mixingsurface_->scale_.y = groups_[View::GEOMETRY]->crop_[1];
-            mixingsurface_->scale_.x = groups_[View::GEOMETRY]->crop_[2] * renderbuffer_->aspectRatio();
+            mixingsurface_->scale_.y = (groups_[View::GEOMETRY]->crop_[2]
+                                        - groups_[View::GEOMETRY]->crop_[3]) * 0.5f;
+            mixingsurface_->scale_.x = (groups_[View::GEOMETRY]->crop_[1]
+                                        - groups_[View::GEOMETRY]->crop_[0]) * 0.5f * renderbuffer_->aspectRatio();
             mixingsurface_->update(dt_);
 
             // update nodes distortion
@@ -848,6 +854,9 @@ void Source::update(float dt)
             handles_[View::GEOMETRY][Handles::NODE_LOWER_RIGHT]->translation_.y = groups_[View::GEOMETRY]->data_[2].y;
             handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT]->translation_.x = groups_[View::GEOMETRY]->data_[3].x;
             handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT]->translation_.y = groups_[View::GEOMETRY]->data_[3].y;
+
+//            handles_[View::GEOMETRY][Handles::ROUNDING]->translation_.x = - groups_[View::GEOMETRY]->data_[0].z;
+            handles_[View::GEOMETRY][Handles::ROUNDING]->translation_.x = - groups_[View::GEOMETRY]->data_[0].w;
 
             // Layers icons are displayed in Perspective (diagonal)
             groups_[View::LAYER]->translation_.x = -groups_[View::LAYER]->translation_.z;

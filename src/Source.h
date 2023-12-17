@@ -332,7 +332,7 @@ protected:
     // overlays and frames to be displayed on top of source
     std::map<View::Mode, Group*> overlays_;
     std::map<View::Mode, Switch*> frames_;
-    std::map<View::Mode, Handles*[14]> handles_;
+    std::map<View::Mode, Handles*[15]> handles_;
     Handles *lock_, *unlock_;
     Switch *locker_, *manipulator_;
     Symbol *symbol_;

@@ -34,12 +34,14 @@ void main()
             coef[3] * vec2(iNodes[3].x + 1.0, iNodes[3].y + 1.0);
     vec3 pos = vec3( P / (coef[0] + coef[1] + coef[2] + coef[3]), position.z );
 
-    // Rounding corners with attractor parameter w
-    vec3 rounded = ( smoothstep(0.0, 1.0, length(position.xy)) ) * normalize(vec3(position.xy, 0.01));
+    // Rounding corners with attractor parameter iNodes[0].w
+    float d = length(pos.xy);
+    d = d / pow( 1.0 + pow(d, 10.0), 0.1 );
+    vec3 rounded = d * normalize(vec3(pos.xy, 0.0));
     pos = mix( pos, rounded, corners.x * iNodes[0].w);
-    pos = mix( pos, rounded, corners.y * iNodes[1].w);
-    pos = mix( pos, rounded, corners.z * iNodes[2].w);
-    pos = mix( pos, rounded, corners.w * iNodes[3].w);
+    pos = mix( pos, rounded, corners.y * iNodes[0].w);
+    pos = mix( pos, rounded, corners.z * iNodes[0].w);
+    pos = mix( pos, rounded, corners.w * iNodes[0].w);
 
     // output
     gl_Position = projection * ( modelview * vec4(pos, 1.0) );

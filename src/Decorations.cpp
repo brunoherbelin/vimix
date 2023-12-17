@@ -220,6 +220,7 @@ Handles::Handles(Type type) : Node(), type_(type)
     static Mesh *handle_shadow   = new Mesh("mesh/border_handles_shadow.ply", "images/soft_shadow.dds");
     static Mesh *handle_node     = new Mesh("mesh/border_handles_sharp.ply");
     static Mesh *handle_crop_h   = new Mesh("mesh/border_handles_arrows.ply");
+    static Mesh *handle_rounding = new Mesh("mesh/border_handles_roundcorner.ply");
 
     color   = glm::vec4( 1.f, 1.f, 1.f, 1.f);
     corner_ = glm::vec2(0.f, 0.f);
@@ -252,11 +253,11 @@ Handles::Handles(Type type) : Node(), type_(type)
     else if ( type_ >= Handles::NODE_LOWER_LEFT  && type_ <= Handles::NODE_UPPER_RIGHT ) {
         handle_ = handle_node;
     }
-    else if ( type_ == Handles::CROP_H ) {
+    else if ( type_ == Handles::CROP_H || type_ == Handles::CROP_V ) {
         handle_ = handle_crop_h;
     }
-    else if ( type_ == Handles::CROP_V ) {
-        handle_ = handle_crop_h;
+    else if ( type_ == Handles::ROUNDING ) {
+        handle_ = handle_rounding;
     }
     else {
         handle_ = handle_corner;
@@ -478,6 +479,18 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             vec = modelview * glm::vec4(0.f, -1.f, 0.f, 1.f);
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
             ctm = glm::rotate(ctm, M_PI_2f, glm::vec3(0.f, 0.f, 1.f));
+            handle_->draw( ctm, projection );
+        }
+        else if ( type_ == Handles::ROUNDING ){
+            // one icon in top right corner
+            // 1. Fixed displacement by (0.0,0.12) along the rotation..
+            ctm = GlmToolkit::transform(glm::vec4(0.f), rot, mirror);
+            glm::vec4 pos = ctm * glm::vec4( 0.0f, 0.13f, 0.f, 1.f);
+            // 2. ..from the top right corner (1,1)
+            vec = ( modelview * glm::vec4(translation_.x +1.f, 1.f, 0.f, 1.f) ) + pos;
+            ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
+            // 3. draw
+            shadow_->draw( ctm, projection );
             handle_->draw( ctm, projection );
         }
     }

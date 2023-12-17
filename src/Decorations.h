@@ -48,6 +48,7 @@ public:
         NODE_UPPER_RIGHT,
         CROP_H,
         CROP_V,
+        ROUNDING,
         EDIT_CROP,
         EDIT_SHAPE,
         MENU,
