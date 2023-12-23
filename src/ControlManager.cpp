@@ -842,7 +842,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
                 read_time = true;
             }
             if (read_time) {
-                int hh, mm, ss, ms;
+                osc::int32 hh, mm, ss, ms;
                 args >> hh >> mm >> ss >> ms >> osc::EndMessage;
                 target->call( new Seek( hh, mm, ss, ms ), true );
             }

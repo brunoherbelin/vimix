@@ -419,10 +419,9 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setBidirectional(bd);
 
         // get value (gst time) and convert to hh mm s.ms
-        glm::uint64 val = edited->value();
-        glm::uint64 ms = GST_TIME_AS_MSECONDS(val);
-        glm::uint64 hh = ms / 3600000;
-        glm::uint64 mm = (ms % 3600000) / 60000;
+        guint64 ms = GST_TIME_AS_MSECONDS(edited->value());
+        guint64 hh = ms / 3600000;
+        guint64 mm = (ms % 3600000) / 60000;
         ms -= (hh * 3600000 + mm * 60000);
         float sec = (float) (ms) / 1000.f;
 
@@ -433,7 +432,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
                 if (data->EventChar < 256 && strchr("0123456789.,:", (char)data->EventChar)) return 0; return 1; }
         };
         char buf6[64] = "";
-        snprintf(buf6, 64, "%lu:%lu:%.2f", hh, mm, sec );
+        snprintf(buf6, 64, "%lu:%lu:%.2f", (unsigned long) hh, (unsigned long) mm, sec );
 
         // Text input field for MM:SS:MS seek target time
         ImGui::SetNextItemWidth(right_align);

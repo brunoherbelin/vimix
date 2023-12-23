@@ -473,12 +473,12 @@ void Handles::draw(glm::mat4 modelview, glm::mat4 projection)
             // top and bottom
             vec = modelview * glm::vec4(0.f, 1.f, 0.f, 1.f);
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
-            ctm = glm::rotate(ctm, M_PI_2f, glm::vec3(0.f, 0.f, 1.f));
+            ctm = glm::rotate(ctm, (float) M_PI_2, glm::vec3(0.f, 0.f, 1.f));
             handle_->draw( ctm, projection );
 
             vec = modelview * glm::vec4(0.f, -1.f, 0.f, 1.f);
             ctm = GlmToolkit::transform(vec, rot, glm::vec3(1.f));
-            ctm = glm::rotate(ctm, M_PI_2f, glm::vec3(0.f, 0.f, 1.f));
+            ctm = glm::rotate(ctm, (float) M_PI_2, glm::vec3(0.f, 0.f, 1.f));
             handle_->draw( ctm, projection );
         }
         else if ( type_ == Handles::ROUNDING ){
