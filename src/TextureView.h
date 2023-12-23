@@ -34,6 +34,8 @@ private:
     bool need_edit_update_;
     Source *getEditOrCurrentSource();
     void adjustBackground();
+    glm::vec3 scale_crop_;
+    glm::vec3 shift_crop_;
 
     Surface *preview_surface_;
     class ImageShader *preview_shader_;

@@ -510,90 +510,29 @@ void TextureView::adjustBackground()
     // by default consider edit source is null
     mask_node_->visible_ = false;
     float image_original_width = 1.f;
-    glm::vec3 scale = glm::vec3(1.f);
+    scale_crop_ = glm::vec3(1.f);
+    shift_crop_ = glm::vec3(0.f);
     preview_surface_->setTextureIndex( Resource::getTextureTransparent() );
 
     // if its a valid index
     if (edit_source_ != nullptr && edit_source_->ready()) {
         // update rendering frame to match edit source AR
         image_original_width = edit_source_->frame()->aspectRatio();
-        scale = edit_source_->mixingsurface_->scale_;
+        scale_crop_.x = (edit_source_->group(View::GEOMETRY)->crop_[1]
+                                      - edit_source_->group(View::GEOMETRY)->crop_[0])
+                                     * 0.5f;
+        scale_crop_.y = (edit_source_->group(View::GEOMETRY)->crop_[2]
+                                      - edit_source_->group(View::GEOMETRY)->crop_[3])
+                                     * 0.5f;
+        shift_crop_.x = edit_source_->group(View::GEOMETRY)->crop_[1] - scale_crop_.x;
+        shift_crop_.y = edit_source_->group(View::GEOMETRY)->crop_[3] + scale_crop_.y;
+        scale_crop_.x *= edit_source_->frame()->aspectRatio();
+        shift_crop_.x *= edit_source_->frame()->aspectRatio();
+
         preview_surface_->setTextureIndex( edit_source_->frame()->texture() );
         preview_shader_->mask_texture = edit_source_->blendingShader()->mask_texture;
-        preview_surface_->scale_ = scale;
-        // mask appearance
-        mask_node_->visible_ = edit_source_->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0;
-
-        int shape = edit_source_->maskShader()->shape;
-        mask_circle_->visible_ = shape == MaskShader::ELLIPSE;
-        mask_square_->visible_ = shape == MaskShader::OBLONG || shape == MaskShader::RECTANGLE;
-        mask_horizontal_->visible_ = shape == MaskShader::HORIZONTAL;
-        mask_vertical_->visible_ = shape == MaskShader::VERTICAL;
-
-        // symetrical shapes
-        if ( shape < MaskShader::HORIZONTAL){
-            mask_node_->scale_ = scale * glm::vec3(edit_source_->maskShader()->size, 1.f);
-            mask_node_->translation_ = glm::vec3(0.f);
-        }
-        // vertical
-        else if ( shape > MaskShader::HORIZONTAL ) {
-            mask_node_->scale_ = glm::vec3(1.f, scale.y, 1.f);
-            mask_node_->translation_ = glm::vec3(edit_source_->maskShader()->size.x * scale.x, 0.f, 0.f);
-        }
-        // horizontal
-        else {
-            mask_node_->scale_ = glm::vec3(scale.x, 1.f, 1.f);
-            mask_node_->translation_ = glm::vec3(0.f, edit_source_->maskShader()->size.y * scale.y, 0.f);
-        }
-
-    }
-
-    // background scene
-    background_surface_->scale_.x = image_original_width;
-    background_surface_->scale_.y = 1.f;
-    background_frame_->scale_.x = image_original_width;
-    vertical_mark_->translation_.x = -image_original_width;
-    preview_frame_->scale_ = scale;
-    preview_checker_->scale_ = scale;
-    glm::mat4 Ar  = glm::scale(glm::identity<glm::mat4>(), scale );
-    static glm::mat4 Tra = glm::scale(glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f)), glm::vec3( 64.f, 64.f, 1.f));
-    preview_checker_->shader()->iTransform = Ar * Tra;
-
-}
-
-/*
- *
-void TextureView::adjustBackground()
-{
-    // by default consider edit source is null
-    mask_node_->visible_ = false;
-    float image_original_width = 1.f;
-    glm::vec2 edit_source_size = glm::vec2(1.f, 1.f);
-
-    glm::vec3 scale = glm::vec3(1.f);
-    glm::vec3 shift = glm::vec3(0.f);
-
-    preview_surface_->setTextureIndex( Resource::getTextureTransparent() );
-
-    // if its a valid index
-    if (edit_source_ != nullptr && edit_source_->ready()) {
-        // update rendering frame to match edit source AR
-        image_original_width = edit_source_->frame()->aspectRatio();
-        edit_source_size.y = edit_source_->groups_[View::GEOMETRY]->crop_[2] - edit_source_->groups_[View::GEOMETRY]->crop_[3];
-        edit_source_size.y *= 0.5f;
-        edit_source_size.x = edit_source_->groups_[View::GEOMETRY]->crop_[1] - edit_source_->groups_[View::GEOMETRY]->crop_[0];
-        edit_source_size.x *= 0.5f * edit_source_->frame()->aspectRatio();
-
-//        scale = edit_source_->mixingsurface_->scale_;
-        scale = glm::vec3(edit_source_size, 1.f);
-        preview_surface_->setTextureIndex( edit_source_->frame()->texture() );
-        preview_shader_->mask_texture = edit_source_->blendingShader()->mask_texture;
-        preview_surface_->scale_ = scale;
-
-//        preview_surface_->scale_ = glm::vec3(edit_source_size, 1.f);
-        preview_surface_->translation_ = glm::vec3((1.f + edit_source_->groups_[View::GEOMETRY]->crop_[0]) * image_original_width * 0.5f,
-                                                   (1.f - edit_source_->groups_[View::GEOMETRY]->crop_[2]) * -0.5f,
-                                                   1.f);
+        preview_surface_->scale_ = scale_crop_;
+        preview_surface_->translation_ = shift_crop_;
 
         // mask appearance
         mask_node_->visible_ = edit_source_->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0;
@@ -606,19 +545,21 @@ void TextureView::adjustBackground()
 
         // symetrical shapes
         if ( shape < MaskShader::HORIZONTAL){
-            mask_node_->scale_ = scale * glm::vec3(edit_source_->maskShader()->size, 1.f);
+            mask_node_->scale_ = scale_crop_ * glm::vec3(edit_source_->maskShader()->size, 1.f);
             mask_node_->translation_ = glm::vec3(0.f);
         }
         // vertical
         else if ( shape > MaskShader::HORIZONTAL ) {
-            mask_node_->scale_ = glm::vec3(1.f, scale.y, 1.f);
-            mask_node_->translation_ = glm::vec3(edit_source_->maskShader()->size.x * scale.x, 0.f, 0.f);
+            mask_node_->scale_ = glm::vec3(1.f, scale_crop_.y, 1.f);
+            mask_node_->translation_ = glm::vec3(edit_source_->maskShader()->size.x * scale_crop_.x, 0.f, 0.f);
         }
         // horizontal
         else {
-            mask_node_->scale_ = glm::vec3(scale.x, 1.f, 1.f);
-            mask_node_->translation_ = glm::vec3(0.f, edit_source_->maskShader()->size.y * scale.y, 0.f);
+            mask_node_->scale_ = glm::vec3(scale_crop_.x, 1.f, 1.f);
+            mask_node_->translation_ = glm::vec3(0.f, edit_source_->maskShader()->size.y * scale_crop_.y, 0.f);
         }
+
+        mask_node_->translation_ += shift_crop_;
 
     }
 
@@ -627,17 +568,15 @@ void TextureView::adjustBackground()
     background_surface_->scale_.y = 1.f;
     background_frame_->scale_.x = image_original_width;
     vertical_mark_->translation_.x = -image_original_width;
-
-    preview_frame_->translation_ = preview_surface_->translation_;
-    preview_checker_->translation_ = preview_surface_->translation_;
-    preview_frame_->scale_ = preview_surface_->scale_;
-    preview_checker_->scale_ = preview_surface_->scale_;
-    glm::mat4 Ar  = glm::scale(glm::identity<glm::mat4>(), scale );
+    preview_frame_->scale_ = scale_crop_;
+    preview_frame_->translation_ = shift_crop_;
+    preview_checker_->scale_ = scale_crop_;
+    preview_checker_->translation_ = shift_crop_;
+    glm::mat4 Ar  = glm::scale(glm::identity<glm::mat4>(), scale_crop_ );
     static glm::mat4 Tra = glm::scale(glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f)), glm::vec3( 64.f, 64.f, 1.f));
     preview_checker_->shader()->iTransform = Ar * Tra;
 
 }
-*/
 
 Source *TextureView::getEditOrCurrentSource()
 {
@@ -706,7 +645,6 @@ void TextureView::draw()
                          | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                          | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
         {
-
             // style grey
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));  // 1
             ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
@@ -716,7 +654,6 @@ void TextureView::draw()
             ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
-
 
             int maskmode = edit_source_->maskShader()->mode;
             ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
@@ -758,7 +695,6 @@ void TextureView::draw()
                 }
                 ImGui::EndCombo();
             }
-
 
             // GUI for selecting source mask
             if (maskmode == MaskShader::SOURCE) {
