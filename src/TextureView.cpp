@@ -1084,8 +1084,10 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
                 if (grid->active())
                     scene_brush_pos = grid->snap(scene_brush_pos);
                 // inform shader of a cursor action : coordinates and crop scaling
-                edit_source_->maskShader()->cursor = glm::vec4(scene_brush_pos.x, scene_brush_pos.y,
-                                                            edit_source_->mixingsurface_->scale_.x, edit_source_->mixingsurface_->scale_.y);
+                edit_source_->maskShader()->cursor = glm::vec4(scene_brush_pos.x - shift_crop_.x,
+                                                               scene_brush_pos.y - shift_crop_.y,
+                                                               edit_source_->mixingsurface_->scale_.x,
+                                                               edit_source_->mixingsurface_->scale_.y);
                 edit_source_->touch(Source::SourceUpdate_Mask);
                 // action label
                 info << MASK_PAINT_ACTION_LABEL;
