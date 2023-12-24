@@ -509,7 +509,19 @@ void UserInterface::handleMouse()
 
     static bool mousedown = false;
     static View *view_drag = nullptr;
-    static std::pair<Node *, glm::vec2> picked = { nullptr, glm::vec2(0.f) };
+    static std::pair<Node *, glm::vec2> picked = {nullptr, glm::vec2(0.f)};
+
+    // allow toggle ALT to enable / disable mouse pointer
+    static bool _was_alt = false;
+    if (_was_alt != alt_modifier_active) {
+        // remember to toggle
+        _was_alt = alt_modifier_active;
+        // simulate mouse release (mouse down will be re-activated)
+        mousedown = false;
+        // cancel active mouse pointer
+        MousePointer::manager().active()->terminate();
+        MousePointer::manager().setActiveMode( Pointer::POINTER_DEFAULT );
+    }
 
     // steal focus on right button clic
     if (!io.WantCaptureMouse)
