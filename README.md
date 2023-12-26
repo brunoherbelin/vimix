@@ -1,5 +1,8 @@
 # vimix
-Live Video Mixing
+__Live Video Mixing__
+
+<img src=docs/vimix_screenshot.png width="800">
+
 
 vimix performs graphical mixing and blending of several movie clips and
 computer generated graphics, with image processing effects in real-time.

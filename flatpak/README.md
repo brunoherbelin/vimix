@@ -7,17 +7,17 @@ Instructions are at https://flatpak.org/setup/
 
 e.g. for Ubuntu:
 
-    ~$ sudo apt install flatpak
+    sudo apt install flatpak
 
 
 ## Install vimix releases from Flathub
 
 If you followed all instructions of the [flatpak setup](https://flatpak.org/setup/), vimix should be in the list of packages.
 
-    ~$ flatpak install --user vimix
+    flatpak install --user vimix
 
 
-## Build local pre-release flatpack package of vimix
+## Build local beta flatpack package of vimix
 
 If you want to have the latest developper version of vimix (before releases), you can build a vimix flatpak yourself.
 
@@ -27,13 +27,13 @@ This way, the application vimix is still sandboxed (i.e. not installing libs in 
 
 If not already installed, install the builder and the flathub repository:
 
-    ~$ sudo apt install flatpak-builder    
-    ~$ flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+    sudo apt install flatpak-builder    
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
 Install the runtime environments:
     
-    ~$ flatpak install org.gnome.Sdk/x86_64
-    ~$ flatpak install org.gnome.Platform
+    flatpak install org.gnome.Sdk/x86_64
+    flatpak install org.gnome.Platform
 
 Select version **43** in the list of proposed version
 
@@ -42,15 +42,15 @@ Select version **43** in the list of proposed version
 
 These settings of git are needed to enable clone of local repos during build:
 
-    ~$ git config --global --add protocol.file.allow always
+    git config --global --add protocol.file.allow always
 
 Get the flatpak manifest for vimix:
 
-    ~$ curl -O https://raw.githubusercontent.com/brunoherbelin/vimix/master/flatpak/io.github.brunoherbelin.Vimix.json
+    curl -O https://raw.githubusercontent.com/brunoherbelin/vimix/master/flatpak/io.github.brunoherbelin.Vimix.json
 
 Launch the build of the flatpak:
 
-    ~$ flatpak-builder --user --install --force-clean build io.github.brunoherbelin.Vimix.json
+    flatpak-builder --user --install --force-clean build io.github.brunoherbelin.Vimix.json
 
 The build will be quite long as some dependencies are also re-build from source. However, the build of dependencies is kept in cache; rebuilding vimix will subsequently be much faster.
 
@@ -61,12 +61,12 @@ If all goes well, the package will have been generated and be able to run. The v
 
 To run from command line:
 
-    ~$ flatpak run io.github.brunoherbelin.Vimix
+    flatpak run io.github.brunoherbelin.Vimix
 
 
 ## Uninstall vimix flatpak
 
-    ~$ flatpak uninstall vimix
+    flatpak uninstall vimix
 
 
 # Developper information
