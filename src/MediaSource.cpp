@@ -162,6 +162,11 @@ void MediaSource::replay ()
     mediaplayer_->rewind();
 }
 
+void MediaSource::reload ()
+{
+    mediaplayer_->reopen();
+}
+
 guint64 MediaSource::playtime () const
 {
     return mediaplayer_->position();
@@ -173,6 +178,14 @@ void MediaSource::update(float dt)
 
     // update video
     mediaplayer_->update();
+
+    // update audio
+    if (mediaplayer_->audioEnabled() ) {
+        // apply alpha as volume factor 1
+        mediaplayer_->setAudioVolumeFactor(1, alpha());
+        // apply opacity as volume factor 2
+        mediaplayer_->setAudioVolumeFactor(2, mediaplayer_->currentTimelineFading());
+    }
 }
 
 void MediaSource::render()
@@ -181,9 +194,13 @@ void MediaSource::render()
         init();
     else {
         // render the media player into frame buffer
+        // NB: this also applies the color correction shader
         renderbuffer_->begin();
         // apply fading
-        texturesurface_->shader()->color = glm::vec4( glm::vec3(mediaplayer_->currentTimelineFading()), 1.f);
+        if (mediaplayer_->timelineFadingMode() != MediaPlayer::FADING_ALPHA)
+            texturesurface_->shader()->color = glm::vec4( glm::vec3(mediaplayer_->currentTimelineFading()), 1.f);
+        else
+            texturesurface_->shader()->color = glm::vec4( glm::vec3(1.f), mediaplayer_->currentTimelineFading());
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
         ready_ = true;

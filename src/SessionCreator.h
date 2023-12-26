@@ -65,6 +65,7 @@ public:
     void visit (MultiFileSource& s) override;
     void visit (GenericStreamSource& s) override;
     void visit (SrtReceiverSource& s) override;
+    void visit (TextSource& s) override;
 
     void visit (CloneSource& s) override;
     void visit (FrameBufferFilter&) override;
@@ -90,6 +91,7 @@ public:
     void visit (Turn&) override;
     void visit (Play&) override;
     void visit (PlayFastForward&) override;
+    void visit (Seek&) override;
 
     static void XMLToNode(const tinyxml2::XMLElement *xml, Node &n);
     static void XMLToSourcecore(tinyxml2::XMLElement *xml, SourceCore &s);

@@ -100,7 +100,7 @@ struct AppLog
         //  window
         ImGui::SameLine(0, 0);
         static bool numbering = true;
-        ImGuiToolkit::ButtonIconToggle(4, 12, 4, 12, &numbering );
+        ImGuiToolkit::ButtonIconToggle(4, 12, &numbering );
         ImGui::SameLine();
         bool clear = ImGui::Button( ICON_FA_BACKSPACE " Clear");
         ImGui::SameLine();

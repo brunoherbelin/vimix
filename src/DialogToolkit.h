@@ -78,6 +78,13 @@ public:
     void open();
 };
 
+class OpenSubtitleDialog : public FileDialog
+{
+public:
+    OpenSubtitleDialog(const std::string &name) : FileDialog(name) {}
+    void open();
+};
+
 class OpenFolderDialog : public FileDialog
 {
 public:

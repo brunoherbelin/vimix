@@ -543,9 +543,12 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/border_handles_sharp.ply
     ./rsc/mesh/border_handles_menu.ply
     ./rsc/mesh/border_handles_crop.ply
+    ./rsc/mesh/border_handles_shape.ply
     ./rsc/mesh/border_handles_lock.ply
     ./rsc/mesh/border_handles_lock_open.ply
     ./rsc/mesh/border_handles_shadow.ply
+    ./rsc/mesh/border_handles_arrows.ply
+    ./rsc/mesh/border_handles_roundcorner.ply
     ./rsc/mesh/border_large_sharp.ply
     ./rsc/mesh/border_vertical_overlay.ply
     ./rsc/mesh/perspective_layer.ply
@@ -584,6 +587,8 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_cube.ply
     ./rsc/mesh/icon_sequence.ply
     ./rsc/mesh/icon_receive.ply
+    ./rsc/mesh/icon_text.ply
+    ./rsc/mesh/icon_magnet.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
     ./rsc/shaders/filters/default.glsl

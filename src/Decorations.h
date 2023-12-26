@@ -36,7 +36,26 @@ protected:
 class Handles : public Node
 {
 public:
-    typedef enum { RESIZE = 0, RESIZE_H, RESIZE_V, ROTATE, SCALE, CROP, MENU, LOCKED, UNLOCKED, EYESLASHED } Type;
+    typedef enum {
+        RESIZE = 0,
+        RESIZE_H,
+        RESIZE_V,
+        ROTATE,
+        SCALE,
+        NODE_LOWER_LEFT,
+        NODE_UPPER_LEFT,
+        NODE_LOWER_RIGHT,
+        NODE_UPPER_RIGHT,
+        CROP_H,
+        CROP_V,
+        ROUNDING,
+        EDIT_CROP,
+        EDIT_SHAPE,
+        MENU,
+        LOCKED,
+        UNLOCKED,
+        EYESLASHED
+    } Type;
     Handles(Type type);
     ~Handles();
 
@@ -60,8 +79,42 @@ protected:
 class Symbol : public Node
 {
 public:
-    typedef enum { CIRCLE_POINT = 0, SQUARE_POINT, IMAGE, SEQUENCE, VIDEO, SESSION, CLONE, RENDER, GROUP, PATTERN, GEAR, CAMERA, SCREEN, SHARE, RECEIVE,
-                   DOTS, BUSY, LOCK, UNLOCK, EYE, EYESLASH, TELEVISION, ARROWS, ROTATION, CROP, CIRCLE, SQUARE, CLOCK, CLOCK_H, GRID, CROSS, EMPTY } Type;
+    typedef enum {
+        CIRCLE_POINT = 0,
+        SQUARE_POINT,
+        IMAGE,
+        SEQUENCE,
+        VIDEO,
+        SESSION,
+        CLONE,
+        RENDER,
+        GROUP,
+        PATTERN,
+        GEAR,
+        CAMERA,
+        SCREEN,
+        SHARE,
+        RECEIVE,
+        TEXT,
+        DOTS,
+        BUSY,
+        LOCK,
+        UNLOCK,
+        EYE,
+        EYESLASH,
+        TELEVISION,
+        ARROWS,
+        ROTATION,
+        CROP,
+        CIRCLE,
+        SQUARE,
+        CLOCK,
+        CLOCK_H,
+        GRID,
+        CROSS,
+        MAGNET,
+        EMPTY
+    } Type;
     Symbol(Type t, glm::vec3 pos = glm::vec3(0.f));
     ~Symbol();
 

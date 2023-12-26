@@ -1022,7 +1022,10 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
     // Enable Antialiasing multisampling for main window
-    if ( openGLExtensionAvailable( "GL_ARB_multisample" ) || openGLExtensionAvailable( "GL_EXT_multisample" )) {
+    if ( openGLExtensionAvailable( "GL_ARB_multisample" ) ||
+         openGLExtensionAvailable( "GL_ARB_texture_multisample" )||
+         openGLExtensionAvailable( "GL_EXT_multisample" )||
+         openGLExtensionAvailable( "GL_EXT_framebuffer_multisample" )) {
 
         if (Settings::application.render.multisampling > 0 && master_ == NULL) {
             glEnable(GL_MULTISAMPLE);

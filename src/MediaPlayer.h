@@ -37,6 +37,7 @@ struct MediaInfo {
     GstClockTime dt;
     GstClockTime end;
     std::string log;
+    bool hasaudio;
 
     MediaInfo() {
         width = par_width = 1;
@@ -49,6 +50,7 @@ struct MediaInfo {
         interlaced = false;
         seekable = false;
         valid = false;
+        hasaudio = false;
         dt  = GST_CLOCK_TIME_NONE;
         end = GST_CLOCK_TIME_NONE;
         log = "";
@@ -142,6 +144,7 @@ public:
      * Set the speed factor for playing
      * Can be negative.
      * */
+    void setRate(double s);
     void setPlaySpeed(double s);
     /**
      * Loop Mode: Behavior when reaching an extremity
@@ -203,8 +206,19 @@ public:
      */
     Timeline *timeline();
     void setTimeline(const Timeline &tl);
-
+    /**
+     * Get fading value at current time
+     * */
     float currentTimelineFading();
+    /**
+     * Get fading mode
+     * */
+    typedef enum { FADING_COLOR = 0, FADING_ALPHA = 1 } FadingMode;
+    FadingMode timelineFadingMode() { return fading_mode_; }
+    /**
+     * Set fading mode
+     * */
+    void setTimelineFadingMode(FadingMode m) { fading_mode_ = m; }
     /**
      * Get framerate of the media
      * */
@@ -264,6 +278,25 @@ public:
     inline std::string videoEffect() { return video_filter_; }
     inline bool videoEffectAvailable() { return video_filter_available_; }
     /**
+     * Enables or disables audio
+     * NB: setAudioEnabled reopens the video
+     * */
+    void setAudioEnabled(bool on);
+    void setAudioVolume(int vol = -1);
+    void setAudioVolumeFactor(uint index, float value);
+    typedef enum  {
+        VOLUME_ONLY = 0,
+        VOLUME_MULT_1 = 1,
+        VOLUME_MULT_2 = 2,
+        VOLUME_MULT_BOTH = 3
+    } VolumeFactorsMix;
+    void setAudioVolumeMix(VolumeFactorsMix m);
+    inline VolumeFactorsMix audioVolumeMix() const { return audio_volume_mix_; }
+    inline bool audioEnabled() const { return audio_enabled_; }
+    inline int  audioVolume()  const { return (int) (audio_volume_[0] * 100.f); }
+    inline bool audioAvailable() const { return media_.hasaudio; }
+
+    /**
      * Accept visitors
      * */
     void accept(Visitor& v);
@@ -292,6 +325,7 @@ private:
     // general properties of media
     MediaInfo media_;
     Timeline timeline_;
+    FadingMode fading_mode_;
     std::future<MediaInfo> discoverer_;
 
     // GST & Play status
@@ -311,6 +345,11 @@ private:
     std::string decoder_name_;
     bool video_filter_available_;
     std::string video_filter_;
+
+    // audio
+    bool audio_enabled_;
+    float audio_volume_[3];
+    VolumeFactorsMix audio_volume_mix_;
 
     // Play speed
     gdouble rate_;

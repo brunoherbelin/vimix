@@ -19,6 +19,8 @@
 
 #include <glad/glad.h>
 
+#include <glm/gtc/type_ptr.hpp>
+
 #include "defines.h"
 #include "Visitor.h"
 #include "Resource.h"
@@ -56,6 +58,7 @@ void ImageShader::use()
 
     // set stippling
     program_->setUniform("stipple", stipple);
+    program_->setUniform("iNodes", iNodes);
 
     // default mask
     if (mask_texture == 0)
@@ -76,12 +79,15 @@ void ImageShader::reset()
 
     // no stippling
     stipple = 0.f;
+
+    iNodes = glm::zero<glm::mat4>();
 }
 
 void ImageShader::copy(ImageShader const& S)
 {
     mask_texture = S.mask_texture;
     stipple = S.stipple;
+    iNodes = S.iNodes;
 }
 
 

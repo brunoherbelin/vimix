@@ -56,7 +56,7 @@ class Navigator
     bool selected_button[NAV_COUNT];
     int  selected_index;
     int  pattern_type;
-    bool custom_pipeline;
+    int  generated_type;
     bool custom_connected;
     bool custom_screencapture;
     void clearButtonSelection();
@@ -181,6 +181,7 @@ protected:
     // internal
     char inifilepath[2048];
     uint64_t start_time;
+    bool mousedown;
     bool ctrl_modifier_active;
     bool alt_modifier_active;
     bool shift_modifier_active;

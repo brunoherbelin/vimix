@@ -40,6 +40,7 @@
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
+#include "TextSource.h"
 #include "Session.h"
 #include "BaseToolkit.h"
 #include "SystemToolkit.h"
@@ -59,10 +60,6 @@ void InfoVisitor::visit(Node &n)
     oss << "Pos    ( " << n.translation_.x << ", " << n.translation_.y << " )" << std::endl;
     oss << "Scale ( " << n.scale_.x << ", " << n.scale_.y  << " )" << std::endl;
     oss << "Angle " << std::setprecision(2) << n.rotation_.z * 180.f / M_PI << "\u00B0" << std::endl;
-
-    if (!brief_) {
-        oss << n.crop_.x << ", " << n.crop_.y << " Crop" << std::endl;
-    }
 
     information_ = oss.str();
 }
@@ -490,6 +487,35 @@ void InfoVisitor::visit (SrtReceiverSource& s)
             else {
                 oss << "SRT Receiver " << s.uri() << std::endl;
                 oss << "Connecting...";
+            }
+        }
+    }
+    else
+        oss << "Undefined";
+
+    information_ = oss.str();
+    current_id_ = s.id();
+}
+
+void InfoVisitor::visit (TextSource& s)
+{
+    if (current_id_ == s.id())
+        return;
+
+    std::ostringstream oss;
+
+    TextContents *ptn = s.contents();
+    if (ptn) {
+        if (ptn->failed())
+            oss << ptn->description() << std::endl << ptn->log();
+        else {
+            if (brief_) {
+                oss << "RGBA, " << ptn->width() << " x " << ptn->height();
+            }
+            else {
+                oss << (ptn->isSubtitle() ? "Subtitle " : "Free text") << std::endl;
+                oss << "RGBA" << std::endl;
+                oss << ptn->width() << " x " << ptn->height();
             }
         }
     }

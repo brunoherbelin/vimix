@@ -26,7 +26,7 @@ namespace ImGuiToolkit
 
     // buttons and gui items with icon
     bool ButtonIcon (int i, int j, const char* tooltip = nullptr, bool expanded = false);
-    bool ButtonIconToggle (int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltip = nullptr);
+    bool ButtonIconToggle (int i, int j, bool* toggle, const char *tooltip = nullptr);
     bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips);
     bool MenuItemIcon (int i, int j, const char* label, const char* shortcut = nullptr, bool selected = false, bool enabled = true);
     bool SelectableIcon(int i, int j, const char* label, bool selected, const ImVec2& size_arg = ImVec2(0,0));
@@ -75,7 +75,7 @@ namespace ImGuiToolkit
 
     // text input
     bool InputText(const char* label, std::string* str, ImGuiInputTextFlags flag = ImGuiInputTextFlags_CharsNoBlank);
-    bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0));
+    bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0), int *numline = NULL);
     void TextMultiline(const char* label, const std::string &str, float width);
 
     bool InputCodeMultiline(const char* label, std::string *str, const ImVec2& size = ImVec2(0, 0), int *numline = NULL);
@@ -106,6 +106,9 @@ namespace ImGuiToolkit
             data->DesiredSize.x = data->DesiredSize.y = (data->DesiredSize.x > data->DesiredSize.y ? data->DesiredSize.x : data->DesiredSize.y);
         }
     };
+
+    ImVec4 ColorConvertARGBToFloat4(ImU32 in);
+    ImU32 ColorConvertFloat4ToARGB(const ImVec4 &in);
 }
 
 #endif // __IMGUI_TOOLKIT_H_

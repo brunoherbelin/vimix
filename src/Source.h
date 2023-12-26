@@ -26,6 +26,7 @@
 #define ICON_SOURCE_CLONE 9, 2
 #define ICON_SOURCE_GSTREAMER 16, 16
 #define ICON_SOURCE_SRT 14, 5
+#define ICON_SOURCE_TEXT 0, 13
 #define ICON_SOURCE 13, 11
 #define ICON_WORKSPACE_BACKGROUND 10, 16
 #define ICON_WORKSPACE_CENTRAL 11, 16
@@ -39,6 +40,7 @@ class MaskShader;
 class ImageProcessingShader;
 class FrameBuffer;
 class FrameBufferSurface;
+class FrameBufferMeshSurface;
 class Frame;
 class Handles;
 class Symbol;
@@ -183,6 +185,7 @@ public:
     virtual bool playing () const = 0;
     virtual void play (bool on) = 0;
     virtual void replay () {}
+    virtual void reload () {}
     virtual guint64 playtime () const { return 0; }
 
     // a Source shall informs if the source failed (i.e. shall be deleted)
@@ -282,6 +285,9 @@ public:
 
     SourceLink processingshader_link_;
 
+    glm::vec2 attractor(size_t i) const;
+    void setAttractor(size_t i, glm::vec2 a);
+
 protected:
     // name
     std::string name_;
@@ -299,7 +305,7 @@ protected:
 
     // the rendersurface draws the renderbuffer in the scene
     // It is associated to the rendershader for mixing effects
-    FrameBufferSurface *rendersurface_;
+    FrameBufferMeshSurface *rendersurface_;
 
     // for the mixer, we have a surface with stippling to show
     // the rendering, and a preview of the original texture
@@ -326,9 +332,9 @@ protected:
     // overlays and frames to be displayed on top of source
     std::map<View::Mode, Group*> overlays_;
     std::map<View::Mode, Switch*> frames_;
-    std::map<View::Mode, Handles*[7]> handles_;
+    std::map<View::Mode, Handles*[15]> handles_;
     Handles *lock_, *unlock_;
-    Switch *locker_;
+    Switch *locker_, *manipulator_;
     Symbol *symbol_;
     Character  *initial_0_, *initial_1_;
 

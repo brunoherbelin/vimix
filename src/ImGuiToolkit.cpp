@@ -246,10 +246,10 @@ bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip, bool expanded)
     return ret;
 }
 
-bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltip)
+bool ImGuiToolkit::ButtonIconToggle(int i, int j, bool* toggle, const char *tooltip)
 {
     bool ret = false;
-    ImGui::PushID( i * 20 + j + i_toggle * 20 + j_toggle);
+    ImGui::PushID( i * 20 + j);
 
     const ImVec4* colors = ImGui::GetStyle().Colors;
     const auto active = *toggle;
@@ -258,7 +258,7 @@ bool ImGuiToolkit::ButtonIconToggle(int i, int j, int i_toggle, int j_toggle, bo
         ImGui::PushStyleColor( ImGuiCol_ButtonHovered, colors[ImGuiCol_TabHovered] );
         ImGui::PushStyleColor( ImGuiCol_ButtonActive, colors[ImGuiCol_Tab] );
 
-        if ( ButtonIcon(i_toggle, j_toggle)) {
+        if ( ButtonIcon(i, j)) {
             *toggle = false;
             ret = true;
         }
@@ -1763,7 +1763,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
     colors[ImGuiCol_TextDisabled]           = ImVec4(0.55f, 0.55f, 0.55f, 1.00f);
     colors[ImGuiCol_WindowBg]               = ImVec4(0.13f, 0.13f, 0.13f, 0.94f);
     colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_PopupBg]                = ImVec4(0.10f, 0.10f, 0.10f, 0.90f);
+    colors[ImGuiCol_PopupBg]                = ImVec4(0.13f, 0.13f, 0.13f, 1.00f);
     colors[ImGuiCol_Border]                 = ImVec4(0.69f, 0.69f, 0.69f, 0.25f);
     colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     colors[ImGuiCol_FrameBg]                = ImVec4(0.39f, 0.39f, 0.39f, 0.55f);
@@ -1928,11 +1928,15 @@ bool ImGuiToolkit::InputText(const char* label, std::string* str, ImGuiInputText
     return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, InputTextCallback, str);
 }
 
-bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size)
+bool ImGuiToolkit::InputTextMultiline(const char* label, std::string* str, const ImVec2& size, int *numline)
 {
     ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
 
     ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, str);
+
+    // number of lines
+    if (numline)
+        *numline = std::count(str->begin(), str->end(), '\n') + 1;
 
     return ImGui::IsItemDeactivatedAfterEdit();
 }
@@ -2047,4 +2051,24 @@ void ImGuiToolkit::CodeMultiline(const char* label, const std::string &str, floa
 
     ImGui::SameLine();
     ImGui::Text("%s", label);
+}
+
+ImVec4 ImGuiToolkit::ColorConvertARGBToFloat4(ImU32 in)
+{
+    const float s = 1.0f/255.0f;
+    return ImVec4(
+        ((in >> IM_COL32_B_SHIFT) & 0xFF) * s,
+        ((in >> IM_COL32_G_SHIFT) & 0xFF) * s,
+        ((in >> IM_COL32_R_SHIFT) & 0xFF) * s,
+        ((in >> IM_COL32_A_SHIFT) & 0xFF) * s);
+}
+
+ImU32 ImGuiToolkit::ColorConvertFloat4ToARGB(const ImVec4& in)
+{
+    ImU32 out;
+    out  = ((ImU32)IM_F32_TO_INT8_SAT(in.x)) << IM_COL32_B_SHIFT;
+    out |= ((ImU32)IM_F32_TO_INT8_SAT(in.y)) << IM_COL32_G_SHIFT;
+    out |= ((ImU32)IM_F32_TO_INT8_SAT(in.z)) << IM_COL32_R_SHIFT;
+    out |= ((ImU32)IM_F32_TO_INT8_SAT(in.w)) << IM_COL32_A_SHIFT;
+    return out;
 }

@@ -30,6 +30,7 @@
 #include "BaseToolkit.h"
 #include "GstToolkit.h"
 #include "Metronome.h"
+#include "Settings.h"
 
 #include "MediaPlayer.h"
 
@@ -71,6 +72,14 @@ MediaPlayer::MediaPlayer()
     video_filter_available_ = true;
     position_ = GST_CLOCK_TIME_NONE;
     loop_ = LoopMode::LOOP_REWIND;
+    fading_mode_ = FadingMode::FADING_COLOR;
+
+    // default audio disabled
+    audio_enabled_ = false;
+    audio_volume_[0] = 1.f;
+    audio_volume_[1] = 1.f;
+    audio_volume_[2] = 1.f;
+    audio_volume_mix_ = VOLUME_ONLY;
 
     // start index in frame_ stack
     write_index_ = 0;
@@ -241,6 +250,11 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
                     video_stream_info.log = "No video stream";
 
                 gst_discoverer_stream_info_list_free(streams);
+
+                // test audio
+                GList *audios = gst_discoverer_info_get_audio_streams(info);
+                video_stream_info.hasaudio = g_list_length(audios) > 0 && Settings::application.accept_audio;
+                gst_discoverer_stream_info_list_free(audios);
             }
 
             if (info)
@@ -302,7 +316,7 @@ void MediaPlayer::open (const std::string & filename, const std::string &uri)
 void MediaPlayer::reopen()
 {
     // re-openning is meaningfull only if it was already open
-    if (pipeline_ != nullptr) {
+    if (pipeline_ != nullptr && opened_) {
         // reload : terminate pipeline and re-create it
         close();
         execute_open();
@@ -347,6 +361,8 @@ void MediaPlayer::execute_open()
     gint flags;
     // ENABLE ONLY VIDEO, NOT AUDIO AND TEXT SUBTITLES
     flags = GST_PLAY_FLAG_VIDEO;
+    if (media_.hasaudio && audio_enabled_)
+        flags |= GST_PLAY_FLAG_AUDIO;
     // ENABLE DEINTERLACING
     if (media_.interlaced)
         flags |= GST_PLAY_FLAG_DEINTERLACE;
@@ -467,6 +483,12 @@ void MediaPlayer::execute_open()
         Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
                   timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
 
+    if (media_.hasaudio) {
+        Log::Info("MediaPlayer %s Audio track %s", std::to_string(id_).c_str(), audio_enabled_ ? "enabled" : "disabled");
+        if (audio_enabled_)
+            setAudioVolume();
+    }
+
     opened_ = true;
 
     // register media player
@@ -480,6 +502,11 @@ void MediaPlayer::execute_open()
 //
 void MediaPlayer::execute_open()
 {
+    // filters and audio are not available without playbin
+    video_filter_available_ = false;
+    audio_enabled_ = false;
+    media_.hasaudio = false;
+
     // Create gstreamer pipeline :
     //         "uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
     // equivalent to command line
@@ -1250,6 +1277,7 @@ void MediaPlayer::update()
         // seek should be resolved next frame
         seeking_ = false;
         // do NOT do another seek yet
+        need_loop = false;
     }
     // otherwise check for need to seek (pipeline management)
     else if (position_ != GST_CLOCK_TIME_NONE) {
@@ -1291,10 +1319,10 @@ void MediaPlayer::execute_loop_command()
 {
     if (loop_==LOOP_REWIND) {
         rewind();
-    }
-    else if (loop_==LOOP_BIDIRECTIONAL) {
-        rate_ *= - 1.f;
+    } else if (loop_ == LOOP_BIDIRECTIONAL) {
+        rate_ *= -1.f;
         execute_seek_command();
+//        execute_seek_command(position_ + (rate_ > 0.f ? media_.dt :  media_.dt));
     }
     else { //LOOP_NONE
         if (desired_state_ == GST_STATE_PLAYING) // avoid repeated call
@@ -1323,10 +1351,11 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     // seek with flush (always)
     int seek_flags = GST_SEEK_FLAG_FLUSH;
 
-    // seek with trick mode if fast speed
-    if ( ABS(rate_) > 1.5 )
-        seek_flags |= GST_SEEK_FLAG_TRICKMODE;
+    if ( desired_state_ == GST_STATE_PLAYING )
+        // seek with KEY mode if playing
+        seek_flags |= GST_SEEK_FLAG_KEY_UNIT | GST_SEEK_FLAG_SNAP_AFTER;
     else
+        // seek with accurate timing if paused
         seek_flags |= GST_SEEK_FLAG_ACCURATE;
 
     // create seek event depending on direction
@@ -1348,7 +1377,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
 #endif
     }
     else
-        Log::Warning("MediaPlayer %s Seek failed", std::to_string(id_).c_str());
+        Log::Info("MediaPlayer %s Seek failed", std::to_string(id_).c_str());
 
     // Force update
     if (force) {
@@ -1359,6 +1388,15 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
 }
 
 
+void MediaPlayer::setRate(double s)
+{
+    // bound to interval [-MAX_PLAY_SPEED MAX_PLAY_SPEED]
+    rate_ = CLAMP(s, -MAX_PLAY_SPEED, MAX_PLAY_SPEED);
+    // skip interval [-MIN_PLAY_SPEED MIN_PLAY_SPEED]
+    if (ABS(rate_) < MIN_PLAY_SPEED)
+        rate_ = SIGN(rate_) * MIN_PLAY_SPEED;
+
+}
 
 void MediaPlayer::setPlaySpeed(double s)
 {
@@ -1367,11 +1405,7 @@ void MediaPlayer::setPlaySpeed(double s)
 #endif
 
     // Set rate to requested value (may be executed later)
-    // bound to interval [-MAX_PLAY_SPEED MAX_PLAY_SPEED]
-    rate_ = CLAMP(s, -MAX_PLAY_SPEED, MAX_PLAY_SPEED);
-    // skip interval [-MIN_PLAY_SPEED MIN_PLAY_SPEED]
-    if (ABS(rate_) < MIN_PLAY_SPEED)
-        rate_ = SIGN(rate_) * MIN_PLAY_SPEED;
+    setRate(s);
 
     // discard if too early or not possible
     if (pipeline_ == nullptr || !media_.seekable)
@@ -1407,8 +1441,9 @@ void MediaPlayer::setPlaySpeed(double s)
     // Generic way is a flush seek
     // following the example from
     // https://gstreamer.freedesktop.org/documentation/tutorials/basic/playback-speed.html
-    else
+    else {
         execute_seek_command();
+    }
 
     // Set after initialization (will be used next time)
     if (rate_change_ == RATE_CHANGE_NONE)
@@ -1654,6 +1689,72 @@ void MediaPlayer::TimeCounter::tic ()
     }
 }
 
+
+void MediaPlayer::setAudioEnabled(bool on)
+{
+    // in case of change
+    if (audio_enabled_ != on) {
+        // toggle
+        audio_enabled_ = on;
+
+        // if openned
+        if (media_.hasaudio ) {
+            // apply
+            reopen();
+        }
+    }
+}
+
+void MediaPlayer::setAudioVolume(int vol)
+{
+    // set value
+    if ( !(vol < 0) )
+        audio_volume_[0] = CLAMP( (float)(vol) * 0.01f, 0.f, 1.f);
+
+    // apply value
+    if (pipeline_ && media_.hasaudio) {
+
+        // base volume
+        gdouble new_vol = (gdouble) (audio_volume_[0]);
+
+        // apply factors
+        if ( audio_volume_mix_ == MediaPlayer::VOLUME_MULT_BOTH )
+            new_vol *= (gdouble) (audio_volume_[1] * audio_volume_[2]);
+        else if ( audio_volume_mix_ == MediaPlayer::VOLUME_MULT_2 )
+            new_vol *= (gdouble) (audio_volume_[2]);
+        else if ( audio_volume_mix_ == MediaPlayer::VOLUME_MULT_1 )
+            new_vol *= (gdouble) (audio_volume_[1]);
+
+
+        g_object_set ( G_OBJECT (pipeline_), "volume", new_vol, NULL);
+//        gst_stream_volume_set_volume (GST_STREAM_VOLUME (pipeline_), GST_STREAM_VOLUME_FORMAT_LINEAR, new_vol);
+    }
+}
+
+void MediaPlayer::setAudioVolumeMix(VolumeFactorsMix m)
+{
+    audio_volume_mix_ = m;
+    setAudioVolume();
+}
+
+void MediaPlayer::setAudioVolumeFactor(uint index, float value)
+{
+    if (index > 2)
+        return;
+
+    if ( ABS_DIFF( audio_volume_[index], value ) > EPSILON ) {
+
+        // set value
+        audio_volume_[index] = CLAMP(value, 0.f, 1.f);
+
+        // apply value
+        if ( audio_volume_mix_ == MediaPlayer::VOLUME_MULT_BOTH ||
+             (index == 1 && audio_volume_mix_ == MediaPlayer::VOLUME_MULT_1) ||
+             (index == 2 && audio_volume_mix_ == MediaPlayer::VOLUME_MULT_2) ) {
+            setAudioVolume();
+        }
+    }
+}
 
 //static void audio_changed_callback (GstElement *pipeline, MediaPlayer *mp)
 //{

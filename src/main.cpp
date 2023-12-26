@@ -30,6 +30,7 @@
 #include "ControlManager.h"
 #include "Connection.h"
 #include "Metronome.h"
+#include "Audio.h"
 
 #if defined(APPLE)
 extern "C"{
@@ -157,6 +158,12 @@ int main(int argc, char *argv[])
     gst_debug_set_default_threshold (GST_LEVEL_ERROR);
     gst_debug_set_active(FALSE);
 #endif
+
+    ///
+    /// AUDIO INIT
+    ///
+    if ( Settings::application.accept_audio )
+        Audio::manager().initialize();
 
     // callbacks to draw
     Rendering::manager().pushBackDrawCallback(prepare);

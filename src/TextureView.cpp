@@ -510,17 +510,30 @@ void TextureView::adjustBackground()
     // by default consider edit source is null
     mask_node_->visible_ = false;
     float image_original_width = 1.f;
-    glm::vec3 scale = glm::vec3(1.f);
+    scale_crop_ = glm::vec3(1.f);
+    shift_crop_ = glm::vec3(0.f);
     preview_surface_->setTextureIndex( Resource::getTextureTransparent() );
 
     // if its a valid index
     if (edit_source_ != nullptr && edit_source_->ready()) {
         // update rendering frame to match edit source AR
         image_original_width = edit_source_->frame()->aspectRatio();
-        scale = edit_source_->mixingsurface_->scale_;
+        scale_crop_.x = (edit_source_->group(View::GEOMETRY)->crop_[1]
+                                      - edit_source_->group(View::GEOMETRY)->crop_[0])
+                                     * 0.5f;
+        scale_crop_.y = (edit_source_->group(View::GEOMETRY)->crop_[2]
+                                      - edit_source_->group(View::GEOMETRY)->crop_[3])
+                                     * 0.5f;
+        shift_crop_.x = edit_source_->group(View::GEOMETRY)->crop_[1] - scale_crop_.x;
+        shift_crop_.y = edit_source_->group(View::GEOMETRY)->crop_[3] + scale_crop_.y;
+        scale_crop_.x *= edit_source_->frame()->aspectRatio();
+        shift_crop_.x *= edit_source_->frame()->aspectRatio();
+
         preview_surface_->setTextureIndex( edit_source_->frame()->texture() );
         preview_shader_->mask_texture = edit_source_->blendingShader()->mask_texture;
-        preview_surface_->scale_ = scale;
+        preview_surface_->scale_ = scale_crop_;
+        preview_surface_->translation_ = shift_crop_;
+
         // mask appearance
         mask_node_->visible_ = edit_source_->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0;
 
@@ -532,19 +545,21 @@ void TextureView::adjustBackground()
 
         // symetrical shapes
         if ( shape < MaskShader::HORIZONTAL){
-            mask_node_->scale_ = scale * glm::vec3(edit_source_->maskShader()->size, 1.f);
+            mask_node_->scale_ = scale_crop_ * glm::vec3(edit_source_->maskShader()->size, 1.f);
             mask_node_->translation_ = glm::vec3(0.f);
         }
         // vertical
         else if ( shape > MaskShader::HORIZONTAL ) {
-            mask_node_->scale_ = glm::vec3(1.f, scale.y, 1.f);
-            mask_node_->translation_ = glm::vec3(edit_source_->maskShader()->size.x * scale.x, 0.f, 0.f);
+            mask_node_->scale_ = glm::vec3(1.f, scale_crop_.y, 1.f);
+            mask_node_->translation_ = glm::vec3(edit_source_->maskShader()->size.x * scale_crop_.x, 0.f, 0.f);
         }
         // horizontal
         else {
-            mask_node_->scale_ = glm::vec3(scale.x, 1.f, 1.f);
-            mask_node_->translation_ = glm::vec3(0.f, edit_source_->maskShader()->size.y * scale.y, 0.f);
+            mask_node_->scale_ = glm::vec3(scale_crop_.x, 1.f, 1.f);
+            mask_node_->translation_ = glm::vec3(0.f, edit_source_->maskShader()->size.y * scale_crop_.y, 0.f);
         }
+
+        mask_node_->translation_ += shift_crop_;
 
     }
 
@@ -553,9 +568,11 @@ void TextureView::adjustBackground()
     background_surface_->scale_.y = 1.f;
     background_frame_->scale_.x = image_original_width;
     vertical_mark_->translation_.x = -image_original_width;
-    preview_frame_->scale_ = scale;
-    preview_checker_->scale_ = scale;
-    glm::mat4 Ar  = glm::scale(glm::identity<glm::mat4>(), scale );
+    preview_frame_->scale_ = scale_crop_;
+    preview_frame_->translation_ = shift_crop_;
+    preview_checker_->scale_ = scale_crop_;
+    preview_checker_->translation_ = shift_crop_;
+    glm::mat4 Ar  = glm::scale(glm::identity<glm::mat4>(), scale_crop_ );
     static glm::mat4 Tra = glm::scale(glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f)), glm::vec3( 64.f, 64.f, 1.f));
     preview_checker_->shader()->iTransform = Ar * Tra;
 
@@ -628,7 +645,6 @@ void TextureView::draw()
                          | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                          | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
         {
-
             // style grey
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));  // 1
             ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
@@ -638,7 +654,6 @@ void TextureView::draw()
             ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
-
 
             int maskmode = edit_source_->maskShader()->mode;
             ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
@@ -680,7 +695,6 @@ void TextureView::draw()
                 }
                 ImGui::EndCombo();
             }
-
 
             // GUI for selecting source mask
             if (maskmode == MaskShader::SOURCE) {
@@ -1016,7 +1030,7 @@ void TextureView::draw()
             if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
                 s->group(mode_)->scale_ = glm::vec3(1.f);
                 s->group(mode_)->rotation_.z = 0;
-                s->group(mode_)->crop_ = glm::vec3(1.f);
+//                s->group(mode_)->crop_ = glm::vec3(1.f);
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
                 Action::manager().store(s->name() + std::string(": Texture Reset"));
@@ -1033,7 +1047,8 @@ void TextureView::draw()
             }
             if (ImGui::Selectable( ICON_FA_EXPAND_ALT "  Reset aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
-                s->group(mode_)->scale_.x *= s->group(mode_)->crop_.x / s->group(mode_)->crop_.y;
+                s->group(mode_)->scale_.x *= (s->group(mode_)->crop_[1] - s->group(mode_)->crop_[0]) /
+                                             (s->group(mode_)->crop_[2] - s->group(mode_)->crop_[3]);
                 s->touch();
                 Action::manager().store(s->name() + std::string(": Texture Reset aspect ratio"));
             }
@@ -1069,8 +1084,10 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
                 if (grid->active())
                     scene_brush_pos = grid->snap(scene_brush_pos);
                 // inform shader of a cursor action : coordinates and crop scaling
-                edit_source_->maskShader()->cursor = glm::vec4(scene_brush_pos.x, scene_brush_pos.y,
-                                                            edit_source_->mixingsurface_->scale_.x, edit_source_->mixingsurface_->scale_.y);
+                edit_source_->maskShader()->cursor = glm::vec4(scene_brush_pos.x - shift_crop_.x,
+                                                               scene_brush_pos.y - shift_crop_.y,
+                                                               edit_source_->mixingsurface_->scale_.x,
+                                                               edit_source_->mixingsurface_->scale_.y);
                 edit_source_->touch(Source::SourceUpdate_Mask);
                 // action label
                 info << MASK_PAINT_ACTION_LABEL;

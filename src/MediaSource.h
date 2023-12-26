@@ -18,6 +18,7 @@ public:
     void play (bool) override;
     bool playable () const  override;
     void replay () override;
+    void reload () override;
     guint64 playtime () const override;
     void render() override;
     Failure failed() const override;

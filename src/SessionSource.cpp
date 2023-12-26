@@ -277,10 +277,14 @@ void SessionFileSource::load(const std::string &p, uint level)
     path_ = p;
 
     // delete session
-    if (session_) {
+    if (session_)
         delete session_;
-        session_ = nullptr;
-    }
+    session_ = nullptr;
+
+    // reset renderbuffer_
+    if (renderbuffer_)
+        delete renderbuffer_;
+    renderbuffer_ = nullptr;
 
     // init session
     if ( path_.empty() ) {
@@ -297,6 +301,11 @@ void SessionFileSource::load(const std::string &p, uint level)
     // will be ready after init and one frame rendered
     initialized_ = false;
     ready_ = false;
+}
+
+void SessionFileSource::reload()
+{
+    load(path_);
 }
 
 void SessionFileSource::init()

@@ -32,6 +32,7 @@
 #include "BaseToolkit.h"
 #include "Mixer.h"
 #include "Source.h"
+#include "TextSource.h"
 #include "SourceCallback.h"
 #include "ImageProcessingShader.h"
 #include "ActionManager.h"
@@ -611,6 +612,10 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         else if ( attribute.compare(OSC_SOURCE_REPLAY) == 0) {
             target->call( new RePlay() );
         }
+        /// e.g. '/vimix/current/reload'
+        else if ( attribute.compare(OSC_SOURCE_RELOAD) == 0) {
+            target->reload();
+        }
         /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_LOCK) == 0) {
             float x = 1.f;
@@ -824,17 +829,39 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             arguments >> v >> osc::EndMessage;
             target->call( new SetPosterize( v ), true );
         }
-        /// e.g. '/vimix/current/seek f 0.25'
+        /// e.g. '/vimix/current/seek f 0.25' ; seek to 25% of duration
+        /// e.g. '/vimix/current/seek iiii 0 0 25 500' ; seek to time
         else if ( attribute.compare(OSC_SOURCE_SEEK) == 0) {
             float t = 0.f;
-            arguments >> t >> osc::EndMessage;
-            target->call( new Seek( t ), true );
+            bool read_time = false;
+            osc::ReceivedMessageArgumentStream args = arguments;
+            try {
+                arguments >> t >> osc::EndMessage;
+                target->call( new Seek(t), true);
+            } catch (osc::WrongArgumentTypeException &) {
+                read_time = true;
+            }
+            if (read_time) {
+                osc::int32 hh, mm, ss, ms;
+                args >> hh >> mm >> ss >> ms >> osc::EndMessage;
+                target->call( new Seek( hh, mm, ss, ms ), true );
+            }
         }
         /// e.g. '/vimix/current/speed f 0.25'
-        else if ( attribute.compare(OSC_SOURCE_SPEED) == 0) {
+        else if (attribute.compare(OSC_SOURCE_SPEED) == 0) {
             float t = 0.f;
             arguments >> t >> osc::EndMessage;
-            target->call( new PlaySpeed( t ), true );
+            target->call(new PlaySpeed(t), true);
+        }
+        /// e.g. '/vimix/current/contents s text'
+        else if (attribute.compare(OSC_SOURCE_CONTENTS) == 0) {
+            // try by client name if given: remove all streams with that name
+            const char *label = nullptr;
+            arguments >> label >> osc::EndMessage;
+            TextSource *textsrc = dynamic_cast<TextSource *>(target);
+            if (textsrc && label) {
+                textsrc->contents()->setText(label);
+            }
         }
         /// e.g. '/vimix/name/sync'
         else if ( attribute.compare(OSC_SYNC) == 0) {

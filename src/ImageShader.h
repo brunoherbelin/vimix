@@ -22,6 +22,7 @@ public:
 
     // uniforms
     float stipple;
+    glm::mat4 iNodes;
 };
 
 class AlphaShader : public ImageShader

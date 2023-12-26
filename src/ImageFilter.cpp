@@ -112,7 +112,7 @@ FilteringProgram::FilteringProgram(const std::string &name, const std::string &f
 }
 
 FilteringProgram::FilteringProgram(const FilteringProgram &other) :
-    name_(other.name_), code_(other.code_), parameters_(other.parameters_), two_pass_filter_(other.two_pass_filter_)
+    name_(other.name_), code_(other.code_), two_pass_filter_(other.two_pass_filter_), parameters_(other.parameters_)
 {
 
 }
@@ -806,7 +806,7 @@ const char* AlphaFilter::operation_label[AlphaFilter::ALPHA_INVALID] = {
 
 std::vector< FilteringProgram > AlphaFilter::programs_ = {
     FilteringProgram("Chromakey","shaders/filters/chromakey.glsl",   "",  { { "Red", 0.0}, { "Green", 1.0}, { "Blue", 0.0}, { "Threshold", 0.5}, { "Tolerance", 0.5} }),
-    FilteringProgram("Lumakey",  "shaders/filters/lumakey.glsl",     "",  { { "Threshold", 0.5}, { "Tolerance", 0.5} } ),
+    FilteringProgram("Lumakey",  "shaders/filters/lumakey.glsl",     "",  { { "Luminance", 0.0}, { "Threshold", 0.5}, { "Tolerance", 0.5} } ),
     FilteringProgram("coloralpha","shaders/filters/coloralpha.glsl", "",  { { "Red", 0.0}, { "Green", 1.0}, { "Blue", 0.0} })
 };
 

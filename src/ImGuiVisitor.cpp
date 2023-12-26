@@ -53,6 +53,7 @@
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
+#include "TextSource.h"
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
 #include "Settings.h"
@@ -475,10 +476,10 @@ void ImGuiVisitor::visit (Source& s)
 
         // preview
         float width = preview_width;
-        float height = s.frame()->projectionArea().y * width / ( s.frame()->projectionArea().x * s.frame()->aspectRatio());
+        float height = s.frame()->projectionSize().y * width / ( s.frame()->projectionSize().x * s.frame()->aspectRatio());
         if (height > preview_height - space) {
             height = preview_height - space;
-            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionArea().x / s.frame()->projectionArea().y);
+            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionSize().x / s.frame()->projectionSize().y);
         }
         // centered image
         if (s.ready()) {
@@ -648,10 +649,10 @@ void ImGuiVisitor::visit (Source& s)
 
         // preview (black texture)
         float width = preview_width;
-        float height = s.frame()->projectionArea().y * width / ( s.frame()->projectionArea().x * s.frame()->aspectRatio());
+        float height = s.frame()->projectionSize().y * width / ( s.frame()->projectionSize().x * s.frame()->aspectRatio());
         if (height > preview_height - space) {
             height = preview_height - space;
-            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionArea().x / s.frame()->projectionArea().y);
+            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionSize().x / s.frame()->projectionSize().y);
         }
         // centered image
         ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
@@ -704,13 +705,24 @@ void ImGuiVisitor::visit (MediaSource& s)
             top.x += ImGui::GetFrameHeight();
         }
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(2, 5, "Show in finder"))
+        if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
-
-        ImGui::SetCursorPos(botom);
 
         MediaPlayer *mp = s.mediaplayer();
         if (mp && !mp->isImage()) {
+
+            // information on gstreamer effect filter
+            if ( mp->videoEffectAvailable() &&  !mp->videoEffect().empty()) {
+                top.x += ImGui::GetFrameHeight();
+                ImGui::SetCursorPos(top);
+                std::string desc = mp->videoEffect();
+                desc = desc.substr(0, desc.find_first_of(' '));
+                desc = "Has gstreamer effect '" + desc + "'";
+                ImGuiToolkit::Indication(desc.c_str(),16,16);
+            }
+
+            ImGui::SetCursorPos(botom);
+
             // Selector for Hardware or software decoding, if available
             if ( Settings::application.render.gpu_decoding ) {
 
@@ -732,9 +744,13 @@ void ImGuiVisitor::visit (MediaSource& s)
                 {
                     if (ImGui::Selectable( ICON_FA_MICROCHIP " / " ICON_FA_COGS " Auto select", &hwdec ))
                         mp->setSoftwareDecodingForced(false);
+                    if (ImGui::IsItemHovered() && !hwdec)
+                        ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
                     hwdec = mp->softwareDecodingForced();
                     if (ImGui::Selectable( ICON_FA_COGS " Software only", &hwdec ))
                         mp->setSoftwareDecodingForced(true);
+                    if (ImGui::IsItemHovered() && !hwdec)
+                        ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
                     ImGui::EndCombo();
                 }
             }
@@ -744,8 +760,58 @@ void ImGuiVisitor::visit (MediaSource& s)
                 ImGui::SameLine();
                 ImGui::TextDisabled("Hardware decoding disabled");
             }
-        }
 
+            // enable / disable audio if available
+            if (mp->audioAvailable()) {
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::BeginCombo("Audio", mp->audioEnabled() ? ICON_FA_VOLUME_UP " Enabled" : ICON_FA_VOLUME_MUTE " Disabled" ) )
+                {
+                    if (ImGui::Selectable( ICON_FA_VOLUME_UP " Enable", mp->audioEnabled() ))
+                        mp->setAudioEnabled(true);
+                    if (ImGui::IsItemHovered() && !mp->audioEnabled())
+                        ImGuiToolkit::ToolTip( "Changing audio will\nre-open the media" );
+
+                    if (ImGui::Selectable( ICON_FA_VOLUME_MUTE " Disable", !mp->audioEnabled() ))
+                        mp->setAudioEnabled(false);
+                    if (ImGui::IsItemHovered() && mp->audioEnabled())
+                        ImGuiToolkit::ToolTip( "Changing audio will\nre-open the media" );
+                    ImGui::EndCombo();
+                }
+
+                if (mp->audioEnabled()) {
+
+                    ImGuiIO& io = ImGui::GetIO();
+                    ///
+                    /// AUDIO VOLUME
+                    ///
+                    int vol = mp->audioVolume();
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    if ( ImGui::SliderInt("##Volume", &vol, 0, 100, "%d%%") )
+                        mp->setAudioVolume(vol);
+                    if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+                        vol = CLAMP(vol + int(10.f * io.MouseWheel), 0, 100);
+                        mp->setAudioVolume(vol);
+                    }
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    if (ImGuiToolkit::TextButton("Volume")) {
+                        mp->setAudioVolume(100);
+                    }
+
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    int m = mp->audioVolumeMix();
+                    if ( ImGui::Combo("##Multiplier", &m, "None\0Alpha\0Opacity\0Alpha * Opacity\0")  ) {
+                        mp->setAudioVolumeMix( (MediaPlayer::VolumeFactorsMix) m );
+                    }
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    if (ImGuiToolkit::TextButton("Multiplier")) {
+                        mp->setAudioVolumeMix( MediaPlayer::VOLUME_ONLY );
+                    }
+                }
+            }
+        }
+        else
+            ImGui::SetCursorPos(botom);
     }
     else {
         // failed
@@ -867,7 +933,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         }
 
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(2, 5, "Show in finder"))
+        if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
 
     }
@@ -1292,6 +1358,34 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             Action::manager().store(oss.str());
         }
     }
+    // Luminance extra parameter
+    else {
+        float v = filter_parameters["Luminance"];
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderFloat( "##Luminance", &v, 0.f, 1.f, "%.2f")) {
+            f.setProgramParameter("Luminance", v);
+        }
+        if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+            v = CLAMP( v + 0.01f * io.MouseWheel, 0.f, 1.f);
+            f.setProgramParameter("Luminance", v);
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Luminance" << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Luminance" << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Luminance")) {
+            v = 0.f;
+            f.setProgramParameter("Luminance", v);
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Luminance" << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
+        }
+    }
 
 }
 
@@ -1669,7 +1763,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
 
     // offer to open file browser at location
     ImGui::SetCursorPos(top);
-    if (ImGuiToolkit::IconButton(2, 5, "Show in finder"))
+    if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
         SystemToolkit::open(SystemToolkit::path_filename( s.sequence().location ));
 
     ImGui::SetCursorPos(botom);
@@ -1751,6 +1845,254 @@ void ImGuiVisitor::visit (SrtReceiverSource& s)
     ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
+
+    if ( !s.failed() ) {
+        // icon (>) to open player
+        if ( s.stream()->isOpen() ) {
+            ImGui::SetCursorPos(top);
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
+                UserInterface::manager().showSourceEditor(&s);
+        }
+        else
+            info.reset();
+    }
+    else
+        info.reset();
+
+    ImGui::SetCursorPos(botom);
+
+}
+
+
+void ImGuiVisitor::visit(TextSource &s)
+{
+    ImVec2 top = ImGui::GetCursorPos();
+    top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+    float w = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+
+    // network info
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x
+                           + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
+    ImGui::PopTextWrapPos();
+    ImGui::Spacing();
+
+    ImVec2 botom = ImGui::GetCursorPos();
+
+    TextContents *tc = s.contents();
+    if (tc) {
+        // Prepare display text
+        static int numlines = 0;
+        const ImGuiContext &g = *GImGui;
+        ImVec2 fieldsize(w, MAX(4, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y);
+
+        // Text contents
+        std::string _contents = tc->text();
+        // if the content is a subtitle file
+        if (tc->isSubtitle()) {
+            static char dummy_str[1024];
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            snprintf(dummy_str, 1024, "%s", _contents.c_str());
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGui::InputText("##Filesubtitle", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopStyleColor(1);
+            botom = ImGui::GetCursorPos();
+            // Action on the filename
+            ImGui::SetCursorPos(ImVec2(top.x, botom.y - ImGui::GetFrameHeight()));
+            if (ImGuiToolkit::IconButton(ICON_FA_EDIT, "Open in editor"))
+                SystemToolkit::open(_contents.c_str());
+            ImGui::SetCursorPos(
+                ImVec2(top.x + 0.95 * ImGui::GetFrameHeight(), botom.y - ImGui::GetFrameHeight()));
+            if (ImGuiToolkit::IconButton(ICON_FA_REDO_ALT, "Reload"))
+                s.reload();
+        }
+        // general case of free text : text editor
+        else {
+            if (ImGuiToolkit::InputTextMultiline("Text", &_contents, fieldsize, &numlines)) {
+                info.reset();
+                tc->setText(_contents);
+                Action::manager().store(s.name() + " Change text");
+            }
+            botom = ImGui::GetCursorPos();
+
+            // Actions on the text
+            ImGui::SetCursorPos(ImVec2(top.x, botom.y - ImGui::GetFrameHeight()));
+            if (ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy"))
+                ImGui::SetClipboardText(_contents.c_str());
+            ImGui::SetCursorPos(
+                ImVec2(top.x + 0.95 * ImGui::GetFrameHeight(), botom.y - ImGui::GetFrameHeight()));
+            if (ImGuiToolkit::IconButton(ICON_FA_PASTE, "Paste")) {
+                _contents = std::string(ImGui::GetClipboardText());
+                info.reset();
+                tc->setText(_contents);
+                Action::manager().store(s.name() + " Change text");
+            }
+            ImGui::SetCursorPos(ImVec2(top.x, botom.y - 2.f * ImGui::GetFrameHeight()));
+            if (ImGuiToolkit::IconButton(ICON_FA_CODE, "Pango syntax"))
+                SystemToolkit::open("https://docs.gtk.org/Pango/pango_markup.html");
+        }
+
+        // Text Properties
+        ImGui::SetCursorPos(botom);
+
+        ImVec4 color = ImGuiToolkit::ColorConvertARGBToFloat4(tc->color());
+        if (ImGui::ColorEdit4("Text Color", (float *) &color, ImGuiColorEditFlags_AlphaPreview |
+                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ) {
+            tc->setColor( ImGuiToolkit::ColorConvertFloat4ToARGB(color) );
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            Action::manager().store( s.name() + " Change font color" );
+        std::string font = tc->fontDescriptor();
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGuiToolkit::InputText("##Font", &font, ImGuiInputTextFlags_EnterReturnsTrue);
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            tc->setFontDescriptor(font);
+            Action::manager().store( s.name() + " Change font");
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Font")) {
+            tc->setFontDescriptor("arial 24");
+            tc->setColor(0xffffffff);
+            Action::manager().store(s.name() + " Reset font");
+        }
+        botom = ImGui::GetCursorPos();
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::IconButton(1, 13, "Pango font description"))
+            SystemToolkit::open("https://docs.gtk.org/Pango/type_func.FontDescription.from_string.html");
+        ImGui::SetCursorPos(botom);
+
+        color = ImGuiToolkit::ColorConvertARGBToFloat4(tc->outlineColor());
+        if (ImGui::ColorEdit4("Text Outline Color", (float *) &color, ImGuiColorEditFlags_AlphaPreview |
+                              ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ) {
+            tc->setOutlineColor( ImGuiToolkit::ColorConvertFloat4ToARGB(color) );
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            Action::manager().store( s.name() + " Change outline color" );
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        int outline = tc->outline();
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::Combo("##Outline", &outline, "None\0Border\0Border & shadow\0")) {
+            tc->setOutline(outline);
+            Action::manager().store(s.name() + " Change outline");
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Outline")) {
+            tc->setOutline(2);
+            tc->setOutlineColor(0xFF000000);
+            Action::manager().store(s.name() + " Reset outline");
+        }
+
+        // HORIZONTAL alignment
+        bool on = true;
+        uint var = tc->horizontalAlignment();
+        on = var == 0;
+        float _x = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+        _x -= 4.f * (g.FontSize + g.Style.FramePadding.x + IMGUI_SAME_LINE);
+        if (var != 1) {
+            // not centered
+            ImGui::SetNextItemWidth(_x);
+            if (var > 2) {
+                // Absolute position
+                float align_x = tc->horizontalPadding();
+                if (ImGui::SliderFloat("##Posx", &align_x, 0.f, 1.f, "%.2f")) {
+                    tc->setHorizontalPadding(align_x);
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip( "Coordinates" );
+            } else {
+                // padding top or bottom
+                int pad_x = (int) tc->horizontalPadding();
+                if (ImGui::SliderInt("##Padx", &pad_x, 0, 1000)) {
+                    tc->setHorizontalPadding((float) pad_x);
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip( "Padding" );
+            }
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+        } else {
+            _x += IMGUI_SAME_LINE + g.Style.FramePadding.x;
+            ImGui::SetCursorPosX(_x);
+        }
+        if (ImGuiToolkit::ButtonIconToggle(17, 16, &on, "Left"))
+            tc->setHorizontalAlignment(0);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        on = var == 1;
+        if (ImGuiToolkit::ButtonIconToggle(18, 16, &on, "Center"))
+            tc->setHorizontalAlignment(1);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        on = var == 2;
+        if (ImGuiToolkit::ButtonIconToggle(19, 16, &on, "Right"))
+            tc->setHorizontalAlignment(2);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        on = var == 3;
+        if (ImGuiToolkit::ButtonIconToggle(6, 10, &on, "Absolute"))
+            tc->setHorizontalAlignment(3);
+        if (var != tc->horizontalAlignment())
+            Action::manager().store(s.name() + " Change h-align");
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Horizontal")) {
+            tc->setHorizontalAlignment(1);
+            Action::manager().store(s.name() + " Reset h-align");
+        }
+
+        // VERTICAL alignment
+        var = tc->verticalAlignment();
+        on = var == 0;
+        _x = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+        _x -= 4.f * (g.FontSize + g.Style.FramePadding.x + IMGUI_SAME_LINE);
+        if (var != 2) {
+            // not centered
+            ImGui::SetNextItemWidth(_x);
+            if (var > 2) {
+                // Absolute position
+                float align_y = tc->verticalPadding();
+                if (ImGui::SliderFloat("##Posy", &align_y, 0.f, 1.f, "%.2f")) {
+                    tc->setVerticalPadding(align_y);
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip( "Coordinates" );
+            } else {
+                // padding top or bottom
+                int pad_y = (int) tc->verticalPadding();
+                if (ImGui::SliderInt("##Pady", &pad_y, 0, 1000)) {
+                    tc->setVerticalPadding((float) pad_y);
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip( "Padding" );
+            }
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+        } else {
+            // no value slider for centered
+            _x += IMGUI_SAME_LINE + g.Style.FramePadding.x;
+             ImGui::SetCursorPosX(_x);
+        }
+        if (ImGuiToolkit::ButtonIconToggle(1, 17, &on, "Bottom"))
+            tc->setVerticalAlignment(0);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        on = var == 2;
+        if (ImGuiToolkit::ButtonIconToggle(3, 17, &on, "Center"))
+            tc->setVerticalAlignment(2);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        on = var == 1;
+        if (ImGuiToolkit::ButtonIconToggle(2, 17, &on, "Top"))
+            tc->setVerticalAlignment(1);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        on = var == 3;
+        if (ImGuiToolkit::ButtonIconToggle(3, 10, &on, "Absolute"))
+            tc->setVerticalAlignment(3);
+        if (var != tc->verticalAlignment())
+            Action::manager().store(s.name() + " Change v-align");
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Vertical")) {
+            tc->setVerticalAlignment(2);
+            Action::manager().store(s.name() + " Reset v-align");
+        }
+
+        botom = ImGui::GetCursorPos();
+    }
 
     if ( !s.failed() ) {
         // icon (>) to open player

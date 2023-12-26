@@ -61,7 +61,7 @@ public:
 
 
 static const char* aspect_ratio_names[6] = { "1:1", "4:3", "3:2", "16:10", "16:9", "21:9" };
-static const char* height_names[10] = { "16", "64", "200", "320", "480", "576", "720p", "1080p", "1440", "4K" };
+static const char* height_names[10] = { "16", "64", "200", "320", "480", "576", "720", "1080", "1440", "4K" };
 
 glm::ivec2 resolutionFromDescription(int aspectratio, int height);
 

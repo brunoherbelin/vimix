@@ -42,6 +42,7 @@ using namespace tinyxml2;
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
+#include "TextSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "ImageFilter.h"
@@ -293,6 +294,10 @@ XMLElement *SessionVisitor::NodeToXML(const Node &n, XMLDocument *doc)
     crop->InsertEndChild( XMLElementFromGLM(doc, n.crop_) );
     newelement->InsertEndChild(crop);
 
+    XMLElement *data = doc->NewElement("data");
+    data->InsertEndChild( XMLElementFromGLM(doc, n.data_) );
+    newelement->InsertEndChild(data);
+
     return newelement;
 }
 
@@ -423,8 +428,13 @@ void SessionVisitor::visit(MediaPlayer &n)
     XMLElement *newelement = xmlDoc_->NewElement("MediaPlayer");
     newelement->SetAttribute("id", n.id());
 
+    if (n.audioAvailable()) {
+        newelement->SetAttribute("audio", n.audioEnabled());
+        newelement->SetAttribute("audio_volume", n.audioVolume());
+        newelement->SetAttribute("audio_mix", (int) n.audioVolumeMix());
+    }
+
     if (!n.singleFrame()) {
-        newelement->SetAttribute("play", n.isPlaying());
         newelement->SetAttribute("loop", (int) n.loop());
         newelement->SetAttribute("speed", n.playSpeed());
         newelement->SetAttribute("video_effect", n.videoEffect().c_str());
@@ -455,6 +465,7 @@ void SessionVisitor::visit(MediaPlayer &n)
         fadingelement->InsertEndChild(array);
         timelineelement->InsertEndChild(fadingelement);
         newelement->InsertEndChild(timelineelement);
+        fadingelement->SetAttribute("mode", (uint) n.timelineFadingMode());
     }
 
     xmlCurrent_->InsertEndChild(newelement);
@@ -840,6 +851,42 @@ void SessionVisitor::visit (PatternSource& s)
     }
 }
 
+void SessionVisitor::visit (TextSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "TextSource");
+
+    if (s.contents()) {
+        XMLElement *contents = xmlDoc_->NewElement("contents");
+        // simple text node to store filename of subtitle
+        if (s.contents()->isSubtitle()) {
+            XMLText *text = xmlDoc_->NewText(s.contents()->text().c_str());
+            contents->InsertEndChild(text);
+        }
+        // encoded text node to store string with Pango style
+        else {
+            GString *data = g_string_new(s.contents()->text().c_str());
+            XMLElement *text = XMLElementEncodeArray(xmlDoc_, data->str, data->len);
+            contents->InsertEndChild(text);
+            g_string_free(data, FALSE);
+        }
+
+        contents->SetAttribute("font-desc", s.contents()->fontDescriptor().c_str() );
+        contents->SetAttribute("color", s.contents()->color() );
+        contents->SetAttribute("halignment", s.contents()->horizontalAlignment() );
+        contents->SetAttribute("valignment", s.contents()->verticalAlignment() );
+        contents->SetAttribute("outline", s.contents()->outline() );
+        contents->SetAttribute("outline-color", s.contents()->outlineColor() );
+        contents->SetAttribute("x", s.contents()->horizontalPadding() );
+        contents->SetAttribute("y", s.contents()->verticalPadding() );
+
+        xmlCurrent_->InsertEndChild(contents);
+    }
+
+    XMLElement *resolution = xmlDoc_->NewElement("resolution");
+    resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, glm::ivec2(s.stream()->width(), s.stream()->height())) );
+    xmlCurrent_->InsertEndChild(resolution);
+}
+
 void SessionVisitor::visit (DeviceSource& s)
 {
     xmlCurrent_->SetAttribute("type", "DeviceSource");
@@ -946,6 +993,12 @@ void SessionVisitor::visit (PlayFastForward &c)
 {
     xmlCurrent_->SetAttribute("step", c.value());
     xmlCurrent_->SetAttribute("duration", c.duration());
+}
+
+void SessionVisitor::visit (Seek &c)
+{
+    xmlCurrent_->SetAttribute("value", (uint64_t) c.value());
+    xmlCurrent_->SetAttribute("bidirectional", c.bidirectional());
 }
 
 void SessionVisitor::visit (SetAlpha &c)

@@ -144,6 +144,7 @@ void Settings::Save(uint64_t runtime)
     applicationNode->SetAttribute("broadcast_port", application.broadcast_port);
     applicationNode->SetAttribute("loopback_camera", application.loopback_camera);
     applicationNode->SetAttribute("shm_socket_path", application.shm_socket_path.c_str());
+    applicationNode->SetAttribute("accept_audio", application.accept_audio);
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -192,6 +193,7 @@ void Settings::Save(uint64_t runtime)
     RecordNode->SetAttribute("buffering_mode", application.record.buffering_mode);
     RecordNode->SetAttribute("priority_mode", application.record.priority_mode);
     RecordNode->SetAttribute("naming_mode", application.record.naming_mode);
+    RecordNode->SetAttribute("audio_device", application.record.audio_device.c_str());
     pRoot->InsertEndChild(RecordNode);
 
     // Transition
@@ -437,6 +439,7 @@ void Settings::Load()
         applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
         applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
         applicationNode->QueryIntAttribute("loopback_camera", &application.loopback_camera);
+        applicationNode->QueryBoolAttribute("accept_audio", &application.accept_audio);
 
         // text attributes
         const char *tmpstr = applicationNode->Attribute("shm_socket_path");
@@ -498,6 +501,12 @@ void Settings::Load()
             application.record.path = std::string(path_);
         else
             application.record.path = SystemToolkit::home_path();
+
+        const char *dev_ = recordnode->Attribute("audio_device");
+        if (dev_)
+            application.record.audio_device = std::string(dev_);
+        else
+            application.record.audio_device = "";
     }
 
     // Source

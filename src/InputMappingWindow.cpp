@@ -418,38 +418,60 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
 
-        // get value (seconds) and convert to minutes and seconds
-        float val = edited->value();
-        int min = (int) floor(val / 60.f);
-        float sec = val - 60.f * (float) min;
+        // get value (gst time) and convert to hh mm s.ms
+        guint64 ms = GST_TIME_AS_MSECONDS(edited->value());
+        guint64 hh = ms / 3600000;
+        guint64 mm = (ms % 3600000) / 60000;
+        ms -= (hh * 3600000 + mm * 60000);
+        float sec = (float) (ms) / 1000.f;
 
         // filtering for reading MM:SS.MS text entry
         static bool valid = true;
-        static std::regex RegExTime("([0-9]+\\:)*([0-5][0-9]|[0-9])(\\.[0-9]+)*");
-        struct TextFilters { static int FilterTime(ImGuiInputTextCallbackData* data) { if (data->EventChar < 256 && strchr("0123456789.:", (char)data->EventChar)) return 0; return 1; } };
+        static std::regex RegExTime("([0-9]+\\:)?([0-9]+\\:)?([0-5][0-9]|[0-9])((\\.|\\,)[0-9]+)?");
+        struct TextFilters { static int FilterTime(ImGuiInputTextCallbackData* data) {
+                if (data->EventChar < 256 && strchr("0123456789.,:", (char)data->EventChar)) return 0; return 1; }
+        };
         char buf6[64] = "";
-        snprintf(buf6, 64, "%d:%.2f", min, sec );
+        snprintf(buf6, 64, "%lu:%lu:%.2f", (unsigned long) hh, (unsigned long) mm, sec );
 
         // Text input field for MM:SS:MS seek target time
         ImGui::SetNextItemWidth(right_align);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, valid ? 1.0f : 0.2f, valid ? 1.0f : 0.2f, 1.f));
-        ImGui::InputText("##CALLBACK_SEEK", buf6, 64, ImGuiInputTextFlags_CallbackCharFilter, TextFilters::FilterTime);
+        ImGui::PushStyleColor(ImGuiCol_Text,
+                              ImVec4(1.0f, valid ? 1.0f : 0.2f, valid ? 1.0f : 0.2f, 1.f));
+        ImGui::InputText("##CALLBACK_SEEK",
+                         buf6,
+                         64,
+                         ImGuiInputTextFlags_CallbackCharFilter,
+                         TextFilters::FilterTime);
         valid = std::regex_match(buf6, RegExTime);
         if (ImGui::IsItemDeactivatedAfterEdit()) {
-            if (valid){
+            if (valid) {
+                ms = 0;
+                sec = 0.f;
                 // user confirmed the entry and the input is valid
-                min = 0;
-                std::string minutes = buf6;
-                std::string seconds = buf6;
-                const size_t min_idx = minutes.rfind(':');
-                if (std::string::npos != min_idx) {
-                    seconds = minutes.substr(min_idx+1);
-                    minutes.erase(min_idx);
-                    BaseToolkit::is_a_number(minutes, &min);
+                // split the "HH:MM:SS.ms" string in HH MM SS.ms
+                std::string time(buf6);
+                std::size_t found = time.find_last_of(':');
+                // read the right part SS.ms as a value
+                if (std::string::npos != found && BaseToolkit::is_a_value(time.substr(found + 1), &sec)) {
+                    ms = (glm::uint64)(sec * 1000.f);
+                    // read right part MM as a number
+                    time = time.substr(0, found);
+                    found = time.find_last_of(':');
+                    int min = 0;
+                    if (std::string::npos != found && BaseToolkit::is_a_number(time.substr(found + 1), &min)) {
+                        ms += 60000 * (glm::uint64) min;
+                        // read right part HH as a number
+                        time = time.substr(0, found);
+                        int hour = 0;
+                        if (std::string::npos != found && BaseToolkit::is_a_number(time, &hour)) {
+                            ms += 3600000 * (glm::uint64) hour;
+                        }
+                    }
                 }
-                if (BaseToolkit::is_a_value(seconds, &sec))
-                    edited->setValue( sec + 60.f * (float) min );
+                // set time in mili seconds
+                edited->setValue( GST_MSECOND * ms );
             }
             // force to test validity next frame
             valid = false;
@@ -457,7 +479,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         ImGui::PopStyleColor();
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
-        ImGuiToolkit::Indication("Target time (minutes and seconds, MM:SS.MS) to set where to jump to in a video source.", 15, 7);
+        ImGuiToolkit::Indication("Target time (HH:MM:SS.MS) to set where to jump to in a video source.", 15, 7);
     }
         break;
 

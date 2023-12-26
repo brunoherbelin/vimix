@@ -32,6 +32,8 @@
 #include "SystemToolkit.h"
 #include "DialogToolkit.h"
 #include "GstToolkit.h"
+#include "Resource.h"
+#include "PatternSource.h"
 
 #include "Mixer.h"
 #include "CloneSource.h"
@@ -43,6 +45,8 @@
 
 #include "SourceControlWindow.h"
 
+#define CHECKER_RESOLUTION 6000
+class Stream *checker_background_ = new Stream;
 void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider = false, bool withinspector = false);
 ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_inspector);
 
@@ -59,6 +63,14 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     info_.setExtendedStringMode();
 
     captureFolderDialog = new DialogToolkit::OpenFolderDialog("Capture frame Location");
+
+    // initialize checkerboard background texture
+    checker_background_->open("videotestsrc pattern=checkers-8 ! "
+                              "videobalance saturation=0 contrast=1",
+                              CHECKER_RESOLUTION, CHECKER_RESOLUTION);
+    checker_background_->play(true);
+    while (checker_background_->texture() == Resource::getTextureBlack())
+        checker_background_->update();
 }
 
 
@@ -131,6 +143,7 @@ void SourceControlWindow::Update()
 
         for (auto source = selectedsources.begin(); source != selectedsources.end(); ++source)
             (*source)->play( n_play < n_source );
+        Action::manager().store( n_play < n_source ? "Sources Play" : "Sources Pause" );
 
         play_toggle_request_ = false;
     }
@@ -393,10 +406,18 @@ void SourceControlWindow::Render()
                 mediaplayer_timeline_zoom_ = 1.f;
                 mediaplayer_active_->timeline()->clearFading();
                 mediaplayer_active_->timeline()->clearGaps();
+                mediaplayer_active_->setVideoEffect("");
                 std::ostringstream oss;
                 oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
                 oss << ": Reset timeline";
                 Action::manager().store(oss.str());
+            }
+
+            bool _alpha_fading = mediaplayer_active_->timelineFadingMode()
+                                 == MediaPlayer::FADING_ALPHA;
+            if (ImGui::MenuItem(ICON_FA_FONT "  Alpha fading", NULL, &_alpha_fading)) {
+                mediaplayer_active_->setTimelineFadingMode(
+                    _alpha_fading ? MediaPlayer::FADING_ALPHA : MediaPlayer::FADING_COLOR);
             }
 
             if (ImGui::MenuItem(LABEL_EDIT_FADING))
@@ -419,7 +440,8 @@ void SourceControlWindow::Render()
 
             ImGui::Separator();
             if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect", nullptr,
-                                           false, mediaplayer_active_->videoEffectAvailable()) )
+                                           !mediaplayer_active_->videoEffect().empty(),
+                                           mediaplayer_active_->videoEffectAvailable()) )
                 mediaplayer_edit_pipeline_ = true;
 
             ImGui::EndMenu();
@@ -685,8 +707,10 @@ void SourceControlWindow::RenderSelection(size_t i)
                 ImVec2 image_top = ImGui::GetCursorPos();
                 const ImVec2 framesize(1.5f * timeline_height_ * (*source)->frame()->aspectRatio(), 1.5f * timeline_height_);
                 int action = SourceButton(*source, framesize);
-                if (action > 1)
+                if (action > 1) {
                     (*source)->play( ! (*source)->playing() );
+                    Action::manager().store((*source)->playing() ? "Source Play" : "Source Pause" );
+                }
                 else if (action > 0)
                     UserInterface::manager().showSourceEditor(*source);
 
@@ -840,8 +864,10 @@ void SourceControlWindow::RenderSelection(size_t i)
                 ///
                 const ImVec2 framesize(1.5f * timeline_height_ * (*source)->frame()->aspectRatio(), 1.5f * timeline_height_);
                 int action = SourceButton(*source, framesize);
-                if (action > 1)
-                    (*source)->play( ! (*source)->playing() );
+                if (action > 1) {
+                    (*source)->play( ! (*source)->playing() );                    
+                    Action::manager().store((*source)->playing() ? "Source Play" : "Source Pause" );
+                }
                 else if (action > 0)
                     UserInterface::manager().showSourceEditor(*source);
 
@@ -1003,8 +1029,18 @@ void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider, 
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
+    // pre-draw background with checkerboard pattern
+    ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
+                 ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
+
+    // get back to top image corner to draw
+    ImGui::SetCursorScreenPos(top_image);
+
     // info on source
     CloneSource *cloned = dynamic_cast<CloneSource *>(s);
+
+    // 100% opacity for the image (ensure true colors)
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
 
     // draw pre and post-processed parts if necessary
     if (s->imageProcessingEnabled() || s->textureTransformed() || cloned != nullptr) {
@@ -1020,8 +1056,14 @@ void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider, 
         //
         // RIGHT of slider : post-processed image (after crop and color correction)
         //
-        ImVec2 cropsize = framesize * ImVec2 ( s->frame()->projectionArea().x, s->frame()->projectionArea().y);
-        ImVec2 croptop  = (framesize - cropsize) * 0.5f;
+        glm::vec4 _crop = s->frame()->projectionArea();
+        ImVec2 cropsize = ImVec2(0.5f * (_crop[1] - _crop[0]),
+                                 0.5f * (_crop[2] - _crop[3]));
+        ImVec2 croptop = ImVec2(0.5f * (1.f + _crop[0]),
+                                0.5f * (1.f - _crop[2]) );
+        cropsize = framesize * cropsize;
+        croptop = framesize * croptop;
+
         // no overlap of slider with cropped area
         if (slider.x < croptop.x) {
             // draw cropped area
@@ -1069,6 +1111,8 @@ void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider, 
         if ( withinspector && ImGui::IsItemHovered() )
             DrawInspector(s->texture(), framesize, framesize, top_image);
     }
+
+    ImGui::PopStyleVar();
 }
 
 ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_inspector)
@@ -1098,11 +1142,14 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_
     const ImVec2 top_image = top + corner;
     ImGui::SetCursorScreenPos(top_image);
 
+    // pre-draw background with checkerboard pattern
+    ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
+                 ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
+
+    // draw source
     if (s->ready()) {
-        // 100% opacity for the image (ensure true colors)
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
+        ImGui::SetCursorScreenPos(top_image);
         DrawSource(s, framesize, top_image, true, with_inspector);
-        ImGui::PopStyleVar();
     }
 
     return ImRect( top_image, top_image + framesize);
@@ -1240,8 +1287,10 @@ void SourceControlWindow::RenderSelectedSources()
                 ImVec2 image_top = ImGui::GetCursorPos();
                 ImVec2 framesize(widthcolumn, widthcolumn / (*source)->frame()->aspectRatio());
                 int action = SourceButton(*source, framesize);
-                if (action > 1)
-                    (*source)->play( ! (*source)->playing() );
+                if (action > 1) {
+                    (*source)->play( ! (*source)->playing() );                    
+                    Action::manager().store((*source)->playing() ? "Source Play" : "Source Pause" );
+                }
                 else if (action > 0)
                     UserInterface::manager().showSourceEditor(*source);
 
@@ -1444,14 +1493,12 @@ void SourceControlWindow::RenderSingleSource(Source *s)
 
                 if (ImGui::BeginPopup( "MenuStreamOptions" ))
                 {
+                    if (ImGui::MenuItem(ICON_FA_REDO_ALT "  Reload"))
+                        ss->reload();
                     // NB: ss is playable (tested above), and thus ss->stream() is not null
-                    if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" )) {
-                        ss->stream()->reopen();
-                    }
                     bool option = ss->stream()->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option )) {
+                    if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option ))
                         ss->stream()->setRewindOnDisabled(option);
-                    }
 
                     if (ImGui::IsWindowHovered())
                         counter_menu_timeout=0;
@@ -1502,7 +1549,11 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::PopStyleColor(1);
 
         ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));
-        ImGui::Text("%s", ms->initials());
+        if ( mediaplayer_active_->audioEnabled())
+            // Icon to inform audio decoding
+            ImGui::Text("%s " ICON_FA_VOLUME_UP, ms->initials());
+        else
+            ImGui::Text("%s", ms->initials());
         ImGui::PopFont();
     }
     if (!magnifying_glass) {
@@ -1522,6 +1573,12 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             draw_list->AddRectFilled(imgarea.GetTL(), imgarea.GetTL() + ImVec2(imgarea.GetWidth(), tooltip_height), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));
             ImGui::Text("%s", info_.str().c_str());
+
+            // Icon to inform audio decoding
+            if ( mediaplayer_active_->audioEnabled()) {
+                ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2( imgarea.GetWidth() - 2.f * ImGui::GetTextLineHeightWithSpacing(), 0.35f * tooltip_height));
+                ImGui::Text(ICON_FA_VOLUME_UP);
+            }
 
             // Icon to inform hardware decoding
             if ( mediaplayer_active_->decoderName().compare("software") != 0) {
@@ -1626,14 +1683,14 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         bottom += ImVec2(scrollwindow.x + 2.f, 0.f);
         draw_list->AddRectFilled(bottom, bottom + ImVec2(slider_zoom_width, timeline_height_ -1.f), ImGui::GetColorU32(ImGuiCol_FrameBg));
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.f));
-        const char *tooltip[2] = {"Draw opacity tool", "Cut tool"};
+        const char *tooltip[2] = {"Fading draw tool", "Timeline cut tool"};
         ImGuiToolkit::IconToggle(7,4,8,3, &Settings::application.widget.media_player_timeline_editmode, tooltip);
 
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.5f * timeline_height_));
         if (Settings::application.widget.media_player_timeline_editmode) {
             // action cut
             if (mediaplayer_active_->isPlaying()) {
-                ImGuiToolkit::Indication("Pause video to enable cut options", 9, 3);
+                ImGuiToolkit::Indication("Pause to enable cut at cursor", 9, 3);
             }
             else if (ImGuiToolkit::IconButton(9, 3, "Cut at cursor")) {
                 ImGui::OpenPopup("timeline_cut_context_menu");
@@ -1659,7 +1716,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
             // action smooth
             ImGui::PushButtonRepeat(true);
-            if (ImGuiToolkit::IconButton(13, 12, "Smooth")){
+            if (ImGuiToolkit::IconButton(13, 12, "Smooth fading curve")){
                 mediaplayer_active_->timeline()->smoothFading( 5 );
                 ++_actionsmooth;
             }
@@ -1702,8 +1759,11 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         // display buttons Play/Stop depending on current playing mode
         ImGui::SameLine(0, h_space_);
         if (mediaplayer_mode_) {
-            if (ImGui::Button(ICON_FA_PAUSE))
+            if (ImGui::Button(ICON_FA_PAUSE)){
                 mediaplayer_mode_ = false;
+                oss << ": Pause";
+                Action::manager().store(oss.str());
+            }
             ImGui::SameLine(0, h_space_);
 
             ImGui::PushButtonRepeat(true);
@@ -1712,8 +1772,11 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::PopButtonRepeat();
         }
         else {
-            if (ImGui::Button(ICON_FA_PLAY))
+            if (ImGui::Button(ICON_FA_PLAY)) {
                 mediaplayer_mode_ = true;
+                oss << ": Play";
+                Action::manager().store(oss.str());
+            }
             ImGui::SameLine(0, h_space_);
 
             ImGui::PushButtonRepeat(true);
@@ -1831,7 +1894,6 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::EndPopup();
     }
 
-
     ///
     /// Dialog to edit timeline fade in and out
     ///
@@ -1926,7 +1988,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         _effect_description = mediaplayer_active_->videoEffect();
         _effect_description_changed = true;
     }
-    const ImVec2 mpp_dialog_size(buttons_width_ * 3.f, buttons_height_ * 6);
+    const ImVec2 mpp_dialog_size(buttons_width_ * 3.f, buttons_height_ * 6.2f);
     ImGui::SetNextWindowSize(mpp_dialog_size, ImGuiCond_Always);
     const ImVec2 mpp_dialog_pos = top + rendersize * 0.5f  - mpp_dialog_size * 0.5f;
     ImGui::SetNextWindowPos(mpp_dialog_pos, ImGuiCond_Always);
@@ -2028,7 +2090,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         if (_status > 1) {
             // On Error
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.2, 0.2, 0.95f));
-            ImGui::Text("Error - %s", _status_message.c_str());
+            ImGui::TextWrapped("Error - %s", _status_message.c_str());
             ImGui::PopStyleColor(1);
         }
         else if (_status > 0) {
@@ -2052,6 +2114,8 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
                 // apply to pipeline
                 mediaplayer_active_->setVideoEffect(_effect_description);
+                oss << " gst effect";
+                Action::manager().store(oss.str());
             }
             ImGui::PopStyleColor(1);
         }
@@ -2160,12 +2224,14 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
             if (ImGui::Button(ICON_FA_PAUSE) && enabled) {
                 for (auto source = selection_.begin(); source != selection_.end(); ++source)
                     (*source)->play(false);
+                Action::manager().store("Sources Pause");
             }
         }
         else {
             if (ImGui::Button(ICON_FA_PLAY) && enabled){
                 for (auto source = selection_.begin(); source != selection_.end(); ++source)
                     (*source)->play(true);
+                Action::manager().store("Sources Play");
             }
         }
     }
@@ -2174,11 +2240,13 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
         if (ImGui::Button(ICON_FA_PLAY) && enabled) {
             for (auto source = selection_.begin(); source != selection_.end(); ++source)
                 (*source)->play(true);
+            Action::manager().store("Sources Play");
         }
         ImGui::SameLine(0, h_space_);
         if (ImGui::Button(ICON_FA_PAUSE) && enabled) {
             for (auto source = selection_.begin(); source != selection_.end(); ++source)
                 (*source)->play(false);
+            Action::manager().store("Sources Pause");
         }
     }
     ImGui::SameLine(0, h_space_);

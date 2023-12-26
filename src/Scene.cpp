@@ -49,7 +49,8 @@ Node::Node() : initialized_(false), visible_(true), refcount_(0)
     scale_ = glm::vec3(1.f);
     rotation_ = glm::vec3(0.f);
     translation_ = glm::vec3(0.f);
-    crop_ = glm::vec3(1.f);
+    crop_ = glm::vec4(-1.f, 1.f, 1.f, -1.f);
+    data_ = glm::zero<glm::mat4>();
 #if DEBUG_SCENE
     num_nodes_++;
 #endif
@@ -83,6 +84,7 @@ void Node::copyTransform(const Node *other)
     rotation_ = other->rotation_;
     translation_ = other->translation_;
     crop_ = other->crop_;
+    data_ = other->data_;
 }
 
 void Node::update( float dt)

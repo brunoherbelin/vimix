@@ -80,8 +80,9 @@ public:
 
     // projection area (crop)
     glm::mat4 projection() const;
-    glm::vec2 projectionArea() const;
-    void setProjectionArea(glm::vec2 c);
+    glm::vec2 projectionSize() const;
+    glm::vec4 projectionArea() const;
+    void setProjectionArea(glm::vec4 c);
 
     // internal pixel format
     inline uint opengl_id() const { return framebufferid_; }
@@ -102,7 +103,7 @@ private:
     FrameBufferFlags flags_;
     RenderingAttrib attrib_;
     glm::mat4 projection_;
-    glm::vec2 projection_area_;
+    glm::vec4 projection_area_;
     uint textureid_, multisampling_textureid_;
     uint framebufferid_, multisampling_framebufferid_;
     uint mem_usage_;

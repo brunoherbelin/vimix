@@ -68,7 +68,11 @@ public:
     bool      visible_;
     uint      refcount_;
     glm::mat4 transform_;
-    glm::vec3 scale_, rotation_, translation_, crop_;
+    glm::vec3 scale_, rotation_, translation_;
+    glm::vec4 crop_;
+
+    // supplementary data
+    glm::mat4 data_;
 
     // animation update callbacks
     // list of callbacks to call at each update

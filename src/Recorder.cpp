@@ -37,6 +37,7 @@
 #include "GstToolkit.h"
 #include "SystemToolkit.h"
 #include "Log.h"
+#include "Audio.h"
 
 #include "Recorder.h"
 
@@ -336,7 +337,7 @@ std::string VideoRecorder::init(GstCaps *caps)
     timestamp_on_clock_ = Settings::application.record.priority_mode < 1;
 
     // create a gstreamer pipeline
-    std::string description = "appsrc name=src ! videoconvert ! ";
+    std::string description = "appsrc name=src ! videoconvert ! queue ! ";
     if (Settings::application.record.profile < 0 || Settings::application.record.profile >= DEFAULT)
         Settings::application.record.profile = H264_STANDARD;
 
@@ -361,25 +362,46 @@ std::string VideoRecorder::init(GstCaps *caps)
         else
             return std::string("Video Recording : Failed to create folder ") + folder;
     }
-    else if( Settings::application.record.profile == VP8) {
-        // if sequencial file naming
-        if (Settings::application.record.naming_mode == 0 )
-            filename_ = SystemToolkit::filename_sequential(Settings::application.record.path, basename_, "webm");
-        // or prefixed with date
-        else
-            filename_ = SystemToolkit::filename_dateprefix(Settings::application.record.path, basename_, "webm");
-
-        description += "webmmux ! filesink name=sink";
-    }
     else {
-        // if sequencial file naming
-        if (Settings::application.record.naming_mode == 0 )
-            filename_ = SystemToolkit::filename_sequential(Settings::application.record.path, basename_, "mov");
-        // or prefixed with date
-        else
-            filename_ = SystemToolkit::filename_dateprefix(Settings::application.record.path, basename_, "mov");
 
-        description += "qtmux ! filesink name=sink";
+        // Add Audio to pipeline
+        if (!Settings::application.record.audio_device.empty()) {
+            // ensure the Audio manager has the device specified in settings
+            int current_audio = Audio::manager().index(Settings::application.record.audio_device);
+            if (current_audio > -1) {
+                description += "mux. ";
+                description += Audio::manager().pipeline(current_audio);
+                description += " ! audio/x-raw ! audioconvert ! audioresample ! ";
+                // select encoder depending on codec
+                if ( Settings::application.record.profile == VP8)
+                    description += "opusenc ! opusparse ! queue ! ";
+                else
+                    description += "voaacenc ! aacparse ! queue ! ";
+
+                Log::Info("Video Recording with audio (%s)", Audio::manager().pipeline(current_audio).c_str());
+            }
+        }
+
+        if ( Settings::application.record.profile == VP8) {
+            // if sequencial file naming
+            if (Settings::application.record.naming_mode == 0 )
+                filename_ = SystemToolkit::filename_sequential(Settings::application.record.path, basename_, "webm");
+            // or prefixed with date
+            else
+                filename_ = SystemToolkit::filename_dateprefix(Settings::application.record.path, basename_, "webm");
+
+            description += "webmmux name=mux ! filesink name=sink";
+        }
+        else {
+            // if sequencial file naming
+            if (Settings::application.record.naming_mode == 0 )
+                filename_ = SystemToolkit::filename_sequential(Settings::application.record.path, basename_, "mov");
+            // or prefixed with date
+            else
+                filename_ = SystemToolkit::filename_dateprefix(Settings::application.record.path, basename_, "mov");
+
+            description += "qtmux name=mux ! filesink name=sink";
+        }
     }
 
     // parse pipeline descriptor

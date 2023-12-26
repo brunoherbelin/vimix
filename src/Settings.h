@@ -107,6 +107,7 @@ struct RecordConfig
     int buffering_mode;
     int priority_mode;
     int naming_mode;
+    std::string audio_device;
 
     RecordConfig() : path("") {
         profile = 0;
@@ -117,6 +118,7 @@ struct RecordConfig
         buffering_mode = 2;
         priority_mode = 1;
         naming_mode = 1;
+        audio_device = "";
     }
 
 };
@@ -185,7 +187,7 @@ struct RenderConfig
     RenderConfig() {
         disabled = false;
         vsync = 1;
-        multisampling = 2;
+        multisampling = 3;
         ratio = 3;
         res = 1;
         custom_width = 1200;
@@ -295,6 +297,9 @@ struct Application
     int shm_method;
     std::string shm_socket_path;
 
+    // audio
+    bool accept_audio;
+
     // Settings of widgets
     WidgetsConfig widget;
 
@@ -369,6 +374,7 @@ struct Application
         windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
         windows[0].w = 1600;
         windows[0].h = 900;
+        accept_audio = true;
     }
 
 };

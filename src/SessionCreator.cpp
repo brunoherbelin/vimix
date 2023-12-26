@@ -37,6 +37,7 @@
 #include "NetworkSource.h"
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
+#include "TextSource.h"
 #include "RenderSource.h"
 #include "Session.h"
 #include "ImageShader.h"
@@ -131,8 +132,8 @@ void SessionCreator::load(const std::string& filename)
     int version_major = -1, version_minor = -1;
     header->QueryIntAttribute("major", &version_major);
     header->QueryIntAttribute("minor", &version_minor);
-    if (version_major != XML_VERSION_MAJOR || version_minor != XML_VERSION_MINOR){
-        Log::Warning("%s is an older version of vimix session (v%d.%d instead of v%d.%d).\n"
+    if (version_major > XML_VERSION_MAJOR || version_minor > XML_VERSION_MINOR){
+        Log::Warning("%s is in a newer version of vimix session (v%d.%d instead of v%d.%d).\n"
                      "Loading might lead to different or incomplete configuration.\n"
                      "Save the session to avoid further warning.",
                      filename.c_str(), version_major, version_minor, XML_VERSION_MAJOR, XML_VERSION_MINOR);
@@ -448,6 +449,9 @@ void SessionLoader::load(XMLElement *sessionNode)
                 else if ( std::string(pType) == "SrtReceiverSource") {
                     load_source = new SrtReceiverSource(id_xml_);
                 }
+                else if ( std::string(pType) == "TextSource") {
+                    load_source = new TextSource(id_xml_);
+                }
                 else if ( std::string(pType) == "CloneSource") {
                     cloneNodesToAdd.push_front(xmlCurrent_);
                 }
@@ -634,6 +638,9 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
             else if ( std::string(pType) == "SrtReceiverSource") {
                 load_source = new SrtReceiverSource(id__);
             }
+            else if ( std::string(pType) == "TextSource") {
+                load_source = new TextSource(id__);
+            }
             else if ( std::string(pType) == "CloneSource") {
                 // clone from given origin
                 XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
@@ -778,8 +785,23 @@ void SessionLoader::XMLToNode(const tinyxml2::XMLElement *xml, Node &n)
         if (rotationNode)
             tinyxml2::XMLElementToGLM( rotationNode->FirstChildElement("vec3"), n.rotation_);
         const XMLElement *cropNode = node->FirstChildElement("crop");
-        if (cropNode)
-            tinyxml2::XMLElementToGLM( cropNode->FirstChildElement("vec3"), n.crop_);
+        if (cropNode) {
+            const XMLElement *vecNode = cropNode->FirstChildElement("vec4");
+            if (vecNode)
+                tinyxml2::XMLElementToGLM(vecNode, n.crop_);
+            else {
+                // backward compatibility, read vec3
+                vecNode = cropNode->FirstChildElement("vec3");
+                if (vecNode) {
+                    glm::vec3 crop;
+                    tinyxml2::XMLElementToGLM(vecNode, crop);
+                    n.crop_ = glm::vec4(-crop.x, crop.x, crop.y, -crop.y);
+                }
+            }
+        }
+        const XMLElement *dataNode = node->FirstChildElement("data");
+        if (dataNode)
+            tinyxml2::XMLElementToGLM( dataNode->FirstChildElement("mat4"), n.data_);
     }
 }
 
@@ -890,20 +912,39 @@ void SessionLoader::visit(MediaPlayer &n)
             if (fadingselement) {
                 XMLElement* array = fadingselement->FirstChildElement("array");
                 XMLElementDecodeArray(array, tl.fadingArray(), MAX_TIMELINE_ARRAY * sizeof(float));
+                uint mode = 0;
+                fadingselement->QueryUnsignedAttribute("mode", &mode);
+                n.setTimelineFadingMode((MediaPlayer::FadingMode) mode);
             }
             n.setTimeline(tl);
         }
 
+        // audio
+        int audiovolume = 100;
+        mediaplayerNode->QueryIntAttribute("audio_volume", &audiovolume);
+        n.setAudioVolume(audiovolume);
+        int audiomix = 0;
+        mediaplayerNode->QueryIntAttribute("audio_mix", &audiomix);
+        n.setAudioVolumeMix( (MediaPlayer::VolumeFactorsMix) audiomix);
+        bool audioenabled = false;
+        mediaplayerNode->QueryBoolAttribute("audio", &audioenabled);
+        n.setAudioEnabled(audioenabled);
+
+        // change play rate: will be activated in SessionLoader::visit (MediaSource& s)
+        double speed = 1.0;
+        mediaplayerNode->QueryDoubleAttribute("speed", &speed);
+        n.setRate(speed);
+
+        // change video effect only if effect given is different
+        const char *pFilter = mediaplayerNode->Attribute("video_effect");
+        if (pFilter) {
+            if (n.videoEffect().compare(pFilter) != 0) {
+                n.setVideoEffect(pFilter);
+            }
+        }
+
         // change play status only if different id (e.g. new media player)
         if ( n.id() != id__ ) {
-
-            const char *pFilter = mediaplayerNode->Attribute("video_effect");
-            if (pFilter)
-                n.setVideoEffect(std::string(pFilter));
-
-            double speed = 1.0;
-            mediaplayerNode->QueryDoubleAttribute("speed", &speed);
-            n.setPlaySpeed(speed);
 
             int loop = 1;
             mediaplayerNode->QueryIntAttribute("loop", &loop);
@@ -921,13 +962,14 @@ void SessionLoader::visit(MediaPlayer &n)
             mediaplayerNode->QueryIntAttribute("sync_to_metronome", &sync_to_metronome);
             n.setSyncToMetronome( (Metronome::Synchronicity) sync_to_metronome);
 
+            /// obsolete
             // only read media player play attribute if the source has no play attribute (backward compatibility)
             if ( !xmlCurrent_->Attribute( "play" ) ) {
                 bool play = true;
                 mediaplayerNode->QueryBoolAttribute("play", &play);
                 n.play(play);
             }
-        }
+        }        
     }
 }
 
@@ -1205,8 +1247,88 @@ void SessionLoader::visit (PatternSource& s)
         tinyxml2::XMLElementToGLM( res->FirstChildElement("ivec2"), resolution);
 
     // change only if different pattern
-    if ( t != s.pattern()->type() )
+    if ( s.pattern() && t != s.pattern()->type() )
         s.setPattern(t, resolution);
+}
+
+void SessionLoader::visit(TextSource &s)
+{
+    bool value_changed = false;
+    std::string text;
+    glm::ivec2 resolution(800, 600);
+
+    XMLElement *_contents = xmlCurrent_->FirstChildElement("contents");
+    if ( s.contents() && _contents) {
+        // content can be an array of encoded text (to support strings with Pango styles <i>, <b>, etc.)
+        unsigned int len = 0;
+        const XMLElement *array = _contents->FirstChildElement("array");
+        if (array) {
+            array->QueryUnsignedAttribute("len", &len);
+            // ok, we got a size of data to load
+            if (len > 0) {
+                GString *data = g_string_new_len("", len);
+                if (XMLElementDecodeArray(array, data->str, data->len)) {
+                    text = std::string(data->str);
+                }
+                g_string_free(data, FALSE);
+            }
+        }
+        // content can also just be raw text
+        else {
+            const char *data = _contents->GetText();
+            if (data)
+                text = std::string(data);
+        }
+
+        value_changed |= s.contents()->text().compare(text) != 0;
+
+        // attributes of content
+        const char *font;
+        if (_contents->QueryStringAttribute("font-desc", &font) == XML_SUCCESS && font) {
+            if (s.contents()->fontDescriptor().compare(font) != 0) {
+                s.contents()->setFontDescriptor(font);
+            }
+        }
+        uint var = s.contents()->horizontalAlignment();
+        _contents->QueryUnsignedAttribute("halignment", &var);
+        if (s.contents()->horizontalAlignment() != var)
+            s.contents()->setHorizontalAlignment(var);
+        var = s.contents()->verticalAlignment();
+        _contents->QueryUnsignedAttribute("valignment", &var);
+        if (s.contents()->verticalAlignment() != var)
+            s.contents()->setVerticalAlignment(var);
+        var = s.contents()->color();
+        _contents->QueryUnsignedAttribute("color", &var);
+        if (s.contents()->color() != var)
+            s.contents()->setColor(var);
+        var = s.contents()->outline();
+        _contents->QueryUnsignedAttribute("outline", &var);
+        if (s.contents()->outline() != var)
+            s.contents()->setOutline(var);
+        var = s.contents()->outlineColor();
+        _contents->QueryUnsignedAttribute("outline-color", &var);
+        if (s.contents()->outlineColor() != var)
+            s.contents()->setOutlineColor(var);
+        float x = 0.f;
+        _contents->QueryFloatAttribute("x", &x);
+        if (s.contents()->horizontalPadding() != x)
+            s.contents()->setHorizontalPadding(x);
+        float y = 0.f;
+        _contents->QueryFloatAttribute("y", &y);
+        if (s.contents()->verticalPadding() != y)
+            s.contents()->setVerticalPadding(y);
+    }
+
+    XMLElement* res = xmlCurrent_->FirstChildElement("resolution");
+    if (res) {
+        tinyxml2::XMLElementToGLM( res->FirstChildElement("ivec2"), resolution);
+        value_changed |= resolution.x != (int) s.stream()->width() || resolution.y != (int) s.stream()->height();
+    }
+
+    // change only if different
+    if ( s.contents() && ( value_changed || s.contents()->text().empty() ) ) {
+        s.setContents( text, resolution );
+    }
 }
 
 void SessionLoader::visit (DeviceSource& s)
@@ -1488,6 +1610,17 @@ void SessionLoader::visit (PlayFastForward &c)
     d = 0.f;
     xmlCurrent_->QueryFloatAttribute("duration", &d);
     c.setDuration(d);
+}
+
+void SessionLoader::visit (Seek &c)
+{
+    uint64_t v = 0.f;
+    xmlCurrent_->QueryUnsigned64Attribute("value", &v);
+    c.setValue(v);
+
+    bool b = false;
+    xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
+    c.setBidirectional(b);
 }
 
 void SessionLoader::visit (SetAlpha &c)

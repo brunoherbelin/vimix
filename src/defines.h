@@ -5,7 +5,7 @@
 #define APP_TITLE "Video Live Mixer"
 #define APP_SETTINGS "vimix.xml"
 #define XML_VERSION_MAJOR 0
-#define XML_VERSION_MINOR 3
+#define XML_VERSION_MINOR 4
 #define MAX_RECENT_HISTORY 20
 #define MAX_SESSION_LEVEL 3
 #define MAX_OUTPUT_WINDOW 3
@@ -22,6 +22,7 @@
     "*.flv", "*.hevc", "*.asf", "*.jpg", "*.png",  "*.gif",\
     "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg,"
 #define IMAGES_FILES_PATTERN "*.jpg", "*.png", "*.bmp", "*.ppm", "*.gif"
+#define SUBTITLE_FILES_PATTERN "*.srt", "*.sub"
 
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))

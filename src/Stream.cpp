@@ -216,16 +216,6 @@ void Stream::open(const std::string &gstreamer_description, guint w, guint h)
     discoverer_ = std::async(StreamDiscoverer, description_, w, h);
 }
 
-void Stream::reopen()
-{
-    // re-openning is meaningfull only if it was already open
-    if (pipeline_ != nullptr) {
-        // reload : terminate pipeline and re-create it
-        close();
-        execute_open();
-    }
-}
-
 std::string Stream::description() const
 {
     return description_;

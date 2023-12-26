@@ -35,6 +35,8 @@
 
 #include "Primitives.h"
 
+#define MESH_SURFACE_DENSITY 32
+
 Surface::Surface(Shader *s) : Primitive(s), textureindex_(0), mirror_(true)
 {
     // geometry for a trianglulated simple rectangle surface with UV
@@ -45,11 +47,11 @@ Surface::Surface(Shader *s) : Primitive(s), textureindex_(0), mirror_(true)
     //  (0,1) A +---+ C (1,1)
 
     points_ = std::vector<glm::vec3> { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
-            glm::vec3( 1.f, -1.f, 0.f ), glm::vec3( 1.f, 1.f, 0.f ) };
+                                     glm::vec3( 1.f, -1.f, 0.f ), glm::vec3( 1.f, 1.f, 0.f ) };
     colors_ = std::vector<glm::vec4> { glm::vec4( 1.f, 1.f, 1.f , 1.f ), glm::vec4(  1.f, 1.f, 1.f, 1.f  ),
-            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ) };
+                                     glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ) };
     texCoords_ = std::vector<glm::vec2> { glm::vec2( 0.f, 1.f ), glm::vec2( 0.f, 0.f ),
-            glm::vec2( 1.f, 1.f ), glm::vec2( 1.f, 0.f ) };
+                                        glm::vec2( 1.f, 1.f ), glm::vec2( 1.f, 0.f ) };
     indices_ = std::vector<uint> { 0, 1, 2, 3 };
     drawMode_ = GL_TRIANGLE_STRIP;
 }
@@ -116,6 +118,95 @@ void Surface::draw(glm::mat4 modelview, glm::mat4 projection)
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+
+MeshSurface::MeshSurface(Shader *s) : Surface(s)
+{
+}
+
+void MeshSurface::generate_mesh(size_t rows, size_t columns)
+{
+    // Set up vertices
+    points_.resize(rows * columns);
+    texCoords_.resize(rows * columns);
+    colors_.resize(rows * columns);
+    for (size_t c = 0; c < columns; ++c) {
+        for (size_t r = 0; r < rows; ++r) {
+            size_t index = c * columns + r;
+            points_[index] = glm::vec3(-1.f, -1.f, 0.f)
+                             + 2.f * glm::vec3((float) c / (float) (columns - 1),
+                                               (float) r / (float) (rows - 1),
+                                               0.f);
+            texCoords_[index] = glm::vec2(0.f, 1.f)
+                                + glm::vec2((float) c / (float) (columns - 1),
+                                            -1.f * (float) r / (float) (rows - 1));
+            colors_[index] = glm::vec4(1.f, 1.f, 1.f, 1.f);
+        }
+    }
+
+    // Set up indices
+    indices_.resize( (rows * 2 + 2) * (columns - 1) - 2 );
+    size_t i = 0;
+    size_t height = columns - 1;
+    for (size_t y = 0; y < height; y++) {
+        size_t base = y * rows;
+        //indices[i++] = (uint16)base;
+        for (size_t x = 0; x < rows; x++) {
+            indices_[i++] = (base + x);
+            indices_[i++] = (base + rows + x);
+        }
+        // add a degenerate triangle (except in a last row)
+        if (y < height - 1) {
+            indices_[i++] = ((y + 1) * rows + (rows - 1));
+            indices_[i++] = ((y + 1) * rows);
+        }
+    }
+
+    drawMode_ = GL_TRIANGLE_STRIP;
+
+//    g_printerr("generated_mesh %lu x %lu :\n", rows, columns);
+//    g_printerr("%lu points\n", points_.size());
+//    for(size_t ind=0; ind < points_.size(); ind++) {
+//        g_printerr("point[%lu] : %f, %f, %f \n", ind, points_[ind].x, points_[ind].y, points_[ind].z);
+//        g_printerr("         : %f, %f \n", texCoords_[ind].x, texCoords_[ind].y);
+//    }
+//    g_printerr("%lu indices\n", indices_.size());
+//    for(size_t ind=0; ind < indices_.size(); ind++) {
+//        g_printerr("index[%lu] = %u \n", ind, indices_[ind]);
+//    }
+}
+
+void MeshSurface::init()
+{
+    // use static unique vertex array object
+    static uint unique_vao_ = 0;
+    static uint unique_drawCount = 0;
+    if (unique_vao_) {
+        // 1. only init Node (not the primitive vao)
+        Node::init();
+        // 2. use the global vertex array object
+        vao_ = unique_vao_;
+        drawCount_ = unique_drawCount;
+        // compute AxisAlignedBoundingBox
+        bbox_.extend(points_);
+        // arrays of vertices are not needed anymore
+        points_.clear();
+        colors_.clear();
+        texCoords_.clear();
+        indices_.clear();
+    }
+    else {
+        // 0. generate mesh
+        generate_mesh(MESH_SURFACE_DENSITY, MESH_SURFACE_DENSITY);
+        // 1. init the Primitive (only once)
+        Primitive::init();
+        // 2. remember global vertex array object
+        unique_vao_ = vao_;
+        unique_drawCount = drawCount_;
+        // 3. unique_vao_ will NOT be deleted
+    }
+
+}
+
 ImageSurface::ImageSurface(const std::string& path, Shader *s) : Surface(s), resource_(path)
 {
 
@@ -158,6 +249,29 @@ void FrameBufferSurface::accept(Visitor& v)
     Surface::accept(v);
     v.visit(*this);
 }
+
+FrameBufferMeshSurface::FrameBufferMeshSurface(FrameBuffer *fb, Shader *s) : MeshSurface(s), frame_buffer_(fb)
+{
+}
+
+void FrameBufferMeshSurface::draw(glm::mat4 modelview, glm::mat4 projection)
+{
+    if ( !initialized() )
+        init();
+
+    glBindTexture(GL_TEXTURE_2D, frame_buffer_->texture());
+
+    Primitive::draw(modelview, projection);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void FrameBufferMeshSurface::accept(Visitor& v)
+{
+    Surface::accept(v);
+    v.visit(*this);
+}
+
 
 Points::Points(std::vector<glm::vec3> points, glm::vec4 color, uint pointsize) : Primitive(new Shader)
 {

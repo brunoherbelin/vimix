@@ -52,7 +52,7 @@ uint textureMixingQuadratic();
 MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_MIN_THRESHOLD)
 {
     scene.root()->scale_ = glm::vec3(MIXING_DEFAULT_SCALE, MIXING_DEFAULT_SCALE, 1.0f);
-    scene.root()->translation_ = glm::vec3(0.0f, 0.0f, 0.0f);
+    scene.root()->translation_ = glm::vec3(0.5f, 0.0f, 0.0f);
     // read default settings
     if ( Settings::application.views[mode_].name.empty() )
         // no settings found: store application default

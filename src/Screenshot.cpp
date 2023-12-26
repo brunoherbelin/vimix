@@ -105,8 +105,8 @@ void Screenshot::captureFramebuffer(FrameBuffer *fb)
         return;
 
     bpp = (fb->flags() & FrameBuffer::FrameBuffer_alpha) ? 4 : 3;
-    Width = fb->width() * fb->projectionArea().x;
-    Height = fb->height() * fb->projectionArea().y;
+    Width = fb->width() * fb->projectionSize().x;
+    Height = fb->height() * fb->projectionSize().y;
     VFlip = false;
 
     // blit the frame buffer into an RBBA copy of cropped size
