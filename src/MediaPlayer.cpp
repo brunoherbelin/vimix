@@ -72,6 +72,7 @@ MediaPlayer::MediaPlayer()
     video_filter_available_ = true;
     position_ = GST_CLOCK_TIME_NONE;
     loop_ = LoopMode::LOOP_REWIND;
+    fading_mode_ = FadingMode::FADING_COLOR;
 
     // default audio disabled
     audio_enabled_ = false;

@@ -32,6 +32,8 @@
 #include "SystemToolkit.h"
 #include "DialogToolkit.h"
 #include "GstToolkit.h"
+#include "Resource.h"
+#include "PatternSource.h"
 
 #include "Mixer.h"
 #include "CloneSource.h"
@@ -43,6 +45,8 @@
 
 #include "SourceControlWindow.h"
 
+#define CHECKER_RESOLUTION 6000
+class Stream *checker_background_ = new Stream;
 void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider = false, bool withinspector = false);
 ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_inspector);
 
@@ -59,6 +63,14 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     info_.setExtendedStringMode();
 
     captureFolderDialog = new DialogToolkit::OpenFolderDialog("Capture frame Location");
+
+    // initialize checkerboard background texture
+    checker_background_->open("videotestsrc pattern=checkers-8 ! "
+                              "videobalance saturation=0 contrast=1",
+                              CHECKER_RESOLUTION, CHECKER_RESOLUTION);
+    checker_background_->play(true);
+    while (checker_background_->texture() == Resource::getTextureBlack())
+        checker_background_->update();
 }
 
 
@@ -399,6 +411,13 @@ void SourceControlWindow::Render()
                 oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
                 oss << ": Reset timeline";
                 Action::manager().store(oss.str());
+            }
+
+            bool _alpha_fading = mediaplayer_active_->timelineFadingMode()
+                                 == MediaPlayer::FADING_ALPHA;
+            if (ImGui::MenuItem(ICON_FA_FONT "  Alpha fading", NULL, &_alpha_fading)) {
+                mediaplayer_active_->setTimelineFadingMode(
+                    _alpha_fading ? MediaPlayer::FADING_ALPHA : MediaPlayer::FADING_COLOR);
             }
 
             if (ImGui::MenuItem(LABEL_EDIT_FADING))
@@ -1010,8 +1029,18 @@ void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider, 
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
+    // pre-draw background with checkerboard pattern
+    ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
+                 ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
+
+    // get back to top image corner to draw
+    ImGui::SetCursorScreenPos(top_image);
+
     // info on source
     CloneSource *cloned = dynamic_cast<CloneSource *>(s);
+
+    // 100% opacity for the image (ensure true colors)
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
 
     // draw pre and post-processed parts if necessary
     if (s->imageProcessingEnabled() || s->textureTransformed() || cloned != nullptr) {
@@ -1027,8 +1056,14 @@ void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider, 
         //
         // RIGHT of slider : post-processed image (after crop and color correction)
         //
-        ImVec2 cropsize = framesize * ImVec2 ( s->frame()->projectionSize().x, s->frame()->projectionSize().y);
-        ImVec2 croptop  = (framesize - cropsize) * 0.5f;
+        glm::vec4 _crop = s->frame()->projectionArea();
+        ImVec2 cropsize = ImVec2(0.5f * (_crop[1] - _crop[0]),
+                                 0.5f * (_crop[2] - _crop[3]));
+        ImVec2 croptop = ImVec2(0.5f * (1.f + _crop[0]),
+                                0.5f * (1.f - _crop[2]) );
+        cropsize = framesize * cropsize;
+        croptop = framesize * croptop;
+
         // no overlap of slider with cropped area
         if (slider.x < croptop.x) {
             // draw cropped area
@@ -1076,6 +1111,8 @@ void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider, 
         if ( withinspector && ImGui::IsItemHovered() )
             DrawInspector(s->texture(), framesize, framesize, top_image);
     }
+
+    ImGui::PopStyleVar();
 }
 
 ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_inspector)
@@ -1105,11 +1142,14 @@ ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_
     const ImVec2 top_image = top + corner;
     ImGui::SetCursorScreenPos(top_image);
 
+    // pre-draw background with checkerboard pattern
+    ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
+                 ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
+
+    // draw source
     if (s->ready()) {
-        // 100% opacity for the image (ensure true colors)
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
+        ImGui::SetCursorScreenPos(top_image);
         DrawSource(s, framesize, top_image, true, with_inspector);
-        ImGui::PopStyleVar();
     }
 
     return ImRect( top_image, top_image + framesize);
@@ -1643,14 +1683,14 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         bottom += ImVec2(scrollwindow.x + 2.f, 0.f);
         draw_list->AddRectFilled(bottom, bottom + ImVec2(slider_zoom_width, timeline_height_ -1.f), ImGui::GetColorU32(ImGuiCol_FrameBg));
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.f));
-        const char *tooltip[2] = {"Draw opacity tool", "Cut tool"};
+        const char *tooltip[2] = {"Fading draw tool", "Timeline cut tool"};
         ImGuiToolkit::IconToggle(7,4,8,3, &Settings::application.widget.media_player_timeline_editmode, tooltip);
 
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.5f * timeline_height_));
         if (Settings::application.widget.media_player_timeline_editmode) {
             // action cut
             if (mediaplayer_active_->isPlaying()) {
-                ImGuiToolkit::Indication("Pause video to enable cut options", 9, 3);
+                ImGuiToolkit::Indication("Pause to enable cut at cursor", 9, 3);
             }
             else if (ImGuiToolkit::IconButton(9, 3, "Cut at cursor")) {
                 ImGui::OpenPopup("timeline_cut_context_menu");
@@ -1676,7 +1716,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
             // action smooth
             ImGui::PushButtonRepeat(true);
-            if (ImGuiToolkit::IconButton(13, 12, "Smooth")){
+            if (ImGuiToolkit::IconButton(13, 12, "Smooth fading curve")){
                 mediaplayer_active_->timeline()->smoothFading( 5 );
                 ++_actionsmooth;
             }

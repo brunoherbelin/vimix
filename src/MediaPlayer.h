@@ -206,8 +206,19 @@ public:
      */
     Timeline *timeline();
     void setTimeline(const Timeline &tl);
-
+    /**
+     * Get fading value at current time
+     * */
     float currentTimelineFading();
+    /**
+     * Get fading mode
+     * */
+    typedef enum { FADING_COLOR = 0, FADING_ALPHA = 1 } FadingMode;
+    FadingMode timelineFadingMode() { return fading_mode_; }
+    /**
+     * Set fading mode
+     * */
+    void setTimelineFadingMode(FadingMode m) { fading_mode_ = m; }
     /**
      * Get framerate of the media
      * */
@@ -314,6 +325,7 @@ private:
     // general properties of media
     MediaInfo media_;
     Timeline timeline_;
+    FadingMode fading_mode_;
     std::future<MediaInfo> discoverer_;
 
     // GST & Play status

@@ -465,6 +465,7 @@ void SessionVisitor::visit(MediaPlayer &n)
         fadingelement->InsertEndChild(array);
         timelineelement->InsertEndChild(fadingelement);
         newelement->InsertEndChild(timelineelement);
+        fadingelement->SetAttribute("mode", (uint) n.timelineFadingMode());
     }
 
     xmlCurrent_->InsertEndChild(newelement);

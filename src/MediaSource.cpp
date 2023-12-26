@@ -197,7 +197,10 @@ void MediaSource::render()
         // NB: this also applies the color correction shader
         renderbuffer_->begin();
         // apply fading
-        texturesurface_->shader()->color = glm::vec4( glm::vec3(mediaplayer_->currentTimelineFading()), 1.f);
+        if (mediaplayer_->timelineFadingMode() != MediaPlayer::FADING_ALPHA)
+            texturesurface_->shader()->color = glm::vec4( glm::vec3(mediaplayer_->currentTimelineFading()), 1.f);
+        else
+            texturesurface_->shader()->color = glm::vec4( glm::vec3(1.f), mediaplayer_->currentTimelineFading());
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
         ready_ = true;

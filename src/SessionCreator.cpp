@@ -912,6 +912,9 @@ void SessionLoader::visit(MediaPlayer &n)
             if (fadingselement) {
                 XMLElement* array = fadingselement->FirstChildElement("array");
                 XMLElementDecodeArray(array, tl.fadingArray(), MAX_TIMELINE_ARRAY * sizeof(float));
+                uint mode = 0;
+                fadingselement->QueryUnsignedAttribute("mode", &mode);
+                n.setTimelineFadingMode((MediaPlayer::FadingMode) mode);
             }
             n.setTimeline(tl);
         }
