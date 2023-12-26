@@ -1319,10 +1319,10 @@ void MediaPlayer::execute_loop_command()
 {
     if (loop_==LOOP_REWIND) {
         rewind();
-    } else if (loop_ == LOOP_BIDIRECTIONAL) {
+    }
+    else if (loop_ == LOOP_BIDIRECTIONAL) {
         rate_ *= -1.f;
         execute_seek_command();
-//        execute_seek_command(position_ + (rate_ > 0.f ? media_.dt :  media_.dt));
     }
     else { //LOOP_NONE
         if (desired_state_ == GST_STATE_PLAYING) // avoid repeated call

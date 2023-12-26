@@ -856,7 +856,7 @@ void TextureView::draw()
                             e = 1;
                             oss << ": Clear " << MASK_PAINT_ACTION_LABEL;
                         }
-                        if (ImGui::Selectable( ICON_FA_ADJUST "   Invert")) {
+                        if (ImGui::Selectable( ICON_FA_THEATER_MASKS "   Invert")) {
                             e = 2;
                             oss << ": Invert " << MASK_PAINT_ACTION_LABEL;
                         }

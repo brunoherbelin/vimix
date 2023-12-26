@@ -243,27 +243,6 @@ void ImGuiVisitor::visit(Shader &n)
     ImGui::PopID();
 }
 
-//void ImGuiVisitor::visit(ImageShader &n)
-//{
-//    ImGui::PushID(std::to_string(n.id()).c_str());
-//    // get index of the mask used in this ImageShader
-//    int item_current = n.mask;
-////    if (ImGuiToolkit::ButtonIcon(10, 3)) n.mask = 0;
-////    ImGui::SameLine(0, IMGUI_SAME_LINE);
-//    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//    // combo list of masks
-//    if ( ImGui::Combo("Mask", &item_current, ImageShader::mask_names, IM_ARRAYSIZE(ImageShader::mask_names) ) )
-//    {
-//        if (item_current < (int) ImageShader::mask_presets.size())
-//            n.mask = item_current;
-//        else {
-//            // TODO ask for custom mask
-//        }
-//        Action::manager().store("Mask "+ std::string(ImageShader::mask_names[n.mask]));
-//    }
-//    ImGui::PopID();
-//}
-
 void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
     ImGuiIO& io = ImGui::GetIO();
