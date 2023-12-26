@@ -42,16 +42,24 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     vec4 texColor0 = texture(iChannel0, fragCoord.xy / iResolution.xy);
 
+    // RGB is alpha-premultiplied : revert
+    vec4 col = vec4( texColor0.rgb / max(texColor0.a, 0.001), 1.0);
+
     //convert from RGB to YCvCr/YUV
     vec4 keyYUV = RGBtoYUV * chromaKey;
-    vec4 yuv = RGBtoYUV * texColor0;
+    vec4 yuv = RGBtoYUV * col;
 
+    // correction of color
     float t = (1. - Tolerance) * 0.2;
     float mask = 1.0 - colordistance(yuv.rgb, keyYUV.rgb, vec2(t, t + 0.2));
-    vec4 col = max(texColor0 - mask * chromaKey, 0.0);
+    col = max(col - mask * chromaKey, 0.0);
 
+    // correction of alpha
     t = Threshold * Threshold * 0.2;
     col.a -= 1.0 - colordistance(yuv.rgb, keyYUV.rgb, vec2(t, t + 0.25));
+
+    // restore texture alpha
+    col.a *= texColor0.a;
 
     fragColor = col;
 }
