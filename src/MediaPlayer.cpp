@@ -502,6 +502,11 @@ void MediaPlayer::execute_open()
 //
 void MediaPlayer::execute_open()
 {
+    // filters and audio are not available without playbin
+    video_filter_available_ = false;
+    audio_enabled_ = false;
+    media_.hasaudio = false;
+
     // Create gstreamer pipeline :
     //         "uridecodebin uri=file:///path_to_file/filename.mp4 ! videoconvert ! appsink "
     // equivalent to command line
@@ -1272,6 +1277,7 @@ void MediaPlayer::update()
         // seek should be resolved next frame
         seeking_ = false;
         // do NOT do another seek yet
+        need_loop = false;
     }
     // otherwise check for need to seek (pipeline management)
     else if (position_ != GST_CLOCK_TIME_NONE) {
@@ -1313,10 +1319,10 @@ void MediaPlayer::execute_loop_command()
 {
     if (loop_==LOOP_REWIND) {
         rewind();
-    }
-    else if (loop_==LOOP_BIDIRECTIONAL) {
-        rate_ *= - 1.f;
+    } else if (loop_ == LOOP_BIDIRECTIONAL) {
+        rate_ *= -1.f;
         execute_seek_command();
+//        execute_seek_command(position_ + (rate_ > 0.f ? media_.dt :  media_.dt));
     }
     else { //LOOP_NONE
         if (desired_state_ == GST_STATE_PLAYING) // avoid repeated call
@@ -1345,10 +1351,11 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     // seek with flush (always)
     int seek_flags = GST_SEEK_FLAG_FLUSH;
 
-    // seek with trick mode if fast speed
-    if ( ABS(rate_) > 1.5 )
-        seek_flags |= GST_SEEK_FLAG_TRICKMODE;
+    if ( desired_state_ == GST_STATE_PLAYING )
+        // seek with KEY mode if playing
+        seek_flags |= GST_SEEK_FLAG_KEY_UNIT | GST_SEEK_FLAG_SNAP_AFTER;
     else
+        // seek with accurate timing if paused
         seek_flags |= GST_SEEK_FLAG_ACCURATE;
 
     // create seek event depending on direction
@@ -1434,8 +1441,9 @@ void MediaPlayer::setPlaySpeed(double s)
     // Generic way is a flush seek
     // following the example from
     // https://gstreamer.freedesktop.org/documentation/tutorials/basic/playback-speed.html
-    else
+    else {
         execute_seek_command();
+    }
 
     // Set after initialization (will be used next time)
     if (rate_change_ == RATE_CHANGE_NONE)
