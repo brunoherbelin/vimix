@@ -87,10 +87,12 @@ struct ViewConfig
     std::string name;
     glm::vec3 default_scale;
     glm::vec3 default_translation;
+    bool ignore_mix;
 
     ViewConfig() : name("") {
         default_scale = glm::vec3(1.f);
         default_translation = glm::vec3(0.f);
+        ignore_mix = false;
     }
 
 };

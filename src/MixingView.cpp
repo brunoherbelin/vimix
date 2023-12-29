@@ -158,6 +158,7 @@ MixingView::MixingView() : View(MIXING), limbo_scale_(MIXING_MIN_THRESHOLD)
     // replace grid with appropriate one
     if (grid) delete grid;
     grid = new MixingGrid(scene.root());
+    grid->root()->visible_ = false;
 }
 
 
@@ -596,7 +597,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
     std::ostringstream info;
     if (s->active()) {
         info << "Alpha " << std::fixed << std::setprecision(3) << s->blendingShader()->color.a << "  ";
-        info << ( (s->blendingShader()->color.a > 0.f) ? ICON_FA_SUN : ICON_FA_CLOUD_SUN);
+        info << ( (s->blendingShader()->color.a > 0.f) ? ICON_FA_SUN : ICON_FA_MOON);
     }
     else
         info << "Inactive  " << ICON_FA_SNOWFLAKE;

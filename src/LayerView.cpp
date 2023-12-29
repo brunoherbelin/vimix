@@ -211,7 +211,7 @@ void LayerView::update(float dt)
 
 bool LayerView::canSelect(Source *s) {
 
-    return ( View::canSelect(s) && s->active() );
+    return ( View::canSelect(s) );
 }
 
 void LayerView::resize ( int scale )

@@ -245,6 +245,7 @@ void Settings::Save(uint64_t runtime)
             XMLElement *view = xmlDoc.NewElement( "View" );
             view->SetAttribute("name", view_config.name.c_str());
             view->SetAttribute("id", iter->first);
+            view->SetAttribute("ignore_mix", view_config.ignore_mix);
 
             XMLElement *scale = xmlDoc.NewElement("default_scale");
             scale->InsertEndChild( XMLElementFromGLM(&xmlDoc, view_config.default_scale) );
@@ -614,6 +615,7 @@ void Settings::Load()
                 int id = 0;
                 viewNode->QueryIntAttribute("id", &id);
                 application.views[id].name = viewNode->Attribute("name");
+                viewNode->QueryBoolAttribute("ignore_mix", &application.views[id].ignore_mix);
 
                 XMLElement* scaleNode = viewNode->FirstChildElement("default_scale");
                 if (scaleNode)

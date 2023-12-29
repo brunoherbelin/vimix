@@ -471,7 +471,7 @@ void ImGuiVisitor::visit (Source& s)
             if (s.blendingShader()->color.a > 0.f)
                 ImGuiToolkit::Indication("Visible", ICON_FA_SUN);
             else
-                ImGuiToolkit::Indication("Not visible", ICON_FA_CLOUD_SUN);
+                ImGuiToolkit::Indication("not Visible", ICON_FA_MOON);
         }
         else
             ImGuiToolkit::Indication("Inactive", ICON_FA_SNOWFLAKE);

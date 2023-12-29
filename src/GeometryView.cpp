@@ -143,7 +143,9 @@ GeometryView::GeometryView() : View(GEOMETRY)
 
     // replace grid with appropriate one
     translation_grid_ = new TranslationGrid(scene.root());
+    translation_grid_->root()->visible_ = false;
     rotation_grid_ = new RotationGrid(scene.root());
+    rotation_grid_->root()->visible_ = false;
     if (grid) delete grid;
     grid = translation_grid_;
 }
@@ -230,20 +232,25 @@ void GeometryView::draw()
     std::vector<Node *> surfaces;
     std::vector<Node *> overlays;
     uint workspaces_counts_[Source::WORKSPACE_ANY+1] = {0};
+    uint hidden_count_ = 0;
     for (auto source_iter = Mixer::manager().session()->begin();
          source_iter != Mixer::manager().session()->end(); ++source_iter) {
-        // if it is in the current workspace
-        if (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
-            (*source_iter)->workspace() == Settings::application.current_workspace) {
-            // will draw its surface
-            surfaces.push_back((*source_iter)->groups_[mode_]);
-            // will draw its frame and locker icon
-            overlays.push_back((*source_iter)->frames_[mode_]);
-            overlays.push_back((*source_iter)->locker_);
+        // count if it is visible
+        if (Settings::application.views[mode_].ignore_mix || (*source_iter)->visible()) {
+            // if it is in the current workspace
+            if (Settings::application.current_workspace == Source::WORKSPACE_ANY
+                || (*source_iter)->workspace() == Settings::application.current_workspace) {
+                // will draw its surface
+                surfaces.push_back((*source_iter)->groups_[mode_]);
+                // will draw its frame and locker icon
+                overlays.push_back((*source_iter)->frames_[mode_]);
+                overlays.push_back((*source_iter)->locker_);
+            }
+            // count number of sources per workspace
+            workspaces_counts_[(*source_iter)->workspace()]++;
+            workspaces_counts_[Source::WORKSPACE_ANY]++;
         }
-        // count number of sources per workspace
-        workspaces_counts_[(*source_iter)->workspace()]++;
-        workspaces_counts_[Source::WORKSPACE_ANY]++;
+        hidden_count_ += (*source_iter)->visible() ? 0 : 1;
     }
 
     // 0. prepare projection for draw visitors
@@ -262,8 +269,11 @@ void GeometryView::draw()
     scene.accept(draw_overlays);
 
     // 4. Draw control overlays of current source on top (if selected)
-    if (s != nullptr && (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
-                         s->workspace() == Settings::application.current_workspace) ) {
+    if (s != nullptr &&
+        (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
+                         s->workspace() == Settings::application.current_workspace) &&
+        (Settings::application.views[mode_].ignore_mix || s->visible()))
+    {
         DrawVisitor dv(s->overlays_[mode_], projection);
         scene.accept(dv);
         // Always restore current source after draw
@@ -299,11 +309,17 @@ void GeometryView::draw()
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 0.56f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
 
+        // toggle sources visibility flag
+        std::string _label = std::to_string(hidden_count_) + " source" + (hidden_count_>1?"s ":" ")
+                             + "outside mixing circle " + ICON_FA_MOON;
+        ImGuiToolkit::ButtonIconToggle(12, 0, &Settings::application.views[mode_].ignore_mix, _label.c_str());
+
+        // select layers visibility
         static std::vector< std::string > _tooltips = {
-            {"Sources in Background layers"},
-            {"Sources in Workspace layers"},
-            {"Sources in Foreground layers"},
-            {"Sources in every layers (total)"}
+            {"Sources in Background layer"},
+            {"Sources in Workspace layer"},
+            {"Sources in Foreground layer"},
+            {"Sources in all layers (total)"}
         };
         std::vector< std::tuple<int, int, std::string> > _workspaces = {
             {ICON_WORKSPACE_BACKGROUND, std::to_string( workspaces_counts_[Source::WORKSPACE_BACKGROUND] )},
@@ -311,6 +327,7 @@ void GeometryView::draw()
             {ICON_WORKSPACE_FOREGROUND, std::to_string( workspaces_counts_[Source::WORKSPACE_FOREGROUND] )},
             {ICON_WORKSPACE,            std::to_string( workspaces_counts_[Source::WORKSPACE_ANY] )}
         };
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
         if ( ImGuiToolkit::ComboIcon ("##WORKSPACE", &Settings::application.current_workspace, _workspaces, _tooltips) ){
             // need full update
@@ -548,8 +565,10 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
         // keep current source active if it is clicked
         Source *current = Mixer::manager().currentSource();
         if (current != nullptr) {
-            if (Settings::application.current_workspace < Source::WORKSPACE_ANY &&
-                    current->workspace() != Settings::application.current_workspace){
+            if ((Settings::application.current_workspace < Source::WORKSPACE_ANY &&
+                 current->workspace() != Settings::application.current_workspace) ||
+                (!Settings::application.views[mode_].ignore_mix && !current->visible()) )
+            {
                 current = nullptr;
             }
             else {
@@ -631,8 +650,11 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     // get if a source was picked
                     Source *s = Mixer::manager().findSource((*itp).first);
                     // accept picked sources in current workspaces
-                    if ( s!=nullptr && (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
-                                        s->workspace() == Settings::application.current_workspace) ) {
+                    if ( s!=nullptr &&
+                        (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
+                        s->workspace() == Settings::application.current_workspace) &&
+                        (Settings::application.views[mode_].ignore_mix || s->visible()) )
+                    {
                         if ( !UserInterface::manager().ctrlModifier() ) {
                             // source is locked; can't move
                             if ( s->locked() )
@@ -674,7 +696,8 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
 
 bool GeometryView::canSelect(Source *s) {
 
-    return ( s!=nullptr && View::canSelect(s) && s->ready() && s->active() &&
+    return ( s!=nullptr && View::canSelect(s) && s->ready() &&
+            (Settings::application.views[mode_].ignore_mix || s->visible()) &&
             (Settings::application.current_workspace == Source::WORKSPACE_ANY || s->workspace() == Settings::application.current_workspace) );
 }
 
