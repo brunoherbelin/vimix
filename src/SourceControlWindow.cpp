@@ -337,7 +337,8 @@ void SourceControlWindow::Render()
 
             // separator and hack for extending menu width
             ImGui::Separator();
-            ImGui::MenuItem("Settings                            ", nullptr, false, false);
+            ImGui::MenuItem("Settings ", nullptr, false, false);
+            float combo_width = ImGui::GetTextLineHeightWithSpacing() * 7.f;
 
             // path menu selection
             static char* name_path[4] = { nullptr };
@@ -352,8 +353,8 @@ void SourceControlWindow::Render()
                 Settings::application.source.capture_path = SystemToolkit::home_path();
             snprintf( name_path[0], 1024, "%s", Settings::application.source.capture_path.c_str());
             int selected_path = 0;
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            ImGui::Combo("Path", &selected_path, name_path, 4);
+            ImGui::SetNextItemWidth(combo_width);
+            ImGui::Combo("##Path", &selected_path, name_path, 4);
             if (selected_path > 2)
                 captureFolderDialog->open();
             else if (selected_path > 1) {
@@ -366,18 +367,24 @@ void SourceControlWindow::Render()
             }
             else if (selected_path > 0)
                 Settings::application.source.capture_path = SystemToolkit::home_path();
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton("Path"))
+                Settings::application.source.capture_path = SystemToolkit::home_path();
 
             // offer to open folder location
             ImVec2 draw_pos = ImGui::GetCursorPos();
-            ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -ImGui::GetFrameHeight()) );
-            if (ImGuiToolkit::IconButton( ICON_FA_FOLDER_OPEN,  Settings::application.source.capture_path.c_str()))
+            ImGui::SetCursorPos(draw_pos + ImVec2(combo_width + 3.f * ImGui::GetTextLineHeight() , -ImGui::GetFrameHeight()) );
+            if (ImGuiToolkit::IconButton( 3, 5, Settings::application.source.capture_path.c_str()))
                 SystemToolkit::open(Settings::application.source.capture_path);
             ImGui::SetCursorPos(draw_pos);
 
             // Naming menu selection
             static const char* naming_style[2] = { ICON_FA_SORT_NUMERIC_DOWN "  Sequential", ICON_FA_CALENDAR "  Date prefix" };
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            ImGui::Combo("Filename", &Settings::application.source.capture_naming, naming_style, IM_ARRAYSIZE(naming_style));
+            ImGui::SetNextItemWidth(combo_width);
+            ImGui::Combo("##Filename", &Settings::application.source.capture_naming, naming_style, IM_ARRAYSIZE(naming_style));
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton("Filename"))
+                Settings::application.source.capture_naming = 0;
 
             ImGui::EndMenu();
         }

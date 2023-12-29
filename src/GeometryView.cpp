@@ -328,7 +328,7 @@ void GeometryView::draw()
             {ICON_WORKSPACE,            std::to_string( workspaces_counts_[Source::WORKSPACE_ANY] )}
         };
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
+        ImGui::SetNextItemWidth( ImGui::GetTextLineHeightWithSpacing() * 2.6);
         if ( ImGuiToolkit::ComboIcon ("##WORKSPACE", &Settings::application.current_workspace, _workspaces, _tooltips) ){
             // need full update
             Mixer::manager().setView(mode_);

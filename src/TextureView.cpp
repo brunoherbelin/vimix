@@ -656,7 +656,7 @@ void TextureView::draw()
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
 
             int maskmode = edit_source_->maskShader()->mode;
-            ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 2.6);
+            ImGui::SetNextItemWidth( ImGui::GetTextLineHeightWithSpacing() * 2.6);
 
             if (ImGui::BeginCombo("##Mask", MaskShader::mask_icons[maskmode])) {
 

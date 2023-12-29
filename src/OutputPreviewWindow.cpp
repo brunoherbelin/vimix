@@ -296,8 +296,10 @@ void OutputPreviewWindow::Render()
                 // Options menu
                 ImGui::Separator();
                 ImGui::MenuItem("Settings", nullptr, false, false);
+                float combo_width = ImGui::GetTextLineHeightWithSpacing() * 7.f;
+
                 // offer to open config panel from here for more options
-                ImGui::SameLine(ImGui::GetContentRegionAvailWidth() + 1.3f * IMGUI_RIGHT_ALIGN);
+                ImGui::SameLine(combo_width, IMGUI_SAME_LINE);
                 if (ImGuiToolkit::IconButton(13, 5, "Advanced settings"))
                     UserInterface::manager().navigator.showConfig();
 
@@ -314,7 +316,7 @@ void OutputPreviewWindow::Render()
                     Settings::application.record.path = SystemToolkit::home_path();
                 snprintf( name_path[0], 1024, "%s", Settings::application.record.path.c_str());
                 int selected_path = 0;
-                ImGui::SetNextItemWidth(1.4f * IMGUI_RIGHT_ALIGN);
+                ImGui::SetNextItemWidth(combo_width);
                 if (ImGui::Combo("##Path", &selected_path, name_path, 4) ) {
                     if (selected_path > 2)
                         recordFolderDialog->open();
@@ -329,26 +331,26 @@ void OutputPreviewWindow::Render()
 
                 // offer to open folder location
                 ImVec2 draw_pos = ImGui::GetCursorPos();
-                ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.4 * ImGui::GetTextLineHeightWithSpacing(), -ImGui::GetFrameHeight()) );
+                ImGui::SetCursorPos(draw_pos + ImVec2(combo_width + 3.f * ImGui::GetTextLineHeight(), -ImGui::GetFrameHeight()) );
                 if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
                     SystemToolkit::open(Settings::application.record.path);
                 ImGui::SetCursorPos(draw_pos);
 
                 // Naming menu selection
                 static const char* naming_style[2] = { ICON_FA_SORT_NUMERIC_DOWN "  Sequential", ICON_FA_CALENDAR "  Date prefix" };
-                ImGui::SetNextItemWidth(1.4f * IMGUI_RIGHT_ALIGN);
+                ImGui::SetNextItemWidth(combo_width);
                 ImGui::Combo("##Filename", &Settings::application.record.naming_mode, naming_style, IM_ARRAYSIZE(naming_style));
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 if (ImGuiToolkit::TextButton("Filename"))
                     Settings::application.record.naming_mode = 1;
 
-                ImGui::SetNextItemWidth(1.4f * IMGUI_RIGHT_ALIGN);
+                ImGui::SetNextItemWidth(combo_width);
                 ImGuiToolkit::SliderTiming ("##Duration", &Settings::application.record.timeout, 1000, RECORD_MAX_TIMEOUT, 1000, "Until stopped");
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 if (ImGuiToolkit::TextButton("Duration"))
                     Settings::application.record.timeout = RECORD_MAX_TIMEOUT;
 
-                ImGui::SetNextItemWidth(1.4f * IMGUI_RIGHT_ALIGN);
+                ImGui::SetNextItemWidth(combo_width);
                 ImGui::SliderInt("##Trigger", &Settings::application.record.delay, 0, 5,
                                  Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
