@@ -304,9 +304,9 @@ void GeometryView::draw()
         // style
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 0.56f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
 
         // toggle sources visibility flag
@@ -933,7 +933,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);
             // Diagonal SCALING with SHIFT
             if (UserInterface::manager().shiftModifier())
-                node_pos.y = node_pos.x;
+                node_pos.y = -node_pos.x;
             // apply to source Node and to handles
             sourceNode->data_[1].x = CLAMP( node_pos.x, 0.f, 0.96f );
             sourceNode->data_[1].y = CLAMP( node_pos.y, -0.96f, 0.f );
@@ -960,7 +960,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);            
             // Diagonal SCALING with SHIFT
             if (UserInterface::manager().shiftModifier())
-                node_pos.y = node_pos.x;
+                node_pos.y = -node_pos.x;
             // apply to source Node and to handles
             sourceNode->data_[2].x = CLAMP( node_pos.x, -0.96f, 0.f );
             sourceNode->data_[2].y = CLAMP( node_pos.y, 0.f, 0.96f );
