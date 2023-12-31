@@ -40,10 +40,12 @@
 #include "Source.h"
 #include "Settings.h"
 #include "PickingVisitor.h"
+#include "DrawVisitor.h"
 #include "Decorations.h"
 #include "UserInterfaceManager.h"
 #include "BoundingBoxVisitor.h"
 #include "RenderingManager.h"
+#include "MousePointer.h"
 
 #include "DisplaysView.h"
 
@@ -78,7 +80,7 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     for (auto w = windows_.begin(); w != windows_.end(); ++w){
 
         // surface & buffer for render
-        w->output_render_ = new Surface;
+        w->output_render_ = new MeshSurface;
         w->renderbuffer_ = new FrameBuffer(1024, 1024);
 
         // root node
@@ -123,9 +125,9 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
         w->mode_ = new Switch;
         g->attach(w->mode_);
         // mode_ [0] is for WINDOWED
-        w->handles_ = new Handles(Handles::SCALE);
-        w->handles_->color = glm::vec4( COLOR_WINDOW, 1.f );
-        w->mode_->attach(w->handles_);
+        w->resize_ = new Handles(Handles::SCALE);
+        w->resize_->color = glm::vec4( COLOR_WINDOW, 1.f );
+        w->mode_->attach(w->resize_);
         // mode_ [1] is for FULLSCREEN
         w->fullscreen_ = new Symbol(Symbol::TELEVISION);
         w->fullscreen_->scale_ = glm::vec3(2.f, 2.f, 1.f);
@@ -134,12 +136,27 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
         // Output frame
         w->output_group_ = new Group;
         w->root_->attach(w->output_group_);
-        w->output_frame_ = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
-        w->output_frame_->color = glm::vec4( COLOR_FRAME, 1.f );
-        w->output_group_->attach(w->output_frame_);
-        w->output_handles_ = new Handles(Handles::RESIZE);
-        w->output_handles_->color = glm::vec4( COLOR_FRAME, 1.f );
-        w->output_group_->attach(w->output_handles_);
+        w->output_handles_[0] = new Handles(Handles::NODE_LOWER_LEFT);
+        w->output_handles_[0]->color = glm::vec4( COLOR_FRAME, 1.f );
+        w->output_group_->attach(w->output_handles_[0]);
+        w->output_handles_[1] = new Handles(Handles::NODE_UPPER_LEFT);
+        w->output_handles_[1]->color = glm::vec4( COLOR_FRAME, 1.f );
+        w->output_group_->attach(w->output_handles_[1]);
+        w->output_handles_[2] = new Handles(Handles::NODE_LOWER_RIGHT);
+        w->output_handles_[2]->color = glm::vec4( COLOR_FRAME, 1.f );
+        w->output_group_->attach(w->output_handles_[2]);
+        w->output_handles_[3] = new Handles(Handles::NODE_UPPER_RIGHT);
+        w->output_handles_[3]->color = glm::vec4( COLOR_FRAME, 1.f );
+        w->output_group_->attach(w->output_handles_[3]);
+        std::vector<glm::vec2> path;
+        path.push_back(glm::vec2(-1.f, -1.f));
+        path.push_back(glm::vec2(-1.f,  1.f));
+        path.push_back(glm::vec2( 1.f,  1.f));
+        path.push_back(glm::vec2( 1.f, -1.f));
+        w->output_lines_ = new LineLoop(path, 2.f);
+        w->output_lines_->shader()->color = glm::vec4(COLOR_FRAME, 0.96f);
+        w->output_group_->attach(w->output_lines_);
+
         // default to not active & window overlay frame
         w->output_group_->visible_ = false;
         w->overlays_->setActive(0);
@@ -153,6 +170,17 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     current_output_status_ = new Group;
     draw_pending_ = false;
     output_ar = 1.f;
+
+    // grid is attached to a transform group
+    // to adapt to windows geometry; see adaptGridToWindow()
+    gridroot_ = new Group;
+    gridroot_->visible_ = false;
+    scene.root()->attach(gridroot_);
+
+    // replace grid with appropriate one
+    if (grid)  delete grid;
+    grid = new TranslationGrid(gridroot_);
+    grid->root()->visible_ = false;
 }
 
 void DisplaysView::update(float dt)
@@ -164,48 +192,96 @@ void DisplaysView::update(float dt)
 
         // update rendering of render frame
         for (int i = 0; i < MAX_OUTPUT_WINDOW; ++i) {
-            windows_[i].output_render_->setTextureIndex( Rendering::manager().outputWindow(i).texture() );
 
-            // update visible flag
-            windows_[i].root_->visible_ = i < Settings::application.num_output_windows;
-            windows_[i].icon_->visible_ = Settings::application.render.disabled;
+            // ensure to update texture index
+            windows_[i].output_render_->setTextureIndex(
+                Rendering::manager().outputWindow(i).texture());
 
-            // Rendering of output is scaled to content and manipulated by output frame
-            if (Settings::application.windows[i+1].scaled)  {
-                windows_[i].output_render_->scale_ = windows_[i].output_group_->scale_;
-                windows_[i].output_render_->translation_ = windows_[i].output_group_->translation_;
-                // show output frame
-                windows_[i].output_group_->visible_ = true;
-            }
-            // Rendering of output is adjusted to match aspect ratio of framebuffer
-            else {
-                float out_ar = windows_[i].root_->scale_.x / windows_[i].root_->scale_.y;
-                if (output_ar < out_ar)
-                    windows_[i].output_render_->scale_ = glm::vec3(output_ar / out_ar, 1.f, 1.f);
-                else
-                    windows_[i].output_render_->scale_ = glm::vec3(1.f, out_ar / output_ar, 1.f);
-                // reset translation
-                windows_[i].output_render_->translation_ = glm::vec3(0.f);
-                // do not show output frame
-                windows_[i].output_group_->visible_ = false;
-            }
+            // avoid busy update
+            if (windows_[i].need_update_) {
+                --windows_[i].need_update_;
 
-            if ( current_window_ == i ) {
-                windows_[i].overlays_->setActive(1);
-                windows_[i].output_handles_->visible_ = true;
-                windows_[i].output_frame_->color = glm::vec4( COLOR_FRAME, 1.f );
-                windows_[i].title_->shader()->color = glm::vec4( COLOR_WINDOW, 1.f );
-            }
-            else {
-                windows_[i].overlays_->setActive(0);
-                windows_[i].output_handles_->visible_ = false;
-                windows_[i].output_frame_->color = glm::vec4( COLOR_FRAME, 0.3f );
-                windows_[i].title_->shader()->color = glm::vec4( COLOR_WINDOW, 0.8f );
-            }
+                // update visible flag
+                windows_[i].root_->visible_ = i < Settings::application.num_output_windows;
+                windows_[i].icon_->visible_ = Settings::application.render.disabled;
 
+                // Rendering of output is distorted with custom fit
+                if (Settings::application.windows[i+1].custom)  {
+
+                    // reset scale
+                    windows_[i].output_render_->scale_ = glm::vec3(1.f);
+
+                    // update node distortion
+                    windows_[i].output_group_->data_ = Settings::application.windows[i + 1].nodes;
+                    for (int k = 0; k < 4; ++k) {
+                        windows_[i].output_handles_[k]->translation_.x
+                            = windows_[i].output_group_->data_[k].x;
+                        windows_[i].output_handles_[k]->translation_.y
+                            = windows_[i].output_group_->data_[k].y;
+                    }
+
+                    // update the shape of the distorted outline
+                    std::vector<glm::vec2> path;
+                    path.push_back(glm::vec2(-1.f, -1.f) + glm::vec2(windows_[i].output_handles_[0]->translation_));
+                    path.push_back(glm::vec2(-1.f,  1.f) + glm::vec2(windows_[i].output_handles_[1]->translation_));
+                    path.push_back(glm::vec2( 1.f,  1.f) + glm::vec2(windows_[i].output_handles_[3]->translation_));
+                    path.push_back(glm::vec2( 1.f, -1.f) + glm::vec2(windows_[i].output_handles_[2]->translation_));
+                    windows_[i].output_lines_->changePath(path);
+
+                    // apply nodes distortion
+                    ImageShader *is = dynamic_cast<ImageShader*>(windows_[i].output_render_->shader());
+                    is->iNodes = windows_[i].output_group_->data_;
+
+                    // show output frame
+                    windows_[i].output_group_->visible_ = true;
+                }
+                // Rendering of output is adjusted to match aspect ratio of framebuffer
+                else {
+                    // apply scaling
+                    float out_ar = windows_[i].root_->scale_.x / windows_[i].root_->scale_.y;
+                    if (output_ar < out_ar)
+                        windows_[i].output_render_->scale_ = glm::vec3(output_ar / out_ar, 1.f, 1.f);
+                    else
+                        windows_[i].output_render_->scale_ = glm::vec3(1.f, out_ar / output_ar, 1.f);
+
+                    // reset nodes distortion
+                    ImageShader *is = dynamic_cast<ImageShader*>(windows_[i].output_render_->shader());
+                    is->iNodes = glm::zero<glm::mat4>();
+
+                    // do not show output frame
+                    windows_[i].output_group_->visible_ = false;
+                }
+
+                // Highlight current window
+                if ( current_window_ == i ) {
+                    windows_[i].overlays_->setActive(1);
+                    for (int k = 0; k < 4; ++k)
+                        windows_[i].output_handles_[k]->visible_ = true;
+                    windows_[i].output_lines_->shader()->color = glm::vec4( COLOR_FRAME, 0.96f );
+                    windows_[i].title_->shader()->color = glm::vec4( COLOR_WINDOW, 1.f );
+                }
+                else {
+                    windows_[i].overlays_->setActive(0);
+                    for (int k = 0; k < 4; ++k)
+                        windows_[i].output_handles_[k]->visible_ = false;
+                    windows_[i].output_lines_->shader()->color = glm::vec4( COLOR_FRAME, 0.3f );
+                    windows_[i].title_->shader()->color = glm::vec4( COLOR_WINDOW, 0.8f );
+                }
+            }
         }
 
         output_ar = Mixer::manager().session()->frame()->aspectRatio();
+    }
+
+    // a more complete update is requested
+    if (View::need_deep_update_ > 0) {
+        // change grid color
+        ImVec4 c = ImGuiToolkit::HighlightColor();
+        grid->setColor( glm::vec4(c.x, c.y, c.z, 0.3) );
+
+        // force update
+        for (int i = 0; i < MAX_OUTPUT_WINDOW; ++i)
+            ++windows_[i].need_update_;
     }
 }
 
@@ -308,6 +384,42 @@ int  DisplaysView::size ()
 {
     float z = (scene.root()->scale_.x - DISPLAYS_MIN_SCALE) / (DISPLAYS_MAX_SCALE - DISPLAYS_MIN_SCALE);
     return (int) ( sqrt(z) * 100.f);
+}
+
+
+void DisplaysView::adaptGridToWindow(int w)
+{
+    // reset by default
+    gridroot_->scale_ = glm::vec3(1.f);
+    gridroot_->translation_ = glm::vec3(0.f);
+    grid->setAspectRatio(1.f);
+
+    // adapt grid scaling to given window if parameter is given
+    if (w > -1) {
+        gridroot_->scale_.x = windows_[w].root_->scale_.x;
+        gridroot_->scale_.y = windows_[w].root_->scale_.y;
+        gridroot_->translation_.x = windows_[w].root_->translation_.x;
+        gridroot_->translation_.y = windows_[w].root_->translation_.y;
+
+        if (!Settings::application.proportional_grid)
+            grid->setAspectRatio((float) windows_[w].root_->scale_.y / windows_[w].root_->scale_.x);
+
+    }
+    // set grid aspect ratio to display size otherwise
+    else if (current_window_ > -1) {
+
+        if (Settings::application.proportional_grid) {
+            std::string m = Rendering::manager()
+                                .monitorNameAt(Settings::application.windows[current_window_ + 1].x,
+                                               Settings::application.windows[current_window_ + 1].y);
+            glm::ivec4 rect = Rendering::manager().monitors()[m];
+
+            gridroot_->translation_.x = rect.x * DISPLAYS_UNIT;
+            gridroot_->translation_.y = rect.y * -DISPLAYS_UNIT;
+            gridroot_->scale_.x = rect.p * 0.5f * DISPLAYS_UNIT;
+            gridroot_->scale_.y = rect.q * 0.5f * DISPLAYS_UNIT;
+        }
+    }
 }
 
 void DisplaysView::draw()
@@ -419,13 +531,18 @@ void DisplaysView::draw()
                 windows_[i].title_->translation_.y = 1.f + windows_[i].title_->scale_.y;
             }
 
-            windows_[i].output_group_->scale_ = Settings::application.windows[i+1].scale;
-            windows_[i].output_group_->translation_ = Settings::application.windows[i+1].translation;
         }
     }
 
     // main call to draw the view
     View::draw();
+
+    // Display grid in overlay
+    if (grid->active() && current_action_ongoing_) {
+        const glm::mat4 projection = Rendering::manager().Projection();
+        DrawVisitor draw_grid(grid->root(), projection, true);
+        scene.accept(draw_grid);
+    }
 
     // display interface
     // Locate window at upper left corner
@@ -463,6 +580,7 @@ void DisplaysView::draw()
             if (ImGuiToolkit::IconButton(18, 4, "More windows")) {
                 ++Settings::application.num_output_windows;
                 current_window_ = Settings::application.num_output_windows-1;
+                windows_[current_window_].need_update_ += 2;
             }
         }
         else
@@ -488,10 +606,12 @@ void DisplaysView::draw()
 
             // Output options
             ImGui::SameLine(0, 2.f * g.Style.FramePadding.x);
-            ImGuiToolkit::ButtonIconToggle(9,5, &Settings::application.windows[1+current_window_].scaled, "Custom fit");
+            if ( ImGuiToolkit::ButtonIconToggle(9,5, &Settings::application.windows[1+current_window_].custom, "Custom fit") )
+                ++windows_[current_window_].need_update_;
 
             ImGui::SameLine(0, g.Style.FramePadding.x);
-            ImGuiToolkit::ButtonIconToggle(11,1, &Settings::application.windows[1+current_window_].show_pattern, "Test pattern");
+            if ( ImGuiToolkit::ButtonIconToggle(11,1, &Settings::application.windows[1+current_window_].show_pattern, "Test pattern") )
+                ++windows_[current_window_].need_update_;
 
             ImGui::SameLine(0, 1.5f * g.Style.FramePadding.x);
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
@@ -548,7 +668,6 @@ void DisplaysView::draw()
             ImGui::PopFont();
         }
 
-
         ImGui::PopStyleColor(8);
         ImGui::End();
     }
@@ -584,6 +703,7 @@ void DisplaysView::draw()
             if (ImGui::MenuItem( menutext.c_str(), nullptr, _fullscreen )){
                 windows_[current_window_].monitor_ = monitor_iter->first;
                 Rendering::manager().outputWindow(current_window_).setFullscreen( windows_[current_window_].monitor_ );
+                windows_[current_window_].need_update_ += 2;
             }
         }
 
@@ -593,16 +713,17 @@ void DisplaysView::draw()
             Rendering::manager().outputWindow(current_window_).exitFullscreen();
             // not fullscreen on a monitor
             windows_[current_window_].monitor_ = "";
+            windows_[current_window_].need_update_ += 2;
         }
         ImGui::Separator();
 
         bool _borderless = !Settings::application.windows[current_window_+1].decorated;
         if (ImGui::MenuItem( ICON_FA_SQUARE_FULL "   Borderless", nullptr, &_borderless, _windowed)){
             Rendering::manager().outputWindow(current_window_).setDecoration(!_borderless);
+            ++windows_[current_window_].need_update_;
         }
 
         if (ImGui::MenuItem( ICON_FA_EXPAND "   Fit all Displays", nullptr, false, _windowed )){
-
             Rendering::manager().outputWindow(current_window_).setDecoration(false);
             glm::ivec4 rect (INT_MAX, INT_MAX, 0, 0);
             std::map<std::string, glm::ivec4> _monitors = Rendering::manager().monitors();
@@ -614,6 +735,7 @@ void DisplaysView::draw()
                 rect.q = MAX(rect.q, monitor_iter->second.y+monitor_iter->second.q);
             }
             Rendering::manager().outputWindow(current_window_).setCoordinates( rect );
+            windows_[current_window_].need_update_ += 2;
         }
 
         if (ImGui::MenuItem( ICON_FA_EXPAND_ALT "   Restore aspect ratio" , nullptr, false, _windowed )){
@@ -625,6 +747,7 @@ void DisplaysView::draw()
             else
                 rect.q = rect.p / ar;
             Rendering::manager().outputWindow(current_window_).setCoordinates( rect );
+            windows_[current_window_].need_update_ += 2;
         }
 
         if (ImGui::MenuItem( ICON_FA_RULER_COMBINED "   Rescale to pixel size", nullptr, false, _windowed )){
@@ -633,6 +756,7 @@ void DisplaysView::draw()
             rect.p = Mixer::manager().session()->frame()->width();
             rect.q = Mixer::manager().session()->frame()->height();
             Rendering::manager().outputWindow(current_window_).setCoordinates( rect );
+            windows_[current_window_].need_update_ += 2;
         }
 
         ImGui::Separator();
@@ -642,24 +766,21 @@ void DisplaysView::draw()
             rect.q = Mixer::manager().session()->frame()->height();
             Rendering::manager().outputWindow(current_window_).setDecoration(true);
             Settings::application.windows[1+current_window_].show_pattern = false;
-            Settings::application.windows[1+current_window_].scaled = false;
-            Settings::application.windows[1+current_window_].scale = glm::vec3(1.f);
-            Settings::application.windows[1+current_window_].translation = glm::vec3(0.f);
+            Settings::application.windows[1+current_window_].custom = false;
             Settings::application.windows[1+current_window_].whitebalance = glm::vec4(1.f, 1.f, 1.f, 0.5f);
             if (Settings::application.windows[current_window_+1].fullscreen)
                 Rendering::manager().outputWindow(current_window_).exitFullscreen();
             else
                 Rendering::manager().outputWindow(current_window_).setCoordinates( rect );
+            windows_[current_window_].need_update_ += 2;
         }
 
-        if ( Settings::application.windows[current_window_+1].scaled ) {
+        if ( Settings::application.windows[current_window_+1].custom ) {
             ImGui::PopStyleColor(1);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 1.f));
-
-            if ( ImGui::MenuItem( ICON_FA_VECTOR_SQUARE  "   Reset custom fit") ) {
-                Settings::application.windows[1+current_window_].scale = glm::vec3(1.f);
-                Settings::application.windows[1+current_window_].translation = glm::vec3(0.f);
-            }
+            if ( ImGui::MenuItem( ICON_FA_VECTOR_SQUARE  "   Reset custom fit") )
+                Settings::application.windows[current_window_+1].nodes = glm::zero<glm::mat4>();
+            windows_[current_window_].need_update_ += 2;
         }
 
         ImGui::PopStyleColor(2);
@@ -692,17 +813,29 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
             show_window_menu_ = true;
 
         // activate / deactivate window if clic on any element of it
-        if ( (pick.first == windows_[i].surface_) ||
-             (pick.first == windows_[i].handles_) ||
-             (pick.first == windows_[i].output_handles_) ||
-             (pick.first == windows_[i].menu_) ) {
+        if ((pick.first == windows_[i].surface_) ||
+            (pick.first == windows_[i].resize_) ||
+            (pick.first == windows_[i].menu_) ) {
             current_window_ = i;
+            adaptGridToWindow();
+        }
+
+        if ((pick.first == windows_[i].output_handles_[0]) ||
+            (pick.first == windows_[i].output_handles_[1]) ||
+            (pick.first == windows_[i].output_handles_[2]) ||
+            (pick.first == windows_[i].output_handles_[3]) ) {
+            current_window_ = i;
+            adaptGridToWindow(current_window_);
         }
     }
 
     // ignore anything else than selected window
     if (current_window_ < 0)
         pick.first = nullptr;
+
+    // request update
+    for (int i = 0; i < MAX_OUTPUT_WINDOW; ++i)
+        ++windows_[i].need_update_;
 
     return pick;
 }
@@ -725,19 +858,21 @@ void DisplaysView::select(glm::vec2 A, glm::vec2 B)
     // TODO Multiple window selection?
 
     if (!pv.empty()) {
-
         // find which window was picked
         auto itp = pv.rbegin();
         for (; itp != pv.rend(); ++itp){
             // search for WindowPreview
             auto w = std::find_if(windows_.begin(), windows_.end(), WindowPreview::hasNode(itp->first));
-            if (w != windows_.end())
+            if (w != windows_.end()) {
                 // set current
                 current_window_ = (int) std::distance(windows_.begin(), w);
+                ++windows_[current_window_].need_update_;
+            }
         }
-
     }
 }
+
+int _prev_mouse_pointer = 0;
 
 void DisplaysView::initiate()
 {
@@ -756,6 +891,7 @@ void DisplaysView::initiate()
         // initiated
         current_action_ = "";
         current_action_ongoing_ = true;
+        ++windows_[current_window_].need_update_;
     }
 }
 
@@ -780,21 +916,24 @@ void DisplaysView::terminate(bool force)
             GlmToolkit::AxisAlignedBoundingBox _bb;
             _bb.extend(glm::vec3(-1.f, -1.f, 0.f));
             _bb.extend(glm::vec3(1.f, 1.f, 0.f));
-            GlmToolkit::AxisAlignedBoundingBox output_bb = _bb.transformed( windows_[current_window_].output_group_->transform_ );
             _bb = _bb.scaled(glm::vec3(0.9f));
-            if ( !_bb.intersect(output_bb) || output_bb.area() < 0.1f ) {
+            GlmToolkit::AxisAlignedBoundingBox output_bb;
+            output_bb.extend(glm::vec3(-1.f, -1.f, 0.f)
+                             + windows_[current_window_].output_handles_[0]->translation_);
+            output_bb.extend(glm::vec3(-1.f, 1.f, 0.f)
+                             + windows_[current_window_].output_handles_[1]->translation_);
+            output_bb.extend(glm::vec3(1.f, -1.f, 0.f)
+                             + windows_[current_window_].output_handles_[2]->translation_);
+            output_bb.extend(glm::vec3(1.f, 1.f, 0.f)
+                             + windows_[current_window_].output_handles_[3]->translation_);
+            if (!_bb.intersect(output_bb) || output_bb.area() < 0.05f) {
                 // No intersection of output bounding box with window area : revert to previous
-                windows_[current_window_].output_group_->scale_ = Settings::application.windows[current_window_+1].scale;
-                windows_[current_window_].output_group_->translation_ = Settings::application.windows[current_window_+1].translation;
-            }
-            else {
-                // Apply output area recentering to actual output window
-                Settings::application.windows[current_window_+1].scale = windows_[current_window_].output_group_->scale_;
-                Settings::application.windows[current_window_+1].translation = windows_[current_window_].output_group_->translation_;
+                Settings::application.windows[current_window_ + 1].nodes = current_output_status_->data_;
+                Log::Notify("Custom window output area outside window or too small");
             }
 
-            // reset overlay of grab corner
-            windows_[current_window_].output_handles_->overlayActiveCorner(glm::vec2(0.f));
+            // ensures update
+            ++windows_[current_window_].need_update_;
         }
 
         // terminated
@@ -811,8 +950,8 @@ glm::ivec4 DisplaysView::windowCoordinates(int index) const
 {
     glm::ivec4 rect;
 
-    rect.x = (windows_[index].root_->translation_.x - windows_[index].root_->scale_.x) / DISPLAYS_UNIT;
-    rect.y = (windows_[index].root_->translation_.y + windows_[index].root_->scale_.y) / - DISPLAYS_UNIT;
+    rect.x = ceil( (windows_[index].root_->translation_.x - windows_[index].root_->scale_.x) / DISPLAYS_UNIT );
+    rect.y = ceil( (windows_[index].root_->translation_.y + windows_[index].root_->scale_.y) / - DISPLAYS_UNIT );
     rect.p = 2.f * windows_[index].root_->scale_.x / DISPLAYS_UNIT;
     rect.q = 2.f * windows_[index].root_->scale_.y / DISPLAYS_UNIT;
 
@@ -835,73 +974,71 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
     glm::vec3 scene_translation = scene_to - scene_from;
 
     // a window is currently selected
-    if ( current_window_ > -1 ) {
+    if (current_window_ > -1) {
+
+        // which window is grabbed ?
+        Group *w = windows_[current_window_].root_;
+
+        // which handle is grabbed ?
+        size_t picked_handle_ = 4;
+        if (pick.first == windows_[current_window_].output_handles_[0])
+            picked_handle_ = 0;
+        else if (pick.first == windows_[current_window_].output_handles_[1])
+            picked_handle_ = 1;
+        else if (pick.first == windows_[current_window_].output_handles_[2])
+            picked_handle_ = 2;
+        else if (pick.first == windows_[current_window_].output_handles_[3])
+            picked_handle_ = 3;
 
         // Grab handles of the output frame to adjust
-        if ( pick.first == windows_[current_window_].output_handles_ ) {
-
+        if (picked_handle_ < 4) {
             // which corner was picked ?
             glm::vec2 corner = glm::round(pick.second);
-            // inform on which corner should be overlayed (opposite)
-            windows_[current_window_].output_handles_->overlayActiveCorner(-corner);
-
             // transform from center to corner
             glm::mat4 T = GlmToolkit::transform(glm::vec3(corner.x, corner.y, 0.f), glm::vec3(0.f, 0.f, 0.f),
                                                 glm::vec3(1.f, 1.f, 1.f));
-
             glm::mat4 root_to_corner_transform = T * glm::inverse(current_output_status_->transform_);
             glm::mat4 corner_to_root_transform = glm::inverse(root_to_corner_transform);
-
             // transformation from scene to corner:
             glm::mat4 scene_to_corner_transform = root_to_corner_transform * glm::inverse( current_window_status_->transform_);
-
             // compute cursor movement in corner reference frame
             glm::vec4 corner_from = scene_to_corner_transform * glm::vec4( scene_from,  1.f );
             glm::vec4 corner_to   = scene_to_corner_transform * glm::vec4( scene_to,  1.f );
+            // get stored status
+            glm::vec3 node_pos = glm::vec3(current_output_status_->data_[picked_handle_].x,
+                                           current_output_status_->data_[picked_handle_].y,
+                                           0.f);
+            // Compute target coordinates of manipulated handle into CORNER reference frame
+            node_pos = root_to_corner_transform * glm::vec4(node_pos, 1.f);
+            // apply translation of target in CORNER
+            node_pos = glm::translate(glm::identity<glm::mat4>(),  glm::vec3(corner_to - corner_from)) * glm::vec4(node_pos, 1.f);
+            // snap handle coordinates to grid (if active)
+            if ( grid->active() )
+                node_pos = grid->snap(node_pos);
+            // Diagonal SCALING with SHIFT
+            if (UserInterface::manager().shiftModifier())
+                node_pos.y = (corner.x * corner.y) * node_pos.x;
+            // Compute handle coordinates back in ROOT reference frame
+            node_pos = corner_to_root_transform * glm::vec4(node_pos, 1.f);
 
-            // operation of scaling in corner reference frame
-            glm::vec3 corner_scaling = glm::vec3(corner_to) / glm::vec3(corner_from);
+            // apply to output
+            Settings::application.windows[current_window_+1].nodes[picked_handle_].x = node_pos.x;
+            Settings::application.windows[current_window_+1].nodes[picked_handle_].y = node_pos.y;
 
-            // proportional SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier()) {
-                // calculate proportional scaling factor
-                float factor = glm::length( glm::vec2( corner_to ) ) / glm::length( glm::vec2( corner_from ) );
-                // scale node
-                windows_[current_window_].output_group_->scale_ = current_output_status_->scale_ * glm::vec3(factor, factor, 1.f);
-            }
-            // non-proportional CORNER RESIZE  (normal case)
-            else {
-                // scale node
-                windows_[current_window_].output_group_->scale_ = current_output_status_->scale_ * corner_scaling;
-            }
-
-            // update corner scaling to apply to center coordinates
-            corner_scaling = windows_[current_window_].output_group_->scale_ / current_output_status_->scale_;
-
-            // TRANSLATION CORNER
-            // convert source position in corner reference frame
-            glm::vec4 center = root_to_corner_transform * glm::vec4( current_output_status_->translation_, 1.f);
-            // transform source center (in corner reference frame)
-            center = glm::scale(glm::identity<glm::mat4>(), corner_scaling) * center;
-            // convert center back into scene reference frame
-            center = corner_to_root_transform * center;
-            // apply to node
-            windows_[current_window_].output_group_->translation_ = glm::vec3(center);
-
-            // discretized scaling with ALT
-            if (UserInterface::manager().altModifier()) {
-                windows_[current_window_].output_group_->scale_ = glm::round( windows_[current_window_].output_group_->scale_ * 20.f) * 0.05f;
-                windows_[current_window_].output_group_->translation_ = glm::round( windows_[current_window_].output_group_->translation_ * 20.f) * 0.05f;
-            }
-
-            // show cursor depending on diagonal (corner picked)
-            T = glm::rotate(glm::identity<glm::mat4>(), current_output_status_->rotation_.z, glm::vec3(0.f, 0.f, 1.f));
-            T = glm::scale(T, current_output_status_->scale_);
-            corner = T * glm::vec4( corner, 0.f, 0.f );
-            ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
-
-            info << "Output resized " << std::fixed << std::setprecision(1) << 100.f * windows_[current_window_].output_group_->scale_.x;
-            info << " x "  << 100.f * windows_[current_window_].output_group_->scale_.y << " %";
+            // show cursor hand
+            ret.type = Cursor_Hand;
+            // show info depending on corner picked
+            if (picked_handle_ == 0)
+                info << "Bottom-left";
+            else if (picked_handle_ == 1)
+                info << "Top-left";
+            else if (picked_handle_ == 3)
+                info << "Top-right";
+            else
+                info << "Bottom-right";
+            node_pos.x *= (float) Settings::application.windows[current_window_ + 1].w;
+            node_pos.y *= -1.f * (float) Settings::application.windows[current_window_ + 1].h;
+            info << " +(" << std::fixed << std::setprecision(0) << node_pos.x << "," << node_pos.y << ")";
         }
 
         // grab window not fullscreen : move or resizes
@@ -911,23 +1048,29 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
             if ( pick.first == windows_[current_window_].surface_ ){
 
                 // apply translation
-                windows_[current_window_].root_->translation_ = current_window_status_->translation_ + scene_translation;
-                glm::ivec4 r = windowCoordinates(current_window_);
+                w->translation_ = current_window_status_->translation_ + scene_translation;
 
-                // discretized translation with ALT
-                if (UserInterface::manager().altModifier()) {
-                    r.x = ROUND(r.x, 0.01f);
-                    r.y = ROUND(r.y, 0.01f);
-                    windows_[current_window_].root_->translation_.x = (r.x * DISPLAYS_UNIT) + windows_[current_window_].root_->scale_.x;
-                    windows_[current_window_].root_->translation_.y = (r.y * - DISPLAYS_UNIT) - windows_[current_window_].root_->scale_.y;
+                // snap coordinates to grid (if active)
+                if (grid->active()) {
+                    // get top left corner
+                    glm::vec2 sc = glm::vec2(w->scale_) * glm::vec2(1.f, -1.f);
+                    glm::vec2 top_left = glm::vec2(w->translation_) - sc;
+                    top_left -= glm::vec2(gridroot_->translation_);
+                    // snap to grid
+                    top_left = grid->snap(top_left / glm::vec2(gridroot_->scale_))
+                         * glm::vec2(gridroot_->scale_);
+                    top_left += glm::vec2(gridroot_->translation_);
+                    // revert to center coordinates
+                    w->translation_ = glm::vec3(top_left, 0.f) + glm::vec3(sc, 0.f);
                 }
 
                 // Show move cursor
                 ret.type = Cursor_ResizeAll;
+                glm::ivec4 r = windowCoordinates(current_window_);
                 info << "Window position " << r.x << ", " << r.y << " px";
             }
             // grab handle to resize
-            else if ( pick.first == windows_[current_window_].handles_ ){
+            else if ( pick.first == windows_[current_window_].resize_ ){
 
                 // which corner was picked ?
                 glm::vec2 corner = glm::round(pick.second);
@@ -942,7 +1085,8 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
 
                 // compute cursor movement in corner reference frame
                 glm::vec4 corner_from = scene_to_corner_transform * glm::vec4( scene_from,  1.f );
-                glm::vec4 corner_to   = scene_to_corner_transform * glm::vec4( scene_to,  1.f );
+                glm::vec4 corner_to = scene_to_corner_transform * glm::vec4(scene_to, 1.f);
+
 
                 // operation of scaling in corner reference frame
                 glm::vec3 corner_scaling = glm::vec3(corner_to) / glm::vec3(corner_from);
@@ -952,30 +1096,16 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
                 // proportional SCALING with SHIFT
                 if (UserInterface::manager().shiftModifier()) {
                     // calculate proportional scaling factor
-                    float factor = glm::length( glm::vec2( corner_to ) ) / glm::length( glm::vec2( corner_from ) );
-                    // scale node
-                    windows_[current_window_].root_->scale_ = current_window_status_->scale_ * glm::vec3(factor, factor, 1.f);
+                    float factor = glm::length(glm::vec2(corner_to)) / glm::length(glm::vec2(corner_from));
+                    w->scale_ = current_window_status_->scale_ * glm::vec3(factor, factor, 1.f);
                 }
                 // non-proportional CORNER RESIZE  (normal case)
                 else {
-                    // scale node
-                    windows_[current_window_].root_->scale_ = current_window_status_->scale_ * corner_scaling;
+                    w->scale_ = current_window_status_->scale_ * corner_scaling;
                 }
 
-                // discretized scaling with ALT
-                if (UserInterface::manager().altModifier()) {
-                    // calculate ratio of scaling modulo the output resolution
-                    glm::vec3 outputsize = windows_[current_window_].root_->scale_ / DISPLAYS_UNIT;
-                    glm::vec3 framesize = Mixer::manager().session()->frame()->resolution();
-                    glm::vec3 ra = outputsize / framesize;
-                    ra.x = ROUND(ra.x, 20.f);
-                    ra.y = ROUND(ra.y, 20.f);
-                    outputsize = ra * framesize;
-                    windows_[current_window_].root_->scale_.x = outputsize.x * DISPLAYS_UNIT;
-                    windows_[current_window_].root_->scale_.y = outputsize.y * DISPLAYS_UNIT;
-                }
                 // update corner scaling to apply to center coordinates
-                corner_scaling = windows_[current_window_].root_->scale_ / current_window_status_->scale_;
+                corner_scaling = w->scale_ / current_window_status_->scale_;
 
                 // TRANSLATION CORNER
                 // convert source position in corner reference frame
@@ -985,10 +1115,28 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
                 // convert center back into scene reference frame
                 center = corner_to_scene_transform * center;
                 // apply to node
-                windows_[current_window_].root_->translation_ = glm::vec3(center);
+                w->translation_ = glm::vec3(center);
+
+                // snap coordinates to grid (if active)
+                if (grid->active()) {
+                    // get bottom right corner
+                    glm::vec2 sc = glm::vec2(w->scale_) * glm::vec2(1.f, -1.f);
+                    glm::vec2 bottom_right = glm::vec2(w->translation_) + sc;
+                    bottom_right -= glm::vec2(gridroot_->translation_);
+                    // snap corner to grid
+                    bottom_right = grid->snap(bottom_right / glm::vec2(gridroot_->scale_))
+                                   * glm::vec2(gridroot_->scale_);
+                    bottom_right += glm::vec2(gridroot_->translation_);
+                    // recalculate center coordinates and scale
+                    sc = glm::vec2(current_window_status_->scale_) * glm::vec2(1.f, -1.f);
+                    glm::vec2 top_left = glm::vec2(current_window_status_->translation_) - sc;
+                    glm::vec2 middle   = top_left + (bottom_right - top_left) * 0.5f;
+                    w->translation_ = glm::vec3(middle, 0.f);
+                    w->scale_ = glm::vec3((bottom_right - top_left) * glm::vec2(0.5f, -0.5f), 1.f);
+                }
 
                 // rescale title bar
-                windows_[current_window_].title_->scale_.y = WINDOW_TITLEBAR_HEIGHT / windows_[current_window_].root_->scale_.y;
+                windows_[current_window_].title_->scale_.y = WINDOW_TITLEBAR_HEIGHT / w->scale_.y;
                 windows_[current_window_].title_->translation_.y = 1.f + windows_[current_window_].title_->scale_.y;
 
                 // show cursor
@@ -1017,10 +1165,10 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
                             && scene_to.y > r.y && scene_to.y < r.y + r.q) {
 
                         // show output frame on top of that monitor
-                        windows_[current_window_].root_->scale_.x = r.p * 0.5f * DISPLAYS_UNIT;
-                        windows_[current_window_].root_->scale_.y = r.q * 0.5f * DISPLAYS_UNIT;
-                        windows_[current_window_].root_->translation_.x = r.x * DISPLAYS_UNIT + windows_[current_window_].root_->scale_.x;
-                        windows_[current_window_].root_->translation_.y = -r.y * DISPLAYS_UNIT - windows_[current_window_].root_->scale_.y;
+                        w->scale_.x = r.p * 0.5f * DISPLAYS_UNIT;
+                        w->scale_.y = r.q * 0.5f * DISPLAYS_UNIT;
+                        w->translation_.x = r.x * DISPLAYS_UNIT + w->scale_.x;
+                        w->translation_.y = -r.y * DISPLAYS_UNIT - w->scale_.y;
 
                         // remember the output monitor selected
                         windows_[current_window_].monitor_ = monitor_iter->first;
@@ -1033,6 +1181,9 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
                 }
             }
         }
+
+        // request update
+        ++windows_[current_window_].need_update_;
     }
 
     // update cursor
@@ -1121,7 +1272,7 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
 
 bool DisplaysView::doubleclic (glm::vec2 P)
 {
-    // TODO find which window?
+    // bring window forward
     if ( pick(P).first != nullptr) {
         Rendering::manager().outputWindow(current_window_).show();
         return true;
@@ -1130,56 +1281,80 @@ bool DisplaysView::doubleclic (glm::vec2 P)
     return false;
 }
 
-#define MAX_DURATION 1000.f
-#define MIN_SPEED_D 0.1f
-#define MAX_SPEED_D 2.f
+#define TIME_STEP 500
 
 void DisplaysView::arrow (glm::vec2 movement)
 {
-    static float _duration = 0.f;
+    static uint _time = 0;
+    static glm::vec2 _from(0.f);
+    static glm::vec2 _displacement(0.f);
 
     // grab only works on current window if not fullscreen
     if (current_window_ > -1 && !Settings::application.windows[current_window_+1].fullscreen) {
 
-        // operate in pixel coordinates
-        static glm::vec2 p;
-
-        // initiate movement (only once)
+        // first time pressed: initialize and initiate
         if (!current_action_ongoing_) {
+            if (UserInterface::manager().altModifier() || Settings::application.mouse_pointer_lock)
+                MousePointer::manager().setActiveMode(Pointer::POINTER_GRID);
+            else
+                MousePointer::manager().setActiveMode(Pointer::POINTER_DEFAULT);
 
-            // initial position
-            p.x = (windows_[current_window_].root_->translation_.x - windows_[current_window_].root_->scale_.x) / DISPLAYS_UNIT;
-            p.y = (windows_[current_window_].root_->translation_.y + windows_[current_window_].root_->scale_.y) / - DISPLAYS_UNIT;
+            // reset
+            _time = 0;
+            _displacement = glm::vec2(0.f);
 
-            // initiate (terminated at key release)
-            current_action_ongoing_ = true;
-            _duration = 0.f;
+            // initiate view action and store status
+            initiate();
+
+            // get coordinates of window and set this as start of mouse position
+            _from = glm::vec2(
+                Rendering::manager().project(windows_[current_window_].root_->translation_,
+                                             scene.root()->transform_));
+            // Initiate mouse pointer action
+            MousePointer::manager().active()->initiate(_from);
         }
 
-        // add movement vector to position (pixel precision)
-        _duration += dt_;
-        const float speed = MIN_SPEED_D + (MAX_SPEED_D - MIN_SPEED_D) * glm::min(1.f,_duration / MAX_DURATION);
-        p += movement * dt_ * speed; //* (dt_ * 0.5f);
+        // if initialized
+        if (current_action_ongoing_) {
+            // move on first press, and then every TIME_STEP milisecond
+            if (_time < 1 || _time > TIME_STEP) {
+                _time = 0;
 
-        // discretized translation with ALT
-        if (UserInterface::manager().altModifier()) {
-            glm::vec2 q;
-            q.x = ROUND(p.x, 0.05f); // 20 pix precision
-            q.y = ROUND(p.y, 0.05f);
-            // convert back to output-frame coordinates
-            windows_[current_window_].root_->translation_.x = (q.x * DISPLAYS_UNIT) + windows_[current_window_].root_->scale_.x;
-            windows_[current_window_].root_->translation_.y = (q.y * - DISPLAYS_UNIT) - windows_[current_window_].root_->scale_.y;
-        }
-        else
-        {
-            // convert back to output-frame coordinates
-            windows_[current_window_].root_->translation_.x = (p.x * DISPLAYS_UNIT) + windows_[current_window_].root_->scale_.x;
-            windows_[current_window_].root_->translation_.y = (p.y * - DISPLAYS_UNIT) - windows_[current_window_].root_->scale_.y;
-        }
+                // move by step size if grid is active
+                if (MousePointer::manager().activeMode() == Pointer::POINTER_GRID) {
+                    // calculate step size in monitor coordinates (simulate mouse movement)
+                    glm::vec2 step = grid->step() * glm::vec2(gridroot_->scale_);
+                    step  = glm::vec2(Rendering::manager().project(glm::vec3(step.x, -step.y, 0.f),
+                                                                  scene.root()->transform_));
+                    step -= glm::vec2(Rendering::manager().project(glm::vec3(0.f),
+                                                                   scene.root()->transform_));
+                    // multiply movement by step size
+                    movement *= step;
+                }
 
+                // increment displacement by movement
+                _displacement += movement;
+
+                // update mouse pointer action
+                MousePointer::manager().active()->update(_from + _displacement, dt_ / 1000.f);
+
+                // simulate mouse grab
+                grab(nullptr, _from, MousePointer::manager().active()->target(),
+                     std::make_pair(windows_[current_window_].surface_, glm::vec2(0.f) ) );
+            }
+            // draw mouse pointer effect
+            MousePointer::manager().active()->draw();
+            // increment time counter
+            _time += static_cast<uint>(dt_);
+        }
+    }
+    else {
+        // reset
+        _from = glm::vec2(0.f);
+        _displacement = glm::vec2(0.f);
+        terminate(true);
     }
 }
-
 
 
 bool WindowPreview::hasNode::operator()(const WindowPreview &elem) const

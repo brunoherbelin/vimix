@@ -4166,7 +4166,7 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
 {
     ImGuiContext& g = *GImGui;
     ImVec2 top = ImGui::GetCursorPos();
-    bool enabled = Settings::application.current_view < View::TRANSITION;
+    bool enabled = Settings::application.current_view != View::TRANSITION;
     ///
     /// interactive button of the given size: show menu if clic or mouse over
     ///

@@ -70,6 +70,7 @@
 #include "UserInterfaceManager.h"
 #include "ControlManager.h"
 #include "ImageFilter.h"
+#include "Primitives.h"
 
 #include "RenderingManager.h"
 
@@ -265,6 +266,10 @@ GLFWmonitor *Rendering::monitorAt(int x, int y)
     return mo;
 }
 
+std::string Rendering::monitorNameAt(int x, int y)
+{
+    return glfwGetMonitorName(monitorAt(x, y));
+}
 
 GLFWmonitor *Rendering::monitorNamed(const std::string &name)
 {
@@ -696,24 +701,18 @@ bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags)
 
 
 // custom surface with a new VAO
-class WindowSurface : public Primitive {
-
-public:
-    WindowSurface(Shader *s = new ImageShader);
-};
-
-WindowSurface::WindowSurface(Shader *s) : Primitive(s)
+class WindowSurface : public MeshSurface
 {
-    points_ = std::vector<glm::vec3> { glm::vec3( -1.f, -1.f, 0.f ), glm::vec3( -1.f, 1.f, 0.f ),
-            glm::vec3( 1.f, -1.f, 0.f ), glm::vec3( 1.f, 1.f, 0.f ) };
-    colors_ = std::vector<glm::vec4> { glm::vec4( 1.f, 1.f, 1.f , 1.f ), glm::vec4(  1.f, 1.f, 1.f, 1.f  ),
-            glm::vec4( 1.f, 1.f, 1.f, 1.f ), glm::vec4( 1.f, 1.f, 1.f, 1.f ) };
-    texCoords_ = std::vector<glm::vec2> { glm::vec2( 0.f, 1.f ), glm::vec2( 0.f, 0.f ),
-            glm::vec2( 1.f, 1.f ), glm::vec2( 1.f, 0.f ) };
-    indices_ = std::vector<uint> { 0, 1, 2, 3 };
-    drawMode_ = GL_TRIANGLE_STRIP;
-}
-
+public:
+    WindowSurface(Shader *s = new ImageShader)
+        : MeshSurface(s)
+    {}
+    void init () override
+    {
+        generate_mesh(32, 32);
+        Primitive::init();
+    }
+};
 
 RenderingWindow::RenderingWindow() : window_(NULL), master_(NULL),
     index_(-1), dpi_scale_(1.f), textureid_(0), fbo_(0), surface_(nullptr), request_change_fullscreen_(false)
@@ -1177,12 +1176,20 @@ bool RenderingWindow::draw(FrameBuffer *fb)
                 shader_->uniforms_["Green"] = Settings::application.windows[index_].whitebalance.y;
                 shader_->uniforms_["Blue"] = Settings::application.windows[index_].whitebalance.z;
                 shader_->uniforms_["Temperature"] = Settings::application.windows[index_].whitebalance.w;
+
+                if (Settings::application.windows[index_].custom)
+                    shader_->iNodes = Settings::application.windows[index_].nodes;
+                else
+                    shader_->iNodes = glm::zero<glm::mat4>();
             }
 
             // Display option: scaled or corrected aspect ratio
-            if (Settings::application.windows[index_].scaled) {
-                surface_->scale_ = Settings::application.windows[index_].scale;
-                surface_->translation_ = Settings::application.windows[index_].translation;
+            if (Settings::application.windows[index_].custom) {
+//                surface_->scale_ = Settings::application.windows[index_].scale;
+//                surface_->translation_ = Settings::application.windows[index_].translation;
+
+                surface_->scale_ = glm::vec3(1.f);
+                surface_->translation_ = glm::vec3(0.f);
             }
             else{
                 // calculate scaling factor of frame buffer inside window
@@ -1196,7 +1203,7 @@ bool RenderingWindow::draw(FrameBuffer *fb)
             }
 
             // Display option: draw calibration pattern
-            if ( Settings::application.windows[index_].show_pattern) {
+            if (Settings::application.windows[index_].show_pattern) {
                 // (re) create pattern at frame buffer resolution
                 if ( pattern_->width() != fb->width() || pattern_->height() != fb->height()) {
                     if (GstToolkit::has_feature("frei0r-src-test-pat-b") )
@@ -1215,14 +1222,13 @@ bool RenderingWindow::draw(FrameBuffer *fb)
                 textureid_ = fb->texture();
 
             // actual render of the textured surface
-            glBindTexture(GL_TEXTURE_2D, textureid_);
             static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+            surface_->setTextureIndex(textureid_);
             surface_->update(0.f);
             surface_->draw(glm::identity<glm::mat4>(), projection);
 
             // done drawing (unload shader from this glcontext)
             ShadingProgram::enduse();
-            glBindTexture(GL_TEXTURE_2D, 0);
         }
 
         // restore attribs

@@ -7,6 +7,7 @@
 #include <vector>
 #include <list>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "defines.h"
 
@@ -66,18 +67,17 @@ struct WindowConfig
     std::string name;
     int x,y,w,h;
     bool fullscreen;
-    bool scaled;
+    bool custom;
     bool decorated;
     std::string monitor;
     bool show_pattern;
     glm::vec4 whitebalance;
-    glm::vec3 scale;
-    glm::vec3 translation;
+    glm::mat4 nodes;
 
     WindowConfig() : name(APP_TITLE), x(15), y(15), w(1280), h(720),
-        fullscreen(false), scaled(false), decorated(true),
+        fullscreen(false), custom(false), decorated(true),
         monitor(""), show_pattern(false), whitebalance(glm::vec4(1.f, 1.f, 1.f, 0.5f)),
-        scale(glm::vec3(1.f)), translation(glm::vec3(0.f))
+        nodes(glm::zero<glm::mat4>())
     { }
 
 };
