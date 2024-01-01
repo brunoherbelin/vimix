@@ -292,7 +292,7 @@ void GeometryView::draw()
 
     // display interface
     // Locate window at upper right corner
-    glm::vec2 P = glm::vec2(-output_surface_->scale_.x - 0.02f, output_surface_->scale_.y + 0.01);
+    glm::vec2 P(-output_surface_->scale_.x, output_surface_->scale_.y + 0.01f);
     P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
     // Set window position depending on icons size
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);

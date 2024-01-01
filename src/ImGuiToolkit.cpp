@@ -113,7 +113,7 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* too
 
     // layout
     float frame_height = ImGui::GetFrameHeight();
-    float frame_width = ImGui::GetContentRegionAvail().x;
+    float frame_width = MAX(ImGui::GetContentRegionAvail().x, 2);
     float height = ImGui::GetFrameHeight() * 0.75f;
     float width = height * 1.6f;
     float radius = height * 0.50f;

@@ -546,7 +546,7 @@ void DisplaysView::draw()
 
     // display interface
     // Locate window at upper left corner
-    glm::vec2 P = glm::vec2(0.01f, 0.01 );
+    glm::vec2 P(0.0f, 0.01f);
     P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
     // Set window position depending on icons size
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
@@ -559,11 +559,11 @@ void DisplaysView::draw()
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.24f, 0.24f, 0.24f, 0.46f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
         ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
         ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 0.56f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
 
         //
         // Buttons on top
@@ -760,21 +760,23 @@ void DisplaysView::draw()
         }
 
         ImGui::Separator();
-        if ( ImGui::MenuItem( ICON_FA_REPLY  "   Reset") ) {
+        if ( ImGui::MenuItem( ICON_FA_WINDOW_RESTORE  "   Reset shape") ) {
             glm::ivec4 rect (0, 0, 800, 600);
             rect.p = Mixer::manager().session()->frame()->width();
             rect.q = Mixer::manager().session()->frame()->height();
             Rendering::manager().outputWindow(current_window_).setDecoration(true);
             Settings::application.windows[1+current_window_].show_pattern = false;
             Settings::application.windows[1+current_window_].custom = false;
-            Settings::application.windows[1+current_window_].whitebalance = glm::vec4(1.f, 1.f, 1.f, 0.5f);
             if (Settings::application.windows[current_window_+1].fullscreen)
                 Rendering::manager().outputWindow(current_window_).exitFullscreen();
             else
                 Rendering::manager().outputWindow(current_window_).setCoordinates( rect );
             windows_[current_window_].need_update_ += 2;
         }
-
+        if ( ImGui::MenuItem( ICON_FA_TEMPERATURE_LOW "   Reset white balance") ) {
+            Settings::application.windows[1+current_window_].whitebalance = glm::vec4(1.f, 1.f, 1.f, 0.5f);
+            windows_[current_window_].need_update_ += 2;
+        }
         if ( Settings::application.windows[current_window_+1].custom ) {
             ImGui::PopStyleColor(1);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 1.f));
@@ -871,8 +873,6 @@ void DisplaysView::select(glm::vec2 A, glm::vec2 B)
         }
     }
 }
-
-int _prev_mouse_pointer = 0;
 
 void DisplaysView::initiate()
 {

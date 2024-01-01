@@ -636,7 +636,7 @@ void TextureView::draw()
 
         // display interface
         // Locate window at upper left corner
-        glm::vec2 P = glm::vec2(-background_frame_->scale_.x - 0.02f, background_frame_->scale_.y + 0.01 );
+        glm::vec2 P(-background_frame_->scale_.x, background_frame_->scale_.y + 0.01f);
         P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
         // Set window position depending on icons size
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
@@ -1008,7 +1008,7 @@ void TextureView::draw()
         ImGui::OpenPopup( "AppearanceSourceContextMenu" );
         show_context_menu_ = MENU_NONE;
     }
-    if (ImGui::BeginPopup("AppearanceSourceContextMenu")) {
+    if (ImGui::BeginPopup("AppearanceSourceContextMenu", ImGuiWindowFlags_NoMove)) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_APPEARANCE_SOURCE, 1.f));
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
         Source *s = Mixer::manager().currentSource();
@@ -1030,7 +1030,6 @@ void TextureView::draw()
             if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset" )){
                 s->group(mode_)->scale_ = glm::vec3(1.f);
                 s->group(mode_)->rotation_.z = 0;
-//                s->group(mode_)->crop_ = glm::vec3(1.f);
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
                 Action::manager().store(s->name() + std::string(": Texture Reset"));
@@ -1040,7 +1039,7 @@ void TextureView::draw()
                 s->touch();
                 Action::manager().store(s->name() + std::string(": Texture Reset position"));
             }
-            if (ImGui::Selectable( ICON_FA_COMPASS "  Reset rotation" )){
+            if (ImGui::Selectable( ICON_FA_CIRCLE_NOTCH "  Reset rotation" )){
                 s->group(mode_)->rotation_.z = 0;
                 s->touch();
                 Action::manager().store(s->name() + std::string(": Texture Reset rotation"));

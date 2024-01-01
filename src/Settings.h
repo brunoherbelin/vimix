@@ -350,7 +350,7 @@ struct Application
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         scale = 1.f;
         accent_color = 0;
-        smooth_transition = false;
+        smooth_transition = true;
         save_version_snapshot = false;
         proportional_grid = true;
         mouse_pointer = 1;
@@ -375,8 +375,8 @@ struct Application
         num_output_windows = 1;
         windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
         windows[0].w = 1600;
-        windows[0].h = 900;
-        accept_audio = true;
+        windows[0].h = 930;
+        accept_audio = false;
     }
 
 };

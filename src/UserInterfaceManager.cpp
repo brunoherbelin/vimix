@@ -998,9 +998,9 @@ void UserInterface::showMenuEdit()
     bool has_clipboard = (clipboard != nullptr && strlen(clipboard) > 0 && SessionLoader::isClipboard(clipboard));
 
     // UNDO
-    if ( ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO) )
+    if ( ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, false, Action::manager().current() > 1) )
         Action::manager().undo();
-    if ( ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO) )
+    if ( ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO, false, Action::manager().current() < Action::manager().max()) )
         Action::manager().redo();
 
     // EDIT
@@ -1024,7 +1024,7 @@ void UserInterface::showMenuEdit()
             Mixer::manager().paste(clipboard);
         navigator.discardPannel();
     }
-    if (ImGui::MenuItem( MENU_SELECTALL, SHORTCUT_SELECTALL)) {
+    if (ImGui::MenuItem( MENU_SELECTALL, SHORTCUT_SELECTALL, false, Mixer::manager().numSource() > 0)) {
         Mixer::manager().view()->selectAll();
         navigator.discardPannel();
     }
@@ -1217,7 +1217,7 @@ int UserInterface::RenderViewNavigator(int *shift)
             *shift = 0;
         }
         ImGui::NextColumn();
-        if (ImGui::Selectable( ICON_FA_LAYER_GROUP, &selected_view[3], 0, iconsize))
+        if (ImGuiToolkit::SelectableIcon(ICON_WORKSPACE, "", selected_view[3], iconsize))
         {
             setView(View::LAYER);
             *shift = 0;
@@ -1230,7 +1230,7 @@ int UserInterface::RenderViewNavigator(int *shift)
         }
         // skip TRANSITION view
         ImGui::NextColumn();
-        if (ImGui::Selectable( ICON_FA_TV, &selected_view[6], 0, iconsize))
+        if (ImGuiToolkit::SelectableIcon(10, 7, "", selected_view[6], iconsize))
         {
             setView(View::DISPLAYS);
             *shift = 0;
@@ -2700,10 +2700,10 @@ std::vector< std::string > Navigator::tooltips_ordering_files = { "Alphabetical"
 Navigator::Navigator()
 {
     // default geometry
-    width_ = 100;
+    width_ = 100.f;
     pannel_width_ = 5.f * width_;
-    height_ = 100;
-    padding_width_ = 100;
+    height_ = 100.f;
+    padding_width_ = 100.f;
 
     // clean start
     pannel_main_mode_ = Settings::application.pannel_main_mode;
@@ -2713,13 +2713,13 @@ Navigator::Navigator()
     clearButtonSelection();
 
     // restore media mode as saved
-    if (Settings::application.recentImportFolders.path.compare(IMGUI_LABEL_RECENT_FILES) == 0)
-        new_media_mode = MEDIA_RECENT;
+    if (Settings::application.recentImportFolders.path.empty() ||
+        Settings::application.recentImportFolders.path.compare(IMGUI_LABEL_RECENT_FILES) == 0)
+        setNewMedia(MEDIA_RECENT);
     else if (Settings::application.recentImportFolders.path.compare(IMGUI_LABEL_RECENT_RECORDS) == 0)
-        new_media_mode = MEDIA_RECORDING;
+        setNewMedia(MEDIA_RECORDING);
     else
-        new_media_mode = MEDIA_FOLDER;
-    new_media_mode_changed = true;
+        setNewMedia(MEDIA_FOLDER, Settings::application.recentImportFolders.path);
 
     source_to_replace = nullptr;
 }
@@ -3025,7 +3025,7 @@ void Navigator::Render()
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollWithMouse))
     {
         // Mouse pointer selector
-        RenderMousePointerSelector(iconsize);
+        tooltip = RenderMousePointerSelector(iconsize);
 
         // List of icons for View selection
         static uint view_options_timeout = 0;
@@ -3044,7 +3044,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {"Mixing ", "F1"};
+            tooltip = {Settings::application.views[View::MIXING].name, "F1"};
             view_options_timeout = 0;
         }
 
@@ -3057,7 +3057,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {"Geometry ", "F2"};
+            tooltip = {Settings::application.views[View::GEOMETRY].name, "F2"};
             view_options_timeout = 0;
         }
 
@@ -3071,7 +3071,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {"Layers ", "F3"};
+            tooltip = {Settings::application.views[View::LAYER].name, "F3"};
             view_options_timeout = 0;
         }
 
@@ -3084,13 +3084,12 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {"Texturing ", "F4"};
+            tooltip = {Settings::application.views[View::TEXTURE].name, "F4"};
             view_options_timeout = 0;
         }
 
         int j = Settings::application.render.disabled ? 8 : 7;
         if (ImGuiToolkit::SelectableIcon(10, j, "", selected_view[View::DISPLAYS], iconsize))
-//        if (ImGui::Selectable( ICON_FA_TV, &selected_view[View::DISPLAYS], 0, iconsize))
         {
             UserInterface::manager().setView(View::DISPLAYS);
             Settings::application.current_view = View::DISPLAYS;
@@ -3100,7 +3099,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {"Displays  ", "F5"};
+            tooltip = {Settings::application.views[View::DISPLAYS].name, "F5"};
             view_options_timeout = 0;
         }
 
@@ -4162,11 +4161,12 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
     }
 }
 
-void Navigator::RenderMousePointerSelector(const ImVec2 &size)
+std::pair<std::string, std::string> Navigator::RenderMousePointerSelector(const ImVec2 &size)
 {
     ImGuiContext& g = *GImGui;
     ImVec2 top = ImGui::GetCursorPos();
     bool enabled = Settings::application.current_view != View::TRANSITION;
+    std::pair<std::string, std::string> tooltip = {"", ""};
     ///
     /// interactive button of the given size: show menu if clic or mouse over
     ///
@@ -4179,7 +4179,7 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
     ImVec2 bottom = ImGui::GetCursorScreenPos();
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-        ImGuiToolkit::ToolTip("Snap cursor", ALT_MOD);
+        tooltip = {"Snap cursor", ALT_MOD};
         counter_menu_timeout=0;
     }
 
@@ -4289,6 +4289,7 @@ void Navigator::RenderMousePointerSelector(const ImVec2 &size)
         ImGui::EndPopup();
     }
 
+    return tooltip;
 }
 
 void Navigator::RenderMainPannelSession()
@@ -5181,11 +5182,12 @@ void Navigator::RenderMainPannelPlaylist()
     //
     // Popup window to create playlist
     //
+    ImGui::SetNextWindowSize(ImVec2(0.8f * pannel_width_, 2.2f*ImGui::GetFrameHeightWithSpacing()), ImGuiCond_Always );
     if (ImGui::BeginPopup("new_playlist_popup", ImGuiWindowFlags_NoMove))
     {
         static bool withcopy = false;
         char text_buf[64] = "";
-        ImGui::SetNextItemWidth(200);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::InputTextWithHint("Name", "[Enter] to validate", text_buf, 64, ImGuiInputTextFlags_EnterReturnsTrue) ) {
 
             std::string filename = std::string(text_buf);
@@ -5216,7 +5218,7 @@ void Navigator::RenderMainPannelPlaylist()
         }
 
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
-        ImGuiToolkit::ButtonSwitch("Copy content", &withcopy, NULL, true );
+        ImGuiToolkit::ButtonSwitch("Duplicate current", &withcopy);
         ImGui::PopFont();
 
         ImGui::EndPopup();
@@ -5271,31 +5273,50 @@ void Navigator::RenderMainPannelSettings()
     ImGui::SameLine();
     ImGui::SetCursorPosX(width_);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if ( ImGui::InputFloat("Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
+    if ( ImGui::InputFloat("##Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
         Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 2.f);
+        ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Scale")) {
+        Settings::application.scale = 1.f;
         ImGui::GetIO().FontGlobalScale = Settings::application.scale;
     }
 
     //
     // Recording preferences
     //
+    ImGuiToolkit::Spacing();
     ImGui::TextDisabled("Recording");
 
     // select CODEC and FPS
     ImGui::SetCursorPosX(width_);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("Codec", &Settings::application.record.profile, VideoRecorder::profile_name, IM_ARRAYSIZE(VideoRecorder::profile_name) );
+    ImGui::Combo("##Codec",
+                 &Settings::application.record.profile,
+                 VideoRecorder::profile_name,
+                 IM_ARRAYSIZE(VideoRecorder::profile_name));
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Codec"))
+        Settings::application.record.profile = 0;
 
     ImGui::SetCursorPosX(width_);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("Framerate", &Settings::application.record.framerate_mode, VideoRecorder::framerate_preset_name, IM_ARRAYSIZE(VideoRecorder::framerate_preset_name) );
+    ImGui::Combo("##Framerate",
+                 &Settings::application.record.framerate_mode,
+                 VideoRecorder::framerate_preset_name,
+                 IM_ARRAYSIZE(VideoRecorder::framerate_preset_name));
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Framerate"))
+        Settings::application.record.framerate_mode = 1;
 
     // compute number of frames in buffer and show warning sign if too low
     const FrameBuffer *output = Mixer::manager().session()->frame();
     if (output) {
         guint64 nb = 0;
         nb = VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode] / (output->width() * output->height() * 4);
-        char buf[512]; snprintf(buf, 512, "Buffer at %s can contain %ld frames (%dx%d), i.e. %.1f sec", VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode],
+        char buf[512]; snprintf(buf, 512, "Buffer of %s can contain %ld frames (%dx%d), i.e. %.1f sec",
+                 VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode],
                  (unsigned long)nb, output->width(), output->height(),
                  (float)nb / (float) VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode] );
         ImGuiToolkit::Indication(buf, 4, 6);
@@ -5304,17 +5325,24 @@ void Navigator::RenderMainPannelSettings()
 
     ImGui::SetCursorPosX(width_);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::SliderInt("Buffer", &Settings::application.record.buffering_mode, 0, IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
+    ImGui::SliderInt("##Buffer", &Settings::application.record.buffering_mode, 0,
+                     IM_ARRAYSIZE(VideoRecorder::buffering_preset_name)-1,
                      VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode]);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Buffer"))
+        Settings::application.record.buffering_mode = 2;
 
     ImGuiToolkit::Indication("Priority when buffer is full and recorder has to skip frames;\n"
-                             ICON_FA_CARET_RIGHT " Duration:\n  Variable framerate, correct duration.\n"
-                             ICON_FA_CARET_RIGHT " Framerate:\n  Correct framerate,  shorter duration.",
+                             ICON_FA_CARET_RIGHT " Duration: Correct duration, variable framerate."
+                             ICON_FA_CARET_RIGHT " Framerate: Correct framerate, shorter duration.\n",
                              ICON_FA_CHECK_DOUBLE);
     ImGui::SameLine(0);
     ImGui::SetCursorPosX(width_);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("Priority", &Settings::application.record.priority_mode, "Duration\0Framerate\0");
+    ImGui::Combo("##Priority", &Settings::application.record.priority_mode, "Duration\0Framerate\0");
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Priority"))
+        Settings::application.record.priority_mode = 1;
 
     //
     // AUDIO
@@ -5341,7 +5369,7 @@ void Navigator::RenderMainPannelSettings()
         // Combo selector of audio device
         ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::BeginCombo("Audio", current_audio.c_str())) {
+        if (ImGui::BeginCombo("##Audio", current_audio.c_str())) {
             // No audio selection
             if (ImGui::Selectable(ICON_FA_MICROPHONE_ALT_SLASH " None"))
                 Settings::application.record.audio_device = "";
@@ -5359,6 +5387,9 @@ void Navigator::RenderMainPannelSettings()
         }
         if (!Settings::application.record.audio_device.empty() && ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip(current_audio.c_str());
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Audio"))
+            Settings::application.record.audio_device = "";
 
     }
 
@@ -5373,7 +5404,10 @@ void Navigator::RenderMainPannelSettings()
     ImGui::SameLine(0);
     ImGui::SetCursorPosX(width_);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("P2P codec", &Settings::application.stream_protocol, "JPEG\0H264\0");
+    ImGui::Combo("##P2P codec", &Settings::application.stream_protocol, "JPEG\0H264\0");
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("P2P codec"))
+        Settings::application.stream_protocol = 0;
 
     if (VideoBroadcast::available()) {
         char msg[256];
@@ -5392,11 +5426,14 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         char bufport[7] = "";
         snprintf(bufport, 7, "%d", Settings::application.broadcast_port);
-        ImGui::InputTextWithHint("SRT Port", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
+        ImGui::InputTextWithHint("##SRT Port", "7070", bufport, 6, ImGuiInputTextFlags_CharsDecimal);
         if (ImGui::IsItemDeactivatedAfterEdit()){
             if ( BaseToolkit::is_a_number(bufport, &Settings::application.broadcast_port))
                 Settings::application.broadcast_port = CLAMP(Settings::application.broadcast_port, 1029, 49150);
         }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("SRT Port"))
+            Settings::application.broadcast_port = 7070;
     }
 
     if (ShmdataBroadcast::available()) {
@@ -5427,10 +5464,13 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         char bufsocket[64] = "";
         snprintf(bufsocket, 64, "%s", Settings::application.shm_socket_path.c_str());
-        ImGui::InputTextWithHint("SHM path", SystemToolkit::home_path().c_str(), bufsocket, 64);
+        ImGui::InputTextWithHint("##SHM path", SystemToolkit::home_path().c_str(), bufsocket, 64);
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             Settings::application.shm_socket_path = bufsocket;
         }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("SHM path"))
+            Settings::application.shm_socket_path = "";
         if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
             ImGui::SetCursorPosX(width_);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -5461,25 +5501,31 @@ void Navigator::RenderMainPannelSettings()
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     char bufreceive[7] = "";
     snprintf(bufreceive, 7, "%d", Settings::application.control.osc_port_receive);
-    ImGui::InputTextWithHint("Port in", "7000", bufreceive, 7, ImGuiInputTextFlags_CharsDecimal);
+    ImGui::InputTextWithHint("##Port in", "7000", bufreceive, 7, ImGuiInputTextFlags_CharsDecimal);
     if (ImGui::IsItemDeactivatedAfterEdit()){
         if ( BaseToolkit::is_a_number(bufreceive, &Settings::application.control.osc_port_receive)){
             Settings::application.control.osc_port_receive = CLAMP(Settings::application.control.osc_port_receive, 1029, 49150);
             Control::manager().init();
         }
     }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Port in"))
+        Settings::application.control.osc_port_receive = OSC_PORT_RECV_DEFAULT;
 
     ImGui::SetCursorPosX(width_);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     char bufsend[7] = "";
     snprintf(bufsend, 7, "%d", Settings::application.control.osc_port_send);
-    ImGui::InputTextWithHint("Port out", "7001", bufsend, 7, ImGuiInputTextFlags_CharsDecimal);
+    ImGui::InputTextWithHint("##Port out", "7001", bufsend, 7, ImGuiInputTextFlags_CharsDecimal);
     if (ImGui::IsItemDeactivatedAfterEdit()){
         if ( BaseToolkit::is_a_number(bufsend, &Settings::application.control.osc_port_send)){
             Settings::application.control.osc_port_send = CLAMP(Settings::application.control.osc_port_send, 1029, 49150);
             Control::manager().init();
         }
     }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Port out"))
+        Settings::application.control.osc_port_send = OSC_PORT_SEND_DEFAULT;
 
     ImGui::SetCursorPosX(width_);
     const float w = IMGUI_RIGHT_ALIGN - ImGui::GetFrameHeightWithSpacing();
