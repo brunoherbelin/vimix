@@ -72,19 +72,18 @@ public:
     // management of list of sources
     bool empty() const;
     uint size() const;
+    SourceList getDepthSortedList () const;
+    SourceIdList getIdList() const;
+    std::list<std::string> getNameList(uint64_t exceptid=0) const;
     SourceList::iterator begin ();
     SourceList::iterator end ();
     SourceList::iterator find (Source *s);
     SourceList::iterator find (std::string name);
     SourceList::iterator find (Node *node);
     SourceList::iterator find (float depth_from, float depth_to);
-    SourceList getDepthSortedList () const;
-
     SourceList::iterator find (uint64_t id);
-    SourceIdList getIdList() const;
 
-    std::list<std::string> getNameList(uint64_t exceptid=0) const;
-
+    // manage sources by #id (ordered index)
     SourceList::iterator at (int index);
     int index (SourceList::iterator it) const;    
     void move (int current_index, int target_index);
@@ -96,6 +95,8 @@ public:
     inline bool ready () const  { return ready_; }
     void update (float dt);
     uint64_t runtime() const;
+
+    void execute(void (*func)(Source *));
 
     // update mode (active or not)
     void setActive (bool on);

@@ -92,11 +92,11 @@ TranslationGrid::TranslationGrid(Group *parent) : Grid(parent)
     root_->attach(yaxis);
 
     ortho_grids_ = new Switch;
-    ortho_grids_->attach(new LineGrid(112, Grid::ortho_units_[UNIT_PRECISE], 2.f));
-    ortho_grids_->attach(new LineGrid(56, Grid::ortho_units_[UNIT_SMALL], 2.f));
-    ortho_grids_->attach(new LineGrid(28, Grid::ortho_units_[UNIT_DEFAULT], 2.f));
-    ortho_grids_->attach(new LineGrid(14, Grid::ortho_units_[UNIT_LARGE], 2.f));
-    ortho_grids_->attach(new LineGrid( 7, Grid::ortho_units_[UNIT_ONE], 2.f));
+    ortho_grids_->attach(new LineGrid(224, Grid::ortho_units_[UNIT_PRECISE], 2.f));
+    ortho_grids_->attach(new LineGrid(112, Grid::ortho_units_[UNIT_SMALL], 2.f));
+    ortho_grids_->attach(new LineGrid( 56, Grid::ortho_units_[UNIT_DEFAULT], 2.f));
+    ortho_grids_->attach(new LineGrid( 28, Grid::ortho_units_[UNIT_LARGE], 2.f));
+    ortho_grids_->attach(new LineGrid( 14, Grid::ortho_units_[UNIT_ONE], 2.f));
     root_->attach(ortho_grids_);
 
     // not visible at init

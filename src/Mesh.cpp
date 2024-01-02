@@ -30,12 +30,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
-#include "RenderingManager.h"
-#include "Primitives.h"
+#include "Shader.h"
 #include "Resource.h"
-#include "ImageShader.h"
 #include "Visitor.h"
-#include "GlmToolkit.h"
 #include "Log.h"
 
 #include "Mesh.h"
@@ -187,7 +184,7 @@ bool parsePLY(string ascii,
                         Log::Warning("Parse error line %d: '%s'", line_number_, line.c_str());
                         return false;
                     }
-                    bool float_value =  ( type == "float" ) | ( type == "double" );
+                    bool float_value =  ( type == "float" ) || ( type == "double" );
                     elementsProperties[current_element].push_back(plyProperty(name, float_value));
                 }
                 // list property : several types & a name (e.g. 'property list uchar uint vertex_indices')
@@ -364,7 +361,7 @@ void Mesh::setTexture(uint textureindex)
 {
     if (textureindex) {
         // replace previous shader with a new Image Shader
-        replaceShader( new ImageShader );
+        replaceShader( new TextureShader );
         // set texture
         textureindex_ = textureindex;
     }

@@ -33,7 +33,7 @@ private:
     Source *edit_source_;
     bool need_edit_update_;
     Source *getEditOrCurrentSource();
-    void adjustBackground();
+    bool adjustBackground();
     glm::vec3 scale_crop_;
     glm::vec3 shift_crop_;
 

@@ -137,7 +137,7 @@ list<string> GstToolkit::all_plugins()
 }
 
 
-list<string> GstToolkit::all_plugin_features(string pluginname)
+list<string> GstToolkit::all_plugin_features(const std::string &pluginname)
 {
     list<string> featurelist;
     GList *l, *g;
@@ -154,13 +154,16 @@ list<string> GstToolkit::all_plugin_features(string pluginname)
     return featurelist;
 }
 
-bool GstToolkit::enable_feature (string name, bool enable) {
-    GstRegistry *registry = NULL;
+bool GstToolkit::enable_feature (const std::string &name, bool enable)
+{
+    if (name.empty())
+        return false;
+
+    static GstRegistry *registry = NULL;
+    if (!registry)
+        registry = gst_registry_get();
+
     GstElementFactory *factory = NULL;
-
-    registry = gst_registry_get();
-    if (!registry) return false;
-
     factory = gst_element_factory_find (name.c_str());
     if (!factory) return false;
 
@@ -177,17 +180,16 @@ bool GstToolkit::enable_feature (string name, bool enable) {
     return true;
 }
 
-bool GstToolkit::has_feature (string name)
+bool GstToolkit::has_feature (const string &name)
 {
     if (name.empty())
         return false;
 
-    GstRegistry *registry = NULL;
+    static GstRegistry *registry = NULL;
+    if (!registry)
+        registry = gst_registry_get();
+
     GstElementFactory *factory = NULL;
-
-    registry = gst_registry_get();
-    if (!registry) return false;
-
     factory = gst_element_factory_find (name.c_str());
     if (!factory) return false;
 

@@ -23,7 +23,7 @@ public:
     Surface(Shader *s = new ImageShader);
     virtual ~Surface();
 
-    void init () override;
+    virtual void init () override;
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
@@ -36,7 +36,6 @@ public:
 protected:
     uint textureindex_;
     bool mirror_;
-    void generate_mesh(size_t w, size_t h);
 };
 
 class MeshSurface : public Surface {
@@ -44,7 +43,7 @@ class MeshSurface : public Surface {
 public:
     MeshSurface(Shader *s = new ImageShader);
 
-    void init () override;
+    virtual void init () override;
 
 protected:
     void generate_mesh(size_t w, size_t h);

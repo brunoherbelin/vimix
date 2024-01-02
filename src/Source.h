@@ -221,7 +221,8 @@ public:
     // get properties
     float depth () const;
     float alpha () const;
-    bool  textureTransformed () const;
+    bool visible() const;
+    bool textureTransformed () const;
 
     // groups for mixing
     MixingGroup *mixingGroup() const { return mixinggroup_; }

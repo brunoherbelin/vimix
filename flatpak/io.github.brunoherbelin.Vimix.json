@@ -1,7 +1,7 @@
 {
     "app-id": "io.github.brunoherbelin.Vimix",
     "runtime": "org.gnome.Platform",
-    "runtime-version": "43",
+    "runtime-version": "45",
     "sdk": "org.gnome.Sdk",
     "command": "vimix",
     "rename-desktop-file": "vimix.desktop",
@@ -39,11 +39,12 @@
                 "-DGLFW_BUILD_DOCS=OFF"
             ],
             "sources": [
-                {
-                    "type": "archive",
-                    "url": "https://github.com/glfw/glfw/releases/download/3.3.8/glfw-3.3.8.zip",
-                    "sha256": "4d025083cc4a3dd1f91ab9b9ba4f5807193823e565a5bcf4be202669d9911ea6"
-                }
+            {
+                "type": "git",
+                "tag": "3.3.9",
+                "commit": "e2c92645460f680fd272fd2eed591efb2be7dc31",
+                "url": "https://github.com/glfw/glfw.git"
+            }
             ]
         },
         {
@@ -54,7 +55,7 @@
             "sources": [
             {
                 "type": "git",
-                "commit": "baee400fa9ced6f5481a728138fed6e867b0ff7f",
+                "commit": "c1c9931dc87289b8aeba78150467f17bdb97d019",
                 "url": "https://code.videolan.org/videolan/x264.git"
             }
             ]
@@ -70,7 +71,7 @@
             "sources": [
             {
                 "type": "git",
-                "tag": "3.4",
+                "tag": "3.5",
                 "url": "https://bitbucket.org/multicoreware/x265_git.git"
             }
             ]
@@ -86,8 +87,8 @@
             "sources": [
             {
                 "type": "git",
-                "tag": "v1.5.1",
-                "commit": "0bc3b03202b3159fc9b085b3ae6d66ec071c25d6",
+                "tag": "v1.5.3",
+                "commit": "09f35c0f1743e23f514cb41444504a7faeacf89e",
                 "url": "https://github.com/Haivision/srt.git"
             }
             ]
@@ -101,8 +102,8 @@
             "sources": [
             {
                 "type": "git",
-                "tag": "v1.8.0",
-                "commit": "c11beecfaad5c29350127515795295a13d53e956",
+                "tag": "v2.3.1",
+                "commit": "49f759d9e153a4e2850127e368f7aa6f40d59aaf",
                 "url": "https://github.com/dyne/frei0r.git"
             }
             ]
@@ -136,8 +137,8 @@
             "sources": [
               {
                 "type": "git",
-                "tag": "1.20.4",
-                "commit": "642730bd67d3c23ac68bd328fbddd191a7a43f25",
+                "tag": "1.22.8",
+                "commit": "4af14db10e8355f980bbf79733af004e59d255fc",
                 "url": "https://gitlab.freedesktop.org/gstreamer/gstreamer.git",
                 "disable-submodules": false
               }
@@ -156,8 +157,8 @@
             "sources": [
             {
                 "type": "git",
-                "tag": "1.3.72",
-                "commit": "96e044d1c6330e5fc9993cda2abc695a1dbc656e",
+                "tag": "1.3.73",
+                "commit": "309d657fde6ac3493b0f857facd2c5e3356cb1e1",
                 "url": "https://gitlab.com/sat-mtl/tools/shmdata.git"
             }
             ]

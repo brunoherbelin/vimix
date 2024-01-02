@@ -243,27 +243,6 @@ void ImGuiVisitor::visit(Shader &n)
     ImGui::PopID();
 }
 
-//void ImGuiVisitor::visit(ImageShader &n)
-//{
-//    ImGui::PushID(std::to_string(n.id()).c_str());
-//    // get index of the mask used in this ImageShader
-//    int item_current = n.mask;
-////    if (ImGuiToolkit::ButtonIcon(10, 3)) n.mask = 0;
-////    ImGui::SameLine(0, IMGUI_SAME_LINE);
-//    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-//    // combo list of masks
-//    if ( ImGui::Combo("Mask", &item_current, ImageShader::mask_names, IM_ARRAYSIZE(ImageShader::mask_names) ) )
-//    {
-//        if (item_current < (int) ImageShader::mask_presets.size())
-//            n.mask = item_current;
-//        else {
-//            // TODO ask for custom mask
-//        }
-//        Action::manager().store("Mask "+ std::string(ImageShader::mask_names[n.mask]));
-//    }
-//    ImGui::PopID();
-//}
-
 void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -492,7 +471,7 @@ void ImGuiVisitor::visit (Source& s)
             if (s.blendingShader()->color.a > 0.f)
                 ImGuiToolkit::Indication("Visible", ICON_FA_SUN);
             else
-                ImGuiToolkit::Indication("Not visible", ICON_FA_CLOUD_SUN);
+                ImGuiToolkit::Indication("not Visible", ICON_FA_MOON);
         }
         else
             ImGuiToolkit::Indication("Inactive", ICON_FA_SNOWFLAKE);
@@ -1492,6 +1471,8 @@ void ImGuiVisitor::visit (PatternSource& s)
                 std::ostringstream oss;
                 oss << s.name() << ": Pattern " << Pattern::get(p).label;
                 Action::manager().store(oss.str());
+                // ensure all sources are updated after the texture change of this one
+                Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
             }
         }
         ImGui::EndCombo();
@@ -1548,6 +1529,8 @@ void ImGuiVisitor::visit (DeviceSource& s)
                         oss << s.name() << " Device " << namedev;
                         Action::manager().store(oss.str());
                     }
+                    // ensure all sources are updated after the texture change of this one
+                    Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
                 }
             }
             ImGui::EndCombo();
@@ -1615,6 +1598,8 @@ void ImGuiVisitor::visit (ScreenCaptureSource& s)
                         oss << s.name() << " Window " << namedev;
                         Action::manager().store(oss.str());
                     }
+                    // ensure all sources are updated after the texture change of this one
+                    Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
                 }
             }
             ImGui::EndCombo();
@@ -1799,11 +1784,7 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
 
     // Editor
     std::string _description = s.description();
-    if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines) ) {
-        info.reset();
-        s.setDescription(_description);
-        Action::manager().store( s.name() + ": Change pipeline");
-    }
+    bool changed = ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines);
     ImVec2 botom = ImGui::GetCursorPos();
 
     // Actions on the pipeline
@@ -1813,9 +1794,15 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
     ImGui::SetCursorPos( ImVec2(top.x + 0.9 * ImGui::GetFrameHeight(), botom.y - ImGui::GetFrameHeight()));
     if (ImGuiToolkit::IconButton(ICON_FA_PASTE, "Paste")) {
         _description = std::string ( ImGui::GetClipboardText() );
+        changed = true;
+    }
+
+    if (changed) {
         info.reset();
         s.setDescription(_description);
         Action::manager().store( s.name() + ": Change pipeline");
+        // ensure all sources are updated after the texture change of this one
+        Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
     }
 
     if ( !s.failed() ) {

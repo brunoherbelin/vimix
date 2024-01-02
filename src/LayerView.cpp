@@ -52,7 +52,7 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
         saveSettings();
     else
         restoreSettings();
-    Settings::application.views[mode_].name = "Layer";
+    Settings::application.views[mode_].name = "Layers";
 
     // Geometry Scene background
     frame_ = new Group;
@@ -211,7 +211,7 @@ void LayerView::update(float dt)
 
 bool LayerView::canSelect(Source *s) {
 
-    return ( View::canSelect(s) && s->active() );
+    return ( View::canSelect(s) );
 }
 
 void LayerView::resize ( int scale )

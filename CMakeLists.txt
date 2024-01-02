@@ -489,6 +489,8 @@ set(VMIX_RSC_FILES
     ${AWESOME_SOLID}
     ./rsc/shaders/simple.fs
     ./rsc/shaders/simple.vs
+    ./rsc/shaders/texture.fs
+    ./rsc/shaders/texture.vs
     ./rsc/shaders/image.fs
     ./rsc/shaders/mask_elipse.fs
     ./rsc/shaders/mask_box.fs

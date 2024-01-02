@@ -45,6 +45,7 @@
 // Globals
 ShadingProgram *ShadingProgram::currentProgram_ = nullptr;
 ShadingProgram simpleShadingProgram("shaders/simple.vs", "shaders/simple.fs");
+ShadingProgram textureShadingProgram("shaders/texture.vs", "shaders/texture.fs");
 
 // Blending presets for matching with Shader::BlendModes:
 GLenum blending_equation[9] = { GL_FUNC_ADD,  // normal
@@ -346,6 +347,13 @@ void Shader::reset()
     iTransform = glm::identity<glm::mat4>();
     color = glm::vec4(1.f, 1.f, 1.f, 1.f);
     blending = BLEND_OPACITY;
+}
+
+
+TextureShader::TextureShader() : Shader()
+{
+    program_ = &textureShadingProgram;
+    Shader::reset();
 }
 
 

@@ -25,15 +25,6 @@ public:
     glm::mat4 iNodes;
 };
 
-class AlphaShader : public ImageShader
-{
-
-public:
-    AlphaShader();
-
-};
-
-
 class MaskShader : public Shader
 {
 

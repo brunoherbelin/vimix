@@ -109,17 +109,14 @@ void Settings::Save(uint64_t runtime)
 			window->SetAttribute("w", w.w);
             window->SetAttribute("h", w.h);
             window->SetAttribute("f", w.fullscreen);
-            window->SetAttribute("s", w.scaled);
+            window->SetAttribute("s", w.custom);
             window->SetAttribute("d", w.decorated);
             window->SetAttribute("m", w.monitor.c_str());
             XMLElement *tmp = xmlDoc.NewElement("whitebalance");
             tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.whitebalance) );
             window->InsertEndChild( tmp );
-            tmp = xmlDoc.NewElement("scale");
-            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.scale) );
-            window->InsertEndChild( tmp );
-            tmp = xmlDoc.NewElement("translation");
-            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.translation) );
+            tmp = xmlDoc.NewElement("nodes");
+            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.nodes) );
             window->InsertEndChild( tmp );
             windowsNode->InsertEndChild(window);
 		}
@@ -245,6 +242,7 @@ void Settings::Save(uint64_t runtime)
             XMLElement *view = xmlDoc.NewElement( "View" );
             view->SetAttribute("name", view_config.name.c_str());
             view->SetAttribute("id", iter->first);
+            view->SetAttribute("ignore_mix", view_config.ignore_mix);
 
             XMLElement *scale = xmlDoc.NewElement("default_scale");
             scale->InsertEndChild( XMLElementFromGLM(&xmlDoc, view_config.default_scale) );
@@ -549,7 +547,7 @@ void Settings::Load()
                 windowNode->QueryIntAttribute("w", &w.w);
                 windowNode->QueryIntAttribute("h", &w.h);
                 windowNode->QueryBoolAttribute("f", &w.fullscreen);
-                windowNode->QueryBoolAttribute("s", &w.scaled);
+                windowNode->QueryBoolAttribute("s", &w.custom);
                 windowNode->QueryBoolAttribute("d", &w.decorated);
                 const char *text = windowNode->Attribute("m");
                 if (text)
@@ -561,16 +559,36 @@ void Settings::Load()
                     w.name = "Output " + std::to_string(i) + " - " APP_NAME;
                 else
                     w.name = APP_TITLE;
-
+                // vec4 values for white balance correction
                 XMLElement *tmp = windowNode->FirstChildElement("whitebalance");
                 if (tmp)
                     tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec4"), w.whitebalance);
-                tmp = windowNode->FirstChildElement("scale");
+                // mat4 values for custom fit distortion
+                w.nodes = glm::zero<glm::mat4>();
+                tmp = windowNode->FirstChildElement("nodes");
                 if (tmp)
-                    tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec3"), w.scale);
-                tmp = windowNode->FirstChildElement("translation");
-                if (tmp)
-                    tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec3"), w.translation);
+                    tinyxml2::XMLElementToGLM( tmp->FirstChildElement("mat4"), w.nodes);
+                else {
+                    // backward compatibility
+                    glm::vec3 scale, translation;
+                    tmp = windowNode->FirstChildElement("scale");
+                    if (tmp) {
+                        tinyxml2::XMLElementToGLM(tmp->FirstChildElement("vec3"), scale);
+                        tmp = windowNode->FirstChildElement("translation");
+                        if (tmp) {
+                            tinyxml2::XMLElementToGLM(tmp->FirstChildElement("vec3"), translation);
+                            // calculate nodes with scale and translation
+                            w.nodes[0].x =  1.f - ( 1.f * scale.x - translation.x );
+                            w.nodes[0].y =  1.f - ( 1.f * scale.y - translation.y );
+                            w.nodes[1].x =  1.f - ( 1.f * scale.x - translation.x );
+                            w.nodes[1].y = -1.f - (-1.f * scale.y - translation.y );
+                            w.nodes[2].x = -1.f - (-1.f * scale.x - translation.x );
+                            w.nodes[2].y =  1.f - ( 1.f * scale.y - translation.y );
+                            w.nodes[3].x = -1.f - (-1.f * scale.x - translation.x );
+                            w.nodes[3].y = -1.f - (-1.f * scale.y - translation.y );
+                        }
+                    }
+                }
 
                 application.windows[i] = w;
             }
@@ -614,6 +632,7 @@ void Settings::Load()
                 int id = 0;
                 viewNode->QueryIntAttribute("id", &id);
                 application.views[id].name = viewNode->Attribute("name");
+                viewNode->QueryBoolAttribute("ignore_mix", &application.views[id].ignore_mix);
 
                 XMLElement* scaleNode = viewNode->FirstChildElement("default_scale");
                 if (scaleNode)

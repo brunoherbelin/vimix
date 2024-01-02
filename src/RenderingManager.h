@@ -163,6 +163,7 @@ public:
     inline std::map<std::string, glm::ivec4> monitors() { return monitors_geometry_; }
     // get which monitor contains this point
     GLFWmonitor *monitorAt(int x, int y);
+    std::string monitorNameAt(int x, int y);
     // get which monitor has this name
     GLFWmonitor *monitorNamed(const std::string &name);
 

@@ -80,5 +80,12 @@ protected:
     ShadingProgram *program_;
 };
 
+class TextureShader : public Shader
+{
+public:
+    TextureShader();
+
+};
+
 
 #endif /* __SHADER_H_ */

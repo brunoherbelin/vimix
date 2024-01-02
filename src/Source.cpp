@@ -648,10 +648,8 @@ void Source::setActive (bool on)
     // activate
     active_ = on;
 
-    // an inactive source is visible only in the MIXING view
+    // an inactive source is not rendered
     groups_[View::RENDERING]->visible_ = active_;
-    groups_[View::GEOMETRY]->visible_ = active_;
-    groups_[View::LAYER]->visible_ = active_;
 }
 
 void Source::setActive (float threshold)
@@ -701,6 +699,12 @@ float Source::depth() const
 float Source::alpha() const
 {
     return blendingShader()->color.a;
+}
+
+
+bool Source::visible() const
+{
+    return blendingShader()->color.a > 0.f;
 }
 
 

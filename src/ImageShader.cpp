@@ -29,7 +29,6 @@
 #include "ImageShader.h"
 
 ShadingProgram imageShadingProgram("shaders/image.vs", "shaders/image.fs");
-ShadingProgram imageAlphaProgram  ("shaders/image.vs", "shaders/imageblending.fs");
 std::vector< ShadingProgram > maskPrograms = {
     ShadingProgram("shaders/simple.vs", "shaders/simple.fs"),
     ShadingProgram("shaders/image.vs",  "shaders/mask_draw.fs"),
@@ -94,17 +93,6 @@ void ImageShader::copy(ImageShader const& S)
 void ImageShader::accept(Visitor& v) {
     Shader::accept(v);
     v.visit(*this);
-}
-
-
-AlphaShader::AlphaShader(): ImageShader()
-{
-    // to inverse alpha mode, use dedicated shading program
-    program_ = &imageAlphaProgram;
-    // reset instance
-    reset();
-
-    blending = Shader::BLEND_NONE;
 }
 
 

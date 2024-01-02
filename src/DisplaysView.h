@@ -9,19 +9,20 @@ struct WindowPreview
     class FrameBuffer *renderbuffer_;
     class ImageFilteringShader *shader_;
     class FrameBufferSurface *surface_;
-    Surface *output_render_;
+    class MeshSurface *output_render_;
     Group *root_;
     Group *output_group_;
-    Frame *output_frame_;
-    Handles *output_handles_;
+    class LineLoop *output_lines_;
+    Handles *output_handles_[4];
     Switch  *overlays_;
     Switch  *mode_;
-    Handles *handles_;
+    Handles *resize_;
     Handles *menu_;
     Handles *icon_;
     Surface *title_;
     Symbol  *fullscreen_;
     std::string monitor_;
+    int need_update_;
 
     WindowPreview() {
         renderbuffer_ = nullptr;
@@ -30,15 +31,19 @@ struct WindowPreview
         output_render_ = nullptr;
         root_ = nullptr;
         output_group_ = nullptr;
-        output_handles_ = nullptr;
+        output_handles_[0] = nullptr;
+        output_handles_[1] = nullptr;
+        output_handles_[2] = nullptr;
+        output_handles_[3] = nullptr;
         overlays_ = nullptr;
         mode_ = nullptr;
-        handles_ = nullptr;
+        resize_ = nullptr;
         menu_ = nullptr;
         icon_ = nullptr;
         title_ = nullptr;
         fullscreen_ = nullptr;
         monitor_ = "";
+        need_update_ = 2;
     }
     ~WindowPreview();
 
@@ -89,8 +94,8 @@ private:
     Group *current_output_status_;
     bool show_window_menu_;
 
-
-//    bool get_UV_window_render_from_pick(const glm::vec3 &pos, glm::vec2 *uv);
+    Group *gridroot_;
+    void adaptGridToWindow(int w = -1);
 
 };
 
