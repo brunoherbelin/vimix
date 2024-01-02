@@ -1005,3 +1005,11 @@ void Session::applySnapshot(uint64_t key)
     }
 }
 
+
+void Session::execute(void (*func)(Source *))
+{
+    for (SourceList::const_iterator it = sources_.cbegin(); it != sources_.cend(); ++it) {
+        func(*it);
+    }
+
+}

@@ -1471,6 +1471,8 @@ void ImGuiVisitor::visit (PatternSource& s)
                 std::ostringstream oss;
                 oss << s.name() << ": Pattern " << Pattern::get(p).label;
                 Action::manager().store(oss.str());
+                // ensure all sources are updated after the texture change of this one
+                Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
             }
         }
         ImGui::EndCombo();
@@ -1527,6 +1529,8 @@ void ImGuiVisitor::visit (DeviceSource& s)
                         oss << s.name() << " Device " << namedev;
                         Action::manager().store(oss.str());
                     }
+                    // ensure all sources are updated after the texture change of this one
+                    Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
                 }
             }
             ImGui::EndCombo();
@@ -1594,6 +1598,8 @@ void ImGuiVisitor::visit (ScreenCaptureSource& s)
                         oss << s.name() << " Window " << namedev;
                         Action::manager().store(oss.str());
                     }
+                    // ensure all sources are updated after the texture change of this one
+                    Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
                 }
             }
             ImGui::EndCombo();
@@ -1778,11 +1784,7 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
 
     // Editor
     std::string _description = s.description();
-    if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines) ) {
-        info.reset();
-        s.setDescription(_description);
-        Action::manager().store( s.name() + ": Change pipeline");
-    }
+    bool changed = ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines);
     ImVec2 botom = ImGui::GetCursorPos();
 
     // Actions on the pipeline
@@ -1792,9 +1794,15 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
     ImGui::SetCursorPos( ImVec2(top.x + 0.9 * ImGui::GetFrameHeight(), botom.y - ImGui::GetFrameHeight()));
     if (ImGuiToolkit::IconButton(ICON_FA_PASTE, "Paste")) {
         _description = std::string ( ImGui::GetClipboardText() );
+        changed = true;
+    }
+
+    if (changed) {
         info.reset();
         s.setDescription(_description);
         Action::manager().store( s.name() + ": Change pipeline");
+        // ensure all sources are updated after the texture change of this one
+        Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
     }
 
     if ( !s.failed() ) {
