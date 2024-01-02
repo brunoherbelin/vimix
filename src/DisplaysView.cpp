@@ -197,13 +197,13 @@ void DisplaysView::update(float dt)
             windows_[i].output_render_->setTextureIndex(
                 Rendering::manager().outputWindow(i).texture());
 
+            // update visible flag
+            windows_[i].root_->visible_ = i < Settings::application.num_output_windows;
+            windows_[i].icon_->visible_ = Settings::application.render.disabled;
+
             // avoid busy update
             if (windows_[i].need_update_) {
                 --windows_[i].need_update_;
-
-                // update visible flag
-                windows_[i].root_->visible_ = i < Settings::application.num_output_windows;
-                windows_[i].icon_->visible_ = Settings::application.render.disabled;
 
                 // Rendering of output is distorted with custom fit
                 if (Settings::application.windows[i+1].custom)  {
@@ -460,7 +460,7 @@ void DisplaysView::draw()
 
             ImGui::SetNextWindowBgAlpha(0.0f); // Transparent background
             if (ImGui::Begin(Settings::application.windows[i+1].name.c_str(), NULL, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove |
-                             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing))
+                             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus))
             {
                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
                 draw_list->AddRectFilled(ImVec2(TopLeft.x, TopLeft.y + 4), ImVec2(BottomRight.x, TopLeft.y + ImGui::GetTextLineHeightWithSpacing()), IMGUI_COLOR_OVERLAY);
@@ -489,7 +489,7 @@ void DisplaysView::draw()
 
             ImGui::SetNextWindowBgAlpha(0.0f); // Transparent background
             if (ImGui::Begin(Settings::application.windows[i+1].name.c_str(), NULL, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove |
-                             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing))
+                             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus))
             {
                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
                 draw_list->AddRectFilled(ImVec2(TopLeft.x, TopLeft.y + 4), ImVec2(BottomRight.x, TopLeft.y + ImGui::GetTextLineHeightWithSpacing()), IMGUI_COLOR_OVERLAY);
