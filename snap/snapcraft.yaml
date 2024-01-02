@@ -21,7 +21,7 @@ confinement: strict # use 'strict' once you have the right plugs and slots
 
 apps:
   vimix:
-    extensions: [gnome-3-38]
+    extensions: [gnome]
     command: usr/bin/vimix
     plugs:
       - desktop
