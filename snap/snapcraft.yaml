@@ -61,7 +61,6 @@ parts:
     -  libgstreamer-plugins-base1.0-dev
     -  libicu-dev
     -  ableton-link-dev
-    -  libstb-dev
     -  libtinyxml2-dev
     -  libglm-dev
     stage-packages:
@@ -87,5 +86,5 @@ parts:
     -  libgpm2
     -  libslang2
     -  libicu70
-    -  libstb
+    -  libtinyxml2-9
 
