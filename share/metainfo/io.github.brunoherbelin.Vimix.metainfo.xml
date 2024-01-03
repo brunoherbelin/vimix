@@ -10,13 +10,25 @@
    computer generated graphics, with image processing effects in real-time. 
    Its intuitive and hands-on user interface gives direct control on image opacity and
    shape for producing live graphics during concerts and VJ-ing sessions.</p>
-    <p>The documentation is in the github wiki.</p></description>
+   <p>Can read almost all video codecs (hardware accelerated for many),
+   Open Sound Control remote control, live screen recoding. See docmentation in the github wiki.</p>
+  </description>
   <screenshots>
-    <screenshot type="default">
-      <image type="source">https://brunoherbelin.github.io/vimix/vimix_screenshot.png</image>
-    </screenshot>
+  <screenshot type="default">
+    <image type="source">https://brunoherbelin.github.io/vimix/vimix_screenshot.png</image>
+  </screenshot>
+  <screenshot>
+    <image type="source">https://brunoherbelin.github.io/vimix/vimix_screenshot_2.png</image>
+  </screenshot>
   </screenshots>
   <releases>
+    <release version="0.8.2" date="2024-01-02">
+      <description>
+      <p>Stabilized version 0.8</p>
+      </description>
+      <url>https://github.com/brunoherbelin/vimix/releases/tag/0.8.2</url>
+    </release>
+    <release version="0.8.1" date="2023-09-18"/>
     <release version="0.8.0" date="2023-03-31"/>
     <release version="0.7.3" date="2022-12-10"/>
     <release version="0.7.2" date="2022-11-19"/>
