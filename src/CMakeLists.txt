@@ -4,6 +4,7 @@
 #####
 
 cmake_minimum_required(VERSION 3.8.2)
+include( InstallRequiredSystemLibraries )
 
 #####
 ##### VIMIX TARGET BINARY
@@ -186,6 +187,10 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
 
 IF(APPLE)
 
+    set(CPACK_GENERATOR "DragNDrop")
+    set(CPACK_BINARY_DRAGNDROP ON)
+
+
     install(TARGETS ${VMIX_BINARY}
             CONFIGURATIONS Release RelWithDebInfo
             BUNDLE  DESTINATION . COMPONENT Runtime
@@ -221,35 +226,35 @@ IF(APPLE)
     install(DIRECTORY "${PKG_GSTREAMER_BASE_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
     install(DIRECTORY "${PKG_GSTREAMER_BAD_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.18.4/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.18.4_1/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-libav/1.18.4/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.22.6/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.22.6/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    install(DIRECTORY "/usr/local/Cellar/gst-libav/1.22.6/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
-    # install locally recompiled & installed gst-plugins (because not included in brew package)
-    install(FILES   "/usr/local/lib/gstreamer-1.0/libgstapplemedia.dylib"
-                    "/usr/local/lib/gstreamer-1.0/libgstde265.dylib"
-                    "/usr/local/lib/gstreamer-1.0/libgstx265.dylib"
-            DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
+#    # install locally recompiled & installed gst-plugins (because not included in brew package)
+#    install(FILES   "/usr/local/lib/gstreamer-1.0/libgstapplemedia.dylib"
+#                    "/usr/local/lib/gstreamer-1.0/libgstde265.dylib"
+#                    "/usr/local/lib/gstreamer-1.0/libgstx265.dylib"
+#            DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
 
     # install frei0r plugins (dependencies of gstreamer-1.0/libgstfrei0r.dylib plugin)
-    install(FILES "/usr/local/Cellar/frei0r/1.7.0/lib/frei0r-1/lissajous0r.so"
-                  "/usr/local/Cellar/frei0r/1.7.0/lib/frei0r-1/rgbnoise.so"
+    install(FILES "/usr/local/Cellar/frei0r/2.3.1/lib/frei0r-1/lissajous0r.so"
+                  "/usr/local/Cellar/frei0r/2.3.1/lib/frei0r-1/rgbnoise.so"
             DESTINATION "${plugin_dest_dir}/frei0r-1" COMPONENT Runtime)
 
 
     # ICU DATA LIB GST dependency : undocumented and hacked here : seems to work
 #    install(FILES "${ICU_LINK_LIBRARIES}" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-    install(FILES "/usr/local/Cellar/icu4c/69.1/lib/libicudata.69.1.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" RENAME "libicudata.69.dylib" COMPONENT Runtime)
+#    install(FILES "/usr/local/Cellar/icu4c/73.2/lib/libicudata.73.2.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" RENAME "libicudata.73.dylib" COMPONENT Runtime)
     message(STATUS "install  ${ICU_LINK_LIBRARIES} from ${ICU_LIBRARY_DIRS}")
 
     # package runtime fixup bundle
     set(APPS "\${CMAKE_INSTALL_PREFIX}/vimix.app")
     install(CODE "
             file(GLOB_RECURSE GSTPLUGINS \"\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/gstreamer-1.0/*.dylib\")
-            list(APPEND LIBS_PATH \"\${ICU_LIBRARY_DIRS}\")
+            list(APPEND LIBS_PATH \"${ICU_LIBRARY_DIRS}\" \"/usr/local/lib\" \"/usr/local/Cellar/libarchive/3.7.2/lib\")
             include(BundleUtilities)
             set(BU_CHMOD_BUNDLE_ITEMS TRUE)
-            fixup_bundle(\"${APPS}\" \"\${GSTPLUGINS}\" \"${LIBS_PATH}\")
+            fixup_bundle(\"${APPS}\" \"\${GSTPLUGINS}\" \"\${LIBS_PATH}\")
             "
             COMPONENT Runtime
     )
