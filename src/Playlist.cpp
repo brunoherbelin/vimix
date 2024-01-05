@@ -25,7 +25,7 @@ using namespace tinyxml2;
 
 #include "Playlist.h"
 
-Playlist::Playlist() : current_index_(UINTMAX_MAX)
+Playlist::Playlist()
 {
 
 }

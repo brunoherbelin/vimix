@@ -1210,7 +1210,7 @@ void MediaPlayer::update()
                 }
                 else {
                     Log::Warning("'%s' : %s", uri().c_str(), media_.log.c_str());
-                    Log::Warning("MediaPlayer %s Loading failed.", std::to_string(id_).c_str());
+                    Log::Notify("MediaPlayer %s Loading failed.", std::to_string(id_).c_str());
                     failed_ = true;
                 }
             }

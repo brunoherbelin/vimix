@@ -3732,7 +3732,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     ImGui::Text("Codec :");ImGui::SameLine(150);
                     ImGui::Text("%s", VideoRecorder::profile_name[ _video_recorder.profile() ] );
                     ImGui::Text("Frames :");ImGui::SameLine(150);
-                    ImGui::Text("%lu / %lu", (unsigned long)_video_recorder.numFrames(), _video_recorder.files().size() );
+                    ImGui::Text("%lu / %lu", (unsigned long)_video_recorder.numFrames(),
+                                (unsigned long)_video_recorder.files().size() );
 
                     ImGui::Spacing();
                     ImGui::ProgressBar(_video_recorder.progress());

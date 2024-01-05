@@ -286,7 +286,8 @@ void Log::Render(bool *showWarnings)
             ImGuiToolkit::Icon(7, 14);
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::SetNextItemWidth(width);
-            ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%ld problem(s) occurred.\n\n", warnings.size());
+            std::string msg = std::to_string(warnings.size()) + " problem" + (warnings.size() > 1 ? "s" : "");
+            ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%s occurred.\n\n", msg.c_str());
             ImGui::Dummy(ImVec2(width, 0));
 
             ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width);

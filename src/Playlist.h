@@ -28,13 +28,11 @@ public:
     inline std::string at (size_t index) const { return path_.at(index); }
     void remove (size_t index);
     void move   (size_t from_index, size_t to_index);
-    inline size_t current() const { return current_index_; }
 
 private:
 
     std::deque< std::string > path_;
     std::string filename_;
-    size_t current_index_;
 };
 
 #endif // PLAYLIST_H

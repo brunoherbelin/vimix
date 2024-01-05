@@ -399,6 +399,8 @@ include_directories(
     ${OSCPACK_INCLUDE_DIR}
 )
 add_library(OSCPACK "${OSCPACK_SRCS}")
+set_property(TARGET ${OSCPACK} PROPERTY CXX_STANDARD 17)
+set_property(TARGET ${OSCPACK} PROPERTY C_STANDARD 11)
 if(APPLE)
 target_compile_definitions(OSCPACK
     PRIVATE
