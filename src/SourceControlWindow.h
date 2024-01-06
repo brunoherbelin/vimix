@@ -72,6 +72,7 @@ public:
 
     void setVisible(bool on);
     void Render();
+    FrameBuffer *renderedFramebuffer() const;
 
     // from WorkspaceWindow
     void Update() override;

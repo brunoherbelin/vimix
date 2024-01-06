@@ -185,7 +185,8 @@
 #define SHORTCUT_OUTPUTDISABLE "F12"
 #define ICON_PREVIEW          4, 15
 #define MENU_PREVIEW          "Preview"
-#define SHORTCUT_PREVIEW      "F6"
+#define SHORTCUT_PREVIEW_OUT  "F6"
+#define SHORTCUT_PREVIEW_SRC  "F7"
 #define MENU_CLOSE            ICON_FA_TIMES "   Close"
 #define DIALOG_FAILED_SOURCE  ICON_FA_EXCLAMATION_TRIANGLE " Source failure"
 

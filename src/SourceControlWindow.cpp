@@ -200,6 +200,14 @@ void SourceControlWindow::Update()
     }
 }
 
+
+FrameBuffer *SourceControlWindow::renderedFramebuffer() const
+{
+    if (selection_.size() == 1)
+        return selection_.front()->frame();
+    return nullptr;
+}
+
 void SourceControlWindow::Render()
 {
     // estimate window size
@@ -235,6 +243,9 @@ void SourceControlWindow::Render()
         }
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
+            // Preview and output menu
+            if (ImGuiToolkit::MenuItemIcon(ICON_PREVIEW, MENU_PREVIEW, SHORTCUT_PREVIEW_SRC, false, renderedFramebuffer()!=nullptr) )
+                UserInterface::manager().show_preview = UserInterface::PREVIEW_SOURCE;
             //
             // Menu section for play control
             //

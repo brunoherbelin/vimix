@@ -127,7 +127,7 @@ UserInterface::UserInterface()
     target_view_navigator = 1;
     screenshot_step = 0;
     pending_save_on_exit = false;
-    show_output_fullview = false;
+    show_preview = UserInterface::PREVIEW_NONE;
 
     sessionopendialog = nullptr;
     sessionimportdialog = nullptr;
@@ -386,7 +386,9 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F5, false ))
             setView(View::DISPLAYS);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F6,  false ))
-            show_output_fullview = true;
+            show_preview = PREVIEW_OUTPUT;
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F7,  false ))
+            show_preview = PREVIEW_SOURCE;
         else if (ImGui::IsKeyPressed( GLFW_KEY_F9, false ))
             StartScreenshot();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
@@ -966,7 +968,7 @@ void UserInterface::Render()
         target_view_navigator = RenderViewNavigator( &show_view_navigator );
 
     //
-    RenderOutputView();
+    RenderPreview();
 
     // handle keyboard input after all IMGUI widgets have potentially captured keyboard
     handleKeyboard();
@@ -1302,25 +1304,40 @@ void UserInterface::showSourceEditor(Source *s)
     }
 }
 
-void UserInterface::RenderOutputView()
+void UserInterface::RenderPreview()
 {
     static bool _inspector = false;
     static bool _sustain = false;
+    static FrameBuffer *_framebuffer = nullptr;
 
-    if ( show_output_fullview && !ImGui::IsPopupOpen("##OUTPUTVIEW")) {
-        ImGui::OpenPopup("##OUTPUTVIEW");
-        _inspector = false;
-        _sustain = false;
+    if (show_preview != PREVIEW_NONE && !ImGui::IsPopupOpen("##RENDERPREVIEW")) {
+        // select which framebuffer to display depending on input
+        if (show_preview == PREVIEW_OUTPUT)
+            _framebuffer = Mixer::manager().session()->frame();
+        else if (show_preview == PREVIEW_SOURCE) {
+            _framebuffer = sourcecontrol.renderedFramebuffer();
+            if ( _framebuffer == nullptr && Mixer::manager().currentSource() != nullptr) {
+                 _framebuffer = Mixer::manager().currentSource()->frame();
+            }
+        }
+
+        // if a famebuffer is valid, open preview
+        if (_framebuffer != nullptr) {
+            ImGui::OpenPopup("##RENDERPREVIEW");
+            _inspector = false;
+            _sustain = false;
+        }
+        else
+            show_preview = PREVIEW_NONE;
     }
 
-    if (ImGui::BeginPopupModal("##OUTPUTVIEW", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
+    if (ImGui::BeginPopupModal("##RENDERPREVIEW", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
                                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNav)) {
-
-        FrameBuffer *output = Mixer::manager().session()->frame();
-        if (output)
+        // making sure the pointer is still valid
+        if (_framebuffer != nullptr)
         {
             ImGuiIO& io = ImGui::GetIO();
-            float ar = output->aspectRatio();
+            float ar = _framebuffer->aspectRatio();
             // image takes the available window area
             ImVec2 imagesize = io.DisplaySize;
             // image height respects original aspect ratio but is at most the available window height
@@ -1331,7 +1348,7 @@ void UserInterface::RenderOutputView()
             // 100% opacity for the image (ensures true colors)
             ImVec2 draw_pos = ImGui::GetCursorScreenPos();
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
-            ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
+            ImGui::Image((void*)(intptr_t)_framebuffer->texture(), imagesize);
             ImGui::PopStyleVar();
 
             if ( ImGui::IsMouseClicked(ImGuiMouseButton_Left) ) {
@@ -1340,34 +1357,50 @@ void UserInterface::RenderOutputView()
                     _inspector = !_inspector;
                 // close view on mouse clic outside
                 else if (!_sustain)
-                    show_output_fullview = false;
+                    show_preview = PREVIEW_NONE;
             }
             // draw inspector (magnifying glass)
             if ( _inspector && ImGui::IsItemHovered()  )
-                DrawInspector(output->texture(), imagesize, imagesize, draw_pos);
+                DrawInspector(_framebuffer->texture(), imagesize, imagesize, draw_pos);
 
             // closing icon
             ImGui::SetCursorScreenPos(draw_pos + ImVec2(IMGUI_SAME_LINE, IMGUI_SAME_LINE));
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             if ( ImGuiToolkit::IconButton(ICON_FA_TIMES, "Close preview") )
-                show_output_fullview = false;
+                show_preview = PREVIEW_NONE;
             if ( ImGui::IsItemHovered()  )
                 _inspector = false;
             ImGui::PopFont();
         }
 
         // local keyboard handler (because focus is captured by modal dialog)
-        if ( ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false ) ||
-             ImGui::IsKeyPressed( GLFW_KEY_F6,  false ) )
-            show_output_fullview = false;
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F6,  true ))
+        if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false ) ||
+            (show_preview == PREVIEW_OUTPUT && ImGui::IsKeyPressed( GLFW_KEY_F6, false )) ||
+            (show_preview == PREVIEW_SOURCE && ImGui::IsKeyPressed( GLFW_KEY_F7, false )) )
+            show_preview = PREVIEW_NONE;
+        else if ((show_preview == PREVIEW_OUTPUT && ImGui::IsKeyPressed( GLFW_KEY_F6, true )) ||
+                 (show_preview == PREVIEW_SOURCE && ImGui::IsKeyPressed( GLFW_KEY_F7, true )) )
             _sustain = true;
-        else if (_sustain &&  ImGui::IsKeyReleased( GLFW_KEY_F6 ))
-            show_output_fullview = false;
+        else if ((show_preview == PREVIEW_OUTPUT && _sustain &&  ImGui::IsKeyReleased( GLFW_KEY_F6 )) ||
+                 (show_preview == PREVIEW_SOURCE && _sustain &&  ImGui::IsKeyReleased( GLFW_KEY_F7 )) )
+            show_preview = PREVIEW_NONE;
+
+        if ( !alt_modifier_active && ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
+            if (shift_modifier_active)
+                Mixer::manager().setCurrentPrevious();
+            else
+                Mixer::manager().setCurrentNext();
+            if (navigator.pannelVisible())
+                navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+            // re-open after change source
+            ImGui::CloseCurrentPopup();
+        }
 
         // close
-        if (!show_output_fullview)
+        if (show_preview == PREVIEW_NONE) {
+            _framebuffer = nullptr;
             ImGui::CloseCurrentPopup();
+        }
 
         ImGui::EndPopup();
     }
@@ -2607,11 +2640,16 @@ void UserInterface::RenderHelp()
         ImGui::Text("F3"); ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_WORKSPACE); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Layers view"); ImGui::NextColumn();
         ImGui::Text("F4"); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_CHESS_BOARD " Texturing view"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CHESS_BOARD "  Texturing view"); ImGui::NextColumn();
         ImGui::Text("F5"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_TV " Displays view"); ImGui::NextColumn();
-        ImGui::Text(SHORTCUT_PREVIEW); ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview output (toggle or long press)"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PREVIEW_OUT); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Output"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PREVIEW_SRC); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Source"); ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC); ImGui::Text("Press & hold key for temporary preview"); ImGui::PopFont();
+        ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_FULLSCREEN); ImGui::NextColumn();
