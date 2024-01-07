@@ -47,8 +47,6 @@
 
 #define CHECKER_RESOLUTION 6000
 class Stream *checker_background_ = new Stream;
-void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider = false, bool withinspector = false);
-ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_inspector);
 
 
 SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController"),
@@ -1043,72 +1041,67 @@ void DrawInspector(uint texture, ImVec2 texturesize, ImVec2 cropsize, ImVec2 ori
     }
 }
 
-void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider, bool withinspector)
+void SourceControlWindow::DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider, bool withinspector)
 {
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-    // pre-draw background with checkerboard pattern
-    ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
-                 ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
-
-    // get back to top image corner to draw
-    ImGui::SetCursorScreenPos(top_image);
-
-    // info on source
-    CloneSource *cloned = dynamic_cast<CloneSource *>(s);
+    if (!s)
+        return;
 
     // 100% opacity for the image (ensure true colors)
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
 
-    // draw pre and post-processed parts if necessary
-    if (s->imageProcessingEnabled() || s->textureTransformed() || cloned != nullptr) {
+    // pre-draw background with checkerboard pattern
+    ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
+                 ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
+    // get back to top image corner after draw
+    ImGui::SetCursorScreenPos(top_image);
 
+    // pre-calculate cropping areas of source and cropped rendering area
+    const glm::vec4 _crop = s->frame()->projectionArea();
+    const ImVec2 _cropsize = framesize * ImVec2(0.5f * (_crop[1] - _crop[0]),
+                                          0.5f * (_crop[2] - _crop[3]));
+    const ImVec2 _croptop = framesize * ImVec2(0.5f * (1.f + _crop[0]),
+                                         0.5f * (1.f - _crop[2]) );
+
+    // pre-calculate slider coordinates in rendering area
+    ImVec2 slider = framesize * ImVec2(Settings::application.widget.media_player_slider,1.f);
+
+    // draw pre and post-processed parts if necessary
+    if (s->imageProcessingEnabled() ||
+        s->textureTransformed() ||
+        s->icon() == glm::ivec2(ICON_SOURCE_CLONE))
+    {
         //
         // LEFT of slider  : original texture
         //
-        ImVec2 slider = framesize * ImVec2(Settings::application.widget.media_player_slider,1.f);
         ImGui::Image((void*)(uintptr_t) s->texture(), slider, ImVec2(0.f,0.f), ImVec2(Settings::application.widget.media_player_slider,1.f));
-        if ( withinspector && ImGui::IsItemHovered() )
-            DrawInspector(s->texture(), framesize, framesize, top_image);
 
         //
         // RIGHT of slider : post-processed image (after crop and color correction)
         //
-        glm::vec4 _crop = s->frame()->projectionArea();
-        ImVec2 cropsize = ImVec2(0.5f * (_crop[1] - _crop[0]),
-                                 0.5f * (_crop[2] - _crop[3]));
-        ImVec2 croptop = ImVec2(0.5f * (1.f + _crop[0]),
-                                0.5f * (1.f - _crop[2]) );
-        cropsize = framesize * cropsize;
-        croptop = framesize * croptop;
-
         // no overlap of slider with cropped area
-        if (slider.x < croptop.x) {
+        if (slider.x < _croptop.x) {
             // draw cropped area
-            ImGui::SetCursorScreenPos( top_image + croptop );
-            ImGui::Image((void*)(uintptr_t) s->frame()->texture(), cropsize, ImVec2(0.f, 0.f), ImVec2(1.f,1.f));
-            if ( withinspector && ImGui::IsItemHovered() )
-                DrawInspector(s->frame()->texture(), framesize, cropsize, top_image + croptop);
+            ImGui::SetCursorScreenPos( top_image + _croptop );
+            ImGui::Image((void*)(uintptr_t) s->frame()->texture(), _cropsize, ImVec2(0.f, 0.f), ImVec2(1.f,1.f));
         }
         // overlap of slider with cropped area (horizontally)
-        else if (slider.x < croptop.x + cropsize.x ) {
+        else if (slider.x < _croptop.x + _cropsize.x ) {
             // compute slider ratio of cropped area
-            float cropped_slider = (slider.x - croptop.x) / cropsize.x;
+            float cropped_slider = (slider.x - _croptop.x) / _cropsize.x;
             // top x moves with slider
-            ImGui::SetCursorScreenPos( top_image + ImVec2(slider.x, croptop.y) );
+            ImGui::SetCursorScreenPos( top_image + ImVec2(slider.x, _croptop.y) );
             // size is reduced by slider
-            ImGui::Image((void*)(uintptr_t) s->frame()->texture(), cropsize * ImVec2(1.f -cropped_slider, 1.f), ImVec2(cropped_slider, 0.f), ImVec2(1.f,1.f));
-            if ( withinspector && ImGui::IsItemHovered() )
-                DrawInspector(s->frame()->texture(), framesize, cropsize, top_image + croptop);
+            ImGui::Image((void*)(uintptr_t) s->frame()->texture(), _cropsize * ImVec2(1.f -cropped_slider, 1.f), ImVec2(cropped_slider, 0.f), ImVec2(1.f,1.f));
         }
         // else : no render of cropped area
 
+        //
+        // SLIDER
+        //
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
         ImU32 slider_color = ImGui::GetColorU32(ImGuiCol_NavWindowingHighlight);
-        if (withslider)
+        if (withslider && !withinspector)
         {
-            //
-            // SLIDER
-            //
             // user input : move slider horizontally
             ImGui::SetCursorScreenPos(top_image + ImVec2(- 20.f, 0.5f * framesize.y - 20.0f));
             ImGuiToolkit::InvisibleSliderFloat("#media_player_slider2", &Settings::application.widget.media_player_slider, 0.f, 1.f, ImVec2(framesize.x + 40.f, 40.0f) );
@@ -1125,15 +1118,41 @@ void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider, 
     }
     // no post-processed to show: draw simple texture
     else {
-        ImGui::Image((void*)(uintptr_t) s->texture(), framesize);
-        if ( withinspector && ImGui::IsItemHovered() )
-            DrawInspector(s->texture(), framesize, framesize, top_image);
+        ImGui::Image((void *) (uintptr_t) s->texture(), framesize);
+        slider = framesize;
     }
 
+    //
+    // Handle mouse clic and hovering on image
+    //
+    const ImRect bb(top_image, top_image + framesize);
+    const ImGuiID id = ImGui::GetCurrentWindow()->GetID("##source-texture");
+    bool hovered, held;
+    bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, ImGuiButtonFlags_PressedOnClick);
+    // toggle preview on double clic
+    if (pressed) {
+        // trigger to show preview (will be ignored if not double clic)
+        UserInterface::manager().show_preview = UserInterface::PREVIEW_SOURCE;
+        // cancel the button behavior to let window move on drag
+        ImGui::SetActiveID(0, ImGui::GetCurrentWindow());
+        ImGui::SetHoveredID(0);
+    }
+    // show magnifying glass if hovering and inspector is active
+    else if (hovered && withinspector) {
+        // different texture to show depending on mouse position of slider
+        if (ImGui::IsMouseHoveringRect(top_image, top_image + slider))
+            // inspector over left side of slider
+            DrawInspector(s->texture(), framesize, framesize, top_image);
+        else
+            // inspector over right side of slider
+            DrawInspector(s->frame()->texture(), framesize, _cropsize, top_image + _croptop);
+    }
+
+    // pop ImGuiStyleVar_Alpha
     ImGui::PopStyleVar();
 }
 
-ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_inspector)
+ImRect SourceControlWindow::DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_inspector)
 {
     ///
     /// Centered frame

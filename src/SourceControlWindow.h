@@ -2,6 +2,7 @@
 #define SOURCECONTROLWINDOW_H
 
 struct ImVec2;
+struct ImRect;
 
 #include "SourceList.h"
 #include "InfoVisitor.h"
@@ -54,6 +55,10 @@ class SourceControlWindow : public WorkspaceWindow
     bool mediaplayer_slider_pressed_;
     float mediaplayer_timeline_zoom_;
     void RenderMediaPlayer(MediaSource *ms);
+
+    // draw methods
+    void DrawSource(Source *s, ImVec2 framesize, ImVec2 top_image, bool withslider = false, bool withinspector = false);
+    ImRect DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 rendersize, bool with_inspector);
 
     // magnifying glass
     bool magnifying_glass;

@@ -640,10 +640,18 @@ void UserInterface::handleMouse()
 
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
         {
-            // if double clic action of view didn't succeed
+            // if double clic event was not used in view
             if ( !Mixer::manager().view()->doubleclic(mousepos) ) {
-                // display current source in left panel /or/ hide left panel if no current source
-                navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+                int i = Mixer::manager().indexCurrentSource();
+                // if no current source
+                if (i<0){
+                    // hide left pannel & toggle clear workspace
+                    navigator.discardPannel();
+                    WorkspaceWindow::toggleClearRestoreWorkspace();
+                }
+                else
+                    // display current source in left panel /or/ hide left panel if no current source
+                    navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
             }
         }
 
@@ -1316,8 +1324,8 @@ void UserInterface::RenderPreview()
             _framebuffer = Mixer::manager().session()->frame();
         else if (show_preview == PREVIEW_SOURCE) {
             _framebuffer = sourcecontrol.renderedFramebuffer();
-            if ( _framebuffer == nullptr && Mixer::manager().currentSource() != nullptr) {
-                 _framebuffer = Mixer::manager().currentSource()->frame();
+            if (_framebuffer == nullptr && Mixer::manager().currentSource() != nullptr) {
+                _framebuffer = Mixer::manager().currentSource()->frame();
             }
         }
 
@@ -1326,8 +1334,7 @@ void UserInterface::RenderPreview()
             ImGui::OpenPopup("##RENDERPREVIEW");
             _inspector = false;
             _sustain = false;
-        }
-        else
+        } else
             show_preview = PREVIEW_NONE;
     }
 
@@ -1351,26 +1358,37 @@ void UserInterface::RenderPreview()
             ImGui::Image((void*)(intptr_t)_framebuffer->texture(), imagesize);
             ImGui::PopStyleVar();
 
-            if ( ImGui::IsMouseClicked(ImGuiMouseButton_Left) ) {
-                // show inspector on mouse clic in
-                if ( ImGui::IsItemHovered()  )
-                    _inspector = !_inspector;
-                // close view on mouse clic outside
-                else if (!_sustain)
-                    show_preview = PREVIEW_NONE;
-            }
-            // draw inspector (magnifying glass)
-            if ( _inspector && ImGui::IsItemHovered()  )
+            // closing icon in top left corner
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::SetCursorScreenPos(draw_pos + ImVec2(IMGUI_SAME_LINE, IMGUI_SAME_LINE));
+            if (ImGuiToolkit::IconButton(ICON_FA_TIMES, "Close preview"))
+                show_preview = PREVIEW_NONE;
+            ImGui::PopFont();
+
+            // handle mouse clic and hovering on image
+            const ImRect bb(draw_pos, draw_pos + imagesize);
+            const ImGuiID id = ImGui::GetCurrentWindow()->GetID("##preview-texture");
+            bool hovered, held;
+            bool pressed = ImGui::ButtonBehavior(bb,
+                                                 id,
+                                                 &hovered,
+                                                 &held,
+                                                 ImGuiButtonFlags_PressedOnClick);
+            // toggle inspector on mouse clic
+            if (pressed)
+                _inspector = !_inspector;
+            // draw inspector (magnifying glass) on mouse hovering
+            if (hovered & _inspector)
                 DrawInspector(_framebuffer->texture(), imagesize, imagesize, draw_pos);
 
-            // closing icon
-            ImGui::SetCursorScreenPos(draw_pos + ImVec2(IMGUI_SAME_LINE, IMGUI_SAME_LINE));
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            if ( ImGuiToolkit::IconButton(ICON_FA_TIMES, "Close preview") )
+            // close view on mouse clic outside
+            // and ignore show_preview on single clic
+            if (!hovered
+                && !_sustain
+                && !ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)
+                && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 show_preview = PREVIEW_NONE;
-            if ( ImGui::IsItemHovered()  )
-                _inspector = false;
-            ImGui::PopFont();
+            }
         }
 
         // local keyboard handler (because focus is captured by modal dialog)

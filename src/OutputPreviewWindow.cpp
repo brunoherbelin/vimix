@@ -471,16 +471,28 @@ void OutputPreviewWindow::Render()
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
         ImGui::PopStyleVar();
-        // mouse over the image
-        if ( ImGui::IsItemHovered()  ) {
-            // show magnifying glass if active
-            if (magnifying_glass)
-                DrawInspector(output->texture(), imagesize, imagesize, draw_pos);
-        }
 
         // disable magnifying glass if window is deactivated
-        if ( g.NavWindow != g.CurrentWindow )
+        if (g.NavWindow != g.CurrentWindow)
             magnifying_glass = false;
+
+        // handle mouse clic and hovering on image
+        const ImRect bb(draw_pos, draw_pos + imagesize);
+        const ImGuiID id = ImGui::GetCurrentWindow()->GetID("##output-texture");
+        bool hovered, held;
+        bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held,
+                                             ImGuiButtonFlags_PressedOnClick);
+        // toggle preview on double clic
+        if (pressed) {
+            // trigger to show preview (will be ignored if not double clic)
+            UserInterface::manager().show_preview = UserInterface::PREVIEW_OUTPUT;
+            // cancel the button behavior to let window move on drag
+            ImGui::SetActiveID(0, ImGui::GetCurrentWindow());
+            ImGui::SetHoveredID(0);
+        }
+        // show magnifying glass if active and mouse hovering
+        else if (hovered && magnifying_glass)
+            DrawInspector(output->texture(), imagesize, imagesize, draw_pos);
 
         ///
         /// Icons overlays
