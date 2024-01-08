@@ -1335,25 +1335,23 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     if ( pipeline_ == nullptr || !media_.seekable )
         return;
 
+    // ignore request to current position
+    if ( ABS_DIFF(target, position_) < timeline_.step())
+        return;
+
     // seek position : default to target
     GstClockTime seek_pos = target;
-
-    // no target given
-    if (target == GST_CLOCK_TIME_NONE)
-        // create seek event with current position (rate changed ?)
-        seek_pos = position_;
-    // target is given but useless
-    else if ( ABS_DIFF(target, position_) < timeline_.step()) {
-        // ignore request
-        return;
-    }
 
     // seek with flush (always)
     int seek_flags = GST_SEEK_FLAG_FLUSH;
 
-    if ( desired_state_ == GST_STATE_PLAYING )
+    // no target given
+    if (target == GST_CLOCK_TIME_NONE) {
+        // create seek event with current position (rate changed ?)
+        seek_pos = position_;
         // seek with KEY mode if playing
         seek_flags |= GST_SEEK_FLAG_KEY_UNIT | GST_SEEK_FLAG_SNAP_AFTER;
+    }
     else
         // seek with accurate timing if paused
         seek_flags |= GST_SEEK_FLAG_ACCURATE;

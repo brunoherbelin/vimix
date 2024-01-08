@@ -212,7 +212,7 @@ struct SourceConfig
     SourceConfig() {
         new_type = 0;
         ratio = 3;
-        res = 1;
+        res = 6;
         capture_naming = 0;
         inspector_zoom = 8.f;
     }
