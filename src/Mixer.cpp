@@ -649,6 +649,9 @@ void Mixer::deleteSource(Source *s)
         // revert to mixing view
         setView(View::MIXING);
     }
+
+    // need to deeply update view to apply eventual changes
+    ++View::need_deep_update_;
 }
 
 
