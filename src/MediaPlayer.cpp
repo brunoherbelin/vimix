@@ -738,6 +738,7 @@ void MediaPlayer::close()
     force_update_ = false;
     rate_ = 1.0;
     rate_change_ = RATE_CHANGE_NONE;
+    position_ = GST_CLOCK_TIME_NONE;
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -752,6 +753,7 @@ void MediaPlayer::close()
     for(guint i = 0; i < N_VFRAME; i++) {
         frame_[i].access.lock();
         frame_[i].unmap();
+        frame_[i].status = INVALID;
         frame_[i].access.unlock();
     }
     write_index_ = 0;
@@ -1309,7 +1311,7 @@ void MediaPlayer::update()
     }
 
     // manage loop mode
-    if (need_loop)
+    if (need_loop && desired_state_ == GST_STATE_PLAYING)  // avoid repeated call
         execute_loop_command();
 
     force_update_ = false;
@@ -1325,8 +1327,7 @@ void MediaPlayer::execute_loop_command()
         execute_seek_command();
     }
     else { //LOOP_NONE
-        if (desired_state_ == GST_STATE_PLAYING) // avoid repeated call
-            play(false);
+        play(false);
     }
 }
 
@@ -1347,8 +1348,9 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
 
     // no target given
     if (target == GST_CLOCK_TIME_NONE) {
-        // create seek event with current position (rate changed ?)
-        seek_pos = position_;
+        // create seek event with current position (called for rate changed)
+        // CLAMP the time to ensure we do not bounce outside of timeline
+        seek_pos = CLAMP(position_, timeline_.first() + timeline_.step(), timeline_.last() - timeline_.step());
         // seek with KEY mode if playing
         seek_flags |= GST_SEEK_FLAG_KEY_UNIT | GST_SEEK_FLAG_SNAP_AFTER;
     }
