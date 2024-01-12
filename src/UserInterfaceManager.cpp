@@ -5804,8 +5804,18 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
             // Logo (if enougth room)
             if (remaining_height > icon_height + button_height + g.Style.ItemSpacing.y)  {
                 static unsigned int vimixicon = Resource::getTextureImage("images/vimix_256x256.png");
-                ImGui::SetCursorScreenPos( rightcorner - ImVec2( (icon_height + pannel_width_) * 0.5f, icon_height + button_height + g.Style.ItemSpacing.y) );
-                ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(icon_height, icon_height));
+                const ImVec2 draw_pos = rightcorner
+                                        - ImVec2((icon_height + pannel_width_) * 0.5f,
+                                                 icon_height + button_height + g.Style.ItemSpacing.y);
+                ImGui::SetCursorScreenPos(draw_pos);
+                ImGui::Image((void *) (intptr_t) vimixicon, ImVec2(icon_height, icon_height));
+                // Hidden action: add a source with vimix logo if double clic on vimix logo
+                const ImRect bb(draw_pos, draw_pos + ImVec2(icon_height, icon_height));
+                const ImGuiID id = ImGui::GetCurrentWindow()->GetID("##easteregg");
+                bool hovered, held;
+                if (ImGui::ButtonBehavior(bb, id, &hovered, &held, ImGuiButtonFlags_PressedOnDoubleClick) )
+                    Mixer::manager().paste( Resource::getText("images/logo.vmx") );
+
                 index_label = 1;
             }
             // Button About
