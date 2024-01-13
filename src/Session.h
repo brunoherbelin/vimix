@@ -145,7 +145,7 @@ public:
     // get the list of sources in mixing groups
     std::list<SourceList> getMixingGroups () const;
     // returns true if something can be done to create a mixing group
-    bool canlink (SourceList sources);
+    bool hasLink (SourceList sources);
     // try to link sources of the given list:
     // can either create a new mixing group or extend an existing group
     void link (SourceList sources, Group *parent = nullptr);

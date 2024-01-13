@@ -606,9 +606,9 @@ void Session::move(int current_index, int target_index)
     sources_.insert(to, s);
 }
 
-bool Session::canlink (SourceList sources)
+bool Session::hasLink (SourceList sources)
 {
-    bool canlink = true;
+    bool _haslink = false;
 
     // verify that all sources given are valid in the sesion
     validate(sources);
@@ -617,11 +617,11 @@ bool Session::canlink (SourceList sources)
         // if this source is linked
         if ( (*it)->mixingGroup() != nullptr ) {
             // ask its group to detach it
-            canlink = false;
+            _haslink = true;
         }
     }
 
-    return canlink;
+    return _haslink;
 }
 
 void Session::link(SourceList sources, Group *parent)

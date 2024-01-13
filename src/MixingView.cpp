@@ -191,26 +191,29 @@ void MixingView::draw()
 
         // special action of Mixing view: link or unlink
         SourceList selected = Mixer::selection().getCopy();
-        if ( Mixer::manager().session()->canlink( selected )) {
-            // the selected sources can be linked
-            if (ImGui::Selectable( ICON_FA_LINK "  Link" )){
-                // assemble a MixingGroup
-                Mixer::manager().session()->link(selected, scene.fg() );
-                Action::manager().store(std::string("Sources linked."));
-                // clear selection and select one of the sources of the group
-                Source *cur = Mixer::selection().front();
-                Mixer::manager().unsetCurrentSource();
-                Mixer::selection().clear();
-                Mixer::manager().setCurrentSource( cur );
+        bool do_link = false;
+        if (Mixer::manager().session()->hasLink(selected)) {
+            if (ImGui::Selectable(ICON_FA_LINK "  Re-link")) {
+                do_link = true;
             }
-        }
-        else {
-            // the selected sources cannot be linked: offer to unlink!
             if (ImGui::Selectable( ICON_FA_UNLINK "  Unlink" )){
                 // dismantle MixingGroup(s)
                 Mixer::manager().session()->unlink(selected);
                 Action::manager().store(std::string("Sources unlinked."));
             }
+        }
+        else if (ImGui::Selectable( ICON_FA_LINK "  Link" )){
+            do_link = true;
+        }
+        if (do_link){
+            // assemble a MixingGroup
+            Mixer::manager().session()->link(selected, scene.fg() );
+            Action::manager().store(std::string("Sources linked."));
+            // clear selection and select one of the sources of the group
+            Source *cur = Mixer::selection().front();
+            Mixer::manager().unsetCurrentSource();
+            Mixer::selection().clear();
+            Mixer::manager().setCurrentSource( cur );
         }
 
         ImGui::Separator();
