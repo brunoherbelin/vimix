@@ -133,6 +133,13 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
     }
 }
 
+void OutputPreviewWindow::ToggleRecordPause()
+{
+    if (video_recorder_) {
+        video_recorder_->setPaused( !video_recorder_->paused() );
+    }
+}
+
 void OutputPreviewWindow::ToggleVideoBroadcast()
 {
     if (video_broadcaster_) {
@@ -255,18 +262,27 @@ void OutputPreviewWindow::Render()
                 if (!_video_recorders.empty()) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     ImGui::MenuItem( MENU_RECORD, SHORTCUT_RECORD, false, false);
+                    ImGui::MenuItem( MENU_RECORDPAUSE, SHORTCUT_RECORDPAUSE, false, false);
                     ImGui::MenuItem( MENU_RECORDCONT, SHORTCUT_RECORDCONT, false, false);
                     ImGui::PopStyleColor(1);
                 }
                 // Stop recording menu (recorder already exists)
                 else if (video_recorder_) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));                    
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", SHORTCUT_RECORD) ) {
                         // prepare for next time user open new source panel to show the recording
                         if (Settings::application.recentRecordings.load_at_start)
                             UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING);
                         // stop recorder
                         video_recorder_->stop();
+                    }
+                    // offer the Pause recording
+                    if (video_recorder_->paused()) {
+                        if (ImGui::MenuItem(ICON_FA_PAUSE_CIRCLE "  Resume Record", SHORTCUT_RECORDCONT))
+                            video_recorder_->setPaused(false);
+                    } else {
+                        if (ImGui::MenuItem(MENU_RECORDPAUSE, SHORTCUT_RECORDCONT))
+                            video_recorder_->setPaused(true);
                     }
                     // offer the 'save & continue' recording
                     if ( ImGui::MenuItem( MENU_RECORDCONT, SHORTCUT_RECORDCONT) ) {
@@ -289,73 +305,83 @@ void OutputPreviewWindow::Render()
                                                                   new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
                                                                   std::chrono::seconds(Settings::application.record.delay)) );
                     }
+                    ImGui::MenuItem( MENU_RECORDPAUSE, SHORTCUT_RECORDPAUSE, false, false);
                     ImGui::MenuItem( MENU_RECORDCONT, SHORTCUT_RECORDCONT, false, false);
                     ImGui::PopStyleColor(1);
                 }
 
-                // Options menu
+                // Options menu if not recording
                 ImGui::Separator();
-                ImGui::MenuItem("Settings", nullptr, false, false);
-                float combo_width = ImGui::GetTextLineHeightWithSpacing() * 7.f;
-
-                // offer to open config panel from here for more options
-                ImGui::SameLine(combo_width, IMGUI_SAME_LINE);
-                if (ImGuiToolkit::IconButton(13, 5, "Advanced settings"))
-                    UserInterface::manager().navigator.showConfig();
-
-                // BASIC OPTIONS
-                static char* name_path[4] = { nullptr };
-                if ( name_path[0] == nullptr ) {
-                    for (int i = 0; i < 4; ++i)
-                        name_path[i] = (char *) malloc( 1024 * sizeof(char));
-                    snprintf( name_path[1], 1024, "%s", ICON_FA_HOME " Home");
-                    snprintf( name_path[2], 1024, "%s", ICON_FA_FOLDER " Session location");
-                    snprintf( name_path[3], 1024, "%s", ICON_FA_FOLDER_PLUS " Select");
+                if (video_recorder_) {
+                    std::string info = "Recorded ";
+                    info += std::to_string(video_recorder_->frames()) + " frames";
+                    ImGui::MenuItem(info.c_str(), nullptr, false, false);
+                    info = std::to_string(video_recorder_->buffering()) + "% Buffer used";
+                    ImGui::MenuItem(info.c_str(), nullptr, false, false);
                 }
-                if (Settings::application.record.path.empty())
-                    Settings::application.record.path = SystemToolkit::home_path();
-                snprintf( name_path[0], 1024, "%s", Settings::application.record.path.c_str());
-                int selected_path = 0;
-                ImGui::SetNextItemWidth(combo_width);
-                if (ImGui::Combo("##Path", &selected_path, name_path, 4) ) {
-                    if (selected_path > 2)
-                        recordFolderDialog->open();
-                    else if (selected_path > 1)
-                        Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
-                    else if (selected_path > 0)
+                else {
+                    ImGui::MenuItem("Settings", nullptr, false, false);
+                    float combo_width = ImGui::GetTextLineHeightWithSpacing() * 7.f;
+
+                    // offer to open config panel from here for more options
+                    ImGui::SameLine(combo_width, IMGUI_SAME_LINE);
+                    if (ImGuiToolkit::IconButton(13, 5, "Advanced settings"))
+                        UserInterface::manager().navigator.showConfig();
+
+                    // BASIC OPTIONS
+                    static char* name_path[4] = { nullptr };
+                    if ( name_path[0] == nullptr ) {
+                        for (int i = 0; i < 4; ++i)
+                            name_path[i] = (char *) malloc( 1024 * sizeof(char));
+                        snprintf( name_path[1], 1024, "%s", ICON_FA_HOME " Home");
+                        snprintf( name_path[2], 1024, "%s", ICON_FA_FOLDER " Session location");
+                        snprintf( name_path[3], 1024, "%s", ICON_FA_FOLDER_PLUS " Select");
+                    }
+                    if (Settings::application.record.path.empty())
                         Settings::application.record.path = SystemToolkit::home_path();
+                    snprintf( name_path[0], 1024, "%s", Settings::application.record.path.c_str());
+                    int selected_path = 0;
+                    ImGui::SetNextItemWidth(combo_width);
+                    if (ImGui::Combo("##Path", &selected_path, name_path, 4) ) {
+                        if (selected_path > 2)
+                            recordFolderDialog->open();
+                        else if (selected_path > 1)
+                            Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+                        else if (selected_path > 0)
+                            Settings::application.record.path = SystemToolkit::home_path();
+                    }
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    if (ImGuiToolkit::TextButton("Path"))
+                        Settings::application.record.path = SystemToolkit::home_path();
+
+                    // offer to open folder location
+                    ImVec2 draw_pos = ImGui::GetCursorPos();
+                    ImGui::SetCursorPos(draw_pos + ImVec2(combo_width + 3.f * ImGui::GetTextLineHeight(), -ImGui::GetFrameHeight()) );
+                    if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+                        SystemToolkit::open(Settings::application.record.path);
+                    ImGui::SetCursorPos(draw_pos);
+
+                    // Naming menu selection
+                    static const char* naming_style[2] = { ICON_FA_SORT_NUMERIC_DOWN "  Sequential", ICON_FA_CALENDAR "  Date prefix" };
+                    ImGui::SetNextItemWidth(combo_width);
+                    ImGui::Combo("##Filename", &Settings::application.record.naming_mode, naming_style, IM_ARRAYSIZE(naming_style));
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    if (ImGuiToolkit::TextButton("Filename"))
+                        Settings::application.record.naming_mode = 1;
+
+                    ImGui::SetNextItemWidth(combo_width);
+                    ImGuiToolkit::SliderTiming ("##Duration", &Settings::application.record.timeout, 1000, RECORD_MAX_TIMEOUT, 1000, "Until stopped");
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    if (ImGuiToolkit::TextButton("Duration"))
+                        Settings::application.record.timeout = RECORD_MAX_TIMEOUT;
+
+                    ImGui::SetNextItemWidth(combo_width);
+                    ImGui::SliderInt("##Trigger", &Settings::application.record.delay, 0, 5,
+                                     Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    if (ImGuiToolkit::TextButton("Trigger"))
+                        Settings::application.record.delay = 0;
                 }
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                if (ImGuiToolkit::TextButton("Path"))
-                    Settings::application.record.path = SystemToolkit::home_path();
-
-                // offer to open folder location
-                ImVec2 draw_pos = ImGui::GetCursorPos();
-                ImGui::SetCursorPos(draw_pos + ImVec2(combo_width + 3.f * ImGui::GetTextLineHeight(), -ImGui::GetFrameHeight()) );
-                if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
-                    SystemToolkit::open(Settings::application.record.path);
-                ImGui::SetCursorPos(draw_pos);
-
-                // Naming menu selection
-                static const char* naming_style[2] = { ICON_FA_SORT_NUMERIC_DOWN "  Sequential", ICON_FA_CALENDAR "  Date prefix" };
-                ImGui::SetNextItemWidth(combo_width);
-                ImGui::Combo("##Filename", &Settings::application.record.naming_mode, naming_style, IM_ARRAYSIZE(naming_style));
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                if (ImGuiToolkit::TextButton("Filename"))
-                    Settings::application.record.naming_mode = 1;
-
-                ImGui::SetNextItemWidth(combo_width);
-                ImGuiToolkit::SliderTiming ("##Duration", &Settings::application.record.timeout, 1000, RECORD_MAX_TIMEOUT, 1000, "Until stopped");
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                if (ImGuiToolkit::TextButton("Duration"))
-                    Settings::application.record.timeout = RECORD_MAX_TIMEOUT;
-
-                ImGui::SetNextItemWidth(combo_width);
-                ImGui::SliderInt("##Trigger", &Settings::application.record.delay, 0, 5,
-                                 Settings::application.record.delay < 1 ? "Immediate" : "After %d s");
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                if (ImGuiToolkit::TextButton("Trigger"))
-                    Settings::application.record.delay = 0;
 
                 ImGui::EndMenu();
             }

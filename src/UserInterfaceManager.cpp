@@ -276,7 +276,7 @@ void UserInterface::handleKeyboard()
             // New Session
             Mixer::manager().close();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_B), false )) {
             // restart media player
             sourcecontrol.Replay();
         }
@@ -322,6 +322,10 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_R), false )) {
             // toggle recording stop / start (or save and continue if + SHIFT modifier)
             outputcontrol.ToggleRecord(shift_modifier_active);
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false )) {
+            // toggle pause recorder
+            outputcontrol.ToggleRecordPause();
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_Z), false )) {
             if (shift_modifier_active)
@@ -2666,7 +2670,7 @@ void UserInterface::RenderHelp()
         ImGui::Text(SHORTCUT_PREVIEW_SRC); ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Source"); ImGui::NextColumn();
         ImGui::NextColumn();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC); ImGui::Text("Press & hold key for temporary preview"); ImGui::PopFont();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC); ImGui::Text("Press & hold for momentary on/off"); ImGui::PopFont();
         ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
@@ -2684,7 +2688,10 @@ void UserInterface::RenderHelp()
         ImGui::Text(SHORTCUT_SHADEREDITOR); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CODE " " TOOLTIP_SHADEREDITOR "window"); ImGui::NextColumn();
         ImGui::Text("ESC"); ImGui::NextColumn();
-        ImGui::Text(" Hide / Show all windows (toggle or long press)"); ImGui::NextColumn();
+        ImGui::Text(" Hide | Show all windows"); ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC); ImGui::Text("Press & hold for momentary on/off"); ImGui::PopFont();
+        ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_NEW_FILE); ImGui::NextColumn();
         ImGui::Text(MENU_NEW_FILE " session"); ImGui::NextColumn();
@@ -2721,10 +2728,10 @@ void UserInterface::RenderHelp()
         ImGui::Separator();
         ImGui::Text(SHORTCUT_CAPTURE_PLAYER); ImGui::NextColumn();
         ImGui::Text(MENU_CAPTUREFRAME " Player"); ImGui::NextColumn();
-        ImGui::Text("Space"); ImGui::NextColumn();
-        ImGui::Text("Toggle Play/Pause selected videos"); ImGui::NextColumn();
-        ImGui::Text(CTRL_MOD "Space"); ImGui::NextColumn();
-        ImGui::Text("Restart selected videos"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PLAY_PAUSE); ImGui::NextColumn();
+        ImGui::Text(MENU_PLAY_PAUSE " selected videos"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PLAY_BEGIN); ImGui::NextColumn();
+        ImGui::Text(MENU_PLAY_BEGIN " selected videos"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_UP " " ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
         ImGui::Text("Move the selection in the canvas"); ImGui::NextColumn();
         ImGui::Separator();

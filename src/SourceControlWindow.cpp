@@ -247,9 +247,9 @@ void SourceControlWindow::Render()
             //
             // Menu section for play control
             //
-            if (ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Restart", CTRL_MOD "Space", nullptr, !selection_.empty()))
+            if (ImGui::MenuItem( MENU_PLAY_BEGIN, SHORTCUT_PLAY_BEGIN, nullptr, !selection_.empty()))
                 replay_request_ = true;
-            if (ImGui::MenuItem( ICON_FA_PLAY "  Play | Pause", "Space", nullptr, !selection_.empty()))
+            if (ImGui::MenuItem( MENU_PLAY_PAUSE, SHORTCUT_PLAY_PAUSE, nullptr, !selection_.empty()))
                 play_toggle_request_ = true;
 
             ImGui::Separator();
