@@ -245,7 +245,7 @@ void TextContents::open(const std::string &text, glm::ivec2 res)
 
 void TextContents::setText(const std::string &t)
 {
-    if ( src_ == nullptr && !t.empty() && text_.compare(t) != 0) {
+    if ( src_ == nullptr && text_.compare(t) != 0) {
         // set text
         text_ = t;
         // apply if ready

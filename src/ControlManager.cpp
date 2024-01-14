@@ -826,8 +826,21 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         /// e.g. '/vimix/current/posterize f 1'
         else if ( attribute.compare(OSC_SOURCE_POSTERIZE) == 0) {
             float v = 0.f;
-            arguments >> v >> osc::EndMessage;
-            target->call( new SetPosterize( v ), true );
+            float t = 0.f;
+            arguments >> v;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetPosterize( v, t ), true );
+        }
+        /// e.g. '/vimix/current/correction f 1'
+        else if (attribute.compare(OSC_SOURCE_CORRECTION) == 0) {
+            float on = 1.f;
+            if (!arguments.Eos()) {
+                arguments >> on >> osc::EndMessage;
+            }
+            target->setImageProcessingEnabled(on > 0.5f);
         }
         /// e.g. '/vimix/current/seek f 0.25' ; seek to 25% of duration
         /// e.g. '/vimix/current/seek iiii 0 0 25 500' ; seek to time
@@ -849,9 +862,14 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/speed f 0.25'
         else if (attribute.compare(OSC_SOURCE_SPEED) == 0) {
+            float v = 0.f;
             float t = 0.f;
-            arguments >> t >> osc::EndMessage;
-            target->call(new PlaySpeed(t), true);
+            arguments >> v;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call(new PlaySpeed( v, t ), true);
         }
         /// e.g. '/vimix/current/contents s text'
         else if (attribute.compare(OSC_SOURCE_CONTENTS) == 0) {

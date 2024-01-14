@@ -1009,7 +1009,7 @@ void SetInvert::writeValue(Source *s, float val)
 
 SetPosterize::SetPosterize(float v, float ms, bool r) : ValueSourceCallback(v, ms, r)
 {
-    target_ = glm::clamp(target_, 0.f, 128.f);
+    target_ = glm::clamp(target_, 0.f, 256.f);
 }
 
 float SetPosterize::readValue(Source *s) const

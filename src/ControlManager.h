@@ -62,6 +62,7 @@
 #define OSC_SOURCE_COLOR       "/color"
 #define OSC_SOURCE_POSTERIZE   "/posterize"
 #define OSC_SOURCE_INVERT      "/invert"
+#define OSC_SOURCE_CORRECTION  "/correction"
 
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"
