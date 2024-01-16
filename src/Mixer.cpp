@@ -444,10 +444,14 @@ Source *Mixer::createSourceText(const std::string &contents, glm::ivec2 res)
     s->setContents(contents, res);
 
     // propose a new name based on contents
-    std::string basestring = BaseToolkit::transliterate(contents);
-    basestring = BaseToolkit::splitted(basestring, '\n').front();
-    if (SystemToolkit::file_exists(basestring))
-        basestring = SystemToolkit::base_filename(basestring);
+    std::string basestring = "Text";
+    if (contents.size() > 1) {
+        basestring = BaseToolkit::transliterate(contents);
+        if (SystemToolkit::file_exists(basestring))
+            basestring = SystemToolkit::base_filename(basestring);
+        else
+            basestring = BaseToolkit::splitted(basestring, '\n').front();
+    }
     s->setName( basestring );
 
     return s;

@@ -220,24 +220,22 @@ void TextContents::open(const std::string &text, glm::ivec2 res)
 {
     std::string gstreamer_pattern
         = "videotestsrc pattern=black background-color=0x00000000 ! "
-          "textoverlay text=\"! no text !\" halignment=center valignment=center ";
+          "textoverlay text=\"\" halignment=center valignment=center ";
 
-    if (!text.empty() && text_.compare(text) != 0) {
-        // set text
-        text_ = text;
-        // test if text is the filename of a subtitle
-        if (TextContents::SubtitleDiscoverer(text_)) {
-            // setup a pipeline that reads the file and parses subtitle
-            // Log::Info("Using %s as subtitle file", text.c_str());
-            gstreamer_pattern = "filesrc name=src ! subparse ! queue ! txt. ";
-        } else {
-            // else, setup a pipeline with custom appsrc
-            // Log::Info("Using '%s' as raw text content", text.c_str());
-            gstreamer_pattern = "";
-        }
-        gstreamer_pattern += "videotestsrc name=bg pattern=black background-color=0x00000000 ! "
-                             "textoverlay name=txt ";
+    // set text
+    text_ = text;
+    // test if text is the filename of a subtitle
+    if (TextContents::SubtitleDiscoverer(text_)) {
+        // setup a pipeline that reads the file and parses subtitle
+        // Log::Info("Using %s as subtitle file", text.c_str());
+        gstreamer_pattern = "filesrc name=src ! subparse ! queue ! txt. ";
+    } else {
+        // else, setup a pipeline with custom appsrc
+        // Log::Info("Using '%s' as raw text content", text.c_str());
+        gstreamer_pattern = "";
     }
+    gstreamer_pattern += "videotestsrc name=bg pattern=black background-color=0x00000000 ! "
+                         "textoverlay name=txt ";
 
     // (private) open stream
     Stream::open(gstreamer_pattern, res.x, res.y);
