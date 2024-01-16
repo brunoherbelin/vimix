@@ -798,12 +798,13 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         /// e.g. '/vimix/current/gamma f 1.0'
         else if ( attribute.compare(OSC_SOURCE_GAMMA) == 0) {
             glm::vec4 g = target->processingShader()->gamma;
-            float t = 0.f;
-            arguments >> g.w;
+            float val = 0.f, t = 0.f;
+            arguments >> val;
             if (arguments.Eos())
                 arguments >> osc::EndMessage;
             else
                 arguments >> t >> osc::EndMessage;
+            g.w = powf(10.f, val);
             target->call( new SetGamma( g, t ), true );
         }
         /// e.g. '/vimix/current/color fff 1.0 0.5 0.9'
