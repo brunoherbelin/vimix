@@ -2950,7 +2950,7 @@ void Navigator::discardPannel()
 
 void Navigator::Render()
 {
-    std::pair<std::string, std::string> tooltip = {"", ""};
+    std::tuple<std::string, std::string, FrameBuffer *> tooltip = {"", "", nullptr};
     static uint _timeout_tooltip = 0;
 
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -2988,11 +2988,10 @@ void Navigator::Render()
             // the vimix icon for menu
             if (ImGuiToolkit::SelectableIcon(2, 16, "", selected_button[NAV_MENU], iconsize)) {
                 selected_button[NAV_MENU] = true;
-//            if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize)) {
                 applyButtonSelection(NAV_MENU);
             }
             if (ImGui::IsItemHovered())
-                tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN};
+                tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN, nullptr};
 
             // the "+" icon for action of creating new source
             if (ImGui::Selectable( source_to_replace != nullptr ? ICON_FA_PLUS_SQUARE : ICON_FA_PLUS,
@@ -3001,7 +3000,7 @@ void Navigator::Render()
                 applyButtonSelection(NAV_NEW);
             }
             if (ImGui::IsItemHovered())
-                tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE};
+                tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE, nullptr};
             //
             // the list of INITIALS for sources
             //
@@ -3038,7 +3037,11 @@ void Navigator::Render()
                     if (selected_button[index])
                         Mixer::manager().setCurrentIndex(index);
                 }
-
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+                    std::string label = s->name().size() < 16 ? s->name()
+                                                              : s->name().substr(0, 15) + "..";
+                    tooltip = { label, "#" + std::to_string(index), s->frame()};
+                }
                 if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
                 {
                     ImGui::SetDragDropPayload("DND_SOURCE", &index, sizeof(int));
@@ -3088,7 +3091,8 @@ void Navigator::Render()
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollWithMouse))
     {
         // Mouse pointer selector
-        tooltip = RenderMousePointerSelector(iconsize);
+        if ( RenderMousePointerSelector(iconsize) )
+            tooltip = {TOOLTIP_SNAP_CURSOR, ALT_MOD, nullptr};
 
         // List of icons for View selection
         static uint view_options_timeout = 0;
@@ -3107,7 +3111,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::MIXING].name, "F1"};
+            tooltip = {Settings::application.views[View::MIXING].name, "F1", nullptr};
             view_options_timeout = 0;
         }
 
@@ -3120,7 +3124,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::GEOMETRY].name, "F2"};
+            tooltip = {Settings::application.views[View::GEOMETRY].name, "F2", nullptr};
             view_options_timeout = 0;
         }
 
@@ -3134,7 +3138,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::LAYER].name, "F3"};
+            tooltip = {Settings::application.views[View::LAYER].name, "F3", nullptr};
             view_options_timeout = 0;
         }
 
@@ -3147,7 +3151,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::TEXTURE].name, "F4"};
+            tooltip = {Settings::application.views[View::TEXTURE].name, "F4", nullptr};
             view_options_timeout = 0;
         }
 
@@ -3162,7 +3166,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::DISPLAYS].name, "F5"};
+            tooltip = {Settings::application.views[View::DISPLAYS].name, "F5", nullptr};
             view_options_timeout = 0;
         }
 
@@ -3173,14 +3177,14 @@ void Navigator::Render()
         if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
             Rendering::manager().mainWindow().toggleFullscreen();
         if (ImGui::IsItemHovered())
-            tooltip = {TOOLTIP_FULLSCREEN, SHORTCUT_FULLSCREEN};
+            tooltip = {TOOLTIP_FULLSCREEN, SHORTCUT_FULLSCREEN, nullptr};
 
         // icon for toggle always visible / auto hide pannel
         ImGui::SetCursorPos(pos + ImVec2(width_ * 0.5f, style.WindowPadding.y));
         if ( ImGuiToolkit::IconButton( Settings::application.pannel_always_visible ? ICON_FA_TOGGLE_ON : ICON_FA_TOGGLE_OFF ) )
             togglePannelAutoHide();
         if (ImGui::IsItemHovered())
-            tooltip = { Settings::application.pannel_always_visible ? TOOLTIP_PANEL_VISIBLE : TOOLTIP_PANEL_AUTO, SHORTCUT_PANEL_MODE };
+            tooltip = { Settings::application.pannel_always_visible ? TOOLTIP_PANEL_VISIBLE : TOOLTIP_PANEL_AUTO, SHORTCUT_PANEL_MODE, nullptr };
 
         ImGui::PopFont();
 
@@ -3191,10 +3195,30 @@ void Navigator::Render()
     }
 
     // show tooltip
-    if (!tooltip.first.empty()) {
+    if (!std::get<0>(tooltip).empty()) {
         // pseudo timeout for showing tooltip
-        if (_timeout_tooltip > IMGUI_TOOLTIP_TIMEOUT)
-            ImGuiToolkit::ToolTip(tooltip.first.c_str(), tooltip.second.c_str());
+        if (_timeout_tooltip > IMGUI_TOOLTIP_TIMEOUT) {
+            FrameBuffer *frame = std::get<2>(tooltip);
+            if (frame != nullptr) {
+                ImGui::BeginTooltip();
+                ImGui::Image((void *) (uintptr_t) frame->texture(),
+                             ImVec2(width_, width_ / frame->aspectRatio()) * 3.f);
+
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                ImGui::TextUnformatted(std::get<0>(tooltip).c_str());
+                ImGui::SameLine();
+                ImGui::SetCursorPosX(width_ * 3.f - ImGui::GetTextLineHeight());
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
+                ImGui::TextUnformatted(std::get<1>(tooltip).c_str());
+                ImGui::PopStyleColor();
+                ImGui::PopFont();
+
+                ImGui::EndTooltip();
+            }
+            else
+                ImGuiToolkit::ToolTip(std::get<0>(tooltip).c_str(), std::get<1>(tooltip).c_str());
+
+        }
         else
             ++_timeout_tooltip;
     }
@@ -4225,12 +4249,12 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
     }
 }
 
-std::pair<std::string, std::string> Navigator::RenderMousePointerSelector(const ImVec2 &size)
+bool Navigator::RenderMousePointerSelector(const ImVec2 &size)
 {
     ImGuiContext& g = *GImGui;
     ImVec2 top = ImGui::GetCursorPos();
     bool enabled = Settings::application.current_view != View::TRANSITION;
-    std::pair<std::string, std::string> tooltip = {"", ""};
+    bool ret = false;
     ///
     /// interactive button of the given size: show menu if clic or mouse over
     ///
@@ -4243,7 +4267,7 @@ std::pair<std::string, std::string> Navigator::RenderMousePointerSelector(const 
     ImVec2 bottom = ImGui::GetCursorScreenPos();
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-        tooltip = {"Snap cursor", ALT_MOD};
+        ret = true;
         counter_menu_timeout=0;
     }
 
@@ -4353,7 +4377,7 @@ std::pair<std::string, std::string> Navigator::RenderMousePointerSelector(const 
         ImGui::EndPopup();
     }
 
-    return tooltip;
+    return ret;
 }
 
 void Navigator::RenderMainPannelSession()

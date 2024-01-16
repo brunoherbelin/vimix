@@ -72,7 +72,7 @@ class Navigator
     void RenderTransitionPannel(const ImVec2 &iconsize);
     void RenderNewPannel(const ImVec2 &iconsize);
     void RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2 &size);
-    std::pair<std::string, std::string> RenderMousePointerSelector(const ImVec2 &size);
+    bool RenderMousePointerSelector(const ImVec2 &size);
 
 public:
 

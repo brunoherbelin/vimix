@@ -218,6 +218,7 @@
 #define SHORTCUT_MAIN         "HOME"
 #define TOOLTIP_NEW_SOURCE    "Insert "
 #define SHORTCUT_NEW_SOURCE   "INS"
+#define TOOLTIP_SNAP_CURSOR   "Snap cursor "
 #define TOOLTIP_HIDE          "Hide windows "
 #define TOOLTIP_SHOW          "Show windows "
 #define SHORTCUT_HIDE         "ESC"
