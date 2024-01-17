@@ -2950,7 +2950,7 @@ void Navigator::discardPannel()
 
 void Navigator::Render()
 {
-    std::tuple<std::string, std::string, FrameBuffer *> tooltip = {"", "", nullptr};
+    std::tuple<std::string, std::string, Source *> tooltip = {"", "", nullptr};
     static uint _timeout_tooltip = 0;
 
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -3040,7 +3040,7 @@ void Navigator::Render()
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
                     std::string label = s->name().size() < 16 ? s->name()
                                                               : s->name().substr(0, 15) + "..";
-                    tooltip = { label, "#" + std::to_string(index), s->frame()};
+                    tooltip = { label, "#" + std::to_string(index), s };
                 }
                 if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
                 {
@@ -3198,23 +3198,31 @@ void Navigator::Render()
     if (!std::get<0>(tooltip).empty()) {
         // pseudo timeout for showing tooltip
         if (_timeout_tooltip > IMGUI_TOOLTIP_TIMEOUT) {
-            FrameBuffer *frame = std::get<2>(tooltip);
-            if (frame != nullptr) {
+            // if a pointer to a Source is provided in tupple
+            Source *_s = std::get<2>(tooltip);
+            if (_s != nullptr) {
                 ImGui::BeginTooltip();
-                ImGui::Image((void *) (uintptr_t) frame->texture(),
-                             ImVec2(width_, width_ / frame->aspectRatio()) * 3.f);
-
+                const ImVec2 image_top = ImGui::GetCursorPos();
+                const ImVec2 thumbnail_size = ImVec2(width_, width_ / _s->frame()->aspectRatio()) * 3.f;
+                // Render source frame in tooltip
+                ImGui::Image((void *) (uintptr_t) _s->frame()->texture(), thumbnail_size);
+                // Draw label and shortcut from tupple
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                 ImGui::TextUnformatted(std::get<0>(tooltip).c_str());
                 ImGui::SameLine();
-                ImGui::SetCursorPosX(width_ * 3.f - ImGui::GetTextLineHeight());
+                ImGui::SetCursorPosX(thumbnail_size.x + style.WindowPadding.x
+                                     - ImGui::GetTextLineHeight() );
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
                 ImGui::TextUnformatted(std::get<1>(tooltip).c_str());
                 ImGui::PopStyleColor();
+                // Draw source icon at the top right corner
+                ImGui::SetCursorPos(image_top + ImVec2( thumbnail_size.x - ImGui::GetTextLineHeight()
+                                                           - style.ItemSpacing.x, style.ItemSpacing.y ));
+                ImGuiToolkit::Icon( _s->icon().x, _s->icon().y);
                 ImGui::PopFont();
-
                 ImGui::EndTooltip();
             }
+            // otherwise just show a standard tooltip [action - shortcut key]
             else
                 ImGuiToolkit::ToolTip(std::get<0>(tooltip).c_str(), std::get<1>(tooltip).c_str());
 
