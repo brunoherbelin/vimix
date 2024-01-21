@@ -340,6 +340,7 @@ struct Application
     History recentImportFolders;
     History recentRecordings;
     std::map< std::string, std::string > dialogRecentFolder;
+    glm::ivec2 dialogPosition;
 
     // Metronome & stopwatch
     TimerConfig timer;
@@ -377,6 +378,7 @@ struct Application
         windows[0].w = 1600;
         windows[0].h = 930;
         accept_audio = false;
+        dialogPosition = glm::ivec2(-1, -1);
     }
 
 };

@@ -30,58 +30,59 @@ public:
     static bool busy() { return busy_; }
 };
 
-class OpenSessionDialog : public FileDialog
+class OpenFileDialog : public FileDialog
 {
+    std::string type_;
+    std::vector<std::string> patterns_;
+
 public:
-    OpenSessionDialog(const std::string &name) : FileDialog(name) {}
-    void open();
+    OpenFileDialog(const std::string &name,
+                   const std::string &type,
+                   std::vector<std::string> patterns)
+        : FileDialog(name)
+        , type_(type)
+        , patterns_(patterns)
+    {}
+
+    void open() override;
 };
 
-class SaveSessionDialog : public FileDialog
+class OpenManyFilesDialog : public FileDialog
 {
-public:
-    SaveSessionDialog(const std::string &name) : FileDialog(name) {}
-    void setFolder(std::string path);
-    void open();
-};
-
-class MultipleSessionsDialog : public FileDialog
-{
+    std::string type_;
+    std::vector<std::string> patterns_;
     std::list<std::string> pathlist_;
     std::vector< std::future< std::list<std::string> > > promisedlist_;
+
 public:
-    MultipleSessionsDialog(const std::string &name) : FileDialog(name) {}
+    OpenManyFilesDialog(const std::string &name,
+                        const std::string &type,
+                        std::vector<std::string> patterns)
+        : FileDialog(name)
+        , type_(type)
+        , patterns_(patterns)
+    {}
+
     void open() override;
     bool closed() override;
     inline std::list<std::string> files() const { return pathlist_; }
 };
 
-class OpenPlaylistDialog : public FileDialog
+class SaveFileDialog : public FileDialog
 {
-public:
-    OpenPlaylistDialog(const std::string &name) : FileDialog(name) {}
-    void open();
-};
+    std::string type_;
+    std::vector<std::string> patterns_;
 
-class SavePlaylistDialog : public FileDialog
-{
 public:
-    SavePlaylistDialog(const std::string &name) : FileDialog(name) {}
+    SaveFileDialog(const std::string &name,
+                   const std::string &type,
+                   std::vector<std::string> patterns)
+        : FileDialog(name)
+        , type_(type)
+        , patterns_(patterns)
+    {}
+
     void setFolder(std::string path);
-    void open();
-};
-
-class OpenMediaDialog : public FileDialog
-{
-public:
-    OpenMediaDialog(const std::string &name) : FileDialog(name) {}
-    void open();
-};
-
-class OpenSubtitleDialog : public FileDialog
-{
-public:
-    OpenSubtitleDialog(const std::string &name) : FileDialog(name) {}
     void open();
 };
 
@@ -90,24 +91,6 @@ class OpenFolderDialog : public FileDialog
 public:
     OpenFolderDialog(const std::string &name) : FileDialog(name) {}
     void open();
-};
-
-class OpenImageDialog : public FileDialog
-{
-public:
-    OpenImageDialog(const std::string &name) : FileDialog(name) {}
-    void open();
-};
-
-class MultipleImagesDialog : public FileDialog
-{
-    std::list<std::string> pathlist_;
-    std::vector< std::future< std::list<std::string> > > promisedlist_;
-public:
-    MultipleImagesDialog(const std::string &name) : FileDialog(name) {}
-    void open() override;
-    bool closed() override;
-    inline std::list<std::string> images() const { return pathlist_; }
 };
 
 

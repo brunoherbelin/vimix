@@ -13,17 +13,35 @@
 #define VIMIX_GL_VERSION "opengl3"
 #define VIMIX_GLSL_VERSION "#version 150"
 
+#define VIMIX_FILE_TYPE "vimix session (MIX)"
 #define VIMIX_FILE_EXT "mix"
-#define VIMIX_FILE_PATTERN "*.mix"
+#define VIMIX_FILE_PATTERN \
+    { \
+        "*.mix" \
+    }
+#define VIMIX_PLAYLIST_FILE_TYPE "vimix playlist (LIX)"
 #define VIMIX_PLAYLIST_FILE_EXT "lix"
-#define VIMIX_PLAYLIST_FILE_PATTERN "*.lix"
-#define MEDIA_FILES_PATTERN "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov",\
-    "*.mkv", "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg",\
-    "*.flv", "*.hevc", "*.asf", "*.jpg", "*.png",  "*.gif",\
-    "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg,"
-#define IMAGES_FILES_PATTERN "*.jpg", "*.png", "*.bmp", "*.ppm", "*.gif"
-#define SUBTITLE_FILES_PATTERN "*.srt", "*.sub"
-
+#define VIMIX_PLAYLIST_FILE_PATTERN \
+    { \
+        "*.lix" \
+    }
+#define MEDIA_FILES_TYPE "Supported formats (videos, images, sessions)"
+#define MEDIA_FILES_PATTERN \
+    { \
+        "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov", "*.mkv", \
+        "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.hevc", "*.asf", "*.jpg", \
+        "*.png", "*.gif", "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg," \
+    }
+#define IMAGES_FILES_TYPE "Image (JPG, PNG, BMP, PPM, GIF)"
+#define IMAGES_FILES_PATTERN \
+    { \
+        "*.jpg", "*.png", "*.bmp", "*.ppm", "*.gif" \
+    }
+#define SUBTITLE_FILES_TYPE "Subtitle (SRT, SUB)"
+#define SUBTITLE_FILES_PATTERN \
+    { \
+        "*.srt", "*.sub" \
+    }
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))
 #define ABS(a)	   (((a) < 0) ? -(a) : (a))

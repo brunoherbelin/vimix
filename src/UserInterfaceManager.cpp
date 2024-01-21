@@ -212,9 +212,12 @@ bool UserInterface::Init()
     }
 
     // init dialogs
-    sessionopendialog   = new DialogToolkit::OpenSessionDialog("Open Session");
-    sessionsavedialog   = new DialogToolkit::SaveSessionDialog("Save Session");
-    sessionimportdialog = new DialogToolkit::OpenSessionDialog("Import Sources");
+    sessionopendialog   = new DialogToolkit::OpenFileDialog("Open Session",
+                                                          VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
+    sessionsavedialog   = new DialogToolkit::SaveFileDialog("Save Session",
+                                                          VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
+    sessionimportdialog = new DialogToolkit::OpenFileDialog("Import Sources",
+                                                            VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
 
     // init tooltips
     ImGuiToolkit::setToolTipsEnabled(Settings::application.show_tooptips);
@@ -3505,7 +3508,9 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
         // File Source creation
         if (Settings::application.source.new_type == SOURCE_FILE) {
 
-            static DialogToolkit::OpenMediaDialog fileimportdialog("Open Media");
+            static DialogToolkit::OpenFileDialog fileimportdialog("Open Media",
+                                                                   MEDIA_FILES_TYPE,
+                                                                   MEDIA_FILES_PATTERN );
             static DialogToolkit::OpenFolderDialog folderimportdialog("Select Folder");
 
             ImGui::Text("Video, image & session files");
@@ -3712,7 +3717,9 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
         // Sequence Source creator
         else if (Settings::application.source.new_type == SOURCE_SEQUENCE){
 
-            static DialogToolkit::MultipleImagesDialog _selectImagesDialog("Select multiple images");
+            static DialogToolkit::OpenManyFilesDialog _selectImagesDialog("Select multiple images",
+                                                                          IMAGES_FILES_TYPE,
+                                                                          IMAGES_FILES_PATTERN);
             static MultiFileSequence _numbered_sequence;
             static MultiFileRecorder _video_recorder;
             static int _fps = 25;
@@ -3738,7 +3745,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // clear
                 new_source_preview_.setSource();
                 // store list of files from dialog
-                sourceSequenceFiles = _selectImagesDialog.images();
+                sourceSequenceFiles = _selectImagesDialog.files();
                 if (sourceSequenceFiles.empty())
                     Log::Notify("No file selected.");
 
@@ -3855,7 +3862,9 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
         // Generated patterns Source creator
         else if (Settings::application.source.new_type == SOURCE_GENERATED){
 
-            static DialogToolkit::OpenSubtitleDialog subtitleopenialog("Open Subtitle");
+            static DialogToolkit::OpenFileDialog subtitleopenialog("Open Subtitle",
+                                                                   SUBTITLE_FILES_TYPE,
+                                                                   SUBTITLE_FILES_PATTERN );
             bool update_new_source = false;
 
             ImGui::Text("Patterns & generated graphics");
@@ -4874,7 +4883,9 @@ void Navigator::RenderMainPannelPlaylist()
 
     // file dialogs to open / save playlist files and folders
     static DialogToolkit::OpenFolderDialog customFolder("Open Folder");
-    static DialogToolkit::MultipleSessionsDialog selectSessions("Select vimix sessions");
+    static DialogToolkit::OpenManyFilesDialog selectSessions("Select vimix sessions",
+                                                             VIMIX_FILE_TYPE,
+                                                             VIMIX_FILE_PATTERN);
 
     //    static DialogToolkit::OpenPlaylistDialog openPlaylist("Open Playlist");
     //    static DialogToolkit::SavePlaylistDialog savePlaylist("Save Playlist");

@@ -289,6 +289,8 @@ void Settings::Save(uint64_t runtime)
             pathNode->InsertEndChild( text );
             recentdialogpath->InsertFirstChild(pathNode);
         }
+        recentdialogpath->InsertEndChild( XMLElementFromGLM(&xmlDoc, application.dialogPosition) );
+
         recent->InsertEndChild(recentdialogpath);
 
         pRoot->InsertEndChild(recent);
@@ -685,8 +687,8 @@ void Settings::Load()
                     if (l && p)
                         application.dialogRecentFolder[ std::string(l)] = std::string (p);
                 }
+                tinyxml2::XMLElementToGLM( pDialog->FirstChildElement("ivec2"), application.dialogPosition);
             }
-
         }
     }
 

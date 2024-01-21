@@ -886,7 +886,9 @@ void TextureView::draw()
                         ImGui::EndPopup();
                     }
 
-                    static DialogToolkit::OpenImageDialog maskdialog("Select Image");
+                    static DialogToolkit::OpenFileDialog maskdialog("Select Image",
+                                                                    IMAGES_FILES_TYPE,
+                                                                    IMAGES_FILES_PATTERN );
 
                     ImGui::SameLine();
                     if (ImGui::Button(ICON_FA_FOLDER_OPEN))

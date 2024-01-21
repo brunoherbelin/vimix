@@ -199,9 +199,9 @@ protected:
     PreviewMode show_preview;
 
     // Dialogs
-    DialogToolkit::OpenSessionDialog *sessionopendialog;
-    DialogToolkit::OpenSessionDialog *sessionimportdialog;
-    DialogToolkit::SaveSessionDialog *sessionsavedialog;
+    DialogToolkit::OpenFileDialog *sessionopendialog;
+    DialogToolkit::OpenFileDialog *sessionimportdialog;
+    DialogToolkit::SaveFileDialog *sessionsavedialog;
 
     // Favorites and playlists
     Playlist favorites;
