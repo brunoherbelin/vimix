@@ -808,6 +808,11 @@ void SessionVisitor::visit (ImageFilter& f)
 
     // image filter parameters
     xmlCurrent_->InsertEndChild( list_parameters_(xmlDoc_, f.program().parameters()) );
+
+    // global iMouse
+    XMLElement *imouse = xmlDoc_->NewElement("iMouse");
+    imouse->InsertEndChild( XMLElementFromGLM(xmlDoc_, FilteringProgram::iMouse) );
+    xmlCurrent_->InsertEndChild(imouse);
 }
 
 void SessionVisitor::visit (CloneSource& s)

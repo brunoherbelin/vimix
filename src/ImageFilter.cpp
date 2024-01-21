@@ -91,7 +91,7 @@ std::string FilteringProgram::getFilterCodeDefault()
     return filterDefault;
 }
 
-glm::vec4 FilteringProgram::iMouse = glm::vec4(0.5f,0.5f,0.f,0.f);
+glm::vec4 FilteringProgram::iMouse = glm::vec4(0.f,0.f,0.f,0.f);
 
 ////////////////////////////////////////
 /////                                 //
@@ -201,8 +201,7 @@ void ImageFilteringShader::use()
     program_->setUniform("iFrame", int(iFrame_) );
 
     // scale iMouse to resolution
-    glm::vec4 im = FilteringProgram::iMouse * glm::vec4( Rendering::manager().currentAttrib().viewport, 1.f, 1.f);
-    program_->setUniform("iMouse", im );
+    program_->setUniform("iMouse", FilteringProgram::iMouse );
 
     // Calculate iTimeDelta
     double elapsed = g_timer_elapsed (timer_, NULL);
