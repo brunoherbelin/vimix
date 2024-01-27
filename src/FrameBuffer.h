@@ -95,6 +95,9 @@ public:
     FrameBufferImage *image();
     bool fill(FrameBufferImage *image);
 
+    // how much memory used, in Bytes
+    static ulong memory_usage();
+
 private:
     void init();
     void reset();
@@ -106,7 +109,8 @@ private:
     glm::vec4 projection_area_;
     uint textureid_, multisampling_textureid_;
     uint framebufferid_, multisampling_framebufferid_;
-    uint mem_usage_;
+    ulong mem_usage_;
+    static ulong total_mem_usage;
 };
 
 

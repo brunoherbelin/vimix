@@ -34,6 +34,11 @@
 #define FRAMEBUFFER_DEBUG
 #endif
 
+ulong FrameBuffer::total_mem_usage = 0;
+ulong FrameBuffer::memory_usage()
+{
+    return total_mem_usage;
+}
 
 FrameBuffer::FrameBuffer(glm::vec3 resolution, FrameBufferFlags flags): flags_(flags),
     textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0), mem_usage_(0)
@@ -71,7 +76,7 @@ void FrameBuffer::init()
     }
 
     // calculate GPU memory usage (for debug only)
-    mem_usage_ += ( attrib_.viewport.x * attrib_.viewport.y * (flags_ & FrameBuffer_alpha?4:3) ) / 1024;
+    mem_usage_ += ( attrib_.viewport.x * attrib_.viewport.y * (flags_ & FrameBuffer_alpha?4:3) );
 
     // common texture parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -113,7 +118,7 @@ void FrameBuffer::init()
         glBindFramebuffer(GL_FRAMEBUFFER, multisampling_framebufferid_);
 
         // calculate GPU memory usage
-        mem_usage_ += ( Settings::application.render.multisampling * attrib_.viewport.x * attrib_.viewport.y * (flags_ & FrameBuffer_alpha?4:3) ) / 1024;
+        mem_usage_ += ( Settings::application.render.multisampling * attrib_.viewport.x * attrib_.viewport.y * (flags_ & FrameBuffer_alpha?4:3) );
 
 #ifdef FRAMEBUFFER_DEBUG
         g_printerr("multi sampling (%d) - ", Settings::application.render.multisampling);
@@ -133,18 +138,20 @@ void FrameBuffer::init()
         for(int i=1; i < MIPMAP_LEVEL; ++i) {
             width = MAX(1, (width / 2));
             height = MAX(1, (height / 2));
-            mem_usage_ += ( width * height * (flags_ & FrameBuffer_alpha?4:3) ) / 1024;
+            mem_usage_ += ( width * height * (flags_ & FrameBuffer_alpha?4:3) );
         }
 #ifdef FRAMEBUFFER_DEBUG
         g_printerr("mipmap (%d) - ", MIPMAP_LEVEL);
 #endif
     }
 
+    total_mem_usage += mem_usage_;
+
     if (  !checkFramebufferStatus() )
         reset();
 #ifdef FRAMEBUFFER_DEBUG
     else
-         g_printerr("~%d kB allocated\n", mem_usage_);
+         g_printerr("~%lu Bytes allocated (%lu kB total)\n", mem_usage_, total_mem_usage / 1000);
 #endif
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -152,8 +159,11 @@ void FrameBuffer::init()
 
 FrameBuffer::~FrameBuffer()
 {
+    total_mem_usage -= mem_usage_;
+
 #ifdef FRAMEBUFFER_DEBUG
-    g_printerr("Framebuffer %d deleted - ~%d kB freed\n", framebufferid_, mem_usage_);
+    if (framebufferid_)
+         g_printerr("Framebuffer %d deleted - ~%lu B freed (%lu kB total)\n", framebufferid_, mem_usage_, total_mem_usage / 1000);
 #endif
 
     reset();
@@ -361,17 +371,18 @@ bool FrameBuffer::checkFramebufferStatus()
         {
             // success
             ret = true;
-            // test available memory if created buffer is big (more than 8MB)
-            if ( mem_usage_ > 8000 ) {
+            // test available memory if created buffer is big (more than 20 MByte)
+            if ( mem_usage_ > (20000000) ) {
 
                 // Obtain RAM usage in GPU (if possible)
                 glm::ivec2 RAM = Rendering::getGPUMemoryInformation();
 
-                // bad case: not enough RAM, we should warn the user
-                if ( uint(RAM.x) < mem_usage_ * 3 ) {
-                    Log::Warning("Critical allocation of frame buffer: only %d kB RAM remaining in graphics card.", RAM.x );
+                // bad case: not enough RAM, we should warn the user (testing values in KByte, for twice needed space)
+                if ( uint(RAM.x) < mem_usage_ / 2000 ) {
+                    Log::Warning("Critical allocation of frame buffer: only %d kB RAM in "
+                             "graphics card to allocate %lu framebuffer.", RAM.x, mem_usage_ / 1000);
                     if (RAM.y < INT_MAX)
-                        Log::Warning("Only %.1f %% of %d kB available.", 100.f*float(RAM.x)/float(RAM.y), RAM.y);
+                        Log::Warning("Only %.1f %% of %d kB GPU RAM available.", 100.f*float(RAM.x)/float(RAM.y), RAM.y);
                 }
             }
         }
