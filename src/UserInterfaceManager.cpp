@@ -164,7 +164,8 @@ bool UserInterface::Init()
 
     //  Estalish the base size from the resolution of the monitor
     float base_font_size =  float(Rendering::manager().mainWindow().pixelsforRealHeight(4.f))  ;
-    base_font_size = CLAMP( base_font_size, 8.f, 50.f);
+    // at least 8 pixels font size
+    base_font_size = MAX(base_font_size, 8.f);
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) + 1 );
@@ -5381,7 +5382,7 @@ void Navigator::RenderMainPannelSettings()
     ImGui::SetCursorPosX(width_);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if ( ImGui::InputFloat("##Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
-        Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 2.f);
+        Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 5.f);
         ImGui::GetIO().FontGlobalScale = Settings::application.scale;
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
