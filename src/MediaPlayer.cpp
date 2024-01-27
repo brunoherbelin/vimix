@@ -451,8 +451,7 @@ void MediaPlayer::execute_open()
     // set playbin sink
     g_object_set ( G_OBJECT (pipeline_), "video-sink", sink, NULL);
 
-    // done with ref to sink
-    gst_object_unref (sink);
+    // done with ref to caps
     gst_caps_unref (caps);
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
@@ -708,15 +707,12 @@ void MediaPlayer::Frame::unmap()
 
 void delayed_terminate( GstElement *p )
 {
-    GstObject *__pipeline = (GstObject *) gst_object_ref(p);
-
     // end pipeline
-    gst_element_set_state ( GST_ELEMENT(__pipeline), GST_STATE_NULL);
+    gst_element_set_state ( p, GST_STATE_NULL);
 
     // unref to free pipeline
-    gst_object_unref ( __pipeline );
+    gst_object_unref ( p );
 }
-
 
 void MediaPlayer::close()
 {
@@ -743,7 +739,7 @@ void MediaPlayer::close()
     // clean up GST
     if (pipeline_ != nullptr) {
 
-        // end pipeline asynchronously // TODO more stress test?
+        // end pipeline asynchronously
         std::thread(delayed_terminate, pipeline_).detach();
 
         pipeline_ = nullptr;
