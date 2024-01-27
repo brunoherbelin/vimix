@@ -1346,7 +1346,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     if (target == GST_CLOCK_TIME_NONE) {
         // create seek event with current position (called for rate changed)
         // CLAMP the time to ensure we do not bounce outside of timeline
-        seek_pos = CLAMP(position_, timeline_.first() + timeline_.step(), timeline_.last() - timeline_.step());
+        seek_pos = CLAMP(position_, timeline_.first(), timeline_.last() - timeline_.step());
         // seek with KEY mode if playing
         seek_flags |= GST_SEEK_FLAG_KEY_UNIT | GST_SEEK_FLAG_SNAP_AFTER;
     }
