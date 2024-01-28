@@ -69,7 +69,7 @@ struct AppLog
     void Draw(const char* title, bool* p_open = NULL)
     {
 
-        ImGui::SetNextWindowPos(ImVec2(430, 660), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(440, 700), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(1150, 220), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(ImVec2(600, 180), ImVec2(FLT_MAX, FLT_MAX));
 
@@ -196,7 +196,6 @@ void Log::Info(const char* fmt, ...)
 
 void Log::ShowLogWindow(bool* p_open)
 {
-    ImGui::SetNextWindowSize(ImVec2(700, 600), ImGuiCond_FirstUseEver);
     logs.Draw( IMGUI_TITLE_LOGS, p_open);
 }
 

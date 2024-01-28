@@ -73,24 +73,12 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), sessionSwapRequested
     current_view_(nullptr), busy_(false), dt_(16.f), dt__(16.f)
 {
     // unsused initial empty session
-    session_ = new Session;
     current_source_ = session_->end();
     current_source_index_ = -1;
 
-    // auto load if Settings ask to
-    if ( Settings::application.recentSessions.load_at_start &&
-         Settings::application.recentSessions.front_is_valid &&
-         Settings::application.recentSessions.filenames.size() > 0 &&
-         Settings::application.fresh_start) {
-        load( Settings::application.recentSessions.filenames.front() );
-        // initialize with the current view
-        setView( (View::Mode) Settings::application.current_view );
-    }
-    else {
-        // initialize with a new empty session
-        clear();
-        setView( View::MIXING );
-    }
+    // initialize with a new empty session
+    clear();
+    setView( View::MIXING );
 }
 
 void Mixer::update()
@@ -1236,12 +1224,14 @@ void Mixer::setView(View::Mode m)
     Settings::application.current_view = (int) m;
 
     // selection might have to change
-    for (auto sit = session_->begin(); sit != session_->end(); ++sit) {
-        Source *s = *sit;
-        if ( s != nullptr && !current_view_->canSelect( s ) ) {
-            if ( s == *current_source_ )
-                unsetCurrentSource();
-            Mixer::selection().remove( s );
+    if (session_) {
+        for (auto sit = session_->begin(); sit != session_->end(); ++sit) {
+            Source *s = *sit;
+            if ( s != nullptr && !current_view_->canSelect( s ) ) {
+                if ( s == *current_source_ )
+                    unsetCurrentSource();
+                Mixer::selection().remove( s );
+            }
         }
     }
 
@@ -1299,8 +1289,22 @@ void Mixer::saveas(const std::string& filename, bool with_version)
 
 void Mixer::load(const std::string& filename)
 {
-    if (filename.empty())
+    std::string sessionfile = filename;
+
+    // given an empty filename, try to revert to recent file according to user settings
+    if (filename.empty() && Settings::application.recentSessions.load_at_start
+        && Settings::application.recentSessions.front_is_valid
+        && Settings::application.recentSessions.filenames.size() > 0) {
+        sessionfile = Settings::application.recentSessions.filenames.front();
+        setView((View::Mode) Settings::application.current_view);
+    }
+
+    // ignore invalid file name
+    if (!SystemToolkit::file_exists(sessionfile)) {
+        if (!sessionfile.empty())
+            Log::Notify("Invalid filename '%s'", sessionfile.c_str());
         return;
+    }
 
 #ifdef THREADED_LOADING
     // load only one at a time
@@ -1308,7 +1312,7 @@ void Mixer::load(const std::string& filename)
         busy_ = true;
         // Start async thread for loading the session
         // Will be obtained in the future in update()
-        sessionLoaders_.emplace_back( std::async(std::launch::async, Session::load, filename, 0) );
+        sessionLoaders_.emplace_back( std::async(std::launch::async, Session::load, sessionfile, 0) );
     }
 #else
     set( Session::load(filename) );
@@ -1548,9 +1552,14 @@ void Mixer::swap()
     Action::manager().init();
 
     // notification
-    uint N = session_->size();
-    std::string numsource = ( N>0 ? std::to_string(N) : "no" ) + " source" + (N>1 ? "s" : "");
-    Log::Notify("Session '%s' loaded with %s.", session_->filename().c_str(), numsource.c_str());
+    if (session_->filename().empty())
+        Log::Info("New session ready.");
+    else {
+        uint N = session_->size();
+        std::string numsource = ( N>0 ? std::to_string(N) : "no" ) + " source" + (N>1 ? "s" : "");
+        Log::Notify("Session '%s' loaded with %s.", session_->filename().c_str(), numsource.c_str());
+    }
+
 }
 
 void Mixer::close(bool smooth)
@@ -1568,6 +1577,9 @@ void Mixer::close(bool smooth)
     }
     else
         clear();
+
+    // closing session : filename at font in history should not be reloaded
+    Settings::application.recentSessions.front_is_valid = false;
 }
 
 void Mixer::clear()
@@ -1584,9 +1596,6 @@ void Mixer::clear()
 
     // need to deeply update view to apply eventual changes
     ++View::need_deep_update_;
-
-    Settings::application.recentSessions.front_is_valid = false;
-    Log::Info("New session ready.");
 }
 
 void Mixer::set(Session *s)

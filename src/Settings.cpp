@@ -83,10 +83,11 @@ void Settings::Save(uint64_t runtime)
 #ifdef VIMIX_VERSION_MAJOR
     pRoot->SetAttribute("major", VIMIX_VERSION_MAJOR);
     pRoot->SetAttribute("minor", VIMIX_VERSION_MINOR);
+    pRoot->SetAttribute("patch", VIMIX_VERSION_PATCH);
 #endif
+
     // runtime
-    if (runtime>0)
-        pRoot->SetAttribute("runtime", runtime + application.total_runtime);
+    pRoot->SetAttribute("runtime", runtime + application.total_runtime);
 
     string comment = "Settings for " + application.name;
     XMLComment *pComment = xmlDoc.NewComment(comment.c_str());
@@ -414,242 +415,278 @@ void Settings::Load()
     else if (XMLResultError(eResult))
         return;
 
-
     // first element should be called by the application name
     XMLElement *pRoot = xmlDoc.FirstChildElement(application.name.c_str());
     if (pRoot == nullptr)
         return;
-    // runtime
-    pRoot->QueryUnsigned64Attribute("runtime", &application.total_runtime);
 
-    // General application preferences
-    XMLElement * applicationNode = pRoot->FirstChildElement("Application");
-    if (applicationNode != nullptr) {
-        applicationNode->QueryFloatAttribute("scale", &application.scale);
-        applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
-        applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
-        applicationNode->QueryBoolAttribute("save_snapshot", &application.save_version_snapshot);
-        applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
-        applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
-        applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
-        applicationNode->QueryBoolAttribute("pannel_always_visible", &application.pannel_always_visible);
-        applicationNode->QueryIntAttribute("pannel_main_mode", &application.pannel_main_mode);
-        applicationNode->QueryIntAttribute("pannel_playlist_mode", &application.pannel_playlist_mode);
-        applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_current_session_mode);
-        applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
-        applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
-        applicationNode->QueryIntAttribute("loopback_camera", &application.loopback_camera);
-        applicationNode->QueryBoolAttribute("accept_audio", &application.accept_audio);
+    // version
+    int major, minor, patch;
+    pRoot->QueryIntAttribute("major", &major);
+    pRoot->QueryIntAttribute("minor", &minor);
+    pRoot->QueryIntAttribute("patch", &patch);
+    bool version_same = (major == VIMIX_VERSION_MAJOR)
+                        && (minor == VIMIX_VERSION_MINOR)
+                        && (patch == VIMIX_VERSION_PATCH);
 
-        // text attributes
-        const char *tmpstr = applicationNode->Attribute("shm_socket_path");
-        if (tmpstr)
-            application.shm_socket_path = std::string(tmpstr);
-    }
+    //
+    // Restore settings only if version is same
+    //
+    if (version_same) {
 
-    // Widgets
-    XMLElement * widgetsNode = pRoot->FirstChildElement("Widgets");
-    if (widgetsNode != nullptr) {
-        widgetsNode->QueryBoolAttribute("preview", &application.widget.preview);
-        widgetsNode->QueryIntAttribute("preview_view", &application.widget.preview_view);
-        widgetsNode->QueryBoolAttribute("timer", &application.widget.timer);
-        widgetsNode->QueryIntAttribute("timer_view", &application.widget.timer_view);
-        widgetsNode->QueryBoolAttribute("inputs", &application.widget.inputs);
-        widgetsNode->QueryIntAttribute("inputs_view", &application.widget.inputs_view);
-        widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
-        widgetsNode->QueryIntAttribute("media_player_view", &application.widget.media_player_view);
-        widgetsNode->QueryBoolAttribute("timeline_editmode", &application.widget.media_player_timeline_editmode);
-        widgetsNode->QueryFloatAttribute("media_player_slider", &application.widget.media_player_slider);
-        widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
-        widgetsNode->QueryIntAttribute("shader_editor_view", &application.widget.shader_editor_view);
-        widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);
-        widgetsNode->QueryIntAttribute("stats_mode", &application.widget.stats_mode);
-        widgetsNode->QueryIntAttribute("stats_corner", &application.widget.stats_corner);
-        widgetsNode->QueryBoolAttribute("logs", &application.widget.logs);
-        widgetsNode->QueryBoolAttribute("toolbox", &application.widget.toolbox);
-        widgetsNode->QueryBoolAttribute("source_toolbar", &application.widget.source_toolbar);
-        widgetsNode->QueryIntAttribute("source_toolbar_mode", &application.widget.source_toolbar_mode);
-        widgetsNode->QueryIntAttribute("source_toolbar_border", &application.widget.source_toolbar_border);
-    }
+        // runtime
+        pRoot->QueryUnsigned64Attribute("runtime", &application.total_runtime);
 
-    // Render
-    XMLElement * rendernode = pRoot->FirstChildElement("Render");
-    if (rendernode != nullptr) {
-        rendernode->QueryIntAttribute("vsync", &application.render.vsync);
-        rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
-        rendernode->QueryBoolAttribute("gpu_decoding", &application.render.gpu_decoding);
-        rendernode->QueryIntAttribute("ratio", &application.render.ratio);
-        rendernode->QueryIntAttribute("res", &application.render.res);
-        rendernode->QueryIntAttribute("custom_width", &application.render.custom_width);
-        rendernode->QueryIntAttribute("custom_height", &application.render.custom_height);
-    }
+        // General application preferences
+        XMLElement * applicationNode = pRoot->FirstChildElement("Application");
+        if (applicationNode != nullptr) {
+            applicationNode->QueryFloatAttribute("scale", &application.scale);
+            applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
+            applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
+            applicationNode->QueryBoolAttribute("save_snapshot", &application.save_version_snapshot);
+            applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
+            applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
+            applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
+            applicationNode->QueryBoolAttribute("pannel_always_visible", &application.pannel_always_visible);
+            applicationNode->QueryIntAttribute("pannel_main_mode", &application.pannel_main_mode);
+            applicationNode->QueryIntAttribute("pannel_playlist_mode", &application.pannel_playlist_mode);
+            applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_current_session_mode);
+            applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
+            applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
+            applicationNode->QueryIntAttribute("loopback_camera", &application.loopback_camera);
+            applicationNode->QueryBoolAttribute("accept_audio", &application.accept_audio);
 
-    // Record
-    XMLElement * recordnode = pRoot->FirstChildElement("Record");
-    if (recordnode != nullptr) {
-        recordnode->QueryIntAttribute("profile", &application.record.profile);
-        recordnode->QueryUnsignedAttribute("timeout", &application.record.timeout);
-        recordnode->QueryIntAttribute("delay", &application.record.delay);
-        recordnode->QueryIntAttribute("resolution_mode", &application.record.resolution_mode);
-        recordnode->QueryIntAttribute("framerate_mode", &application.record.framerate_mode);
-        recordnode->QueryIntAttribute("buffering_mode", &application.record.buffering_mode);
-        recordnode->QueryIntAttribute("priority_mode", &application.record.priority_mode);
-        recordnode->QueryIntAttribute("naming_mode", &application.record.naming_mode);
+            // text attributes
+            const char *tmpstr = applicationNode->Attribute("shm_socket_path");
+            if (tmpstr)
+                application.shm_socket_path = std::string(tmpstr);
+        }
 
-        const char *path_ = recordnode->Attribute("path");
-        if (path_)
-            application.record.path = std::string(path_);
-        else
-            application.record.path = SystemToolkit::home_path();
+        // Widgets
+        XMLElement * widgetsNode = pRoot->FirstChildElement("Widgets");
+        if (widgetsNode != nullptr) {
+            widgetsNode->QueryBoolAttribute("preview", &application.widget.preview);
+            widgetsNode->QueryIntAttribute("preview_view", &application.widget.preview_view);
+            widgetsNode->QueryBoolAttribute("timer", &application.widget.timer);
+            widgetsNode->QueryIntAttribute("timer_view", &application.widget.timer_view);
+            widgetsNode->QueryBoolAttribute("inputs", &application.widget.inputs);
+            widgetsNode->QueryIntAttribute("inputs_view", &application.widget.inputs_view);
+            widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
+            widgetsNode->QueryIntAttribute("media_player_view", &application.widget.media_player_view);
+            widgetsNode->QueryBoolAttribute("timeline_editmode", &application.widget.media_player_timeline_editmode);
+            widgetsNode->QueryFloatAttribute("media_player_slider", &application.widget.media_player_slider);
+            widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
+            widgetsNode->QueryIntAttribute("shader_editor_view", &application.widget.shader_editor_view);
+            widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);
+            widgetsNode->QueryIntAttribute("stats_mode", &application.widget.stats_mode);
+            widgetsNode->QueryIntAttribute("stats_corner", &application.widget.stats_corner);
+            widgetsNode->QueryBoolAttribute("logs", &application.widget.logs);
+            widgetsNode->QueryBoolAttribute("toolbox", &application.widget.toolbox);
+            widgetsNode->QueryBoolAttribute("source_toolbar", &application.widget.source_toolbar);
+            widgetsNode->QueryIntAttribute("source_toolbar_mode", &application.widget.source_toolbar_mode);
+            widgetsNode->QueryIntAttribute("source_toolbar_border", &application.widget.source_toolbar_border);
+        }
 
-        const char *dev_ = recordnode->Attribute("audio_device");
-        if (dev_)
-            application.record.audio_device = std::string(dev_);
-        else
-            application.record.audio_device = "";
-    }
+        // Render
+        XMLElement * rendernode = pRoot->FirstChildElement("Render");
+        if (rendernode != nullptr) {
+            rendernode->QueryIntAttribute("vsync", &application.render.vsync);
+            rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
+            rendernode->QueryBoolAttribute("gpu_decoding", &application.render.gpu_decoding);
+            rendernode->QueryIntAttribute("ratio", &application.render.ratio);
+            rendernode->QueryIntAttribute("res", &application.render.res);
+            rendernode->QueryIntAttribute("custom_width", &application.render.custom_width);
+            rendernode->QueryIntAttribute("custom_height", &application.render.custom_height);
+        }
 
-    // Source
-    XMLElement * sourceconfnode = pRoot->FirstChildElement("Source");
-    if (sourceconfnode != nullptr) {
-        sourceconfnode->QueryIntAttribute("new_type", &application.source.new_type);
-        sourceconfnode->QueryIntAttribute("ratio", &application.source.ratio);
-        sourceconfnode->QueryIntAttribute("res", &application.source.res);
+        // Record
+        XMLElement * recordnode = pRoot->FirstChildElement("Record");
+        if (recordnode != nullptr) {
+            recordnode->QueryIntAttribute("profile", &application.record.profile);
+            recordnode->QueryUnsignedAttribute("timeout", &application.record.timeout);
+            recordnode->QueryIntAttribute("delay", &application.record.delay);
+            recordnode->QueryIntAttribute("resolution_mode", &application.record.resolution_mode);
+            recordnode->QueryIntAttribute("framerate_mode", &application.record.framerate_mode);
+            recordnode->QueryIntAttribute("buffering_mode", &application.record.buffering_mode);
+            recordnode->QueryIntAttribute("priority_mode", &application.record.priority_mode);
+            recordnode->QueryIntAttribute("naming_mode", &application.record.naming_mode);
 
-        sourceconfnode->QueryIntAttribute("capture_naming", &application.source.capture_naming);
-        const char *path_ = sourceconfnode->Attribute("capture_path");
-        if (path_)
-            application.source.capture_path = std::string(path_);
-        else
-            application.source.capture_path = SystemToolkit::home_path();
-        sourceconfnode->QueryFloatAttribute("inspector_zoom", &application.source.inspector_zoom);
-    }
+            const char *path_ = recordnode->Attribute("path");
+            if (path_)
+                application.record.path = std::string(path_);
+            else
+                application.record.path = SystemToolkit::home_path();
 
-    // Transition
-    XMLElement * transitionnode = pRoot->FirstChildElement("Transition");
-    if (transitionnode != nullptr) {
-        transitionnode->QueryBoolAttribute("cross_fade", &application.transition.cross_fade);
-        transitionnode->QueryFloatAttribute("duration", &application.transition.duration);
-        transitionnode->QueryIntAttribute("profile", &application.transition.profile);
-    }
+            const char *dev_ = recordnode->Attribute("audio_device");
+            if (dev_)
+                application.record.audio_device = std::string(dev_);
+            else
+                application.record.audio_device = "";
+        }
 
-    // Windows
-    {
-        XMLElement * pElement = pRoot->FirstChildElement("OutputWindows");
-        if (pElement)
+        // Source
+        XMLElement * sourceconfnode = pRoot->FirstChildElement("Source");
+        if (sourceconfnode != nullptr) {
+            sourceconfnode->QueryIntAttribute("new_type", &application.source.new_type);
+            sourceconfnode->QueryIntAttribute("ratio", &application.source.ratio);
+            sourceconfnode->QueryIntAttribute("res", &application.source.res);
+
+            sourceconfnode->QueryIntAttribute("capture_naming", &application.source.capture_naming);
+            const char *path_ = sourceconfnode->Attribute("capture_path");
+            if (path_)
+                application.source.capture_path = std::string(path_);
+            else
+                application.source.capture_path = SystemToolkit::home_path();
+            sourceconfnode->QueryFloatAttribute("inspector_zoom", &application.source.inspector_zoom);
+        }
+
+        // Transition
+        XMLElement * transitionnode = pRoot->FirstChildElement("Transition");
+        if (transitionnode != nullptr) {
+            transitionnode->QueryBoolAttribute("cross_fade", &application.transition.cross_fade);
+            transitionnode->QueryFloatAttribute("duration", &application.transition.duration);
+            transitionnode->QueryIntAttribute("profile", &application.transition.profile);
+        }
+
+        // Windows
         {
-            pElement->QueryIntAttribute("num_output_windows", &application.num_output_windows);
-
-            XMLElement* windowNode = pElement->FirstChildElement("Window");
-            for( ; windowNode ; windowNode=windowNode->NextSiblingElement())
+            XMLElement * pElement = pRoot->FirstChildElement("OutputWindows");
+            if (pElement)
             {
-                Settings::WindowConfig w;
-                windowNode->QueryIntAttribute("x", &w.x); // If this fails, original value is left as-is
-                windowNode->QueryIntAttribute("y", &w.y);
-                windowNode->QueryIntAttribute("w", &w.w);
-                windowNode->QueryIntAttribute("h", &w.h);
-                windowNode->QueryBoolAttribute("f", &w.fullscreen);
-                windowNode->QueryBoolAttribute("s", &w.custom);
-                windowNode->QueryBoolAttribute("d", &w.decorated);
-                const char *text = windowNode->Attribute("m");
-                if (text)
-                    w.monitor = std::string(text);
+                pElement->QueryIntAttribute("num_output_windows", &application.num_output_windows);
 
-                int i = 0;
-                windowNode->QueryIntAttribute("id", &i);
-                if (i > 0)
-                    w.name = "Output " + std::to_string(i) + " - " APP_NAME;
-                else
-                    w.name = APP_TITLE;
-                // vec4 values for white balance correction
-                XMLElement *tmp = windowNode->FirstChildElement("whitebalance");
-                if (tmp)
-                    tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec4"), w.whitebalance);
-                // mat4 values for custom fit distortion
-                w.nodes = glm::zero<glm::mat4>();
-                tmp = windowNode->FirstChildElement("nodes");
-                if (tmp)
-                    tinyxml2::XMLElementToGLM( tmp->FirstChildElement("mat4"), w.nodes);
-                else {
-                    // backward compatibility
-                    glm::vec3 scale, translation;
-                    tmp = windowNode->FirstChildElement("scale");
-                    if (tmp) {
-                        tinyxml2::XMLElementToGLM(tmp->FirstChildElement("vec3"), scale);
-                        tmp = windowNode->FirstChildElement("translation");
+                XMLElement* windowNode = pElement->FirstChildElement("Window");
+                for( ; windowNode ; windowNode=windowNode->NextSiblingElement())
+                {
+                    Settings::WindowConfig w;
+                    windowNode->QueryIntAttribute("x", &w.x); // If this fails, original value is left as-is
+                    windowNode->QueryIntAttribute("y", &w.y);
+                    windowNode->QueryIntAttribute("w", &w.w);
+                    windowNode->QueryIntAttribute("h", &w.h);
+                    windowNode->QueryBoolAttribute("f", &w.fullscreen);
+                    windowNode->QueryBoolAttribute("s", &w.custom);
+                    windowNode->QueryBoolAttribute("d", &w.decorated);
+                    const char *text = windowNode->Attribute("m");
+                    if (text)
+                        w.monitor = std::string(text);
+
+                    int i = 0;
+                    windowNode->QueryIntAttribute("id", &i);
+                    if (i > 0)
+                        w.name = "Output " + std::to_string(i) + " - " APP_NAME;
+                    else
+                        w.name = APP_TITLE;
+                    // vec4 values for white balance correction
+                    XMLElement *tmp = windowNode->FirstChildElement("whitebalance");
+                    if (tmp)
+                        tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec4"), w.whitebalance);
+                    // mat4 values for custom fit distortion
+                    w.nodes = glm::zero<glm::mat4>();
+                    tmp = windowNode->FirstChildElement("nodes");
+                    if (tmp)
+                        tinyxml2::XMLElementToGLM( tmp->FirstChildElement("mat4"), w.nodes);
+                    else {
+                        // backward compatibility
+                        glm::vec3 scale, translation;
+                        tmp = windowNode->FirstChildElement("scale");
                         if (tmp) {
-                            tinyxml2::XMLElementToGLM(tmp->FirstChildElement("vec3"), translation);
-                            // calculate nodes with scale and translation
-                            w.nodes[0].x =  1.f - ( 1.f * scale.x - translation.x );
-                            w.nodes[0].y =  1.f - ( 1.f * scale.y - translation.y );
-                            w.nodes[1].x =  1.f - ( 1.f * scale.x - translation.x );
-                            w.nodes[1].y = -1.f - (-1.f * scale.y - translation.y );
-                            w.nodes[2].x = -1.f - (-1.f * scale.x - translation.x );
-                            w.nodes[2].y =  1.f - ( 1.f * scale.y - translation.y );
-                            w.nodes[3].x = -1.f - (-1.f * scale.x - translation.x );
-                            w.nodes[3].y = -1.f - (-1.f * scale.y - translation.y );
+                            tinyxml2::XMLElementToGLM(tmp->FirstChildElement("vec3"), scale);
+                            tmp = windowNode->FirstChildElement("translation");
+                            if (tmp) {
+                                tinyxml2::XMLElementToGLM(tmp->FirstChildElement("vec3"), translation);
+                                // calculate nodes with scale and translation
+                                w.nodes[0].x =  1.f - ( 1.f * scale.x - translation.x );
+                                w.nodes[0].y =  1.f - ( 1.f * scale.y - translation.y );
+                                w.nodes[1].x =  1.f - ( 1.f * scale.x - translation.x );
+                                w.nodes[1].y = -1.f - (-1.f * scale.y - translation.y );
+                                w.nodes[2].x = -1.f - (-1.f * scale.x - translation.x );
+                                w.nodes[2].y =  1.f - ( 1.f * scale.y - translation.y );
+                                w.nodes[3].x = -1.f - (-1.f * scale.x - translation.x );
+                                w.nodes[3].y = -1.f - (-1.f * scale.y - translation.y );
+                            }
                         }
                     }
+                    application.windows[i] = w;
                 }
-
-                application.windows[i] = w;
             }
         }
-	}
 
-    // Brush
-    XMLElement * brushnode = pRoot->FirstChildElement("Brush");
-    if (brushnode != nullptr) {
-        tinyxml2::XMLElementToGLM( brushnode->FirstChildElement("vec3"), application.brush);
-    }
-
-    // Pointer
-    XMLElement * pointernode = pRoot->FirstChildElement("MousePointer");
-    if (pointernode != nullptr) {
-        pointernode->QueryIntAttribute("mode", &application.mouse_pointer);
-        pointernode->QueryBoolAttribute("lock", &application.mouse_pointer_lock);
-        pointernode->QueryBoolAttribute("proportional_grid", &application.proportional_grid);
-
-        XMLElement* strengthNode = pointernode->FirstChildElement("vec2");
-        for( ; strengthNode ; strengthNode = strengthNode->NextSiblingElement())
-        {
-            glm::vec2 val;
-            tinyxml2::XMLElementToGLM( strengthNode, val);
-            application.mouse_pointer_strength[ (size_t) ceil(val.x) ] = val.y;
+        // Brush
+        XMLElement * brushnode = pRoot->FirstChildElement("Brush");
+        if (brushnode != nullptr) {
+            tinyxml2::XMLElementToGLM( brushnode->FirstChildElement("vec3"), application.brush);
         }
-    }
 
-    // bloc views
-    {
-        XMLElement * pElement = pRoot->FirstChildElement("Views");
-        if (pElement)
-        {
-            application.views.clear(); // trash existing list
-            pElement->QueryIntAttribute("current", &application.current_view);
-            pElement->QueryIntAttribute("workspace", &application.current_workspace);
+        // Pointer
+        XMLElement * pointernode = pRoot->FirstChildElement("MousePointer");
+        if (pointernode != nullptr) {
+            pointernode->QueryIntAttribute("mode", &application.mouse_pointer);
+            pointernode->QueryBoolAttribute("lock", &application.mouse_pointer_lock);
+            pointernode->QueryBoolAttribute("proportional_grid", &application.proportional_grid);
 
-            XMLElement* viewNode = pElement->FirstChildElement("View");
-            for( ; viewNode ; viewNode=viewNode->NextSiblingElement())
+            XMLElement* strengthNode = pointernode->FirstChildElement("vec2");
+            for( ; strengthNode ; strengthNode = strengthNode->NextSiblingElement())
             {
-                int id = 0;
-                viewNode->QueryIntAttribute("id", &id);
-                application.views[id].name = viewNode->Attribute("name");
-                viewNode->QueryBoolAttribute("ignore_mix", &application.views[id].ignore_mix);
-
-                XMLElement* scaleNode = viewNode->FirstChildElement("default_scale");
-                if (scaleNode)
-                    tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"),
-                                           application.views[id].default_scale);
-
-                XMLElement* translationNode = viewNode->FirstChildElement("default_translation");
-                if (translationNode)
-                    tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"),
-                                           application.views[id].default_translation);
-
+                glm::vec2 val;
+                tinyxml2::XMLElementToGLM( strengthNode, val);
+                application.mouse_pointer_strength[ (size_t) ceil(val.x) ] = val.y;
             }
         }
 
+        // bloc views
+        {
+            XMLElement * pElement = pRoot->FirstChildElement("Views");
+            if (pElement)
+            {
+                application.views.clear(); // trash existing list
+                pElement->QueryIntAttribute("current", &application.current_view);
+                pElement->QueryIntAttribute("workspace", &application.current_workspace);
+
+                XMLElement* viewNode = pElement->FirstChildElement("View");
+                for( ; viewNode ; viewNode=viewNode->NextSiblingElement())
+                {
+                    int id = 0;
+                    viewNode->QueryIntAttribute("id", &id);
+                    application.views[id].name = viewNode->Attribute("name");
+                    viewNode->QueryBoolAttribute("ignore_mix", &application.views[id].ignore_mix);
+
+                    XMLElement* scaleNode = viewNode->FirstChildElement("default_scale");
+                    if (scaleNode)
+                        tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"),
+                                                  application.views[id].default_scale);
+
+                    XMLElement* translationNode = viewNode->FirstChildElement("default_translation");
+                    if (translationNode)
+                        tinyxml2::XMLElementToGLM( translationNode->FirstChildElement("vec3"),
+                                                  application.views[id].default_translation);
+                }
+            }
+        }
+
+        // Mapping
+        XMLElement * mappingconfnode = pRoot->FirstChildElement("Mapping");
+        if (mappingconfnode != nullptr) {
+            mappingconfnode->QueryUnsigned64Attribute("mode", &application.mapping.mode);
+            mappingconfnode->QueryUnsignedAttribute("current", &application.mapping.current);
+            mappingconfnode->QueryBoolAttribute("disabled", &application.mapping.disabled);
+        }
+
+        // Timer Metronome
+        XMLElement * timerconfnode = pRoot->FirstChildElement("Timer");
+        if (timerconfnode != nullptr) {
+            timerconfnode->QueryUnsigned64Attribute("mode", &application.timer.mode);
+            timerconfnode->QueryBoolAttribute("link_enabled", &application.timer.link_enabled);
+            timerconfnode->QueryDoubleAttribute("link_tempo", &application.timer.link_tempo);
+            timerconfnode->QueryDoubleAttribute("link_quantum", &application.timer.link_quantum);
+            timerconfnode->QueryBoolAttribute("link_start_stop_sync", &application.timer.link_start_stop_sync);
+            timerconfnode->QueryUnsigned64Attribute("stopwatch_duration", &application.timer.stopwatch_duration);
+        }
+
     }
+
+    //
+    // Restore history and user entries
+    //
 
     // bloc history of recent
     {
@@ -702,27 +739,8 @@ void Settings::Load()
         }
     }
 
-    // Timer Metronome
-    XMLElement * timerconfnode = pRoot->FirstChildElement("Timer");
-    if (timerconfnode != nullptr) {
-        timerconfnode->QueryUnsigned64Attribute("mode", &application.timer.mode);
-        timerconfnode->QueryBoolAttribute("link_enabled", &application.timer.link_enabled);
-        timerconfnode->QueryDoubleAttribute("link_tempo", &application.timer.link_tempo);
-        timerconfnode->QueryDoubleAttribute("link_quantum", &application.timer.link_quantum);
-        timerconfnode->QueryBoolAttribute("link_start_stop_sync", &application.timer.link_start_stop_sync);
-        timerconfnode->QueryUnsigned64Attribute("stopwatch_duration", &application.timer.stopwatch_duration);
-    }
-
-    // Mapping
-    XMLElement * mappingconfnode = pRoot->FirstChildElement("Mapping");
-    if (mappingconfnode != nullptr) {
-        mappingconfnode->QueryUnsigned64Attribute("mode", &application.mapping.mode);
-        mappingconfnode->QueryUnsignedAttribute("current", &application.mapping.current);
-        mappingconfnode->QueryBoolAttribute("disabled", &application.mapping.disabled);
-    }
-
     // bloc Controller
-    XMLElement *controlconfnode = pRoot->FirstChildElement("Control");
+    XMLElement * controlconfnode = pRoot->FirstChildElement("Control");
     if (controlconfnode != nullptr) {
         controlconfnode->QueryIntAttribute("osc_port_receive", &application.control.osc_port_receive);
         controlconfnode->QueryIntAttribute("osc_port_send", &application.control.osc_port_send);

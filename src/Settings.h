@@ -349,6 +349,7 @@ struct Application
     InputMappingConfig mapping;
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
+        total_runtime = 0;
         scale = 1.f;
         accent_color = 0;
         smooth_transition = true;

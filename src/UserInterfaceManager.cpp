@@ -223,6 +223,9 @@ bool UserInterface::Init()
     // init tooltips
     ImGuiToolkit::setToolTipsEnabled(Settings::application.show_tooptips);
 
+    // show about dialog on first run
+    show_vimix_about = (Settings::application.total_runtime < 1);
+
     return true;
 }
 
@@ -2084,7 +2087,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
 
 void UserInterface::RenderAbout(bool* p_open)
 {
-    ImGui::SetNextWindowPos(ImVec2(1100, 20), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(600, 40), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("About " APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
@@ -2092,15 +2095,13 @@ void UserInterface::RenderAbout(bool* p_open)
     }
 
     ImVec2 top = ImGui::GetCursorScreenPos();
-#ifdef VIMIX_VERSION_MAJOR
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+#ifdef VIMIX_VERSION_MAJOR
     ImGui::Text("%s %d.%d.%d", APP_NAME, VIMIX_VERSION_MAJOR, VIMIX_VERSION_MINOR, VIMIX_VERSION_PATCH);
-    ImGui::PopFont();
 #else
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
     ImGui::Text("%s", APP_NAME);
-    ImGui::PopFont();
 #endif
+    ImGui::PopFont();
 
 #ifdef VIMIX_GIT
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);

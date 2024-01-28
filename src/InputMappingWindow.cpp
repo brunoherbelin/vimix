@@ -671,7 +671,7 @@ void InputMappingWindow::Render()
     const float  fixed_height = keyLetterItemSize.y * 5.f + g.Style.WindowBorderSize + g.FontSize + g.Style.FramePadding.y * 2.0f + keyItemSpacing.y;
     const float  inputarea_width = keyLetterItemSize.x * 5.f;
 
-    ImGui::SetNextWindowPos(ImVec2(600, 400), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(530, 600), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(1000, fixed_height), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(900, fixed_height), ImVec2(FLT_MAX, fixed_height));
 
