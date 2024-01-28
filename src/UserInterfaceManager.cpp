@@ -830,6 +830,32 @@ void UserInterface::selectOpenFilename()
     navigator.discardPannel();
 }
 
+void Spinner(const ImU32 &color)
+{
+    ImGuiContext &g = *GImGui;
+
+    const ImVec2 pos = ImGui::GetIO().MousePos;
+    const float radius = g.FontSize;
+    const ImVec2 size(radius*2.f, radius*2.f);
+
+    // Render
+    g.ForegroundDrawList.PathClear();
+
+    const int num_segments = 30;
+    const int start = abs(ImSin(g.Time * 1.8f) * (num_segments - 5));
+    const float a_min = IM_PI * 2.0f * ((float) start) / (float) num_segments;
+    const float a_max = IM_PI * 2.0f * ((float) num_segments - 3) / (float) num_segments;
+    const ImVec2 centre = ImVec2(pos.x + radius, pos.y + radius);
+
+    for (int i = 0; i < num_segments; i++) {
+        const float a = a_min + ((float) i / (float) num_segments) * (a_max - a_min);
+        g.ForegroundDrawList.PathLineTo(ImVec2(centre.x + ImCos(a + g.Time * 8) * radius,
+                                            centre.y + ImSin(a + g.Time * 8) * radius));
+    }
+
+    g.ForegroundDrawList.PathStroke(color, false, radius * 0.3f);
+}
+
 void UserInterface::NewFrame()
 {
     // Start the Dear ImGui frame
@@ -863,12 +889,17 @@ void UserInterface::NewFrame()
 
     // overlay to ensure file color dialog is closed after use
     if (DialogToolkit::ColorPickerDialog::busy()){
-        if (!ImGui::IsPopupOpen("##Color"))
-            ImGui::OpenPopup("##Color");
-        if (ImGui::BeginPopup("##Color")) {
+        if (!ImGui::IsPopupOpen("##ColorBusy"))
+            ImGui::OpenPopup("##ColorBusy");
+        if (ImGui::BeginPopup("##ColorBusy")) {
             ImGui::Text("Validate color dialog to return to vimix.");
             ImGui::EndPopup();
         }
+    }
+
+    // overlay foreground busy animation
+    if (Mixer::manager().busy() || !Mixer::manager().session()->ready()) {
+        Spinner(ImGui::GetColorU32(ImGuiCol_TabActive));
     }
 
     // popup to inform to save before close
