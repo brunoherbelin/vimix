@@ -3076,7 +3076,12 @@ void Navigator::Render()
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
                     std::string label = s->name().size() < 16 ? s->name()
                                                               : s->name().substr(0, 15) + "..";
-                    tooltip = { label, "#" + std::to_string(index), s };
+                    // tooltip with text only if currently selected
+                    if (selected_button[index])
+                        tooltip = { label, "#" + std::to_string(index), nullptr };
+                    // tooltip with preview if not currently selected
+                    else
+                        tooltip = { label, "#" + std::to_string(index), s };
                 }
                 if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
                 {
@@ -3905,12 +3910,12 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", "Select", ImGuiComboFlags_HeightLarge))
             {
-                if ( ImGui::Selectable("Custom gstreamer " ICON_FA_CODE) ) {
+                if ( ImGui::Selectable("Custom gstreamer   " ICON_FA_TERMINAL) ) {
                     update_new_source = true;
                     generated_type = 0;
                     pattern_type = -1;
                 }
-                if ( ImGui::Selectable("Text " ICON_FA_CODE) ) {
+                if ( ImGui::Selectable("Text   " ICON_FA_TERMINAL) ) {
                     update_new_source = true;
                     generated_type = 1;
                     pattern_type = -1;
@@ -4158,16 +4163,16 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             // Indication
             ImGui::SameLine();
             ImVec2 pos = ImGui::GetCursorPos();
-            if (ImGuiToolkit::IconButton(5,15,"Reload list"))
-                Device::manager().reload();
-            ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Create a source capturing video streams from connected devices or machines;\n"
                                       ICON_FA_CARET_RIGHT " vimix display loopback\n"
                                       ICON_FA_CARET_RIGHT " screen capture\n"
                                       ICON_FA_CARET_RIGHT " broadcasted with SRT over network.\n"
                                       ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                       ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network.");
-            ImGui::Dummy(ImVec2(1, 1));
+            ImGui::SameLine();
+            if (ImGuiToolkit::IconButton(5, 15, "Reload list"))
+                Device::manager().reload();
+            ImGui::Spacing();
 
             if (custom_connected) {
 
@@ -4178,7 +4183,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 static std::regex ipv4("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])");
                 static std::regex numport("([0-9]){4,6}");
 
-                ImGui::Spacing();
+                ImGui::NewLine();
                 ImGuiToolkit::Icon(ICON_SOURCE_SRT);
                 ImGui::SameLine();
                 ImGui::Text("SRT broadcast");
@@ -4254,7 +4259,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 
             if (custom_screencapture) {
 
-                ImGui::Spacing();
+                ImGui::NewLine();
                 ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN);
                 ImGui::SameLine();
                 ImGui::Text("Screen Capture");
@@ -5690,7 +5695,7 @@ void Navigator::RenderMainPannelSettings()
     bool change = false;
     // hardware support deserves more explanation
     ImGuiToolkit::Indication("If enabled, tries to find a platform adapted hardware-accelerated "
-                             "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);
+                             "driver to decode (read) or encode (record) videos.", gpu ? 13 : 14, 2);
     ImGui::SameLine(0);
     if (Settings::application.render.gpu_decoding_available)
         change |= ImGuiToolkit::ButtonSwitch( "Hardware en/decoding", &gpu);
@@ -5699,7 +5704,7 @@ void Navigator::RenderMainPannelSettings()
 
     // audio support deserves more explanation
     ImGuiToolkit::Indication("If enabled, tries to find audio in openned videos "
-                             "and allows recording audio.", ICON_FA_VOLUME_OFF);
+                             "and allows recording audio.", audio ? ICON_FA_VOLUME_UP : ICON_FA_VOLUME_MUTE);
     ImGui::SameLine(0);
     change |= ImGuiToolkit::ButtonSwitch( "Audio (experimental)", &audio);
 
