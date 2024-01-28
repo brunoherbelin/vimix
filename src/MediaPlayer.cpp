@@ -451,8 +451,7 @@ void MediaPlayer::execute_open()
     // set playbin sink
     g_object_set ( G_OBJECT (pipeline_), "video-sink", sink, NULL);
 
-    // done with ref to sink
-    gst_object_unref (sink);
+    // done with ref to caps
     gst_caps_unref (caps);
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
@@ -708,15 +707,12 @@ void MediaPlayer::Frame::unmap()
 
 void delayed_terminate( GstElement *p )
 {
-    GstObject *__pipeline = (GstObject *) gst_object_ref(p);
-
     // end pipeline
-    gst_element_set_state ( GST_ELEMENT(__pipeline), GST_STATE_NULL);
+    gst_element_set_state ( p, GST_STATE_NULL);
 
     // unref to free pipeline
-    gst_object_unref ( __pipeline );
+    gst_object_unref ( p );
 }
-
 
 void MediaPlayer::close()
 {
@@ -738,11 +734,12 @@ void MediaPlayer::close()
     force_update_ = false;
     rate_ = 1.0;
     rate_change_ = RATE_CHANGE_NONE;
+    position_ = GST_CLOCK_TIME_NONE;
 
     // clean up GST
     if (pipeline_ != nullptr) {
 
-        // end pipeline asynchronously // TODO more stress test?
+        // end pipeline asynchronously
         std::thread(delayed_terminate, pipeline_).detach();
 
         pipeline_ = nullptr;
@@ -752,6 +749,7 @@ void MediaPlayer::close()
     for(guint i = 0; i < N_VFRAME; i++) {
         frame_[i].access.lock();
         frame_[i].unmap();
+        frame_[i].status = INVALID;
         frame_[i].access.unlock();
     }
     write_index_ = 0;
@@ -1210,7 +1208,7 @@ void MediaPlayer::update()
                 }
                 else {
                     Log::Warning("'%s' : %s", uri().c_str(), media_.log.c_str());
-                    Log::Warning("MediaPlayer %s Loading failed.", std::to_string(id_).c_str());
+                    Log::Notify("MediaPlayer %s Loading failed.", std::to_string(id_).c_str());
                     failed_ = true;
                 }
             }
@@ -1309,7 +1307,7 @@ void MediaPlayer::update()
     }
 
     // manage loop mode
-    if (need_loop)
+    if (need_loop && desired_state_ == GST_STATE_PLAYING)  // avoid repeated call
         execute_loop_command();
 
     force_update_ = false;
@@ -1325,8 +1323,7 @@ void MediaPlayer::execute_loop_command()
         execute_seek_command();
     }
     else { //LOOP_NONE
-        if (desired_state_ == GST_STATE_PLAYING) // avoid repeated call
-            play(false);
+        play(false);
     }
 }
 
@@ -1335,25 +1332,24 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     if ( pipeline_ == nullptr || !media_.seekable )
         return;
 
+    // ignore request to current position
+    if ( ABS_DIFF(target, position_) < timeline_.step())
+        return;
+
     // seek position : default to target
     GstClockTime seek_pos = target;
-
-    // no target given
-    if (target == GST_CLOCK_TIME_NONE)
-        // create seek event with current position (rate changed ?)
-        seek_pos = position_;
-    // target is given but useless
-    else if ( ABS_DIFF(target, position_) < timeline_.step()) {
-        // ignore request
-        return;
-    }
 
     // seek with flush (always)
     int seek_flags = GST_SEEK_FLAG_FLUSH;
 
-    if ( desired_state_ == GST_STATE_PLAYING )
+    // no target given
+    if (target == GST_CLOCK_TIME_NONE) {
+        // create seek event with current position (called for rate changed)
+        // CLAMP the time to ensure we do not bounce outside of timeline
+        seek_pos = CLAMP(position_, timeline_.first(), timeline_.last() - timeline_.step());
         // seek with KEY mode if playing
         seek_flags |= GST_SEEK_FLAG_KEY_UNIT | GST_SEEK_FLAG_SNAP_AFTER;
+    }
     else
         // seek with accurate timing if paused
         seek_flags |= GST_SEEK_FLAG_ACCURATE;

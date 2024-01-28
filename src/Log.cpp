@@ -69,7 +69,7 @@ struct AppLog
     void Draw(const char* title, bool* p_open = NULL)
     {
 
-        ImGui::SetNextWindowPos(ImVec2(430, 660), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(440, 700), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(1150, 220), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSizeConstraints(ImVec2(600, 180), ImVec2(FLT_MAX, FLT_MAX));
 
@@ -196,7 +196,6 @@ void Log::Info(const char* fmt, ...)
 
 void Log::ShowLogWindow(bool* p_open)
 {
-    ImGui::SetNextWindowSize(ImVec2(700, 600), ImGuiCond_FirstUseEver);
     logs.Draw( IMGUI_TITLE_LOGS, p_open);
 }
 
@@ -286,7 +285,8 @@ void Log::Render(bool *showWarnings)
             ImGuiToolkit::Icon(7, 14);
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::SetNextItemWidth(width);
-            ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%ld problem(s) occurred.\n\n", warnings.size());
+            std::string msg = std::to_string(warnings.size()) + " problem" + (warnings.size() > 1 ? "s" : "");
+            ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%s occurred.\n\n", msg.c_str());
             ImGui::Dummy(ImVec2(width, 0));
 
             ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width);

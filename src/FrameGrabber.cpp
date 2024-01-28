@@ -35,7 +35,8 @@
 
 
 
-FrameGrabbing::FrameGrabbing(): pbo_index_(0), pbo_next_index_(0), size_(0), width_(0), height_(0), use_alpha_(0), caps_(NULL)
+FrameGrabbing::FrameGrabbing(): pbo_index_(0), pbo_next_index_(0), size_(0),
+    width_(0), height_(0), use_alpha_(0), caps_(NULL)
 {
     pbo_[0] = 0;
     pbo_[1] = 0;
@@ -267,9 +268,11 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
 
 
 
-FrameGrabber::FrameGrabber(): finished_(false), initialized_(false), active_(false), endofstream_(false), accept_buffer_(false), buffering_full_(false),
+FrameGrabber::FrameGrabber(): finished_(false), initialized_(false), active_(false),
+    endofstream_(false), accept_buffer_(false), buffering_full_(false), pause_(false),
     pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr), timer_firstframe_(0),
-    timestamp_(0), duration_(0), frame_count_(0), buffering_size_(MIN_BUFFER_SIZE), timestamp_on_clock_(true)
+    timer_pauseframe_(0), timestamp_(0), duration_(0), pause_duration_(0), frame_count_(0),
+    buffering_size_(MIN_BUFFER_SIZE), buffering_count_(0), timestamp_on_clock_(true)
 {
     // unique id
     id_ = BaseToolkit::uniqueId();
@@ -305,6 +308,23 @@ bool FrameGrabber::busy() const
         return accept_buffer_ ? true : false;
     else
         return false;
+}
+
+bool FrameGrabber::paused() const
+{
+    return pause_;
+}
+
+void FrameGrabber::setPaused(bool pause)
+{
+    // can pause only if already active
+    if (active_) {
+        // keep time of switch from not-paused to paused
+        if (pause && !pause_)
+            timer_pauseframe_ = gst_clock_get_time(timer_);
+        // set to paused
+        pause_ = pause;
+    }
 }
 
 uint64_t FrameGrabber::duration() const
@@ -422,7 +442,10 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
     // store a frame if recording is active and if the encoder accepts data
     if (active_)
     {
-        if (accept_buffer_) {
+        // how much buffer is used
+        buffering_count_ = gst_app_src_get_current_level_bytes(src_);
+
+        if (accept_buffer_ && !pause_) {
             GstClockTime t = 0;
 
             // initialize timer on first occurence
@@ -430,9 +453,18 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 timer_ = gst_pipeline_get_clock ( GST_PIPELINE(pipeline_) );
                 timer_firstframe_ = gst_clock_get_time(timer_);
             }
-            else
+            else {
+                // if returning from pause, time of pause was stored
+                if (timer_pauseframe_ > 0) {
+                    // compute duration of the pausing time and add to total pause duration
+                    pause_duration_ += gst_clock_get_time(timer_) - timer_pauseframe_;
+                    // reset pause frame time
+                    timer_pauseframe_ = 0;
+                }
                 // time since timer starts (first frame registered)
-                t = gst_clock_get_time(timer_) - timer_firstframe_;
+                // minus pause duration
+                t = gst_clock_get_time(timer_) - timer_firstframe_ - pause_duration_;
+            }
 
             // if time is zero (first frame) or if delta time is passed one frame duration (with a margin)
             if ( t == 0 || (t - duration_) > (frame_duration_ - 3000) ) {
@@ -445,13 +477,14 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
 
                 if (timestamp_on_clock_)
                     // automatic frame presentation time stamp
-                    // set time to actual time
-                    // & round t to a multiples of frame duration
+                    // Pipeline set to "do-timestamp"=TRUE
+                    // set timestamp to actual time
                     timestamp_ = duration_;
                 else {
-                    // monotonic time increment to keep fixed FPS
+                    // monotonic timestamp increment to keep fixed FPS
+                    // Pipeline set to "do-timestamp"=FALSE
                     timestamp_ += frame_duration_;
-                    // force frame presentation time stamp
+                    // force frame presentation timestamp
                     buffer->pts = timestamp_;
                     // set frame duration
                     buffer->duration = frame_duration_;
@@ -464,10 +497,10 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 {
                     // enter buffering_full_ mode if the space left in buffering is for only few frames
                     // (this prevents filling the buffer entirely)
-                    if ( buffering_size_ - gst_app_src_get_current_level_bytes(src_) < MIN_BUFFER_SIZE ) {
+                    if ( buffering_size_ - buffering_count_ < MIN_BUFFER_SIZE ) {
 #ifndef NDEBUG
                         Log::Info("Frame capture : Using %s of %s Buffer.",
-                                  BaseToolkit::byte_to_string(gst_app_src_get_current_level_bytes(src_)).c_str(),
+                                  BaseToolkit::byte_to_string(buffering_count_).c_str(),
                                   BaseToolkit::byte_to_string(buffering_size_).c_str());
 #endif
                         buffering_full_ = true;
@@ -504,4 +537,16 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
 
     }
 
+}
+
+
+uint FrameGrabber::buffering() const
+{
+    guint64 p = (100 * buffering_count_) / buffering_size_;
+    return (uint) p;
+}
+
+guint64 FrameGrabber::frames() const
+{
+    return frame_count_;
 }

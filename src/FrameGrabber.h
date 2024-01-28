@@ -47,6 +47,12 @@ public:
     virtual bool finished() const;
     virtual bool busy() const;
 
+    virtual bool paused() const;
+    virtual void setPaused(bool pause);
+
+    uint buffering() const;
+    guint64 frames() const;
+
 protected:
 
     // only FrameGrabbing manager can add frame
@@ -63,6 +69,7 @@ protected:
     std::atomic<bool> endofstream_;
     std::atomic<bool> accept_buffer_;
     std::atomic<bool> buffering_full_;
+    std::atomic<bool> pause_;
 
     // gstreamer pipeline
     GstElement   *pipeline_;
@@ -71,11 +78,14 @@ protected:
 
     GstClock     *timer_;
     GstClockTime timer_firstframe_;
+    GstClockTime timer_pauseframe_;
     GstClockTime timestamp_;
     GstClockTime duration_;
+    GstClockTime pause_duration_;
     GstClockTime frame_duration_;
     guint64      frame_count_;
     guint64      buffering_size_;
+    guint64      buffering_count_;
     bool         timestamp_on_clock_;
 
     // async threaded initializer

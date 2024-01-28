@@ -399,6 +399,8 @@ include_directories(
     ${OSCPACK_INCLUDE_DIR}
 )
 add_library(OSCPACK "${OSCPACK_SRCS}")
+set_property(TARGET ${OSCPACK} PROPERTY CXX_STANDARD 17)
+set_property(TARGET ${OSCPACK} PROPERTY C_STANDARD 11)
 if(APPLE)
 target_compile_definitions(OSCPACK
     PRIVATE
@@ -638,6 +640,7 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/earlybird.glsl
     ./rsc/shaders/filters/logo.glsl
     ./rsc/shaders/filters/whitebalance.glsl
+    ./rsc/images/logo.vmx
 )
 
 cmrc_add_resource_library(vmix-resources ALIAS vmix::rc NAMESPACE vmix WHENCE rsc ${VMIX_RSC_FILES})

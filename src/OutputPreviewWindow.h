@@ -30,6 +30,7 @@ public:
     OutputPreviewWindow();
 
     void ToggleRecord(bool save_and_continue = false);
+    void ToggleRecordPause();
     inline bool isRecording() const { return video_recorder_ != nullptr; }
 
     void ToggleVideoBroadcast();

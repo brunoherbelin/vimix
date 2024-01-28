@@ -102,6 +102,8 @@ int main(int argc, char *argv[])
         else {
             // try to open the file
             _openfile = argument;
+            if (!_openfile.empty())
+                fprintf(stderr, "Loading '%s' ...\n", _openfile.c_str());
         }
     }
 
@@ -113,11 +115,6 @@ int main(int argc, char *argv[])
 
     /// lock to inform an instance is running
     Settings::Lock();
-
-    if (!_openfile.empty()) {
-        Settings::application.fresh_start = false;
-        fprintf(stderr, "Loading %s\n", _openfile.c_str());
-    }
 
     ///
     /// CONNECTION INIT

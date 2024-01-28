@@ -69,10 +69,10 @@ long SystemToolkit::memory_usage()
     // numbers that are: virtual mem program size, resident set size,
     // shared pages, text/code, data/stack, library, dirty pages.  The
     // mem sizes should all be multiplied by the page size.
-    size_t size = 0;
+    unsigned long size = 0;
     FILE *file = fopen("/proc/self/statm", "r");
     if (file) {
-        size_t m = 0;
+        unsigned long m = 0;
         int ret = 0, ret2 = 0;
         ret = fscanf (file, "%lu", &m);  // virtual mem program size,
         ret2 = fscanf (file, "%lu", &m);  // resident set size,

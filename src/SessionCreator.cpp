@@ -1554,6 +1554,12 @@ void SessionLoader::visit (ImageFilter& f)
 
     // set image filter program and parameters
     f.setProgram( FilteringProgram(filter_name, filter_codes.first, filter_codes.second, filter_params) );
+
+    // set global iMouse
+    XMLElement* imouse = xmlCurrent_->FirstChildElement("iMouse");
+    if (imouse)
+        tinyxml2::XMLElementToGLM( imouse->FirstChildElement("vec4"), FilteringProgram::iMouse);
+
 }
 
 void SessionLoader::visit (CloneSource& s)

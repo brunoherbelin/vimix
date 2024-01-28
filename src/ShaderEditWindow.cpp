@@ -1,3 +1,4 @@
+#include <fstream>
 
 // ImGui
 #include "ImGuiToolkit.h"
@@ -16,6 +17,7 @@ TextEditor _editor;
 #include "Mixer.h"
 #include "SystemToolkit.h"
 #include "CloneSource.h"
+#include "DialogToolkit.h"
 
 #include "ShaderEditWindow.h"
 
@@ -122,6 +124,13 @@ void ShaderEditWindow::BuildShader()
 
 void ShaderEditWindow::Render()
 {
+    static DialogToolkit::OpenFileDialog importcodedialog("Import GLSL code",
+                                                          "Text files",
+                                                          {"*.glsl", "*.txt"} );
+    static DialogToolkit::SaveFileDialog exportcodedialog("Export GLSL code",
+                                                          "Text files",
+                                                          {"*.glsl", "*.txt"} );
+
     ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
 
     if ( !ImGui::Begin(name_, &Settings::application.widget.shader_editor,
@@ -146,6 +155,12 @@ void ShaderEditWindow::Render()
                     filters_.erase(current_);
                 current_ = nullptr;
             }
+
+            if (ImGui::MenuItem( ICON_FA_FILE_EXPORT "  Import code", nullptr, nullptr, current_ != nullptr))
+                importcodedialog.open();
+
+            if (ImGui::MenuItem( ICON_FA_FILE_IMPORT "  Export code", nullptr, nullptr, current_ != nullptr))
+                exportcodedialog.open();
 
             // Menu section for presets
             if (ImGui::BeginMenu( ICON_FA_SCROLL " Example code", current_ != nullptr))
@@ -177,7 +192,7 @@ void ShaderEditWindow::Render()
             ImGui::Separator();
             ImGui::MenuItem( ICON_FA_UNDERLINE "  Show Shader Inputs", nullptr, &show_shader_inputs_);
             bool ws = _editor.IsShowingWhitespaces();
-            if (ImGui::MenuItem( ICON_FA_LONG_ARROW_ALT_RIGHT "  Show whitespace", nullptr, &ws))
+            if (ImGui::MenuItem( ICON_FA_ELLIPSIS_H "  Show whitespace", nullptr, &ws))
                 _editor.SetShowWhitespaces(ws);
 
             // output manager menu
@@ -231,6 +246,42 @@ void ShaderEditWindow::Render()
         filters_.clear();
         current_ = nullptr;
         _editor.SetText("");
+    }
+
+    // File dialog Import code
+    if (importcodedialog.closed() && !importcodedialog.path().empty()) {
+        // Open the file
+        std::ifstream file(importcodedialog.path());
+
+        // Check if the file is opened successfully
+        if (file.is_open()) {
+            // Read the content of the file into an std::string
+            std::string fileContent((std::istreambuf_iterator<char>(file)),
+                                    std::istreambuf_iterator<char>());
+
+            // replace text of editor
+            _editor.SetText(fileContent);
+            _editor.SetReadOnly(false);
+        }
+
+        // Close the file
+        file.close();
+
+        // build with new code
+        BuildShader();
+    }
+
+    // File dialog Export code
+    if (exportcodedialog.closed() && !exportcodedialog.path().empty()) {
+        // Open the file
+        std::ofstream file(exportcodedialog.path());
+
+        // Save content to file
+        if (file.is_open())
+            file << _editor.GetText();
+
+        // Close the file
+        file.close();
     }
 
     // if compiling, cannot change source nor do anything else
@@ -331,7 +382,24 @@ void ShaderEditWindow::Render()
         ImGui::PopFont();
 
         // sliders iMouse
-        ImGui::SliderFloat4("##iMouse", glm::value_ptr( FilteringProgram::iMouse ), 0.0, 1.0 );
+        ImGui::SetNextItemWidth(200);
+        ImGui::SliderFloat("##iMouse.x",
+                           &FilteringProgram::iMouse.x, 0.f,
+                           Mixer::manager().session()->frame()->width(), "%.f");
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(200);
+        ImGui::SliderFloat("##iMouse.y",
+                           &FilteringProgram::iMouse.y, 0.f,
+                           Mixer::manager().session()->frame()->height(), "%.f");
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(200);
+        ImGui::SliderFloat("##iMouse.z",
+                           &FilteringProgram::iMouse.z, 0.f, 1.f);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::SetNextItemWidth(200);
+        ImGui::SliderFloat("##iMouse.w",
+                           &FilteringProgram::iMouse.w, 0.f, 1.f);
+
     }
     else
         ImGui::Spacing();

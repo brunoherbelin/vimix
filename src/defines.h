@@ -13,17 +13,35 @@
 #define VIMIX_GL_VERSION "opengl3"
 #define VIMIX_GLSL_VERSION "#version 150"
 
+#define VIMIX_FILE_TYPE "vimix session (MIX)"
 #define VIMIX_FILE_EXT "mix"
-#define VIMIX_FILE_PATTERN "*.mix"
+#define VIMIX_FILE_PATTERN \
+    { \
+        "*.mix" \
+    }
+#define VIMIX_PLAYLIST_FILE_TYPE "vimix playlist (LIX)"
 #define VIMIX_PLAYLIST_FILE_EXT "lix"
-#define VIMIX_PLAYLIST_FILE_PATTERN "*.lix"
-#define MEDIA_FILES_PATTERN "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov",\
-    "*.mkv", "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg",\
-    "*.flv", "*.hevc", "*.asf", "*.jpg", "*.png",  "*.gif",\
-    "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg,"
-#define IMAGES_FILES_PATTERN "*.jpg", "*.png", "*.bmp", "*.ppm", "*.gif"
-#define SUBTITLE_FILES_PATTERN "*.srt", "*.sub"
-
+#define VIMIX_PLAYLIST_FILE_PATTERN \
+    { \
+        "*.lix" \
+    }
+#define MEDIA_FILES_TYPE "Supported formats (videos, images, sessions)"
+#define MEDIA_FILES_PATTERN \
+    { \
+        "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov", "*.mkv", \
+        "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.hevc", "*.asf", "*.jpg", \
+        "*.png", "*.gif", "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg," \
+    }
+#define IMAGES_FILES_TYPE "Image (JPG, PNG, BMP, PPM, GIF)"
+#define IMAGES_FILES_PATTERN \
+    { \
+        "*.jpg", "*.png", "*.bmp", "*.ppm", "*.gif" \
+    }
+#define SUBTITLE_FILES_TYPE "Subtitle (SRT, SUB)"
+#define SUBTITLE_FILES_PATTERN \
+    { \
+        "*.srt", "*.sub" \
+    }
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))
 #define ABS(a)	   (((a) < 0) ? -(a) : (a))
@@ -176,6 +194,8 @@
 #define SHORTCUT_RECORD       CTRL_MOD "R"
 #define MENU_RECORDCONT       ICON_FA_STOP_CIRCLE "  Save & continue"
 #define SHORTCUT_RECORDCONT   CTRL_MOD "Shift+R"
+#define MENU_RECORDPAUSE      ICON_FA_PAUSE_CIRCLE "  Pause Record"
+#define SHORTCUT_RECORDPAUSE  CTRL_MOD "Space"
 #define MENU_CAPTUREFRAME     ICON_FA_CAMERA_RETRO "  Capture frame"
 #define SHORTCUT_CAPTURE_DISPLAY "F11"
 #define SHORTCUT_CAPTURE_PLAYER "F10"
@@ -185,7 +205,8 @@
 #define SHORTCUT_OUTPUTDISABLE "F12"
 #define ICON_PREVIEW          4, 15
 #define MENU_PREVIEW          "Preview"
-#define SHORTCUT_PREVIEW      "F6"
+#define SHORTCUT_PREVIEW_OUT  "F6"
+#define SHORTCUT_PREVIEW_SRC  "F7"
 #define MENU_CLOSE            ICON_FA_TIMES "   Close"
 #define DIALOG_FAILED_SOURCE  ICON_FA_EXCLAMATION_TRIANGLE " Source failure"
 
@@ -215,12 +236,17 @@
 #define SHORTCUT_MAIN         "HOME"
 #define TOOLTIP_NEW_SOURCE    "Insert "
 #define SHORTCUT_NEW_SOURCE   "INS"
+#define TOOLTIP_SNAP_CURSOR   "Snap cursor "
 #define TOOLTIP_HIDE          "Hide windows "
 #define TOOLTIP_SHOW          "Show windows "
 #define SHORTCUT_HIDE         "ESC"
 #define TOOLTIP_PANEL_VISIBLE "Panel always visible "
 #define TOOLTIP_PANEL_AUTO    "Panel auto hide "
 #define SHORTCUT_PANEL_MODE   "HOME"
+#define MENU_PLAY_PAUSE       ICON_FA_PLAY "  Play | Pause"
+#define SHORTCUT_PLAY_PAUSE   "Space"
+#define MENU_PLAY_BEGIN       ICON_FA_FAST_BACKWARD "  Go to Beginning"
+#define SHORTCUT_PLAY_BEGIN   CTRL_MOD "B"
 
 #define LABEL_AUTO_MEDIA_PLAYER ICON_FA_USER_CIRCLE "  User selection"
 #define LABEL_STORE_SELECTION "  Create batch"

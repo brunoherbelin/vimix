@@ -72,7 +72,7 @@ class Navigator
     void RenderTransitionPannel(const ImVec2 &iconsize);
     void RenderNewPannel(const ImVec2 &iconsize);
     void RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2 &size);
-    std::pair<std::string, std::string> RenderMousePointerSelector(const ImVec2 &size);
+    bool RenderMousePointerSelector(const ImVec2 &size);
 
 public:
 
@@ -134,6 +134,7 @@ class UserInterface
     friend class ImGuiVisitor;
     friend class Navigator;
     friend class OutputPreviewWindow;
+    friend class SourceControlWindow;
 
     // Private Constructor
     UserInterface();
@@ -194,12 +195,13 @@ protected:
     int  target_view_navigator;
     unsigned int screenshot_step;
     bool pending_save_on_exit;
-    bool show_output_fullview;
+    typedef enum { PREVIEW_NONE = 0, PREVIEW_OUTPUT, PREVIEW_SOURCE } PreviewMode;
+    PreviewMode show_preview;
 
     // Dialogs
-    DialogToolkit::OpenSessionDialog *sessionopendialog;
-    DialogToolkit::OpenSessionDialog *sessionimportdialog;
-    DialogToolkit::SaveSessionDialog *sessionsavedialog;
+    DialogToolkit::OpenFileDialog *sessionopendialog;
+    DialogToolkit::OpenFileDialog *sessionimportdialog;
+    DialogToolkit::SaveFileDialog *sessionsavedialog;
 
     // Favorites and playlists
     Playlist favorites;
@@ -224,7 +226,7 @@ protected:
     void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
     void RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode);
     int  RenderViewNavigator(int* shift);
-    void RenderOutputView();
+    void RenderPreview();
     void RenderAbout(bool* p_open);
     void RenderNotes();
     void RenderHelp();

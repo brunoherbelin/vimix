@@ -896,7 +896,7 @@ int RenderingWindow::pixelsforRealHeight(float milimeters)
     if (mm_h > 0)
         pixels *= static_cast<float>(glfwGetVideoMode(mo)->height) / static_cast<float>(mm_h);
     else
-        pixels *= 5; // something reasonnable if monitor's physical size is unknown
+        pixels *= 8; // something reasonnable if monitor's physical size is unknown
 
     return static_cast<int>( round(pixels) );
 }

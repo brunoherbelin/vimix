@@ -127,7 +127,7 @@ UserInterface::UserInterface()
     target_view_navigator = 1;
     screenshot_step = 0;
     pending_save_on_exit = false;
-    show_output_fullview = false;
+    show_preview = UserInterface::PREVIEW_NONE;
 
     sessionopendialog = nullptr;
     sessionimportdialog = nullptr;
@@ -164,7 +164,8 @@ bool UserInterface::Init()
 
     //  Estalish the base size from the resolution of the monitor
     float base_font_size =  float(Rendering::manager().mainWindow().pixelsforRealHeight(4.f))  ;
-    base_font_size = CLAMP( base_font_size, 8.f, 50.f);
+    // at least 8 pixels font size
+    base_font_size = MAX(base_font_size, 8.f);
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) + 1 );
@@ -212,12 +213,18 @@ bool UserInterface::Init()
     }
 
     // init dialogs
-    sessionopendialog   = new DialogToolkit::OpenSessionDialog("Open Session");
-    sessionsavedialog   = new DialogToolkit::SaveSessionDialog("Save Session");
-    sessionimportdialog = new DialogToolkit::OpenSessionDialog("Import Sources");
+    sessionopendialog   = new DialogToolkit::OpenFileDialog("Open Session",
+                                                          VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
+    sessionsavedialog   = new DialogToolkit::SaveFileDialog("Save Session",
+                                                          VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
+    sessionimportdialog = new DialogToolkit::OpenFileDialog("Import Sources",
+                                                            VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
 
     // init tooltips
     ImGuiToolkit::setToolTipsEnabled(Settings::application.show_tooptips);
+
+    // show about dialog on first run
+    show_vimix_about = (Settings::application.total_runtime < 1);
 
     return true;
 }
@@ -276,7 +283,7 @@ void UserInterface::handleKeyboard()
             // New Session
             Mixer::manager().close();
         }
-        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false )) {
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_B), false )) {
             // restart media player
             sourcecontrol.Replay();
         }
@@ -322,6 +329,10 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_R), false )) {
             // toggle recording stop / start (or save and continue if + SHIFT modifier)
             outputcontrol.ToggleRecord(shift_modifier_active);
+        }
+        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false )) {
+            // toggle pause recorder
+            outputcontrol.ToggleRecordPause();
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_Z), false )) {
             if (shift_modifier_active)
@@ -386,7 +397,9 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F5, false ))
             setView(View::DISPLAYS);
         else if (ImGui::IsKeyPressed( GLFW_KEY_F6,  false ))
-            show_output_fullview = true;
+            show_preview = PREVIEW_OUTPUT;
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F7,  false ))
+            show_preview = PREVIEW_SOURCE;
         else if (ImGui::IsKeyPressed( GLFW_KEY_F9, false ))
             StartScreenshot();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
@@ -638,10 +651,18 @@ void UserInterface::handleMouse()
 
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
         {
-            // if double clic action of view didn't succeed
+            // if double clic event was not used in view
             if ( !Mixer::manager().view()->doubleclic(mousepos) ) {
-                // display current source in left panel /or/ hide left panel if no current source
-                navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+                int i = Mixer::manager().indexCurrentSource();
+                // if no current source
+                if (i<0){
+                    // hide left pannel & toggle clear workspace
+                    navigator.discardPannel();
+                    WorkspaceWindow::toggleClearRestoreWorkspace();
+                }
+                else
+                    // display current source in left panel /or/ hide left panel if no current source
+                    navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
             }
         }
 
@@ -809,6 +830,32 @@ void UserInterface::selectOpenFilename()
     navigator.discardPannel();
 }
 
+void Spinner(const ImU32 &color)
+{
+    ImGuiContext &g = *GImGui;
+
+    const ImVec2 pos = ImGui::GetIO().MousePos;
+    const float radius = g.FontSize;
+    const ImVec2 size(radius*2.f, radius*2.f);
+
+    // Render
+    g.ForegroundDrawList.PathClear();
+
+    const int num_segments = 30;
+    const int start = abs(ImSin(g.Time * 1.8f) * (num_segments - 5));
+    const float a_min = IM_PI * 2.0f * ((float) start) / (float) num_segments;
+    const float a_max = IM_PI * 2.0f * ((float) num_segments - 3) / (float) num_segments;
+    const ImVec2 centre = ImVec2(pos.x + radius, pos.y + radius);
+
+    for (int i = 0; i < num_segments; i++) {
+        const float a = a_min + ((float) i / (float) num_segments) * (a_max - a_min);
+        g.ForegroundDrawList.PathLineTo(ImVec2(centre.x + ImCos(a + g.Time * 8) * radius,
+                                            centre.y + ImSin(a + g.Time * 8) * radius));
+    }
+
+    g.ForegroundDrawList.PathStroke(color, false, radius * 0.3f);
+}
+
 void UserInterface::NewFrame()
 {
     // Start the Dear ImGui frame
@@ -842,12 +889,17 @@ void UserInterface::NewFrame()
 
     // overlay to ensure file color dialog is closed after use
     if (DialogToolkit::ColorPickerDialog::busy()){
-        if (!ImGui::IsPopupOpen("##Color"))
-            ImGui::OpenPopup("##Color");
-        if (ImGui::BeginPopup("##Color")) {
+        if (!ImGui::IsPopupOpen("##ColorBusy"))
+            ImGui::OpenPopup("##ColorBusy");
+        if (ImGui::BeginPopup("##ColorBusy")) {
             ImGui::Text("Validate color dialog to return to vimix.");
             ImGui::EndPopup();
         }
+    }
+
+    // overlay foreground busy animation
+    if (Mixer::manager().busy() || !Mixer::manager().session()->ready()) {
+        Spinner(ImGui::GetColorU32(ImGuiCol_TabActive));
     }
 
     // popup to inform to save before close
@@ -966,7 +1018,7 @@ void UserInterface::Render()
         target_view_navigator = RenderViewNavigator( &show_view_navigator );
 
     //
-    RenderOutputView();
+    RenderPreview();
 
     // handle keyboard input after all IMGUI widgets have potentially captured keyboard
     handleKeyboard();
@@ -1302,25 +1354,39 @@ void UserInterface::showSourceEditor(Source *s)
     }
 }
 
-void UserInterface::RenderOutputView()
+void UserInterface::RenderPreview()
 {
     static bool _inspector = false;
     static bool _sustain = false;
+    static FrameBuffer *_framebuffer = nullptr;
 
-    if ( show_output_fullview && !ImGui::IsPopupOpen("##OUTPUTVIEW")) {
-        ImGui::OpenPopup("##OUTPUTVIEW");
-        _inspector = false;
-        _sustain = false;
+    if (show_preview != PREVIEW_NONE && !ImGui::IsPopupOpen("##RENDERPREVIEW")) {
+        // select which framebuffer to display depending on input
+        if (show_preview == PREVIEW_OUTPUT)
+            _framebuffer = Mixer::manager().session()->frame();
+        else if (show_preview == PREVIEW_SOURCE) {
+            _framebuffer = sourcecontrol.renderedFramebuffer();
+            if (_framebuffer == nullptr && Mixer::manager().currentSource() != nullptr) {
+                _framebuffer = Mixer::manager().currentSource()->frame();
+            }
+        }
+
+        // if a famebuffer is valid, open preview
+        if (_framebuffer != nullptr) {
+            ImGui::OpenPopup("##RENDERPREVIEW");
+            _inspector = false;
+            _sustain = false;
+        } else
+            show_preview = PREVIEW_NONE;
     }
 
-    if (ImGui::BeginPopupModal("##OUTPUTVIEW", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
+    if (ImGui::BeginPopupModal("##RENDERPREVIEW", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
                                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNav)) {
-
-        FrameBuffer *output = Mixer::manager().session()->frame();
-        if (output)
+        // making sure the pointer is still valid
+        if (_framebuffer != nullptr)
         {
             ImGuiIO& io = ImGui::GetIO();
-            float ar = output->aspectRatio();
+            float ar = _framebuffer->aspectRatio();
             // image takes the available window area
             ImVec2 imagesize = io.DisplaySize;
             // image height respects original aspect ratio but is at most the available window height
@@ -1331,43 +1397,70 @@ void UserInterface::RenderOutputView()
             // 100% opacity for the image (ensures true colors)
             ImVec2 draw_pos = ImGui::GetCursorScreenPos();
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
-            ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
+            ImGui::Image((void*)(intptr_t)_framebuffer->texture(), imagesize);
             ImGui::PopStyleVar();
 
-            if ( ImGui::IsMouseClicked(ImGuiMouseButton_Left) ) {
-                // show inspector on mouse clic in
-                if ( ImGui::IsItemHovered()  )
-                    _inspector = !_inspector;
-                // close view on mouse clic outside
-                else if (!_sustain)
-                    show_output_fullview = false;
-            }
-            // draw inspector (magnifying glass)
-            if ( _inspector && ImGui::IsItemHovered()  )
-                DrawInspector(output->texture(), imagesize, imagesize, draw_pos);
-
-            // closing icon
-            ImGui::SetCursorScreenPos(draw_pos + ImVec2(IMGUI_SAME_LINE, IMGUI_SAME_LINE));
+            // closing icon in top left corner
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            if ( ImGuiToolkit::IconButton(ICON_FA_TIMES, "Close preview") )
-                show_output_fullview = false;
-            if ( ImGui::IsItemHovered()  )
-                _inspector = false;
+            ImGui::SetCursorScreenPos(draw_pos + ImVec2(IMGUI_SAME_LINE, IMGUI_SAME_LINE));
+            if (ImGuiToolkit::IconButton(ICON_FA_TIMES, "Close preview"))
+                show_preview = PREVIEW_NONE;
             ImGui::PopFont();
+
+            // handle mouse clic and hovering on image
+            const ImRect bb(draw_pos, draw_pos + imagesize);
+            const ImGuiID id = ImGui::GetCurrentWindow()->GetID("##preview-texture");
+            bool hovered, held;
+            bool pressed = ImGui::ButtonBehavior(bb,
+                                                 id,
+                                                 &hovered,
+                                                 &held,
+                                                 ImGuiButtonFlags_PressedOnClick);
+            // toggle inspector on mouse clic
+            if (pressed)
+                _inspector = !_inspector;
+            // draw inspector (magnifying glass) on mouse hovering
+            if (hovered & _inspector)
+                DrawInspector(_framebuffer->texture(), imagesize, imagesize, draw_pos);
+
+            // close view on mouse clic outside
+            // and ignore show_preview on single clic
+            if (!hovered
+                && !_sustain
+                && !ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)
+                && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                show_preview = PREVIEW_NONE;
+            }
         }
 
         // local keyboard handler (because focus is captured by modal dialog)
-        if ( ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false ) ||
-             ImGui::IsKeyPressed( GLFW_KEY_F6,  false ) )
-            show_output_fullview = false;
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F6,  true ))
+        if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false ) ||
+            (show_preview == PREVIEW_OUTPUT && ImGui::IsKeyPressed( GLFW_KEY_F6, false )) ||
+            (show_preview == PREVIEW_SOURCE && ImGui::IsKeyPressed( GLFW_KEY_F7, false )) )
+            show_preview = PREVIEW_NONE;
+        else if ((show_preview == PREVIEW_OUTPUT && ImGui::IsKeyPressed( GLFW_KEY_F6, true )) ||
+                 (show_preview == PREVIEW_SOURCE && ImGui::IsKeyPressed( GLFW_KEY_F7, true )) )
             _sustain = true;
-        else if (_sustain &&  ImGui::IsKeyReleased( GLFW_KEY_F6 ))
-            show_output_fullview = false;
+        else if ((show_preview == PREVIEW_OUTPUT && _sustain &&  ImGui::IsKeyReleased( GLFW_KEY_F6 )) ||
+                 (show_preview == PREVIEW_SOURCE && _sustain &&  ImGui::IsKeyReleased( GLFW_KEY_F7 )) )
+            show_preview = PREVIEW_NONE;
+
+        if ( !alt_modifier_active && ImGui::IsKeyPressed( GLFW_KEY_TAB )) {
+            if (shift_modifier_active)
+                Mixer::manager().setCurrentPrevious();
+            else
+                Mixer::manager().setCurrentNext();
+            if (navigator.pannelVisible())
+                navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+            // re-open after change source
+            ImGui::CloseCurrentPopup();
+        }
 
         // close
-        if (!show_output_fullview)
+        if (show_preview == PREVIEW_NONE) {
+            _framebuffer = nullptr;
             ImGui::CloseCurrentPopup();
+        }
 
         ImGui::EndPopup();
     }
@@ -2025,7 +2118,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
 
 void UserInterface::RenderAbout(bool* p_open)
 {
-    ImGui::SetNextWindowPos(ImVec2(1100, 20), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(600, 40), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("About " APP_TITLE, p_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
@@ -2033,15 +2126,13 @@ void UserInterface::RenderAbout(bool* p_open)
     }
 
     ImVec2 top = ImGui::GetCursorScreenPos();
-#ifdef VIMIX_VERSION_MAJOR
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+#ifdef VIMIX_VERSION_MAJOR
     ImGui::Text("%s %d.%d.%d", APP_NAME, VIMIX_VERSION_MAJOR, VIMIX_VERSION_MINOR, VIMIX_VERSION_PATCH);
-    ImGui::PopFont();
 #else
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
     ImGui::Text("%s", APP_NAME);
-    ImGui::PopFont();
 #endif
+    ImGui::PopFont();
 
 #ifdef VIMIX_GIT
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
@@ -2251,7 +2342,7 @@ void ToolBox::Render()
     static float recorded_bounds[3][2] = {  {40.f, 65.f}, {1.f, 50.f}, {0.f, 50.f} };
     static float refresh_rate = -1.f;
     static int   values_index = 0;
-    float megabyte = static_cast<float>( static_cast<double>(SystemToolkit::memory_usage()) / 1048576.0 );
+    float megabyte = static_cast<float>( static_cast<double>(FrameBuffer::memory_usage()) / 1000000.0 );
 
     // init
     if (refresh_rate < 0.f) {
@@ -2311,7 +2402,7 @@ void ToolBox::Render()
     ImGui::PlotLines("LinesRender", recorded_values[0], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[0][0], recorded_bounds[0][1], plot_size);
     snprintf(overlay, 128, "Update time %.1f ms (%.1f FPS)", recorded_sum[1] / float(PLOT_ARRAY_SIZE), (float(PLOT_ARRAY_SIZE) * 1000.f) / recorded_sum[1]);
     ImGui::PlotHistogram("LinesMixer", recorded_values[1], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[1][0], recorded_bounds[1][1], plot_size);
-    snprintf(overlay, 128, "Memory %.1f MB", recorded_values[2][(values_index+PLOT_ARRAY_SIZE-1) % PLOT_ARRAY_SIZE] );
+    snprintf(overlay, 128, "Framebuffers %.1f MB", recorded_values[2][(values_index+PLOT_ARRAY_SIZE-1) % PLOT_ARRAY_SIZE] );
     ImGui::PlotLines("LinesMemo", recorded_values[2], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[2][0], recorded_bounds[2][1], plot_size);
 
     ImGui::End();
@@ -2607,11 +2698,16 @@ void UserInterface::RenderHelp()
         ImGui::Text("F3"); ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_WORKSPACE); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Layers view"); ImGui::NextColumn();
         ImGui::Text("F4"); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_CHESS_BOARD " Texturing view"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CHESS_BOARD "  Texturing view"); ImGui::NextColumn();
         ImGui::Text("F5"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_TV " Displays view"); ImGui::NextColumn();
-        ImGui::Text(SHORTCUT_PREVIEW); ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview output (toggle or long press)"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PREVIEW_OUT); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Output"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PREVIEW_SRC); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Source"); ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC); ImGui::Text("Press & hold for momentary on/off"); ImGui::PopFont();
+        ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_FULLSCREEN); ImGui::NextColumn();
@@ -2628,7 +2724,10 @@ void UserInterface::RenderHelp()
         ImGui::Text(SHORTCUT_SHADEREDITOR); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CODE " " TOOLTIP_SHADEREDITOR "window"); ImGui::NextColumn();
         ImGui::Text("ESC"); ImGui::NextColumn();
-        ImGui::Text(" Hide / Show all windows (toggle or long press)"); ImGui::NextColumn();
+        ImGui::Text(" Hide | Show all windows"); ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC); ImGui::Text("Press & hold for momentary on/off"); ImGui::PopFont();
+        ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_NEW_FILE); ImGui::NextColumn();
         ImGui::Text(MENU_NEW_FILE " session"); ImGui::NextColumn();
@@ -2665,10 +2764,10 @@ void UserInterface::RenderHelp()
         ImGui::Separator();
         ImGui::Text(SHORTCUT_CAPTURE_PLAYER); ImGui::NextColumn();
         ImGui::Text(MENU_CAPTUREFRAME " Player"); ImGui::NextColumn();
-        ImGui::Text("Space"); ImGui::NextColumn();
-        ImGui::Text("Toggle Play/Pause selected videos"); ImGui::NextColumn();
-        ImGui::Text(CTRL_MOD "Space"); ImGui::NextColumn();
-        ImGui::Text("Restart selected videos"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PLAY_PAUSE); ImGui::NextColumn();
+        ImGui::Text(MENU_PLAY_PAUSE " selected videos"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_PLAY_BEGIN); ImGui::NextColumn();
+        ImGui::Text(MENU_PLAY_BEGIN " selected videos"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_UP " " ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
         ImGui::Text("Move the selection in the canvas"); ImGui::NextColumn();
         ImGui::Separator();
@@ -2887,7 +2986,7 @@ void Navigator::discardPannel()
 
 void Navigator::Render()
 {
-    std::pair<std::string, std::string> tooltip = {"", ""};
+    std::tuple<std::string, std::string, Source *> tooltip = {"", "", nullptr};
     static uint _timeout_tooltip = 0;
 
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -2925,11 +3024,10 @@ void Navigator::Render()
             // the vimix icon for menu
             if (ImGuiToolkit::SelectableIcon(2, 16, "", selected_button[NAV_MENU], iconsize)) {
                 selected_button[NAV_MENU] = true;
-//            if (ImGui::Selectable( ICON_FA_BARS, &selected_button[NAV_MENU], 0, iconsize)) {
                 applyButtonSelection(NAV_MENU);
             }
             if (ImGui::IsItemHovered())
-                tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN};
+                tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN, nullptr};
 
             // the "+" icon for action of creating new source
             if (ImGui::Selectable( source_to_replace != nullptr ? ICON_FA_PLUS_SQUARE : ICON_FA_PLUS,
@@ -2938,7 +3036,7 @@ void Navigator::Render()
                 applyButtonSelection(NAV_NEW);
             }
             if (ImGui::IsItemHovered())
-                tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE};
+                tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE, nullptr};
             //
             // the list of INITIALS for sources
             //
@@ -2975,7 +3073,16 @@ void Navigator::Render()
                     if (selected_button[index])
                         Mixer::manager().setCurrentIndex(index);
                 }
-
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+                    std::string label = s->name().size() < 16 ? s->name()
+                                                              : s->name().substr(0, 15) + "..";
+                    // tooltip with text only if currently selected
+                    if (selected_button[index])
+                        tooltip = { label, "#" + std::to_string(index), nullptr };
+                    // tooltip with preview if not currently selected
+                    else
+                        tooltip = { label, "#" + std::to_string(index), s };
+                }
                 if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
                 {
                     ImGui::SetDragDropPayload("DND_SOURCE", &index, sizeof(int));
@@ -3025,7 +3132,8 @@ void Navigator::Render()
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollWithMouse))
     {
         // Mouse pointer selector
-        tooltip = RenderMousePointerSelector(iconsize);
+        if ( RenderMousePointerSelector(iconsize) )
+            tooltip = {TOOLTIP_SNAP_CURSOR, ALT_MOD, nullptr};
 
         // List of icons for View selection
         static uint view_options_timeout = 0;
@@ -3044,7 +3152,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::MIXING].name, "F1"};
+            tooltip = {Settings::application.views[View::MIXING].name, "F1", nullptr};
             view_options_timeout = 0;
         }
 
@@ -3057,7 +3165,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::GEOMETRY].name, "F2"};
+            tooltip = {Settings::application.views[View::GEOMETRY].name, "F2", nullptr};
             view_options_timeout = 0;
         }
 
@@ -3071,7 +3179,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::LAYER].name, "F3"};
+            tooltip = {Settings::application.views[View::LAYER].name, "F3", nullptr};
             view_options_timeout = 0;
         }
 
@@ -3084,7 +3192,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::TEXTURE].name, "F4"};
+            tooltip = {Settings::application.views[View::TEXTURE].name, "F4", nullptr};
             view_options_timeout = 0;
         }
 
@@ -3099,7 +3207,7 @@ void Navigator::Render()
             }
         }
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::DISPLAYS].name, "F5"};
+            tooltip = {Settings::application.views[View::DISPLAYS].name, "F5", nullptr};
             view_options_timeout = 0;
         }
 
@@ -3110,14 +3218,14 @@ void Navigator::Render()
         if ( ImGuiToolkit::IconButton( Rendering::manager().mainWindow().isFullscreen() ? ICON_FA_COMPRESS_ALT : ICON_FA_EXPAND_ALT ) )
             Rendering::manager().mainWindow().toggleFullscreen();
         if (ImGui::IsItemHovered())
-            tooltip = {TOOLTIP_FULLSCREEN, SHORTCUT_FULLSCREEN};
+            tooltip = {TOOLTIP_FULLSCREEN, SHORTCUT_FULLSCREEN, nullptr};
 
         // icon for toggle always visible / auto hide pannel
         ImGui::SetCursorPos(pos + ImVec2(width_ * 0.5f, style.WindowPadding.y));
         if ( ImGuiToolkit::IconButton( Settings::application.pannel_always_visible ? ICON_FA_TOGGLE_ON : ICON_FA_TOGGLE_OFF ) )
             togglePannelAutoHide();
         if (ImGui::IsItemHovered())
-            tooltip = { Settings::application.pannel_always_visible ? TOOLTIP_PANEL_VISIBLE : TOOLTIP_PANEL_AUTO, SHORTCUT_PANEL_MODE };
+            tooltip = { Settings::application.pannel_always_visible ? TOOLTIP_PANEL_VISIBLE : TOOLTIP_PANEL_AUTO, SHORTCUT_PANEL_MODE, nullptr };
 
         ImGui::PopFont();
 
@@ -3128,10 +3236,38 @@ void Navigator::Render()
     }
 
     // show tooltip
-    if (!tooltip.first.empty()) {
+    if (!std::get<0>(tooltip).empty()) {
         // pseudo timeout for showing tooltip
-        if (_timeout_tooltip > IMGUI_TOOLTIP_TIMEOUT)
-            ImGuiToolkit::ToolTip(tooltip.first.c_str(), tooltip.second.c_str());
+        if (_timeout_tooltip > IMGUI_TOOLTIP_TIMEOUT) {
+            // if a pointer to a Source is provided in tupple
+            Source *_s = std::get<2>(tooltip);
+            if (_s != nullptr) {
+                ImGui::BeginTooltip();
+                const ImVec2 image_top = ImGui::GetCursorPos();
+                const ImVec2 thumbnail_size = ImVec2(width_, width_ / _s->frame()->aspectRatio()) * 3.f;
+                // Render source frame in tooltip
+                ImGui::Image((void *) (uintptr_t) _s->frame()->texture(), thumbnail_size);
+                // Draw label and shortcut from tupple
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                ImGui::TextUnformatted(std::get<0>(tooltip).c_str());
+                ImGui::SameLine();
+                ImGui::SetCursorPosX(thumbnail_size.x + style.WindowPadding.x
+                                     - ImGui::GetTextLineHeight() );
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
+                ImGui::TextUnformatted(std::get<1>(tooltip).c_str());
+                ImGui::PopStyleColor();
+                // Draw source icon at the top right corner
+                ImGui::SetCursorPos(image_top + ImVec2( thumbnail_size.x - ImGui::GetTextLineHeight()
+                                                           - style.ItemSpacing.x, style.ItemSpacing.y ));
+                ImGuiToolkit::Icon( _s->icon().x, _s->icon().y);
+                ImGui::PopFont();
+                ImGui::EndTooltip();
+            }
+            // otherwise just show a standard tooltip [action - shortcut key]
+            else
+                ImGuiToolkit::ToolTip(std::get<0>(tooltip).c_str(), std::get<1>(tooltip).c_str());
+
+        }
         else
             ++_timeout_tooltip;
     }
@@ -3410,7 +3546,9 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
         // File Source creation
         if (Settings::application.source.new_type == SOURCE_FILE) {
 
-            static DialogToolkit::OpenMediaDialog fileimportdialog("Open Media");
+            static DialogToolkit::OpenFileDialog fileimportdialog("Open Media",
+                                                                   MEDIA_FILES_TYPE,
+                                                                   MEDIA_FILES_PATTERN );
             static DialogToolkit::OpenFolderDialog folderimportdialog("Select Folder");
 
             ImGui::Text("Video, image & session files");
@@ -3617,7 +3755,9 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
         // Sequence Source creator
         else if (Settings::application.source.new_type == SOURCE_SEQUENCE){
 
-            static DialogToolkit::MultipleImagesDialog _selectImagesDialog("Select multiple images");
+            static DialogToolkit::OpenManyFilesDialog _selectImagesDialog("Select multiple images",
+                                                                          IMAGES_FILES_TYPE,
+                                                                          IMAGES_FILES_PATTERN);
             static MultiFileSequence _numbered_sequence;
             static MultiFileRecorder _video_recorder;
             static int _fps = 25;
@@ -3643,7 +3783,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // clear
                 new_source_preview_.setSource();
                 // store list of files from dialog
-                sourceSequenceFiles = _selectImagesDialog.images();
+                sourceSequenceFiles = _selectImagesDialog.files();
                 if (sourceSequenceFiles.empty())
                     Log::Notify("No file selected.");
 
@@ -3732,7 +3872,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     ImGui::Text("Codec :");ImGui::SameLine(150);
                     ImGui::Text("%s", VideoRecorder::profile_name[ _video_recorder.profile() ] );
                     ImGui::Text("Frames :");ImGui::SameLine(150);
-                    ImGui::Text("%lu / %lu", (unsigned long)_video_recorder.numFrames(), _video_recorder.files().size() );
+                    ImGui::Text("%lu / %lu", (unsigned long)_video_recorder.numFrames(),
+                                (unsigned long)_video_recorder.files().size() );
 
                     ImGui::Spacing();
                     ImGui::ProgressBar(_video_recorder.progress());
@@ -3759,7 +3900,9 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
         // Generated patterns Source creator
         else if (Settings::application.source.new_type == SOURCE_GENERATED){
 
-            static DialogToolkit::OpenSubtitleDialog subtitleopenialog("Open Subtitle");
+            static DialogToolkit::OpenFileDialog subtitleopenialog("Open Subtitle",
+                                                                   SUBTITLE_FILES_TYPE,
+                                                                   SUBTITLE_FILES_PATTERN );
             bool update_new_source = false;
 
             ImGui::Text("Patterns & generated graphics");
@@ -3767,12 +3910,12 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", "Select", ImGuiComboFlags_HeightLarge))
             {
-                if ( ImGui::Selectable("Custom gstreamer " ICON_FA_CODE) ) {
+                if ( ImGui::Selectable("Custom gstreamer   " ICON_FA_TERMINAL) ) {
                     update_new_source = true;
                     generated_type = 0;
                     pattern_type = -1;
                 }
-                if ( ImGui::Selectable("Text " ICON_FA_CODE) ) {
+                if ( ImGui::Selectable("Text   " ICON_FA_TERMINAL) ) {
                     update_new_source = true;
                     generated_type = 1;
                     pattern_type = -1;
@@ -4020,16 +4163,16 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             // Indication
             ImGui::SameLine();
             ImVec2 pos = ImGui::GetCursorPos();
-            if (ImGuiToolkit::IconButton(5,15,"Reload list"))
-                Device::manager().reload();
-            ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Create a source capturing video streams from connected devices or machines;\n"
                                       ICON_FA_CARET_RIGHT " vimix display loopback\n"
                                       ICON_FA_CARET_RIGHT " screen capture\n"
                                       ICON_FA_CARET_RIGHT " broadcasted with SRT over network.\n"
                                       ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                       ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network.");
-            ImGui::Dummy(ImVec2(1, 1));
+            ImGui::SameLine();
+            if (ImGuiToolkit::IconButton(5, 15, "Reload list"))
+                Device::manager().reload();
+            ImGui::Spacing();
 
             if (custom_connected) {
 
@@ -4040,7 +4183,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 static std::regex ipv4("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])");
                 static std::regex numport("([0-9]){4,6}");
 
-                ImGui::Spacing();
+                ImGui::NewLine();
                 ImGuiToolkit::Icon(ICON_SOURCE_SRT);
                 ImGui::SameLine();
                 ImGui::Text("SRT broadcast");
@@ -4116,7 +4259,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 
             if (custom_screencapture) {
 
-                ImGui::Spacing();
+                ImGui::NewLine();
                 ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN);
                 ImGui::SameLine();
                 ImGui::Text("Screen Capture");
@@ -4161,12 +4304,12 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
     }
 }
 
-std::pair<std::string, std::string> Navigator::RenderMousePointerSelector(const ImVec2 &size)
+bool Navigator::RenderMousePointerSelector(const ImVec2 &size)
 {
     ImGuiContext& g = *GImGui;
     ImVec2 top = ImGui::GetCursorPos();
     bool enabled = Settings::application.current_view != View::TRANSITION;
-    std::pair<std::string, std::string> tooltip = {"", ""};
+    bool ret = false;
     ///
     /// interactive button of the given size: show menu if clic or mouse over
     ///
@@ -4179,7 +4322,7 @@ std::pair<std::string, std::string> Navigator::RenderMousePointerSelector(const 
     ImVec2 bottom = ImGui::GetCursorScreenPos();
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-        tooltip = {"Snap cursor", ALT_MOD};
+        ret = true;
         counter_menu_timeout=0;
     }
 
@@ -4289,7 +4432,7 @@ std::pair<std::string, std::string> Navigator::RenderMousePointerSelector(const 
         ImGui::EndPopup();
     }
 
-    return tooltip;
+    return ret;
 }
 
 void Navigator::RenderMainPannelSession()
@@ -4778,7 +4921,9 @@ void Navigator::RenderMainPannelPlaylist()
 
     // file dialogs to open / save playlist files and folders
     static DialogToolkit::OpenFolderDialog customFolder("Open Folder");
-    static DialogToolkit::MultipleSessionsDialog selectSessions("Select vimix sessions");
+    static DialogToolkit::OpenManyFilesDialog selectSessions("Select vimix sessions",
+                                                             VIMIX_FILE_TYPE,
+                                                             VIMIX_FILE_PATTERN);
 
     //    static DialogToolkit::OpenPlaylistDialog openPlaylist("Open Playlist");
     //    static DialogToolkit::SavePlaylistDialog savePlaylist("Save Playlist");
@@ -5274,7 +5419,7 @@ void Navigator::RenderMainPannelSettings()
     ImGui::SetCursorPosX(width_);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if ( ImGui::InputFloat("##Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
-        Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 2.f);
+        Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 5.f);
         ImGui::GetIO().FontGlobalScale = Settings::application.scale;
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -5550,7 +5695,7 @@ void Navigator::RenderMainPannelSettings()
     bool change = false;
     // hardware support deserves more explanation
     ImGuiToolkit::Indication("If enabled, tries to find a platform adapted hardware-accelerated "
-                             "driver to decode (read) or encode (record) videos.", ICON_FA_MICROCHIP);
+                             "driver to decode (read) or encode (record) videos.", gpu ? 13 : 14, 2);
     ImGui::SameLine(0);
     if (Settings::application.render.gpu_decoding_available)
         change |= ImGuiToolkit::ButtonSwitch( "Hardware en/decoding", &gpu);
@@ -5559,7 +5704,7 @@ void Navigator::RenderMainPannelSettings()
 
     // audio support deserves more explanation
     ImGuiToolkit::Indication("If enabled, tries to find audio in openned videos "
-                             "and allows recording audio.", ICON_FA_VOLUME_OFF);
+                             "and allows recording audio.", audio ? ICON_FA_VOLUME_UP : ICON_FA_VOLUME_MUTE);
     ImGui::SameLine(0);
     change |= ImGuiToolkit::ButtonSwitch( "Audio (experimental)", &audio);
 
@@ -5747,8 +5892,18 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
             // Logo (if enougth room)
             if (remaining_height > icon_height + button_height + g.Style.ItemSpacing.y)  {
                 static unsigned int vimixicon = Resource::getTextureImage("images/vimix_256x256.png");
-                ImGui::SetCursorScreenPos( rightcorner - ImVec2( (icon_height + pannel_width_) * 0.5f, icon_height + button_height + g.Style.ItemSpacing.y) );
-                ImGui::Image((void*)(intptr_t)vimixicon, ImVec2(icon_height, icon_height));
+                const ImVec2 draw_pos = rightcorner
+                                        - ImVec2((icon_height + pannel_width_) * 0.5f,
+                                                 icon_height + button_height + g.Style.ItemSpacing.y);
+                ImGui::SetCursorScreenPos(draw_pos);
+                ImGui::Image((void *) (intptr_t) vimixicon, ImVec2(icon_height, icon_height));
+                // Hidden action: add a source with vimix logo if double clic on vimix logo
+                const ImRect bb(draw_pos, draw_pos + ImVec2(icon_height, icon_height));
+                const ImGuiID id = ImGui::GetCurrentWindow()->GetID("##easteregg");
+                bool hovered, held;
+                if (ImGui::ButtonBehavior(bb, id, &hovered, &held, ImGuiButtonFlags_PressedOnDoubleClick) )
+                    Mixer::manager().paste( Resource::getText("images/logo.vmx") );
+
                 index_label = 1;
             }
             // Button About
