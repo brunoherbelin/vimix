@@ -655,11 +655,13 @@ void Seek::update(Source *s, float dt)
     // access media player if target source is a media source
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
     if (ms != nullptr) {
-        // set target position
+        // get media info
         GstClockTime media_duration = ms->mediaplayer()->timeline()->duration();
-        GstClockTime t = (double) media_duration * (double) target_percent_;
-        if (target_time_ > 0)
-            t = target_time_;
+        // set target position
+        GstClockTime t = target_time_;
+        // set target as percent if not provided
+        if (t<1)
+            t = ms->mediaplayer()->timeline()->timeFromPercent(target_percent_);
 
         // perform seek
         if (GST_CLOCK_TIME_IS_VALID(t) && GST_CLOCK_TIME_IS_VALID(media_duration)

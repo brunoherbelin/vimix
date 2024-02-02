@@ -100,7 +100,7 @@ public:
     ~Timeline();
     Timeline& operator = (const Timeline& b);
 
-    bool is_valid();
+    bool is_valid() const;
     void update();
     void refresh();
 
@@ -121,6 +121,7 @@ public:
     inline TimeInterval interval() const { return timing_; }
     GstClockTime next(GstClockTime time) const;
     GstClockTime previous(GstClockTime time) const;
+    GstClockTime timeFromPercent(const float p) const;
 
     // Manipulation of gaps
     inline TimeIntervalSet gaps() const { return gaps_; }
