@@ -11,8 +11,6 @@
 
 #include "Screenshot.h"
 
-//#define USE_GST_OPENGL_SYNC_HANDLER
-
 typedef struct GLFWmonitor GLFWmonitor;
 typedef struct GLFWwindow GLFWwindow;
 class FrameBuffer;

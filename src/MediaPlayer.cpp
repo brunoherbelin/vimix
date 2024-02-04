@@ -44,6 +44,9 @@
 #define USE_GST_PLAYBIN
 #endif
 
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+#include "RenderingManager.h"
+#endif
 
 std::list<MediaPlayer*> MediaPlayer::registered_;
 

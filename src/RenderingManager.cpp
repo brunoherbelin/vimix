@@ -75,6 +75,10 @@
 #include "RenderingManager.h"
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
+
+GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
+
 //
 // Discarded because not working under OSX - kept in case it would become useful
 //
@@ -376,25 +380,6 @@ bool Rendering::init()
         Log::Info("No hardware decoding plugin found.");
     }
 
-#ifdef SYNC_GSTREAMER_OPENGL_CONTEXT
-#if GST_GL_HAVE_PLATFORM_WGL
-    global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
-                                                    GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
-#elif GST_GL_HAVE_PLATFORM_CGL
-//    global_display = GST_GL_DISPLAY ( glfwGetCocoaMonitor(main_.window()) );
-    global_display = GST_GL_DISPLAY (gst_gl_display_cocoa_new ());
-
-    global_gl_context = gst_gl_context_new_wrapped (global_display,
-                                         (guintptr) 0,
-                                         GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL);
-#elif GST_GL_HAVE_PLATFORM_GLX
-    global_display = (GstGLDisplay*) gst_gl_display_x11_new_with_display( glfwGetX11Display() );
-    global_gl_context = gst_gl_context_new_wrapped (global_display,
-                                        (guintptr) glfwGetGLXContext(main_.window()),
-                                        GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL);
-#endif
-#endif
-
     //
     // Monitors
     //
@@ -419,6 +404,25 @@ bool Rendering::init()
     // Output windows will be initialized in draw
     //
     outputs_ = std::vector<RenderingWindow>(MAX_OUTPUT_WINDOW);
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+#if GST_GL_HAVE_PLATFORM_WGL
+    global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
+                                                   GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
+#elif GST_GL_HAVE_PLATFORM_CGL
+    //    global_display = GST_GL_DISPLAY ( glfwGetCocoaMonitor(main_.window()) );
+    global_display = GST_GL_DISPLAY (gst_gl_display_cocoa_new ());
+
+    global_gl_context = gst_gl_context_new_wrapped (global_display,
+                                                   (guintptr) 0,
+                                                   GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL);
+#elif GST_GL_HAVE_PLATFORM_GLX
+    global_display = (GstGLDisplay*) gst_gl_display_x11_new_with_display( glfwGetX11Display() );
+    global_gl_context = gst_gl_context_new_wrapped (global_display,
+                                                   (guintptr) glfwGetGLXContext(main_.window()),
+                                                   GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL);
+#endif
+#endif
 
     return true;
 }
