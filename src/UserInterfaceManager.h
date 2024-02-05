@@ -151,7 +151,7 @@ public:
     }
 
     // pre-loop initialization
-    bool Init();
+    bool Init(int font_size = 0);
     // loop update start new frame
     void NewFrame();
     // loop update rendering

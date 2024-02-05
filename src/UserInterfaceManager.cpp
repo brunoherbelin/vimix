@@ -134,7 +134,7 @@ UserInterface::UserInterface()
     sessionsavedialog = nullptr;
 }
 
-bool UserInterface::Init()
+bool UserInterface::Init(int font_size)
 {
     if (Rendering::manager().mainWindow().window()== nullptr)
         return false;
@@ -162,8 +162,11 @@ bool UserInterface::Init()
     // Setup Dear ImGui style
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
-    //  Estalish the base size from the resolution of the monitor
-    float base_font_size =  float(Rendering::manager().mainWindow().pixelsforRealHeight(4.f))  ;
+    // Read font size from argument
+    float base_font_size = float(font_size);
+    // Estalish the base size from the resolution of the monitor for a 4mm height text
+    if (base_font_size < 1)
+        base_font_size = float(Rendering::manager().mainWindow().pixelsforRealHeight(4.f));
     // at least 8 pixels font size
     base_font_size = MAX(base_font_size, 8.f);
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
