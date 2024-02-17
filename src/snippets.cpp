@@ -313,4 +313,41 @@ void drawMediaPlayer()
 }
 
 
-
+//        // get second argument : can be string, float or nothing
+//        bool argloop = false;
+//        while (!argloop) {
+//            // work on copy of arguments
+//            osc::ReceivedMessageArgumentStream __args = arguments;
+//            // no argument
+//            if (__args.Eos()) {
+//                filter_arg_type = osc::NIL_TYPE_TAG;
+//                argloop = true;
+//            }
+//            // try with float (last try)
+//            if (filter_arg_type == osc::FLOAT_TYPE_TAG) {
+//                try {
+//                    __args >> filter_value >> osc::EndMessage;
+//                } catch (osc::WrongArgumentTypeException &) {
+//                    filter_arg_type = osc::NIL_TYPE_TAG;
+//                }
+//                // done!
+//                argloop = true;
+//            }
+//            // try with string (first try)
+//            if (filter_arg_type == osc::STRING_TYPE_TAG) {
+//                try {
+//                    const char *m = nullptr;
+//                    __args >> m >> osc::EndMessage;
+//                    // done!
+//                    filter_method = std::string(m);
+//                    std::transform(filter_method.begin(),
+//                                   filter_method.end(),
+//                                   filter_method.begin(),
+//                                   ::tolower);
+//                    argloop = true;
+//                } catch (osc::WrongArgumentTypeException &) {
+//                    // next: try with float
+//                    filter_arg_type = osc::FLOAT_TYPE_TAG;
+//                }
+//            }
+//        }

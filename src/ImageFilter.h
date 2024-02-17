@@ -154,6 +154,7 @@ public:
     } ResampleFactor;
     static const char* factor_label[RESAMPLE_INVALID];
     ResampleFactor factor () const { return factor_; }
+    bool setFactor(const std::string &label);
     void setFactor(int factor);
 
     // implementation of FrameBufferFilter
@@ -187,6 +188,7 @@ public:
     } BlurMethod;
     static const char* method_label[BLUR_INVALID];
     BlurMethod method () const { return method_; }
+    bool setMethod(const std::string &label);
     void setMethod(int method);
 
     // implementation of FrameBufferFilter
@@ -221,6 +223,7 @@ public:
     } SharpenMethod;
     static const char* method_label[SHARPEN_INVALID];
     SharpenMethod method () const { return method_; }
+    bool setMethod(const std::string &label);
     void setMethod(int method);
 
     // implementation of FrameBufferFilter
@@ -255,7 +258,10 @@ public:
         SMOOTH_INVALID
     } SmoothMethod;
     static const char* method_label[SMOOTH_INVALID];
+    static std::vector< FilteringProgram > programs_;
+
     SmoothMethod method () const { return method_; }
+    bool setMethod(const std::string &label);
     void setMethod(int method);
 
     // implementation of FrameBufferFilter
@@ -266,7 +272,6 @@ public:
 
 private:
     SmoothMethod method_;
-    static std::vector< FilteringProgram > programs_;
 };
 
 
@@ -286,6 +291,7 @@ public:
     } EdgeMethod;
     static const char* method_label[EDGE_INVALID];
     EdgeMethod method () const { return method_; }
+    bool setMethod(const std::string &label);
     void setMethod(int method);
 
     // implementation of FrameBufferFilter
@@ -317,6 +323,7 @@ public:
     } AlphaOperation;
     static const char* operation_label[ALPHA_INVALID];
     AlphaOperation operation () const { return operation_; }
+    bool setOperation(const std::string &label);
     void setOperation(int op);
 
     // implementation of FrameBufferFilter

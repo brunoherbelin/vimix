@@ -33,6 +33,7 @@
 #include "Mixer.h"
 #include "Source.h"
 #include "TextSource.h"
+#include "CloneSource.h"
 #include "SourceCallback.h"
 #include "ImageProcessingShader.h"
 #include "ActionManager.h"
@@ -252,24 +253,28 @@ std::string Control::RequestListener::FullMessage( const osc::ReceivedMessage& m
         osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
         while (arg != m.ArgumentsEnd()) {
             if( arg->IsBool() ){
-                bool a = (arg++)->AsBoolUnchecked();
+                bool a = (arg)->AsBoolUnchecked();
                 message << (a ? "T" : "F");
             }
             else if( arg->IsInt32() ){
-                int a = (arg++)->AsInt32Unchecked();
+                int a = (arg)->AsInt32Unchecked();
                 message << "i";
                 arguments << " " << a;
             }
             else if( arg->IsFloat() ){
-                float a = (arg++)->AsFloatUnchecked();
+                float a = (arg)->AsFloatUnchecked();
                 message << "f";
                 arguments << " " << std::fixed << std::setprecision(2) << a;
             }
             else if( arg->IsString() ){
-                const char *a = (arg++)->AsStringUnchecked();
+                const char *a = (arg)->AsStringUnchecked();
                 message << "s";
                 arguments << " " << a;
             }
+            else if (arg->IsNil()) {
+                message << "N";
+            }
+            arg++;
         }
     }
     catch( osc::Exception& e ){
@@ -881,6 +886,46 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             if (textsrc && label) {
                 textsrc->contents()->setText(label);
             }
+        }
+        /// e.g. '/vimix/current/filter sf blur 0.5'
+        else if (attribute.compare(OSC_SOURCE_FILTER) == 0) {
+            std::string filter_name;
+            std::string filter_method;
+            float filter_value = NAN;
+            float t = 0.f;
+            try {
+                const char *str = nullptr;
+                arguments >> str;
+                filter_name = std::string(str);
+            }
+            // ignore invalid or Nil types
+            catch (osc::WrongArgumentTypeException &) {
+            }
+
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else {
+                try {
+                    const char *str = nullptr;
+                    arguments >> str;
+                    filter_method = std::string(str);
+                }
+                // ignore invalid or Nil types
+                catch (osc::WrongArgumentTypeException &) {
+                }
+                if (arguments.Eos())
+                    arguments >> osc::EndMessage;
+                else {
+                    arguments >> filter_value;
+                    if (arguments.Eos())
+                        arguments >> osc::EndMessage;
+                    else {
+                        arguments >> t >> osc::EndMessage;
+                    }
+                }
+            }
+            // operate on source
+            target->call( new SetFilter(filter_name, filter_method, filter_value, t), true);
         }
         /// e.g. '/vimix/name/sync'
         else if ( attribute.compare(OSC_SYNC) == 0) {

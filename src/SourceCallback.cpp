@@ -16,13 +16,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
+#include <fstream>
 
 #include "defines.h"
 #include "Source.h"
 #include "ImageProcessingShader.h"
+#include "CloneSource.h"
+#include "ImageFilter.h"
+#include "DelayFilter.h"
 #include "MediaSource.h"
 #include "MediaPlayer.h"
 #include "Visitor.h"
+#include "Log.h"
 
 #include "SourceCallback.h"
 
@@ -97,6 +102,9 @@ SourceCallback *SourceCallback::create(CallbackType type)
         break;
     case SourceCallback::CALLBACK_POSTERIZE:
         loadedcallback = new SetPosterize;
+        break;
+    case SourceCallback::CALLBACK_FILTER:
+        loadedcallback = new SetFilter;
         break;
     default:
         break;
@@ -1086,3 +1094,217 @@ void SetGamma::accept(Visitor& v)
     SourceCallback::accept(v);
     v.visit(*this);
 }
+
+
+
+SetFilter::SetFilter(const std::string &filter, const std::string &method, float value, float ms)
+    : SourceCallback()
+    , target_filter_(filter)
+    , target_method_(method)
+    , target_value_(value)
+    , duration_(ms)
+{
+    imagefilter = nullptr;
+    delayfilter = nullptr;
+}
+
+void SetFilter::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+    CloneSource *clonesrc = dynamic_cast<CloneSource *>(s);
+
+    if (s->locked() || !clonesrc)
+        status_ = FINISHED;
+
+    // apply when ready
+    if (status_ == READY) {
+
+        ///
+        /// Set Filter
+        ///
+        // convert target_filter_ to lower case to avoid mistakes
+        std::transform(target_filter_.begin(),
+                       target_filter_.end(),
+                       target_filter_.begin(),
+                       ::tolower);
+
+        if (!target_filter_.empty()) {
+            // find filter type ID of the filter name provided, if valid
+            size_t __t = FrameBufferFilter::FILTER_PASSTHROUGH;
+            for (; __t != FrameBufferFilter::FILTER_INVALID; __t++) {
+                // get first word of filter label, in lower case
+                std::string _b = std::get<2>(FrameBufferFilter::Types[__t]);
+                auto loc = _b.find_first_of(" ");
+                if (loc != std::string::npos)
+                    _b = _b.erase(loc);
+                std::transform(_b.begin(), _b.end(), _b.begin(), ::tolower);
+                // end search if found same as target filter name (success)
+                if (target_filter_.compare(_b) == 0)
+                    break;
+            }
+
+            // Provided filter name is valid
+            FrameBufferFilter::Type __type = FrameBufferFilter::Type(__t);
+            if (__type != FrameBufferFilter::FILTER_INVALID) {
+                // change filter if different from source
+                if (clonesrc->filter()->type() != __type)
+                    clonesrc->setFilter(__type);
+            } else
+                Log::Info("Filter : unknown type '%s'", target_filter_.c_str());
+        }
+
+        ///
+        /// Set Method
+        ///
+        if (!target_method_.empty()) {
+            // treat image filter types differently
+            // ignore invalid or Nil types
+            switch (clonesrc->filter()->type()) {
+            case FrameBufferFilter::FILTER_RESAMPLE: {
+                // get resamplig filter
+                ResampleFilter *__f = dynamic_cast<ResampleFilter *>(clonesrc->filter());
+                if ( !__f->setFactor(target_method_) )
+                    Log::Info("Filter Resample: unknown factor '%s'", target_method_.c_str());
+            } break;
+            case FrameBufferFilter::FILTER_BLUR: {
+                // get blur filter
+                BlurFilter *__f = dynamic_cast<BlurFilter *>(clonesrc->filter());
+                if ( !__f->setMethod(target_method_) )
+                    Log::Info("Filter Blur: unknown method '%s'", target_method_.c_str());
+            } break;
+            case FrameBufferFilter::FILTER_SHARPEN: {
+                // get sharpen filter
+                SharpenFilter *__f = dynamic_cast<SharpenFilter *>(clonesrc->filter());
+                if ( !__f->setMethod(target_method_) )
+                    Log::Info("Filter Sharpen: unknown method '%s'", target_method_.c_str());
+            } break;
+            case FrameBufferFilter::FILTER_SMOOTH: {
+                // get smooth filter
+                SmoothFilter *__f = dynamic_cast<SmoothFilter *>(clonesrc->filter());
+                if (!__f->setMethod(target_method_))
+                    Log::Info("Filter Smooth: unknown method '%s'", target_method_.c_str());
+            } break;
+            case FrameBufferFilter::FILTER_EDGE: {
+                // get edge filter
+                EdgeFilter *__f = dynamic_cast<EdgeFilter *>(clonesrc->filter());
+                if (!__f->setMethod(target_method_))
+                    Log::Info("Filter Edge: unknown method '%s'", target_method_.c_str());
+            } break;
+            case FrameBufferFilter::FILTER_ALPHA: {
+                // get alpha filter
+                AlphaFilter *__f = dynamic_cast<AlphaFilter *>(clonesrc->filter());
+                if (!__f->setOperation(target_method_))
+                    Log::Info("Filter Alpha: unknown operation '%s'", target_method_.c_str());
+            } break;
+            case FrameBufferFilter::FILTER_IMAGE: {
+                // Open the file
+                std::ifstream file(target_method_);
+                // Check if the file is opened successfully
+                if (file.is_open()) {
+                    // Read the content of the file into an std::string
+                    std::string fileContent((std::istreambuf_iterator<char>(file)),
+                                            std::istreambuf_iterator<char>());
+                    FilteringProgram prog;
+                    prog.setName(target_method_);
+                    prog.setCode({fileContent, ""});
+                    // get alpha filter
+                    ImageFilter *__f = dynamic_cast<ImageFilter *>(clonesrc->filter());
+                    __f->setProgram(prog);
+                }
+                else
+                    Log::Info("Filter Custom: can't read file '%s'", target_method_.c_str());
+                // Close the file
+                file.close();
+            } break;
+            default:
+                break;
+            }
+        }
+
+        // by default, consider it's over,
+        status_ = FINISHED;
+
+        // ...but if a target value is given,
+        if ( !std::isnan(target_value_) ){
+            imagefilter = dynamic_cast<ImageFilter *>(clonesrc->filter());
+            // ...and if there is a parameter to the filter
+            if (imagefilter && imagefilter->program().parameters().size() > 0) {
+                target_parameter_ = imagefilter->program().parameters().rbegin()->first;
+                start_value_ = imagefilter->program().parameters().rbegin()->second;
+                // then activate for value update
+                status_ = ACTIVE;
+            }
+            // or maybe its a delay filter?
+            else {
+                delayfilter = dynamic_cast<DelayFilter *>(clonesrc->filter());
+                if (delayfilter) {
+                    start_value_ = delayfilter->delay();
+                    // then activate for value update
+                    status_ = ACTIVE;
+                }
+            }
+        }
+    }
+
+    ///
+    /// Set Value
+    ///
+
+    if (status_ == ACTIVE) {
+        // time passed since start
+        float progress = elapsed_ - delay_;
+        // update ImageFilter types of filters
+        if (imagefilter) {
+            // time-out or instantaneous
+            if (!(ABS(duration_) > 0.f) || progress > duration_) {
+                // apply target value
+                imagefilter->setProgramParameter(target_parameter_, target_value_);
+                // done
+                status_ = FINISHED;
+            }
+            else {
+                // apply calculated intermediate value
+                imagefilter->setProgramParameter(target_parameter_,
+                                                 glm::mix(start_value_,
+                                                          target_value_,
+                                                          progress / duration_));
+            }
+        }
+        // update DelayFilter
+        else if (delayfilter) {
+            // time-out or instantaneous
+            if (!(ABS(duration_) > 0.f) || progress > duration_) {
+                // apply target value
+                delayfilter->setDelay(target_value_);
+                // done
+                status_ = FINISHED;
+            }
+            else {
+                // apply calculated intermediate value
+                delayfilter->setDelay(glm::mix(start_value_, target_value_, progress / duration_));
+            }
+        }
+        else
+            status_ = FINISHED;
+    }
+}
+
+void SetFilter::multiply (float factor)
+{
+    target_value_ *= factor;
+}
+
+SourceCallback *SetFilter::clone() const
+{
+    return new SetFilter(target_filter_,
+                         target_method_,
+                         target_value_,
+                         duration_);
+}
+
+void SetFilter::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
+

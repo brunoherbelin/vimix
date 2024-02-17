@@ -1228,32 +1228,6 @@ void ImGuiVisitor::visit (AlphaFilter& f)
 
     if ( m == AlphaFilter::ALPHA_CHROMAKEY || m == AlphaFilter::ALPHA_LUMAKEY)
     {
-        float t = filter_parameters["Threshold"];
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderFloat( "##Threshold", &t, 0.f, 1.f, "%.2f")) {
-            f.setProgramParameter("Threshold", t);
-        }
-        if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
-            t = CLAMP( t + 0.01f * io.MouseWheel, 0.f, 1.f);
-            f.setProgramParameter("Threshold", t);
-            oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
-            Action::manager().store(oss.str());
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit()) {
-            oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
-            Action::manager().store(oss.str());
-        }
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (ImGuiToolkit::TextButton("Threshold")) {
-            t = 0.f;
-            f.setProgramParameter("Threshold", t);
-            oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
-            Action::manager().store(oss.str());
-        }
-
         float v = filter_parameters["Tolerance"];
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::SliderFloat( "##Tolerance", &v, 0.f, 1.f, "%.2f")) {
@@ -1277,6 +1251,32 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             f.setProgramParameter("Tolerance", v);
             oss << AlphaFilter::operation_label[ f.operation() ];
             oss << " : " << "Tolerance" << " " << std::setprecision(3) << v;
+            Action::manager().store(oss.str());
+        }
+
+        float t = filter_parameters["Threshold"];
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderFloat( "##Threshold", &t, 0.f, 1.f, "%.2f")) {
+            f.setProgramParameter("Threshold", t);
+        }
+        if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
+            t = CLAMP( t + 0.01f * io.MouseWheel, 0.f, 1.f);
+            f.setProgramParameter("Threshold", t);
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
+            Action::manager().store(oss.str());
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
+            Action::manager().store(oss.str());
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Threshold")) {
+            t = 0.f;
+            f.setProgramParameter("Threshold", t);
+            oss << AlphaFilter::operation_label[ f.operation() ];
+            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
             Action::manager().store(oss.str());
         }
     }
