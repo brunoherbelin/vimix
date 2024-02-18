@@ -900,6 +900,17 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
                 target->call( new Seek( hh, mm, ss, ms ), true );
             }
         }
+        /// e.g. '/vimix/current/ffwd f 50'
+        else if ( attribute.compare(OSC_SOURCE_FFWD) == 0) {
+            float v = 0.f;
+            float t = 0.f;
+            arguments >> v;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new PlayFastForward( v, t ) );
+        }
         /// e.g. '/vimix/current/speed f 0.25'
         else if (attribute.compare(OSC_SOURCE_SPEED) == 0) {
             float v = 0.f;
