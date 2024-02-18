@@ -635,13 +635,17 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
                 arguments >> osc::EndMessage;
             else
                 arguments >> t >> osc::EndMessage;
-            target->call( new SetAlpha( x, t), true );
+            target->call( new SetAlpha(x, t), true );
         }
         /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_LOOM) == 0) {
-            float x = 1.f;
-            arguments >> x >> osc::EndMessage;
-            target->call( new Loom(x, 0.f) );
+            float x = 0.f, t = 0.f;
+            arguments >> x;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new Loom(x, t) );
             // this will require to send feedback status about source
             send_feedback = true;
         }
@@ -667,7 +671,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/grab ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_GRAB) == 0) {
-            float x = 0.f, y = 0.f;
+            float x = 0.f, y = 0.f, t = 0.f;
             try {
                 arguments >> x;
             }
@@ -678,8 +682,11 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             catch (osc::WrongArgumentTypeException &) {
             }
-            arguments >> osc::EndMessage;
-            target->call( new Grab( x, y, 0.f) );
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new Grab( x, y, t) );
         }
         /// e.g. '/vimix/current/position ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_POSITION) == 0) {
@@ -708,7 +715,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/resize ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_RESIZE) == 0) {
-            float x = 0.f, y = 0.f;
+            float x = 0.f, y = 0.f, t = 0.f;
             try {
                 arguments >> x;
             }
@@ -719,8 +726,11 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             catch (osc::WrongArgumentTypeException &) {
             }
-            arguments >> osc::EndMessage;
-            target->call( new Resize( x, y, 0.f) );
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new Resize( x, y, t) );
         }        
         /// e.g. '/vimix/current/size ff 1.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_SIZE) == 0) {
