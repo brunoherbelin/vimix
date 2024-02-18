@@ -629,9 +629,13 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_ALPHA) == 0) {
-            float x = 1.f;
-            arguments >> x >> osc::EndMessage;
-            target->call( new SetAlpha(x), true );
+            float x = 0.f, t = 0.f;
+            arguments >> x;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetAlpha( x, t), true );
         }
         /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_LOOM) == 0) {
@@ -643,15 +647,23 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/transparency f 0.7'
         else if ( attribute.compare(OSC_SOURCE_TRANSPARENCY) == 0) {
-            float x = 0.f;
-            arguments >> x >> osc::EndMessage;
-            target->call( new SetAlpha(1.f - x), true );
+            float x = 0.f, t = 0.f;
+            arguments >> x;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetAlpha(1.f - x, t), true );
         }
         /// e.g. '/vimix/current/depth f 5.0'
         else if ( attribute.compare(OSC_SOURCE_DEPTH) == 0) {
-            float x = 0.f;
-            arguments >> x >> osc::EndMessage;
-            target->call( new SetDepth(x), true );
+            float x = 0.f, t = 0.f;
+            arguments >> x;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetDepth(x, t), true );
         }
         /// e.g. '/vimix/current/grab ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_GRAB) == 0) {
@@ -687,8 +699,12 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             catch (osc::WrongArgumentTypeException &) {
             }
-            arguments >> osc::EndMessage;
-            target->call( new SetGeometry( &transform, 0.f), true );
+            float t = 0.f;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetGeometry( &transform, t), true );
         }
         /// e.g. '/vimix/current/resize ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_RESIZE) == 0) {
@@ -724,8 +740,12 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             catch (osc::WrongArgumentTypeException &) {
             }
-            arguments >> osc::EndMessage;
-            target->call( new SetGeometry( &transform, 0.f), true );
+            float t = 0.f;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetGeometry( &transform, t), true );
         }
         /// e.g. '/vimix/current/turn f 1.0'
         else if ( attribute.compare(OSC_SOURCE_TURN) == 0) {
@@ -739,12 +759,16 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/angle f 3.1416'
         else if ( attribute.compare(OSC_SOURCE_ANGLE) == 0) {
-            float a = 0.f;
-            arguments >> a >> osc::EndMessage;
+            float a = 0.f, t = 0.f;
+            arguments >> a;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
             Group transform;
             transform.copyTransform(target->group(View::GEOMETRY));
             transform.rotation_.z = a;
-            target->call( new SetGeometry( &transform, 0.f), true );
+            target->call( new SetGeometry( &transform, t), true );
         }
         /// e.g. '/vimix/current/reset'
         else if ( attribute.compare(OSC_SOURCE_RESET) == 0) {

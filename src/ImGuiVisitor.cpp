@@ -1077,7 +1077,7 @@ void list_parameters_(ImageFilter &f, std::ostringstream &oss)
     ImGuiIO& io = ImGui::GetIO();
 
     std::map<std::string, float> filter_parameters = f.program().parameters();
-    for (auto param = filter_parameters.begin(); param != filter_parameters.end(); ++param)
+    for (auto param = filter_parameters.rbegin(); param != filter_parameters.rend(); ++param)
     {
         ImGui::PushID( param->first.c_str() );
         float v = param->second;
@@ -1253,7 +1253,6 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             oss << " : " << "Tolerance" << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
         }
-
         float t = filter_parameters["Threshold"];
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::SliderFloat( "##Threshold", &t, 0.f, 1.f, "%.2f")) {
