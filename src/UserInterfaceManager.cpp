@@ -1124,6 +1124,17 @@ void UserInterface::showMenuWindows()
     // Enable / disable metrics toolbar
     ImGui::MenuItem( MENU_METRICS, NULL, &Settings::application.widget.stats );
 
+    ImGui::Separator();
+
+    // Enter / exit Fullscreen
+    if (Rendering::manager().mainWindow().isFullscreen()){
+        if (ImGui::MenuItem( ICON_FA_COMPRESS_ALT "   Exit Fullscreen", SHORTCUT_FULLSCREEN ))
+            Rendering::manager().mainWindow().toggleFullscreen();
+    }
+    else {
+        if (ImGui::MenuItem( ICON_FA_EXPAND_ALT "   Fullscreen", SHORTCUT_FULLSCREEN ))
+            Rendering::manager().mainWindow().toggleFullscreen();
+    }
 }
 
 void UserInterface::showMenuFile()
