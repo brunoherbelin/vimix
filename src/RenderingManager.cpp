@@ -201,13 +201,24 @@ static void OutputWindowEvent( GLFWwindow *w, int button, int action, int)
 
 static void WindowCloseCallback( GLFWwindow* w )
 {
+    // close main window
     if (Rendering::manager().mainWindow().window() == w) {
         if (!UserInterface::manager().TryClose())
             glfwSetWindowShouldClose(w, GLFW_FALSE);
     }
-    else if (!glfwWindowShouldClose(w)) {
-        Mixer::manager().setView(View::DISPLAYS);
-        Rendering::manager().mainWindow().show();
+    // not main window
+    else {
+        // if headless (main window not visile)
+        if (glfwGetWindowAttrib(Rendering::manager().mainWindow().window(), GLFW_VISIBLE)
+            == GL_FALSE) {
+            // close rendering manager = quit
+            Rendering::manager().close();
+        }
+        // attempt to close shows display view
+        else {
+            Mixer::manager().setView(View::DISPLAYS);
+            Rendering::manager().mainWindow().show();
+        }
     }
 }
 
@@ -397,7 +408,7 @@ bool Rendering::init()
     unsigned int err = 0;
 
     while((err = glGetError()) != GL_NO_ERROR){
-        fprintf(stderr, "394  error %d \n",  err );
+        fprintf(stderr, "GLFW  error %d \n",  err );
     }
 
     //
@@ -444,14 +455,15 @@ RenderingWindow* Rendering::window(int index)
 }
 
 
-void Rendering::show()
+void Rendering::show(bool show_main_window)
 {
     // show output windows
     for (auto it = outputs_.begin(); it != outputs_.end(); ++it)
         it->show();
 
     // show main window
-    main_.show();
+    if (show_main_window || Settings::application.num_output_windows < 1 )
+        main_.show();
 
     // show menu on first show
     UserInterface::manager().showPannel(NAV_MENU);

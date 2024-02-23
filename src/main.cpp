@@ -68,6 +68,7 @@ int main(int argc, char *argv[])
     int versionRequested = 0;
     int testRequested = 0;
     int cleanRequested = 0;
+    int headlessRequested = 0;
     int helpRequested = 0;
     int fontsizeRequested = 0;
     int ret = -1;
@@ -79,6 +80,8 @@ int main(int argc, char *argv[])
             testRequested = 1;
         } else if (strcmp(argv[i], "--clean") == 0 || strcmp(argv[i], "-C") == 0) {
             cleanRequested = 1;
+        } else if (strcmp(argv[i], "--headless") == 0 || strcmp(argv[i], "-L") == 0) {
+            headlessRequested = 1;
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-H") == 0) {
             helpRequested = 1;
         } else if (strcmp(argv[i], "--fontsize") == 0 || strcmp(argv[i], "-F") == 0) {
@@ -132,12 +135,13 @@ int main(int argc, char *argv[])
     }
 
     if (helpRequested) {
-        printf("Usage: %s [-H, --help] [-V, --version] [-F N, --fontsize N] [-T, --test] [-C, --clean] [filename]\n",
+        printf("Usage: %s [-H, --help] [-V, --version] [-F N, --fontsize N] [-L, --headless] [-T, --test] [-C, --clean] [filename]\n",
                argv[0]);
         printf("Options:\n");
         printf("  --help       : Display usage information\n");
         printf("  --version    : Display version information\n");
         printf("  --fontsize N : Force rendering font size to specified value N\n");
+        printf("  --headless   : Run without GUI\n");
         printf("  --test       : Run rendering test\n");
         printf("  --clean      : Reset user settings\n");
         ret = 0;ret = 0;
@@ -211,7 +215,7 @@ int main(int argc, char *argv[])
 
     // show all windows
     Rendering::manager().draw();
-    Rendering::manager().show();
+    Rendering::manager().show(!headlessRequested);
 
     // try to load file given in argument
     Mixer::manager().load(_openfile);

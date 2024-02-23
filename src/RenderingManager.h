@@ -116,7 +116,7 @@ public:
     // Initialization OpenGL and GLFW window creation
     bool init();
     // show windows and reset views
-    void show();
+    void show(bool show_main_window = true);
     // true if active rendering window
     bool isActive();
     // draw one frame
