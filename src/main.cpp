@@ -71,6 +71,7 @@ int main(int argc, char *argv[])
     int headlessRequested = 0;
     int helpRequested = 0;
     int fontsizeRequested = 0;
+    std::string settingsRequested;
     int ret = -1;
 
     for (int i = 1; i < argc; ++i) {
@@ -82,6 +83,15 @@ int main(int argc, char *argv[])
             cleanRequested = 1;
         } else if (strcmp(argv[i], "--headless") == 0 || strcmp(argv[i], "-L") == 0) {
             headlessRequested = 1;
+        } else if (strcmp(argv[i], "--settings") == 0 || strcmp(argv[i], "-S") == 0) {
+            // get settings file argument
+            if (i + 1 < argc) {
+                settingsRequested = argv[i + 1]; // Parse next argument as integer
+                i++; // Skip the next argument since it's already processed
+            } else {
+                fprintf(stderr, "Error: filename missing after --settings\n");
+                helpRequested = 1;
+            }
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-H") == 0) {
             helpRequested = 1;
         } else if (strcmp(argv[i], "--fontsize") == 0 || strcmp(argv[i], "-F") == 0) {
@@ -135,15 +145,19 @@ int main(int argc, char *argv[])
     }
 
     if (helpRequested) {
-        printf("Usage: %s [-H, --help] [-V, --version] [-F N, --fontsize N] [-L, --headless] [-T, --test] [-C, --clean] [filename]\n",
+        printf("Usage: %s [-H, --help] [-V, --version] [-F, --fontsize] [-L, --headless]\n"
+               "               [-S, --settings] [-T, --test] [-C, --clean] [filename]\n",
                argv[0]);
         printf("Options:\n");
         printf("  --help       : Display usage information\n");
         printf("  --version    : Display version information\n");
-        printf("  --fontsize N : Force rendering font size to specified value N\n");
-        printf("  --headless   : Run without GUI\n");
-        printf("  --test       : Run rendering test\n");
+        printf("  --fontsize   : Force rendering font size to specified value, e.g., '-F 25'\n");
+        printf("  --settings   : Run with given settings file, e.g., '-S settingsfile.xml'\n");
+        printf("  --headless   : Run without GUI (only if output windows configured)\n");
+        printf("  --test       : Run rendering test and return\n");
         printf("  --clean      : Reset user settings\n");
+        printf("Filename:\n");
+        printf("  vimix session file (.mix extension)\n");
         ret = 0;ret = 0;
     }
 
@@ -156,7 +170,7 @@ int main(int argc, char *argv[])
     ///
     /// Settings
     ///
-    Settings::Load();
+    Settings::Load( settingsRequested );
     Settings::application.executable = std::string(argv[0]);
 
     /// lock to inform an instance is running

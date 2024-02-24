@@ -38,3 +38,17 @@ Mac OSX specificities
   enter "/Users/[username]/Library/Application Support/vimix" and delete the folder 'vimix'
 
 -
+
+
+Testing performance
+-------------------
+
+Linux perf command
+- Allow perf on your system
+sudo sysctl -w kernel.perf_event_paranoid=-1
+- Launch command to record
+perf record ./vimix
+perf record --pid=XXXXX
+- Analyse using https://github.com/KDAB/hotspot
+
+

@@ -202,6 +202,7 @@ protected:
     DialogToolkit::OpenFileDialog *sessionopendialog;
     DialogToolkit::OpenFileDialog *sessionimportdialog;
     DialogToolkit::SaveFileDialog *sessionsavedialog;
+    DialogToolkit::SaveFileDialog *settingsexportdialog;
 
     // Favorites and playlists
     Playlist favorites;

@@ -390,8 +390,8 @@ struct Application
 extern Application application;
 
 // Save and Load store settings in XML file
-void Save(uint64_t runtime = 0);
-void Load();
+void Save(uint64_t runtime = 0, const std::string &filename = "");
+void Load(const std::string &filename = "");
 void Lock();
 void Unlock();
 void Check();

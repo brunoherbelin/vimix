@@ -222,6 +222,8 @@ bool UserInterface::Init(int font_size)
                                                           VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
     sessionimportdialog = new DialogToolkit::OpenFileDialog("Import Sources",
                                                             VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
+    settingsexportdialog = new DialogToolkit::SaveFileDialog("Export settings",
+                                                             SETTINGS_FILE_TYPE, SETTINGS_FILE_PATTERN);
 
     // init tooltips
     ImGuiToolkit::setToolTipsEnabled(Settings::application.show_tooptips);
@@ -880,6 +882,10 @@ void UserInterface::NewFrame()
     if (sessionsavedialog && sessionsavedialog->closed() && !sessionsavedialog->path().empty())
         Mixer::manager().saveas(sessionsavedialog->path(), Settings::application.save_version_snapshot);
 
+    if (settingsexportdialog && settingsexportdialog->closed()
+        && !settingsexportdialog->path().empty())
+        Settings::Save(0, settingsexportdialog->path());
+
     // overlay to ensure file dialog is modal
     if (DialogToolkit::FileDialog::busy()){
         if (!ImGui::IsPopupOpen("Busy"))
@@ -1187,7 +1193,7 @@ void UserInterface::showMenuFile()
 
     ImGui::MenuItem( MENU_SAVE_ON_EXIT, nullptr, &Settings::application.recentSessions.save_on_exit);
 
-    // HELP AND QUIT
+    // QUIT
     ImGui::Separator();
     if (ImGui::MenuItem( MENU_QUIT, SHORTCUT_QUIT) && TryClose())
         Rendering::manager().close();
@@ -5418,6 +5424,17 @@ void Navigator::RenderMainPannelSettings()
     // Appearance
     //
     ImGui::Text("Settings");
+    ImGui::SameLine();
+    ImGui::SetCursorPosX( pannel_width_ IMGUI_RIGHT_ALIGN);
+    if ( ImGuiToolkit::IconButton(ICON_FA_SAVE,"Export settings\nYou can then "
+                                               "launch vimix with the option "
+                                               "'--settings filename.xml' "
+                                               "to restore output windows and configuration.") ){
+        // launch file dialog to select file to save settings
+        if (UserInterface::manager().settingsexportdialog)
+            UserInterface::manager().settingsexportdialog->open();
+    }
+
     int v = Settings::application.accent_color;
     ImGui::Spacing();
     ImGui::SetCursorPosX(0.5f * width_);
