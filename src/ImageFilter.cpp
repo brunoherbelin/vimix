@@ -22,7 +22,6 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "defines.h"
 #include "Resource.h"
 #include "Visitor.h"
 #include "FrameBuffer.h"
@@ -465,6 +464,34 @@ void ResampleFilter::setFactor(int factor)
     input_ = nullptr;
 }
 
+bool ResampleFilter::setFactor(const std::string &label)
+{
+    std::string target_factor = label;
+    std::transform(target_factor.begin(), target_factor.end(), target_factor.begin(), ::tolower);
+
+    // find method by name
+    int __f = ResampleFilter::RESAMPLE_DOUBLE;
+    for (; __f != ResampleFilter::RESAMPLE_INVALID; __f++) {
+        std::string _b = ResampleFilter::factor_label[__f];
+        auto loc = _b.find_first_of(" ");
+        if (loc != std::string::npos)
+            _b = _b.erase(loc);
+        std::transform(_b.begin(), _b.end(), _b.begin(), ::tolower);
+        if (target_factor.compare(_b) == 0)
+            break;
+    }
+
+    // invalid filter name
+    if (__f == ResampleFilter::RESAMPLE_INVALID)
+        return false;
+
+    // Apply if provided method name is different from current
+    if (factor() != __f)
+        setFactor(__f);
+
+    return true;
+}
+
 void ResampleFilter::draw (FrameBuffer *input)
 {
     bool forced = false;
@@ -579,6 +606,34 @@ void BlurFilter::setMethod(int method)
     setProgram( programs_[ (int) method_] );
 }
 
+bool BlurFilter::setMethod(const std::string &label)
+{
+    std::string target_method = label;
+    std::transform(target_method.begin(), target_method.end(), target_method.begin(), ::tolower);
+
+    // find method by name
+    int __m = BlurFilter::BLUR_GAUSSIAN;
+    for (; __m != BlurFilter::BLUR_INVALID; __m++) {
+        std::string _b = BlurFilter::method_label[__m];
+        auto loc = _b.find_first_of(" ");
+        if (loc != std::string::npos)
+            _b = _b.erase(loc);
+        std::transform(_b.begin(), _b.end(), _b.begin(), ::tolower);
+        if (target_method.compare(_b) == 0)
+            break;
+    }
+
+    // invalid filter name
+    if (__m == BlurFilter::BLUR_INVALID)
+        return false;
+
+    // Apply if provided method name is different from current
+    if (method() != __m)
+        setMethod(__m);
+
+    return true;
+}
+
 void BlurFilter::draw (FrameBuffer *input)
 {
     bool forced = false;
@@ -684,6 +739,34 @@ void SharpenFilter::setMethod(int method)
     setProgram( programs_[ (int) method_] );
 }
 
+bool SharpenFilter::setMethod(const std::string &label)
+{
+    std::string target_method = label;
+    std::transform(target_method.begin(), target_method.end(), target_method.begin(), ::tolower);
+
+    // find method by name
+    int __m = SharpenFilter::SHARPEN_MASK;
+    for (; __m != SharpenFilter::SHARPEN_INVALID; __m++) {
+        // get first word of label, in lower case
+        std::string _b = SharpenFilter::method_label[__m];
+        auto loc = _b.find_first_of(" ");
+        if (loc != std::string::npos)
+            _b = _b.erase(loc);
+        std::transform(_b.begin(), _b.end(), _b.begin(), ::tolower);
+        if (target_method.compare(_b) == 0)
+            break;
+    }
+
+    if (__m == SharpenFilter::SHARPEN_INVALID)
+        return false;
+
+    // Apply if provided method name is different from current
+    if (method() != __m)
+        setMethod(__m);
+
+    return true;
+}
+
 void SharpenFilter::draw (FrameBuffer *input)
 {
     // Default
@@ -708,7 +791,7 @@ void SharpenFilter::accept (Visitor& v)
 ////////////////////////////////////////
 
 const char* SmoothFilter::method_label[SmoothFilter::SMOOTH_INVALID] = {
-    "Bilateral", "Kuwahara", "Opening", "Closing", "Erosion", "Dilation", "Remove noise", "Add noise", "Add grain"
+    "Bilateral", "Kuwahara", "Opening", "Closing", "Erosion", "Dilation", "Denoise", "Noise add", "Grain add"
 };
 
 std::vector< FilteringProgram > SmoothFilter::programs_ = {
@@ -731,6 +814,33 @@ void SmoothFilter::setMethod(int method)
 {
     method_ = (SmoothMethod) CLAMP(method, SMOOTH_BILINEAR, SMOOTH_INVALID-1);
     setProgram( programs_[ (int) method_] );
+}
+
+bool SmoothFilter::setMethod(const std::string &label)
+{
+    std::string target_method = label;
+    std::transform(target_method.begin(), target_method.end(), target_method.begin(), ::tolower);
+
+    // find method by name
+    int __m = SmoothFilter::SMOOTH_BILINEAR;
+    for (; __m != SmoothFilter::SMOOTH_INVALID; __m++) {
+        std::string _b = SmoothFilter::method_label[__m];
+        auto loc = _b.find_first_of(" ");
+        if (loc != std::string::npos)
+            _b = _b.erase(loc);
+        std::transform(_b.begin(), _b.end(), _b.begin(), ::tolower);
+        if (target_method.compare(_b) == 0)
+            break;
+    }
+
+    if (__m == SmoothFilter::SMOOTH_INVALID)
+        return false;
+
+    // Apply if provided method name is different from current
+    if (method() != __m)
+        setMethod(__m);
+
+    return true;
 }
 
 void SmoothFilter::draw (FrameBuffer *input)
@@ -776,6 +886,33 @@ void EdgeFilter::setMethod(int method)
     setProgram( programs_[ (int) method_] );
 }
 
+bool EdgeFilter::setMethod(const std::string &label)
+{
+    std::string target_method = label;
+    std::transform(target_method.begin(), target_method.end(), target_method.begin(), ::tolower);
+
+    // find method by name
+    int __m = EdgeFilter::EDGE_SOBEL;
+    for (; __m != EdgeFilter::EDGE_INVALID; __m++) {
+        std::string _b = EdgeFilter::method_label[__m];
+        auto loc = _b.find_first_of(" ");
+        if (loc != std::string::npos)
+            _b = _b.erase(loc);
+        std::transform(_b.begin(), _b.end(), _b.begin(), ::tolower);
+        if (target_method.compare(_b) == 0)
+            break;
+    }
+
+    if (__m == EdgeFilter::EDGE_INVALID)
+        return false;
+
+    // Apply if provided method name is different from current
+    if (method() != __m)
+        setMethod(__m);
+
+    return true;
+}
+
 void EdgeFilter::draw (FrameBuffer *input)
 {
     // Default
@@ -804,9 +941,9 @@ const char* AlphaFilter::operation_label[AlphaFilter::ALPHA_INVALID] = {
 };
 
 std::vector< FilteringProgram > AlphaFilter::programs_ = {
-    FilteringProgram("Chromakey","shaders/filters/chromakey.glsl",   "",  { { "Red", 0.0}, { "Green", 1.0}, { "Blue", 0.0}, { "Threshold", 0.5}, { "Tolerance", 0.5} }),
-    FilteringProgram("Lumakey",  "shaders/filters/lumakey.glsl",     "",  { { "Luminance", 0.0}, { "Threshold", 0.5}, { "Tolerance", 0.5} } ),
-    FilteringProgram("coloralpha","shaders/filters/coloralpha.glsl", "",  { { "Red", 0.0}, { "Green", 1.0}, { "Blue", 0.0} })
+    FilteringProgram("Chromakey","shaders/filters/chromakey.glsl",   "",  { { "Threshold", 0.5}, { "Red", 0.0}, { "Green", 1.0}, { "Blue", 0.0}, { "Tolerance", 0.5} } ),
+    FilteringProgram("Lumakey",  "shaders/filters/lumakey.glsl",     "",  { { "Threshold", 0.5}, { "Luminance", 0.0}, { "Tolerance", 0.5} } ),
+    FilteringProgram("coloralpha","shaders/filters/coloralpha.glsl", "",  { { "Red", 0.0}, { "Green", 1.0}, { "Blue", 0.0} } )
 };
 
 AlphaFilter::AlphaFilter (): ImageFilter(), operation_(ALPHA_INVALID)
@@ -817,6 +954,33 @@ void AlphaFilter::setOperation(int op)
 {
     operation_ = (AlphaOperation) CLAMP(op, ALPHA_CHROMAKEY, ALPHA_INVALID-1);
     setProgram( programs_[ (int) operation_] );
+}
+
+bool AlphaFilter::setOperation(const std::string &label)
+{
+    std::string target_op = label;
+    std::transform(target_op.begin(), target_op.end(), target_op.begin(), ::tolower);
+
+    // find method by name
+    int __o = AlphaFilter::ALPHA_CHROMAKEY;
+    for (; __o != AlphaFilter::ALPHA_INVALID; __o++) {
+        std::string _b = AlphaFilter::operation_label[__o];
+        auto loc = _b.find_first_of(" ");
+        if (loc != std::string::npos)
+            _b = _b.erase(loc);
+        std::transform(_b.begin(), _b.end(), _b.begin(), ::tolower);
+        if (target_op.compare(_b) == 0)
+            break;
+    }
+
+    if (__o == AlphaFilter::ALPHA_INVALID)
+        return false;
+
+    // Apply if provided method name is different from current
+    if (operation() != __o)
+        setOperation(__o);
+
+    return true;
 }
 
 void AlphaFilter::draw (FrameBuffer *input)

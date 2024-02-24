@@ -78,7 +78,7 @@ void Timeline::reset()
     clearFading();
 }
 
-bool Timeline::is_valid()
+bool Timeline::is_valid() const
 {
     return timing_.is_valid() && step_ != GST_CLOCK_TIME_NONE;
 }
@@ -313,6 +313,32 @@ GstClockTime Timeline::sectionsTimeAt(GstClockTime t) const
     // return updated target
     return d;
 }
+
+GstClockTime Timeline::timeFromPercent(const float p) const
+{
+    if (!is_valid())
+        return 0;
+
+    // compute time at p % of actural section duration
+    GstClockTime percent = (double) p * 100000;
+    GstClockTime d = (sectionsDuration() * percent ) / 100000;
+
+    // loop over gaps
+    for (auto g = gaps_.begin(); g != gaps_.end(); ++g) {
+        // gap before target?
+        if ( g->begin < d ) {
+            // jump over gap
+            d += g->duration();
+        }
+        else
+            // done
+            break;
+    }
+
+    // return time corresponding to p% of play duration
+    return d;
+}
+
 
 size_t Timeline::fillSectionsArrays( float* const gaps, float* const fading)
 {

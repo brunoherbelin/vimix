@@ -134,7 +134,7 @@ UserInterface::UserInterface()
     sessionsavedialog = nullptr;
 }
 
-bool UserInterface::Init()
+bool UserInterface::Init(int font_size)
 {
     if (Rendering::manager().mainWindow().window()== nullptr)
         return false;
@@ -162,8 +162,11 @@ bool UserInterface::Init()
     // Setup Dear ImGui style
     ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
 
-    //  Estalish the base size from the resolution of the monitor
-    float base_font_size =  float(Rendering::manager().mainWindow().pixelsforRealHeight(4.f))  ;
+    // Read font size from argument
+    float base_font_size = float(font_size);
+    // Estalish the base size from the resolution of the monitor for a 4mm height text
+    if (base_font_size < 1)
+        base_font_size = float(Rendering::manager().mainWindow().pixelsforRealHeight(4.f));
     // at least 8 pixels font size
     base_font_size = MAX(base_font_size, 8.f);
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
@@ -219,6 +222,8 @@ bool UserInterface::Init()
                                                           VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
     sessionimportdialog = new DialogToolkit::OpenFileDialog("Import Sources",
                                                             VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
+    settingsexportdialog = new DialogToolkit::SaveFileDialog("Export settings",
+                                                             SETTINGS_FILE_TYPE, SETTINGS_FILE_PATTERN);
 
     // init tooltips
     ImGuiToolkit::setToolTipsEnabled(Settings::application.show_tooptips);
@@ -877,6 +882,10 @@ void UserInterface::NewFrame()
     if (sessionsavedialog && sessionsavedialog->closed() && !sessionsavedialog->path().empty())
         Mixer::manager().saveas(sessionsavedialog->path(), Settings::application.save_version_snapshot);
 
+    if (settingsexportdialog && settingsexportdialog->closed()
+        && !settingsexportdialog->path().empty())
+        Settings::Save(0, settingsexportdialog->path());
+
     // overlay to ensure file dialog is modal
     if (DialogToolkit::FileDialog::busy()){
         if (!ImGui::IsPopupOpen("Busy"))
@@ -1121,6 +1130,17 @@ void UserInterface::showMenuWindows()
     // Enable / disable metrics toolbar
     ImGui::MenuItem( MENU_METRICS, NULL, &Settings::application.widget.stats );
 
+    ImGui::Separator();
+
+    // Enter / exit Fullscreen
+    if (Rendering::manager().mainWindow().isFullscreen()){
+        if (ImGui::MenuItem( ICON_FA_COMPRESS_ALT "   Exit Fullscreen", SHORTCUT_FULLSCREEN ))
+            Rendering::manager().mainWindow().toggleFullscreen();
+    }
+    else {
+        if (ImGui::MenuItem( ICON_FA_EXPAND_ALT "   Fullscreen", SHORTCUT_FULLSCREEN ))
+            Rendering::manager().mainWindow().toggleFullscreen();
+    }
 }
 
 void UserInterface::showMenuFile()
@@ -1173,7 +1193,7 @@ void UserInterface::showMenuFile()
 
     ImGui::MenuItem( MENU_SAVE_ON_EXIT, nullptr, &Settings::application.recentSessions.save_on_exit);
 
-    // HELP AND QUIT
+    // QUIT
     ImGui::Separator();
     if (ImGui::MenuItem( MENU_QUIT, SHORTCUT_QUIT) && TryClose())
         Rendering::manager().close();
@@ -5404,6 +5424,17 @@ void Navigator::RenderMainPannelSettings()
     // Appearance
     //
     ImGui::Text("Settings");
+    ImGui::SameLine();
+    ImGui::SetCursorPosX( pannel_width_ IMGUI_RIGHT_ALIGN);
+    if ( ImGuiToolkit::IconButton(ICON_FA_SAVE,"Export settings\nYou can then "
+                                               "launch vimix with the option "
+                                               "'--settings filename.xml' "
+                                               "to restore output windows and configuration.") ){
+        // launch file dialog to select file to save settings
+        if (UserInterface::manager().settingsexportdialog)
+            UserInterface::manager().settingsexportdialog->open();
+    }
+
     int v = Settings::application.accent_color;
     ImGui::Spacing();
     ImGui::SetCursorPosX(0.5f * width_);

@@ -34,8 +34,8 @@
 #define FRAMEBUFFER_DEBUG
 #endif
 
-ulong FrameBuffer::total_mem_usage = 0;
-ulong FrameBuffer::memory_usage()
+unsigned long FrameBuffer::total_mem_usage = 0;
+unsigned long FrameBuffer::memory_usage()
 {
     return total_mem_usage;
 }

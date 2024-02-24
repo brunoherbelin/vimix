@@ -62,55 +62,115 @@ int main(int argc, char *argv[])
 {
     std::string _openfile;
 
-    // one extra argument is given
-    if (argc == 2) {
-        std::string argument(argv[1]);
-        if (argument[0] == '-') {
-            if (argument == "--clean" || argument == "-C") {
-                // clean start if requested : Save empty settings before loading
-                Settings::Save();
-                fprintf(stderr, "%s: clean OK\n", APP_NAME);
-                return 0;
+    ///
+    /// Parse arguments
+    ///
+    int versionRequested = 0;
+    int testRequested = 0;
+    int cleanRequested = 0;
+    int headlessRequested = 0;
+    int helpRequested = 0;
+    int fontsizeRequested = 0;
+    std::string settingsRequested;
+    int ret = -1;
+
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-V") == 0) {
+            versionRequested = 1;
+        } else if (strcmp(argv[i], "--test") == 0 || strcmp(argv[i], "-T") == 0) {
+            testRequested = 1;
+        } else if (strcmp(argv[i], "--clean") == 0 || strcmp(argv[i], "-C") == 0) {
+            cleanRequested = 1;
+        } else if (strcmp(argv[i], "--headless") == 0 || strcmp(argv[i], "-L") == 0) {
+            headlessRequested = 1;
+        } else if (strcmp(argv[i], "--settings") == 0 || strcmp(argv[i], "-S") == 0) {
+            // get settings file argument
+            if (i + 1 < argc) {
+                settingsRequested = argv[i + 1]; // Parse next argument as integer
+                i++; // Skip the next argument since it's already processed
+            } else {
+                fprintf(stderr, "Error: filename missing after --settings\n");
+                helpRequested = 1;
             }
-            else if (argument == "--version" || argument == "-V") {
-#ifdef VIMIX_GIT
-                fprintf(stderr, APP_NAME " " VIMIX_GIT " \n");
-#else
-#ifdef VIMIX_VERSION_MAJOR
-                fprintf(stderr, "%s: version %d.%d.%d\n", APP_NAME, VIMIX_VERSION_MAJOR, VIMIX_VERSION_MINOR, VIMIX_VERSION_PATCH);
-#else
-                fprintf(stderr, "%s\n", APP_NAME);
-#endif
-#endif
-                return 0;
+        } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-H") == 0) {
+            helpRequested = 1;
+        } else if (strcmp(argv[i], "--fontsize") == 0 || strcmp(argv[i], "-F") == 0) {
+            // get font size argument
+            if (i + 1 < argc) {
+                fontsizeRequested = atoi(argv[i + 1]); // Parse next argument as integer
+                i++; // Skip the next argument since it's already processed
+            } else {
+                fprintf(stderr, "Error: Integer value missing after --fontsize\n");
+                helpRequested = 1;
             }
-            else if (argument == "--test" || argument == "-T") {
-                if ( !Rendering::manager().init() ) {
-                    fprintf(stderr, "%s: test Failed\n", APP_NAME);
-                    return 1;
-                }
-                fprintf(stderr, "%s: test OK\n", APP_NAME);
-                return 0;
-            }
-            else {
-                fprintf(stderr, "%s: unrecognized option '%s'\n"
-                        "Usage: %s [-V, --version][-T, --test][-C, --clean][FILE]\n",
-                        APP_NAME, argument.c_str(), APP_NAME);
-                return 1;
-            }
-        }
-        else {
-            // try to open the file
-            _openfile = argument;
-            if (!_openfile.empty())
-                fprintf(stderr, "Loading '%s' ...\n", _openfile.c_str());
+        } else if ( strchr(argv[i], '-')-argv[i] == 0 ) {
+            fprintf(stderr, "Error: Invalid argument\n");
+            helpRequested = 1;
+        } else {
+            _openfile = argv[i];
         }
     }
+
+    if (versionRequested) {
+#ifdef VIMIX_GIT
+        printf(APP_NAME " " VIMIX_GIT " \n");
+#else
+#ifdef VIMIX_VERSION_MAJOR
+        printf("%s: version %d.%d.%d\n",
+               APP_NAME,
+               VIMIX_VERSION_MAJOR,
+               VIMIX_VERSION_MINOR,
+               VIMIX_VERSION_PATCH);
+#else
+        printf("%s\n", APP_NAME);
+#endif
+#endif
+        ret = 0;
+    }
+
+    if (testRequested) {
+        if (!Rendering::manager().init()) {
+            fprintf(stderr, "%s: test Failed\n", argv[0]);
+            ret = 1;
+        }
+        printf("%s: test OK\n", argv[0]);
+        ret = 0;
+    }
+
+    if (cleanRequested) {
+        // clean settings : save settings before loading
+        Settings::Save();
+        printf("%s: clean OK\n", argv[0]);
+        ret = 0;
+    }
+
+    if (helpRequested) {
+        printf("Usage: %s [-H, --help] [-V, --version] [-F, --fontsize] [-L, --headless]\n"
+               "               [-S, --settings] [-T, --test] [-C, --clean] [filename]\n",
+               argv[0]);
+        printf("Options:\n");
+        printf("  --help       : Display usage information\n");
+        printf("  --version    : Display version information\n");
+        printf("  --fontsize   : Force rendering font size to specified value, e.g., '-F 25'\n");
+        printf("  --settings   : Run with given settings file, e.g., '-S settingsfile.xml'\n");
+        printf("  --headless   : Run without GUI (only if output windows configured)\n");
+        printf("  --test       : Run rendering test and return\n");
+        printf("  --clean      : Reset user settings\n");
+        printf("Filename:\n");
+        printf("  vimix session file (.mix extension)\n");
+        ret = 0;ret = 0;
+    }
+
+    if (ret >= 0)
+        return ret;
+
+    if (!_openfile.empty())
+        printf("Openning '%s' ...\n", _openfile.c_str());
 
     ///
     /// Settings
     ///
-    Settings::Load();
+    Settings::Load( settingsRequested );
     Settings::application.executable = std::string(argv[0]);
 
     /// lock to inform an instance is running
@@ -142,7 +202,7 @@ int main(int argc, char *argv[])
     ///
     /// IMGUI INIT
     ///
-    if ( !UserInterface::manager().Init() )
+    if ( !UserInterface::manager().Init( fontsizeRequested ) )
         return 1;
 
     ///
@@ -169,7 +229,7 @@ int main(int argc, char *argv[])
 
     // show all windows
     Rendering::manager().draw();
-    Rendering::manager().show();
+    Rendering::manager().show(!headlessRequested);
 
     // try to load file given in argument
     Mixer::manager().load(_openfile);

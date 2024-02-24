@@ -51,6 +51,7 @@
 #define OSC_SOURCE_SIZE        "/size"
 #define OSC_SOURCE_ANGLE       "/angle"
 #define OSC_SOURCE_SEEK        "/seek"
+#define OSC_SOURCE_FFWD        "/ffwd"
 #define OSC_SOURCE_SPEED       "/speed"
 #define OSC_SOURCE_CONTENTS    "/contents"
 #define OSC_SOURCE_BRIGHTNESS  "/brightness"
@@ -63,6 +64,11 @@
 #define OSC_SOURCE_POSTERIZE   "/posterize"
 #define OSC_SOURCE_INVERT      "/invert"
 #define OSC_SOURCE_CORRECTION  "/correction"
+#define OSC_SOURCE_CROP        "/crop"
+#define OSC_SOURCE_TEXPOSITION "/texture_position"
+#define OSC_SOURCE_TEXSIZE     "/texture_size"
+#define OSC_SOURCE_TEXANGLE    "/texture_angle"
+#define OSC_SOURCE_FILTER      "/filter"
 
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"
@@ -151,7 +157,7 @@ protected:
     bool receiveSessionAttribute(const std::string &attribute,
                             osc::ReceivedMessageArgumentStream arguments);
     void receiveMultitouchAttribute(const std::string &attribute,
-                            osc::ReceivedMessageArgumentStream arguments);
+                                    osc::ReceivedMessageArgumentStream arguments);
     void sendSourceAttibutes(const IpEndpointName& remoteEndpoint,
                              std::string target, Source *s = nullptr);
     void sendSourcesStatus(const IpEndpointName& remoteEndpoint,

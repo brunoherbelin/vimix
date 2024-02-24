@@ -69,7 +69,7 @@ XMLElement *save_knownhost(Settings::KnownHosts &h, const char *nodename, XMLDoc
 
 
 
-void Settings::Save(uint64_t runtime)
+void Settings::Save(uint64_t runtime, const std::string &filename)
 {
     // impose C locale for all app
     setlocale(LC_ALL, "C");
@@ -332,7 +332,8 @@ void Settings::Save(uint64_t runtime)
     if (settingsFilename.empty())
         settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_SETTINGS);
 
-    XMLError eResult = xmlDoc.SaveFile(settingsFilename.c_str());
+    XMLError eResult = xmlDoc.SaveFile( filename.empty() ?
+                                           settingsFilename.c_str() : filename.c_str());
     XMLResultError(eResult);
 
 }
@@ -395,7 +396,7 @@ void load_knownhost(Settings::KnownHosts &h, const char *nodename, XMLElement *r
     }
 }
 
-void Settings::Load()
+void Settings::Load(const string &filename)
 {
     // impose C locale for all app
     setlocale(LC_ALL, "C");
@@ -406,7 +407,8 @@ void Settings::Load()
 
     // try to load settings file
     XMLDocument xmlDoc;
-    XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
+    XMLError eResult = xmlDoc.LoadFile( filename.empty() ?
+                                           settingsFilename.c_str() : filename.c_str());
 
 	// do not warn if non existing file
     if (eResult == XML_ERROR_FILE_NOT_FOUND)

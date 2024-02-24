@@ -42,6 +42,12 @@
     { \
         "*.srt", "*.sub" \
     }
+#define SETTINGS_FILE_TYPE "vimix settings (XML)"
+#define SETTINGS_FILE_EXT "xml"
+#define SETTINGS_FILE_PATTERN \
+{ \
+        "*.xml" \
+}
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))
 #define ABS(a)	   (((a) < 0) ? -(a) : (a))
@@ -173,6 +179,7 @@
 #define MENU_SAVE_ON_EXIT     ICON_FA_LEVEL_DOWN_ALT "  Save on exit"
 #define MENU_OPEN_ON_START    ICON_FA_LEVEL_UP_ALT "  Restore on start"
 #define SHORTCUT_SAVEAS_FILE  CTRL_MOD "Shift+S"
+#define MENU_EXPORT_SETTINGS  ICON_FA_FILE_EXCEL "  Export settings"
 #define MENU_QUIT             ICON_FA_POWER_OFF "  Quit"
 #define SHORTCUT_QUIT         CTRL_MOD "Q"
 #define MENU_CUT              ICON_FA_CUT "  Cut"

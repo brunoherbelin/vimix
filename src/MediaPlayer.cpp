@@ -44,6 +44,9 @@
 #define USE_GST_PLAYBIN
 #endif
 
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+#include "RenderingManager.h"
+#endif
 
 std::list<MediaPlayer*> MediaPlayer::registered_;
 
@@ -490,6 +493,9 @@ void MediaPlayer::execute_open()
 
     opened_ = true;
 
+    // keep name in pipeline
+    gst_element_set_name(pipeline_, std::to_string(id_).c_str());
+
     // register media player
     MediaPlayer::registered_.push_back(this);
 }
@@ -658,6 +664,9 @@ void MediaPlayer::execute_open()
 
     opened_ = true;
 
+    // keep name in pipeline
+    gst_element_set_name(pipeline_, std::to_string(id_).c_str());
+
     // register media player
     MediaPlayer::registered_.push_back(this);
 }
@@ -707,8 +716,12 @@ void MediaPlayer::Frame::unmap()
 
 void delayed_terminate( GstElement *p )
 {
+#ifdef MEDIA_PLAYER_DEBUG
+    Log::Info("MediaPlayer %s closed", gst_element_get_name(p));
+#endif
+
     // end pipeline
-    gst_element_set_state ( p, GST_STATE_NULL);
+    gst_element_set_state (p, GST_STATE_NULL);
 
     // unref to free pipeline
     gst_object_unref ( p );
@@ -754,11 +767,6 @@ void MediaPlayer::close()
     }
     write_index_ = 0;
     last_index_ = 0;
-
-
-#ifdef MEDIA_PLAYER_DEBUG
-    Log::Info("MediaPlayer %s closed", std::to_string(id_).c_str());
-#endif
 
     // unregister media player
     MediaPlayer::registered_.remove(this);

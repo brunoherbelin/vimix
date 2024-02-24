@@ -1,6 +1,8 @@
 #ifndef SOURCECALLBACK_H
 #define SOURCECALLBACK_H
 
+#include <cmath>
+#include <string>
 #include <glm/glm.hpp>
 
 #include "Scene.h"
@@ -48,7 +50,8 @@ public:
         CALLBACK_HUE,
         CALLBACK_THRESHOLD,
         CALLBACK_INVERT,
-        CALLBACK_POSTERIZE
+        CALLBACK_POSTERIZE,
+        CALLBACK_FILTER
     } CallbackType;
 
     static SourceCallback *create(CallbackType type);
@@ -468,6 +471,39 @@ public:
     SourceCallback *clone () const override;
     SourceCallback *reverse(Source *s) const override;
     CallbackType type () const override { return CALLBACK_GAMMA; }
+    void accept (Visitor& v) override;
+};
+
+class SetFilter : public SourceCallback
+{
+    std::string target_filter_;
+    std::string target_method_;
+    std::string target_parameter_;
+    float start_value_;
+    float target_value_;
+    float duration_;
+    class ImageFilter *imagefilter;
+    class DelayFilter *delayfilter;
+
+public:
+    SetFilter(const std::string &filter = std::string(),
+              const std::string &method = std::string(),
+              float value = NAN,
+              float ms = 0.f);
+
+    std::string filter() const { return target_filter_; }
+    void setFilter(const std::string &f) { target_filter_ = f; }
+    std::string method() const { return target_method_; }
+    void setMethod(const std::string &m) { target_method_ = m; }
+    float value () const { return target_value_; }
+    void  setValue (float g) { target_value_ = g; }
+    float duration () const { return duration_; }
+    void  setDuration (float ms) { duration_ = ms; }
+
+    void update (Source *s, float) override;
+    void multiply (float factor) override;
+    SourceCallback *clone () const override;
+    CallbackType type () const override { return CALLBACK_FILTER; }
     void accept (Visitor& v) override;
 };
 

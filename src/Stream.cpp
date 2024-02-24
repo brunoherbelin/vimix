@@ -306,6 +306,9 @@ void Stream::execute_open()
     Log::Info("Stream %s Opened '%s' (%d x %d)", std::to_string(id_).c_str(), description.c_str(), width_, height_);
     opened_ = true;
 
+    // keep name in pipeline
+    gst_element_set_name(pipeline_, std::to_string(id_).c_str());
+
     // launch a timeout to check on open status
     std::thread( timeout_initialize, this ).detach();
 }
@@ -344,6 +347,27 @@ void Stream::Frame::unmap()
     full = false;
 }
 
+
+void async_terminate( GstElement *p )
+{
+#ifdef STREAM_DEBUG
+    Log::Info("Stream %s closed", gst_element_get_name(p));
+#endif
+
+    // force flush
+    gst_element_send_event(p, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
+                                                         GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_END, 0) );
+    gst_element_get_state (p, NULL, NULL, 1000000);
+
+    // force end
+    GstStateChangeReturn ret = gst_element_set_state (p, GST_STATE_NULL);
+    if (ret == GST_STATE_CHANGE_ASYNC)
+        gst_element_get_state (p, NULL, NULL, 1000000);
+
+    // unref to free pipeline
+    gst_object_unref ( p );
+}
+
 void Stream::close()
 {
     // not opened?
@@ -360,15 +384,10 @@ void Stream::close()
 
     // clean up GST
     if (pipeline_ != nullptr) {
-        // force flush
-        gst_element_send_event(pipeline_, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
-                    GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_END, 0) );
-        gst_element_get_state (pipeline_, NULL, NULL, 1000000);
-        // force end
-        GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_NULL);
-        if (ret == GST_STATE_CHANGE_ASYNC)
-            gst_element_get_state (pipeline_, NULL, NULL, 1000000);
-        gst_object_unref (pipeline_);
+
+        // end pipeline asynchronously
+        std::thread(async_terminate, pipeline_).detach();
+
         pipeline_ = nullptr;
     }
 

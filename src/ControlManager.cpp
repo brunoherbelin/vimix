@@ -33,6 +33,7 @@
 #include "Mixer.h"
 #include "Source.h"
 #include "TextSource.h"
+#include "CloneSource.h"
 #include "SourceCallback.h"
 #include "ImageProcessingShader.h"
 #include "ActionManager.h"
@@ -252,24 +253,28 @@ std::string Control::RequestListener::FullMessage( const osc::ReceivedMessage& m
         osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
         while (arg != m.ArgumentsEnd()) {
             if( arg->IsBool() ){
-                bool a = (arg++)->AsBoolUnchecked();
+                bool a = (arg)->AsBoolUnchecked();
                 message << (a ? "T" : "F");
             }
             else if( arg->IsInt32() ){
-                int a = (arg++)->AsInt32Unchecked();
+                int a = (arg)->AsInt32Unchecked();
                 message << "i";
                 arguments << " " << a;
             }
             else if( arg->IsFloat() ){
-                float a = (arg++)->AsFloatUnchecked();
+                float a = (arg)->AsFloatUnchecked();
                 message << "f";
                 arguments << " " << std::fixed << std::setprecision(2) << a;
             }
             else if( arg->IsString() ){
-                const char *a = (arg++)->AsStringUnchecked();
+                const char *a = (arg)->AsStringUnchecked();
                 message << "s";
                 arguments << " " << a;
             }
+            else if (arg->IsNil()) {
+                message << "N";
+            }
+            arg++;
         }
     }
     catch( osc::Exception& e ){
@@ -624,33 +629,49 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_ALPHA) == 0) {
-            float x = 1.f;
-            arguments >> x >> osc::EndMessage;
-            target->call( new SetAlpha(x), true );
+            float x = 0.f, t = 0.f;
+            arguments >> x;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetAlpha(x, t), true );
         }
         /// e.g. '/vimix/current/alpha f 0.3'
         else if ( attribute.compare(OSC_SOURCE_LOOM) == 0) {
-            float x = 1.f;
-            arguments >> x >> osc::EndMessage;
-            target->call( new Loom(x, 0.f) );
+            float x = 0.f, t = 0.f;
+            arguments >> x;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new Loom(x, t) );
             // this will require to send feedback status about source
             send_feedback = true;
         }
         /// e.g. '/vimix/current/transparency f 0.7'
         else if ( attribute.compare(OSC_SOURCE_TRANSPARENCY) == 0) {
-            float x = 0.f;
-            arguments >> x >> osc::EndMessage;
-            target->call( new SetAlpha(1.f - x), true );
+            float x = 0.f, t = 0.f;
+            arguments >> x;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetAlpha(1.f - x, t), true );
         }
         /// e.g. '/vimix/current/depth f 5.0'
         else if ( attribute.compare(OSC_SOURCE_DEPTH) == 0) {
-            float x = 0.f;
-            arguments >> x >> osc::EndMessage;
-            target->call( new SetDepth(x), true );
+            float x = 0.f, t = 0.f;
+            arguments >> x;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetDepth(x, t), true );
         }
         /// e.g. '/vimix/current/grab ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_GRAB) == 0) {
-            float x = 0.f, y = 0.f;
+            float x = 0.f, y = 0.f, t = 0.f;
             try {
                 arguments >> x;
             }
@@ -661,8 +682,11 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             catch (osc::WrongArgumentTypeException &) {
             }
-            arguments >> osc::EndMessage;
-            target->call( new Grab( x, y, 0.f) );
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new Grab( x, y, t) );
         }
         /// e.g. '/vimix/current/position ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_POSITION) == 0) {
@@ -682,12 +706,16 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             catch (osc::WrongArgumentTypeException &) {
             }
-            arguments >> osc::EndMessage;
-            target->call( new SetGeometry( &transform, 0.f), true );
+            float t = 0.f;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetGeometry( &transform, t), true );
         }
         /// e.g. '/vimix/current/resize ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_RESIZE) == 0) {
-            float x = 0.f, y = 0.f;
+            float x = 0.f, y = 0.f, t = 0.f;
             try {
                 arguments >> x;
             }
@@ -698,8 +726,11 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             catch (osc::WrongArgumentTypeException &) {
             }
-            arguments >> osc::EndMessage;
-            target->call( new Resize( x, y, 0.f) );
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new Resize( x, y, t) );
         }        
         /// e.g. '/vimix/current/size ff 1.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_SIZE) == 0) {
@@ -719,8 +750,12 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             catch (osc::WrongArgumentTypeException &) {
             }
-            arguments >> osc::EndMessage;
-            target->call( new SetGeometry( &transform, 0.f), true );
+            float t = 0.f;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetGeometry( &transform, t), true );
         }
         /// e.g. '/vimix/current/turn f 1.0'
         else if ( attribute.compare(OSC_SOURCE_TURN) == 0) {
@@ -734,12 +769,16 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/angle f 3.1416'
         else if ( attribute.compare(OSC_SOURCE_ANGLE) == 0) {
-            float a = 0.f;
-            arguments >> a >> osc::EndMessage;
+            float a = 0.f, t = 0.f;
+            arguments >> a;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
             Group transform;
             transform.copyTransform(target->group(View::GEOMETRY));
             transform.rotation_.z = a;
-            target->call( new SetGeometry( &transform, 0.f), true );
+            target->call( new SetGeometry( &transform, t), true );
         }
         /// e.g. '/vimix/current/reset'
         else if ( attribute.compare(OSC_SOURCE_RESET) == 0) {
@@ -861,6 +900,17 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
                 target->call( new Seek( hh, mm, ss, ms ), true );
             }
         }
+        /// e.g. '/vimix/current/ffwd f 50'
+        else if ( attribute.compare(OSC_SOURCE_FFWD) == 0) {
+            float v = 0.f;
+            float t = 0.f;
+            arguments >> v;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new PlayFastForward( v, t ) );
+        }
         /// e.g. '/vimix/current/speed f 0.25'
         else if (attribute.compare(OSC_SOURCE_SPEED) == 0) {
             float v = 0.f;
@@ -881,6 +931,46 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             if (textsrc && label) {
                 textsrc->contents()->setText(label);
             }
+        }
+        /// e.g. '/vimix/current/filter sf blur 0.5'
+        else if (attribute.compare(OSC_SOURCE_FILTER) == 0) {
+            std::string filter_name;
+            std::string filter_method;
+            float filter_value = NAN;
+            float t = 0.f;
+            try {
+                const char *str = nullptr;
+                arguments >> str;
+                filter_name = std::string(str);
+            }
+            // ignore invalid or Nil types
+            catch (osc::WrongArgumentTypeException &) {
+            }
+
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else {
+                try {
+                    const char *str = nullptr;
+                    arguments >> str;
+                    filter_method = std::string(str);
+                }
+                // ignore invalid or Nil types
+                catch (osc::WrongArgumentTypeException &) {
+                }
+                if (arguments.Eos())
+                    arguments >> osc::EndMessage;
+                else {
+                    arguments >> filter_value;
+                    if (arguments.Eos())
+                        arguments >> osc::EndMessage;
+                    else {
+                        arguments >> t >> osc::EndMessage;
+                    }
+                }
+            }
+            // operate on source
+            target->call( new SetFilter(filter_name, filter_method, filter_value, t), true);
         }
         /// e.g. '/vimix/name/sync'
         else if ( attribute.compare(OSC_SYNC) == 0) {
@@ -1308,7 +1398,8 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
 {
     if (UserInterface::manager().keyboardAvailable())
     {
-        if ( !mods ) {
+        // keys without modifiers in any windows
+        if (!mods) {
             int _key = layoutKey(key);
             Control::manager().input_access_.lock();
             if (_key >= GLFW_KEY_A && _key <= GLFW_KEY_Z) {
@@ -1321,14 +1412,31 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
             }
             Control::manager().input_access_.unlock();
         }
-#if defined(APPLE)
-        else if ( w != Rendering::manager().mainWindow().window() &&
-                 key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_SUPER  )
-#else
-        else if ( key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
-#endif
+        // keys with modifiers in non-main window
+        else if ( w != Rendering::manager().mainWindow().window() )
         {
-            Rendering::manager().window(w)->toggleFullscreen();
+#if defined(APPLE)
+            if ( key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_SUPER  )
+#else
+            if ( key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
+#endif
+            {
+                // toggle fullscreen on CTRL+F
+                Rendering::manager().window(w)->toggleFullscreen();
+            }
+#if defined(APPLE)
+            else if ( key == GLFW_KEY_Q && action == GLFW_PRESS && mods == GLFW_MOD_SUPER  )
+#else
+            else if ( key == GLFW_KEY_Q && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
+#endif
+            {
+                // Quit on CTRL+Q (if no main window)
+                if (glfwGetWindowAttrib(Rendering::manager().mainWindow().window(), GLFW_VISIBLE)
+                    == GL_FALSE) {
+                    // close rendering manager = quit
+                    Rendering::manager().close();
+                }
+            }
         }
     }
 }

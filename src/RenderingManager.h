@@ -11,8 +11,6 @@
 
 #include "Screenshot.h"
 
-//#define USE_GST_OPENGL_SYNC_HANDLER
-
 typedef struct GLFWmonitor GLFWmonitor;
 typedef struct GLFWwindow GLFWwindow;
 class FrameBuffer;
@@ -118,7 +116,7 @@ public:
     // Initialization OpenGL and GLFW window creation
     bool init();
     // show windows and reset views
-    void show();
+    void show(bool show_main_window = true);
     // true if active rendering window
     bool isActive();
     // draw one frame
