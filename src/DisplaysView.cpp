@@ -764,13 +764,13 @@ void DisplaysView::draw()
             glm::ivec4 rect (0, 0, 800, 600);
             rect.p = Mixer::manager().session()->frame()->width();
             rect.q = Mixer::manager().session()->frame()->height();
-            Rendering::manager().outputWindow(current_window_).setDecoration(true);
             Settings::application.windows[1+current_window_].show_pattern = false;
             Settings::application.windows[1+current_window_].custom = false;
             if (Settings::application.windows[current_window_+1].fullscreen)
                 Rendering::manager().outputWindow(current_window_).exitFullscreen();
             else
                 Rendering::manager().outputWindow(current_window_).setCoordinates( rect );
+            Rendering::manager().outputWindow(current_window_).setDecoration(true);
             windows_[current_window_].need_update_ += 2;
         }
         if ( ImGui::MenuItem( ICON_FA_TEMPERATURE_LOW "   Reset white balance") ) {

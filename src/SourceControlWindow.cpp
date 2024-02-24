@@ -63,10 +63,10 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     captureFolderDialog = new DialogToolkit::OpenFolderDialog("Capture frame Location");
 
     // initialize checkerboard background texture
-    checker_background_->open("videotestsrc pattern=checkers-8 ! "
+    checker_background_->open("videotestsrc name=bgchecker pattern=checkers-8 ! "
                               "videobalance saturation=0 contrast=1",
                               CHECKER_RESOLUTION, CHECKER_RESOLUTION);
-    checker_background_->play(true);
+    checker_background_->play(false);
     while (checker_background_->texture() == Resource::getTextureBlack())
         checker_background_->update();
 }
