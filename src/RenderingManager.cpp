@@ -955,9 +955,9 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
 
     // restore decoration state
-    if (master_ != NULL && !winset.decorated) {
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+    if (master_ != NULL) {
+        glfwWindowHint(GLFW_RESIZABLE, winset.decorated ? GLFW_TRUE : GLFW_FALSE);
+        glfwWindowHint(GLFW_DECORATED, winset.decorated ? GLFW_TRUE : GLFW_FALSE);
     }
 
     // create the window
