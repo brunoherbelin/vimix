@@ -450,11 +450,12 @@ void SetDepth::update(Source *s, float dt)
         if ( progress > duration_ ) {
             // apply depth to target
             s->group(View::LAYER)->translation_.z = target_;
-            // ensure reordering of view
-            ++View::need_deep_update_;
             // done
             status_ = FINISHED;
         }
+
+        // ensure reordering of sources in view
+        ++View::need_deep_update_;
     }
 }
 

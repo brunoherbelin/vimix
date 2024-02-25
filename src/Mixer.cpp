@@ -250,17 +250,21 @@ void Mixer::update()
         }
     }
 
-    // update views
-    mixing_.update(dt_);
-    geometry_.update(dt_);
-    layer_.update(dt_);
-    appearance_.update(dt_);
-    transition_.update(dt_);
-    displays_.update(dt_);
+    // update all views for deep update
+    if (View::need_deep_update_ > 0) {
+        mixing_.update(dt_);
+        geometry_.update(dt_);
+        layer_.update(dt_);
+        appearance_.update(dt_);
+        transition_.update(dt_);
+        displays_.update(dt_);
 
-    // deep update was performed
-    if  (View::need_deep_update_ > 0)
+        // deep update was performed
         --View::need_deep_update_;
+    }
+    // update only current view otherwise
+    else
+        current_view_->update(dt_);
 }
 
 void Mixer::draw()
