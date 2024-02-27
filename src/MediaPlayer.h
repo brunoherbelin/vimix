@@ -101,7 +101,7 @@ public:
     /**
      * Close the Media
      * */
-    void close();
+    void close(bool async = true);
     /**
      * Update texture with latest frame
      * Must be called in rendering update loop

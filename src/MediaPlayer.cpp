@@ -100,7 +100,7 @@ MediaPlayer::MediaPlayer()
 
 MediaPlayer::~MediaPlayer()
 {
-    close();
+    close(false);
 
     // cleanup opengl texture
     if (textureindex_)
@@ -714,9 +714,10 @@ void MediaPlayer::Frame::unmap()
 }
 
 
-void delayed_terminate( GstElement *p )
+void pipeline_terminate( GstElement *p )
 {
 #ifdef MEDIA_PLAYER_DEBUG
+    g_printerr("MediaPlayer %s close\n", gst_element_get_name(p));
     Log::Info("MediaPlayer %s closed", gst_element_get_name(p));
 #endif
 
@@ -727,7 +728,7 @@ void delayed_terminate( GstElement *p )
     gst_object_unref ( p );
 }
 
-void MediaPlayer::close()
+void MediaPlayer::close(bool async)
 {
     // not opened?
     if (!opened_) {
@@ -751,9 +752,12 @@ void MediaPlayer::close()
 
     // clean up GST
     if (pipeline_ != nullptr) {
-
-        // end pipeline asynchronously
-        std::thread(delayed_terminate, pipeline_).detach();
+        if (async)
+            // end pipeline asynchronously
+            std::thread(pipeline_terminate, pipeline_).detach();
+        else
+            // end pipeline immediately
+            pipeline_terminate(pipeline_);
 
         pipeline_ = nullptr;
     }

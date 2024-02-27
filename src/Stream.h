@@ -74,7 +74,7 @@ public:
     /**
      * Close the Media
      * */
-    virtual void close();
+    virtual void close(bool async = true);
     /**
      * Update texture with latest frame
      * Must be called in rendering update loop

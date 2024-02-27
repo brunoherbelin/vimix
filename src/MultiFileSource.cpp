@@ -120,7 +120,7 @@ void MultiFile::execute_open()
     src_ = gst_bin_get_by_name (GST_BIN (pipeline_), "src");
 }
 
-void MultiFile::close ()
+void MultiFile::close (bool)
 {
     if (src_ != nullptr) {
         gst_object_unref (src_);

@@ -73,7 +73,7 @@ Stream::Stream()
 
 Stream::~Stream()
 {
-    Stream::close();
+    Stream::close(false);
 
     // cleanup opengl texture
     if (textureindex_)
@@ -368,7 +368,7 @@ void async_terminate( GstElement *p )
     gst_object_unref ( p );
 }
 
-void Stream::close()
+void Stream::close(bool async)
 {
     // not opened?
     if (!opened_) {
@@ -386,7 +386,10 @@ void Stream::close()
     if (pipeline_ != nullptr) {
 
         // end pipeline asynchronously
-        std::thread(async_terminate, pipeline_).detach();
+        if (async)
+            std::thread(async_terminate, pipeline_).detach();
+        else
+            async_terminate(pipeline_);
 
         pipeline_ = nullptr;
     }

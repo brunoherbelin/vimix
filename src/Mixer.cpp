@@ -77,7 +77,7 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), sessionSwapRequested
     current_source_index_ = -1;
 
     // initialize with a new empty session
-    clear();
+    set( new Session );
     setView( View::MIXING );
 }
 
@@ -1580,7 +1580,7 @@ void Mixer::close(bool smooth)
         transition_.attach(ts);
     }
     else
-        clear();
+        set( new Session );
 
     // closing session : filename at font in history should not be reloaded
     Settings::application.recentSessions.front_is_valid = false;
@@ -1588,18 +1588,18 @@ void Mixer::close(bool smooth)
 
 void Mixer::clear()
 {
-    // delete previous back session if needed
-    if (back_session_)
-        garbage_.push_back(back_session_);
+    // wait finish saving / loading
+    while (busy())
+        update();
 
-    // create empty session
-    back_session_ = new Session;
+    // set for an empty session and update to ensure session is deleted
+    set(new Session);
+    while (sessionSwapRequested_ || garbage_.size() > 0)
+        update();
 
-    // swap current with empty
-    sessionSwapRequested_ = true;
-
-    // need to deeply update view to apply eventual changes
-    ++View::need_deep_update_;
+    // all finished, we can clear the back session we just added
+    delete back_session_;
+    back_session_ = nullptr;
 }
 
 void Mixer::set(Session *s)
