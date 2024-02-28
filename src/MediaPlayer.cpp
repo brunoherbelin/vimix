@@ -48,7 +48,7 @@
 #include "RenderingManager.h"
 #endif
 
-std::list<MediaPlayer*> MediaPlayer::registered_;
+std::list<GstElement*> MediaPlayer::registered_;
 
 MediaPlayer::MediaPlayer()
 {
@@ -100,7 +100,7 @@ MediaPlayer::MediaPlayer()
 
 MediaPlayer::~MediaPlayer()
 {
-    close(false);
+    close();
 
     // cleanup opengl texture
     if (textureindex_)
@@ -497,7 +497,7 @@ void MediaPlayer::execute_open()
     gst_element_set_name(pipeline_, std::to_string(id_).c_str());
 
     // register media player
-    MediaPlayer::registered_.push_back(this);
+    MediaPlayer::registered_.push_back(pipeline_);
 }
 
 #else
@@ -668,7 +668,7 @@ void MediaPlayer::execute_open()
     gst_element_set_name(pipeline_, std::to_string(id_).c_str());
 
     // register media player
-    MediaPlayer::registered_.push_back(this);
+    MediaPlayer::registered_.push_back(pipeline_);
 }
 
 #endif
@@ -714,7 +714,7 @@ void MediaPlayer::Frame::unmap()
 }
 
 
-void pipeline_terminate( GstElement *p )
+void MediaPlayer::pipeline_terminate( GstElement *p )
 {
 #ifdef MEDIA_PLAYER_DEBUG
     g_printerr("MediaPlayer %s close\n", gst_element_get_name(p));
@@ -726,9 +726,12 @@ void pipeline_terminate( GstElement *p )
 
     // unref to free pipeline
     gst_object_unref ( p );
+
+    // unregister
+    MediaPlayer::registered_.remove(p);
 }
 
-void MediaPlayer::close(bool async)
+void MediaPlayer::close()
 {
     // not opened?
     if (!opened_) {
@@ -752,13 +755,8 @@ void MediaPlayer::close(bool async)
 
     // clean up GST
     if (pipeline_ != nullptr) {
-        if (async)
-            // end pipeline asynchronously
-            std::thread(pipeline_terminate, pipeline_).detach();
-        else
-            // end pipeline immediately
-            pipeline_terminate(pipeline_);
-
+        // end pipeline asynchronously
+        std::thread(MediaPlayer::pipeline_terminate, pipeline_).detach();
         pipeline_ = nullptr;
     }
 
@@ -772,8 +770,6 @@ void MediaPlayer::close(bool async)
     write_index_ = 0;
     last_index_ = 0;
 
-    // unregister media player
-    MediaPlayer::registered_.remove(this);
 }
 
 

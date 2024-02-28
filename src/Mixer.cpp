@@ -19,7 +19,6 @@
 
 #include <algorithm>
 #include <thread>
-#include <atomic>
 #include <mutex>
 #include <vector>
 #include <chrono>
@@ -1592,9 +1591,9 @@ void Mixer::clear()
     while (busy())
         update();
 
-    // set for an empty session and update to ensure session is deleted
+    // set for an empty session and update to ensure all streams are deleted
     set(new Session);
-    while (sessionSwapRequested_ || garbage_.size() > 0)
+    while ( !MediaPlayer::registered().empty() || !Stream::registered().empty() )
         update();
 
     // all finished, we can clear the back session we just added

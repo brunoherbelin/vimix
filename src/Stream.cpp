@@ -31,6 +31,8 @@
 
 #include "Stream.h"
 
+std::list<GstElement*> Stream::registered_;
+
 #ifndef NDEBUG
 #define STREAM_DEBUG
 #endif
@@ -73,7 +75,7 @@ Stream::Stream()
 
 Stream::~Stream()
 {
-    Stream::close(false);
+    Stream::close();
 
     // cleanup opengl texture
     if (textureindex_)
@@ -348,9 +350,10 @@ void Stream::Frame::unmap()
 }
 
 
-void async_terminate( GstElement *p )
+void Stream::pipeline_terminate( GstElement *p )
 {
 #ifdef STREAM_DEBUG
+    g_printerr("Stream %s close\n", gst_element_get_name(p));
     Log::Info("Stream %s closed", gst_element_get_name(p));
 #endif
 
@@ -366,9 +369,12 @@ void async_terminate( GstElement *p )
 
     // unref to free pipeline
     gst_object_unref ( p );
+
+    // unregister
+    Stream::registered_.remove(p);
 }
 
-void Stream::close(bool async)
+void Stream::close()
 {
     // not opened?
     if (!opened_) {
@@ -384,13 +390,8 @@ void Stream::close(bool async)
 
     // clean up GST
     if (pipeline_ != nullptr) {
-
         // end pipeline asynchronously
-        if (async)
-            std::thread(async_terminate, pipeline_).detach();
-        else
-            async_terminate(pipeline_);
-
+        std::thread(Stream::pipeline_terminate, pipeline_).detach();
         pipeline_ = nullptr;
     }
 
