@@ -1591,9 +1591,14 @@ void Mixer::clear()
     while (busy())
         update();
 
-    // set for an empty session and update to ensure all streams are deleted
+    // set for an empty session
     set(new Session);
-    while ( !MediaPlayer::registered().empty() || !Stream::registered().empty() )
+
+    // update to ensure all streams are deleted (with a deadline to avoid infinite wait in case or error)
+    uint deadline = 0;
+    while ( !MediaPlayer::registered().empty()
+           || !Stream::registered().empty()
+           || ++deadline < 10)
         update();
 
     // all finished, we can clear the back session we just added
@@ -1616,8 +1621,6 @@ void Mixer::set(Session *s)
     // swap current with given session
     sessionSwapRequested_ = true;
 }
-
-
 
 void Mixer::setResolution(glm::vec3 res)
 {
