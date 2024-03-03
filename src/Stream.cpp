@@ -388,11 +388,6 @@ void Stream::pipeline_terminate( GstElement *p )
     g_free(name);
 #endif
 
-    // force flush
-    gst_element_send_event(p, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
-                                                         GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_END, 0) );
-    gst_element_get_state (p, NULL, NULL, 1000000);
-
     // force end
     GstStateChangeReturn ret = gst_element_set_state (p, GST_STATE_NULL);
     if (ret == GST_STATE_CHANGE_ASYNC)
