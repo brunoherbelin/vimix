@@ -747,8 +747,10 @@ void MediaPlayer::Frame::unmap()
 void MediaPlayer::pipeline_terminate( GstElement *p )
 {
 #ifdef MEDIA_PLAYER_DEBUG
-    g_printerr("MediaPlayer %s close\n", gst_element_get_name(p));
-    Log::Info("MediaPlayer %s closed", gst_element_get_name(p));
+    gchar *name = gst_element_get_name(p);
+    g_printerr("MediaPlayer %s close\n", name);
+    Log::Info("MediaPlayer %s closed", name);
+    g_free(name);
 #endif
 
     // end pipeline

@@ -243,3 +243,12 @@ MousePointer::MousePointer() : mode_(Pointer::POINTER_DEFAULT)
     pointer_[Pointer::POINTER_METRONOME] = new PointerMetronome;
 }
 
+MousePointer::~MousePointer()
+{
+    delete pointer_[Pointer::POINTER_DEFAULT];
+    delete pointer_[Pointer::POINTER_GRID];
+    delete pointer_[Pointer::POINTER_LINEAR];
+    delete pointer_[Pointer::POINTER_SPRING];
+    delete pointer_[Pointer::POINTER_WIGGLY];
+    delete pointer_[Pointer::POINTER_METRONOME];
+}

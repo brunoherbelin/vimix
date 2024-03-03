@@ -128,6 +128,7 @@ class MousePointer
     MousePointer();
     MousePointer(MousePointer const& copy) = delete;
     MousePointer& operator=(MousePointer const& copy) = delete;
+    ~MousePointer();
 
 public:
     static MousePointer& manager ()

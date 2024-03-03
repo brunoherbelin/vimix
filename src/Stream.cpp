@@ -382,8 +382,10 @@ void Stream::Frame::unmap()
 void Stream::pipeline_terminate( GstElement *p )
 {
 #ifdef STREAM_DEBUG
-    g_printerr("Stream %s close\n", gst_element_get_name(p));
-    Log::Info("Stream %s closed", gst_element_get_name(p));
+    gchar *name = gst_element_get_name(p);
+    g_printerr("Stream %s close\n", name);
+    Log::Info("Stream %s closed", name);
+    g_free(name);
 #endif
 
     // force flush

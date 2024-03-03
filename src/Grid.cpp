@@ -34,6 +34,12 @@ Grid::Grid(Group *parent, Shapes s) : active_(false), shape_(s), unit_(UNIT_DEFA
 
 }
 
+Grid::~Grid()
+{
+    if (root_)
+        delete root_;
+}
+
 glm::vec2 Grid::step() const {
 
     if ( shape_ != GRID_POLAR )

@@ -423,7 +423,7 @@ void Settings::Load(const string &filename)
         return;
 
     // version
-    int major, minor, patch;
+    int major = 0, minor = 0, patch = 0;
     pRoot->QueryIntAttribute("major", &major);
     pRoot->QueryIntAttribute("minor", &minor);
     pRoot->QueryIntAttribute("patch", &patch);
