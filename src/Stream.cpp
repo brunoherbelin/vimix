@@ -223,6 +223,26 @@ std::string Stream::description() const
     return description_;
 }
 
+GstBusSyncReply stream_signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
+{
+    // only handle error messages
+    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR && ptr != nullptr) {
+        GError *error;
+        gchar *debugs;
+        gst_message_parse_error(msg, &error, &debugs);
+
+        Log::Warning("Stream %s Error %s",
+                     std::to_string(reinterpret_cast<Stream*>(ptr)->id()).c_str(),
+                     error->message);
+
+        g_error_free(error);
+        free(debugs);
+    }
+
+    // drop all messages to avoid filling up the stack
+    return GST_BUS_DROP;
+}
+
 void Stream::execute_open()
 {
     // reset
@@ -299,6 +319,15 @@ void Stream::execute_open()
 
     // instruct the sink to send samples synched in time if not live source
     gst_base_sink_set_sync (GST_BASE_SINK(sink), !live_);
+
+#ifdef IGNORE_GST_ERROR_MESSAGE
+    // avoid filling up bus with messages
+    gst_bus_set_flushing(bus, true);
+#else
+    // set message handler for the pipeline's bus
+    gst_bus_set_sync_handler(gst_element_get_bus(pipeline_),
+                             stream_signal_handler, this, NULL);
+#endif
 
     // done with refs
     gst_object_unref (sink);

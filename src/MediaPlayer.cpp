@@ -349,6 +349,26 @@ typedef enum {
 } GstPlayFlags;
 
 
+GstBusSyncReply mediaplayer_signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
+{
+    // only handle error messages
+    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR && ptr != nullptr) {
+        GError *error;
+        gchar *debugs;
+        gst_message_parse_error(msg, &error, &debugs);
+
+        Log::Warning("MediaPlayer %s Error %s",
+                         std::to_string(reinterpret_cast<MediaPlayer*>(ptr)->id()).c_str(),
+                         error->message);
+
+        g_error_free(error);
+        free(debugs);
+    }
+
+    // drop all messages to avoid filling up the stack
+    return GST_BUS_DROP;
+}
+
 //
 // Setup a media player using gstreamer playbin
 //
@@ -462,6 +482,7 @@ void MediaPlayer::execute_open()
     Rendering::LinkPipeline(GST_PIPELINE (pipeline_));
 #endif
 
+
     // set to desired state (PLAY or PAUSE)
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
@@ -476,6 +497,15 @@ void MediaPlayer::execute_open()
         if ( gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &d) )
             timeline_.setEnd(d);
     }
+
+#ifdef IGNORE_GST_ERROR_MESSAGE
+    // avoid filling up bus with messages
+    gst_bus_set_flushing(bus, true);
+#else
+    // set message handler for the pipeline's bus
+    gst_bus_set_sync_handler(gst_element_get_bus(pipeline_),
+                             mediaplayer_signal_handler, this, NULL);
+#endif
 
     // all good
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
