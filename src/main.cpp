@@ -18,6 +18,7 @@
 **/
 
 #include <stdio.h>
+#include <string.h>
 
 //  GStreamer
 #include <gst/gst.h>
