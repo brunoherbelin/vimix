@@ -81,8 +81,8 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
         if (address.size() > 2 && address.front().compare(OSC_PREFIX) == 0 ){
             // done with the first part of the OSC address
             address.pop_front();
-            // next part of the OSC message is the target
-            std::string target = address.front();
+            // next part of the OSC message is the target, after alias correction
+            std::string target = Control::manager().alias( address.front() );
             // next part of the OSC message is the attribute
             address.pop_front();
             std::string attribute = address.front();
@@ -201,7 +201,42 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 int i = 0;
                 std::string num = target.substr( target.find("#") == std::string::npos ? 1 : 2 );
                 if ( BaseToolkit::is_a_number(num, &i)){
-                    Source *s = Mixer::manager().sourceAtIndex(i);
+                    // special case of creating an alias for given source target
+                    if (attribute.compare(OSC_SOURCE_ALIAS) == 0) {
+                        const char *label = nullptr;
+                        m.ArgumentStream() >> label >> osc::EndMessage;
+                        Control::manager().aliases_[std::string("/").append(label)] = target;
+                        Log::Info(CONTROL_OSC_MSG "New alias /%s for target %s.", label, target.c_str());
+
+                    }
+                    // usual case, addressing the source by '#n'
+                    else {
+                        Source *s = Mixer::manager().sourceAtIndex(i);
+                        if (s) {
+                            // apply attributes to source
+                            if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
+                                // and send back feedback if needed
+                                Control::manager().sendSourceAttibutes(remoteEndpoint, target, s);
+                        }
+                        else
+                            Log::Info(CONTROL_OSC_MSG "No source at ID %s targetted by %s.", num.c_str(), sender);
+                    }
+                }
+            }
+            // General case: try to identify the target by name
+            else {
+                // special case of creating an alias for given source target
+                if (attribute.compare(OSC_SOURCE_ALIAS) == 0) {
+                    const char *label = nullptr;
+                    m.ArgumentStream() >> label >> osc::EndMessage;
+                    Control::manager().aliases_[std::string("/").append(label)] = target;
+                    Log::Info(CONTROL_OSC_MSG "New alias /%s for target %s.", label, target.c_str());
+                }
+                // usual case, addressing the source by its name
+                else {
+                    // try to find source by given name
+                    Source *s = Mixer::manager().findSource(target.substr(1));
+                    // if a source with the given target name or index was found
                     if (s) {
                         // apply attributes to source
                         if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
@@ -209,23 +244,8 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                             Control::manager().sendSourceAttibutes(remoteEndpoint, target, s);
                     }
                     else
-                        Log::Info(CONTROL_OSC_MSG "No source at ID %s targetted by %s.", num.c_str(), sender);
+                        Log::Info(CONTROL_OSC_MSG "Unknown target '%s' requested by %s.", target.c_str(), sender);
                 }
-            }
-            // General case: try to identify the target by name
-            else {
-                // try to find source by given name
-                Source *s = Mixer::manager().findSource(target.substr(1));
-
-                // if a source with the given target name or index was found
-                if (s) {
-                    // apply attributes to source
-                    if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
-                        // and send back feedback if needed
-                        Control::manager().sendSourceAttibutes(remoteEndpoint, target, s);
-                }
-                else
-                    Log::Info(CONTROL_OSC_MSG "Unknown target '%s' requested by %s.", target.c_str(), sender);
             }
         }
         else {
@@ -307,6 +327,15 @@ Control::Control() : receiver_(nullptr)
 Control::~Control()
 {
     terminate();
+}
+
+std::string Control::alias (std::string target)
+{
+    auto it_alias  = aliases_.find(target);
+    if ( it_alias != aliases_.end() )
+        return it_alias->second;
+    else
+        return target;
 }
 
 std::string Control::translate (std::string addresspattern)
@@ -597,8 +626,14 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         return send_feedback;
 
     try {
+        /// e.g. '/vimix/#0/rename s toto'
+        if (attribute.compare(OSC_SOURCE_RENAME) == 0) {
+            const char *label = nullptr;
+            arguments >> label >> osc::EndMessage;
+            Mixer::manager().renameSource(target, label);
+        }
         /// e.g. '/vimix/current/play' or '/vimix/current/play T' or '/vimix/current/play F'
-        if ( attribute.compare(OSC_SOURCE_PLAY) == 0) {
+        else if ( attribute.compare(OSC_SOURCE_PLAY) == 0) {
             float on = 1.f;
             if ( !arguments.Eos()) {
                 arguments >> on >> osc::EndMessage;
