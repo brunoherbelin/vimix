@@ -25,9 +25,9 @@ public:
     static void enduse();
     void reset();
 
-	template<typename T> void setUniform(const std::string& name, T val);
-	template<typename T> void setUniform(const std::string& name, T val1, T val2);
-    template<typename T> void setUniform(const std::string& name, T val1, T val2, T val3);
+    template<typename T> bool setUniform(const std::string& name, T val);
+    template<typename T> bool setUniform(const std::string& name, T val1, T val2);
+    template<typename T> bool setUniform(const std::string& name, T val1, T val2, T val3);
 
 private:
     unsigned int id_;
@@ -54,7 +54,7 @@ public:
     virtual void use();
     virtual void reset();
     virtual void accept(Visitor& v);
-    void copy(Shader const& S);
+    void copy(Shader const &S);
 
     glm::mat4 projection;
     glm::mat4 modelview;

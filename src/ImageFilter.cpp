@@ -18,6 +18,7 @@
 **/
 #include <ctime>
 #include <algorithm>
+#include <regex>
 
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -26,6 +27,7 @@
 #include "Visitor.h"
 #include "FrameBuffer.h"
 #include "Primitives.h"
+#include "BaseToolkit.h"
 
 #include "ImageFilter.h"
 
@@ -150,6 +152,17 @@ bool FilteringProgram::operator!= (const FilteringProgram& other) const
     return false;
 }
 
+bool FilteringProgram::hasParameter(const std::string &p)
+{
+    return parameters_.find(p) != parameters_.end();
+}
+
+void FilteringProgram::removeParameter(const std::string &p)
+{
+    if (hasParameter(p))
+        parameters_.erase(p);
+}
+
 
 ////////////////////////////////////////
 /////                                 //
@@ -168,6 +181,7 @@ ImageFilteringShader::ImageFilteringShader(): ImageShader()
     timer_ = g_timer_new ();
     iTime_ = 0.0;
     iFrame_ = 0;
+    uniforms_changed_ = true;
 
     ImageShader::reset();
 }
@@ -216,9 +230,17 @@ void ImageFilteringShader::use()
     //
     // loop over uniforms
     //
-    for (auto u = uniforms_.begin(); u != uniforms_.end(); ++u)
+    for (auto u = uniforms_.begin(); u != uniforms_.end(); ) {
         // set uniform to current value
-        program_->setUniform( u->first, u->second );
+        if ( program_->setUniform(u->first, u->second) )
+            // uniform variable could be set, keep it
+            ++u;
+        else {
+            // uniform variable does not exist in code, remove it
+            u = uniforms_.erase(u);
+            uniforms_changed_ = true;
+        }
+    }
 }
 
 void ImageFilteringShader::reset()
@@ -242,7 +264,7 @@ void ImageFilteringShader::setCode(const std::string &code, std::promise<std::st
         // shader is composed of a header, the given code and a footer
         shader_code_ = fragmentHeader + code_ + fragmentFooter;
         // shift line numbers by number of lines in header
-        std::string::difference_type n = std::count(fragmentHeader.begin(), fragmentHeader.end(), '\n');
+        static std::string::difference_type n = std::count(fragmentHeader.begin(), fragmentHeader.end(), '\n');
         // launch build
         custom_shading_.setShaders("shaders/image.vs", shader_code_, (int)n, ret);
     }
@@ -309,6 +331,19 @@ void ImageFilter::update (float dt)
 
     if ( program_.isTwoPass() )
         shaders_.second->update(dt);
+
+    // uniforms changed in main shader
+    if ( shaders_.first->uniforms_changed_ ) {
+        // loop over the parameters of the program...
+        std::map<std::string, float> __P = program_.parameters();
+        for (auto param = __P.begin(); param != __P.end(); ++param) {
+            // .. and remove the parameters that are not valid uniforms
+            if (shaders_.first->uniforms_.count(param->first) < 1)
+                program_.removeParameter(param->first);
+        }
+        // done
+        shaders_.first->uniforms_changed_ = false;
+    }
 }
 
 uint ImageFilter::texture () const
@@ -392,6 +427,9 @@ FilteringProgram ImageFilter::program () const
     return program_;
 }
 
+#define REGEX_UNIFORM_DECLARATION "uniform\\s+float\\s+"
+#define REGEX_UNIFORM_VALUE "(\\s*=\\s*[[:digit:]](\\.[[:digit:]])?)?\\s*\\;"
+
 void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string> *ret)
 {
     // always keep local copy
@@ -404,11 +442,42 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
     // set code to the shader for first-pass
     shaders_.first->setCode( codes.first, ret );
 
+    // Parse code to detect additional declaration of uniform variables
+    // Search for "uniform float", a variable name, with possibly a '=' and float value
+    std::string glslcode(codes.first);
+    std::smatch found_uniform;
+    std::regex is_a_uniform(REGEX_UNIFORM_DECLARATION "[[:alpha:]]+" REGEX_UNIFORM_VALUE);
+    // loop over every uniform declarations in the GLSL code
+    while (std::regex_search(glslcode, found_uniform, is_a_uniform)) {
+        // found a complete declaration of uniform variable
+        std::string declaration = found_uniform.str();
+        // extract variable name by erasing everything else
+        std::string varname =
+            std::regex_replace(declaration,std::regex(REGEX_UNIFORM_DECLARATION),"");
+        varname = std::regex_replace(varname, std::regex(REGEX_UNIFORM_VALUE), "");
+        // add to list of parameters if was not already there, with default value
+        if ( !program_.hasParameter(varname) )
+            program_.setParameter(varname, 0.f);
+
+        // try to find a value in uniform declaration, and set parameter value if valid
+        float val = 0.f;
+        std::smatch found_value;
+        std::regex is_a_float_value("[[:digit:]](\\.[[:digit:]])?");
+        if (std::regex_search(declaration, found_value, is_a_float_value)) {
+            // set value only if a value is given
+            if ( BaseToolkit::is_a_value(found_value.str(), &val) )
+                program_.setParameter(varname, val);
+        }
+        // keep parsing
+        glslcode = found_uniform.suffix().str();
+    }
+
     // SECOND PASS
     if ( program_.isTwoPass() )
         // set the code to the shader for second-pass
-        shaders_.second->setCode( codes.second );
+        shaders_.second->setCode(codes.second);
 
+    // UPDATE UNIFORMS
     updateParameters();
 }
 

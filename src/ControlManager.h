@@ -71,6 +71,7 @@
 #define OSC_SOURCE_TEXSIZE     "/texture_size"
 #define OSC_SOURCE_TEXANGLE    "/texture_angle"
 #define OSC_SOURCE_FILTER      "/filter"
+#define OSC_SOURCE_UNIFORM     "/uniform"
 
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"

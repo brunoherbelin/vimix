@@ -967,6 +967,27 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
                 textsrc->contents()->setText(label);
             }
         }
+        /// e.g. '/vimix/current/uniform sf var 0.5'
+        else if (attribute.compare(OSC_SOURCE_UNIFORM) == 0) {
+            std::string uniform_name;
+            float uniform_value = NAN;
+
+            const char *str = nullptr;
+            arguments >> str;
+            uniform_name = std::string(str);
+
+            arguments >> uniform_value >> osc::EndMessage;
+
+
+            CloneSource *clonesrc = dynamic_cast<CloneSource *>(target);
+            if (clonesrc) {
+                ImageFilter *f = dynamic_cast<ImageFilter *>(clonesrc->filter());
+                if (f) {
+                    f->setProgramParameter(uniform_name, uniform_value);
+                }
+            }
+
+        }
         /// e.g. '/vimix/current/filter sf blur 0.5'
         else if (attribute.compare(OSC_SOURCE_FILTER) == 0) {
             std::string filter_name;

@@ -47,7 +47,7 @@ public:
     std::pair< std::string, std::string > code();
 
     // if has second pass
-    bool isTwoPass() const { return two_pass_filter_; }
+    inline bool isTwoPass() const { return two_pass_filter_; }
 
     // set the list of parameters
     inline void setParameters(const std::map< std::string, float > &parameters) { parameters_ = parameters; }
@@ -57,6 +57,8 @@ public:
 
     // set the value of a parameter
     inline void setParameter(const std::string &p, float value) { parameters_[p] = value; }
+    bool hasParameter(const std::string &p);
+    void removeParameter(const std::string &p);
 
     // globals
     static std::string getFilterCodeInputs();
@@ -85,6 +87,7 @@ public:
 
     // list of uniforms to control shader
     std::map< std::string, float > uniforms_;
+    bool uniforms_changed_;
 
     ImageFilteringShader();
     ~ImageFilteringShader();
