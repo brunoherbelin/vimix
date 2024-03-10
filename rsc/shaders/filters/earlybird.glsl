@@ -1,6 +1,6 @@
 /** 
  * Earlybird Filter by Ruofei Du (DuRuofei.com)
- * Demo: https://www.shadertoy.com/view/4lSyDK
+ * Demo: https://www.shadertoy.com/view/XlSyWV
  * starea @ ShaderToy,License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
  * https://creativecommons.org/licenses/by-nc-sa/3.0/
  * 
@@ -59,6 +59,8 @@ vec3 colorBurn(in vec3 s, in vec3 d )
 	return 1.0 - (1.0 - d) / s;
 }
 
+uniform float Contrast;
+
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
 	vec2 uv = fragCoord.xy / iResolution.xy;
@@ -79,7 +81,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     
     col = mix(tint * col, col, gradient); 
     col = colorBurn(grey, col); 
-    //col *= 0.8;
+    col *= Contrast + 0.5;
     fragColor = vec4(col, 1.0);
 }
 

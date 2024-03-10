@@ -8,7 +8,7 @@
 #define GOLDEN_ANGLE 2.39996323
 #define ITERATIONS 60
 
-float Radius = 0.3;
+uniform float Radius = 0.3;
 
 mat2 rot = mat2(cos(GOLDEN_ANGLE), sin(GOLDEN_ANGLE), -sin(GOLDEN_ANGLE), cos(GOLDEN_ANGLE));
 
