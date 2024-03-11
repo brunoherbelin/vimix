@@ -379,6 +379,8 @@ SourceList::iterator Session::deleteSource(Source *s)
     if (its != sources_.end()) {
         // detach
         detachSource(s);
+        // erase all input callbacks for that source
+        deleteInputCallbacks(s);
         // erase the source from the failed list
         failed_.erase(s);
         // erase the source from the update list & get next element
