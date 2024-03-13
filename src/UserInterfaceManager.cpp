@@ -5806,7 +5806,7 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
 
         // Transition options
         ImGuiToolkit::Spacing();
-        ImGui::Text("Transition");
+        ImGui::Text("Parameters");
         if (ImGuiToolkit::IconButton(0, 8)) Settings::application.transition.cross_fade = true;
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -5822,32 +5822,24 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
 
-        // specific transition actions
+        // transition actions
         ImGuiToolkit::Spacing();
         ImGui::Text("Actions");
+        if ( ImGui::Button( ICON_FA_PLAY "  Play & Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
+            if (tv) tv->play(true);
+        }
+        if ( ImGui::Button( ICON_FA_FAST_FORWARD "  Fast Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
+            if (tv) tv->open();
+        }
         if ( ImGui::Button( ICON_FA_TIMES "  Cancel ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->cancel();
         }
-        if ( ImGui::Button( ICON_FA_PLAY "  Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->play(false);
-        }
-        ImGui::SameLine();
-        ImGui::Text("Animation");
-        if ( ImGui::Button( ICON_FA_FILE_UPLOAD "  Open ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->open();
-        }
-        ImGui::SameLine();
-        ImGui::Text("Session");
 
-        // General transition actions
+        // Exit transition
         ImGui::Text(" ");
-        if ( ImGui::Button( ICON_FA_PLAY "  Play &  " ICON_FA_FILE_UPLOAD " Open ", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->play(true);
-        }
         if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             UserInterface::manager().setView(View::MIXING);
 

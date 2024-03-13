@@ -243,7 +243,7 @@ void TransitionView::draw()
                     ImGui::PopStyleColor();
                 }
                 ImGui::SetCursorScreenPos(ImVec2(pos_tran.x - 20.f, pos_tran.y +2.f));
-                const char *tooltip[2] = {"Transition to black", "Cross fading"};
+                const char *tooltip[2] = {"Fade to black", "Cross fading"};
                 ImGuiToolkit::IconToggle(0,2,0,8, &Settings::application.transition.cross_fade, tooltip );
 
                 //  Duration slider (adjusted width)
@@ -256,7 +256,7 @@ void TransitionView::draw()
                 // Fast forwardoutput_surface_ button on the target frame
                 float w = output_surface_->scale_.x * 80.f;
                 ImGui::SetCursorScreenPos(ImVec2(pos_open.x + w, pos_open.y + 2.f));
-                if (ImGuiToolkit::IconButton(ICON_FA_FAST_FORWARD, "Fast-forward & Open"))
+                if (ImGuiToolkit::IconButton(ICON_FA_FAST_FORWARD, "Fast Open"))
                     open();
 
                 ImGui::PopFont();
