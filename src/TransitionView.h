@@ -30,6 +30,7 @@ public:
 
 private:
     Surface *output_surface_;
+    Symbol *playicon;
     Mesh *mark_100ms_, *mark_1s_;
     Switch *gradient_;
     SessionFileSource *transition_source_;

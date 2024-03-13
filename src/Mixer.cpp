@@ -1591,6 +1591,9 @@ void Mixer::clear()
     while (busy())
         update();
 
+    // cancel transition
+    transition_.detach();
+
     // set for an empty session
     set(new Session);
 

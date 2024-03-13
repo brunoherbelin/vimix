@@ -112,7 +112,7 @@ public:
         CLOCK_H,
         GRID,
         CROSS,
-        MAGNET,
+        PLAY,
         EMPTY
     } Type;
     Symbol(Type t, glm::vec3 pos = glm::vec3(0.f));

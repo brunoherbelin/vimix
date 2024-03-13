@@ -572,8 +572,8 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[GRID]   = nullptr;
         icons[CROSS]    = new Mesh("mesh/icon_cross.ply");
         shadows[CROSS]  = nullptr;
-        icons[MAGNET]    = new Mesh("mesh/icon_magnet.ply");
-        shadows[MAGNET]  = nullptr;
+        icons[PLAY]    = new Mesh("mesh/icon_play.ply");
+        shadows[PLAY]  = shadow;
         icons[EMPTY]    = new Mesh("mesh/icon_empty.ply");
         shadows[EMPTY]  = shadow;
     }
