@@ -692,7 +692,7 @@ SourceCallback *Seek::reverse(Source *s) const
 {
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
     if (ms != nullptr && bidirectional_)
-        return new Seek( ms->mediaplayer()->position() );
+        return new Seek( (glm::uint64) ms->mediaplayer()->position() );
     return nullptr;
 }
 

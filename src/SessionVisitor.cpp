@@ -444,17 +444,17 @@ void SessionVisitor::visit(MediaPlayer &n)
 
         // timeline
         XMLElement *timelineelement = xmlDoc_->NewElement("Timeline");
-        timelineelement->SetAttribute("begin", n.timeline()->begin());
-        timelineelement->SetAttribute("end", n.timeline()->end());
-        timelineelement->SetAttribute("step", n.timeline()->step());
+        timelineelement->SetAttribute("begin", (uint64_t) n.timeline()->begin());
+        timelineelement->SetAttribute("end", (uint64_t) n.timeline()->end());
+        timelineelement->SetAttribute("step", (uint64_t) n.timeline()->step());
 
         // gaps in timeline
         XMLElement *gapselement = xmlDoc_->NewElement("Gaps");
         TimeIntervalSet gaps = n.timeline()->gaps();
         for( auto it = gaps.begin(); it!= gaps.end(); ++it) {
             XMLElement *g = xmlDoc_->NewElement("Interval");
-            g->SetAttribute("begin", (*it).begin);
-            g->SetAttribute("end", (*it).end);
+            g->SetAttribute("begin", (uint64_t) (*it).begin);
+            g->SetAttribute("end", (uint64_t) (*it).end);
             gapselement->InsertEndChild(g);
         }
         timelineelement->InsertEndChild(gapselement);

@@ -19,6 +19,7 @@
 
 #include <algorithm>
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 
