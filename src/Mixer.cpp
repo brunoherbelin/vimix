@@ -19,7 +19,6 @@
 
 #include <algorithm>
 #include <thread>
-#include <atomic>
 #include <mutex>
 #include <vector>
 #include <chrono>
@@ -77,7 +76,7 @@ Mixer::Mixer() : session_(nullptr), back_session_(nullptr), sessionSwapRequested
     current_source_index_ = -1;
 
     // initialize with a new empty session
-    clear();
+    set( new Session );
     setView( View::MIXING );
 }
 
@@ -1580,7 +1579,7 @@ void Mixer::close(bool smooth)
         transition_.attach(ts);
     }
     else
-        clear();
+        set( new Session );
 
     // closing session : filename at font in history should not be reloaded
     Settings::application.recentSessions.front_is_valid = false;
@@ -1588,18 +1587,26 @@ void Mixer::close(bool smooth)
 
 void Mixer::clear()
 {
-    // delete previous back session if needed
-    if (back_session_)
-        garbage_.push_back(back_session_);
+    // wait finish saving / loading
+    while (busy())
+        update();
 
-    // create empty session
-    back_session_ = new Session;
+    // cancel transition
+    transition_.detach();
 
-    // swap current with empty
-    sessionSwapRequested_ = true;
+    // set for an empty session
+    set(new Session);
 
-    // need to deeply update view to apply eventual changes
-    ++View::need_deep_update_;
+    // update to ensure all streams are deleted (with a deadline to avoid infinite wait in case or error)
+    uint deadline = 0;
+    while ( !MediaPlayer::registered().empty()
+           || !Stream::registered().empty()
+           || ++deadline < 10)
+        update();
+
+    // all finished, we can clear the back session we just added
+    delete back_session_;
+    back_session_ = nullptr;
 }
 
 void Mixer::set(Session *s)
@@ -1617,8 +1624,6 @@ void Mixer::set(Session *s)
     // swap current with given session
     sessionSwapRequested_ = true;
 }
-
-
 
 void Mixer::setResolution(glm::vec3 res)
 {

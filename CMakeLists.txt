@@ -594,7 +594,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_sequence.ply
     ./rsc/mesh/icon_receive.ply
     ./rsc/mesh/icon_text.ply
-    ./rsc/mesh/icon_magnet.ply
+    ./rsc/mesh/icon_play.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
     ./rsc/shaders/filters/default.glsl

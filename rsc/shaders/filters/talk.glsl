@@ -3,7 +3,7 @@
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
 // Adapted by Bruno Herbelin for vimix
 
-float Factor = 0.5;
+uniform float Factor = 0.5;
 
 vec2 hash( vec2 p ) {
     p = 2.0 * vec2(dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)));

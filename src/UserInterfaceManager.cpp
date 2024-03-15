@@ -3930,24 +3930,45 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", "Select", ImGuiComboFlags_HeightLarge))
             {
-                if ( ImGui::Selectable("Custom gstreamer   " ICON_FA_TERMINAL) ) {
+                if ( ImGuiToolkit::SelectableIcon(16, 16, "Custom gstreamer", false) )
+                {
                     update_new_source = true;
                     generated_type = 0;
                     pattern_type = -1;
                 }
-                if ( ImGui::Selectable("Text   " ICON_FA_TERMINAL) ) {
+                if ( ImGuiToolkit::SelectableIcon(0, 13, "Text", false) )
+                {
                     update_new_source = true;
                     generated_type = 1;
                     pattern_type = -1;
                 }
-                for (int p = 0; p < (int) Pattern::count(); ++p){
-                    pattern_descriptor pattern = Pattern::get(p);
-                    std::string label = pattern.label + (pattern.animated ? "  " ICON_FA_PLAY_CIRCLE : " ");
-                    if (pattern.available && ImGui::Selectable( label.c_str(), p == pattern_type )) {
-                        update_new_source = true;
-                        generated_type = 2;
-                        pattern_type = p;
+                if (ImGui::BeginMenu(ICON_FA_CUBES "  Static patterns"))
+                {
+                    for (int p = 0; p < (int) Pattern::count(); ++p) {
+                        pattern_descriptor pattern = Pattern::get(p);
+                        if (pattern.available && !pattern.animated) {
+                            if (ImGui::Selectable(pattern.label.c_str())) {
+                                update_new_source = true;
+                                generated_type = 2;
+                                pattern_type = p;
+                            }
+                        }
                     }
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu(ICON_FA_PLAY_CIRCLE "  Animated patterns"))
+                {
+                    for (int p = 0; p < (int) Pattern::count(); ++p) {
+                        pattern_descriptor pattern = Pattern::get(p);
+                        if (pattern.available && pattern.animated) {
+                            if (ImGui::Selectable(pattern.label.c_str())) {
+                                update_new_source = true;
+                                generated_type = 2;
+                                pattern_type = p;
+                            }
+                        }
+                    }
+                    ImGui::EndMenu();
                 }
                 ImGui::EndCombo();
             }
@@ -4022,7 +4043,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                      IM_ARRAYSIZE(dummy_str),
                                      ImGuiInputTextFlags_ReadOnly);
                     ImGui::PopStyleColor(1);
-                } else if (ImGuiToolkit::InputTextMultiline("Text", &_contents, fieldsize, &numlines))
+                }
+                else if (ImGuiToolkit::InputTextMultiline("Text", &_contents, fieldsize, &numlines))
                     update_new_source = true;
 
                 // Local menu for list of examples
@@ -5784,7 +5806,7 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
 
         // Transition options
         ImGuiToolkit::Spacing();
-        ImGui::Text("Transition");
+        ImGui::Text("Parameters");
         if (ImGuiToolkit::IconButton(0, 8)) Settings::application.transition.cross_fade = true;
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -5800,32 +5822,24 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
 
-        // specific transition actions
+        // transition actions
         ImGuiToolkit::Spacing();
         ImGui::Text("Actions");
+        if ( ImGui::Button( ICON_FA_PLAY "  Play & Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
+            if (tv) tv->play(true);
+        }
+        if ( ImGui::Button( ICON_FA_FAST_FORWARD "  Fast Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
+            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
+            if (tv) tv->open();
+        }
         if ( ImGui::Button( ICON_FA_TIMES "  Cancel ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
             TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
             if (tv) tv->cancel();
         }
-        if ( ImGui::Button( ICON_FA_PLAY "  Play ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->play(false);
-        }
-        ImGui::SameLine();
-        ImGui::Text("Animation");
-        if ( ImGui::Button( ICON_FA_FILE_UPLOAD "  Open ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->open();
-        }
-        ImGui::SameLine();
-        ImGui::Text("Session");
 
-        // General transition actions
+        // Exit transition
         ImGui::Text(" ");
-        if ( ImGui::Button( ICON_FA_PLAY "  Play &  " ICON_FA_FILE_UPLOAD " Open ", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->play(true);
-        }
         if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             UserInterface::manager().setView(View::MIXING);
 

@@ -885,15 +885,15 @@ void SessionLoader::visit(MediaPlayer &n)
                 tl.setTiming( interval_, n.timeline()->step());
             else
             {
-                GstClockTime b = GST_CLOCK_TIME_NONE;
-                GstClockTime e = GST_CLOCK_TIME_NONE;
-                GstClockTime s = GST_CLOCK_TIME_NONE;
+                uint64_t b = GST_CLOCK_TIME_NONE;
+                uint64_t e = GST_CLOCK_TIME_NONE;
+                uint64_t s = GST_CLOCK_TIME_NONE;
                 timelineelement->QueryUnsigned64Attribute("begin", &b);
                 timelineelement->QueryUnsigned64Attribute("end", &e);
                 timelineelement->QueryUnsigned64Attribute("step", &s);
-                interval_ = TimeInterval(b,e);
+                interval_ = TimeInterval( (GstClockTime) b, (GstClockTime) e);
                 if (interval_.is_valid())
-                    tl.setTiming( interval_, s);
+                    tl.setTiming( interval_, (GstClockTime) s);
             }
 
             XMLElement *gapselement = timelineelement->FirstChildElement("Gaps");
@@ -901,11 +901,11 @@ void SessionLoader::visit(MediaPlayer &n)
                 XMLElement* gap = gapselement->FirstChildElement("Interval");
                 for( ; gap ; gap = gap->NextSiblingElement())
                 {
-                    GstClockTime a = GST_CLOCK_TIME_NONE;
-                    GstClockTime b = GST_CLOCK_TIME_NONE;
+                    uint64_t a = GST_CLOCK_TIME_NONE;
+                    uint64_t b = GST_CLOCK_TIME_NONE;
                     gap->QueryUnsigned64Attribute("begin", &a);
                     gap->QueryUnsigned64Attribute("end", &b);
-                    tl.addGap( a, b );
+                    tl.addGap( (GstClockTime) a, (GstClockTime) b );
                 }
             }
             XMLElement *fadingselement = timelineelement->FirstChildElement("Fading");

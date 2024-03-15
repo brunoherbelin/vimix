@@ -34,6 +34,8 @@
 #define OSC_PREVIOUS           "/previous"
 
 #define OSC_SOURCE_NAME        "/name"
+#define OSC_SOURCE_RENAME      "/rename"
+#define OSC_SOURCE_ALIAS       "/alias"
 #define OSC_SOURCE_LOCK        "/lock"
 #define OSC_SOURCE_PLAY        "/play"
 #define OSC_SOURCE_PAUSE       "/pause"
@@ -69,6 +71,7 @@
 #define OSC_SOURCE_TEXSIZE     "/texture_size"
 #define OSC_SOURCE_TEXANGLE    "/texture_angle"
 #define OSC_SOURCE_FILTER      "/filter"
+#define OSC_SOURCE_UNIFORM     "/uniform"
 
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"
@@ -129,8 +132,6 @@ public:
     void update();
     void terminate();
 
-    // OSC translation
-    std::string translate (std::string addresspqattern);
 
     bool  inputActive (uint id);
     float inputValue  (uint id);
@@ -170,6 +171,10 @@ protected:
 
     static void keyboardCalback(GLFWwindow*, int, int, int, int);
 
+    // OSC translation
+    std::string translate (std::string addresspqattern);
+    std::string alias (std::string target);
+
 private:
 
     static void listen();
@@ -177,6 +182,7 @@ private:
     std::condition_variable receiver_end_;
     UdpListeningReceiveSocket *receiver_;
 
+    std::map<std::string, std::string> aliases_;
     std::map<std::string, std::string> translation_;
     void loadOscConfig();
     void resetOscConfig();

@@ -2,7 +2,6 @@
 #define __GST_MEDIA_PLAYER_H_
 
 #include <string>
-#include <atomic>
 #include <mutex>
 #include <future>
 
@@ -300,13 +299,13 @@ public:
      * Accept visitors
      * */
     void accept(Visitor& v);
+
     /**
      * @brief registered
      * @return list of media players currently registered
      */
-    static std::list<MediaPlayer*> registered() { return registered_; }
-    static std::list<MediaPlayer*>::const_iterator begin() { return registered_.cbegin(); }
-    static std::list<MediaPlayer*>::const_iterator end()   { return registered_.cend(); }    
+    static std::list<GstElement*> registered() { return registered_; }
+
     /**
      * Discoverer to check uri and get media info
      * */
@@ -423,7 +422,8 @@ private:
     static GstFlowReturn callback_new_sample  (GstAppSink *, gpointer);
 
     // global list of registered media player
-    static std::list<MediaPlayer*> registered_;
+    static void pipeline_terminate(GstElement *p);
+    static std::list<GstElement*> registered_;
 };
 
 

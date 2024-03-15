@@ -15,7 +15,7 @@ public:
     } Shapes;
 
     Grid(Group *parent, Shapes s = GRID_ORTHO);
-    virtual ~Grid() {}
+    virtual ~Grid();
 
     // if active, the view will use it to approximate coordinates
     inline bool active() const { return active_; }

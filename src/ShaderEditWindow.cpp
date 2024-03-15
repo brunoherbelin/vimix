@@ -73,6 +73,7 @@ ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), current_(nullp
     _editor.SetShowWhitespaces(false);
     _editor.SetText("");
     _editor.SetReadOnly(true);
+    _editor.SetColorizerEnable(false);
 
     // status
     status_ = "-";
@@ -262,6 +263,7 @@ void ShaderEditWindow::Render()
             // replace text of editor
             _editor.SetText(fileContent);
             _editor.SetReadOnly(false);
+            _editor.SetColorizerEnable(true);
         }
 
         // Close the file
@@ -317,22 +319,20 @@ void ShaderEditWindow::Render()
                             // remember code for this clone
                             filters_[i] = i->program();
                     }
-                    else {
-                        filters_.erase(i);
-                        i = nullptr;
-                    }
                 }
-                else
-                    status_ = "-";
             }
-            else
+            // there is a current source, and it is not a filter
+            if (i == nullptr) {
                 status_ = "-";
+                _editor.SetText("");
+                current_ = nullptr;
+            }
         }
         else
             status_ = "-";
 
         // change editor text only if current changed
-        if ( current_ != i)
+        if ( current_ != i )
         {
             // get the editor text and remove trailing '\n'
             std::string code = _editor.GetText();
@@ -346,13 +346,14 @@ void ShaderEditWindow::Render()
                 // change editor
                 _editor.SetText( filters_[i].code().first );
                 _editor.SetReadOnly(false);
+                _editor.SetColorizerEnable(true);
                 status_ = "Ready.";
             }
             // cancel edit clone
             else {
-                // cancel editor
-                _editor.SetText("");
+                // disable editor
                 _editor.SetReadOnly(true);
+                _editor.SetColorizerEnable(false);
                 status_ = "-";
             }
             // current changed
@@ -404,13 +405,20 @@ void ShaderEditWindow::Render()
     else
         ImGui::Spacing();
 
-    // special case for 'CTRL + B' keyboard shortcut
     // the TextEditor captures keyboard focus from the main imgui context
     // so UserInterface::handleKeyboard cannot capture this event:
     // reading key press before render bypasses this problem
     const ImGuiIO& io = ImGui::GetIO();
-    if (io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl && ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_A]+1))
-        BuildShader();
+    if (io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl) {
+        // special case for 'CTRL + B' keyboard shortcut
+        if (ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_A] + 1))
+            BuildShader();
+        // special case for 'CTRL + S' keyboard shortcut
+        if (ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_V] - 3)) {
+            BuildShader();
+            Mixer::manager().save();
+        }
+    }
 
     // render main editor
     _editor.Render("Shader Editor");

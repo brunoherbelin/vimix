@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/vector_angle.hpp>
 
 #include "Primitives.h"
@@ -32,6 +33,12 @@ Grid::Grid(Group *parent, Shapes s) : active_(false), shape_(s), unit_(UNIT_DEFA
     parent_(parent), root_(new Group)
 {
 
+}
+
+Grid::~Grid()
+{
+    if (root_)
+        delete root_;
 }
 
 glm::vec2 Grid::step() const {

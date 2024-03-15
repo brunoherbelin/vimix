@@ -28,7 +28,6 @@
 #include <GLFW/glfw3.h>
 
 #include <glm/gtc/type_ptr.hpp>
-#define GLM_ENABLE_EXPERIMENTAL
 
 #include "Resource.h"
 #include "Log.h"
@@ -232,52 +231,89 @@ void ShadingProgram::reset()
 }
 
 template<>
-void ShadingProgram::setUniform<int>(const std::string& name, int val) {
-	glUniform1i(glGetUniformLocation(id_, name.c_str()), val);
+bool ShadingProgram::setUniform<int>(const std::string &name, int val)
+{
+    GLint uid = glGetUniformLocation(id_, name.c_str());
+    if (uid < 0)
+        return false;
+    glUniform1i(uid, val);
+    return true;
 }
 
 template<>
-void ShadingProgram::setUniform<bool>(const std::string& name, bool val) {
-	glUniform1i(glGetUniformLocation(id_, name.c_str()), val);
+bool ShadingProgram::setUniform<bool>(const std::string& name, bool val) {
+    GLint uid = glGetUniformLocation(id_, name.c_str());
+    if (uid < 0)
+        return false;
+    glUniform1i(uid, val);
+    return true;
 }
 
 template<>
-void ShadingProgram::setUniform<float>(const std::string& name, float val) {
-	glUniform1f(glGetUniformLocation(id_, name.c_str()), val);
+bool ShadingProgram::setUniform<float>(const std::string& name, float val) {
+    GLint uid = glGetUniformLocation(id_, name.c_str());
+    if (uid < 0)
+        return false;
+    glUniform1f(uid, val);
+    return true;
 }
 
 template<>
-void ShadingProgram::setUniform<float>(const std::string& name, float val1, float val2) {
-    glUniform2f(glGetUniformLocation(id_, name.c_str()), val1, val2);
+bool ShadingProgram::setUniform<float>(const std::string& name, float val1, float val2) {
+    GLint uid = glGetUniformLocation(id_, name.c_str());
+    if (uid < 0)
+        return false;
+    glUniform2f(uid, val1, val2);
+    return true;
 }
 
 template<>
-void ShadingProgram::setUniform<float>(const std::string& name, float val1, float val2, float val3) {
-    glUniform3f(glGetUniformLocation(id_, name.c_str()), val1, val2, val3);
+bool ShadingProgram::setUniform<float>(const std::string& name, float val1, float val2, float val3) {
+    GLint uid = glGetUniformLocation(id_, name.c_str());
+    if (uid < 0)
+        return false;
+    glUniform3f(uid, val1, val2, val3);
+    return true;
 }
 
 template<>
-void ShadingProgram::setUniform<glm::vec2>(const std::string& name, glm::vec2 val) {
+bool ShadingProgram::setUniform<glm::vec2>(const std::string& name, glm::vec2 val) {
     glm::vec2 v(val);
-    glUniform2fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
+    GLint uid = glGetUniformLocation(id_, name.c_str());
+    if (uid < 0)
+        return false;
+    glUniform2fv(uid, 1, glm::value_ptr(v));
+    return true;
 }
 
 template<>
-void ShadingProgram::setUniform<glm::vec3>(const std::string& name, glm::vec3 val) {
+bool ShadingProgram::setUniform<glm::vec3>(const std::string& name, glm::vec3 val) {
     glm::vec3 v(val);
-    glUniform3fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
+    GLint uid = glGetUniformLocation(id_, name.c_str());
+    if (uid < 0)
+        return false;
+    glUniform3fv(uid, 1, glm::value_ptr(v));
+    return true;
 }
 
 template<>
-void ShadingProgram::setUniform<glm::vec4>(const std::string& name, glm::vec4 val) {
+bool ShadingProgram::setUniform<glm::vec4>(const std::string& name, glm::vec4 val) {
     glm::vec4 v(val);
-    glUniform4fv(glGetUniformLocation(id_, name.c_str()), 1, glm::value_ptr(v));
+    GLint uid = glGetUniformLocation(id_, name.c_str());
+    if (uid < 0)
+        return false;
+    glUniform4fv(uid, 1, glm::value_ptr(v));
+    return true;
 }
 
 template<>
-void ShadingProgram::setUniform<glm::mat4>(const std::string& name, glm::mat4 val) {
+bool ShadingProgram::setUniform<glm::mat4>(const std::string& name, glm::mat4 val) {
     glm::mat4 m(val);
-	glUniformMatrix4fv(glGetUniformLocation(id_, name.c_str()), 1, GL_FALSE, glm::value_ptr(m));
+    GLint uid = glGetUniformLocation(id_, name.c_str());
+    if (uid < 0)
+        return false;
+    glUniformMatrix4fv(uid, 1, GL_FALSE, glm::value_ptr(m));
+    return true;
 }
 
 

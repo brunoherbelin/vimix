@@ -2,7 +2,7 @@
 #define STREAM_H
 
 #include <string>
-#include <atomic>
+#include <list>
 #include <mutex>
 #include <future>
 #include <condition_variable>
@@ -160,7 +160,11 @@ public:
      * Used for saving session file
      * */
     void accept(Visitor& v);
-
+    /**
+     * @brief registered
+     * @return list of streams currently registered
+     */
+    static std::list<GstElement*> registered() { return registered_; }
 
 protected:
 
@@ -249,6 +253,9 @@ protected:
     static GstFlowReturn callback_new_preroll (GstAppSink *, gpointer );
     static GstFlowReturn callback_new_sample  (GstAppSink *, gpointer);
 
+    // global list of registered streams
+    static void pipeline_terminate(GstElement *p);
+    static std::list<GstElement*> registered_;
 };
 
 

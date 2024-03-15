@@ -28,7 +28,7 @@
 #include <glad/glad.h>
 
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/vector_angle.hpp>
+// #include <glm/gtx/vector_angle.hpp>
 
 #include "Shader.h"
 #include "Resource.h"

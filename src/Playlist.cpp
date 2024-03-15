@@ -47,6 +47,8 @@ void Playlist::clear()
 
 void Playlist::load(const std::string &filename)
 {
+    filename_ = filename;
+
     // try to load playlist file
     XMLDocument xmlDoc;
     XMLError eResult = xmlDoc.LoadFile(filename.c_str());
@@ -64,7 +66,6 @@ void Playlist::load(const std::string &filename)
         return;
 
     // all good, can clear previous list
-    filename_ = filename;
     path_.clear();
 
     // Then it should contain a list of path

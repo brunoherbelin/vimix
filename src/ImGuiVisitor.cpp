@@ -1377,6 +1377,12 @@ void ImGuiVisitor::visit (ImageFilter& f)
         FilteringProgram target;
         f.setProgram( target );
     }
+
+    // List of parameters
+    std::ostringstream oss;
+    oss << "Custom ";
+    list_parameters_(f, oss);
+
 }
 
 void ImGuiVisitor::visit (CloneSource& s)

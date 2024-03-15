@@ -224,18 +224,28 @@ void Primitive::accept(Visitor& v)
 
 void Primitive::replaceShader( Shader *newshader )
 {
-    if (newshader) {
+    // keep ref to previous shader
+    Shader *previousshader = shader_;
+
+    // apply new shader to Primitive, even if nullptr
+    shader_ = newshader;
+
+    if (shader_) {
+        // get new attribs...
         glm::mat4 iTransform = newshader->iTransform;
         glm::vec4 color = newshader->color;
-        if (shader_) {
-            iTransform = shader_->iTransform;
-            color = shader_->color;
-            delete shader_;
+        // ...or use previous shader attribs, if existed
+        if (previousshader) {
+            iTransform = previousshader->iTransform;
+            color = previousshader->color;
+            // shader is swapped, previous can be deleted
+            delete previousshader;
         }
+        // Apply attribs
         shader_->iTransform = iTransform;
         shader_->color = color;
     }
-    shader_ = newshader;
+
 }
 
 //

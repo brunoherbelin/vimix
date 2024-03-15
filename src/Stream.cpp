@@ -31,6 +31,8 @@
 
 #include "Stream.h"
 
+std::list<GstElement*> Stream::registered_;
+
 #ifndef NDEBUG
 #define STREAM_DEBUG
 #endif
@@ -221,6 +223,26 @@ std::string Stream::description() const
     return description_;
 }
 
+GstBusSyncReply stream_signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
+{
+    // only handle error messages
+    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR && ptr != nullptr) {
+        GError *error;
+        gchar *debugs;
+        gst_message_parse_error(msg, &error, &debugs);
+
+        Log::Warning("Stream %s Error %s",
+                     std::to_string(reinterpret_cast<Stream*>(ptr)->id()).c_str(),
+                     error->message);
+
+        g_error_free(error);
+        free(debugs);
+    }
+
+    // drop all messages to avoid filling up the stack
+    return GST_BUS_DROP;
+}
+
 void Stream::execute_open()
 {
     // reset
@@ -298,6 +320,15 @@ void Stream::execute_open()
     // instruct the sink to send samples synched in time if not live source
     gst_base_sink_set_sync (GST_BASE_SINK(sink), !live_);
 
+#ifdef IGNORE_GST_ERROR_MESSAGE
+    // avoid filling up bus with messages
+    gst_bus_set_flushing(bus, true);
+#else
+    // set message handler for the pipeline's bus
+    gst_bus_set_sync_handler(gst_element_get_bus(pipeline_),
+                             stream_signal_handler, this, NULL);
+#endif
+
     // done with refs
     gst_object_unref (sink);
     gst_caps_unref (caps);
@@ -348,16 +379,14 @@ void Stream::Frame::unmap()
 }
 
 
-void async_terminate( GstElement *p )
+void Stream::pipeline_terminate( GstElement *p )
 {
 #ifdef STREAM_DEBUG
-    Log::Info("Stream %s closed", gst_element_get_name(p));
+    gchar *name = gst_element_get_name(p);
+    g_printerr("Stream %s close\n", name);
+    Log::Info("Stream %s closed", name);
+    g_free(name);
 #endif
-
-    // force flush
-    gst_element_send_event(p, gst_event_new_seek (1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
-                                                         GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_END, 0) );
-    gst_element_get_state (p, NULL, NULL, 1000000);
 
     // force end
     GstStateChangeReturn ret = gst_element_set_state (p, GST_STATE_NULL);
@@ -366,6 +395,9 @@ void async_terminate( GstElement *p )
 
     // unref to free pipeline
     gst_object_unref ( p );
+
+    // unregister
+    Stream::registered_.remove(p);
 }
 
 void Stream::close()
@@ -384,10 +416,8 @@ void Stream::close()
 
     // clean up GST
     if (pipeline_ != nullptr) {
-
         // end pipeline asynchronously
-        std::thread(async_terminate, pipeline_).detach();
-
+        std::thread(Stream::pipeline_terminate, pipeline_).detach();
         pipeline_ = nullptr;
     }
 
@@ -426,8 +456,10 @@ void Stream::enable(bool on)
     if ( enabled_ != on ) {
 
         // option to automatically rewind each time the player is disabled
-        if (!on && rewind_on_disable_ && desired_state_ == GST_STATE_PLAYING)
+        if (!on && rewind_on_disable_) {
             rewind();
+            desired_state_ = GST_STATE_PLAYING;
+        }
 
         enabled_ = on;
 

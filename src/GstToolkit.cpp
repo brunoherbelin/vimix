@@ -268,13 +268,14 @@ std::string GstToolkit::used_gpu_decoding_plugins(GstElement *gstbin)
         {
             GstElement *e = static_cast<GstElement*>(g_value_peek_pointer(&value));
             if (e) {
-                const gchar *name = gst_element_get_name(e);
+                gchar *name = gst_element_get_name(e);
                 for (int i = 0; i < N; i++) {
                     if (std::string(name).find(plugins[i]) != std::string::npos) {
                         found = plugins[i];
                         break;
                     }
                 }
+                g_free(name);
             }
         }
         g_value_unset(&value);

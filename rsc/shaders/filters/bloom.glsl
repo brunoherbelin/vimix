@@ -1,7 +1,7 @@
 // from https://www.shadertoy.com/view/Ms2Xz3
 // Adapted by Bruno Herbelin for vimix
 
-float Intensity = 0.6;
+uniform float Intensity = 0.6;
 
 vec4 BlurColor (in vec2 Coord, in sampler2D Tex, in float MipBias)
 {

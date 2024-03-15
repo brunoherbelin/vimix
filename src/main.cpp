@@ -18,6 +18,7 @@
 **/
 
 #include <stdio.h>
+#include <string.h>
 
 //  GStreamer
 #include <gst/gst.h>
@@ -248,8 +249,7 @@ int main(int argc, char *argv[])
     ///
     /// MIXER TERMINATE
     ///
-    while (Mixer::manager().busy())
-        Mixer::manager().update();
+    Mixer::manager().clear();
 
     ///
     /// RENDERING TERMINATE

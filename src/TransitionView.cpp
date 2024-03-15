@@ -81,6 +81,11 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
     output_surface_ = new Surface;
     scene.bg()->attach(output_surface_);
 
+    playicon = new Symbol(Symbol::PLAY);
+    playicon->color = glm::vec4( COLOR_FRAME_LIGHT, 1.0f );
+    playicon->scale_ = glm::vec3(2.f, 2.f, 1.f);
+    scene.bg()->attach(playicon);
+
     Frame *border = new Frame(Frame::ROUND, Frame::THIN, Frame::GLOW);
     border->color = glm::vec4( COLOR_FRAME, 1.0f );
     scene.bg()->attach(border);
@@ -238,9 +243,8 @@ void TransitionView::draw()
                     ImGui::PopStyleColor();
                 }
                 ImGui::SetCursorScreenPos(ImVec2(pos_tran.x - 20.f, pos_tran.y +2.f));
-                const char *tooltip[2] = {"Transition to black", "Cross fading"};
+                const char *tooltip[2] = {"Fade to black", "Cross fading"};
                 ImGuiToolkit::IconToggle(0,2,0,8, &Settings::application.transition.cross_fade, tooltip );
-
 
                 //  Duration slider (adjusted width)
                 const float width = (pos_play.x - pos_canl.x) / 5.0;
@@ -249,22 +253,17 @@ void TransitionView::draw()
                 ImGui::SliderFloat("##transitionduration", &Settings::application.transition.duration,
                                    TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
 
-                // Play-Pause button just at the end of the timeline
-                ImGui::SetCursorScreenPos(ImVec2(pos_play.x + 10.f, pos_play.y +2.f));
-                if ( ImGui::Button( tg->update_callbacks_.empty() ? ICON_FA_PLAY : ICON_FA_PAUSE) )
-                    // toggle play but do not open
-                    play(false);
-
-                // "Open" button on the target frame
-                ImGui::SetCursorScreenPos(ImVec2(pos_open.x -80.f, pos_open.y +2.f));
-                ImGui::SetNextItemWidth(160.f);
-                if ( ImGui::Button(ICON_FA_FILE_UPLOAD " Open") )
+                // Fast forwardoutput_surface_ button on the target frame
+                float w = output_surface_->scale_.x * 80.f;
+                ImGui::SetCursorScreenPos(ImVec2(pos_open.x + w, pos_open.y + 2.f));
+                if (ImGuiToolkit::IconButton(ICON_FA_FAST_FORWARD, "Fast Open"))
                     open();
 
                 ImGui::PopFont();
                 ImGui::PopStyleColor(7);  // 7 colors
                 ImGui::End();
             }
+
         }
     }
 }
@@ -343,7 +342,7 @@ std::pair<Node *, glm::vec2> TransitionView::pick(glm::vec2 P)
 
     if (transition_source_ != nullptr) {
         // start animation when clic on target
-        if (pick.first == output_surface_)
+        if (pick.first == output_surface_ || pick.first == playicon)
             play(true);
         // otherwise cancel animation
         else

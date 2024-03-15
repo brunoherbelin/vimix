@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtx/component_wise.hpp>
@@ -572,8 +573,8 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[GRID]   = nullptr;
         icons[CROSS]    = new Mesh("mesh/icon_cross.ply");
         shadows[CROSS]  = nullptr;
-        icons[MAGNET]    = new Mesh("mesh/icon_magnet.ply");
-        shadows[MAGNET]  = nullptr;
+        icons[PLAY]    = new Mesh("mesh/icon_play.ply");
+        shadows[PLAY]  = shadow;
         icons[EMPTY]    = new Mesh("mesh/icon_empty.ply");
         shadows[EMPTY]  = shadow;
     }

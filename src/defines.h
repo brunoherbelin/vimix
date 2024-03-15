@@ -30,7 +30,7 @@
     { \
         "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov", "*.mkv", \
         "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.hevc", "*.asf", "*.jpg", \
-        "*.png", "*.gif", "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg," \
+        "*.png", "*.gif", "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg" \
     }
 #define IMAGES_FILES_TYPE "Image (JPG, PNG, BMP, PPM, GIF)"
 #define IMAGES_FILES_PATTERN \

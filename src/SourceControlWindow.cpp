@@ -1534,7 +1534,7 @@ void SourceControlWindow::RenderSingleSource(Source *s)
                         ss->reload();
                     // NB: ss is playable (tested above), and thus ss->stream() is not null
                     bool option = ss->stream()->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option ))
+                    if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on reactivation", NULL, &option ))
                         ss->stream()->setRewindOnDisabled(option);
 
                     if (ImGui::IsWindowHovered())
@@ -1919,7 +1919,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             mediaplayer_active_->reopen();
 
         bool option = mediaplayer_active_->rewindOnDisabled();
-        if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option )) {
+        if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on reactivation", NULL, &option )) {
             mediaplayer_active_->setRewindOnDisabled(option);
         }
 
