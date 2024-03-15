@@ -456,8 +456,10 @@ void Stream::enable(bool on)
     if ( enabled_ != on ) {
 
         // option to automatically rewind each time the player is disabled
-        if (!on && rewind_on_disable_ && desired_state_ == GST_STATE_PLAYING)
+        if (!on && rewind_on_disable_) {
             rewind();
+            desired_state_ = GST_STATE_PLAYING;
+        }
 
         enabled_ = on;
 

@@ -1919,7 +1919,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             mediaplayer_active_->reopen();
 
         bool option = mediaplayer_active_->rewindOnDisabled();
-        if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option )) {
+        if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on reactivation", NULL, &option )) {
             mediaplayer_active_->setRewindOnDisabled(option);
         }
 
