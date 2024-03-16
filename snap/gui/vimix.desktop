@@ -1,8 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=vimix
+GenericName=Video mixer
 Comment=Video live mixer
-Categories=AudioVideo;Video;Graphics;Utility;
+Categories=AudioVideo;Video;Graphics;
 Icon=${SNAP}/meta/gui/vimix.svg
 Exec=vimix
 MimeType=application/x-vimix;text/xml

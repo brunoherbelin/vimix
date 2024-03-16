@@ -2,7 +2,7 @@
 <!-- Copyright 2023 Bruno Herbelin -->
 <component type="desktop-application">
   <id>io.github.brunoherbelin.Vimix</id>
-  <launchable type="desktop-id">vimix.desktop</launchable>
+  <launchable type="desktop-id">io.github.brunoherbelin.Vimix.desktop</launchable>
   <name>vimix</name>
   <summary>Video live mixer</summary>
   <description>
@@ -34,6 +34,11 @@
     <release version="0.7.2" date="2022-11-19"/>
     <release version="0.7.1" date="2022-07-21"/>
   </releases>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>gamepad</control>
+  </supports>
   <url type="homepage">https://brunoherbelin.github.io/vimix/</url>
   <url type="help">https://github.com/brunoherbelin/vimix/wiki/User-manual</url>
   <url type="faq">https://github.com/brunoherbelin/vimix/wiki</url>
