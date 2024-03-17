@@ -51,6 +51,7 @@ SourceCore::SourceCore()
     groups_[View::TEXTURE] = new Group;
     groups_[View::TEXTURE]->visible_ = false;
     groups_[View::TRANSITION] = new Group;
+    groups_[View::TRANSITION]->visible_ = false;
     // temp node
     stored_status_  = new Group;
 

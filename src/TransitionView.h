@@ -20,6 +20,7 @@ public:
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     bool doubleclic (glm::vec2) override;
     void arrow (glm::vec2) override;
+    Cursor over (glm::vec2) override;
     Cursor drag (glm::vec2, glm::vec2) override;
 
     void attach(SessionFileSource *ts);
@@ -30,7 +31,7 @@ public:
 
 private:
     Surface *output_surface_;
-    Symbol *playicon;
+    Symbol *fastopenicon;
     Mesh *mark_100ms_, *mark_1s_;
     Switch *gradient_;
     SessionFileSource *transition_source_;

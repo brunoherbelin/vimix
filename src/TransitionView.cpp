@@ -81,10 +81,9 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
     output_surface_ = new Surface;
     scene.bg()->attach(output_surface_);
 
-    playicon = new Symbol(Symbol::PLAY);
-    playicon->color = glm::vec4( COLOR_FRAME_LIGHT, 1.0f );
-    playicon->scale_ = glm::vec3(2.f, 2.f, 1.f);
-    scene.bg()->attach(playicon);
+    fastopenicon = new Symbol(Symbol::FFWRD);
+    fastopenicon->color = glm::vec4( COLOR_FRAME_LIGHT, 1.0f );
+    scene.bg()->attach(fastopenicon);
 
     Frame *border = new Frame(Frame::ROUND, Frame::THIN, Frame::GLOW);
     border->color = glm::vec4( COLOR_FRAME, 1.0f );
@@ -214,7 +213,6 @@ void TransitionView::draw()
                 const glm::vec2 pos_canl = Rendering::manager().project(glm::vec3(-1.0f, -0.15f, 0.f), scene.root()->transform_, false);
                 const glm::vec2 pos_tran = Rendering::manager().project(glm::vec3(-0.5f, -0.15f, 0.f), scene.root()->transform_, false);
                 const glm::vec2 pos_play = Rendering::manager().project(glm::vec3(0.f, -0.15f, 0.f), scene.root()->transform_, false);
-                const glm::vec2 pos_open = Rendering::manager().project(glm::vec3(POS_TARGET, -0.15f, 0.f), scene.root()->transform_, false);
 
                 // style grey
                 ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.27f, 0.27f, 0.27f, 0.55f));
@@ -235,13 +233,6 @@ void TransitionView::draw()
                 }
 
                 // toggle transition mode
-                if (!Settings::application.transition.cross_fade) {
-                    // black background in icon 'transition to black'
-                    ImGui::SetCursorScreenPos(ImVec2(pos_tran.x - 20.f, pos_tran.y +2.f));
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.f));
-                    ImGuiToolkit::Icon(19,1);
-                    ImGui::PopStyleColor();
-                }
                 ImGui::SetCursorScreenPos(ImVec2(pos_tran.x - 20.f, pos_tran.y +2.f));
                 const char *tooltip[2] = {"Fade to black", "Cross fading"};
                 ImGuiToolkit::IconToggle(0,2,0,8, &Settings::application.transition.cross_fade, tooltip );
@@ -252,12 +243,6 @@ void TransitionView::draw()
                 ImGui::SetNextItemWidth( width );
                 ImGui::SliderFloat("##transitionduration", &Settings::application.transition.duration,
                                    TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
-
-                // Fast forwardoutput_surface_ button on the target frame
-                float w = output_surface_->scale_.x * 80.f;
-                ImGui::SetCursorScreenPos(ImVec2(pos_open.x + w, pos_open.y + 2.f));
-                if (ImGuiToolkit::IconButton(ICON_FA_FAST_FORWARD, "Fast Open"))
-                    open();
 
                 ImGui::PopFont();
                 ImGui::PopStyleColor(7);  // 7 colors
@@ -339,10 +324,15 @@ void TransitionView::zoom (float factor)
 std::pair<Node *, glm::vec2> TransitionView::pick(glm::vec2 P)
 {
     std::pair<Node *, glm::vec2> pick = View::pick(P);
+    // get pointer to play icon that is in the overlays of source
+    Node *playicon = transition_source_->overlays_[View::TRANSITION]->back();
 
     if (transition_source_ != nullptr) {
-        // start animation when clic on target
-        if (pick.first == output_surface_ || pick.first == playicon)
+        // fast open animation when clic on target icon
+        if (pick.first == fastopenicon)
+            open();
+        // play transition when clic on source overlay icon
+        else if (pick.first == playicon)
             play(true);
         // otherwise cancel animation
         else
@@ -444,6 +434,32 @@ bool TransitionView::doubleclic (glm::vec2 )
     Mixer::manager().setView(View::MIXING);
     WorkspaceWindow::restoreWorkspace();
     return true;
+}
+
+View::Cursor TransitionView::over(glm::vec2 pos)
+{
+    View::Cursor ret = Cursor();
+    std::pair<Node *, glm::vec2> pick = View::pick(pos);
+
+    if (transition_source_ != nullptr && transition_source_->ready()) {
+        // get pointer to play icon that is in the overlays of source
+        Node *playicon = transition_source_->overlays_[View::TRANSITION]->back();
+        // reset scale of icons by default
+        playicon->scale_ = glm::vec3(1.f);
+        fastopenicon->scale_ = glm::vec3(1.f);
+        // overlay play icon
+        if (pick.first == playicon) {
+            playicon->scale_ = glm::vec3(1.5f, 1.5f, 1.f);
+            ret = Cursor(Cursor_Hand, "Play transition");
+        }
+        // overlay fast open icon
+        else if (pick.first == fastopenicon) {
+            fastopenicon->scale_ = glm::vec3(1.5f, 1.5f, 1.f);
+            ret = Cursor(Cursor_Hand, "Fast open");
+        }
+    }
+
+    return ret;
 }
 
 void TransitionView::arrow (glm::vec2 movement)

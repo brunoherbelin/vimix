@@ -235,7 +235,6 @@ bool SessionSource::playable () const
 SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_(""), initialized_(false), wait_for_sources_(false)
 {
     // specific node for transition view
-    groups_[View::TRANSITION]->visible_ = false;
     groups_[View::TRANSITION]->scale_ = glm::vec3(0.1f, 0.1f, 1.f);
     groups_[View::TRANSITION]->translation_ = glm::vec3(-1.f, 0.f, 0.f);
 
@@ -254,6 +253,10 @@ SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_("")
     frames_[View::TRANSITION]->attach(frame);
     groups_[View::TRANSITION]->attach(frames_[View::TRANSITION]);
 
+    Symbol *center = new Symbol(Symbol::CIRCLE_POINT, glm::vec3(0.f, -1.05f, 0.1f));
+    center->color = glm::vec4( COLOR_DEFAULT_SOURCE, 0.75f);
+    groups_[View::TRANSITION]->attach(center);
+
     overlays_[View::TRANSITION] = new Group;
     overlays_[View::TRANSITION]->translation_.z = 0.1;
     overlays_[View::TRANSITION]->visible_ = false;
@@ -262,8 +265,11 @@ SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_("")
     loader->scale_ = glm::vec3(2.f, 2.f, 1.f);
     loader->update_callbacks_.push_back(new InfiniteGlowCallback);
     overlays_[View::TRANSITION]->attach(loader);
-    Symbol *center = new Symbol(Symbol::CIRCLE_POINT, glm::vec3(0.f, -1.05f, 0.1f));
-    overlays_[View::TRANSITION]->attach(center);
+
+    Symbol *playicon = new Symbol(Symbol::PLAY);
+    playicon->color = glm::vec4( COLOR_TRANSITION_SOURCE, 1.0f );
+    overlays_[View::TRANSITION]->attach(playicon);
+
     groups_[View::TRANSITION]->attach(overlays_[View::TRANSITION]);
 
     // set symbol
