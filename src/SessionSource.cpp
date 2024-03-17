@@ -263,6 +263,7 @@ SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_("")
 
     Symbol *loader = new Symbol(Symbol::DOTS);
     loader->scale_ = glm::vec3(2.f, 2.f, 1.f);
+    loader->translation_.y = -0.8;
     loader->update_callbacks_.push_back(new InfiniteGlowCallback);
     overlays_[View::TRANSITION]->attach(loader);
 

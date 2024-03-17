@@ -5807,20 +5807,40 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
         // Transition options
         ImGuiToolkit::Spacing();
         ImGui::Text("Parameters");
-        if (ImGuiToolkit::IconButton(0, 8)) Settings::application.transition.cross_fade = true;
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
+
+        static std::vector< std::tuple<int, int, std::string> > profile_fading = {
+            {0, 8, "Cross fading"},
+            {0, 2, "Fade to black"}
+        };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        int mode = Settings::application.transition.cross_fade ? 0 : 1;
-        if (ImGui::Combo("Fading", &mode, "Cross fading\0Fade to black\0") )
-            Settings::application.transition.cross_fade = mode < 1;
-        if (ImGuiToolkit::IconButton(4, 13)) Settings::application.transition.duration = 1.f;
+        int tmp = Settings::application.transition.cross_fade ? 0 : 1;
+        if (ImGuiToolkit::ComboIcon("##Fading", &tmp, profile_fading))
+            Settings::application.transition.cross_fade = tmp < 1;
         ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Fading "))
+            Settings::application.transition.cross_fade = true;
+
+        static std::vector< std::tuple<int, int, std::string> > profile_options = {
+            {18, 3, "Linear"},
+            {19, 3, "Quadratic"}
+        };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::SliderFloat("Duration", &Settings::application.transition.duration, TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
-        if (ImGuiToolkit::IconButton(9, 1)) Settings::application.transition.profile = 0;
+        tmp = Settings::application.transition.profile ? 1 : 0;
+        if (ImGuiToolkit::ComboIcon("##Curve", &tmp, profile_options))
+            Settings::application.transition.profile = tmp > 0;
         ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Curve "))
+            Settings::application.transition.profile = false;
+
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("Curve", &Settings::application.transition.profile, "Linear\0Quadratic\0");
+        ImGui::SliderFloat("##Duration",
+                           &Settings::application.transition.duration,
+                           TRANSITION_MIN_DURATION,
+                           TRANSITION_MAX_DURATION,
+                           "%.1f s");
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Duration "))
+            Settings::application.transition.duration = 1.f;
 
         // transition actions
         ImGuiToolkit::Spacing();

@@ -82,7 +82,7 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
     scene.bg()->attach(output_surface_);
 
     fastopenicon = new Symbol(Symbol::FFWRD);
-    fastopenicon->color = glm::vec4( COLOR_FRAME_LIGHT, 1.0f );
+    fastopenicon->color = glm::vec4( COLOR_TRANSITION_SOURCE, 1.0f );
     scene.bg()->attach(fastopenicon);
 
     Frame *border = new Frame(Frame::ROUND, Frame::THIN, Frame::GLOW);
@@ -130,13 +130,12 @@ void TransitionView::update(float dt)
             {
                 float f = 0.f;
                 // change alpha of session:
-                if (Settings::application.transition.profile == 0)
+                if (!Settings::application.transition.profile)
                     // linear => identical coordinates in Mixing View
                     f = d;
-                else {
+                else
                     // quadratic => square coordinates in Mixing View
                     f = (d+1.f)*(d+1.f) -1.f;
-                }
                 transition_source_->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
                 transition_source_->group(View::MIXING)->translation_.y = 0.f;
 
@@ -152,7 +151,7 @@ void TransitionView::update(float dt)
 
                 // fade to black at 50% : fade-out [-1.0 -0.5], fade-in [-0.5 0.0]
                 float f = 0.f;
-                if (Settings::application.transition.profile == 0)
+                if (!Settings::application.transition.profile)
                     f = ABS(2.f * d + 1.f);  // linear
                 else {
                     f = ( 2.f * d + 1.f);  // quadratic
@@ -177,7 +176,7 @@ void TransitionView::update(float dt)
 void TransitionView::draw()
 {
     // update the GUI depending on changes in settings
-    gradient_->setActive( 2*Settings::application.transition.profile + (Settings::application.transition.cross_fade ? 0 : 1) );
+    gradient_->setActive( 2 * (Settings::application.transition.profile ? 1 : 0) + (Settings::application.transition.cross_fade ? 0 : 1) );
 
     // draw scene of this view
     View::draw();
@@ -233,9 +232,13 @@ void TransitionView::draw()
                 }
 
                 // toggle transition mode
-                ImGui::SetCursorScreenPos(ImVec2(pos_tran.x - 20.f, pos_tran.y +2.f));
+                ImGui::SetCursorScreenPos(ImVec2(pos_tran.x - 60.f, pos_tran.y +2.f));
                 const char *tooltip[2] = {"Fade to black", "Cross fading"};
                 ImGuiToolkit::IconToggle(0,2,0,8, &Settings::application.transition.cross_fade, tooltip );
+
+                ImGui::SetCursorScreenPos(ImVec2(pos_tran.x + 10.f, pos_tran.y + 2.f));
+                const char *_tooltip[2] = {"Linear", "Quadratic"};
+                ImGuiToolkit::IconToggle(18,3,19,3, &Settings::application.transition.profile, _tooltip );
 
                 //  Duration slider (adjusted width)
                 const float width = (pos_play.x - pos_canl.x) / 5.0;
@@ -274,7 +277,7 @@ void TransitionView::attach(SessionFileSource *ts)
 
             // reverse calculate x position to match actual fading of session
             float d = 0.f;
-            if (Settings::application.transition.profile == 0)
+            if (!Settings::application.transition.profile)
                 d = -1.f + 0.5f * Mixer::manager().session()->fading();  // linear
             else {
                 d = -1.f - 0.5f * ( sqrt(1.f - Mixer::manager().session()->fading()) - 1.f);  // quadratic
