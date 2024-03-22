@@ -720,7 +720,7 @@ void InputMappingWindow::Render()
         if (ImGui::BeginMenu( input_mode[Settings::application.mapping.mode].c_str() ))
         {
             for (size_t i = 0; i < input_mode.size(); ++i) {
-                if (ImGui::MenuItem(input_mode[i].c_str(), NULL, Settings::application.mapping.mode==i)) {
+                if (ImGui::MenuItem(input_mode[i].c_str())) {
                     current_input_for_mode[Settings::application.mapping.mode] = current_input_;
                     Settings::application.mapping.mode = i;
                     current_input_ = current_input_for_mode[i];
@@ -778,6 +778,20 @@ void InputMappingWindow::Render()
     const ImGuiWindow* window = ImGui::GetCurrentWindow();
     ImDrawList* draw_list = window->DrawList;
     ImVec2 frame_top = ImGui::GetCursorScreenPos();
+
+    // change mode if a key is pressed
+    for (uint k = INPUT_KEYBOARD_FIRST; k < INPUT_MAX; ++k) {
+        if (Control::manager().inputActive(k)) {
+            if (k < INPUT_NUMPAD_FIRST)
+                Settings::application.mapping.mode = 0;
+            else if (k < INPUT_JOYSTICK_FIRST)
+                Settings::application.mapping.mode = 1;
+            else if (k > INPUT_JOYSTICK_LAST_AXIS)
+                Settings::application.mapping.mode = 2;
+            else if (k < INPUT_JOYSTICK_FIRST_AXIS)
+                Settings::application.mapping.mode = 3;
+        }
+    }
 
     //
     // KEYBOARD
