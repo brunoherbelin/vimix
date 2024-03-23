@@ -478,12 +478,14 @@ void DisplaysView::draw()
             windows_[i].title_->visible_ = Settings::application.windows[i+1].decorated;
 
             glm::vec2 TopLeft = glm::vec2(Settings::application.windows[i+1].x * DISPLAYS_UNIT, -Settings::application.windows[i+1].y * DISPLAYS_UNIT);
-            TopLeft = Rendering::manager().project(glm::vec3(TopLeft, 0.f), scene.root()->transform_, false);
+            TopLeft = Rendering::manager().project(glm::vec3(TopLeft, 0.f), scene.root()->transform_,
+                                                   Settings::application.windows[0].fullscreen);
             ImGui::SetNextWindowPos( ImVec2( TopLeft.x, TopLeft.y), ImGuiCond_Always);
 
             glm::vec2 BottomRight = glm::vec2( (Settings::application.windows[i+1].x + Settings::application.windows[i+1].w) * DISPLAYS_UNIT,
                     -(Settings::application.windows[i+1].y + Settings::application.windows[i+1].h) * DISPLAYS_UNIT);
-            BottomRight = Rendering::manager().project(glm::vec3(BottomRight, 0.f), scene.root()->transform_, false);
+            BottomRight = Rendering::manager().project(glm::vec3(BottomRight, 0.f), scene.root()->transform_,
+                                                        Settings::application.windows[0].fullscreen);
             ImGui::SetNextWindowSize( ImVec2( BottomRight.x - TopLeft.x, BottomRight.y - TopLeft.y), ImGuiCond_Always);
 
             ImGui::SetNextWindowBgAlpha(0.0f); // Transparent background
@@ -546,7 +548,8 @@ void DisplaysView::draw()
     // display interface
     // Locate window at upper left corner
     glm::vec2 P(0.0f, 0.01f);
-    P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
+    P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_,
+                        Settings::application.windows[0].fullscreen);
     // Set window position depending on icons size
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
     ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 1.5f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
