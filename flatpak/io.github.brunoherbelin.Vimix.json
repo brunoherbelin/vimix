@@ -8,6 +8,7 @@
     "rename-icon": "vimix",
     "finish-args": [
         "--socket=x11",
+        "--socket=pulseaudio",
         "--share=ipc",
         "--share=network",
         "--device=dri",
