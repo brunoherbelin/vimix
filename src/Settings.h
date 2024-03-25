@@ -165,12 +165,12 @@ struct TransitionConfig
 {
     bool cross_fade;
     float duration;
-    int profile;
+    bool profile;
 
     TransitionConfig() {
         cross_fade = true;
         duration = 1.f;
-        profile = 0;
+        profile = false;
     }
 };
 

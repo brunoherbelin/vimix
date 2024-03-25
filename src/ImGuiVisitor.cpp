@@ -37,7 +37,7 @@
 #include "defines.h"
 #include "Scene.h"
 #include "Primitives.h"
-#include "ImageShader.h"
+//#include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
 #include "MediaSource.h"

@@ -113,6 +113,7 @@ public:
         GRID,
         CROSS,
         PLAY,
+        FFWRD,
         EMPTY
     } Type;
     Symbol(Type t, glm::vec3 pos = glm::vec3(0.f));

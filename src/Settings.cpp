@@ -547,7 +547,7 @@ void Settings::Load(const string &filename)
         if (transitionnode != nullptr) {
             transitionnode->QueryBoolAttribute("cross_fade", &application.transition.cross_fade);
             transitionnode->QueryFloatAttribute("duration", &application.transition.duration);
-            transitionnode->QueryIntAttribute("profile", &application.transition.profile);
+            transitionnode->QueryBoolAttribute("profile", &application.transition.profile);
         }
 
         // Windows
