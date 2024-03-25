@@ -28,7 +28,7 @@ apps:
       - desktop-legacy
       - gsettings
       - unity7
-      - wayland
+      - audio-playback
       - x11
       - opengl
       - home
