@@ -599,6 +599,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
     ./rsc/shaders/filters/default.glsl
+    ./rsc/shaders/filters/blend.glsl
     ./rsc/shaders/filters/bloom.glsl
     ./rsc/shaders/filters/bokeh.glsl
     ./rsc/shaders/filters/talk.glsl

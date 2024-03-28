@@ -29,6 +29,8 @@
 #include "Primitives.h"
 #include "BaseToolkit.h"
 
+#include "Mixer.h"
+
 #include "ImageFilter.h"
 
 std::string fragmentHeader = "#version 330 core\n"
@@ -61,6 +63,7 @@ std::string fragmentFooter = "void main() {\n"
 
 std::list< FilteringProgram > FilteringProgram::presets = {
     FilteringProgram(),
+    FilteringProgram("Blend",    "shaders/filters/blend.glsl",      "",     { }),
     FilteringProgram("Bilateral","shaders/filters/focus.glsl",      "",     { }),
     FilteringProgram("Pixelate", "shaders/filters/pixelate.glsl",   "",     { }),
     FilteringProgram("Earlybird","shaders/filters/earlybird.glsl",  "",     { }),
@@ -80,8 +83,8 @@ std::string FilteringProgram::getFilterCodeInputs()
                                            "float     iTimeDelta;            // render time (in seconds)\n"
                                            "int       iFrame;                // shader playback frame\n"
                                            "vec3      iChannelResolution[2]; // input channels resolution (in pixels)\n"
-                                           "sampler2D iChannel0;             // input channel 0 (texture).\n"
-                                           "sampler2D iChannel1;             // input channel 1 (texture).\n"
+                                           "sampler2D iChannel0;             // input channel 0 (source).\n"
+                                           "sampler2D iChannel1;             // input channel 1 (display loopback).\n"
                                            "vec4      iDate;                 // (year, month, day, time in seconds)\n"
                                            "vec4      iMouse;                // simulate mouse input with sliders:";
     return filterHeaderHelp;
@@ -378,7 +381,6 @@ void ImageFilter::draw (FrameBuffer *input)
         input_ = input;
         // create first-pass surface and shader, taking as texture the input framebuffer
         surfaces_.first->setTextureIndex( input_->texture() );
-        shaders_.first->mask_texture = input_->texture();
         // (re)create framebuffer for result of first-pass
         if (buffers_.first != nullptr)
             delete buffers_.first;
@@ -388,7 +390,6 @@ void ImageFilter::draw (FrameBuffer *input)
         input_->blit( buffers_.first );
         // create second-pass surface and shader, taking as texture the first-pass framebuffer
         surfaces_.second->setTextureIndex( buffers_.first->texture() );
-        shaders_.second->mask_texture = input_->texture();
         // (re)create framebuffer for result of second-pass
         if (buffers_.second != nullptr)
             delete buffers_.second;
@@ -401,6 +402,7 @@ void ImageFilter::draw (FrameBuffer *input)
     {
         // FIRST PASS
         // render input surface into frame buffer
+        shaders_.first->mask_texture = Mixer::manager().session()->frame()->texture();
         buffers_.first->begin();
         surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
         buffers_.first->end();
@@ -408,6 +410,7 @@ void ImageFilter::draw (FrameBuffer *input)
         // SECOND PASS
         if ( program_.isTwoPass() ) {
             // render filtered surface from first pass into frame buffer
+            shaders_.second->mask_texture = Mixer::manager().session()->frame()->texture();
             buffers_.second->begin();
             surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
             buffers_.second->end();
