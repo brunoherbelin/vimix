@@ -420,6 +420,7 @@ private:
     static void callback_end_of_stream (GstAppSink *, gpointer);
     static GstFlowReturn callback_new_preroll (GstAppSink *, gpointer );
     static GstFlowReturn callback_new_sample  (GstAppSink *, gpointer);
+    static GstBusSyncReply signal_handler(GstBus *, GstMessage *, gpointer);
 
     // global list of registered media player
     static void pipeline_terminate(GstElement *p);

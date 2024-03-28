@@ -349,20 +349,20 @@ typedef enum {
 } GstPlayFlags;
 
 
-GstBusSyncReply mediaplayer_signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
+GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
 {
     // only handle error messages
     if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR && ptr != nullptr) {
-        GError *error;
-        gchar *debugs;
-        gst_message_parse_error(msg, &error, &debugs);
+        // register failure in source
+        reinterpret_cast<MediaPlayer *>(ptr)->failed_ = true;
 
-        Log::Warning("MediaPlayer %s Error %s",
+        // inform user
+        GError *error;
+        gst_message_parse_error(msg, &error, NULL);
+        Log::Warning("MediaPlayer %s : %s - %s",
                          std::to_string(reinterpret_cast<MediaPlayer*>(ptr)->id()).c_str(),
                          error->message);
-
         g_error_free(error);
-        free(debugs);
     }
 
     // drop all messages to avoid filling up the stack
@@ -504,7 +504,7 @@ void MediaPlayer::execute_open()
 #else
     // set message handler for the pipeline's bus
     gst_bus_set_sync_handler(gst_element_get_bus(pipeline_),
-                             mediaplayer_signal_handler, this, NULL);
+                             MediaPlayer::signal_handler, this, NULL);
 #endif
 
     // all good
