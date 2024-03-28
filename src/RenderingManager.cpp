@@ -244,23 +244,10 @@ void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
 
     // Disconnection of a monitor messes up with fullscreen windows
     if (event == GLFW_DISCONNECTED) {
-        // loop over all windows
+        // exit fullscreen all windows
         for (auto w = Rendering::manager().windows_.begin();
-             w != Rendering::manager().windows_.end(); ++w) {
-            std::string wm = Settings::application.windows[w->second->index()].monitor;
-            // for all windows that are fullscreen;
-            if (w->second->isFullscreen()) {
-                // those which were on the disconnected monitor must exit fullscreen
-                if ( wm == glfwGetMonitorName(monitor) ) {
-                    w->second->exitFullscreen();
-                }
-                // those which were on another monitor must be re-adjusted
-                else {
-                    Settings::application.windows[w->second->index()].fullscreen = false;
-                    w->second->setFullscreen( wm );
-                }
-            }
-        }
+             w != Rendering::manager().windows_.end(); ++w)
+            w->second->setFullscreen_(nullptr);
     }
 
     // inform Displays View that monitors changed
