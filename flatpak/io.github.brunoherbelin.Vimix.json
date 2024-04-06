@@ -4,7 +4,7 @@
     "runtime-version": "45",
     "sdk": "org.gnome.Sdk",
     "command": "vimix",
-    "rename-desktop-file": "vimix.desktop",
+    "rename-desktop-file": "io.github.brunoherbelin.Vimix.desktop",
     "rename-icon": "vimix",
     "finish-args": [
         "--socket=x11",
