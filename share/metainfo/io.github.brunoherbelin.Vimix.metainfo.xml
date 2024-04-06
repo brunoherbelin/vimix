@@ -22,12 +22,13 @@
   </screenshot>
   </screenshots>
   <releases>
-    <release version="0.8.2" date="2024-01-02">
+    <release version="0.8.2d" date="2024-04-06">
       <description>
-      <p>Stabilized version 0.8</p>
+      <p>Stabilized version 0.8.2</p>
       </description>
-      <url>https://github.com/brunoherbelin/vimix/releases/tag/0.8.2</url>
+      <url>https://github.com/brunoherbelin/vimix/releases/tag/0.8.2d</url>
     </release>
+    <release version="0.8.2" date="2024-01-02">
     <release version="0.8.1" date="2023-09-18"/>
     <release version="0.8.0" date="2023-03-31"/>
     <release version="0.7.3" date="2022-12-10"/>
