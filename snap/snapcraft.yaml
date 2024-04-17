@@ -27,7 +27,6 @@ apps:
       - desktop
       - desktop-legacy
       - gsettings
-      - unity8
       - wayland
       - x11
       - opengl
