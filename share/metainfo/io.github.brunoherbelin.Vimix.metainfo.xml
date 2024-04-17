@@ -14,8 +14,8 @@
    Open Sound Control remote control, live screen recoding. See docmentation in the github wiki.</p>
   </description>
   <categories>
-    <category>graphics</category>
-    <category>video</category>
+    <category>Graphics</category>
+    <category>AudioVideo</category>
   </categories>
   <screenshots>
   <screenshot type="default">
