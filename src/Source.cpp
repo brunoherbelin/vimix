@@ -380,6 +380,14 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     maskbuffer_     = nullptr;
     maskimage_      = nullptr;
     masksource_     = new SourceLink;
+
+    // default audio
+    audio_flags_ = Audio_none;
+    audio_volume_mix_ = Volume_mult_parent | Volume_mult_session;
+    audio_volume_[0] = 0.f;
+    audio_volume_[1] = 1.f;
+    audio_volume_[2] = 1.f;
+    audio_volume_[3] = 1.f;
 }
 
 
@@ -817,8 +825,12 @@ void Source::update(float dt)
             // ADJUST alpha based on MIXING node
             // read position of the mixing node and interpret this as transparency of render output
             glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
-            // use the sinusoidal transfer function
-            blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, SourceCore::alphaFromCordinates( dist.x, dist.y ));
+            // use the sinusoidal transfer function to compute alpha
+            float __a = SourceCore::alphaFromCordinates(dist.x, dist.y);
+            // audio update in case if depends on alpha
+            setAudioVolumeFactor(Source::VOLUME_ALPHA, __a);
+            // apply alpha
+            blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, __a);
             mixingshader_->color = blendingshader_->color;
 
             // adjust scale of mixing icon : smaller if not active
@@ -956,6 +968,14 @@ void Source::update(float dt)
             }
         }
 
+        // update audio if requested:
+        if (need_update_ & SourceUpdate_Audio) {
+            // do not update Audio next frame
+            need_update_ &= ~SourceUpdate_Audio;
+            // implementation depends on subclasses
+            updateAudio();
+        }
+
         if (processingshader_link_.connected() && imageProcessingEnabled()) {
             Source *ref_source = processingshader_link_.source();
             if (ref_source!=nullptr) {
@@ -1062,6 +1082,38 @@ void Source::clearMixingGroup()
     overlay_mixinggroup_->visible_ = false;
 }
 
+// set audio factors and mixing mode
+void Source::setAudioEnabled(bool on)
+{
+    if (on)
+        audio_flags_ |= Source::Audio_enabled;
+    else
+        audio_flags_ &= ~Source::Audio_enabled;
+
+    need_update_ |= Source::SourceUpdate_Audio;
+}
+
+void Source::setAudioVolumeFactor(AudioVolumeFactor index, float value)
+{
+    if (ABS_DIFF(audio_volume_[index], value) > EPSILON
+        && (index == VOLUME_BASE
+            || (index == VOLUME_ALPHA   && audio_volume_mix_ & Volume_mult_alpha  )
+            || (index == VOLUME_OPACITY && audio_volume_mix_ & Volume_mult_opacity)
+            || (index == VOLUME_PARENT  && audio_volume_mix_ & Volume_mult_parent )
+            || (index == VOLUME_SESSION && audio_volume_mix_ & Volume_mult_session) )) {
+        need_update_ |= Source::SourceUpdate_Audio;
+    }
+
+    audio_volume_[index] = CLAMP(value, 0.f, 1.f);
+}
+
+void Source::setAudioVolumeMix(AudioVolumeMixing f)
+{
+    if ( audio_volume_mix_ != f )
+        need_update_ |= Source::SourceUpdate_Audio;
+
+    audio_volume_mix_ = f;
+}
 
 glm::vec2 Source::attractor(size_t i) const
 {

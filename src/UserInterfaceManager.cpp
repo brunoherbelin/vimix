@@ -3414,9 +3414,87 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
         // Source pannel
         static ImGuiVisitor v;
         s->accept(v);
-        ImGui::Text(" ");
+
+        ///
+        /// AUDIO PANEL if audio available on source
+        ///
+        if (Settings::application.accept_audio && s->audioFlags() & Source::Audio_available) {
+            ImGuiIO &io = ImGui::GetIO();
+
+            // test audio and read volume
+            bool audio_is_on = s->audioFlags() & Source::Audio_enabled;
+            int vol = audio_is_on ? (int) (s->audioVolumeFactor(Source::VOLUME_BASE) * 100.f) : -1;
+            std::string label = audio_is_on ? (vol > 50 ? ICON_FA_VOLUME_UP " %d%%"
+                                                        : ICON_FA_VOLUME_DOWN " %d%%")
+                                            : ICON_FA_VOLUME_MUTE " Disabled";
+            // VOLUME & on/off slider
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            bool volume_change = ImGui::SliderInt("##VolumeAudio", &vol, -1, 100, label.c_str());
+            if (ImGui::IsItemHovered()) {
+                if (io.MouseWheel != 0.f) {
+                    vol = CLAMP(vol + int(10.f * io.MouseWheel), 0, 100);
+                    volume_change = true;
+                } else if (!audio_is_on)
+                    ImGuiToolkit::ToolTip("Enabling audio will reload source.");
+            }
+            if (volume_change) {
+                if (vol < 0)
+                    s->setAudioEnabled(false);
+                else {
+                    s->setAudioEnabled(true);
+                    s->setAudioVolumeFactor(Source::VOLUME_BASE,
+                                            CLAMP((float) (vol) *0.01f, 0.f, 1.f));
+                }
+            }
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton("Audio")) {
+                s->setAudioEnabled(false);
+            }
+
+            // AUDIO MIXING menu
+            if (audio_is_on) {
+                ImGui::SameLine(0, 2 * IMGUI_SAME_LINE);
+                static uint counter_menu_timeout_2 = 0;
+                if (ImGuiToolkit::IconButton(6, 2)
+                    || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+                    counter_menu_timeout_2 = 0;
+                    ImGui::OpenPopup("MenuMixAudio");
+                }
+                if (ImGui::BeginPopup("MenuMixAudio")) {
+                    ImGui::TextDisabled("Multiply volume with:");
+                    Source::AudioVolumeMixing flags = s->audioVolumeMix();
+                    bool mix = flags & Source::Volume_mult_alpha;
+                    if (ImGui::MenuItem("Source alpha", NULL, &mix)) {
+                        if (mix)
+                            s->setAudioVolumeMix(flags | Source::Volume_mult_alpha);
+                        else
+                            s->setAudioVolumeMix(flags & ~Source::Volume_mult_alpha);
+                    }
+                    mix = flags & Source::Volume_mult_opacity;
+                    if (ImGui::MenuItem("Source fading", NULL, &mix)) {
+                        if (mix)
+                            s->setAudioVolumeMix(flags | Source::Volume_mult_opacity);
+                        else
+                            s->setAudioVolumeMix(flags & ~Source::Volume_mult_opacity);
+                    }
+                    mix = flags & Source::Volume_mult_session;
+                    if (ImGui::MenuItem("Output fading", NULL, &mix)) {
+                        if (mix)
+                            s->setAudioVolumeMix(flags | Source::Volume_mult_session);
+                        else
+                            s->setAudioVolumeMix(flags & ~Source::Volume_mult_session);
+                    }
+                    if (ImGui::IsWindowHovered())
+                        counter_menu_timeout_2 = 0;
+                    else if (++counter_menu_timeout_2 > 10)
+                        ImGui::CloseCurrentPopup();
+                    ImGui::EndPopup();
+                }
+            }
+        }
 
         // clone button
+        ImGui::Text(" ");
         if ( s->failed() ) {
             ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         }

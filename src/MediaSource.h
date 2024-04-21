@@ -24,6 +24,7 @@ public:
     Failure failed() const override;
     uint texture() const override;
     void accept (Visitor& v) override;
+    void updateAudio() override;
 
     // Media specific interface
     void setPath(const std::string &p);

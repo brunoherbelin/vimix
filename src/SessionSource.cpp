@@ -150,6 +150,11 @@ void SessionSource::update(float dt)
         timer_ += guint64(dt * 1000.f) * GST_USECOND;
     }
 
+    // update audio
+    for (auto it = session_->begin(); it != session_->end(); ++it) {
+        (*it)->setAudioVolumeFactor(Source::VOLUME_PARENT, blendingshader_->color.a);
+    }
+
     // manage sources which failed
     if ( !session_->failedSources().empty() ) {
 
