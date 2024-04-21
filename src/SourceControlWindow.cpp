@@ -1586,7 +1586,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::PopStyleColor(1);
 
         ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));
-        if ( mediaplayer_active_->audioEnabled())
+        if ( ms->audioFlags() & Source::Audio_enabled )
             // Icon to inform audio decoding
             ImGui::Text("%s " ICON_FA_VOLUME_UP, ms->initials());
         else
@@ -1612,7 +1612,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::Text("%s", info_.str().c_str());
 
             // Icon to inform audio decoding
-            if ( mediaplayer_active_->audioEnabled()) {
+            if ( ms->audioFlags() & Source::Audio_enabled ) {
                 ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2( imgarea.GetWidth() - 2.f * ImGui::GetTextLineHeightWithSpacing(), 0.35f * tooltip_height));
                 ImGui::Text(ICON_FA_VOLUME_UP);
             }

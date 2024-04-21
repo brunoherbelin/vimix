@@ -147,7 +147,8 @@ public:
         SourceUpdate_None      = 0,
         SourceUpdate_Render    = 1 << 1,
         SourceUpdate_Mask      = 1 << 2,
-        SourceUpdate_Mask_fill = 1 << 3
+        SourceUpdate_Mask_fill = 1 << 3,
+        SourceUpdate_Audio     = 1 << 4
     };
     typedef int UpdateFlags;
     inline void touch (UpdateFlags f = SourceUpdate_Render) { need_update_ |= f; }
@@ -228,6 +229,34 @@ public:
     MixingGroup *mixingGroup() const { return mixinggroup_; }
     void clearMixingGroup();
 
+    // audio
+    enum AudioFlags_ { Audio_none = 0, Audio_available = 1 << 1, Audio_enabled = 1 << 2 };
+    typedef int AudioFlags;
+    inline AudioFlags audioFlags() const { return audio_flags_; }
+    void setAudioEnabled(bool on);
+    typedef enum {
+        VOLUME_BASE    = 0,
+        VOLUME_ALPHA   = 1,
+        VOLUME_OPACITY = 2,
+        VOLUME_PARENT  = 3,
+        VOLUME_SESSION = 4
+    } AudioVolumeFactor;
+    void setAudioVolumeFactor(AudioVolumeFactor index, float value);
+    inline float audioVolumeFactor(AudioVolumeFactor index) const { return audio_volume_[index]; }
+    enum AudioVolumeMixingFlags_ {
+        Volume_mult_none    = 0,
+        Volume_mult_alpha   = 1 << 1,
+        Volume_mult_opacity = 1 << 2,
+        Volume_mult_parent  = 1 << 3,
+        Volume_mult_session = 1 << 4
+    };
+    typedef int AudioVolumeMixing;
+    void setAudioVolumeMix(AudioVolumeMixing f);
+    inline AudioVolumeMixing audioVolumeMix() const { return audio_volume_mix_; }
+    // default implementation of audio support is empty
+    virtual void updateAudio() {}
+
+    // Source propertis querry
     struct hasNode
     {
         bool operator()(const Source* elem) const;
@@ -284,8 +313,8 @@ public:
     // class-dependent notification
     virtual std::string info () const { return "Undefined"; }
 
+    // DRAFT & NOT USED
     SourceLink processingshader_link_;
-
     glm::vec2 attractor(size_t i) const;
     void setAttractor(size_t i, glm::vec2 a);
 
@@ -361,6 +390,11 @@ protected:
     MixingGroup *mixinggroup_;
     Switch *overlay_mixinggroup_;
     Symbol *rotation_mixingroup_;
+
+    // audio
+    AudioFlags audio_flags_;
+    float audio_volume_[5];
+    AudioVolumeMixing audio_volume_mix_;
 };
 
 

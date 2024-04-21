@@ -428,12 +428,6 @@ void SessionVisitor::visit(MediaPlayer &n)
     XMLElement *newelement = xmlDoc_->NewElement("MediaPlayer");
     newelement->SetAttribute("id", n.id());
 
-    if (n.audioAvailable()) {
-        newelement->SetAttribute("audio", n.audioEnabled());
-        newelement->SetAttribute("audio_volume", n.audioVolume());
-        newelement->SetAttribute("audio_mix", (int) n.audioVolumeMix());
-    }
-
     if (!n.singleFrame()) {
         newelement->SetAttribute("loop", (int) n.loop());
         newelement->SetAttribute("speed", n.playSpeed());
@@ -660,6 +654,12 @@ void SessionVisitor::visit (Source& s)
         sourceNode->InsertEndChild(xmlCurrent_);
         s.mixingGroup()->accept(*this);
     }
+
+    xmlCurrent_ = xmlDoc_->NewElement( "Audio" );
+    xmlCurrent_->SetAttribute("enabled", (bool) (s.audioFlags() & Source::Audio_enabled) );
+    xmlCurrent_->SetAttribute("volume", s.audioVolumeFactor(Source::VOLUME_BASE) );
+    xmlCurrent_->SetAttribute("volume_mix", (int) s.audioVolumeMix() );
+    sourceNode->InsertEndChild(xmlCurrent_);
 
     xmlCurrent_ = sourceNode;  // parent for next visits (other subtypes of Source)
 }

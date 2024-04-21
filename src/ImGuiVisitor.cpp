@@ -740,54 +740,6 @@ void ImGuiVisitor::visit (MediaSource& s)
                 ImGui::TextDisabled("Hardware decoding disabled");
             }
 
-            // enable / disable audio if available
-            if (mp->audioAvailable()) {
-
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                if (ImGui::BeginCombo("Audio", mp->audioEnabled() ? ICON_FA_VOLUME_UP " Enabled" : ICON_FA_VOLUME_MUTE " Disabled" ) )
-                {
-                    if (ImGui::Selectable( ICON_FA_VOLUME_UP " Enable", mp->audioEnabled() ))
-                        mp->setAudioEnabled(true);
-                    if (ImGui::IsItemHovered() && !mp->audioEnabled())
-                        ImGuiToolkit::ToolTip( "Changing audio will\nre-open the media" );
-
-                    if (ImGui::Selectable( ICON_FA_VOLUME_MUTE " Disable", !mp->audioEnabled() ))
-                        mp->setAudioEnabled(false);
-                    if (ImGui::IsItemHovered() && mp->audioEnabled())
-                        ImGuiToolkit::ToolTip( "Changing audio will\nre-open the media" );
-                    ImGui::EndCombo();
-                }
-
-                if (mp->audioEnabled()) {
-
-                    ImGuiIO& io = ImGui::GetIO();
-                    ///
-                    /// AUDIO VOLUME
-                    ///
-                    int vol = mp->audioVolume();
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    if ( ImGui::SliderInt("##Volume", &vol, 0, 100, "%d%%") )
-                        mp->setAudioVolume(vol);
-                    if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
-                        vol = CLAMP(vol + int(10.f * io.MouseWheel), 0, 100);
-                        mp->setAudioVolume(vol);
-                    }
-                    ImGui::SameLine(0, IMGUI_SAME_LINE);
-                    if (ImGuiToolkit::TextButton("Volume")) {
-                        mp->setAudioVolume(100);
-                    }
-
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    int m = mp->audioVolumeMix();
-                    if ( ImGui::Combo("##Multiplier", &m, "None\0Alpha\0Opacity\0Alpha * Opacity\0")  ) {
-                        mp->setAudioVolumeMix( (MediaPlayer::VolumeFactorsMix) m );
-                    }
-                    ImGui::SameLine(0, IMGUI_SAME_LINE);
-                    if (ImGuiToolkit::TextButton("Multiplier")) {
-                        mp->setAudioVolumeMix( MediaPlayer::VOLUME_ONLY );
-                    }
-                }
-            }
         }
         else
             ImGui::SetCursorPos(botom);

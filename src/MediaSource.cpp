@@ -20,6 +20,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "defines.h"
 #include "Resource.h"
 #include "Decorations.h"
 #include "MediaPlayer.h"
@@ -121,6 +122,10 @@ void MediaSource::init()
             // deep update to reorder (two frames to give time to insert)
             View::need_deep_update_ += 2;
 
+            // test audio is available
+            if (mediaplayer_->audioAvailable())
+                audio_flags_ |= Source::Audio_available;
+
             // done init
             Log::Info("Source '%s' linked to MediaPlayer %s.", name().c_str(), std::to_string(mediaplayer_->id()).c_str());
         }
@@ -178,13 +183,31 @@ void MediaSource::update(float dt)
 
     // update video
     mediaplayer_->update();
+}
 
-    // update audio
-    if (mediaplayer_->audioEnabled() ) {
-        // apply alpha as volume factor 1
-        mediaplayer_->setAudioVolumeFactor(1, alpha());
-        // apply opacity as volume factor 2
-        mediaplayer_->setAudioVolumeFactor(2, mediaplayer_->currentTimelineFading());
+void MediaSource::updateAudio()
+{
+    // update enable/ disable status of audio of media player (do nothing if no change)
+    mediaplayer_->setAudioEnabled( audio_flags_ & Source::Audio_enabled );
+
+    // update audio volume if enabled
+    if (audio_flags_ & Source::Audio_enabled) {
+
+        // base volume
+        gdouble new_vol = (gdouble) (audio_volume_[VOLUME_BASE]);
+
+        // apply factors
+        if (audio_volume_mix_ & Source::Volume_mult_alpha)
+            new_vol *= (gdouble) (alpha());
+        if (audio_volume_mix_ & Source::Volume_mult_opacity)
+            new_vol *= (gdouble) (mediaplayer_->currentTimelineFading());
+        if (audio_volume_mix_ & Source::Volume_mult_parent)
+            new_vol *= (gdouble) (audio_volume_[VOLUME_PARENT]);
+        if (audio_volume_mix_ & Source::Volume_mult_session)
+            new_vol *= (gdouble) (audio_volume_[VOLUME_SESSION]);
+
+        // implementation for media player gstreamer pipeline
+        mediaplayer_->setAudioVolume(new_vol);
     }
 }
 
@@ -197,10 +220,16 @@ void MediaSource::render()
         // NB: this also applies the color correction shader
         renderbuffer_->begin();
         // apply fading
-        if (mediaplayer_->timelineFadingMode() != MediaPlayer::FADING_ALPHA)
+        float __f = mediaplayer_->currentTimelineFading();
+        setAudioVolumeFactor(Source::VOLUME_OPACITY, __f);
+        if (mediaplayer_->timelineFadingMode() != MediaPlayer::FADING_ALPHA) {
+            // color fading
             texturesurface_->shader()->color = glm::vec4( glm::vec3(mediaplayer_->currentTimelineFading()), 1.f);
-        else
+        }
+        else {
+            // alpha fading
             texturesurface_->shader()->color = glm::vec4( glm::vec3(1.f), mediaplayer_->currentTimelineFading());
+        }
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();
         ready_ = true;

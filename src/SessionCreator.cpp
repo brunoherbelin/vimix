@@ -919,17 +919,6 @@ void SessionLoader::visit(MediaPlayer &n)
             n.setTimeline(tl);
         }
 
-        // audio
-        int audiovolume = 100;
-        mediaplayerNode->QueryIntAttribute("audio_volume", &audiovolume);
-        n.setAudioVolume(audiovolume);
-        int audiomix = 0;
-        mediaplayerNode->QueryIntAttribute("audio_mix", &audiomix);
-        n.setAudioVolumeMix( (MediaPlayer::VolumeFactorsMix) audiomix);
-        bool audioenabled = false;
-        mediaplayerNode->QueryBoolAttribute("audio", &audioenabled);
-        n.setAudioEnabled(audioenabled);
-
         // change play rate: will be activated in SessionLoader::visit (MediaSource& s)
         double speed = 1.0;
         mediaplayerNode->QueryDoubleAttribute("speed", &speed);
@@ -1111,6 +1100,16 @@ void SessionLoader::visit (Source& s)
             idlist.push_back(id__);
         }
         groups_sources_id_.push_back(idlist);
+    }
+
+    xmlCurrent_ = sourceNode->FirstChildElement("Audio");
+    if (xmlCurrent_) {
+        bool on = xmlCurrent_->BoolAttribute("enabled", false);
+        s.setAudioEnabled(on);
+        float volume = xmlCurrent_->FloatAttribute("volume", 1.f);
+        s.setAudioVolumeFactor(Source::VOLUME_BASE, volume);
+        int mix = xmlCurrent_->IntAttribute("volume_mix", 0);
+        s.setAudioVolumeMix( Source::Volume_mult_parent | mix);
     }
 
     // restore current

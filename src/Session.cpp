@@ -294,6 +294,9 @@ void Session::update(float dt)
             // render the source
             (*it)->render();
         }
+
+        // apply session fading to audio
+        (*it)->setAudioVolumeFactor(Source::VOLUME_SESSION, 1.f - render_.fading());
     }
 
     // update session's mixing groups

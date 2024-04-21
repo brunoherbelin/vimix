@@ -1,6 +1,6 @@
 name: vimix
 base: core22
-version: '0.8.2'
+version: '0.8.2d'
 summary: Video live mixer
 title: vimix
 description: |
@@ -27,8 +27,7 @@ apps:
       - desktop
       - desktop-legacy
       - gsettings
-      - unity7
-      - audio-playback
+      - wayland
       - x11
       - opengl
       - home
@@ -36,6 +35,7 @@ apps:
       - camera
       - raw-usb
       - removable-media
+      - audio-playback
     environment:
        GST_PLUGIN_PATH: $SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0
        GST_PLUGIN_SYSTEM_PATH : $SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0
