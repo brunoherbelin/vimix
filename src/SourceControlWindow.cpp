@@ -55,7 +55,8 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     play_toggle_request_(false), replay_request_(false), pending_(false),
     active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
-    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f),
+    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0),
+    mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f),
     magnifying_glass(false)
 {
     info_.setExtendedStringMode();
@@ -414,7 +415,7 @@ void SourceControlWindow::Render()
                 }
 
                 if ( ImGui::MenuItem(ICON_FA_HOURGLASS_HALF "  Duration")){
-                    mediaplayer_set_duration_ = true;
+                    mediaplayer_set_duration_ = 1;
                 }
             }
 
@@ -1505,7 +1506,7 @@ void SourceControlWindow::RenderSingleSource(Source *s)
                     mediaplayer_active_->reopen();
 
                     // open dialog to set duration
-                    mediaplayer_set_duration_ = true;
+                    mediaplayer_set_duration_ = 2;
                 }
 
                 ImGui::PopStyleColor(2);
@@ -2168,16 +2169,18 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     ///  Dialog to set timeline duration
     ///
     static double timeline_duration_ = 0.0;
+    static double timeline_duration_previous = 0.0;
     if (mediaplayer_set_duration_) {
-        mediaplayer_set_duration_ = false;
-        // open dialog
-        if (mediaplayer_active_) {
-            // get current duration of mediaplayer
-            GstClockTime end = mediaplayer_active_->timeline()->end();
-            timeline_duration_ = (double) ( GST_TIME_AS_MSECONDS(end) ) / 1000.f;
-            // open dialog to change duration
-            ImGui::OpenPopup(DIALOG_TIMELINE_DURATION);
-        }
+        // get current duration of mediaplayer
+        GstClockTime end = mediaplayer_active_->timeline()->end();
+        timeline_duration_ = (double) (GST_TIME_AS_MSECONDS(end)) / 1000.f;
+        // remember previous duration for Cancel
+        // NB: trick with var 'mediaplayer_set_duration_' set to 2 when first time created
+        timeline_duration_previous = mediaplayer_set_duration_ > 1 ? 0.0 : timeline_duration_;
+        // open dialog to change duration
+        ImGui::OpenPopup(DIALOG_TIMELINE_DURATION);
+        // only once
+        mediaplayer_set_duration_ = 0;
     }
     const ImVec2 tld_dialog_size(buttons_width_ * 2.f, buttons_height_ * 4);
     ImGui::SetNextWindowSize(tld_dialog_size, ImGuiCond_Always);
@@ -2193,26 +2196,41 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::Spacing();
 
         // get current timeline
-        Timeline tl = *mediaplayer_active_->timeline();
         ImGui::InputDouble("second", &timeline_duration_, 1.0f, 10.0f, "%.2f");
         timeline_duration_ = ABS(timeline_duration_);
 
         bool close = false;
         ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
-        if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(area.x * 0.3f, 0)))
+        if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(area.x * 0.3f, 0))) {
+            // restore previous timeline duration
+            timeline_duration_ = timeline_duration_previous;
+            // close dialog
             close = true;
+        }
         ImGui::SetCursorPos(pos + ImVec2(area.x * 0.7f, area.y - buttons_height_));
         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
         if (ImGui::Button(ICON_FA_CHECK "  Apply", ImVec2(area.x * 0.3f, 0))
                 || ImGui::IsKeyPressedMap(ImGuiKey_Enter)  || ImGui::IsKeyPressedMap(ImGuiKey_KeyPadEnter) ) {
-            // change timeline end
-            mediaplayer_active_->timeline()->setEnd( GST_MSECOND * (GstClockTime) ( timeline_duration_ * 1000.f ) );
             // close dialog
             close = true;
         }
         ImGui::PopStyleColor(1);
-        if (close)
+        if (close) {
+            // zero duration requested : delete timeline
+            if (timeline_duration_ < 0.01) {
+                // set empty timeline
+                Timeline tl;
+                mediaplayer_active_->setTimeline(tl);
+                mediaplayer_active_->play(false);
+                // re-open the image with NO timeline
+                mediaplayer_active_->reopen();
+            }
+            // else normal change timeline end
+            else
+                mediaplayer_active_->timeline()->setEnd( GST_MSECOND * (GstClockTime) ( timeline_duration_ * 1000.f ) );
+            // close popup window
             ImGui::CloseCurrentPopup();
+        }
         ImGui::EndPopup();
     }
 }
