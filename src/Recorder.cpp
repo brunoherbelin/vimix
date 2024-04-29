@@ -334,7 +334,8 @@ std::string VideoRecorder::init(GstCaps *caps)
     // apply settings
     buffering_size_ = MAX( MIN_BUFFER_SIZE, buffering_preset_value[Settings::application.record.buffering_mode]);
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, framerate_preset_value[Settings::application.record.framerate_mode]);
-    timestamp_on_clock_ = Settings::application.record.priority_mode < 1;
+    timestamp_on_clock_ = Settings::application.record.priority_mode < 1;    
+    keyframe_count_ = framerate_preset_value[Settings::application.record.framerate_mode];
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! videoconvert ! queue ! ";
@@ -440,7 +441,7 @@ std::string VideoRecorder::init(GstCaps *caps)
 
         // specify recorder framerate in the given caps
         GstCaps *tmp = gst_caps_copy( caps );
-        GValue v = { 0, };
+        GValue v = G_VALUE_INIT;
         g_value_init (&v, GST_TYPE_FRACTION);
         gst_value_set_fraction (&v, framerate_preset_value[Settings::application.record.framerate_mode], 1);
         gst_caps_set_value(tmp, "framerate", &v);

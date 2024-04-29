@@ -84,6 +84,7 @@ protected:
     GstClockTime pause_duration_;
     GstClockTime frame_duration_;
     guint64      frame_count_;
+    guint64      keyframe_count_;
     guint64      buffering_size_;
     guint64      buffering_count_;
     bool         timestamp_on_clock_;
