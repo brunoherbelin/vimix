@@ -165,7 +165,7 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //    faster (4)
     //    fast (5)
     "video/x-raw, format=I420 ! x264enc tune=\"zerolatency\" pass=4 quantizer=22 speed-preset=2 ! video/x-h264, profile=baseline ! h264parse ! ",
-    "video/x-raw, format=Y444_10LE ! x264enc pass=4 quantizer=18 speed-preset=3 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
+    "video/x-raw, format=Y444_10LE ! x264enc tune=\"zerolatency\" pass=4 quantizer=18 speed-preset=3 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
     // Control x265 encoder quality :
     // NB: apparently x265 only accepts I420 format :(
     // speed-preset
@@ -183,8 +183,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
     // crf Quality-controlled variable bitrate [0 51]
     //   default 28
     //   24 for x265 should be visually transparent; anything lower will probably just waste file size
-    "video/x-raw, format=I420 ! x265enc tune=2 speed-preset=2 option-string=\"crf=24\" ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "video/x-raw, format=I420 ! x265enc tune=6 speed-preset=2 option-string=\"crf=12\" ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "video/x-raw, format=I420 ! x265enc tune=\"zerolatency\" speed-preset=2 option-string=\"crf=24\" ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "video/x-raw, format=I420 ! x265enc tune=\"zerolatency\" speed-preset=5 option-string=\"crf=12\" ! video/x-h265, profile=(string)main ! h265parse ! ",
     // Apple ProRes encoding parameters
     //  pass
     //      cbr (0) – Constant Bitrate Encoding

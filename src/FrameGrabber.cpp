@@ -469,11 +469,16 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
             // if time is zero (first frame) or if delta time is passed one frame duration (with a margin)
             if ( t == 0 || (t - duration_) > (frame_duration_ - 3000) ) {
 
-                // count frames
-                frame_count_++;
-
-                // set duration to an exact multiples of frame duration
-                duration_ = ( t / frame_duration_) * frame_duration_;
+                // add a key frame every second (if keyframecount is valid)
+                if (keyframe_count_ > 1 && frame_count_ % keyframe_count_ < 1) {
+                    GstEvent *event
+                        = gst_video_event_new_downstream_force_key_unit(timestamp_,
+                                                                        GST_CLOCK_TIME_NONE,
+                                                                        GST_CLOCK_TIME_NONE,
+                                                                        FALSE,
+                                                                        frame_count_ / keyframe_count_);
+                    gst_element_send_event(GST_ELEMENT(src_), event);
+                }
 
                 if (timestamp_on_clock_)
                     // automatic frame presentation time stamp
@@ -481,13 +486,14 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                     // set timestamp to actual time
                     timestamp_ = duration_;
                 else {
+                    // force frame presentation timestamp
+                    // Pipeline set to "do-timestamp"=FALSE
+                    GST_BUFFER_DTS(buffer) = GST_BUFFER_PTS(buffer) = timestamp_;
+                    // set frame duration
+                    buffer->duration = frame_duration_;
                     // monotonic timestamp increment to keep fixed FPS
                     // Pipeline set to "do-timestamp"=FALSE
                     timestamp_ += frame_duration_;
-                    // force frame presentation timestamp
-                    buffer->pts = timestamp_;
-                    // set frame duration
-                    buffer->duration = frame_duration_;
                 }
 
                 // when buffering is (almost) full, refuse buffer 1 frame over 2
@@ -514,17 +520,11 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 gst_app_src_push_buffer (src_, buffer);
                 // NB: buffer will be unrefed by the appsrc
 
-                // add a key frame every second (if keyframecount is valid)
-                if (keyframe_count_ > 1 && frame_count_ % keyframe_count_ < 1) {
-                    GstEvent *event
-                        = gst_video_event_new_downstream_force_key_unit(timestamp_,
-                                                                        GST_CLOCK_TIME_NONE,
-                                                                        GST_CLOCK_TIME_NONE,
-                                                                        FALSE,
-                                                                        frame_count_ / keyframe_count_);
-                    gst_element_send_event(GST_ELEMENT(src_), event);
-                }
+                // count frames
+                frame_count_++;
 
+                // update duration to an exact multiples of frame duration
+                duration_ = ( t / frame_duration_) * frame_duration_;
             }
         }
     }
