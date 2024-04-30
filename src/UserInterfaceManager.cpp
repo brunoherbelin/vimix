@@ -789,8 +789,9 @@ bool UserInterface::TryClose()
     if (DialogToolkit::FileDialog::busy() || DialogToolkit::ColorPickerDialog::busy())
         return false;
 
-    // always stop all recordings
-    FrameGrabbing::manager().stopAll();
+    // always stop all recordings and pending actions
+    FrameGrabbing::manager().stopAll();    
+    navigator.discardPannel();
 
     // force close if trying to close again although it is already pending for save
     if (pending_save_on_exit)
