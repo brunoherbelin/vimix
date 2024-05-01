@@ -36,6 +36,7 @@
 #include "Settings.h"
 #include "GstToolkit.h"
 #include "SystemToolkit.h"
+#include "MediaPlayer.h"
 #include "Log.h"
 #include "Audio.h"
 
@@ -333,7 +334,7 @@ std::string VideoRecorder::init(GstCaps *caps)
 
     // apply settings
     buffering_size_ = MAX( MIN_BUFFER_SIZE, buffering_preset_value[Settings::application.record.buffering_mode]);
-    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, framerate_preset_value[Settings::application.record.framerate_mode]);
+    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, MAXI(framerate_preset_value[Settings::application.record.framerate_mode], 15));
     timestamp_on_clock_ = Settings::application.record.priority_mode < 1;    
     keyframe_count_ = framerate_preset_value[Settings::application.record.framerate_mode];
 
@@ -366,7 +367,8 @@ std::string VideoRecorder::init(GstCaps *caps)
     else {
 
         // Add Audio to pipeline
-        if (!Settings::application.record.audio_device.empty()) {
+        if ( Settings::application.accept_audio &&
+            !Settings::application.record.audio_device.empty()) {
             // ensure the Audio manager has the device specified in settings
             int current_audio = Audio::manager().index(Settings::application.record.audio_device);
             if (current_audio > -1) {
@@ -498,9 +500,15 @@ void VideoRecorder::terminate()
         Log::Info("Video Recording : try a lower resolution / a lower framerate / a larger buffer size / a faster codec.");
     }
 
-    // remember and inform
-    Settings::application.recentRecordings.push(filename_);
-    Log::Notify("Video Recording %s is ready.", filename_.c_str());
+    // remember and inform if valid
+    std::string uri = GstToolkit::filename_to_uri(filename_);
+    MediaInfo media = MediaPlayer::UriDiscoverer(uri);
+    if (media.valid && !media.isimage) {
+        Settings::application.recentRecordings.push(filename_);
+        Log::Notify("Video Recording %s is ready.", filename_.c_str());
+    }
+    else
+        Settings::application.recentRecordings.remove(filename_);
 }
 
 std::string VideoRecorder::info() const

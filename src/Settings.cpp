@@ -186,13 +186,18 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     RecordNode->SetAttribute("profile", application.record.profile);
     RecordNode->SetAttribute("timeout", application.record.timeout);
     RecordNode->SetAttribute("delay", application.record.delay);
-    RecordNode->SetAttribute("resolution_mode", application.record.resolution_mode);
     RecordNode->SetAttribute("framerate_mode", application.record.framerate_mode);
     RecordNode->SetAttribute("buffering_mode", application.record.buffering_mode);
     RecordNode->SetAttribute("priority_mode", application.record.priority_mode);
     RecordNode->SetAttribute("naming_mode", application.record.naming_mode);
     RecordNode->SetAttribute("audio_device", application.record.audio_device.c_str());
     pRoot->InsertEndChild(RecordNode);
+
+    // Image sequence
+    XMLElement *SequenceNode = xmlDoc.NewElement( "Sequence" );
+    SequenceNode->SetAttribute("profile", application.image_sequence.profile);
+    SequenceNode->SetAttribute("framerate", application.image_sequence.framerate_mode);
+    pRoot->InsertEndChild(SequenceNode);
 
     // Transition
     XMLElement *TransitionNode = xmlDoc.NewElement( "Transition" );
@@ -507,7 +512,6 @@ void Settings::Load(const string &filename)
             recordnode->QueryIntAttribute("profile", &application.record.profile);
             recordnode->QueryUnsignedAttribute("timeout", &application.record.timeout);
             recordnode->QueryIntAttribute("delay", &application.record.delay);
-            recordnode->QueryIntAttribute("resolution_mode", &application.record.resolution_mode);
             recordnode->QueryIntAttribute("framerate_mode", &application.record.framerate_mode);
             recordnode->QueryIntAttribute("buffering_mode", &application.record.buffering_mode);
             recordnode->QueryIntAttribute("priority_mode", &application.record.priority_mode);
@@ -524,6 +528,13 @@ void Settings::Load(const string &filename)
                 application.record.audio_device = std::string(dev_);
             else
                 application.record.audio_device = "";
+        }
+
+        // Record
+        XMLElement * sequencenode = pRoot->FirstChildElement("Sequence");
+        if (sequencenode != nullptr) {
+            sequencenode->QueryIntAttribute("profile", &application.image_sequence.profile);
+            sequencenode->QueryIntAttribute("framerate", &application.image_sequence.framerate_mode);
         }
 
         // Source

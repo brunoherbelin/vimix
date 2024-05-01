@@ -79,13 +79,9 @@ bool MultiFileRecorder::add_image (const std::string &image_filename, GstCaps *c
     // set flag to only read VIDEO
     g_object_set(G_OBJECT(img_pipeline), "flags", 0x00000001, NULL);
 
-    // instruct sink to use the required caps (without framerate)
-    GstCaps *sinkcaps = gst_caps_copy(caps);
-    GValue v = {GST_TYPE_FRACTION, {{0}, {1}}};
-    gst_caps_set_value(sinkcaps, "framerate", &v);
-
+    // instruct sink to use the required caps
     GstElement *sink = gst_element_factory_make("appsink", "imgsink");
-    gst_app_sink_set_caps(GST_APP_SINK(sink), sinkcaps);
+    gst_app_sink_set_caps(GST_APP_SINK(sink), caps);
 
     // set playbin sink
     g_object_set(G_OBJECT(img_pipeline), "video-sink", sink, NULL);
@@ -137,7 +133,6 @@ bool MultiFileRecorder::add_image (const std::string &image_filename, GstCaps *c
     }
 
     /* Clean up */
-    gst_caps_unref(caps);
     gst_sample_unref(sample);
     gst_element_set_state(img_pipeline, GST_STATE_NULL);
     gst_object_unref(GST_OBJECT(img_pipeline));
@@ -165,7 +160,7 @@ bool MultiFileRecorder::start_record (const std::string &video_filename)
     if (Settings::application.render.gpu_decoding && (int) VideoRecorder::hardware_encoder.size() > 0 &&
         GstToolkit::has_feature(VideoRecorder::hardware_encoder[profile_]) ) {
 
-        description += VideoRecorder::hardware_profile_description[Settings::application.record.profile];
+        description += VideoRecorder::hardware_profile_description[Settings::application.image_sequence.profile];
         Log::Info("MultiFileRecorder use hardware accelerated encoder (%s)", VideoRecorder::hardware_encoder[profile_].c_str());
     }
     // revert to software encoder
@@ -317,8 +312,13 @@ bool MultiFileRecorder::finished ()
             // get the filename from encoder
             filename_ = promises_.back().get();
             if (!filename_.empty()) {
-                // save path location
-                Settings::application.recentRecordings.push(filename_);
+                // save path location if valid
+                std::string uri = GstToolkit::filename_to_uri(filename_);
+                MediaInfo media = MediaPlayer::UriDiscoverer(uri);
+                if (media.valid && !media.isimage)
+                    Settings::application.recentRecordings.push(filename_);
+                else
+                    Settings::application.recentRecordings.remove(filename_);
             }
             // done with this recoding
             promises_.pop_back();
@@ -336,6 +336,7 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
     rec->progress_ = 0.f;
     rec->width_ = 0;
     rec->height_ = 0;
+    rec->cancel_ = false;
 
     // input files
     if ( rec->files_.size() < 1 ) {
@@ -372,6 +373,14 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
 
     if ( rec->start_record( filename ) )
     {
+        // specify caps for images (same as video, without framerate)
+        GstCaps *tmp_caps = gst_caps_copy( gst_app_src_get_caps(rec->src_) );
+        GValue v = G_VALUE_INIT;
+        g_value_init (&v, GST_TYPE_FRACTION);
+        gst_value_set_fraction (&v, 0, 1);
+        gst_caps_set_value(tmp_caps, "framerate", &v);
+        g_value_unset (&v);
+
         // progressing
         rec->progress_ += inc_;
 
@@ -381,7 +390,7 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
             if ( rec->cancel_ )
                 break;
 
-            if ( rec->add_image( *file, gst_app_src_get_caps(rec->src_) ) ) {
+            if ( rec->add_image( *file, tmp_caps) ) {
                 // validate file
                 rec->frame_count_++;
 
@@ -414,6 +423,8 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
             Log::Info("MultiFileRecorder %d images encoded (%s).", rec->frame_count_, GstToolkit::time_to_string(rec->timestamp_, GstToolkit::TIME_STRING_READABLE).c_str());
         else
             filename = std::string();
+
+        gst_caps_unref(tmp_caps);
     }
     else
         filename = std::string();
