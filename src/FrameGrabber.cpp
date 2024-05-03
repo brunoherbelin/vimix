@@ -319,11 +319,16 @@ void FrameGrabber::setPaused(bool pause)
 {
     // can pause only if already active
     if (active_) {
+
         // keep time of switch from not-paused to paused
         if (pause && !pause_)
             timer_pauseframe_ = gst_clock_get_time(timer_);
+
         // set to paused
         pause_ = pause;
+
+        // pause pipeline
+        gst_element_set_state (pipeline_, pause_ ? GST_STATE_PAUSED : GST_STATE_PLAYING);
     }
 }
 
@@ -458,6 +463,12 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 if (timer_pauseframe_ > 0) {
                     // compute duration of the pausing time and add to total pause duration
                     pause_duration_ += gst_clock_get_time(timer_) - timer_pauseframe_;
+
+                    // sync audio packets
+                    GstElement *audiosync = GST_ELEMENT_CAST(gst_bin_get_by_name(GST_BIN(pipeline_), "audiosync"));
+                    if (audiosync)
+                        g_object_set(G_OBJECT(audiosync), "ts-offset", -timer_pauseframe_, NULL);
+
                     // reset pause frame time
                     timer_pauseframe_ = 0;
                 }

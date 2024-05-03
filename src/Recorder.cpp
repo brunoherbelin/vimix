@@ -377,11 +377,12 @@ std::string VideoRecorder::init(GstCaps *caps)
                 description += " ! audio/x-raw ! audioconvert ! audioresample ! ";
                 // select encoder depending on codec
                 if ( Settings::application.record.profile == VP8)
-                    description += "opusenc ! opusparse ! queue ! ";
+                    description += "identity sync=true name=audiosync ! opusenc ! opusparse ! queue ! ";
                 else
-                    description += "voaacenc ! aacparse ! queue ! ";
+                    description += "identity sync=true name=audiosync ! avenc_aac ! aacparse ! queue ! ";
 
                 Log::Info("Video Recording with audio (%s)", Audio::manager().pipeline(current_audio).c_str());
+
             }
         }
 
