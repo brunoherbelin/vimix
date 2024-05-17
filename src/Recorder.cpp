@@ -375,11 +375,12 @@ std::string VideoRecorder::init(GstCaps *caps)
                 description += "mux. ";
                 description += Audio::manager().pipeline(current_audio);
                 description += " ! audio/x-raw ! audioconvert ! audioresample ! ";
+                description += "identity name=audiosync ! ";
                 // select encoder depending on codec
                 if ( Settings::application.record.profile == VP8)
-                    description += "identity sync=true name=audiosync ! opusenc ! opusparse ! queue ! ";
+                    description += "opusenc ! opusparse ! queue ! ";
                 else
-                    description += "identity sync=true name=audiosync ! avenc_aac ! aacparse ! queue ! ";
+                    description += "avenc_aac ! aacparse ! queue ! ";
 
                 Log::Info("Video Recording with audio (%s)", Audio::manager().pipeline(current_audio).c_str());
 
@@ -420,7 +421,7 @@ std::string VideoRecorder::init(GstCaps *caps)
     // setup file sink
     g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
                   "location", filename_.c_str(),
-                  "sync", FALSE,
+                  "sync", TRUE,
                   NULL);
 
     // setup custom app source
@@ -466,6 +467,12 @@ std::string VideoRecorder::init(GstCaps *caps)
     else {
         return std::string("Video Recording : Failed to configure frame grabber.");
     }
+
+    // Enforce a system clock for the recording pipeline
+    // (this allows keeping pipeline in synch when recording both
+    //  video and audio - the automatic clock default chooses either
+    //  the video or the audio source, which cause synch problems)
+    gst_pipeline_use_clock( GST_PIPELINE(pipeline_), gst_system_clock_obtain());
 
     // start recording
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);

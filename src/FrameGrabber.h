@@ -97,6 +97,7 @@ protected:
     static void callback_need_data (GstAppSrc *, guint, gpointer user_data);
     static void callback_enough_data (GstAppSrc *, gpointer user_data);    
     static GstPadProbeReturn callback_event_probe(GstPad *, GstPadProbeInfo *info, gpointer user_data);
+    static GstBusSyncReply signal_handler(GstBus *, GstMessage *, gpointer);
 };
 
 /**

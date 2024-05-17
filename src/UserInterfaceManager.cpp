@@ -5657,16 +5657,29 @@ void Navigator::RenderMainPannelSettings()
         Settings::application.record.buffering_mode = 2;
 
     ImGuiToolkit::Indication("Priority when buffer is full and recorder has to skip frames;\n"
-                             ICON_FA_CARET_RIGHT " Duration: Correct duration, variable framerate."
-                             ICON_FA_CARET_RIGHT " Framerate: Correct framerate, shorter duration.\n",
+                             ICON_FA_CARET_RIGHT " Duration: Correct duration, variable framerate.\n"
+                             ICON_FA_CARET_RIGHT " Framerate: Correct framerate, shorter duration.",
                              ICON_FA_CHECK_DOUBLE);
     ImGui::SameLine(0);
     ImGui::SetCursorPosX(width_);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("##Priority", &Settings::application.record.priority_mode, "Duration\0Framerate\0");
+    const char *prioritylabel[2] = {"Duration", "Framerate"};
+    if (ImGui::BeginCombo("##Priority", prioritylabel[Settings::application.record.priority_mode])) {
+        if (ImGui::Selectable(prioritylabel[0], Settings::application.record.priority_mode == 0))
+            Settings::application.record.priority_mode = 0;
+        if (!Settings::application.accept_audio || Settings::application.record.audio_device.empty()) {
+            if (ImGui::Selectable(prioritylabel[1], Settings::application.record.priority_mode == 1))
+                Settings::application.record.priority_mode = 1;
+        } else {
+            ImGui::Selectable(prioritylabel[1], false, ImGuiSelectableFlags_Disabled);
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Unable to set priority Framerate when recoding with audio.");
+        }
+        ImGui::EndCombo();
+    }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     if (ImGuiToolkit::TextButton("Priority"))
-        Settings::application.record.priority_mode = 1;
+        Settings::application.record.priority_mode = 0;
 
     //
     // AUDIO
@@ -5705,6 +5718,11 @@ void Navigator::RenderMainPannelSettings()
                                        + namedev;
                 if (ImGui::Selectable(labeldev.c_str())) {
                     Settings::application.record.audio_device = namedev;
+                    // warning on recording mode
+                    if (Settings::application.record.priority_mode > 0) {
+                        Log::Notify( "When recording with audio, Priority mode must be set to 'Duration'.");
+                        Settings::application.record.priority_mode=0;
+                    }
                 }
             }
             ImGui::EndCombo();

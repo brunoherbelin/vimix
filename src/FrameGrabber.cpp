@@ -374,10 +374,31 @@ void FrameGrabber::callback_enough_data (GstAppSrc *, gpointer p)
     if (grabber) {
         grabber->accept_buffer_ = false;
 #ifndef NDEBUG
-                        Log::Info("Frame capture : Buffer full");
+        Log::Info("Frame capture : Buffer full");
 #endif
     }
 }
+
+
+GstBusSyncReply FrameGrabber::signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
+{
+    // only handle error messages
+    if (ptr != nullptr && GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
+        // inform user
+        GError *error;
+        gst_message_parse_error(msg, &error, NULL);
+        Log::Warning("FrameGrabber %s : %s",
+                     std::to_string(reinterpret_cast<FrameGrabber *>(ptr)->id()).c_str(),
+                     error->message);
+        g_error_free(error);
+//    } else {
+//        g_printerr("FrameGrabber msg %s \n", GST_MESSAGE_TYPE_NAME(msg));
+    }
+
+    // drop all messages to avoid filling up the stack
+    return GST_BUS_DROP;
+}
+
 
 GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo * info, gpointer p)
 {
@@ -414,6 +435,15 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
 
             // if initialization succeeded
             if (initialized_) {
+
+#ifdef IGNORE_GST_ERROR_MESSAGE
+                //        avoid filling up bus with messages
+                gst_bus_set_flushing(gst_element_get_bus(pipeline_), true);
+#else
+                // set message handler for the pipeline's bus
+                gst_bus_set_sync_handler(gst_element_get_bus(pipeline_),
+                                         FrameGrabber::signal_handler, this, NULL);
+#endif
                 // attach EOS detector
                 GstPad *pad = gst_element_get_static_pad (gst_bin_get_by_name (GST_BIN (pipeline_), "sink"), "sink");
                 gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, FrameGrabber::callback_event_probe, this, NULL);
@@ -492,12 +522,12 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 }
 
                 if (timestamp_on_clock_)
-                    // automatic frame presentation time stamp
+                    // automatic frame presentation time stamp (DURATION PRIORITY)
                     // Pipeline set to "do-timestamp"=TRUE
                     // set timestamp to actual time
                     timestamp_ = duration_;
                 else {
-                    // force frame presentation timestamp
+                    // force frame presentation timestamp (FRAMERATE PRIORITY)
                     // Pipeline set to "do-timestamp"=FALSE
                     GST_BUFFER_DTS(buffer) = GST_BUFFER_PTS(buffer) = timestamp_;
                     // set frame duration

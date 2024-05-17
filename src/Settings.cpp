@@ -524,8 +524,12 @@ void Settings::Load(const string &filename)
                 application.record.path = SystemToolkit::home_path();
 
             const char *dev_ = recordnode->Attribute("audio_device");
-            if (dev_)
+            if (dev_) {
                 application.record.audio_device = std::string(dev_);
+                // if recording with audio and have a device, force priority to Duration
+                if (application.accept_audio && !application.record.audio_device.empty())
+                    application.record.priority_mode = 0;
+            }
             else
                 application.record.audio_device = "";
         }
