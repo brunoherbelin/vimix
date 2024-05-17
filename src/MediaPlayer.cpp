@@ -353,7 +353,7 @@ GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer 
         // inform user
         GError *error;
         gst_message_parse_error(msg, &error, NULL);
-        Log::Warning("MediaPlayer %s : %s - %s",
+        Log::Warning("MediaPlayer %s : %s",
                          std::to_string(reinterpret_cast<MediaPlayer*>(ptr)->id()).c_str(),
                          error->message);
         g_error_free(error);
@@ -494,7 +494,7 @@ void MediaPlayer::execute_open()
 
 #ifdef IGNORE_GST_ERROR_MESSAGE
     // avoid filling up bus with messages
-    gst_bus_set_flushing(bus, true);
+    gst_bus_set_flushing(gst_element_get_bus(pipeline_), true);
 #else
     // set message handler for the pipeline's bus
     gst_bus_set_sync_handler(gst_element_get_bus(pipeline_),
