@@ -127,8 +127,8 @@ Optionnal:
 
     apt-get install libglm-dev libstb-dev libtinyxml2-dev ableton-link-dev 
     
-+ Follow the instructions to [install Shmdata](https://github.com/nicobou/shmdata/blob/develop/doc/install-from-sources.md).
-
+  > Follow these instructions to [install Shmdata](https://github.com/nicobou/shmdata/blob/develop/doc/install-from-sources.md).
+  
     git clone https://gitlab.com/sat-metalab/shmdata.git
     mkdir shmdata-build
     cd shmdata-build
