@@ -3399,7 +3399,7 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
         ImGui::Text("Source");
 
         // index indicator
-        ImGui::SetCursorPos(ImVec2(pannel_width_ - 2 * ImGui::GetTextLineHeight(), IMGUI_TOP_ALIGN));
+        ImGui::SetCursorPos(ImVec2(pannel_width_ - 2.8f * ImGui::GetTextLineHeightWithSpacing(), IMGUI_TOP_ALIGN));
         ImGui::TextDisabled("#%d", Mixer::manager().indexCurrentSource());
 
         ImGui::PopFont();
@@ -4612,8 +4612,6 @@ void Navigator::RenderMainPannelSession()
     //
     // Session
     //
-    ImGui::Text("Session");
-
     std::string sessions_current = Mixer::manager().session()->filename();
     if (sessions_current.empty())
         sessions_current = "<unsaved>";
@@ -4729,7 +4727,7 @@ void Navigator::RenderMainPannelSession()
                 ImGui::Text(" Custom thumbnail");
             }
             else {
-                ImGui::Text(" No thumbnail ");
+                ImGui::Text(" Automatic thumbnail ");
             }
             ImGui::EndTooltip();
         }
@@ -5080,8 +5078,6 @@ void Navigator::RenderMainPannelPlaylist()
     //
     // SESSION panel
     //
-    ImGui::Text("Playlists");
-
     // currently active playlist and folder
     static std::string playlist_header = PLAYLIST_FAVORITES;
     static Playlist active_playlist;
@@ -5571,20 +5567,7 @@ void Navigator::RenderMainPannelSettings()
     //
     // Appearance
     //
-    ImGui::Text("Settings");
-    ImGui::SameLine();
-    ImGui::SetCursorPosX( pannel_width_ IMGUI_RIGHT_ALIGN);
-    if ( ImGuiToolkit::IconButton(ICON_FA_SAVE,"Export settings\nYou can then "
-                                               "launch vimix with the option "
-                                               "'--settings filename.xml' "
-                                               "to restore output windows and configuration.") ){
-        // launch file dialog to select file to save settings
-        if (UserInterface::manager().settingsexportdialog)
-            UserInterface::manager().settingsexportdialog->open();
-    }
-
     int v = Settings::application.accent_color;
-    ImGui::Spacing();
     ImGui::SetCursorPosX(0.5f * width_);
     if (ImGui::RadioButton("##Color", &v, v)){
         Settings::application.accent_color = (v+1)%3;
@@ -5883,6 +5866,18 @@ void Navigator::RenderMainPannelSettings()
     //
     ImGuiToolkit::Spacing();
     ImGui::TextDisabled("System");
+    ImGui::SameLine();
+
+    ImGui::SetCursorPosX( pannel_width_ IMGUI_RIGHT_ALIGN);
+    if ( ImGuiToolkit::IconButton(ICON_FA_SAVE,"Export settings\nYou can then "
+                                               "launch vimix with the option "
+                                               "'--settings filename.xml' "
+                                               "to restore output windows and configuration.") ){
+        // launch file dialog to select file to save settings
+        if (UserInterface::manager().settingsexportdialog)
+            UserInterface::manager().settingsexportdialog->open();
+    }
+    ImGui::Spacing();
 
     static bool need_restart = false;
     static bool vsync = (Settings::application.render.vsync > 0);
@@ -6028,17 +6023,9 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
         ImGui::SetScrollX(0);
 
         //
-        // TITLE
-        //
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::SetCursorPosY(0.5f * (iconsize.y - ImGui::GetTextLineHeight()));
-        ImGui::Text("Vimix");
-
-        //
         // Panel Mode selector
         //
-        //
-        ImGui::SetCursorPosY(width_ - style.WindowPadding.x);
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
         ImGui::Columns(5, NULL, false);
         bool selected_panel_mode[5] = {0};
@@ -6074,17 +6061,32 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
             ImGui::EndMenu();
         }
 
-        ImGui::SetCursorPosY(2.f * width_ - style.WindowPadding.x);
-
         //
         // Panel content
         //
-        if (pannel_main_mode_ == 0)
+        float __p = width_ + style.ItemSpacing.y + ImGui::GetTextLineHeightWithSpacing();
+        ImGui::SetCursorPosY(__p);
+        if (pannel_main_mode_ == 0) {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("Session");
+            ImGui::SetCursorPosY(__p + ImGui::GetFrameHeightWithSpacing());
+            ImGui::PopFont();
             RenderMainPannelSession();
-        else if (pannel_main_mode_ == 1)
+        }
+        else if (pannel_main_mode_ == 1) {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("Playlist");
+            ImGui::SetCursorPosY(__p + ImGui::GetFrameHeightWithSpacing());
+            ImGui::PopFont();
             RenderMainPannelPlaylist();
-        else
+        }
+        else {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("Settings");
+            ImGui::SetCursorPosY(__p + ImGui::GetFrameHeightWithSpacing());
+            ImGui::PopFont();
             RenderMainPannelSettings();
+        }
 
         //
         // About vimix
