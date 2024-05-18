@@ -142,6 +142,7 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("broadcast_port", application.broadcast_port);
     applicationNode->SetAttribute("loopback_camera", application.loopback_camera);
     applicationNode->SetAttribute("shm_socket_path", application.shm_socket_path.c_str());
+    applicationNode->SetAttribute("shm_method", application.shm_method);
     applicationNode->SetAttribute("accept_audio", application.accept_audio);
     pRoot->InsertEndChild(applicationNode);
 
@@ -462,6 +463,7 @@ void Settings::Load(const string &filename)
             applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
             applicationNode->QueryIntAttribute("loopback_camera", &application.loopback_camera);
             applicationNode->QueryBoolAttribute("accept_audio", &application.accept_audio);
+            applicationNode->QueryIntAttribute("shm_method", &application.shm_method);
 
             // text attributes
             const char *tmpstr = applicationNode->Attribute("shm_socket_path");

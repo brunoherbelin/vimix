@@ -127,9 +127,16 @@ Optionnal:
 
     apt-get install libglm-dev libstb-dev libtinyxml2-dev ableton-link-dev 
     
-+ Follow the instructions to [install Shmdata](https://gitlab.com/sat-mtl/tools/shmdata).
++ Follow the instructions to [install Shmdata](https://github.com/nicobou/shmdata/blob/develop/doc/install-from-sources.md).
+
+    git clone https://gitlab.com/sat-metalab/shmdata.git
+    mkdir shmdata-build
+    cd shmdata-build
+    cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_BUILD_TYPE=Release -DWITH_PYTHON=0 -DWITH_SDCRASH=0 -DWITH_SDFLOW=0 ../shmdata-build
+    cmake --build . --target package
+    sudo dpkg -i ./libshmdata_1.3*_amd64.deb
 
 #### OSX with Brew
 
-    ~$ brew install cmake libpng glfw gstreamer icu4c
+    brew install cmake libpng glfw gstreamer icu4c
 

@@ -169,6 +169,9 @@ std::string ShmdataBroadcast::init(GstCaps *caps)
 
 void ShmdataBroadcast::terminate()
 {
+    // end src
+    gst_app_src_end_of_stream (src_);
+
     // force finished
     endofstream_ = true;
     active_ = false;
@@ -188,9 +191,9 @@ std::string ShmdataBroadcast::gst_pipeline() const
     pipeline += (method_ == SHM_SHMDATASINK) ? "shmdatasrc" : "shmsrc";
     pipeline += " socket-path=";
     pipeline += socket_path_;
-    pipeline += " is-live=true";
 
     if (method_ == SHM_SHMSINK){
+        pipeline += " is-live=true";
         pipeline += " ! ";
         pipeline += std::string( gst_caps_to_string(caps_) );
         pipeline = std::regex_replace(pipeline, std::regex("\\(int\\)"), "");
