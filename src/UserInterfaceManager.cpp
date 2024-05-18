@@ -5772,14 +5772,14 @@ void Navigator::RenderMainPannelSettings()
             ImFormatString(msg, IM_ARRAYSIZE(msg), "Shared Memory\n\n"
                                                    "vimix can share to RAM with "
                                                    "gstreamer default 'shmsink' "
-                                                   "and with 'shmdatasink'.\n"
+                                                   "and with 'shmdatasink'.\n\n"
                                                    "Socket file to connect to:\n%s\n",
                            _shm_socket_file.c_str());
         }
         else {
             ImFormatString(msg, IM_ARRAYSIZE(msg), "Shared Memory\n\n"
                                                    "vimix can share to RAM with "
-                                                   "gstreamer 'shmsink'.\n"
+                                                   "gstreamer 'shmsink'.\n\n"
                                                    "Socket file to connect to:\n%s\n",
                            _shm_socket_file.c_str());
         }
@@ -5787,9 +5787,9 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        char bufsocket[64] = "";
-        snprintf(bufsocket, 64, "%s", Settings::application.shm_socket_path.c_str());
-        ImGui::InputTextWithHint("##SHM path", SystemToolkit::home_path().c_str(), bufsocket, 64);
+        char bufsocket[128] = "";
+        snprintf(bufsocket, 128, "%s", Settings::application.shm_socket_path.c_str());
+        ImGui::InputTextWithHint("##SHM path", SystemToolkit::home_path().c_str(), bufsocket, 128);
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             Settings::application.shm_socket_path = bufsocket;
         }
@@ -5799,7 +5799,7 @@ void Navigator::RenderMainPannelSettings()
         if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
             ImGui::SetCursorPosX(width_);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            ImGui::Combo("SHM plugin", &Settings::application.shm_method, "shmsink\0shmdatasink\0");
+            ImGui::Combo("SHM sink", &Settings::application.shm_method, "shmsink\0shmdatasink\0");
         }
     }
 
