@@ -36,6 +36,7 @@
 #include "Settings.h"
 #include "GstToolkit.h"
 #include "SystemToolkit.h"
+#include "MediaPlayer.h"
 #include "Log.h"
 #include "Audio.h"
 
@@ -165,7 +166,7 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //    faster (4)
     //    fast (5)
     "video/x-raw, format=I420 ! x264enc tune=\"zerolatency\" pass=4 quantizer=22 speed-preset=2 ! video/x-h264, profile=baseline ! h264parse ! ",
-    "video/x-raw, format=Y444_10LE ! x264enc pass=4 quantizer=18 speed-preset=3 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
+    "video/x-raw, format=Y444_10LE ! x264enc tune=\"zerolatency\" pass=4 quantizer=18 speed-preset=3 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
     // Control x265 encoder quality :
     // NB: apparently x265 only accepts I420 format :(
     // speed-preset
@@ -183,8 +184,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
     // crf Quality-controlled variable bitrate [0 51]
     //   default 28
     //   24 for x265 should be visually transparent; anything lower will probably just waste file size
-    "video/x-raw, format=I420 ! x265enc tune=2 speed-preset=2 option-string=\"crf=24\" ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "video/x-raw, format=I420 ! x265enc tune=6 speed-preset=2 option-string=\"crf=12\" ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "video/x-raw, format=I420 ! x265enc tune=\"zerolatency\" speed-preset=2 option-string=\"crf=24\" ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "video/x-raw, format=I420 ! x265enc tune=\"zerolatency\" speed-preset=5 option-string=\"crf=12\" ! video/x-h265, profile=(string)main ! h265parse ! ",
     // Apple ProRes encoding parameters
     //  pass
     //      cbr (0) – Constant Bitrate Encoding
@@ -333,8 +334,9 @@ std::string VideoRecorder::init(GstCaps *caps)
 
     // apply settings
     buffering_size_ = MAX( MIN_BUFFER_SIZE, buffering_preset_value[Settings::application.record.buffering_mode]);
-    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, framerate_preset_value[Settings::application.record.framerate_mode]);
-    timestamp_on_clock_ = Settings::application.record.priority_mode < 1;
+    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, MAXI(framerate_preset_value[Settings::application.record.framerate_mode], 15));
+    timestamp_on_clock_ = Settings::application.record.priority_mode < 1;    
+    keyframe_count_ = framerate_preset_value[Settings::application.record.framerate_mode];
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! videoconvert ! queue ! ";
@@ -365,20 +367,23 @@ std::string VideoRecorder::init(GstCaps *caps)
     else {
 
         // Add Audio to pipeline
-        if (!Settings::application.record.audio_device.empty()) {
+        if ( Settings::application.accept_audio &&
+            !Settings::application.record.audio_device.empty()) {
             // ensure the Audio manager has the device specified in settings
             int current_audio = Audio::manager().index(Settings::application.record.audio_device);
             if (current_audio > -1) {
                 description += "mux. ";
                 description += Audio::manager().pipeline(current_audio);
                 description += " ! audio/x-raw ! audioconvert ! audioresample ! ";
+                description += "identity name=audiosync ! ";
                 // select encoder depending on codec
                 if ( Settings::application.record.profile == VP8)
                     description += "opusenc ! opusparse ! queue ! ";
                 else
-                    description += "voaacenc ! aacparse ! queue ! ";
+                    description += "avenc_aac ! aacparse ! queue ! ";
 
                 Log::Info("Video Recording with audio (%s)", Audio::manager().pipeline(current_audio).c_str());
+
             }
         }
 
@@ -416,7 +421,7 @@ std::string VideoRecorder::init(GstCaps *caps)
     // setup file sink
     g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
                   "location", filename_.c_str(),
-                  "sync", FALSE,
+                  "sync", TRUE,
                   NULL);
 
     // setup custom app source
@@ -440,7 +445,7 @@ std::string VideoRecorder::init(GstCaps *caps)
 
         // specify recorder framerate in the given caps
         GstCaps *tmp = gst_caps_copy( caps );
-        GValue v = { 0, };
+        GValue v = G_VALUE_INIT;
         g_value_init (&v, GST_TYPE_FRACTION);
         gst_value_set_fraction (&v, framerate_preset_value[Settings::application.record.framerate_mode], 1);
         gst_caps_set_value(tmp, "framerate", &v);
@@ -462,6 +467,12 @@ std::string VideoRecorder::init(GstCaps *caps)
     else {
         return std::string("Video Recording : Failed to configure frame grabber.");
     }
+
+    // Enforce a system clock for the recording pipeline
+    // (this allows keeping pipeline in synch when recording both
+    //  video and audio - the automatic clock default chooses either
+    //  the video or the audio source, which cause synch problems)
+    gst_pipeline_use_clock( GST_PIPELINE(pipeline_), gst_system_clock_obtain());
 
     // start recording
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
@@ -497,9 +508,15 @@ void VideoRecorder::terminate()
         Log::Info("Video Recording : try a lower resolution / a lower framerate / a larger buffer size / a faster codec.");
     }
 
-    // remember and inform
-    Settings::application.recentRecordings.push(filename_);
-    Log::Notify("Video Recording %s is ready.", filename_.c_str());
+    // remember and inform if valid
+    std::string uri = GstToolkit::filename_to_uri(filename_);
+    MediaInfo media = MediaPlayer::UriDiscoverer(uri);
+    if (media.valid && !media.isimage) {
+        Settings::application.recentRecordings.push(filename_);
+        Log::Notify("Video Recording %s is ready.", filename_.c_str());
+    }
+    else
+        Settings::application.recentRecordings.remove(filename_);
 }
 
 std::string VideoRecorder::info() const

@@ -127,6 +127,9 @@ void TextContents::execute_open()
     GstAppSinkCallbacks callbacks;
 #if GST_VERSION_MINOR > 18 && GST_VERSION_MAJOR > 0
     callbacks.new_event = NULL;
+#if GST_VERSION_MINOR > 23
+    callbacks.propose_allocation = NULL;
+#endif
 #endif
     callbacks.new_preroll = callback_new_preroll;
     callbacks.eos = callback_end_of_stream;

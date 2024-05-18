@@ -84,6 +84,7 @@ protected:
     GstClockTime pause_duration_;
     GstClockTime frame_duration_;
     guint64      frame_count_;
+    guint64      keyframe_count_;
     guint64      buffering_size_;
     guint64      buffering_count_;
     bool         timestamp_on_clock_;
@@ -96,6 +97,7 @@ protected:
     static void callback_need_data (GstAppSrc *, guint, gpointer user_data);
     static void callback_enough_data (GstAppSrc *, gpointer user_data);    
     static GstPadProbeReturn callback_event_probe(GstPad *, GstPadProbeInfo *info, gpointer user_data);
+    static GstBusSyncReply signal_handler(GstBus *, GstMessage *, gpointer);
 };
 
 /**

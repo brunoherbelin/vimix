@@ -124,7 +124,7 @@ std::string Loopback::init(GstCaps *caps)
 
         // specify streaming framerate in the given caps
         GstCaps *tmp = gst_caps_copy( caps );
-        GValue v = { 0, };
+        GValue v = G_VALUE_INIT;
         g_value_init (&v, GST_TYPE_FRACTION);
         gst_value_set_fraction (&v, LOOPBACK_FPS, 1); // fixed FPS
         gst_caps_set_value(tmp, "framerate", &v);

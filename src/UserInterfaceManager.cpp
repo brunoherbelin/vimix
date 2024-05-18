@@ -789,8 +789,9 @@ bool UserInterface::TryClose()
     if (DialogToolkit::FileDialog::busy() || DialogToolkit::ColorPickerDialog::busy())
         return false;
 
-    // always stop all recordings
-    FrameGrabbing::manager().stopAll();
+    // always stop all recordings and pending actions
+    FrameGrabbing::manager().stopAll();    
+    navigator.discardPannel();
 
     // force close if trying to close again although it is already pending for save
     if (pending_save_on_exit)
@@ -3398,7 +3399,7 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
         ImGui::Text("Source");
 
         // index indicator
-        ImGui::SetCursorPos(ImVec2(pannel_width_ - 2 * ImGui::GetTextLineHeight(), IMGUI_TOP_ALIGN));
+        ImGui::SetCursorPos(ImVec2(pannel_width_ - 2.8f * ImGui::GetTextLineHeightWithSpacing(), IMGUI_TOP_ALIGN));
         ImGui::TextDisabled("#%d", Mixer::manager().indexCurrentSource());
 
         ImGui::PopFont();
@@ -3858,7 +3859,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                                                           IMAGES_FILES_PATTERN);
             static MultiFileSequence _numbered_sequence;
             static MultiFileRecorder _video_recorder;
-            static int _fps = 25;
+            static int codec_id = -1;
 
             ImGui::Text("Image sequence");
 
@@ -3873,8 +3874,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Create a source displaying a sequence of images;\n"
                                      ICON_FA_CARET_RIGHT " files numbered consecutively\n"
-                                     ICON_FA_CARET_RIGHT " create a video from many images\n"
-                                     "Supports PNG, JPG or TIF.");
+                                     ICON_FA_CARET_RIGHT " create a video from many images");
 
             // return from thread for folder openning
             if (_selectImagesDialog.closed()) {
@@ -3890,9 +3890,16 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 
                 // automatically create a MultiFile Source if possible
                 if (_numbered_sequence.valid()) {
+                    // always come back to propose image sequence when possible
+                    codec_id = -1;
+                    // show source preview available if possible
                     std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
-                    new_source_preview_.setSource( Mixer::manager().createSourceMultifile(sourceSequenceFiles, _fps), label);
-                }
+                    new_source_preview_
+                        .setSource(Mixer::manager().createSourceMultifile(sourceSequenceFiles,
+                                                                          Settings::application.image_sequence.framerate_mode),
+                                   label);
+                } else
+                    codec_id = Settings::application.image_sequence.profile;
             }
 
             // multiple files selected
@@ -3906,44 +3913,84 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 info.appendf("%d %s", (int) sourceSequenceFiles.size(), _numbered_sequence.codec.c_str());
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 ImGui::InputText("Images", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
-                info.clear();
-                if (_numbered_sequence.location.empty())
-                    info.append("Not consecutively numbered");
-                else
-                    info.appendf("%s", SystemToolkit::base_filename(_numbered_sequence.location).c_str());
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::InputText("Filenames", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
                 ImGui::PopStyleColor(1);
-
-                // offer to open file browser at location
-                std::string path = SystemToolkit::path_filename(sourceSequenceFiles.front());
-                std::string label = BaseToolkit::truncated(path, 25);
-                label = BaseToolkit::transliterate(label);
-                ImGuiToolkit::ButtonOpenUrl( label.c_str(), path.c_str(), ImVec2(IMGUI_RIGHT_ALIGN, 0) );
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGui::Text("Folder");
 
                 // set framerate
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::SliderInt("Framerate", &_fps, 1, 30, "%d fps");
+                ImGui::SliderInt("Framerate", &Settings::application.image_sequence.framerate_mode, 1, 30, "%d fps");
                 if (ImGui::IsItemDeactivatedAfterEdit()){
                     if (new_source_preview_.filled()) {
                         std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
-                        new_source_preview_.setSource( Mixer::manager().createSourceMultifile(sourceSequenceFiles, _fps), label);
+                        new_source_preview_
+                            .setSource(Mixer::manager().createSourceMultifile(
+                                           sourceSequenceFiles,
+                                           Settings::application.image_sequence.framerate_mode),
+                                       label);
                     }
                 }
 
-                ImGui::Spacing();
+                // select CODEC: decide for gst sequence (codec_id = -1) or encoding a video
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                std::string codec_current = codec_id < 0 ? ICON_FA_SORT_NUMERIC_DOWN " Numbered images"
+                                                         : std::string(ICON_FA_FILM " ") + VideoRecorder::profile_name[codec_id];
+                if (ImGui::BeginCombo("##CodecSequence", codec_current.c_str())) {
+                    // special case; if possible, offer to create an image sequence gst source
+                    if (ImGui::Selectable( ICON_FA_SORT_NUMERIC_DOWN " Numbered images",
+                                          codec_id < 0,
+                                          _numbered_sequence.valid()
+                                              ? ImGuiSelectableFlags_None
+                                              : ImGuiSelectableFlags_Disabled)) {
+                        // select id of image sequence
+                        codec_id = -1;
+                        // Open source preview for image sequence
+                        if (_numbered_sequence.valid()) {
+                            std::string label = BaseToolkit::transliterate(
+                                BaseToolkit::common_pattern(sourceSequenceFiles));
+                            new_source_preview_
+                                .setSource(Mixer::manager().createSourceMultifile(
+                                               sourceSequenceFiles,
+                                               Settings::application.image_sequence.framerate_mode),
+                                           label);
+                        }
+                    }
+                    // always offer to encode a video
+                    for (int i = VideoRecorder::H264_STANDARD; i < VideoRecorder::VP8; ++i) {
+                        std::string label = std::string(ICON_FA_FILM " ") + VideoRecorder::profile_name[i];
+                        if (ImGui::Selectable(label.c_str(), codec_id == i)) {
+                            // select id of video encoding codec
+                            codec_id = i;
+                            Settings::application.image_sequence.profile = i;
+                            // close source preview (no image sequence)
+                            new_source_preview_.setSource();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                // Indication
+                ImGui::SameLine();
+                if (_numbered_sequence.valid())
+                    ImGuiToolkit::HelpToolTip(ICON_FA_SORT_NUMERIC_DOWN " Selected images are numbered consecutively; "
+                                              "an image sequence source can be created.\n\n"
+                                              ICON_FA_FILM " Alternatively, choose a codec to encode a video with the selected images and create a video source.");
+                else
+                    ImGuiToolkit::HelpToolTip(ICON_FA_SORT_NUMERIC_DOWN " Selected images are NOT numbered consecutively; "
+                                              "it is not possible to create a sequence source.\n\n"
+                                              ICON_FA_FILM " Instead, choose a codec to encode a video with the selected images and create a video source.");
 
-                // Offer to create video from sequence
-                if ( ImGui::Button( ICON_FA_FILM " Make a video", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
-                    // start video recorder
-                    _video_recorder.setFiles( sourceSequenceFiles );
-                    _video_recorder.setFramerate( _fps );
-                    _video_recorder.setProfile( (VideoRecorder::Profile) Settings::application.record.profile );
-                    _video_recorder.start();
-                    // dialog
-                    ImGui::OpenPopup(LABEL_VIDEO_SEQUENCE);
+                // if video encoding codec selected
+                if ( codec_id >= 0 )
+                {
+                    // Offer to create video from sequence
+                    ImGui::NewLine();
+                    if ( ImGui::Button( ICON_FA_FILM " Encode video", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+                        // start video recorder
+                        _video_recorder.setFiles( sourceSequenceFiles );
+                        _video_recorder.setFramerate( Settings::application.image_sequence.framerate_mode );
+                        _video_recorder.setProfile( (VideoRecorder::Profile) Settings::application.image_sequence.profile );
+                        _video_recorder.start();
+                        // open dialog
+                        ImGui::OpenPopup(LABEL_VIDEO_SEQUENCE);
+                    }
                 }
 
                 // video recorder finished: inform and open pannel to import video source from recent recordings
@@ -3954,7 +4001,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     else {
                         Log::Notify("Image sequence saved to %s.", _video_recorder.filename().c_str());
                         // open the file as new recording
-//                        if (Settings::application.recentRecordings.load_at_start)
+                        //   if (Settings::application.recentRecordings.load_at_start)
                         UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING, _video_recorder.filename());
                     }
                 }
@@ -3977,7 +4024,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     ImGui::ProgressBar(_video_recorder.progress());
 
                     ImGui::Spacing();
-                    if (ImGui::Button(ICON_FA_TIMES "  Cancel"))
+                    ImGui::Spacing();
+                    if (ImGui::Button(ICON_FA_TIMES " Cancel",ImVec2(ImGui::GetContentRegionAvail().x, 0)))
                         _video_recorder.cancel();
 
                     ImGui::EndPopup();
@@ -4564,8 +4612,6 @@ void Navigator::RenderMainPannelSession()
     //
     // Session
     //
-    ImGui::Text("Session");
-
     std::string sessions_current = Mixer::manager().session()->filename();
     if (sessions_current.empty())
         sessions_current = "<unsaved>";
@@ -4681,7 +4727,7 @@ void Navigator::RenderMainPannelSession()
                 ImGui::Text(" Custom thumbnail");
             }
             else {
-                ImGui::Text(" No thumbnail ");
+                ImGui::Text(" Automatic thumbnail ");
             }
             ImGui::EndTooltip();
         }
@@ -5032,8 +5078,6 @@ void Navigator::RenderMainPannelPlaylist()
     //
     // SESSION panel
     //
-    ImGui::Text("Playlists");
-
     // currently active playlist and folder
     static std::string playlist_header = PLAYLIST_FAVORITES;
     static Playlist active_playlist;
@@ -5523,20 +5567,7 @@ void Navigator::RenderMainPannelSettings()
     //
     // Appearance
     //
-    ImGui::Text("Settings");
-    ImGui::SameLine();
-    ImGui::SetCursorPosX( pannel_width_ IMGUI_RIGHT_ALIGN);
-    if ( ImGuiToolkit::IconButton(ICON_FA_SAVE,"Export settings\nYou can then "
-                                               "launch vimix with the option "
-                                               "'--settings filename.xml' "
-                                               "to restore output windows and configuration.") ){
-        // launch file dialog to select file to save settings
-        if (UserInterface::manager().settingsexportdialog)
-            UserInterface::manager().settingsexportdialog->open();
-    }
-
     int v = Settings::application.accent_color;
-    ImGui::Spacing();
     ImGui::SetCursorPosX(0.5f * width_);
     if (ImGui::RadioButton("##Color", &v, v)){
         Settings::application.accent_color = (v+1)%3;
@@ -5609,16 +5640,29 @@ void Navigator::RenderMainPannelSettings()
         Settings::application.record.buffering_mode = 2;
 
     ImGuiToolkit::Indication("Priority when buffer is full and recorder has to skip frames;\n"
-                             ICON_FA_CARET_RIGHT " Duration: Correct duration, variable framerate."
-                             ICON_FA_CARET_RIGHT " Framerate: Correct framerate, shorter duration.\n",
+                             ICON_FA_CARET_RIGHT " Duration: Correct duration, variable framerate.\n"
+                             ICON_FA_CARET_RIGHT " Framerate: Correct framerate, shorter duration.",
                              ICON_FA_CHECK_DOUBLE);
     ImGui::SameLine(0);
     ImGui::SetCursorPosX(width_);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::Combo("##Priority", &Settings::application.record.priority_mode, "Duration\0Framerate\0");
+    const char *prioritylabel[2] = {"Duration", "Framerate"};
+    if (ImGui::BeginCombo("##Priority", prioritylabel[Settings::application.record.priority_mode])) {
+        if (ImGui::Selectable(prioritylabel[0], Settings::application.record.priority_mode == 0))
+            Settings::application.record.priority_mode = 0;
+        if (!Settings::application.accept_audio || Settings::application.record.audio_device.empty()) {
+            if (ImGui::Selectable(prioritylabel[1], Settings::application.record.priority_mode == 1))
+                Settings::application.record.priority_mode = 1;
+        } else {
+            ImGui::Selectable(prioritylabel[1], false, ImGuiSelectableFlags_Disabled);
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Unable to set priority Framerate when recoding with audio.");
+        }
+        ImGui::EndCombo();
+    }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     if (ImGuiToolkit::TextButton("Priority"))
-        Settings::application.record.priority_mode = 1;
+        Settings::application.record.priority_mode = 0;
 
     //
     // AUDIO
@@ -5657,6 +5701,11 @@ void Navigator::RenderMainPannelSettings()
                                        + namedev;
                 if (ImGui::Selectable(labeldev.c_str())) {
                     Settings::application.record.audio_device = namedev;
+                    // warning on recording mode
+                    if (Settings::application.record.priority_mode > 0) {
+                        Log::Notify( "When recording with audio, Priority mode must be set to 'Duration'.");
+                        Settings::application.record.priority_mode=0;
+                    }
                 }
             }
             ImGui::EndCombo();
@@ -5817,6 +5866,18 @@ void Navigator::RenderMainPannelSettings()
     //
     ImGuiToolkit::Spacing();
     ImGui::TextDisabled("System");
+    ImGui::SameLine();
+
+    ImGui::SetCursorPosX( pannel_width_ IMGUI_RIGHT_ALIGN);
+    if ( ImGuiToolkit::IconButton(ICON_FA_SAVE,"Export settings\nYou can then "
+                                               "launch vimix with the option "
+                                               "'--settings filename.xml' "
+                                               "to restore output windows and configuration.") ){
+        // launch file dialog to select file to save settings
+        if (UserInterface::manager().settingsexportdialog)
+            UserInterface::manager().settingsexportdialog->open();
+    }
+    ImGui::Spacing();
 
     static bool need_restart = false;
     static bool vsync = (Settings::application.render.vsync > 0);
@@ -5962,17 +6023,9 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
         ImGui::SetScrollX(0);
 
         //
-        // TITLE
-        //
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::SetCursorPosY(0.5f * (iconsize.y - ImGui::GetTextLineHeight()));
-        ImGui::Text("Vimix");
-
-        //
         // Panel Mode selector
         //
-        //
-        ImGui::SetCursorPosY(width_ - style.WindowPadding.x);
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
         ImGui::Columns(5, NULL, false);
         bool selected_panel_mode[5] = {0};
@@ -6008,17 +6061,32 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
             ImGui::EndMenu();
         }
 
-        ImGui::SetCursorPosY(2.f * width_ - style.WindowPadding.x);
-
         //
         // Panel content
         //
-        if (pannel_main_mode_ == 0)
+        float __p = width_ + style.ItemSpacing.y + ImGui::GetTextLineHeightWithSpacing();
+        ImGui::SetCursorPosY(__p);
+        if (pannel_main_mode_ == 0) {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("Session");
+            ImGui::SetCursorPosY(__p + ImGui::GetFrameHeightWithSpacing());
+            ImGui::PopFont();
             RenderMainPannelSession();
-        else if (pannel_main_mode_ == 1)
+        }
+        else if (pannel_main_mode_ == 1) {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("Playlist");
+            ImGui::SetCursorPosY(__p + ImGui::GetFrameHeightWithSpacing());
+            ImGui::PopFont();
             RenderMainPannelPlaylist();
-        else
+        }
+        else {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::Text("Settings");
+            ImGui::SetCursorPosY(__p + ImGui::GetFrameHeightWithSpacing());
+            ImGui::PopFont();
             RenderMainPannelSettings();
+        }
 
         //
         // About vimix

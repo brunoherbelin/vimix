@@ -44,7 +44,7 @@ protected:
     // gstreamer functions
     static std::string assemble (MultiFileRecorder *rec);
     bool start_record (const std::string &video_filename);
-    bool add_image    (const std::string &image_filename);
+    bool add_image    (const std::string &image_filename, GstCaps *caps);
     bool end_record();
 
     // gstreamer callbacks
@@ -59,7 +59,6 @@ private:
     int fps_;
     int width_;
     int height_;
-    int bpp_;
 
     // encoder
     std::list<std::string> files_;

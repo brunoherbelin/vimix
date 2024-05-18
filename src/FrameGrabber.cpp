@@ -272,7 +272,7 @@ FrameGrabber::FrameGrabber(): finished_(false), initialized_(false), active_(fal
     endofstream_(false), accept_buffer_(false), buffering_full_(false), pause_(false),
     pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr), timer_firstframe_(0),
     timer_pauseframe_(0), timestamp_(0), duration_(0), pause_duration_(0), frame_count_(0),
-    buffering_size_(MIN_BUFFER_SIZE), buffering_count_(0), timestamp_on_clock_(true)
+    keyframe_count_(0), buffering_size_(MIN_BUFFER_SIZE), buffering_count_(0), timestamp_on_clock_(true)
 {
     // unique id
     id_ = BaseToolkit::uniqueId();
@@ -319,11 +319,16 @@ void FrameGrabber::setPaused(bool pause)
 {
     // can pause only if already active
     if (active_) {
+
         // keep time of switch from not-paused to paused
         if (pause && !pause_)
             timer_pauseframe_ = gst_clock_get_time(timer_);
+
         // set to paused
         pause_ = pause;
+
+        // pause pipeline
+        gst_element_set_state (pipeline_, pause_ ? GST_STATE_PAUSED : GST_STATE_PLAYING);
     }
 }
 
@@ -369,10 +374,31 @@ void FrameGrabber::callback_enough_data (GstAppSrc *, gpointer p)
     if (grabber) {
         grabber->accept_buffer_ = false;
 #ifndef NDEBUG
-                        Log::Info("Frame capture : Buffer full");
+        Log::Info("Frame capture : Buffer full");
 #endif
     }
 }
+
+
+GstBusSyncReply FrameGrabber::signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
+{
+    // only handle error messages
+    if (ptr != nullptr && GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
+        // inform user
+        GError *error;
+        gst_message_parse_error(msg, &error, NULL);
+        Log::Warning("FrameGrabber %s : %s",
+                     std::to_string(reinterpret_cast<FrameGrabber *>(ptr)->id()).c_str(),
+                     error->message);
+        g_error_free(error);
+//    } else {
+//        g_printerr("FrameGrabber msg %s \n", GST_MESSAGE_TYPE_NAME(msg));
+    }
+
+    // drop all messages to avoid filling up the stack
+    return GST_BUS_DROP;
+}
+
 
 GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo * info, gpointer p)
 {
@@ -409,6 +435,15 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
 
             // if initialization succeeded
             if (initialized_) {
+
+#ifdef IGNORE_GST_ERROR_MESSAGE
+                //        avoid filling up bus with messages
+                gst_bus_set_flushing(gst_element_get_bus(pipeline_), true);
+#else
+                // set message handler for the pipeline's bus
+                gst_bus_set_sync_handler(gst_element_get_bus(pipeline_),
+                                         FrameGrabber::signal_handler, this, NULL);
+#endif
                 // attach EOS detector
                 GstPad *pad = gst_element_get_static_pad (gst_bin_get_by_name (GST_BIN (pipeline_), "sink"), "sink");
                 gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, FrameGrabber::callback_event_probe, this, NULL);
@@ -458,6 +493,12 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 if (timer_pauseframe_ > 0) {
                     // compute duration of the pausing time and add to total pause duration
                     pause_duration_ += gst_clock_get_time(timer_) - timer_pauseframe_;
+
+                    // sync audio packets
+                    GstElement *audiosync = GST_ELEMENT_CAST(gst_bin_get_by_name(GST_BIN(pipeline_), "audiosync"));
+                    if (audiosync)
+                        g_object_set(G_OBJECT(audiosync), "ts-offset", -timer_pauseframe_, NULL);
+
                     // reset pause frame time
                     timer_pauseframe_ = 0;
                 }
@@ -469,25 +510,31 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
             // if time is zero (first frame) or if delta time is passed one frame duration (with a margin)
             if ( t == 0 || (t - duration_) > (frame_duration_ - 3000) ) {
 
-                // count frames
-                frame_count_++;
-
-                // set duration to an exact multiples of frame duration
-                duration_ = ( t / frame_duration_) * frame_duration_;
+                // add a key frame every second (if keyframecount is valid)
+                if (keyframe_count_ > 1 && frame_count_ % keyframe_count_ < 1) {
+                    GstEvent *event
+                        = gst_video_event_new_downstream_force_key_unit(timestamp_,
+                                                                        GST_CLOCK_TIME_NONE,
+                                                                        GST_CLOCK_TIME_NONE,
+                                                                        FALSE,
+                                                                        frame_count_ / keyframe_count_);
+                    gst_element_send_event(GST_ELEMENT(src_), event);
+                }
 
                 if (timestamp_on_clock_)
-                    // automatic frame presentation time stamp
+                    // automatic frame presentation time stamp (DURATION PRIORITY)
                     // Pipeline set to "do-timestamp"=TRUE
                     // set timestamp to actual time
                     timestamp_ = duration_;
                 else {
+                    // force frame presentation timestamp (FRAMERATE PRIORITY)
+                    // Pipeline set to "do-timestamp"=FALSE
+                    GST_BUFFER_DTS(buffer) = GST_BUFFER_PTS(buffer) = timestamp_;
+                    // set frame duration
+                    buffer->duration = frame_duration_;
                     // monotonic timestamp increment to keep fixed FPS
                     // Pipeline set to "do-timestamp"=FALSE
                     timestamp_ += frame_duration_;
-                    // force frame presentation timestamp
-                    buffer->pts = timestamp_;
-                    // set frame duration
-                    buffer->duration = frame_duration_;
                 }
 
                 // when buffering is (almost) full, refuse buffer 1 frame over 2
@@ -513,6 +560,12 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 // push frame
                 gst_app_src_push_buffer (src_, buffer);
                 // NB: buffer will be unrefed by the appsrc
+
+                // count frames
+                frame_count_++;
+
+                // update duration to an exact multiples of frame duration
+                duration_ = ( t / frame_duration_) * frame_duration_;
             }
         }
     }

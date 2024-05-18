@@ -4,8 +4,6 @@
 #include <gst/gstformat.h>
 #include <gst/video/video.h>
 
-#include <stb_image.h>
-
 #include "Log.h"
 #include "GstToolkit.h"
 #include "BaseToolkit.h"
@@ -16,7 +14,7 @@
 #include "MultiFileRecorder.h"
 
 MultiFileRecorder::MultiFileRecorder() :
-    fps_(0), width_(0), height_(0), bpp_(3),
+    fps_(0), width_(0), height_(0),
     pipeline_(nullptr), src_(nullptr), frame_count_(0), timestamp_(0), frame_duration_(0),
     cancel_(false), endofstream_(false), accept_buffer_(false), progress_(0.f)
 {
@@ -66,55 +64,80 @@ void MultiFileRecorder::callback_enough_data (GstAppSrc *, gpointer p)
         grabber->accept_buffer_ = false;
 }
 
-bool MultiFileRecorder::add_image (const std::string &image_filename)
+bool MultiFileRecorder::add_image (const std::string &image_filename, GstCaps *caps)
 {
-    if (image_filename.empty())
+    std::string uri = GstToolkit::filename_to_uri(image_filename);
+    if (uri.empty())
         return false;
 
-    // read pix
-    int c = 0;
-    int w = 0;
-    int h = 0;
-    unsigned char* rgb = stbi_load(image_filename.c_str(), &w, &h, &c, bpp_);
+    // create playbin
+    GstElement *img_pipeline = gst_element_factory_make("playbin", "imgreader");
 
-    if ( rgb && w == width_ && h == height_ && c == bpp_) {
+    // set uri of file to open
+    g_object_set(G_OBJECT(img_pipeline), "uri", uri.c_str(), NULL);
 
-        // new buffer
-        guint size = width_ * height_ * bpp_;
-        GstBuffer *buffer = gst_buffer_new_and_alloc (size);
+    // set flag to only read VIDEO
+    g_object_set(G_OBJECT(img_pipeline), "flags", 0x00000001, NULL);
 
-        // map gst buffer into a memory  WRITE target
-        GstMapInfo map;
-        gst_buffer_map (buffer, &map, GST_MAP_WRITE);
+    // instruct sink to use the required caps
+    GstElement *sink = gst_element_factory_make("appsink", "imgsink");
+    gst_app_sink_set_caps(GST_APP_SINK(sink), caps);
 
-        // transfer pixels from memory to buffer memory
-        memmove(map.data, rgb, size);
+    // set playbin sink
+    g_object_set(G_OBJECT(img_pipeline), "video-sink", sink, NULL);
 
-        // un-map
-        gst_buffer_unmap (buffer, &map);
+    /* Start the pipeline */
+    gst_element_set_state(img_pipeline, GST_STATE_PLAYING);
 
-        // free stbi memory
-        stbi_image_free( rgb );
+    /* Wait for the pipeline to preroll, i.e., wait for the image to be loaded */
+    gst_element_get_state(img_pipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
 
-        //g_print("frame_added @ timestamp = %ld\n", timestamp_);
-        GST_BUFFER_DTS(buffer) = GST_BUFFER_PTS(buffer) = timestamp_;
+    /* Get the sample from appsink */
+    GstSample *sample;
+    g_signal_emit_by_name(sink, "pull-sample", &sample, NULL);
 
-        // set frame duration
-        buffer->duration = frame_duration_;
+    /* Extract the buffer */
+    GstBuffer *buffer_read = gst_sample_get_buffer(sample);
 
-        // monotonic time increment to keep fixed FPS
-        timestamp_ += frame_duration_;
+    bool ret = false;
+    // map the buffer to access the data
+    GstMapInfo map_read;
+    if ( gst_buffer_map(buffer_read, &map_read, GST_MAP_READ) && map_read.size > 0 ) {
 
-        // push frame
-        if ( gst_app_src_push_buffer (src_, buffer) != GST_FLOW_OK )
-            return false;
+        // map a new gst buffer into memory to WRITE target
+        GstMapInfo map_write;
+        GstBuffer *buffer_write = gst_buffer_new_and_alloc(map_read.size);
+        if ( gst_buffer_map(buffer_write, &map_write, GST_MAP_WRITE) ) {
 
+            // transfer pixels from map_read memory to map_write memory (buffer to write to)
+            memmove(map_write.data, map_read.data, map_read.size);
+
+            // un-map buffer
+            gst_buffer_unmap(buffer_write, &map_write);
+
+            //g_print("frame_added @ timestamp = %ld\n", timestamp_);
+            GST_BUFFER_DTS(buffer_write) = GST_BUFFER_PTS(buffer_write) = timestamp_;
+
+            // set frame duration
+            buffer_write->duration = frame_duration_;
+
+            // monotonic time increment to keep fixed FPS
+            timestamp_ += frame_duration_;
+
+            // push buffer as new frame in appsrc
+            ret = gst_app_src_push_buffer(src_, buffer_write) == GST_FLOW_OK;
+        }
+
+        // unmap read buffer
+        gst_buffer_unmap(buffer_read, &map_read);
     }
-    else
-        return false;
 
+    /* Clean up */
+    gst_sample_unref(sample);
+    gst_element_set_state(img_pipeline, GST_STATE_NULL);
+    gst_object_unref(GST_OBJECT(img_pipeline));
 
-    return true;
+    return ret;
 }
 
 
@@ -132,7 +155,19 @@ bool MultiFileRecorder::start_record (const std::string &video_filename)
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! queue ! videoconvert ! videoscale ! ";
-    description += VideoRecorder::profile_description[ profile_ ];
+
+    // test for a hardware accelerated encoder
+    if (Settings::application.render.gpu_decoding && (int) VideoRecorder::hardware_encoder.size() > 0 &&
+        GstToolkit::has_feature(VideoRecorder::hardware_encoder[profile_]) ) {
+
+        description += VideoRecorder::hardware_profile_description[Settings::application.image_sequence.profile];
+        Log::Info("MultiFileRecorder use hardware accelerated encoder (%s)", VideoRecorder::hardware_encoder[profile_].c_str());
+    }
+    // revert to software encoder
+    else
+        description += VideoRecorder::profile_description[profile_];
+
+    // qt muxer in .mov file
     description += "qtmux ! filesink name=sink";
 
     // parse pipeline descriptor
@@ -179,7 +214,7 @@ bool MultiFileRecorder::start_record (const std::string &video_filename)
 
     // specify recorder resolution and framerate in the source caps
     GstCaps *caps  = gst_caps_new_simple ("video/x-raw",
-                                          "format", G_TYPE_STRING, bpp_ < 4 ? "RGB" : "RGBA",
+                                          "format", G_TYPE_STRING, "RGB",
                                           "width",  G_TYPE_INT, width_ - width_%2,
                                           "height", G_TYPE_INT, height_ - height_%2,
                                           "framerate", GST_TYPE_FRACTION, fps_, 1,
@@ -204,35 +239,7 @@ bool MultiFileRecorder::start_record (const std::string &video_filename)
     int max = 100;
     accept_buffer_ = false;
     while (!accept_buffer_ && --max > 0)
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-
-
-//    // send request key frame upstream
-//    GstEvent* event = gst_video_event_new_upstream_force_key_unit (GST_CLOCK_TIME_NONE, TRUE, 1);
-//    if (!gst_element_send_event( GST_ELEMENT(sink), event) )
-//        Log::Warning("MultiFileRecorder: Failed to request key unit.");
-
-//    GstPad *padsrc = gst_element_get_static_pad ( GST_ELEMENT (sink), "sink");
-//    gst_pad_push_event(padsrc, gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM, gst_structure_new("GstForceKeyUnit", "all-headers",
-//                                                                                                 G_TYPE_BOOLEAN, TRUE, NULL)));
-//    gst_object_unref (padsrc);
-
-//    // send request key frame downstream
-//    GstPad *padsrc = gst_element_get_static_pad ( GST_ELEMENT (src_), "src");
-//    GstStructure *s = gst_structure_new("GstForceKeyUnit",
-//                                        "timestamp", G_TYPE_UINT64, 0,
-//                                        "stream-time", G_TYPE_UINT64, 0,
-//                                        "running-time", G_TYPE_UINT64, 0,
-//                                        "all-headers", G_TYPE_BOOLEAN, TRUE,
-//                                        NULL);
-//    if ( !gst_pad_push_event(padsrc, gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s )) )
-//        Log::Warning("MultiFileRecorder: Failed to force key unit.");
-//    gst_object_unref (padsrc);
-
-    GstEvent* event = gst_video_event_new_downstream_force_key_unit (GST_CLOCK_TIME_NONE, GST_CLOCK_TIME_NONE, GST_CLOCK_TIME_NONE, TRUE, 1);
-    if (!gst_element_send_event( GST_ELEMENT(src_), event) )
-        Log::Warning("MultiFileRecorder: Failed to force key unit.");
-
+        std::this_thread::sleep_for(std::chrono::milliseconds(4));
 
     return true;
 }
@@ -305,8 +312,13 @@ bool MultiFileRecorder::finished ()
             // get the filename from encoder
             filename_ = promises_.back().get();
             if (!filename_.empty()) {
-                // save path location
-                Settings::application.recentRecordings.push(filename_);
+                // save path location if valid
+                std::string uri = GstToolkit::filename_to_uri(filename_);
+                MediaInfo media = MediaPlayer::UriDiscoverer(uri);
+                if (media.valid && !media.isimage)
+                    Settings::application.recentRecordings.push(filename_);
+                else
+                    Settings::application.recentRecordings.remove(filename_);
             }
             // done with this recoding
             promises_.pop_back();
@@ -324,24 +336,31 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
     rec->progress_ = 0.f;
     rec->width_ = 0;
     rec->height_ = 0;
-    rec->bpp_ = 0;
+    rec->cancel_ = false;
 
     // input files
     if ( rec->files_.size() < 1 ) {
-        Log::Warning("MultiFileRecorder: No image given.");
+        Log::Warning("MultiFileRecorder No image given.");
+        return filename;
+    }
+
+    // get info first file
+    std::string uri = GstToolkit::filename_to_uri(rec->files_.front());
+    MediaInfo media = MediaPlayer::UriDiscoverer(uri);
+    if (!media.valid || !media.isimage || media.width < 10 || media.height < 10) {
+        Log::Warning("MultiFileRecorder Invalid file %s.", rec->files_.front().c_str());
         return filename;
     }
 
     // set recorder resolution from first image
-    stbi_info( rec->files_.front().c_str(), &rec->width_, &rec->height_, &rec->bpp_);
-
-    if ( rec->width_ < 10 || rec->height_ < 10 || rec->bpp_ < 3 ) {
-        Log::Warning("MultiFileRecorder: Invalid image %s.", rec->files_.front().c_str());
-        return filename;
-    }
+    rec->width_ = media.width;
+    rec->height_ = media.height;
 
     // progress increment
     float inc_ = 1.f / ( (float) rec->files_.size() + 2.f);
+
+    // keyframe increment
+    guint64 keyf_ = MAXI( 2, rec->files_.size() / 20);
 
     // initialize
     rec->frame_count_ = 0;
@@ -350,10 +369,18 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
         filename += "image";
     filename +=  "_sequence.mov";
 
-    Log::Info("MultiFileRecorder creating %s, %d x %d px.", filename.c_str(), rec->width_, rec->height_);
+    Log::Info("MultiFileRecorder Creating %s, %d x %d px.", filename.c_str(), rec->width_, rec->height_);
 
     if ( rec->start_record( filename ) )
     {
+        // specify caps for images (same as video, without framerate)
+        GstCaps *tmp_caps = gst_caps_copy( gst_app_src_get_caps(rec->src_) );
+        GValue v = G_VALUE_INIT;
+        g_value_init (&v, GST_TYPE_FRACTION);
+        gst_value_set_fraction (&v, 0, 1);
+        gst_caps_set_value(tmp_caps, "framerate", &v);
+        g_value_unset (&v);
+
         // progressing
         rec->progress_ += inc_;
 
@@ -363,16 +390,25 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
             if ( rec->cancel_ )
                 break;
 
-            if ( rec->add_image( *file ) )
+            if ( rec->add_image( *file, tmp_caps) ) {
                 // validate file
                 rec->frame_count_++;
+
+                // add a key frame every
+                if ( rec->frame_count_%keyf_ < 1 ) {
+                    GstEvent *event = gst_video_event_new_downstream_force_key_unit(
+                        rec->timestamp_, GST_CLOCK_TIME_NONE, GST_CLOCK_TIME_NONE, FALSE, rec->frame_count_ / keyf_);
+                    if (!gst_element_send_event(GST_ELEMENT(rec->src_), event))
+                        Log::Info("MultiFileRecorder Failed to force key unit %l.", rec->timestamp_);
+                }
+            }
             else
-                Log::Info("MultiFileRecorder could not add %s.", file->c_str());
+                Log::Info("MultiFileRecorder Could not add %s.", file->c_str());
 
             // pause in case appsrc buffer is full
             int max = 100;
             while (!rec->accept_buffer_ && --max > 0)
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                std::this_thread::sleep_for(std::chrono::milliseconds(4));
 
             // progressing
             rec->progress_ += inc_;
@@ -380,13 +416,15 @@ std::string  MultiFileRecorder::assemble (MultiFileRecorder *rec)
 
         // Give more explanation for possible errors
         if ( rec->frame_count_ < rec->files_.size())
-            Log::Info("MultiFileRecorder not fully successful; are all images %d x %d px?",rec->width_, rec->height_);
+            Log::Info("MultiFileRecorder Not fully successful; are all images %d x %d px?",rec->width_, rec->height_);
 
         // close file properly
         if ( rec->end_record() )
             Log::Info("MultiFileRecorder %d images encoded (%s).", rec->frame_count_, GstToolkit::time_to_string(rec->timestamp_, GstToolkit::TIME_STRING_READABLE).c_str());
         else
             filename = std::string();
+
+        gst_caps_unref(tmp_caps);
     }
     else
         filename = std::string();

@@ -104,7 +104,6 @@ struct RecordConfig
     int profile;
     uint timeout;
     int delay;
-    int resolution_mode;
     int framerate_mode;
     int buffering_mode;
     int priority_mode;
@@ -115,7 +114,6 @@ struct RecordConfig
         profile = 0;
         timeout = RECORD_MAX_TIMEOUT;
         delay = 0;
-        resolution_mode = 1;
         framerate_mode = 1;
         buffering_mode = 2;
         priority_mode = 1;
@@ -318,6 +316,7 @@ struct Application
 
     // settings exporters
     RecordConfig record;
+    RecordConfig image_sequence;
 
     // settings new source
     SourceConfig source;
@@ -380,6 +379,7 @@ struct Application
         windows[0].h = 930;
         accept_audio = false;
         dialogPosition = glm::ivec2(-1, -1);
+        image_sequence.framerate_mode = 15;
     }
 
 };
