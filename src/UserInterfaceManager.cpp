@@ -268,6 +268,9 @@ void UserInterface::handleKeyboard()
             if ( TryClose() )
                 Rendering::manager().close();
         }
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_F), false )) {
+            Rendering::manager().mainWindow().toggleFullscreen();
+        }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_O), false )) {
             // SHIFT + CTRL + O : reopen current session
             if (shift_modifier_active && !Mixer::manager().session()->filename().empty())
