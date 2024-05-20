@@ -239,7 +239,7 @@
 #define SHORTCUT_SHADEREDITOR CTRL_MOD "E"
 #define TOOLTIP_FULLSCREEN    "Fullscreen "
 #define SHORTCUT_FULLSCREEN   CTRL_MOD "F"
-#define TOOLTIP_MAIN          "Main menu "
+#define TOOLTIP_MAIN          "Home panel "
 #define SHORTCUT_MAIN         "HOME"
 #define TOOLTIP_NEW_SOURCE    "Insert "
 #define SHORTCUT_NEW_SOURCE   "INS"

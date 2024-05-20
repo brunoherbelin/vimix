@@ -3263,6 +3263,7 @@ void Navigator::Render()
     if (!std::get<0>(tooltip).empty()) {
         // pseudo timeout for showing tooltip
         if (_timeout_tooltip > IMGUI_TOOLTIP_TIMEOUT) {
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
             // if a pointer to a Source is provided in tupple
             Source *_s = std::get<2>(tooltip);
             if (_s != nullptr) {
@@ -3290,7 +3291,7 @@ void Navigator::Render()
             // otherwise just show a standard tooltip [action - shortcut key]
             else
                 ImGuiToolkit::ToolTip(std::get<0>(tooltip).c_str(), std::get<1>(tooltip).c_str());
-
+            ImGui::PopStyleVar();
         }
         else
             ++_timeout_tooltip;
@@ -4670,7 +4671,7 @@ void Navigator::RenderMainPannelSession()
         width = height * se->frame()->aspectRatio() * ( se->frame()->projectionSize().x / se->frame()->projectionSize().y);
     }
     // centered image
-    ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
+    ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y) );
     ImGui::Image((void*)(uintptr_t) se->frame()->texture(), ImVec2(width, height));
 
     // right side options for session
@@ -4724,6 +4725,7 @@ void Navigator::RenderMainPannelSession()
                 if (_thumbnail != nullptr)
                     _session_thumbnail.fill( _thumbnail );
             }
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
             ImGui::BeginTooltip();
             if (_session_thumbnail.filled()) {
                 _session_thumbnail.Render(230);
@@ -4733,6 +4735,7 @@ void Navigator::RenderMainPannelSession()
                 ImGui::Text(" Automatic thumbnail ");
             }
             ImGui::EndTooltip();
+            ImGui::PopStyleVar();
         }
     }
 
@@ -4887,10 +4890,12 @@ void Navigator::RenderMainPannelSession()
                             _undo_thumbnail.reset();
                     }
                     // draw thumbnail in tooltip
+                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
                     ImGui::BeginTooltip();
                     _undo_thumbnail.Render(size.x);
                     ImGui::Text("%s", text.c_str());
                     ImGui::EndTooltip();
+                    ImGui::PopStyleVar();
                     ++count_over; // prevents display twice on item overlap
                 }
 
@@ -5005,10 +5010,12 @@ void Navigator::RenderMainPannelSession()
                         current_over = _over;
                     }
                     // draw thumbnail in tooltip
+                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
                     ImGui::BeginTooltip();
                     _snap_thumbnail.Render(size.x);
                     ImGui::Text("%s", _snap_date.c_str());
                     ImGui::EndTooltip();
+                    ImGui::PopStyleVar();
                     ++count_over; // prevents display twice on item overlap
                 }
             }
@@ -5461,6 +5468,7 @@ void Navigator::RenderMainPannelPlaylist()
 
         if ( !_file_info.empty()) {
 
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
             ImGui::BeginTooltip();
             ImVec2 p_ = ImGui::GetCursorScreenPos();
             _file_thumbnail.Render(240);
@@ -5470,6 +5478,7 @@ void Navigator::RenderMainPannelPlaylist()
                 ImGui::Text(ICON_FA_TAG);
             }
             ImGui::EndTooltip();
+            ImGui::PopStyleVar();
         }
     }
 
