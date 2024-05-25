@@ -2517,7 +2517,6 @@ void UserInterface::RenderHelp()
 
     if (ImGui::CollapsingHeader("Views"))
     {
-
         ImGui::Columns(2, "viewscolumn", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
@@ -2546,7 +2545,7 @@ void UserInterface::RenderHelp()
         ImGui::PopTextWrapPos();
     }
 
-    if (ImGui::CollapsingHeader("Windows"))
+    if (ImGui::CollapsingHeader("Tools"))
     {
         ImGui::Columns(2, "windowcolumn", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
@@ -2578,6 +2577,62 @@ void UserInterface::RenderHelp()
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
+    }
+
+    if (ImGui::CollapsingHeader("Files"))
+    {
+        {
+            float H = ImGui::GetFrameHeightWithSpacing();
+            ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar;
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
+
+            ImGui::BeginChild("PlaylistHelp", ImVec2(0, 10.f * H), true, window_flags);
+            if (ImGui::BeginMenuBar()) {
+                ImGuiToolkit::Icon(4, 8);
+                ImGui::Text (" Playlist");
+                ImGui::EndMenuBar();
+            }
+
+            {
+                ImGui::BeginChild("SessionHelp", ImVec2(0, 7.f * H), true, window_flags);
+                if (ImGui::BeginMenuBar()) {
+                    ImGuiToolkit::Icon(7, 1);
+                    ImGui::Text (" Session");
+                    ImGui::EndMenuBar();
+                }
+
+                {
+                    ImGui::BeginChild("SourceHelp", ImVec2(0, 4.f * H), true, window_flags);
+                    if (ImGui::BeginMenuBar()) {
+                        ImGuiToolkit::Icon(14, 11);
+                        ImGui::Text ("Source");
+                        ImGui::EndMenuBar();
+                    }
+
+                    ImGui::BulletText("Video, image & session files");
+                    ImGui::BulletText("Image sequence (image files)");
+                    ImGui::BulletText("Input devices & streams (e.g. webcams)");
+                    ImGui::BulletText("Patterns & generated graphics (e.g. text)");
+                    ImGui::EndChild();
+                }
+
+                ImGui::PushTextWrapPos(width_window - 10.f);
+                ImGui::Spacing();
+                ImGui::Text ("A session contains several sources mixed together and keeps previous versions. "
+                             "It is saved in a .mix file.");
+                ImGui::PopTextWrapPos();
+                ImGui::EndChild();
+            }
+
+            ImGui::PushTextWrapPos(width_window - 10.f);
+            ImGui::Spacing();
+            ImGui::Text ("A playlist keeps a list of sessions (or lists the .mix files in a folder) "
+                         "for smooth transitions between files.");
+            ImGui::PopTextWrapPos();
+            ImGui::EndChild();
+
+            ImGui::PopStyleVar();
+        }
     }
 
     if (ImGui::CollapsingHeader("Sources"))
@@ -3507,12 +3562,7 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
             Mixer::manager().addSource ( Mixer::manager().createSourceClone() );
 
         // replace button
-        if ( s->cloned() ) {
-            ImGuiToolkit::ButtonDisabled( ICON_FA_PLUS_SQUARE " Replace", ImVec2(ImGui::GetContentRegionAvail().x, 0));
-            if (ImGui::IsItemHovered())
-                ImGuiToolkit::ToolTip("Cannot replace if source is cloned");
-        }
-        else if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+        if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
             // prepare panel for new source of same type
             MediaSource *file = dynamic_cast<MediaSource *>(s);
             MultiFileSource *sequence = dynamic_cast<MultiFileSource *>(s);
@@ -6068,7 +6118,7 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
             ImGui::EndMenu();
         }
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + 2.f * ImGui::GetTextLineHeightWithSpacing()) );
-        if (ImGui::BeginMenu("View")) {
+        if (ImGui::BeginMenu("Tools")) {
             UserInterface::manager().showMenuWindows();
             ImGui::EndMenu();
         }
