@@ -32,6 +32,7 @@ public:
     // implementation of cloning mechanism
     void detach();
     inline Source *origin() const { return origin_; }
+    std::string origin_name() const;
 
     // Filtering
     void setFilter(FrameBufferFilter::Type T);
@@ -44,6 +45,7 @@ protected:
 
     void init() override;
     Source *origin_;
+    std::string origin_name_;
 
     // control
     bool paused_;

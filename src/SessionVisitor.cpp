@@ -821,13 +821,12 @@ void SessionVisitor::visit (CloneSource& s)
     cloneNode->SetAttribute("type", "CloneSource");
 
     // origin of clone
-    if (s.origin()) {
-        XMLElement *origin = xmlDoc_->NewElement( "origin" );
-        cloneNode->InsertEndChild(origin);
+    XMLElement *origin = xmlDoc_->NewElement( "origin" );
+    XMLText *text = xmlDoc_->NewText( s.origin_name().c_str() );
+    if (s.origin())
         origin->SetAttribute("id", s.origin()->id());
-        XMLText *text = xmlDoc_->NewText( s.origin()->name().c_str() );
-        origin->InsertEndChild( text );
-    }
+    origin->InsertEndChild( text );
+    cloneNode->InsertEndChild(origin);
 
     // Filter
     xmlCurrent_ = xmlDoc_->NewElement( "Filter" );

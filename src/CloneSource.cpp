@@ -37,7 +37,7 @@
 CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(origin), paused_(false), filter_(nullptr)
 {
     // initial name copies the origin name: diplucates are namanged in session
-    name_ = origin->name();
+    name_ = origin_name_ = origin->name();
 
     // set symbol
     symbol_ = new Symbol(Symbol::CLONE, glm::vec3(0.75f, 0.75f, 0.01f));
@@ -64,6 +64,7 @@ CloneSource::~CloneSource()
 void CloneSource::detach()
 {
     Log::Info("Source '%s' detached from '%s'.", name().c_str(), origin_->name().c_str() );
+    origin_name_ = origin_->name();
     origin_ = nullptr;
 }
 
@@ -233,7 +234,7 @@ uint CloneSource::texture() const
 
 Source::Failure CloneSource::failed() const
 {
-    return (origin_ == nullptr || origin_->failed()) ? FAIL_FATAL : FAIL_NONE;
+    return (origin_ == nullptr || origin_->failed()) ? FAIL_RETRY : FAIL_NONE;
 }
 
 void CloneSource::accept(Visitor& v)
@@ -250,4 +251,11 @@ glm::ivec2 CloneSource::icon() const
 std::string CloneSource::info() const
 {
     return "Clone";
+}
+
+std::string CloneSource::origin_name() const
+{
+    if (origin_)
+        return origin_->name();
+    return origin_name_;
 }
