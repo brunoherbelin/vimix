@@ -182,8 +182,14 @@ void Mixer::update()
         insertSource(candidate_sources_.front().first, candidate_sources_.size() > 1 ? View::INVALID : View::MIXING);
 
         // the second element of the pair is the source to be replaced, i.e. deleted if provided
-        if (candidate_sources_.front().second != nullptr)
+        if (candidate_sources_.front().second != nullptr) {
+            // keep previous name
+            std::string previous_name = candidate_sources_.front().second->name();
+            // delete previous
             deleteSource(candidate_sources_.front().second);
+            // rename new source with previous name
+            candidate_sources_.front().first->setName(previous_name);
+        }
 
         candidate_sources_.pop_front();
     }
@@ -588,9 +594,6 @@ void Mixer::replaceSource(Source *previous, Source *s)
     loader.applyImageProcessing(*s, SessionVisitor::getClipboard(previous));
     s->setImageProcessingEnabled( previous->imageProcessingEnabled() );
     s->blendingShader()->blending = previous->blendingShader()->blending;
-
-    // rename s
-    renameSource(s, previous_name);
 
     // add source 's' and remove source 'previous'
     candidate_sources_.push_back( std::make_pair(s, previous) );
