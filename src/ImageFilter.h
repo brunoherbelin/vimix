@@ -139,6 +139,7 @@ protected:
     std::pair< FrameBuffer *, FrameBuffer * > buffers_;
     std::pair< ImageFilteringShader *, ImageFilteringShader *> shaders_;
     void updateParameters();
+    bool channel1_output_session;
 };
 
 

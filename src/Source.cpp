@@ -948,7 +948,7 @@ void Source::update(float dt)
                 if (ref_source != nullptr) {
                     if (ref_source->ready())
                         // set mask texture to mask source
-                        blendingshader_->mask_texture = ref_source->frame()->texture();
+                        blendingshader_->secondary_texture = ref_source->frame()->texture();
                     else
                         // retry for when source will be ready
                         need_update_ |= SourceUpdate_Mask;
@@ -964,7 +964,7 @@ void Source::update(float dt)
                 masksurface_->draw(glm::identity<glm::mat4>(), maskbuffer_->projection());
                 maskbuffer_->end();
                 // set mask texture to mask buffer
-                blendingshader_->mask_texture = maskbuffer_->texture();
+                blendingshader_->secondary_texture = maskbuffer_->texture();
             }
         }
 

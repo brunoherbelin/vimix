@@ -1,8 +1,6 @@
 ﻿#ifndef IMAGESHADER_H
 #define IMAGESHADER_H
 
-#include <string>
-#include <map>
 #include <sys/types.h>
 
 #include "Shader.h"
@@ -18,7 +16,7 @@ public:
     void accept(Visitor& v) override;
     void copy(ImageShader const& S);
 
-    uint mask_texture;
+    uint secondary_texture;
 
     // uniforms
     float stipple;
