@@ -1122,6 +1122,9 @@ void UserInterface::showMenuWindows()
     if ( ImGui::MenuItem( MENU_INPUTS, SHORTCUT_INPUTS, &Settings::application.widget.inputs) )
         UserInterface::manager().inputscontrol.setVisible(Settings::application.widget.inputs);
 
+    if ( ImGui::MenuItem( MENU_SHADEREDITOR, SHORTCUT_SHADEREDITOR, &Settings::application.widget.shader_editor) )
+        UserInterface::manager().shadercontrol.setVisible(Settings::application.widget.shader_editor);
+
     // Show Help
     ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP, &Settings::application.widget.help );
     // Show Logs
@@ -3558,8 +3561,10 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
         if ( s->failed() ) {
             ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         }
-        else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
-            Mixer::manager().addSource ( Mixer::manager().createSourceClone() );
+        else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+            Mixer::manager().addSource ( (Source *) Mixer::manager().createSourceClone() );
+            UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+        }
 
         // replace button
         if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {

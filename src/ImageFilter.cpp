@@ -272,7 +272,7 @@ void ImageFilteringShader::setCode(const std::string &code, std::promise<std::st
         custom_shading_.setShaders("shaders/image.vs", shader_code_, (int)n, ret);
     }
     else if (ret != nullptr) {
-        ret->set_value("No change.");
+        ret->set_value("No change");
     }
 }
 

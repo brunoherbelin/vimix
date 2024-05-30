@@ -465,10 +465,10 @@ Source * Mixer::createSourceGroup()
     return s;
 }
 
-Source * Mixer::createSourceClone(const std::string &namesource, bool copy_attributes)
+CloneSource * Mixer::createSourceClone(const std::string &namesource, bool copy_attributes)
 {
     // ready to create a source
-    Source *s = nullptr;
+    CloneSource *s = nullptr;
 
     // origin to clone is either the given name or the current
     SourceList::iterator origin = session_->end();
