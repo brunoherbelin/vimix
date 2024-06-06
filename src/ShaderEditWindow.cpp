@@ -18,6 +18,7 @@ TextEditor _editor;
 #include "SystemToolkit.h"
 #include "CloneSource.h"
 #include "DialogToolkit.h"
+#include "UserInterfaceManager.h"
 
 #include "ShaderEditWindow.h"
 
@@ -141,6 +142,8 @@ void ShaderEditWindow::Render()
         return;
     }
 
+    Source *cs = Mixer::manager().currentSource();
+
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
     {
@@ -149,6 +152,16 @@ void ShaderEditWindow::Render()
             Settings::application.widget.shader_editor = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_SHADEREDITOR))
         {
+            // Menu entry to allow creating a custom filter
+            if (ImGui::MenuItem(ICON_FA_SHARE_SQUARE "  Clone source & add filter",
+                                nullptr, nullptr, cs != nullptr)) {
+                CloneSource *filteredclone = Mixer::manager().createSourceClone();
+                filteredclone->setFilter(FrameBufferFilter::FILTER_IMAGE);
+                Mixer::manager().addSource ( filteredclone );
+                UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+            }
+            ImGui::Separator();
+
             // reload code from GPU
             if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload", nullptr, nullptr, current_ != nullptr)) {
                 // force reload
@@ -189,13 +202,6 @@ void ShaderEditWindow::Render()
             if (ImGui::MenuItem( ICON_FA_EXTERNAL_LINK_ALT "  Browse shadertoy.com"))
                 SystemToolkit::open("https://www.shadertoy.com/");
 
-            // Enable/Disable editor options
-            ImGui::Separator();
-            ImGui::MenuItem( ICON_FA_UNDERLINE "  Show Shader Inputs", nullptr, &show_shader_inputs_);
-            bool ws = _editor.IsShowingWhitespaces();
-            if (ImGui::MenuItem( ICON_FA_ELLIPSIS_H "  Show whitespace", nullptr, &ws))
-                _editor.SetShowWhitespaces(ws);
-
             // output manager menu
             ImGui::Separator();
             bool pinned = Settings::application.widget.shader_editor_view == Settings::application.current_view;
@@ -230,6 +236,13 @@ void ShaderEditWindow::Render()
                 _editor.Paste();
             if (ImGui::MenuItem( MENU_SELECTALL, SHORTCUT_SELECTALL, nullptr, _editor.GetText().size() > 1 ))
                 _editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(_editor.GetTotalLines(), 0));
+
+            // Enable/Disable editor options
+            ImGui::Separator();
+            ImGui::MenuItem( ICON_FA_UNDERLINE "  Show Shader Inputs", nullptr, &show_shader_inputs_);
+            bool ws = _editor.IsShowingWhitespaces();
+            if (ImGui::MenuItem( ICON_FA_ELLIPSIS_H "  Show whitespace", nullptr, &ws))
+                _editor.SetShowWhitespaces(ws);
 
             ImGui::EndMenu();
         }
@@ -301,11 +314,9 @@ void ShaderEditWindow::Render()
     else {
 
         ImageFilter *i = nullptr;
-        // get current clone source
-        Source *s = Mixer::manager().currentSource();
         // if there is a current source
-        if (s != nullptr) {
-            CloneSource *c = dynamic_cast<CloneSource *>(s);
+        if (cs != nullptr) {
+            CloneSource *c = dynamic_cast<CloneSource *>(cs);
             // if the current source is a clone
             if ( c != nullptr ) {
                 FrameBufferFilter *f = c->filter();
@@ -325,6 +336,7 @@ void ShaderEditWindow::Render()
             if (i == nullptr) {
                 status_ = "-";
                 _editor.SetText("");
+                _editor.SetReadOnly(true);
                 current_ = nullptr;
             }
         }
@@ -347,10 +359,13 @@ void ShaderEditWindow::Render()
                 _editor.SetText( filters_[i].code().first );
                 _editor.SetReadOnly(false);
                 _editor.SetColorizerEnable(true);
-                status_ = "Ready.";
+                status_ = "Ready";
             }
             // cancel edit clone
             else {
+                // possibility that source was removed
+                g_printerr("cancel edit clone %ld\n", current_);
+
                 // disable editor
                 _editor.SetReadOnly(true);
                 _editor.SetColorizerEnable(false);

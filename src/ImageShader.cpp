@@ -43,7 +43,7 @@ const char* MaskShader::mask_icons[4]  = { ICON_FA_WINDOW_CLOSE, ICON_FA_EDIT, I
 const char* MaskShader::mask_names[4]  = { "No mask", "Paint mask", "Shape mask", "Source mask" };
 const char* MaskShader::mask_shapes[5] = { "Ellipse", "Oblong", "Rectangle", "Horizontal", "Vertical" };
 
-ImageShader::ImageShader(): Shader(), mask_texture(0), stipple(0.f)
+ImageShader::ImageShader(): Shader(), secondary_texture(0), stipple(0.f)
 {
     // static program shader
     program_ = &imageShadingProgram;
@@ -60,21 +60,21 @@ void ImageShader::use()
     program_->setUniform("iNodes", iNodes);
 
     // default mask
-    if (mask_texture == 0)
-        mask_texture = Resource::getTextureWhite();
+    if (secondary_texture == 0)
+        secondary_texture = Resource::getTextureWhite();
 
     // setup mask texture
     glActiveTexture(GL_TEXTURE1);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glBindTexture  (GL_TEXTURE_2D, mask_texture);
+    glBindTexture  (GL_TEXTURE_2D, secondary_texture);
     glActiveTexture(GL_TEXTURE0);
 }
 
 void ImageShader::reset()
 {
     Shader::reset();
-    mask_texture = 0;
+    secondary_texture = 0;
 
     // no stippling
     stipple = 0.f;
@@ -84,7 +84,7 @@ void ImageShader::reset()
 
 void ImageShader::copy(ImageShader const& S)
 {
-    mask_texture = S.mask_texture;
+    secondary_texture = S.secondary_texture;
     stipple = S.stipple;
     iNodes = S.iNodes;
 }

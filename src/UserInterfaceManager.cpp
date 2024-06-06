@@ -268,6 +268,9 @@ void UserInterface::handleKeyboard()
             if ( TryClose() )
                 Rendering::manager().close();
         }
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_F), false )) {
+            Rendering::manager().mainWindow().toggleFullscreen();
+        }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_O), false )) {
             // SHIFT + CTRL + O : reopen current session
             if (shift_modifier_active && !Mixer::manager().session()->filename().empty())
@@ -1118,6 +1121,9 @@ void UserInterface::showMenuWindows()
 
     if ( ImGui::MenuItem( MENU_INPUTS, SHORTCUT_INPUTS, &Settings::application.widget.inputs) )
         UserInterface::manager().inputscontrol.setVisible(Settings::application.widget.inputs);
+
+    if ( ImGui::MenuItem( MENU_SHADEREDITOR, SHORTCUT_SHADEREDITOR, &Settings::application.widget.shader_editor) )
+        UserInterface::manager().shadercontrol.setVisible(Settings::application.widget.shader_editor);
 
     // Show Help
     ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP, &Settings::application.widget.help );
@@ -2514,7 +2520,6 @@ void UserInterface::RenderHelp()
 
     if (ImGui::CollapsingHeader("Views"))
     {
-
         ImGui::Columns(2, "viewscolumn", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
@@ -2543,7 +2548,7 @@ void UserInterface::RenderHelp()
         ImGui::PopTextWrapPos();
     }
 
-    if (ImGui::CollapsingHeader("Windows"))
+    if (ImGui::CollapsingHeader("Tools"))
     {
         ImGui::Columns(2, "windowcolumn", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
@@ -2575,6 +2580,62 @@ void UserInterface::RenderHelp()
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
+    }
+
+    if (ImGui::CollapsingHeader("Files"))
+    {
+        {
+            float H = ImGui::GetFrameHeightWithSpacing();
+            ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar;
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
+
+            ImGui::BeginChild("PlaylistHelp", ImVec2(0, 10.f * H), true, window_flags);
+            if (ImGui::BeginMenuBar()) {
+                ImGuiToolkit::Icon(4, 8);
+                ImGui::Text (" Playlist");
+                ImGui::EndMenuBar();
+            }
+
+            {
+                ImGui::BeginChild("SessionHelp", ImVec2(0, 7.f * H), true, window_flags);
+                if (ImGui::BeginMenuBar()) {
+                    ImGuiToolkit::Icon(7, 1);
+                    ImGui::Text (" Session");
+                    ImGui::EndMenuBar();
+                }
+
+                {
+                    ImGui::BeginChild("SourceHelp", ImVec2(0, 4.f * H), true, window_flags);
+                    if (ImGui::BeginMenuBar()) {
+                        ImGuiToolkit::Icon(14, 11);
+                        ImGui::Text ("Source");
+                        ImGui::EndMenuBar();
+                    }
+
+                    ImGui::BulletText("Video, image & session files");
+                    ImGui::BulletText("Image sequence (image files)");
+                    ImGui::BulletText("Input devices & streams (e.g. webcams)");
+                    ImGui::BulletText("Patterns & generated graphics (e.g. text)");
+                    ImGui::EndChild();
+                }
+
+                ImGui::PushTextWrapPos(width_window - 10.f);
+                ImGui::Spacing();
+                ImGui::Text ("A session contains several sources mixed together and keeps previous versions. "
+                             "It is saved in a .mix file.");
+                ImGui::PopTextWrapPos();
+                ImGui::EndChild();
+            }
+
+            ImGui::PushTextWrapPos(width_window - 10.f);
+            ImGui::Spacing();
+            ImGui::Text ("A playlist keeps a list of sessions (or lists the .mix files in a folder) "
+                         "for smooth transitions between files.");
+            ImGui::PopTextWrapPos();
+            ImGui::EndChild();
+
+            ImGui::PopStyleVar();
+        }
     }
 
     if (ImGui::CollapsingHeader("Sources"))
@@ -3260,6 +3321,7 @@ void Navigator::Render()
     if (!std::get<0>(tooltip).empty()) {
         // pseudo timeout for showing tooltip
         if (_timeout_tooltip > IMGUI_TOOLTIP_TIMEOUT) {
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
             // if a pointer to a Source is provided in tupple
             Source *_s = std::get<2>(tooltip);
             if (_s != nullptr) {
@@ -3287,7 +3349,7 @@ void Navigator::Render()
             // otherwise just show a standard tooltip [action - shortcut key]
             else
                 ImGuiToolkit::ToolTip(std::get<0>(tooltip).c_str(), std::get<1>(tooltip).c_str());
-
+            ImGui::PopStyleVar();
         }
         else
             ++_timeout_tooltip;
@@ -3499,16 +3561,13 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
         if ( s->failed() ) {
             ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         }
-        else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
-            Mixer::manager().addSource ( Mixer::manager().createSourceClone() );
+        else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+            Mixer::manager().addSource ( (Source *) Mixer::manager().createSourceClone() );
+            UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+        }
 
         // replace button
-        if ( s->cloned() ) {
-            ImGuiToolkit::ButtonDisabled( ICON_FA_PLUS_SQUARE " Replace", ImVec2(ImGui::GetContentRegionAvail().x, 0));
-            if (ImGui::IsItemHovered())
-                ImGuiToolkit::ToolTip("Cannot replace if source is cloned");
-        }
-        else if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+        if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
             // prepare panel for new source of same type
             MediaSource *file = dynamic_cast<MediaSource *>(s);
             MultiFileSource *sequence = dynamic_cast<MultiFileSource *>(s);
@@ -4667,7 +4726,7 @@ void Navigator::RenderMainPannelSession()
         width = height * se->frame()->aspectRatio() * ( se->frame()->projectionSize().x / se->frame()->projectionSize().y);
     }
     // centered image
-    ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
+    ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y) );
     ImGui::Image((void*)(uintptr_t) se->frame()->texture(), ImVec2(width, height));
 
     // right side options for session
@@ -4721,6 +4780,7 @@ void Navigator::RenderMainPannelSession()
                 if (_thumbnail != nullptr)
                     _session_thumbnail.fill( _thumbnail );
             }
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
             ImGui::BeginTooltip();
             if (_session_thumbnail.filled()) {
                 _session_thumbnail.Render(230);
@@ -4730,6 +4790,7 @@ void Navigator::RenderMainPannelSession()
                 ImGui::Text(" Automatic thumbnail ");
             }
             ImGui::EndTooltip();
+            ImGui::PopStyleVar();
         }
     }
 
@@ -4884,10 +4945,12 @@ void Navigator::RenderMainPannelSession()
                             _undo_thumbnail.reset();
                     }
                     // draw thumbnail in tooltip
+                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
                     ImGui::BeginTooltip();
                     _undo_thumbnail.Render(size.x);
                     ImGui::Text("%s", text.c_str());
                     ImGui::EndTooltip();
+                    ImGui::PopStyleVar();
                     ++count_over; // prevents display twice on item overlap
                 }
 
@@ -5002,10 +5065,12 @@ void Navigator::RenderMainPannelSession()
                         current_over = _over;
                     }
                     // draw thumbnail in tooltip
+                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
                     ImGui::BeginTooltip();
                     _snap_thumbnail.Render(size.x);
                     ImGui::Text("%s", _snap_date.c_str());
                     ImGui::EndTooltip();
+                    ImGui::PopStyleVar();
                     ++count_over; // prevents display twice on item overlap
                 }
             }
@@ -5458,6 +5523,7 @@ void Navigator::RenderMainPannelPlaylist()
 
         if ( !_file_info.empty()) {
 
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
             ImGui::BeginTooltip();
             ImVec2 p_ = ImGui::GetCursorScreenPos();
             _file_thumbnail.Render(240);
@@ -5467,6 +5533,7 @@ void Navigator::RenderMainPannelPlaylist()
                 ImGui::Text(ICON_FA_TAG);
             }
             ImGui::EndTooltip();
+            ImGui::PopStyleVar();
         }
     }
 
@@ -6056,7 +6123,7 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
             ImGui::EndMenu();
         }
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + 2.f * ImGui::GetTextLineHeightWithSpacing()) );
-        if (ImGui::BeginMenu("View")) {
+        if (ImGui::BeginMenu("Tools")) {
             UserInterface::manager().showMenuWindows();
             ImGui::EndMenu();
         }

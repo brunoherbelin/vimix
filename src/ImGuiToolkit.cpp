@@ -171,7 +171,7 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* too
 
 
 
-void _drawIcon(ImVec2 screenpos, int i, int j, bool enabled = true)
+void _drawIcon(ImVec2 screenpos, int i, int j, bool enabled = true, ImGuiWindow* window = ImGui::GetCurrentWindow() )
 {
     // icons.dds is a 20 x 20 grid of icons
     if (textureicons == 0)
@@ -184,7 +184,6 @@ void _drawIcon(ImVec2 screenpos, int i, int j, bool enabled = true)
     if (!enabled)
         tint_color = ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
 
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
     ImRect bb(screenpos, screenpos + ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()));
     window->DrawList->AddImage((void*)(intptr_t)textureicons, bb.Min, bb.Max, uv0, uv1, ImGui::GetColorU32(tint_color) );
 }
@@ -565,14 +564,8 @@ bool ImGuiToolkit::ComboIcon (const char* label, int* current_item,
 
     *current_item = CLAMP( *current_item, 0, (int) items.size() - 1);
 
-    // make some space
-    char space_buf[] = "                                                ";
-    const ImVec2 space_size = ImGui::CalcTextSize(" ", NULL);
-    const int space_num = static_cast<int>( ceil(g.FontSize / space_size.x) );
-    space_buf[space_num]='\0';
-
     char text_buf[256];
-    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, std::get<2>( items.at(*current_item) ).c_str());
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "      %s", std::get<2>( items.at(*current_item) ).c_str());
     if ( ImGui::BeginCombo( label, text_buf, ImGuiComboFlags_None) ) {
         for (int p = 0; p < (int) items.size(); ++p){
             ImGui::PushID((void*)(intptr_t)p);
@@ -600,17 +593,12 @@ bool ImGuiToolkit::SelectableIcon(int i, int j, const char* label, bool selected
 {
     ImGuiContext& g = *GImGui;
     ImVec2 draw_pos = ImGui::GetCursorScreenPos() - g.Style.FramePadding * 0.5;
-
-    // make some space
-    char space_buf[] = "                                                ";
     const ImVec2 space_size = ImGui::CalcTextSize(" ", NULL);
-    const int space_num = static_cast<int>( ceil(g.FontSize / space_size.x) );
-    space_buf[space_num+1]='\0';
 
     char text_buf[256];
-    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s%s", space_buf, label);
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "      %s", label);
 
-    ImGui::PushID( i * 20 + j  + ImGui::GetID("##SelectableIcon") );
+    ImGui::PushID( i * 20 + j  + ImGui::GetID(text_buf) );
 
     // draw menu item
     bool ret = ImGui::Selectable(text_buf, selected, ImGuiSelectableFlags_None, size_arg);
@@ -627,26 +615,39 @@ bool ImGuiToolkit::SelectableIcon(int i, int j, const char* label, bool selected
     return ret;
 }
 
-
 bool ImGuiToolkit::MenuItemIcon (int i, int j, const char* label, const char* shortcut, bool selected, bool enabled)
 {
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
-
-    // make some space
-    char space_buf[] = "                                                ";
-    const ImVec2 space_size = ImGui::CalcTextSize(" ", NULL);
-    const int space_num = static_cast<int>( ceil(ImGui::GetTextLineHeightWithSpacing() / space_size.x) );
-    space_buf[space_num]='\0';
+    ImGuiContext& g = *GImGui;
+    draw_pos.y -= g.Style.ItemSpacing.y * 0.5f;
 
     char text_buf[256];
-    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, label);
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "      %s", label);
 
     // draw menu item
     bool ret = ImGui::MenuItem(text_buf, shortcut, selected, enabled);
 
-    // draw icon
-    ImGui::SetCursorScreenPos(draw_pos);
-    Icon(i, j, enabled);
+    // overlay of icon on top of first item
+    _drawIcon(draw_pos, i, j, enabled);
+
+    return ret;
+}
+
+bool ImGuiToolkit::BeginMenuIcon(int i, int j, const char *label, bool enabled)
+{
+    ImGuiWindow *win = ImGui::GetCurrentWindow();
+    ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+    ImGuiContext &g = *GImGui;
+    draw_pos.y += g.Style.ItemSpacing.y * 0.5f;
+
+    char text_buf[256];
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "      %s", label);
+
+    // draw menu item
+    bool ret = ImGui::BeginMenu(text_buf, enabled);
+
+    // overlay of icon on top of first item
+    _drawIcon(draw_pos, i, j, enabled, win);
 
     return ret;
 }
@@ -1763,7 +1764,7 @@ void ImGuiToolkit::SetAccentColor(accent_color color)
     colors[ImGuiCol_TextDisabled]           = ImVec4(0.55f, 0.55f, 0.55f, 1.00f);
     colors[ImGuiCol_WindowBg]               = ImVec4(0.13f, 0.13f, 0.13f, 0.94f);
     colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_PopupBg]                = ImVec4(0.13f, 0.13f, 0.13f, 1.00f);
+    colors[ImGuiCol_PopupBg]                = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
     colors[ImGuiCol_Border]                 = ImVec4(0.69f, 0.69f, 0.69f, 0.25f);
     colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     colors[ImGuiCol_FrameBg]                = ImVec4(0.39f, 0.39f, 0.39f, 0.55f);

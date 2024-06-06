@@ -535,7 +535,7 @@ bool TextureView::adjustBackground()
             shift_crop_.x *= edit_source_->frame()->aspectRatio();
 
             preview_surface_->setTextureIndex(edit_source_->frame()->texture());
-            preview_shader_->mask_texture = edit_source_->blendingShader()->mask_texture;
+            preview_shader_->secondary_texture = edit_source_->blendingShader()->secondary_texture;
             preview_surface_->scale_ = scale_crop_;
             preview_surface_->translation_ = shift_crop_;
 

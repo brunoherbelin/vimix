@@ -272,7 +272,7 @@ void ImageFilteringShader::setCode(const std::string &code, std::promise<std::st
         custom_shading_.setShaders("shaders/image.vs", shader_code_, (int)n, ret);
     }
     else if (ret != nullptr) {
-        ret->set_value("No change.");
+        ret->set_value("No change");
     }
 }
 
@@ -292,7 +292,7 @@ void ImageFilteringShader::copy(ImageFilteringShader const& S)
 ///                                 ////
 ////////////////////////////////////////
 
-ImageFilter::ImageFilter (): FrameBufferFilter(), buffers_({nullptr, nullptr})
+ImageFilter::ImageFilter (): FrameBufferFilter(), buffers_({nullptr, nullptr}), channel1_output_session(true)
 {
     // surface and shader for first pass
     shaders_.first  = new ImageFilteringShader;
@@ -381,6 +381,7 @@ void ImageFilter::draw (FrameBuffer *input)
         input_ = input;
         // create first-pass surface and shader, taking as texture the input framebuffer
         surfaces_.first->setTextureIndex( input_->texture() );
+        shaders_.first->secondary_texture = input_->texture();
         // (re)create framebuffer for result of first-pass
         if (buffers_.first != nullptr)
             delete buffers_.first;
@@ -390,6 +391,7 @@ void ImageFilter::draw (FrameBuffer *input)
         input_->blit( buffers_.first );
         // create second-pass surface and shader, taking as texture the first-pass framebuffer
         surfaces_.second->setTextureIndex( buffers_.first->texture() );
+        shaders_.second->secondary_texture = input_->texture();
         // (re)create framebuffer for result of second-pass
         if (buffers_.second != nullptr)
             delete buffers_.second;
@@ -401,16 +403,18 @@ void ImageFilter::draw (FrameBuffer *input)
     if ( enabled() || forced )
     {
         // FIRST PASS
+        if (channel1_output_session)
+            shaders_.first->secondary_texture = Mixer::manager().session()->frame()->texture();
         // render input surface into frame buffer
-        shaders_.first->mask_texture = Mixer::manager().session()->frame()->texture();
         buffers_.first->begin();
         surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
         buffers_.first->end();
 
         // SECOND PASS
         if ( program_.isTwoPass() ) {
+            if (channel1_output_session)
+                shaders_.second->secondary_texture = Mixer::manager().session()->frame()->texture();
             // render filtered surface from first pass into frame buffer
-            shaders_.second->mask_texture = Mixer::manager().session()->frame()->texture();
             buffers_.second->begin();
             surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
             buffers_.second->end();
@@ -525,6 +529,7 @@ std::vector< FilteringProgram > ResampleFilter::programs_ = {
 
 ResampleFilter::ResampleFilter (): ImageFilter(), factor_(RESAMPLE_INVALID)
 {
+    channel1_output_session = false;
 }
 
 void ResampleFilter::setFactor(int factor)
@@ -579,7 +584,7 @@ void ResampleFilter::draw (FrameBuffer *input)
 
         // create first-pass surface and shader, taking as texture the input framebuffer
         surfaces_.first->setTextureIndex( input_->texture() );
-        shaders_.first->mask_texture = input_->texture();
+        shaders_.first->secondary_texture = input_->texture();
         // (re)create framebuffer for result of first-pass
         if (buffers_.first != nullptr)
             delete buffers_.first;
@@ -604,7 +609,7 @@ void ResampleFilter::draw (FrameBuffer *input)
         // SECOND PASS for QUARTER resolution (divide by 2 after first pass divide by 2)
         // create second-pass surface and shader, taking as texture the first-pass framebuffer
         surfaces_.second->setTextureIndex( buffers_.first->texture() );
-        shaders_.second->mask_texture = input_->texture();
+        shaders_.second->secondary_texture = input_->texture();
         // (re)create framebuffer for result of second-pass
         if (buffers_.second != nullptr)
             delete buffers_.second;
@@ -662,6 +667,7 @@ std::vector< FilteringProgram > BlurFilter::programs_ = {
 BlurFilter::BlurFilter (): ImageFilter(), method_(BLUR_INVALID), mipmap_buffer_(nullptr)
 {
     mipmap_surface_ = new Surface;
+    channel1_output_session = false;
 }
 
 BlurFilter::~BlurFilter ()
@@ -733,7 +739,7 @@ void BlurFilter::draw (FrameBuffer *input)
 
         // create first-pass surface and shader, taking as texture the input framebuffer
         surfaces_.first->setTextureIndex( mipmap_buffer_->texture() );
-        shaders_.first->mask_texture = input_->texture();
+        shaders_.first->secondary_texture = input_->texture();
         // (re)create framebuffer for result of first-pass
         if (buffers_.first != nullptr)
             delete buffers_.first;
@@ -743,7 +749,7 @@ void BlurFilter::draw (FrameBuffer *input)
 
         // create second-pass surface and shader, taking as texture the first-pass framebuffer
         surfaces_.second->setTextureIndex( buffers_.first->texture() );
-        shaders_.second->mask_texture = input_->texture();
+        shaders_.second->secondary_texture = input_->texture();
         // (re)create framebuffer for result of second-pass
         if (buffers_.second != nullptr)
             delete buffers_.second;
@@ -803,6 +809,7 @@ std::vector< FilteringProgram > SharpenFilter::programs_ = {
 
 SharpenFilter::SharpenFilter (): ImageFilter(), method_(SHARPEN_INVALID)
 {
+    channel1_output_session = false;
 }
 
 void SharpenFilter::setMethod(int method)
@@ -880,6 +887,7 @@ std::vector< FilteringProgram > SmoothFilter::programs_ = {
 
 SmoothFilter::SmoothFilter (): ImageFilter(), method_(SMOOTH_INVALID)
 {
+    channel1_output_session = false;
 }
 
 void SmoothFilter::setMethod(int method)
@@ -950,6 +958,7 @@ std::vector< FilteringProgram > EdgeFilter::programs_ = {
 
 EdgeFilter::EdgeFilter (): ImageFilter(), method_(EDGE_INVALID)
 {
+    channel1_output_session = false;
 }
 
 void EdgeFilter::setMethod(int method)
@@ -1020,6 +1029,7 @@ std::vector< FilteringProgram > AlphaFilter::programs_ = {
 
 AlphaFilter::AlphaFilter (): ImageFilter(), operation_(ALPHA_INVALID)
 {
+    channel1_output_session = false;
 }
 
 void AlphaFilter::setOperation(int op)

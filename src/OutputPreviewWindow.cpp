@@ -385,7 +385,7 @@ void OutputPreviewWindow::Render()
 
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu(ICON_FA_WIFI  " Stream"))
+            if (ImGuiToolkit::BeginMenuIcon(19, 11, "Stream"))
             {
                 // Stream sharing menu
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
