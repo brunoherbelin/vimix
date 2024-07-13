@@ -131,8 +131,9 @@ public:
     void setGaps(const TimeIntervalSet &g);
     bool addGap(TimeInterval s);
     bool addGap(GstClockTime begin, GstClockTime end);
-    bool cut(GstClockTime t, bool left, bool join_extremity);
+    bool cut(GstClockTime t, bool left, bool join_extremity = false);
     bool removeGaptAt(GstClockTime t);
+    bool mergeGapstAt(GstClockTime t);
     bool gapAt(const GstClockTime t) const;
     bool getGapAt(const GstClockTime t, TimeInterval &gap) const;
 
@@ -150,14 +151,19 @@ public:
 
     // Edit
     typedef enum {
-        FADING_LINEAR = 0,
-        FADING_BILINEAR,
-        FADING_BILINEAR_INV
+        FADING_SHARP = 0,
+        FADING_LINEAR,
+        FADING_SMOOTH
     } FadingCurve;
-    void smoothFading(uint N = 1);
-    void autoFading(uint milisecond = 100, FadingCurve curve = FADING_LINEAR);
-    void fadeIn(uint milisecond = 100, FadingCurve curve = FADING_LINEAR);
-    void fadeOut(uint milisecond = 100, FadingCurve curve = FADING_LINEAR);
+    void smoothFading(uint N = 1, TimeInterval interval = TimeInterval());
+    void autoFading(const GstClockTime duration = 10000, FadingCurve curve = FADING_SHARP);
+
+    // void fadeIn(const GstClockTime duration = 100000, FadingCurve curve = FADING_LINEAR);
+    // void fadeOut(const GstClockTime duration = 100000, FadingCurve curve = FADING_LINEAR);
+
+    void fadeIn(const GstClockTime from, const GstClockTime duration, FadingCurve curve = FADING_SHARP);
+    void fadeOut(const GstClockTime to, const GstClockTime duration, FadingCurve curve = FADING_SHARP);
+    void fadeInOutRange(const GstClockTime t, const GstClockTime duration, bool in_and_out, FadingCurve curve = FADING_SHARP);
     bool autoCut();
 
 private:

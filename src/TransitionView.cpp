@@ -234,11 +234,11 @@ void TransitionView::draw()
                 // toggle transition mode
                 ImGui::SetCursorScreenPos(ImVec2(pos_tran.x - 60.f, pos_tran.y +2.f));
                 const char *tooltip[2] = {"Fade to black", "Cross fading"};
-                ImGuiToolkit::IconToggle(0,2,0,8, &Settings::application.transition.cross_fade, tooltip );
+                ImGuiToolkit::IconToggle(0, 2, 0, 8, &Settings::application.transition.cross_fade, tooltip );
 
                 ImGui::SetCursorScreenPos(ImVec2(pos_tran.x + 10.f, pos_tran.y + 2.f));
                 const char *_tooltip[2] = {"Linear", "Quadratic"};
-                ImGuiToolkit::IconToggle(18,3,19,3, &Settings::application.transition.profile, _tooltip );
+                ImGuiToolkit::IconToggle(11, 12, 10, 12, &Settings::application.transition.profile, _tooltip );
 
                 //  Duration slider (adjusted width)
                 const float width = (pos_play.x - pos_canl.x) / 5.0;

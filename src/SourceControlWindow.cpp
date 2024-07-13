@@ -33,10 +33,8 @@
 #include "DialogToolkit.h"
 #include "GstToolkit.h"
 #include "Resource.h"
-#include "PatternSource.h"
 
 #include "Mixer.h"
-#include "CloneSource.h"
 #include "MediaSource.h"
 #include "StreamSource.h"
 #include "MediaPlayer.h"
@@ -48,6 +46,44 @@
 #define CHECKER_RESOLUTION 6000
 class Stream *checker_background_ = new Stream;
 
+typedef struct payload
+{
+    enum Action {
+        FADE_IN,
+        FADE_OUT,
+        FADE_IN_OUT,
+        FADE_OUT_IN,
+        CUT,
+        CUT_MERGE,
+        CUT_ERASE
+    };
+    Action  action;
+    guint64 drop_time;
+    guint64 timing;
+    int argument;
+
+    payload()
+    {
+        action = FADE_IN;
+        drop_time = GST_CLOCK_TIME_NONE;
+        timing = GST_CLOCK_TIME_NONE;
+        argument = 0;
+    }
+
+    payload(payload const &pl)
+        : action(pl.action)
+        , drop_time(pl.drop_time)
+        , timing(pl.timing)
+        , argument(pl.argument){
+          }
+
+    payload(Action a, guint64 t, int arg)
+        : action(a), timing(t), argument(arg)
+    {
+        drop_time = GST_CLOCK_TIME_NONE;
+    }
+
+} TimelinePayload;
 
 SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController"),
     min_width_(0.f), h_space_(0.f), v_space_(0.f), scrollbar_(0.f),
@@ -57,7 +93,7 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
     mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0),
     mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f),
-    magnifying_glass(false)
+    mediaplayer_edit_panel_(false), magnifying_glass(false)
 {
     info_.setExtendedStringMode();
 
@@ -437,8 +473,8 @@ void SourceControlWindow::Render()
                     _alpha_fading ? MediaPlayer::FADING_ALPHA : MediaPlayer::FADING_COLOR);
             }
 
-            if (ImGui::MenuItem(LABEL_EDIT_FADING))
-                mediaplayer_edit_fading_ = true;
+            // if (ImGui::MenuItem(LABEL_EDIT_FADING))
+            //     mediaplayer_edit_fading_ = true;
 
             if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
             {
@@ -526,6 +562,445 @@ void DrawTimeScale(const char* label, guint64 duration, double width_ratio)
 
 }
 
+
+
+bool EditPlotHistoLines (const char* label, float *histogram_array, float *lines_array,
+                                      int values_count, float values_min, float values_max, guint64 begin, guint64 end,
+                                      bool edit_histogram, bool *released, TimelinePayload **payload, const ImVec2 size)
+{
+    bool array_changed = false;
+
+    // get window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    // capture coordinates before any draw or action
+    const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+    ImVec2 mouse_pos_in_canvas = ImVec2(ImGui::GetIO().MousePos.x - canvas_pos.x, ImGui::GetIO().MousePos.y - canvas_pos.y);
+
+    // get id
+    const ImGuiID id = window->GetID(label);
+
+    // add item
+    ImVec2 pos = window->DC.CursorPos;
+    ImRect bbox(pos, pos + size);
+    ImGui::ItemSize(size);
+    if (!ImGui::ItemAdd(bbox, id))
+        return false;
+
+    *released = false;
+
+    // read user input and activate widget
+    const bool mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    bool hovered = ImGui::ItemHoverable(bbox, id);
+    bool temp_input_is_active = ImGui::TempInputIsActive(id);
+    if (!temp_input_is_active)
+    {
+        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
+        if (focus_requested || (hovered && mouse_press) )
+        {
+            ImGui::SetActiveID(id, window);
+            ImGui::SetFocusID(id, window);
+            ImGui::FocusWindow(window);
+        }
+    }
+    else
+        return false;
+
+    const ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const float _h_space = style.WindowPadding.x;
+    ImVec4 bg_color = hovered ? style.Colors[ImGuiCol_FrameBgHovered] : style.Colors[ImGuiCol_FrameBg];
+
+    // prepare index
+    double x = (mouse_pos_in_canvas.x - _h_space) / (size.x - 2.f * _h_space);
+    size_t index = CLAMP( (int) floor(static_cast<double>(values_count) * x), 0, values_count);
+    char cursor_text[64];
+    guint64 time = begin + (index * end) / static_cast<guint64>(values_count);
+
+    // enter edit if widget is active
+    if (ImGui::GetActiveID() == id) {
+
+        bg_color = style.Colors[ImGuiCol_FrameBgActive];
+
+        // keep active area while mouse is pressed
+        static bool active = false;
+        static size_t previous_index = UINT32_MAX;
+        if (mouse_press)
+        {
+            float val = mouse_pos_in_canvas.y / bbox.GetHeight();
+            val = CLAMP( (val * (values_max-values_min)) + values_min, values_min, values_max);
+
+            if (previous_index == UINT32_MAX)
+                previous_index = index;
+
+            const size_t left = MIN(previous_index, index);
+            const size_t right = MAX(previous_index, index);
+
+            if (edit_histogram){
+                static float target_value = values_min;
+
+                // toggle value histo
+                if (!active) {
+                    target_value = histogram_array[index] > 0.f ? 0.f : 1.f;
+                    active = true;
+                }
+
+                for (size_t i = left; i < right; ++i)
+                    histogram_array[i] = target_value;
+            }
+            else  {
+                const float target_value =  values_max - val;
+
+                for (size_t i = left; i < right; ++i)
+                    lines_array[i] = target_value;
+
+            }
+
+            previous_index = index;
+            array_changed = true;
+        }
+        // release active widget on mouse release
+        else {
+            active = false;
+            ImGui::ClearActiveID();
+            previous_index = UINT32_MAX;
+            *released = true;
+        }
+
+    }
+
+    // accept drops on timeline plot-histogram
+    else if (ImGui::BeginDragDropTarget()) {
+        const ImGuiPayload *tmp = ImGui::GetDragDropPayload();
+        if (tmp && tmp->IsDataType("DND_TIMELINE")) {
+            TimelinePayload *pl = (TimelinePayload *) tmp->Data;
+            if (pl->action != TimelinePayload::CUT
+                && pl->action != TimelinePayload::CUT_ERASE) {
+                hovered = true;
+                edit_histogram = true;
+            }
+        }
+        const ImGuiPayload *accepted = ImGui::AcceptDragDropPayload("DND_TIMELINE");
+        if (accepted) {
+            *payload = (TimelinePayload *) accepted->Data;
+            (*payload)->drop_time = time;
+        }
+        ImGui::EndDragDropTarget();
+    }
+
+    // back to draw
+    ImGui::SetCursorScreenPos(canvas_pos);
+
+    // plot histogram (with frame)
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_ModalWindowDimBg]); // a dark color
+    char buf[128];
+    snprintf(buf, 128, "##Histo%s", label);
+    ImGui::PlotHistogram(buf, histogram_array, values_count, 0, NULL, values_min, values_max, size);
+    ImGui::PopStyleColor(2);
+
+    // back to draw
+    ImGui::SetCursorScreenPos(canvas_pos);
+
+    // plot (transparent) lines
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
+    snprintf(buf, 128, "##Lines%s", label);
+    ImGui::PlotLines(buf, lines_array, values_count, 0, NULL, values_min, values_max, size);
+    ImGui::PopStyleColor(1);
+
+
+    // draw the cursor
+    if (hovered) {
+
+        ImFormatString(cursor_text, IM_ARRAYSIZE(cursor_text), "%s",
+                       GstToolkit::time_to_string(time).c_str());
+
+        // prepare color and text
+        const ImU32 cur_color = ImGui::GetColorU32(ImGuiCol_CheckMark);
+        ImGui::PushStyleColor(ImGuiCol_Text, cur_color);
+        ImVec2 label_size = ImGui::CalcTextSize(cursor_text, NULL);
+
+        // render cursor depending on action
+        mouse_pos_in_canvas.x = CLAMP(mouse_pos_in_canvas.x, _h_space, size.x - _h_space);
+        ImVec2 cursor_pos = canvas_pos;
+        if (edit_histogram) {
+            cursor_pos = cursor_pos + ImVec2(mouse_pos_in_canvas.x, 4.f);
+            window->DrawList->AddLine( cursor_pos, cursor_pos + ImVec2(0.f, size.y - 8.f), cur_color);
+        }
+        else {
+            cursor_pos = cursor_pos + mouse_pos_in_canvas;
+            window->DrawList->AddCircleFilled( cursor_pos, 3.f, cur_color, 8);
+        }
+
+        // draw text
+        cursor_pos.y = canvas_pos.y + size.y - label_size.y - 1.f;
+        if (mouse_pos_in_canvas.x > label_size.x * 1.5f + 2.f * _h_space)
+            cursor_pos.x -= label_size.x + _h_space;
+        else
+            cursor_pos.x += _h_space + style.WindowPadding.x;
+        ImGui::RenderTextClipped(cursor_pos, cursor_pos + label_size, cursor_text, NULL, &label_size);
+
+        ImGui::PopStyleColor(1);
+    }
+
+    return array_changed;
+}
+
+
+
+bool EditTimeline(const char *label,
+                  Timeline *tl,
+                  bool edit_histogram,
+                  bool *released,
+                  const ImVec2 size)
+{
+    const float values_min = 0.f;
+    const float values_max = 1.f;
+    const guint64 begin = tl->begin();
+    const guint64 end = tl->end();
+
+    bool cursor_dot = !edit_histogram;
+    Timeline _tl;
+    bool array_changed = false;
+    float *lines_array = tl->fadingArray();
+    float *histogram_array = tl->gapsArray();
+
+    // get window
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    // capture coordinates before any draw or action
+    const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+    ImVec2 mouse_pos_in_canvas = ImVec2(ImGui::GetIO().MousePos.x - canvas_pos.x, ImGui::GetIO().MousePos.y - canvas_pos.y);
+
+    // get id
+    const ImGuiID id = window->GetID(label);
+
+    // add item
+    ImVec2 pos = window->DC.CursorPos;
+    ImRect bbox(pos, pos + size);
+    ImGui::ItemSize(size);
+    if (!ImGui::ItemAdd(bbox, id))
+        return false;
+
+    *released = false;
+
+    // read user input and activate widget
+    const bool mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    bool hovered = ImGui::ItemHoverable(bbox, id);
+    bool temp_input_is_active = ImGui::TempInputIsActive(id);
+    if (!temp_input_is_active)
+    {
+        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
+        if (focus_requested || (hovered && mouse_press) )
+        {
+            ImGui::SetActiveID(id, window);
+            ImGui::SetFocusID(id, window);
+            ImGui::FocusWindow(window);
+        }
+    }
+    else
+        return false;
+
+    const ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+    const float _h_space = style.WindowPadding.x;
+    ImVec4 bg_color = hovered ? style.Colors[ImGuiCol_FrameBgHovered] : style.Colors[ImGuiCol_FrameBg];
+
+    // prepare index
+    double x = (mouse_pos_in_canvas.x - _h_space) / (size.x - 2.f * _h_space);
+    size_t index = CLAMP( (int) floor(static_cast<double>(MAX_TIMELINE_ARRAY) * x), 0, MAX_TIMELINE_ARRAY);
+    char cursor_text[64];
+    guint64 time = begin + (index * end) / static_cast<guint64>(MAX_TIMELINE_ARRAY);
+
+    // enter edit if widget is active
+    if (ImGui::GetActiveID() == id) {
+
+        bg_color = style.Colors[ImGuiCol_FrameBgActive];
+
+        // keep active area while mouse is pressed
+        static bool active = false;
+        static size_t previous_index = UINT32_MAX;
+        if (mouse_press)
+        {
+            float val = mouse_pos_in_canvas.y / bbox.GetHeight();
+            val = CLAMP( (val * (values_max-values_min)) + values_min, values_min, values_max);
+
+            if (previous_index == UINT32_MAX)
+                previous_index = index;
+
+            const size_t left = MIN(previous_index, index);
+            const size_t right = MAX(previous_index, index);
+
+            if (edit_histogram){
+                static float target_value = values_min;
+
+                // toggle value histo
+                if (!active) {
+                    target_value = histogram_array[index] > 0.f ? 0.f : 1.f;
+                    active = true;
+                }
+
+                for (size_t i = left; i < right; ++i)
+                    histogram_array[i] = target_value;
+            }
+            else  {
+                const float target_value =  values_max - val;
+
+                for (size_t i = left; i < right; ++i)
+                    lines_array[i] = target_value;
+
+            }
+
+            previous_index = index;
+            array_changed = true;
+        }
+        // release active widget on mouse release
+        else {
+            active = false;
+            ImGui::ClearActiveID();
+            previous_index = UINT32_MAX;
+            *released = true;
+        }
+
+    }
+
+    // accept drops on timeline plot-histogram
+    else if (ImGui::BeginDragDropTarget()) {
+        const ImGuiPayload *tmp = ImGui::GetDragDropPayload();
+        if (tmp && tmp->IsDataType("DND_TIMELINE") && tmp->Data != nullptr) {
+
+            // get payload data (tested above)
+            TimelinePayload *pl = (TimelinePayload *) tmp->Data;
+
+            // fake mouse hovered
+            hovered = true;
+            cursor_dot = false;
+
+            // if a timing is given, ignore cursor timing
+            if (pl->timing != GST_CLOCK_TIME_NONE) {
+                // replace drop time by payload timing
+                // time = pl->timing;
+                // // replace mouse coordinate by position from time
+                // size_t index = ((pl->timing - begin) * static_cast<guint64>(MAX_TIMELINE_ARRAY)) / end ;
+                // double x = static_cast<double>(index) / static_cast<double>(MAX_TIMELINE_ARRAY);
+                // mouse_pos_in_canvas.x = ( x * (size.x - 2.f * _h_space)) + _h_space;
+
+            }
+
+            // dragged onto the timeline : apply changes on local copy
+            switch (pl->action) {
+            case TimelinePayload::CUT:
+                _tl = *tl;
+                _tl.cut(time, (bool) pl->argument);
+                histogram_array = _tl.gapsArray();
+                break;
+            case TimelinePayload::CUT_MERGE:
+                _tl = *tl;
+                _tl.mergeGapstAt(time);
+                histogram_array = _tl.gapsArray();
+                break;
+            case TimelinePayload::CUT_ERASE:
+                _tl = *tl;
+                _tl.removeGaptAt(time);
+                histogram_array = _tl.gapsArray();
+                break;
+            case TimelinePayload::FADE_IN:
+                _tl = *tl;
+                _tl.fadeIn(time, pl->timing, (Timeline::FadingCurve) pl->argument);
+                lines_array = _tl.fadingArray();
+                break;
+            case TimelinePayload::FADE_OUT:
+                _tl = *tl;
+                _tl.fadeOut(time, pl->timing, (Timeline::FadingCurve) pl->argument);
+                lines_array = _tl.fadingArray();
+                break;
+            case TimelinePayload::FADE_IN_OUT:
+                _tl = *tl;
+                _tl.fadeInOutRange(time, pl->timing, true, (Timeline::FadingCurve) pl->argument);
+                lines_array = _tl.fadingArray();
+                break;
+            case TimelinePayload::FADE_OUT_IN:
+                _tl = *tl;
+                _tl.fadeInOutRange(time, pl->timing, false, (Timeline::FadingCurve) pl->argument);
+                lines_array = _tl.fadingArray();
+                break;
+            default:
+                break;
+            }
+        }
+
+        // dropped into the timeline : confirm change to timeline
+        if (ImGui::AcceptDragDropPayload("DND_TIMELINE")) {
+            // copy temporary timeline into given timeline
+            *tl = _tl;
+            // like a mouse release
+            *released = true;
+        }
+        ImGui::EndDragDropTarget();
+    }
+
+    // back to draw
+    ImGui::SetCursorScreenPos(canvas_pos);
+
+    // plot histogram (with frame)
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_ModalWindowDimBg]); // a dark color
+    char buf[128];
+    snprintf(buf, 128, "##Histo%s", label);
+    ImGui::PlotHistogram(buf, histogram_array, MAX_TIMELINE_ARRAY, 0, NULL, values_min, values_max, size);
+    ImGui::PopStyleColor(2);
+
+    // back to draw
+    ImGui::SetCursorScreenPos(canvas_pos);
+
+    // plot lines (transparent background)
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
+    snprintf(buf, 128, "##Lines%s", label);
+    ImGui::PlotLines(buf, lines_array, MAX_TIMELINE_ARRAY, 0, NULL, values_min, values_max, size);
+    ImGui::PopStyleColor(1);
+
+
+    // draw the cursor
+    if (hovered) {
+
+        ImFormatString(cursor_text, IM_ARRAYSIZE(cursor_text), "%s",
+                       GstToolkit::time_to_string(time).c_str());
+
+        // prepare color and text
+        const ImU32 cur_color = ImGui::GetColorU32(ImGuiCol_CheckMark);
+        ImGui::PushStyleColor(ImGuiCol_Text, cur_color);
+        ImVec2 label_size = ImGui::CalcTextSize(cursor_text, NULL);
+
+        // render cursor depending on action
+        mouse_pos_in_canvas.x = CLAMP(mouse_pos_in_canvas.x, _h_space, size.x - _h_space);
+        ImVec2 cursor_pos = canvas_pos;
+        if (cursor_dot) {
+            cursor_pos = cursor_pos + mouse_pos_in_canvas;
+            window->DrawList->AddCircleFilled( cursor_pos, 3.f, cur_color, 8);
+        }
+        else {
+            cursor_pos = cursor_pos + ImVec2(mouse_pos_in_canvas.x, 4.f);
+            window->DrawList->AddLine( cursor_pos, cursor_pos + ImVec2(0.f, size.y - 8.f), cur_color);
+        }
+
+        // draw text
+        cursor_pos.y = canvas_pos.y + size.y - label_size.y - 1.f;
+        if (mouse_pos_in_canvas.x > label_size.x * 1.5f + 2.f * _h_space)
+            cursor_pos.x -= label_size.x + _h_space;
+        else
+            cursor_pos.x += _h_space + style.WindowPadding.x;
+        ImGui::RenderTextClipped(cursor_pos, cursor_pos + label_size, cursor_text, NULL, &label_size);
+
+        ImGui::PopStyleColor(1);
+    }
+
+    return array_changed;
+}
+
 std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline *timeline, guint64 time,
                                                     double width_ratio, float height)
 {
@@ -596,7 +1071,7 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
         // adjust bbox of section and render a timeline
         ImRect section_bbox(section_bbox_min, section_bbox_max);
         // render the timeline
-        ImGuiToolkit::RenderTimeline(section_bbox_min, section_bbox_max, section->begin, section->end, timeline->step());
+        ImGuiToolkit::RenderTimeline(section_bbox_min, section_bbox_max, section->begin, section->end, timeline->step());        
 
         // draw the cursor
         float time_ = static_cast<float> ( static_cast<double>(time - section->begin) / static_cast<double>(section->duration()) );
@@ -1487,7 +1962,7 @@ void SourceControlWindow::RenderSingleSource(Source *s)
                     width = buttons_width_ - ImGui::GetTextLineHeightWithSpacing();
                 ImGui::SameLine(0, space -width);
                 ImGui::SetNextItemWidth(width);
-                if (ImGuiToolkit::ButtonIcon( 0, 14, LABEL_ADD_TIMELINE, space > buttons_width_ )) {
+                if (ImGuiToolkit::ButtonIcon( 0, 14, LABEL_ADD_TIMELINE, true, space > buttons_width_ )) {
 
                     // activate mediaplayer
                     mediaplayer_active_ = ms->mediaplayer();
@@ -1547,6 +2022,22 @@ void SourceControlWindow::RenderSingleSource(Source *s)
                 }
             }
         }
+    }
+}
+
+
+void DragButtonIcon(int i, int j, const char *tooltip, TimelinePayload payload)
+{
+
+
+    ImGuiToolkit::ButtonIcon(i, j, tooltip);
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+        // _payload.action = TimelinePayload::FADE_OUT_IN;
+        // _payload.timing = d * GST_MSECOND;
+        // _payload.argument = Timeline::FADING_SMOOTH;
+        ImGui::SetDragDropPayload("DND_TIMELINE", &payload, sizeof(TimelinePayload));
+        ImGuiToolkit::Icon(i, j);
+        ImGui::EndDragDropSource();
     }
 }
 
@@ -1693,26 +2184,25 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             if (tl->is_valid())
             {
                 bool released = false;
-                if ( ImGuiToolkit::EditPlotHistoLines("##TimelineArray", tl->gapsArray(), tl->fadingArray(),
-                                                      MAX_TIMELINE_ARRAY, 0.f, 1.f, tl->begin(), tl->end(),
-                                                      Settings::application.widget.media_player_timeline_editmode, &released, size) ) {
+                if ( EditTimeline("##TimelineArray", tl,
+                                       Settings::application.widget.media_player_timeline_editmode,
+                                       &released, size) ) {
                     tl->update();
                 }
+                // end of mouse down to draw timeline
                 else if (released)
                 {
                     tl->refresh();
                     if (Settings::application.widget.media_player_timeline_editmode)
                         oss << ": Timeline cut";
                     else
-                        oss << ": Timeline opacity";
+                        oss << ": Timeline fading";
                     Action::manager().store(oss.str());
                 }
-
                 // custom timeline slider
                 // TODO  : if (mediaplayer_active_->syncToMetronome() > Metronome::SYNC_NONE)
                 mediaplayer_slider_pressed_ = ImGuiToolkit::TimelineSlider("##timeline", &seek_t, tl->begin(),
                                                                                tl->first(), tl->end(), tl->step(), size.x);
-
             }
         }
         ImGui::EndChild();
@@ -1721,51 +2211,13 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         bottom += ImVec2(scrollwindow.x + 2.f, 0.f);
         draw_list->AddRectFilled(bottom, bottom + ImVec2(slider_zoom_width, timeline_height_ -1.f), ImGui::GetColorU32(ImGuiCol_FrameBg));
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.f));
-        const char *tooltip[2] = {"Fading draw tool", "Timeline cut tool"};
-        ImGuiToolkit::IconToggle(7,4,8,3, &Settings::application.widget.media_player_timeline_editmode, tooltip);
-
+        if (!mediaplayer_edit_panel_ && ImGuiToolkit::IconButton(11, 0, "Open panel"))
+            mediaplayer_edit_panel_ = true;
+        if (mediaplayer_edit_panel_ && ImGuiToolkit::IconButton(10, 0, "Close panel"))
+            mediaplayer_edit_panel_ = false;
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.5f * timeline_height_));
-        if (Settings::application.widget.media_player_timeline_editmode) {
-            // action cut
-            if (mediaplayer_active_->isPlaying()) {
-                ImGuiToolkit::Indication("Pause to enable cut at cursor", 9, 3);
-            }
-            else if (ImGuiToolkit::IconButton(9, 3, "Cut at cursor")) {
-                ImGui::OpenPopup("timeline_cut_context_menu");
-            }
-            if (ImGui::BeginPopup("timeline_cut_context_menu")){
-                if (ImGuiToolkit::MenuItemIcon(1,0,"Cut left")){
-                    if (mediaplayer_active_->timeline()->cut(mediaplayer_active_->position(), true, false)) {
-                        oss << ": Timeline cut";
-                        Action::manager().store(oss.str());
-                    }
-                }
-                if (ImGuiToolkit::MenuItemIcon(2,0,"Cut right")){
-                    if (mediaplayer_active_->timeline()->cut(mediaplayer_active_->position(), false, false)){
-                        oss << ": Timeline cut";
-                        Action::manager().store(oss.str());
-                    }
-                }
-                ImGui::EndPopup();
-            }
-        }
-        else {
-            static int _actionsmooth = 0;
-
-            // action smooth
-            ImGui::PushButtonRepeat(true);
-            if (ImGuiToolkit::IconButton(13, 12, "Smooth fading curve")){
-                mediaplayer_active_->timeline()->smoothFading( 5 );
-                ++_actionsmooth;
-            }
-            ImGui::PopButtonRepeat();
-
-            if (_actionsmooth > 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-                oss << ": Timeline opacity smooth";
-                Action::manager().store(oss.str());
-                _actionsmooth = 0;
-            }
-        }
+        const char *tooltip[2] = {"Fading tool", "Cutting tool"};
+        ImGuiToolkit::IconToggle(7,4,8,3, &Settings::application.widget.media_player_timeline_editmode, tooltip);
 
         // zoom slider
         ImGui::SetCursorScreenPos(bottom + ImVec2(0.f, timeline_height_));
@@ -1931,7 +2383,346 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         ImGui::EndPopup();
     }
+    
+    ///
+    /// Window area to edit gaps or fading
+    ///
+    if (mediaplayer_edit_panel_) {
 
+        const ImVec2 gap_dialog_size(buttons_width_ * 3.0f, buttons_height_ * 1.42);
+        const ImVec2 gap_dialog_pos = rendersize + ImVec2(h_space_, buttons_height_) - gap_dialog_size;
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyle().Colors[ImGuiCol_PopupBg] );
+        ImGui::SetCursorPos(gap_dialog_pos);
+        ImGui::BeginChild("##EditGapsWindow",
+                     gap_dialog_size, true,
+                     ImGuiWindowFlags_NoScrollbar);
+
+        // variables state of panel
+        static int current_curve = 2;
+        static uint d = UINT_MAX;
+        static guint64 target_time = 30000000000;
+
+        // timeline to edit
+        Timeline *tl = mediaplayer_active_->timeline();
+
+        ///
+        /// PANEL FOR CUT TIMELINE MODE
+        ///
+        ImGui::Spacing();
+        if (Settings::application.widget.media_player_timeline_editmode) {
+
+            // PANEL WITH LARGE FONTS
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+
+            ///
+            /// CUT LEFT OF CURSOR
+            ///
+            DragButtonIcon(9, 3, "Drop in timeline to\nCut left",
+                           TimelinePayload(TimelinePayload::CUT, 0, 1) );
+            ///
+            /// CUT RIGHT OF CURSOR
+            ///
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            DragButtonIcon(10, 3, "Drop in timeline to\nCut right",
+                           TimelinePayload(TimelinePayload::CUT, 0, 0) );
+
+            if (tl->numGaps() > 0) {
+                ///
+                /// MERGE CUTS AT CURSOR
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(19, 3, "Drop in timeline to\nMerge right",
+                               TimelinePayload(TimelinePayload::CUT_MERGE, 0, 0) );
+                ///
+                /// ERASE CUT AT CURSOR
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(0, 4, "Drop in timeline to\nErase right",
+                               TimelinePayload(TimelinePayload::CUT_ERASE, 0, 0) );
+            }
+            else {
+                ///
+                /// DISABLED ICONS IF NO GAP
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGuiToolkit::ButtonIcon(19, 3, "No gap to merge", false);
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGuiToolkit::ButtonIcon(0, 4, "No gap to erase", false);
+            }
+
+            ///
+            /// SEPARATOR
+            ///
+            ImGui::SameLine(0, 0);
+            ImGui::Text("|");
+
+            ///
+            /// Enter time or percentage of time
+            ///
+            target_time = MIN(target_time, tl->duration());
+
+            ImGui::SameLine(0, 0);
+            ImVec2 draw_pos = ImGui::GetCursorPos();
+            ImGui::SetNextItemWidth(180); // TODO VARIABLE WIDTH
+            ImGuiToolkit::InputTime("##Time", &target_time);
+
+            ImGui::SetCursorPos(ImVec2(draw_pos.x, draw_pos.y + 35));
+            ImGuiToolkit::HSliderUInt64("#SliderTime", ImVec2(180, 14), &target_time, 0, tl->duration());
+
+            // static int p = 5;
+            // ImGuiToolkit::HSliderInt("#toto", ImVec2(140, 14), &p, 1, 9);
+            // if (ImGui::IsItemActive()) {
+            //     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+            //     ImGui::SetTooltip("%d%%", p * 10);
+            //     ImGui::PopFont();
+            // }
+            // if (ImGui::IsItemDeactivatedAfterEdit()){
+
+            // }
+
+            // ImGui::SameLine(0, IMGUI_SAME_LINE);
+            // ImVec2 draw_pos = ImGui::GetCursorPos() + ImVec2(0, v_space_);
+            // ImGui::SetCursorPos(ImVec2(gap_dialog_size.x - ImGui::GetTextLineHeightWithSpacing()- IMGUI_SAME_LINE,
+            //                            draw_pos.y));
+            // static bool percentage = false;
+            // ImGuiToolkit::IconToggle(19, 10, 3, 7, &percentage);
+            // ImGui::SetCursorPos(draw_pos);
+            // if (percentage) {
+            //     int target_percent = (int) ( (100 * target_time) / tl->duration() );
+            //     ImGui::SetNextItemWidth(-ImGui::GetTextLineHeightWithSpacing());
+            //     ImGui::DragInt("##percent", &target_percent, 1, 0, 100);
+            //     target_time = (tl->duration() * (guint64) target_percent) / 100;
+            // }
+            // else {
+            //     ImGui::SetNextItemWidth(-ImGui::GetTextLineHeightWithSpacing());
+            //     ImGuiToolkit::InputTime("##Time", &target_time);
+            // }
+
+            // Action buttons
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+
+            ImGui::SetCursorPos(
+                ImVec2(gap_dialog_size.x - 4.f * ImGui::GetTextLineHeightWithSpacing() - IMGUI_SAME_LINE,
+                       draw_pos.y));
+
+            // ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::ButtonIcon(17, 3, "Cut left at given time")) {
+                tl->cut(target_time, true);
+                tl->refresh();
+            }
+
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::ButtonIcon(18, 3, "Cut right at given time")){
+                tl->cut(target_time, false);
+                tl->refresh();
+            }
+
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::ButtonIcon(11, 14, "Clear all gaps"))
+                tl->clearGaps();
+
+            ImGui::PopStyleColor();
+
+            // end icons
+            ImGui::PopFont();
+        }
+        ///
+        /// FADING
+        ///
+        else {
+            // Icons for Drag & Drop
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+
+            ///
+            /// CURVE MODE
+            ///
+            const std::vector<std::string> tooltips_curve = {{"Fading Sharp"},
+                                                             {"Fading Linear"},
+                                                             {"Fading Smooth"}};
+            const std::vector<std::pair<int, int> > options_curve
+                = {{12, 12},
+                   {13, 12},
+                   {14, 12}};
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            // ImGuiToolkit::ButtonIconMultistate(options_curve, &current_curve, tooltips_curve);
+            ImGuiToolkit::IconMultistate(options_curve, &current_curve, tooltips_curve);
+
+            ImGui::PopStyleColor();
+
+            ///
+            /// FADING SHARP
+            ///
+            if (current_curve == 0) {
+                ///
+                /// FADE IN
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(14, 10, "Drop in timeline to insert\nSharp fade-in",
+                               TimelinePayload(TimelinePayload::FADE_IN, d*GST_MSECOND, Timeline::FADING_SHARP));
+                ///
+                /// FADE OUT
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(11, 10, "Drop in timeline to insert\nSharp fade-out",
+                               TimelinePayload(TimelinePayload::FADE_OUT, d*GST_MSECOND, Timeline::FADING_SHARP));
+                ///
+                /// FADE IN & OUT
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(9, 10, "Drop in timeline to insert\nSharp fade in & out",
+                               TimelinePayload(TimelinePayload::FADE_IN_OUT, d*GST_MSECOND, Timeline::FADING_SHARP));
+                ///
+                /// FADE OUT & IN
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(10, 10, "Drop in timeline to insert\nSharp fade out & in",
+                               TimelinePayload(TimelinePayload::FADE_OUT_IN, d*GST_MSECOND, Timeline::FADING_SHARP));
+            }
+            ///
+            /// FADE LINEAR
+            ///
+            else if (current_curve == 1) {
+                ///
+                /// FADE IN
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(15, 10, "Drop in timeline to insert\nLinear fade-in",
+                               TimelinePayload(TimelinePayload::FADE_IN, d*GST_MSECOND, Timeline::FADING_LINEAR));
+                ///
+                /// FADE OUT
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(12, 10, "Drop in timeline to insert\nLinear fade-out",
+                               TimelinePayload(TimelinePayload::FADE_OUT, d*GST_MSECOND, Timeline::FADING_LINEAR));
+                ///
+                /// FADE IN & OUT
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(7, 10, "Drop in timeline to insert\nLinear fade in & out",
+                               TimelinePayload(TimelinePayload::FADE_IN_OUT, d*GST_MSECOND, Timeline::FADING_LINEAR));
+                ///
+                /// FADE OUT & IN
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(8, 10, "Drop in timeline to insert\nLinear fade out & in",
+                               TimelinePayload(TimelinePayload::FADE_OUT_IN, d*GST_MSECOND, Timeline::FADING_LINEAR));
+            }
+            ///
+            /// FADE SMOOTH
+            ///
+            else if (current_curve == 2) {
+                ///
+                /// FADE IN
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(16, 10, "Drop in timeline to insert\nSmooth fade-in",
+                               TimelinePayload(TimelinePayload::FADE_IN, d*GST_MSECOND, Timeline::FADING_SMOOTH));
+                ///
+                /// FADE OUT
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(13, 10, "Drop in timeline to insert\nSmooth fade-out",
+                               TimelinePayload(TimelinePayload::FADE_OUT, d*GST_MSECOND, Timeline::FADING_SMOOTH));
+                ///
+                /// FADE IN & OUT
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(17, 10, "Drop in timeline to insert\nSmooth fade in & out",
+                               TimelinePayload(TimelinePayload::FADE_IN_OUT, d*GST_MSECOND, Timeline::FADING_SMOOTH));
+                ///
+                /// FADE OUT & IN
+                ///
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                DragButtonIcon(18, 10, "Drop in timeline to insert\nSmooth fade out & in",
+                               TimelinePayload(TimelinePayload::FADE_OUT_IN, d*GST_MSECOND, Timeline::FADING_SMOOTH));
+
+            }
+
+            // float md = 10000;
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::SetNextItemWidth(180);
+            float seconds = (float) d / 1000.f;
+
+            if (current_curve > 0) {
+                // ImGuiToolkit::SliderTiming("##Duration", &d, 60, md+50, 50, "Auto");
+                // if (d > md) d = UINT_MAX;
+                if (ImGui::SliderFloat("##DurationFading",
+                                       &seconds,
+                                       0.05f,
+                                       60.f,
+                                       seconds < 59.5f ? "%.2f s" : "Auto")) {
+                    if (seconds > 59.5f)
+                        d = UINT_MAX;
+                    else
+                        d = (uint) floor(seconds * 1000);
+                }
+            } else {
+                // ImGui::TextDisabled("%.2f s", seconds);
+                static char dummy_str[512];
+                if (seconds < 59.5f )
+                    snprintf(dummy_str, 512, "%.2f s", seconds);
+                else
+                    snprintf(dummy_str, 512, "Auto");
+
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                ImGui::InputText("##disabledduration", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                ImGui::PopStyleColor(1);
+
+            }
+
+
+            // Action buttons
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+
+            ///
+            /// SEPARATOR
+            ///
+            ImGui::SameLine(0, 0);
+            ImGui::Text("|");
+
+            // action smooth
+            static int _actionsmooth = 0;
+            ImGui::SameLine(0, 0);
+            ImGui::PushButtonRepeat(true);
+            if (ImGuiToolkit::ButtonIcon(2, 7, "Apply smoothing filter")){
+                tl->smoothFading( 5 );
+                ++_actionsmooth;
+            }
+            ImGui::PopButtonRepeat();
+            if (_actionsmooth > 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+                oss << ": Timeline opacity smooth";
+                Action::manager().store(oss.str());
+                _actionsmooth = 0;
+            }
+
+
+            // ImGui::SameLine(0, IMGUI_SAME_LINE);
+            // ImGui::SetNextItemWidth(140); // TODO VARIABLE WIDTH
+            // ImVec2 draw_pos = ImGui::GetCursorPos();
+            // ImGui::SetCursorPosY(draw_pos.y + 8); // TODO VARIABLE H
+            // ImGuiToolkit::InputTime("##Time", &target_time);
+
+
+            ///
+            /// CLEAR
+            ///
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::ButtonIcon(11, 14, "Clear Fading curve"))
+                tl->clearFading();
+
+            ImGui::PopStyleColor();
+
+            // end icons
+            ImGui::PopFont();
+        }
+
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+    }
+
+    
     ///
     /// Dialog to edit timeline fade in and out
     ///
@@ -1989,15 +2780,15 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             Timeline *tl = mediaplayer_active_->timeline();
             switch (l) {
             case 0:
-                tl->fadeIn(d, (Timeline::FadingCurve) c);
+                tl->fadeIn( static_cast<GstClockTime>(d) * GST_MSECOND, (Timeline::FadingCurve) c);
                 oss << ": Timeline Fade in " << d;
                 break;
             case 1:
-                tl->fadeOut(d, (Timeline::FadingCurve) c);
+                tl->fadeOut( static_cast<GstClockTime>(d) * GST_MSECOND, (Timeline::FadingCurve) c);
                 oss << ": Timeline Fade out " << d;
                 break;
             case 2:
-                tl->autoFading(d, (Timeline::FadingCurve) c);
+                tl->autoFading( static_cast<GstClockTime>(d) * GST_MSECOND, (Timeline::FadingCurve) c);
                 oss << ": Timeline Fade in&out " << d;
                 break;
             default:

@@ -2458,7 +2458,8 @@ void UserInterface::RenderHelp()
     ImGui::SetNextWindowSize(ImVec2(460, 800), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
 
-    if ( !ImGui::Begin(IMGUI_TITLE_HELP, &Settings::application.widget.help, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ) )
+    if ( !ImGui::Begin(IMGUI_TITLE_HELP, &Settings::application.widget.help,
+                       ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse ) )
     {
         ImGui::End();
         return;
@@ -6027,8 +6028,8 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
             Settings::application.transition.cross_fade = true;
 
         static std::vector< std::tuple<int, int, std::string> > profile_options = {
-            {18, 3, "Linear"},
-            {19, 3, "Quadratic"}
+            {11, 12, "Linear"},
+            {10, 12, "Quadratic"}
         };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         tmp = Settings::application.transition.profile ? 1 : 0;
