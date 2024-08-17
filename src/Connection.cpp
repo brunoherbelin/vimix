@@ -21,6 +21,9 @@
 #include <chrono>
 #include <algorithm>
 
+#if ((ULONG_MAX) != (UINT_MAX))
+#define _M_X64
+#endif
 #include "osc/OscOutboundPacketStream.h"
 
 #include "defines.h"

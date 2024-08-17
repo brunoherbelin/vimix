@@ -33,6 +33,9 @@
 #include <gst/pbutils/pbutils.h>
 
 //osc
+#if ((ULONG_MAX) != (UINT_MAX))
+#define _M_X64
+#endif
 #include "osc/OscOutboundPacketStream.h"
 
 #include "Settings.h"
