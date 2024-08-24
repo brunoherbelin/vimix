@@ -363,6 +363,7 @@ void ShaderEditWindow::Render()
             }
             // cancel edit clone
             else {
+                // possibility that source was removed
                 // disable editor
                 _editor.SetReadOnly(true);
                 _editor.SetColorizerEnable(false);

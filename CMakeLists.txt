@@ -61,11 +61,11 @@ if(UNIX)
         set(CMAKE_SKIP_RPATH TRUE)
         set(OpenGL_DIR /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/)
 
-        set(CMAKE_OSX_ARCHITECTURES "x86_64")
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "11")
+        # set(CMAKE_OSX_ARCHITECTURES "x86_64")
+        # set(CMAKE_OSX_DEPLOYMENT_TARGET "11")
 
-#        set(CMAKE_OSX_ARCHITECTURES "arm64")
-#        set(CMAKE_OSX_DEPLOYMENT_TARGET "12")
+       set(CMAKE_OSX_ARCHITECTURES "arm64")
+       set(CMAKE_OSX_DEPLOYMENT_TARGET "13")
 
         # CPACK
         set(CPACK_SYSTEM_NAME  "OSX_${CMAKE_OSX_DEPLOYMENT_TARGET}_${CMAKE_OSX_ARCHITECTURES}")

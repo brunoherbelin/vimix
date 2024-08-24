@@ -25,6 +25,9 @@
 #include <regex>
 
 #include <GLFW/glfw3.h>
+#if ((ULONG_MAX) != (UINT_MAX))
+#define _M_X64
+#endif
 #include "osc/OscOutboundPacketStream.h"
 
 #include "Log.h"

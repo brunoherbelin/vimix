@@ -479,7 +479,6 @@ void MediaPlayer::execute_open()
     Rendering::LinkPipeline(GST_PIPELINE (pipeline_));
 #endif
 
-
     // set to desired state (PLAY or PAUSE)
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
@@ -1741,16 +1740,30 @@ void MediaPlayer::setAudioEnabled(bool on)
 
 void MediaPlayer::setAudioVolume(float vol)
 {
-    if (pipeline_ && media_.hasaudio)
-        g_object_set(G_OBJECT(pipeline_), "volume", vol, NULL);
+    if (pipeline_ && media_.hasaudio){
+
+        GstElement *asink = NULL;
+        g_object_get (G_OBJECT (pipeline_), "audio-sink", &asink, NULL);
+        if ( asink )
+            g_object_set(G_OBJECT(asink), "volume", vol, NULL);
+        else
+            g_object_set(G_OBJECT(pipeline_), "volume", vol, NULL);
+
+    }
         //        gst_stream_volume_set_volume (GST_STREAM_VOLUME (pipeline_), GST_STREAM_VOLUME_FORMAT_LINEAR, vol);
 }
 
 float MediaPlayer::audioVolume() const
 {
     float vol = 0.f;
-    if (pipeline_ && media_.hasaudio)
-        g_object_get(G_OBJECT(pipeline_), "volume", &vol, NULL);
+    if (pipeline_ && media_.hasaudio){
+        GstElement *asink = NULL;
+        g_object_get (G_OBJECT (pipeline_), "audio-sink", &asink, NULL);
+        if ( asink )
+            g_object_get(G_OBJECT(asink), "volume", &vol, NULL);
+        else
+            g_object_get(G_OBJECT(pipeline_), "volume", &vol, NULL);
+    }
     return vol;
 }
 
