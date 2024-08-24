@@ -233,6 +233,8 @@ else ()
     set(TINYXML2_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2)
     set(TINYXML2_LIBRARIES TINYXML2)
     add_library(TINYXML2 "${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2/tinyxml2.cpp")
+    set_property(TARGET TINYXML2 PROPERTY CXX_STANDARD 17)
+    set_property(TARGET TINYXML2 PROPERTY C_STANDARD 11)
     message(STATUS "Compiling 'TinyXML2' from https://github.com/leethomason/tinyxml2.git -- ${TINYXML2_INCLUDE_DIRS}")
 endif()
 
@@ -401,8 +403,8 @@ include_directories(
     ${OSCPACK_INCLUDE_DIR}
 )
 add_library(OSCPACK "${OSCPACK_SRCS}")
-set_property(TARGET ${OSCPACK} PROPERTY CXX_STANDARD 17)
-set_property(TARGET ${OSCPACK} PROPERTY C_STANDARD 11)
+set_property(TARGET OSCPACK PROPERTY CXX_STANDARD 17)
+set_property(TARGET OSCPACK PROPERTY C_STANDARD 11)
 if(APPLE)
 target_compile_definitions(OSCPACK
     PRIVATE
