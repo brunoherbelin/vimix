@@ -374,6 +374,9 @@ void MediaPlayer::execute_open()
     // set uri of file to open
     g_object_set ( G_OBJECT (pipeline_),  "uri", uri_.c_str(),  NULL);
 
+    // connect to callback for elements monitoring
+    g_signal_connect ( G_OBJECT (pipeline_), "element-setup", G_CALLBACK (callback_element_setup), this);
+
     // Get and modify playbin flags
     gint flags;
     // ENABLE ONLY VIDEO, NOT AUDIO AND TEXT SUBTITLES
@@ -1738,44 +1741,47 @@ void MediaPlayer::setAudioEnabled(bool on)
     }
 }
 
-void MediaPlayer::setAudioVolume(float vol)
+void MediaPlayer::setAudioVolume(gdouble vol)
 {
     if (pipeline_ && media_.hasaudio){
 
+#ifdef APPLE
+        // BUGFIX FOR APPLE OSXAUDIOSINK
         GstElement *asink = NULL;
-        g_object_get (G_OBJECT (pipeline_), "audio-sink", &asink, NULL);
+        g_object_get (G_OBJECT(pipeline_), "audio-sink", &asink, NULL);
         if ( asink )
-            g_object_set(G_OBJECT(asink), "volume", vol, NULL);
-        else
-            g_object_set(G_OBJECT(pipeline_), "volume", vol, NULL);
+            g_object_set (G_OBJECT(asink), "volume", vol, NULL);
+#endif
 
+        g_object_set (G_OBJECT(pipeline_), "volume", vol, NULL);
     }
-        //        gst_stream_volume_set_volume (GST_STREAM_VOLUME (pipeline_), GST_STREAM_VOLUME_FORMAT_LINEAR, vol);
+    // gst_stream_volume_set_volume (GST_STREAM_VOLUME (pipeline_), GST_STREAM_VOLUME_FORMAT_LINEAR, vol);
 }
 
-float MediaPlayer::audioVolume() const
+gdouble MediaPlayer::audioVolume() const
 {
-    float vol = 0.f;
-    if (pipeline_ && media_.hasaudio){
-        GstElement *asink = NULL;
-        g_object_get (G_OBJECT (pipeline_), "audio-sink", &asink, NULL);
-        if ( asink )
-            g_object_get(G_OBJECT(asink), "volume", &vol, NULL);
-        else
-            g_object_get(G_OBJECT(pipeline_), "volume", &vol, NULL);
-    }
+    gdouble vol = 1.0;
+    if (pipeline_ && media_.hasaudio)
+        g_object_get (G_OBJECT(pipeline_), "volume", &vol, NULL);
+
     return vol;
 }
 
-//static void audio_changed_callback (GstElement *pipeline, MediaPlayer *mp)
-//{
-//    gint n_audio;
-//    g_object_get (G_OBJECT (pipeline), "n-audio", &n_audio, NULL);
-//    if ( n_audio > 0 ) {
-//        Log::Info("MediaPlayer %d Audio stream muted", std::to_string( mp->id() ).c_str() );
-//        gst_stream_volume_set_volume (GST_STREAM_VOLUME (pipeline), GST_STREAM_VOLUME_FORMAT_LINEAR, 0.);
-//        gst_stream_volume_set_mute (GST_STREAM_VOLUME (pipeline), true);
-//    }
-//}
-//    flags |= GST_PLAY_FLAG_AUDIO;
-//    g_signal_connect ( G_OBJECT (pipeline_), "audio-changed", G_CALLBACK (audio_changed_callback), this);
+void MediaPlayer::callback_element_setup (GstElement *pipeline, GstElement *element, MediaPlayer *mp)
+{
+    if (pipeline && element && mp)
+    {
+
+#ifdef APPLE
+        // BUGFIX FOR APPLE OSXAUDIOSINK
+        // detect setup of audio sink
+        GstElement *audio_sink = NULL;
+        g_object_get (G_OBJECT(pipeline), "audio-sink", &audio_sink, NULL);
+        if (element == audio_sink) {
+            // force volume to pipeline volume
+            mp->setAudioVolume( mp->audioVolume() );
+        }
+#endif
+    }
+}
+

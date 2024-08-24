@@ -281,8 +281,8 @@ public:
      * */
     inline bool audioAvailable() const { return media_.hasaudio; }
     void setAudioEnabled(bool on);
-    void setAudioVolume(float v);
-    float audioVolume() const;
+    void setAudioVolume(gdouble v);
+    gdouble audioVolume() const;
 
     /**
      * Accept visitors
@@ -406,6 +406,7 @@ private:
     static GstFlowReturn callback_new_preroll (GstAppSink *, gpointer );
     static GstFlowReturn callback_new_sample  (GstAppSink *, gpointer);
     static GstBusSyncReply signal_handler(GstBus *, GstMessage *, gpointer);
+    static void callback_element_setup (GstElement *pipeline, GstElement *element, MediaPlayer *mp);
 
     // global list of registered media player
     static void pipeline_terminate(GstElement *p);
