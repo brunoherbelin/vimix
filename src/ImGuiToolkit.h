@@ -25,7 +25,7 @@ namespace ImGuiToolkit
     void ShowIconsWindow(bool* p_open);
 
     // buttons and gui items with icon
-    bool ButtonIcon (int i, int j, const char* tooltip = nullptr, bool expanded = false);
+    bool ButtonIcon (int i, int j, const char* tooltip = nullptr, bool enabled = true, bool expanded = false);
     bool ButtonIconToggle (int i, int j, bool* toggle, const char *tooltip = nullptr);
     bool ButtonIconMultistate (std::vector<std::pair<int, int> > icons, int* state, std::vector<std::string> tooltips);
     bool BeginMenuIcon(int i, int j, const char *label, bool enabled = true);
@@ -55,10 +55,8 @@ namespace ImGuiToolkit
     void RenderTimelineBPM (ImVec2 min_bbox, ImVec2 max_bbox, double tempo, double quantum, guint64 begin, guint64 end, guint64 step, bool verticalflip = false);
     bool InvisibleSliderInt(const char* label, uint *index, uint min, uint max, const ImVec2 size);
     bool InvisibleSliderFloat(const char* label, float *index, float min, float max, const ImVec2 size);
-    bool EditPlotLines(const char* label, float *array, int values_count, float values_min, float values_max, const ImVec2 size);
-    bool EditPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, guint64 begin, guint64 end, bool cut, bool *released, const ImVec2 size);
-    void ShowPlotHistoLines(const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, const ImVec2 size);
-
+    bool HSliderInt(const char *id, const ImVec2 &size, int *v, int v_min, int v_max);
+    bool HSliderUInt64(const char *id, const ImVec2 &size, guint64 *v, guint64 v_min, guint64 v_max);
     void ValueBar(float fraction, const ImVec2& size_arg);
 
     // fonts from resources 'fonts/'
@@ -75,6 +73,7 @@ namespace ImGuiToolkit
     void Spacing();
 
     // text input
+    bool InputTime(const char *label, guint64 *time, ImGuiInputTextFlags flag = 0);
     bool InputText(const char* label, std::string* str, ImGuiInputTextFlags flag = ImGuiInputTextFlags_CharsNoBlank);
     bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0), int *numline = NULL);
     void TextMultiline(const char* label, const std::string &str, float width);

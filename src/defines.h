@@ -258,7 +258,8 @@
 
 #define LABEL_AUTO_MEDIA_PLAYER ICON_FA_USER_CIRCLE "  User selection"
 #define LABEL_STORE_SELECTION "  Create batch"
-#define LABEL_EDIT_FADING ICON_FA_RANDOM "  Fade in & out"
+#define LABEL_EDIT_FADING     ICON_FA_RANDOM "  Edit timeline fading"
+#define LABEL_EDIT_GAPS       ICON_FA_CUT "  Cut timeline"
 #define LABEL_VIDEO_SEQUENCE  "  Encode an image sequence"
 #define LABEL_ADD_TIMELINE    "Add timeline"
 #define DIALOG_TIMELINE_DURATION    ICON_FA_HOURGLASS_HALF " Set timeline duration"

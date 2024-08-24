@@ -54,6 +54,8 @@ class SourceControlWindow : public WorkspaceWindow
     bool mediaplayer_mode_;
     bool mediaplayer_slider_pressed_;
     float mediaplayer_timeline_zoom_;
+
+    bool mediaplayer_edit_panel_;
     void RenderMediaPlayer(MediaSource *ms);
 
     // draw methods

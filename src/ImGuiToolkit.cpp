@@ -20,6 +20,7 @@
 #include <map>
 #include <algorithm>
 #include <string>
+#include <regex>
 #include <cctype>
 
 #ifdef _WIN32
@@ -35,6 +36,7 @@
 
 #include "Resource.h"
 #include "GstToolkit.h"
+#include "BaseToolkit.h"
 #include "SystemToolkit.h"
 
 #include "ImGuiToolkit.h"
@@ -203,7 +205,7 @@ void ImGuiToolkit::Icon(int i, int j, bool enabled)
     ImGui::Image((void*)(intptr_t)textureicons, ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()), uv0, uv1, tint_color);
 }
 
-bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip, bool expanded)
+bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip, bool enabled, bool expanded)
 {
     ImGuiContext& g = *GImGui;
     bool ret = false;
@@ -233,9 +235,16 @@ bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip, bool expanded)
         ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
 
         ImGui::PushID( i*20 + j);
-        ret = ImGui::ImageButton((void*)(intptr_t)textureicons,
-                                 ImVec2(g.FontSize, g.FontSize),
-                                 uv0, uv1, g.Style.FramePadding.y);
+        if (enabled)
+            ret = ImGui::ImageButton((void*)(intptr_t)textureicons,
+                                     ImVec2(g.FontSize, g.FontSize),
+                                     uv0, uv1, g.Style.FramePadding.y);
+        else
+            ImGui::ImageButton((void*)(intptr_t)textureicons,
+                               ImVec2(g.FontSize, g.FontSize),
+                               uv0, uv1, g.Style.FramePadding.y,
+                               ImVec4(0.f, 0.f, 0.f, 0.f),
+                               ImVec4(0.6f, 0.6f, 0.6f, 0.8f));
         ImGui::PopID();
 
         if (tooltip != nullptr && ImGui::IsItemHovered())
@@ -760,18 +769,18 @@ bool ImGuiToolkit::SliderTiming (const char* label, uint* ms, uint v_min, uint v
 
         if (min > 0) {
             if (milisec>0)
-                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d min %02d s %03d ms", min, sec%60, milisec);
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%dmin %02ds %03d ms", min, sec%60, milisec);
             else
-                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d min %02d s", min, sec%60);
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%dmin %02ds", min, sec%60);
         }
         else if (sec > 0) {
             if (milisec>0)
-                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d s %03d ms", sec, milisec);
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%ds %03dms", sec, milisec);
             else
-                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%d s", sec);
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%ds", sec);
         }
         else
-            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%03d ms", milisec);
+            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%03dms", milisec);
     }
     else {
         ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", text_max);
@@ -785,6 +794,8 @@ bool ImGuiToolkit::SliderTiming (const char* label, uint* ms, uint v_min, uint v
     float val = *ms / v_step;
     bool ret = ImGui::SliderFloat(label, &val, v_min / v_step, v_max / v_step, text_buf, 2.f);
     *ms = int(floor(val)) * v_step;
+
+
 
     return ret;
 }
@@ -1279,304 +1290,61 @@ bool ImGuiToolkit::InvisibleSliderFloat (const char* label, float *index, float 
     return value_changed;
 }
 
-bool ImGuiToolkit::EditPlotLines (const char* label, float *array, int values_count, float values_min, float values_max, const ImVec2 size)
+bool HSliderScalar(const char* label, const ImVec2& size, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max)
 {
-    bool array_changed = false;
-
-    // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     if (window->SkipItems)
         return false;
 
-    // capture coordinates before any draw or action
-    ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
-    ImVec2 mouse_pos_in_canvas = ImVec2(ImGui::GetIO().MousePos.x - canvas_pos.x, ImGui::GetIO().MousePos.y - canvas_pos.y);
-
-    // get id
-    const ImGuiID id = window->GetID(label);
-
-    // add item
-    ImVec2 pos = window->DC.CursorPos;
-    ImRect bbox(pos, pos + size);
-    ImGui::ItemSize(size);
-    if (!ImGui::ItemAdd(bbox, id))
-        return false;
-
-    // read user input and activate widget
-    const bool left_mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-    const bool hovered = ImGui::ItemHoverable(bbox, id);
-    bool temp_input_is_active = ImGui::TempInputIsActive(id);
-    if (!temp_input_is_active)
-    {
-        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
-        if (focus_requested || (hovered && left_mouse_press) )
-        {
-            ImGui::SetActiveID(id, window);
-            ImGui::SetFocusID(id, window);
-            ImGui::FocusWindow(window);
-        }
-    }
-    else
-        return false;
-
-    ImVec4* colors = ImGui::GetStyle().Colors;
-    ImVec4 bg_color = hovered ? colors[ImGuiCol_FrameBgHovered] : colors[ImGuiCol_FrameBg];
-
-    // enter edit if widget is active
-    if (ImGui::GetActiveID() == id) {
-
-        static uint previous_index = UINT32_MAX;
-        bg_color = colors[ImGuiCol_FrameBgActive];
-
-        // keep active area while mouse is pressed
-        if (left_mouse_press)
-        {
-            float x = (float) values_count * mouse_pos_in_canvas.x / bbox.GetWidth();
-            uint index = CLAMP( (int) floor(x), 0, values_count-1);
-
-            float y = mouse_pos_in_canvas.y / bbox.GetHeight();
-            y = CLAMP( (y * (values_max-values_min)) + values_min, values_min, values_max);
-
-
-            if (previous_index == UINT32_MAX)
-                previous_index = index;
-
-            array[index] = values_max - y;
-            for (int i = MIN(previous_index, index); i < MAX(previous_index, index); ++i)
-                array[i] = values_max - y;
-
-            previous_index = index;
-
-            array_changed = true;
-        }
-        // release active widget on mouse release
-        else {
-            ImGui::ClearActiveID();
-            previous_index = UINT32_MAX;
-        }
-
-    }
-
-    // back to draw
-    ImGui::SetCursorScreenPos(canvas_pos);
-
-    // plot lines
-    char buf[128];
-    snprintf(buf, 128, "##Lines%s", label);
-
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
-    ImGui::PlotLines(buf, array, values_count, 0, NULL, values_min, values_max, size);
-    ImGui::PopStyleColor(1);
-
-    return array_changed;
-}
-
-
-bool ImGuiToolkit::EditPlotHistoLines (const char* label, float *histogram_array, float *lines_array,
-                                      int values_count, float values_min, float values_max, guint64 begin, guint64 end,
-                                      bool edit_histogram, bool *released, const ImVec2 size)
-{
-    bool array_changed = false;
-
-    // get window
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return false;
-
-    // capture coordinates before any draw or action
-    const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
-    ImVec2 mouse_pos_in_canvas = ImVec2(ImGui::GetIO().MousePos.x - canvas_pos.x, ImGui::GetIO().MousePos.y - canvas_pos.y);
-
-    // get id
-    const ImGuiID id = window->GetID(label);
-
-    // add item
-    ImVec2 pos = window->DC.CursorPos;
-    ImRect bbox(pos, pos + size);
-    ImGui::ItemSize(size);
-    if (!ImGui::ItemAdd(bbox, id))
-        return false;
-
-    *released = false;
-
-    // read user input and activate widget
-    const bool mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-    const bool hovered = ImGui::ItemHoverable(bbox, id);
-    bool temp_input_is_active = ImGui::TempInputIsActive(id);
-    if (!temp_input_is_active)
-    {
-        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
-        if (focus_requested || (hovered && mouse_press) )
-        {
-            ImGui::SetActiveID(id, window);
-            ImGui::SetFocusID(id, window);
-            ImGui::FocusWindow(window);
-        }
-    }
-    else
-        return false;
-
-    const ImGuiContext& g = *GImGui;
+    ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
-    const float _h_space = style.WindowPadding.x;
-    ImVec4 bg_color = hovered ? style.Colors[ImGuiCol_FrameBgHovered] : style.Colors[ImGuiCol_FrameBg];
-
-    // prepare index
-    double x = (mouse_pos_in_canvas.x - _h_space) / (size.x - 2.f * _h_space);
-    size_t index = CLAMP( (int) floor(static_cast<double>(values_count) * x), 0, values_count);
-    char cursor_text[64];
-    guint64 time = begin + (index * end) / static_cast<guint64>(values_count);
-    ImFormatString(cursor_text, IM_ARRAYSIZE(cursor_text), "%s",
-                   GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_MINIMAL).c_str());
-
-    // enter edit if widget is active
-    if (ImGui::GetActiveID() == id) {
-
-        bg_color = style.Colors[ImGuiCol_FrameBgActive];
-
-        // keep active area while mouse is pressed
-        static bool active = false;
-        static size_t previous_index = UINT32_MAX;
-        if (mouse_press)
-        {
-            float val = mouse_pos_in_canvas.y / bbox.GetHeight();
-            val = CLAMP( (val * (values_max-values_min)) + values_min, values_min, values_max);
-
-            if (previous_index == UINT32_MAX)
-                previous_index = index;
-
-            const size_t left = MIN(previous_index, index);
-            const size_t right = MAX(previous_index, index);
-
-            if (edit_histogram){
-                static float target_value = values_min;
-
-                // toggle value histo
-                if (!active) {
-                    target_value = histogram_array[index] > 0.f ? 0.f : 1.f;
-                    active = true;
-                }
-
-                for (size_t i = left; i < right; ++i)
-                    histogram_array[i] = target_value;
-            }
-            else  {
-                const float target_value =  values_max - val;
-
-                for (size_t i = left; i < right; ++i)
-                    lines_array[i] = target_value;
-
-            }
-
-            previous_index = index;
-            array_changed = true;
-        }
-        // release active widget on mouse release
-        else {
-            active = false;
-            ImGui::ClearActiveID();
-            previous_index = UINT32_MAX;
-            *released = true;
-        }
-
-    }
-
-    // back to draw
-    ImGui::SetCursorScreenPos(canvas_pos);
-
-    // plot histogram (with frame)
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
-    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_ModalWindowDimBg]); // a dark color
-    char buf[128];
-    snprintf(buf, 128, "##Histo%s", label);
-    ImGui::PlotHistogram(buf, histogram_array, values_count, 0, NULL, values_min, values_max, size);
-    ImGui::PopStyleColor(2);
-
-    ImGui::SetCursorScreenPos(canvas_pos);
-
-    // plot (transparent) lines
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
-    snprintf(buf, 128, "##Lines%s", label);
-    ImGui::PlotLines(buf, lines_array, values_count, 0, NULL, values_min, values_max, size);
-    ImGui::PopStyleColor(1);
-
-    // draw the cursor
-    if (hovered) {
-        // prepare color and text
-        const ImU32 cur_color = ImGui::GetColorU32(ImGuiCol_CheckMark);
-        ImGui::PushStyleColor(ImGuiCol_Text, cur_color);
-        ImVec2 label_size = ImGui::CalcTextSize(cursor_text, NULL);
-
-        // render cursor depending on action
-        mouse_pos_in_canvas.x = CLAMP(mouse_pos_in_canvas.x, _h_space, size.x - _h_space);
-        ImVec2 cursor_pos = canvas_pos;
-        if (edit_histogram) {
-            cursor_pos = cursor_pos + ImVec2(mouse_pos_in_canvas.x, 4.f);
-            window->DrawList->AddLine( cursor_pos, cursor_pos + ImVec2(0.f, size.y - 8.f), cur_color);
-        }
-        else {
-            cursor_pos = cursor_pos + mouse_pos_in_canvas;
-            window->DrawList->AddCircleFilled( cursor_pos, 3.f, cur_color, 8);
-        }
-
-        // draw text
-        cursor_pos.y = canvas_pos.y + size.y - label_size.y - 1.f;
-        if (mouse_pos_in_canvas.x + label_size.x < size.x - 2.f * _h_space)
-            cursor_pos.x += _h_space;
-        else
-            cursor_pos.x -= label_size.x + _h_space;
-        ImGui::RenderTextClipped(cursor_pos, cursor_pos + label_size, cursor_text, NULL, &label_size);
-
-        ImGui::PopStyleColor(1);
-    }
-
-    return array_changed;
-}
-
-void ImGuiToolkit::ShowPlotHistoLines (const char* label, float *histogram_array, float *lines_array, int values_count, float values_min, float values_max, const ImVec2 size)
-{
-    // get window
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return;
-
-    // capture coordinates before any draw or action
-    ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
-
-    // get id
     const ImGuiID id = window->GetID(label);
 
-    // add item
-    ImVec2 pos = window->DC.CursorPos;
-    ImRect bbox(pos, pos + size);
-    ImGui::ItemSize(size);
-    if (!ImGui::ItemAdd(bbox, id))
-        return;
+    const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
+    const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + size);
+    const ImRect bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f));
 
-    const ImGuiContext& g = *GImGui;
-    const ImGuiStyle& style = g.Style;
-    ImVec4 bg_color = style.Colors[ImGuiCol_FrameBg];
+    ImGui::ItemSize(bb, style.FramePadding.y);
+    if (!ImGui::ItemAdd(frame_bb, id))
+        return false;
 
-    // back to draw
-    ImGui::SetCursorScreenPos(canvas_pos);
+    const bool hovered = ImGui::ItemHoverable(frame_bb, id);
+    if ((hovered && g.IO.MouseClicked[0]) || g.NavActivateId == id || g.NavInputId == id)
+    {
+        ImGui::SetActiveID(id, window);
+        ImGui::SetFocusID(id, window);
+        ImGui::FocusWindow(window);
+        g.ActiveIdUsingNavDirMask |= (1 << ImGuiDir_Up) | (1 << ImGuiDir_Down);
+    }
 
-    // plot transparent histogram
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
-    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0, 0, 0, 250));
-    char buf[128];
-    snprintf(buf, 128, "##Histo%s", label);
-    ImGui::PlotHistogram(buf, histogram_array, values_count, 0, NULL, values_min, values_max, size);
-    ImGui::PopStyleColor(2);
+    // Draw frame
+    const ImU32 frame_col = ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : g.HoveredId == id ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+    ImGui::RenderNavHighlight(frame_bb, id);
+    ImGui::RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, true, g.Style.FrameRounding);
 
-    ImGui::SetCursorScreenPos(canvas_pos);
+    // Slider behavior
+    ImRect grab_bb;
+    const bool value_changed = ImGui::SliderBehavior(frame_bb, id, data_type, p_data, p_min, p_max, "", 1.f, ImGuiSliderFlags_None, &grab_bb);
+    if (value_changed)
+        ImGui::MarkItemEdited(id);
 
-    // plot lines
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
-    snprintf(buf, 128, "##Lines%s", label);
-    ImGui::PlotLines(buf, lines_array, values_count, 0, NULL, values_min, values_max, size);
-    ImGui::PopStyleColor(1);
+    // Render grab
+    if (grab_bb.Max.y > grab_bb.Min.y)
+        window->DrawList->AddRectFilled(grab_bb.Min, grab_bb.Max, ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab), style.GrabRounding);
 
+    return value_changed;
 }
+
+bool ImGuiToolkit::HSliderInt(const char *id, const ImVec2 &size, int *v, int v_min, int v_max)
+{
+    return HSliderScalar(id, size, ImGuiDataType_S32, v, &v_min, &v_max);
+}
+
+bool ImGuiToolkit::HSliderUInt64(const char *id, const ImVec2 &size, guint64 *v, guint64 v_min, guint64 v_max)
+{
+    return HSliderScalar(id, size, ImGuiDataType_U64, v, &v_min, &v_max);
+}
+
 
 void ImGuiToolkit::ValueBar(float fraction, const ImVec2& size_arg)
 {
@@ -1908,6 +1676,93 @@ void word_wrap(std::string *str, unsigned per_line)
 }
 
 
+
+bool ImGuiToolkit::InputTime(const char *label, guint64 *time, ImGuiInputTextFlags flag)
+{
+    bool changed = false;
+
+    // filtering for reading MM:SS.MS text entry
+    static bool valid = false;
+    static std::regex RegExTime("([0-9]+\\:)?([0-9]+\\:)?([0-5][0-9]|[0-9])((\\.|\\,)[0-9]+)?");
+    struct TextFilters
+    {
+        static int FilterTime(ImGuiInputTextCallbackData *data)
+        {
+            if (data->EventChar < 256 && strchr("0123456789.,:", (char) data->EventChar))
+                return 0;
+            return 1;
+        }
+    };
+
+    // convert gst time to hh mm s.ms
+    guint64 ms = GST_TIME_AS_MSECONDS(*time);
+    guint64 hh = ms / 3600000;
+    guint64 mm = (ms % 3600000) / 60000;
+    ms -= (hh * 3600000 + mm * 60000);
+    float sec = (float) (ms) / 1000.f;
+
+    // write time into string
+    char buf_time_input[64] = "";
+    snprintf(buf_time_input, 64, "%02lu:%02lu:%04.1f", (unsigned long) hh, (unsigned long) mm, sec);
+
+    // draw input text field
+    const ImGuiContext &g = *GImGui;
+    ImGui::PushStyleColor(ImGuiCol_Text,
+                          flag & ImGuiInputTextFlags_ReadOnly
+                              ? g.Style.Colors[ImGuiCol_TextDisabled]
+                              : ImVec4(1.0f, valid ? 1.0f : 0.2f, valid ? 1.0f : 0.2f, 1.f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg,
+                          flag & ImGuiInputTextFlags_ReadOnly ? g.Style.Colors[ImGuiCol_WindowBg]
+                                                              : g.Style.Colors[ImGuiCol_FrameBg]);
+    ImGuiToolkit::PushFont(FONT_MONO);
+    ImGui::InputText(label,
+                     buf_time_input,
+                     64,
+                     ImGuiInputTextFlags_CallbackCharFilter | flag,
+                     TextFilters::FilterTime);
+    ImGui::PopFont();
+    ImGui::PopStyleColor(2);
+
+    // test string format with regular expression
+    valid = std::regex_match(buf_time_input, RegExTime);
+
+    if (ImGui::IsItemDeactivatedAfterEdit()) {
+        if (valid) {
+            ms = 0;
+            sec = 0.f;
+            // user confirmed the entry and the input is valid
+            // split the "HH:MM:SS.ms" string in HH MM SS.ms
+            std::string timing(buf_time_input);
+            std::size_t found = timing.find_last_of(':');
+            // read the right part SS.ms as a value
+            if (std::string::npos != found
+                && BaseToolkit::is_a_value(timing.substr(found + 1), &sec)) {
+                ms = (guint64) (sec * 1000.f);
+                // read right part MM as a number
+                timing = timing.substr(0, found);
+                found = timing.find_last_of(':');
+                int min = 0;
+                if (std::string::npos != found
+                    && BaseToolkit::is_a_number(timing.substr(found + 1), &min)) {
+                    ms += 60000 * (guint64) min;
+                    // read right part HH as a number
+                    timing = timing.substr(0, found);
+                    int hour = 0;
+                    if (std::string::npos != found && BaseToolkit::is_a_number(timing, &hour)) {
+                        ms += 3600000 * (guint64) hour;
+                    }
+                }
+            }
+            // set time
+            *time = GST_MSECOND * ms;
+            changed = true;
+        }
+        // force to test validity next frame
+        valid = false;
+    }
+
+    return changed;
+}
 
 static int InputTextCallback(ImGuiInputTextCallbackData* data)
 {
