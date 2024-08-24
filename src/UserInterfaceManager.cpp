@@ -634,7 +634,8 @@ void UserInterface::handleMouse()
                             Mixer::manager().setCurrentSource( s );
                         else
                             Mixer::manager().unsetCurrentSource();
-                        if (navigator.pannelVisible())
+                        if (navigator.pannelVisible() &&
+                                navigator.selectedPannelSource() < NAV_MAX)
                             navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
 
                         // indicate to view that an action can be initiated (e.g. grab)
