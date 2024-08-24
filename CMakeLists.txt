@@ -343,7 +343,8 @@ include_directories(
     ${GLAD_INCLUDE_DIRS}
 )
 add_library(GLAD "${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/src/glad.c")
-message(STATUS "Including 'GLAD' Open source multi-language OpenGL loader https://glad.dav1d.de -- ${GLAD_INCLUDE_DIRS}")
+set_property(TARGET GLAD PROPERTY C_STANDARD 11)
+message(STATUS "Compiling 'GLAD 2' Open source multi-language OpenGL loader https://gen.glad.sh -- ${GLAD_INCLUDE_DIRS}")
 
 #
 # DEAR IMGUI

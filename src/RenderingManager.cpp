@@ -1022,7 +1022,7 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     // Initialize OpenGL loader on first call
     static bool glad_initialized = false;
     if ( !glad_initialized ) {
-        bool err = gladLoadGLLoader((GLADloadproc) glfwGetProcAddress) == 0;
+        bool err = gladLoadGL((GLADloadfunc) glfwGetProcAddress) == 0;
         if (err) {
             Log::Error("Failed to initialize GLAD OpenGL loader.");
             return false;
