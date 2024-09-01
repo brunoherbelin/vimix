@@ -231,8 +231,10 @@ IF(APPLE)
     # package runtime fixup bundle
     set(APPS "\${CMAKE_INSTALL_PREFIX}/${CPACK_BUNDLE_NAME}")
 
+    ##
     ## APPLE BUNDLE FIX
     ## with install_name_tool using cmake 'fixup_bundle'
+    ##
     install(CODE "
         file(GLOB_RECURSE GSTPLUGINS \"\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/gstreamer-1.0/*.dylib\")
         foreach(PLUGIN \${GSTPLUGINS})
@@ -260,8 +262,10 @@ IF(APPLE)
         COMPONENT Runtime
     )
 
+    ##
     ## APPLE CODE SIGNING
     ## Sign the bundle and ALL binary (executables and dynamic library)
+    ##
     string(LENGTH "${APPLE_CODESIGN_IDENTITY}" APPLE_CODESIGN_IDENTITY_LENGHT)
     if( ${APPLE_CODESIGN_IDENTITY_LENGHT} LESS 40 )
         message(STATUS "Not signing bundle. Specify APPLE_CODESIGN_IDENTITY to cmake before running cpack if you want to sign the bundle")
@@ -301,44 +305,25 @@ IF(APPLE)
                 "
                 COMPONENT Runtime
         )
-        # install(CODE "
-        #         include(BundleUtilities)
-        #         get_bundle_all_executables(\"${APPS}\" EXECUTABLES)
-        #         foreach(EXE \${EXECUTABLES})
-        #             message(\"SIGNING EXECUTABLE \${EXE}\")
-        #             execute_process(COMMAND
-        #             codesign --verbose=2 --force
-        #             --sign \"${APPLE_CODESIGN_IDENTITY}\"
-        #             \"\${EXE}\"
-        #             )
-        #         endforeach()
-        #         "
-        #         COMPONENT Runtime
-        # )
-        # install(CODE "
-        #         execute_process(COMMAND
-        #         codesign --verbose=2 --force
-        #         --sign \"${APPLE_CODESIGN_IDENTITY}\"
-        #         \"${DMGS}\"
-        #         )
-        #         message(\"codesign ${DMGS} \")
-        #         "
-        #         COMPONENT Runtime
-        # )
-        # install(CODE "
-        #         execute_process(COMMAND
-        #         xcrun notarytool submit \"${DMGS}\"
-        #         --keychain-profile \"${APPLE_CODESIGN_STORED_CREDENTIAL}\"
-        #         --wait
-        #         )
-        #         message(\"notary tool ${DMGS}  ${APPLE_CODESIGN_STORED_CREDENTIAL} \")
-        #         "
-        #         COMPONENT Runtime
-        # )
     endif()
 
-   # install (SCRIPT "${CMAKE_SOURCE_DIR}/osx/PostInstall.cmake")
-
+    ## POST INSTALL DMG SIGNING AND NOTARIZATION
+    ## 1. SIGN DMG
+    ## codesign --verify --verbose=2 ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dm
+    ##
+    ## 2. SUBMIT TO NOTARIZATION
+    ## xcrun notarytool submit ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dmg --keychain-profile "vimix" --wait
+    ##
+    ## NB: "vimix" is the name of the app-specific password in keychain
+    ##     generated online : https://support.apple.com/en-us/102654
+    ##
+    ## 3. STAPLE THE TICKET TO THE DISK IMAGE
+    ## xcrun stapler staple ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dmg
+    ##
+    ## 4. VERIFY NOTARIZATION
+    ## spctl -a -vv -t install ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dmg
+    ##
+    ## NB: more info at https://wiki.lazarus.freepascal.org/Notarization_for_macOS_10.14.5%2B
 
 ELSE(APPLE)
 
