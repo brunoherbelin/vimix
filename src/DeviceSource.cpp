@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of vimix - video live mixer
  *
  * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
@@ -493,8 +493,8 @@ void DeviceSource::setDevice(const std::string &devicename)
                 Log::Info("Device %s selected its optimal config: %s %s %dx%d@%.1ffps", device_.c_str(), best.stream.c_str(), best.format.c_str(), best.width, best.height, fps);
 
                 pipeline << " ! " << best.stream;
-                if (!best.format.empty())
-                    pipeline << ",format=" << best.format;
+                // if (!best.format.empty())
+                //     pipeline << ",format=" << best.format; // disabled after problem with OSX avfvideosrc
                 pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
                 pipeline << ",width=" << best.width;
                 pipeline << ",height=" << best.height;

@@ -2078,7 +2078,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::PopStyleColor(1);
 
         ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));
-        if ( ms->audioFlags() & Source::Audio_enabled )
+        if ( Settings::application.accept_audio && ms->audioFlags() & Source::Audio_enabled )
             // Icon to inform audio decoding
             ImGui::Text("%s " ICON_FA_VOLUME_UP, ms->initials());
         else

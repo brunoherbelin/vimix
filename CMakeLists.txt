@@ -61,17 +61,26 @@ if(UNIX)
         set(CMAKE_SKIP_RPATH TRUE)
         set(OpenGL_DIR /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/)
 
-        # set(CMAKE_OSX_ARCHITECTURES "x86_64")
-        # set(CMAKE_OSX_DEPLOYMENT_TARGET "11")
-
-       set(CMAKE_OSX_ARCHITECTURES "arm64")
-       set(CMAKE_OSX_DEPLOYMENT_TARGET "13")
+        # MacOS target
+        set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "")
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "13" CACHE STRING "")
 
         # CPACK
         set(CPACK_SYSTEM_NAME  "OSX_${CMAKE_OSX_DEPLOYMENT_TARGET}_${CMAKE_OSX_ARCHITECTURES}")
         set(CPACK_GENERATOR DragNDrop)
         set(CPACK_BINARY_DRAGNDROP ON)
+
+        # Apple ID code signing
         set(APPLE_CODESIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/osx/entitlements.plist")
+        ## team ID, for example if your certificate is: Developer ID Application: JOHN, DOE (X4MF6H9XZ6) the team ID is: X4MF6H9XZ6
+        set(APPLE_CODESIGN_TEAM "" CACHE STRING "")
+        ## Apple identity, in the form Developer ID Application
+        set(APPLE_CODESIGN_IDENTITY "Developer ID Application:" CACHE STRING "")
+        ## Apple keychain profile for app-specific password
+        ## 1. Create a password for "vimix" at  https://support.apple.com/en-us/102654
+        ## 2. Run e.g.
+        ## xcrun notarytool store-credentials "vimix" --apple-id <email_login_apple_id> --team-id <team> --password <string_given_https://appleid.apple.com/account/manage>
+        set(APPLE_CODESIGN_STORED_CREDENTIAL "vimix" CACHE STRING "")
 
         # find icu4c in OSX (pretty well hidden...)
         set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/opt/icu4c/lib/pkgconfig:/opt/homebrew/opt/icu4c/lib/pkgconfig")
