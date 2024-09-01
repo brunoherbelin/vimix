@@ -34,8 +34,9 @@ find_package(PkgConfig)
 if (PKG_CONFIG_FOUND)
     pkg_check_modules(PKG_GSTREAMER gstreamer-${GSTREAMER_ABI_VERSION})
     execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE}
-                 ARGS --variable pluginsdir gstreamer-${GSTREAMER_ABI_VERSION}
-                 OUTPUT_VARIABLE PKG_GSTREAMER_PLUGIN_DIR)
+                 --variable pluginsdir gstreamer-${GSTREAMER_ABI_VERSION}
+                 OUTPUT_VARIABLE PKG_GSTREAMER_PLUGIN_DIR_TMP)
+    string(STRIP ${PKG_GSTREAMER_PLUGIN_DIR_TMP} PKG_GSTREAMER_PLUGIN_DIR)
 endif()
 
 find_library(GSTREAMER_LIBRARY

@@ -765,6 +765,7 @@ void RenderingWindow::setTitle(const std::string &title)
 
 void RenderingWindow::setIcon(const std::string &resource)
 {
+#ifndef APPLE
     size_t fpsize = 0;
     const char *fp = Resource::getData(resource, &fpsize);
     if (fp != nullptr && window_) {
@@ -773,6 +774,7 @@ void RenderingWindow::setIcon(const std::string &resource)
         glfwSetWindowIcon( window_, 1, &icon );
         free( icon.pixels );
     }
+#endif
 }
 
 GLFWmonitor *RenderingWindow::monitor()

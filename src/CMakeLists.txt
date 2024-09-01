@@ -124,8 +124,11 @@ IF(APPLE)
 
     # set the Info.plist file
     set(MACOSX_BUNDLE_PLIST_FILE ${CMAKE_SOURCE_DIR}/osx/Info.plist.in)
-    set_target_properties(${VMIX_BINARY} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${MACOSX_BUNDLE_PLIST_FILE})
+    set_target_properties(${VMIX_BINARY} PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST ${MACOSX_BUNDLE_PLIST_FILE}
+    )
 
+    # link with base frameworks
     set(PLATFORM_LIBS
         "-framework CoreFoundation"
         "-framework Appkit"
@@ -190,6 +193,11 @@ IF(APPLE)
     set(CPACK_GENERATOR "DragNDrop")
     set(CPACK_BINARY_DRAGNDROP ON)
 
+    set(CPACK_BUNDLE_NAME "vimix.app")
+    set(CPACK_BUNDLE_PLIST ${CMAKE_SOURCE_DIR}/osx/Info.plist.in)
+    set(CPACK_BUNDLE_ICON  ${CMAKE_SOURCE_DIR}/osx/vimix.icns)
+    set(CPACK_BUNDLE_APPLE_CERT_APP ${APPLE_CODESIGN_IDENTITY})
+    set(CPACK_BUNDLE_APPLE_ENTITLEMENTS ${APPLE_CODESIGN_ENTITLEMENTS})
 
     install(TARGETS ${VMIX_BINARY}
             CONFIGURATIONS Release RelWithDebInfo
@@ -198,91 +206,139 @@ IF(APPLE)
     )
 
     # create GST plugins directory in Bundle Resources subfolder
-    set(plugin_dest_dir vimix.app/Contents/Resources/)
+    set(plugin_dest_dir ${CPACK_BUNDLE_NAME}/Contents/Resources/)
 
-    ### TODO configure auto to find installation dir of gst
+    ### install gst plugins
+    message(STATUS "Install with gst-plugins ${PKG_GSTREAMER_PLUGIN_DIR}")
+    install(DIRECTORY "${PKG_GSTREAMER_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
+    list(APPEND GSTPLUGINS_EXCLUDE "libgstgtk4.dylib" "libgstgtk.dylib" "libgstpython.dylib")
 
-    message(STATUS "install  gst-plugins ${PKG_GSTREAMER_PLUGIN_DIR}")
-    message(STATUS "install  gst-plugins-base ${PKG_GSTREAMER_BASE_PLUGIN_DIR}")
-
-    if (PKG_CONFIG_FOUND)
-        pkg_check_modules(PKG_GSTREAMER_PLUGINS_BAD gstreamer-plugins-bad-${GSTREAMER_ABI_VERSION})
-        set(PKG_GSTREAMER_BAD_PLUGIN_DIR ${PKG_GSTREAMER_PLUGINS_BAD_LIBDIR}/gstreamer-${GSTREAMER_ABI_VERSION})
-        message(STATUS "install  gst-plugins-bad ${PKG_GSTREAMER_BAD_PLUGIN_DIR}")
-    endif()
-
-
-    # intall the gst-plugin-scanner program (used by plugins at load time)
+    # install the gst-plugin-scanner program (used by plugins at load time)
     set(PKG_GSTREAMER_SCANNER "${PKG_GSTREAMER_PREFIX}/libexec/gstreamer-1.0/gst-plugin-scanner")
-    message(STATUS "install  gst-plugin-scanner ${PKG_GSTREAMER_SCANNER}")
+    message(STATUS "Install with gst-plugin-scanner ${PKG_GSTREAMER_SCANNER}")
     install(FILES "${PKG_GSTREAMER_SCANNER}"
         DESTINATION "${plugin_dest_dir}"
         PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
         COMPONENT Runtime
     )
 
-    # Install the gst-plugins (all those installed with brew )
-    install(DIRECTORY "${PKG_GSTREAMER_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "${PKG_GSTREAMER_BASE_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "${PKG_GSTREAMER_BAD_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-good/1.22.6/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-plugins-ugly/1.22.6/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    install(DIRECTORY "/usr/local/Cellar/gst-libav/1.22.6/lib/gstreamer-1.0" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-
-#    # install locally recompiled & installed gst-plugins (because not included in brew package)
-#    install(FILES   "/usr/local/lib/gstreamer-1.0/libgstapplemedia.dylib"
-#                    "/usr/local/lib/gstreamer-1.0/libgstde265.dylib"
-#                    "/usr/local/lib/gstreamer-1.0/libgstx265.dylib"
-#            DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-
     # install frei0r plugins (dependencies of gstreamer-1.0/libgstfrei0r.dylib plugin)
-    install(FILES "/usr/local/Cellar/frei0r/2.3.1/lib/frei0r-1/lissajous0r.so"
-                  "/usr/local/Cellar/frei0r/2.3.1/lib/frei0r-1/rgbnoise.so"
-            DESTINATION "${plugin_dest_dir}/frei0r-1" COMPONENT Runtime)
-
-
-    # ICU DATA LIB GST dependency : undocumented and hacked here : seems to work
-#    install(FILES "${ICU_LINK_LIBRARIES}" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" COMPONENT Runtime)
-#    install(FILES "/usr/local/Cellar/icu4c/73.2/lib/libicudata.73.2.dylib" DESTINATION "${plugin_dest_dir}/gstreamer-1.0" RENAME "libicudata.73.dylib" COMPONENT Runtime)
-    message(STATUS "install  ${ICU_LINK_LIBRARIES} from ${ICU_LIBRARY_DIRS}")
+    pkg_check_modules(FREI0R QUIET frei0r)
+    set(PKG_FREI0R_PLUGIN_DIR ${FREI0R_LIBDIR}/frei0r-1)
+    message(STATUS "Install with frei0r plugins ${PKG_FREI0R_PLUGIN_DIR}")
+    install(DIRECTORY "${PKG_FREI0R_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
 
     # package runtime fixup bundle
-    set(APPS "\${CMAKE_INSTALL_PREFIX}/vimix.app")
+    set(APPS "\${CMAKE_INSTALL_PREFIX}/${CPACK_BUNDLE_NAME}")
+
+    ## APPLE BUNDLE FIX
+    ## with install_name_tool using cmake 'fixup_bundle'
     install(CODE "
-            file(GLOB_RECURSE GSTPLUGINS \"\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/gstreamer-1.0/*.dylib\")
-            list(APPEND LIBS_PATH \"${ICU_LIBRARY_DIRS}\" \"/usr/local/lib\" \"/usr/local/Cellar/libarchive/3.7.2/lib\")
-            include(BundleUtilities)
-            set(BU_CHMOD_BUNDLE_ITEMS TRUE)
-            fixup_bundle(\"${APPS}\" \"\${GSTPLUGINS}\" \"\${LIBS_PATH}\")
-            "
-            COMPONENT Runtime
+        file(GLOB_RECURSE GSTPLUGINS \"\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/gstreamer-1.0/*.dylib\")
+        foreach(PLUGIN \${GSTPLUGINS})
+            set(ADD_PLUGIN true)
+            foreach(EXCLUDED ${GSTPLUGINS_EXCLUDE})
+                string(FIND \${PLUGIN} \${EXCLUDED} _found)
+                if(NOT \${_found} EQUAL -1)
+                    file(REMOVE \${PLUGIN})
+                    set(ADD_PLUGIN false)
+                endif()
+            endforeach()
+            if(ADD_PLUGIN)
+                list(APPEND ALLPLUGINS \${PLUGIN})
+            endif()
+        endforeach()
+        file(GLOB FREI0RPLUGINS \"\${CMAKE_INSTALL_PREFIX}/${plugin_dest_dir}/frei0r-1/*.so\")
+        list(APPEND ALLPLUGINS \${FREI0RPLUGINS} )
+        list(LENGTH ALLPLUGINS SIZE)
+        message(\"       - Adding \${SIZE} plugins to bundle...\")
+        include(BundleUtilities)
+        set(BU_CHMOD_BUNDLE_ITEMS TRUE)
+        fixup_bundle(\"${APPS}\" \"\${ALLPLUGINS}\" \"/opt/homebrew/lib\" IGNORE_ITEM \"Python\")
+        file(REMOVE_RECURSE \"${APPS}/Contents/Frameworks/Python.framework\")
+        "
+        COMPONENT Runtime
     )
 
-    set(APPLE_CODESIGN_IDENTITY "" CACHE STRING "")
+    ## APPLE CODE SIGNING
+    ## Sign the bundle and ALL binary (executables and dynamic library)
     string(LENGTH "${APPLE_CODESIGN_IDENTITY}" APPLE_CODESIGN_IDENTITY_LENGHT)
     if( ${APPLE_CODESIGN_IDENTITY_LENGHT} LESS 40 )
-        message(STATUS "Not signing bundle. Specify APPLE_CODESIGN_IDENTITY to cmake before running cpack to sign")
+        message(STATUS "Not signing bundle. Specify APPLE_CODESIGN_IDENTITY to cmake before running cpack if you want to sign the bundle")
     else()
+        message(STATUS "Signing bundle with identity " ${APPLE_CODESIGN_IDENTITY})
         install(CODE "
+                cmake_policy(VERSION 3.8)
+                file(GLOB_RECURSE DEPENDENCIES ${APPS}/Contents/*.dylib)
+                file(GLOB_RECURSE SO_DEPENDENCIES ${APPS}/Contents/*.so)
+                list(APPEND DEPENDENCIES \${SO_DEPENDENCIES})
+                foreach(DEP \${DEPENDENCIES})
+                    execute_process(COMMAND
+                        codesign --verify --verbose=0 --force
+                        --sign \"${APPLE_CODESIGN_IDENTITY}\"
+                        \"\${DEP}\"
+                    )
+                endforeach()
+                list(LENGTH DEPENDENCIES SIZE)
+                message(\" - \${SIZE} dependency libraries signed.\")
+                message(\" - Signing executables in ${APPS}\")
                 execute_process(COMMAND
-                codesign -vvv --deep --force
-                --entitlements \"${APPLE_CODESIGN_ENTITLEMENTS}\"
-                --sign \"${APPLE_CODESIGN_IDENTITY}\"
-                \"${APPS}\" )
+                    codesign -vvv --force
+                    --options runtime --timestamp
+                    --entitlements \"${APPLE_CODESIGN_ENTITLEMENTS}\"
+                    --sign \"${APPLE_CODESIGN_IDENTITY}\"
+                    \"${APPS}/Contents/MacOS/vimix\"
+                    \"${APPS}/Contents/Resources/gst-plugin-scanner\"
+                )
+                message(\" - Signing bundle ${APPS}\")
+                execute_process(COMMAND
+                    codesign -vvv --force --strict
+                    --options runtime --timestamp
+                    --entitlements \"${APPLE_CODESIGN_ENTITLEMENTS}\"
+                    --sign \"${APPLE_CODESIGN_IDENTITY}\"
+                    \"${APPS}\"
+                )
                 "
                 COMPONENT Runtime
         )
+        # install(CODE "
+        #         include(BundleUtilities)
+        #         get_bundle_all_executables(\"${APPS}\" EXECUTABLES)
+        #         foreach(EXE \${EXECUTABLES})
+        #             message(\"SIGNING EXECUTABLE \${EXE}\")
+        #             execute_process(COMMAND
+        #             codesign --verbose=2 --force
+        #             --sign \"${APPLE_CODESIGN_IDENTITY}\"
+        #             \"\${EXE}\"
+        #             )
+        #         endforeach()
+        #         "
+        #         COMPONENT Runtime
+        # )
+        # install(CODE "
+        #         execute_process(COMMAND
+        #         codesign --verbose=2 --force
+        #         --sign \"${APPLE_CODESIGN_IDENTITY}\"
+        #         \"${DMGS}\"
+        #         )
+        #         message(\"codesign ${DMGS} \")
+        #         "
+        #         COMPONENT Runtime
+        # )
+        # install(CODE "
+        #         execute_process(COMMAND
+        #         xcrun notarytool submit \"${DMGS}\"
+        #         --keychain-profile \"${APPLE_CODESIGN_STORED_CREDENTIAL}\"
+        #         --wait
+        #         )
+        #         message(\"notary tool ${DMGS}  ${APPLE_CODESIGN_STORED_CREDENTIAL} \")
+        #         "
+        #         COMPONENT Runtime
+        # )
     endif()
 
-#    # package runtime fixup bundle and codesign
-#    set(BUNDLE_NAME "vimix.app")
-#    set(BUNDLE_LIBS_DIR "${plugin_dest_dir}/gstreamer-1.0")
-#    set(BUNDLE_DIRS "${ICU_LIBRARY_DIRS}")
-#    set(APPLE_CODESIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/osx/entitlements.plist")
+   # install (SCRIPT "${CMAKE_SOURCE_DIR}/osx/PostInstall.cmake")
 
-#    configure_file(cmake/modules/BundleInstall.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/BundleInstall.cmake" @ONLY)
-#    install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/BundleInstall.cmake" COMPONENT Runtime)
 
 ELSE(APPLE)
 
