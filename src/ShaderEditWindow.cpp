@@ -133,7 +133,7 @@ void ShaderEditWindow::Render()
                                                           "Text files",
                                                           {"*.glsl", "*.txt"} );
 
-    ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
 
     if ( !ImGui::Begin(name_, &Settings::application.widget.shader_editor,
                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
