@@ -103,6 +103,8 @@ MediaPlayer::~MediaPlayer()
     // cleanup picture buffer
     if (pbo_[0])
         glDeleteBuffers(2, pbo_);
+
+    Log::Info("MediaPlayer %s Deleted", std::to_string(id_).c_str());
 }
 
 void MediaPlayer::accept(Visitor& v) {
@@ -370,6 +372,8 @@ void MediaPlayer::execute_open()
 {
     // create playbin
     pipeline_ = gst_element_factory_make ("playbin", std::to_string(id_).c_str());
+    // ref gst_object (unrefed on close)
+    gst_object_ref(pipeline_);
 
     // set uri of file to open
     g_object_set ( G_OBJECT (pipeline_),  "uri", uri_.c_str(),  NULL);
@@ -473,6 +477,7 @@ void MediaPlayer::execute_open()
 
     // set playbin sink
     g_object_set ( G_OBJECT (pipeline_), "video-sink", sink, NULL);
+    gst_object_unref (sink);
 
     // done with ref to caps
     gst_caps_unref (caps);
@@ -602,8 +607,9 @@ void MediaPlayer::execute_open()
         return;
     }
 #ifdef MEDIA_PLAYER_DEBUG
-        Log::Info("MediaPlayer %s Pipeline [%s]", std::to_string(id_).c_str(), description.c_str());
+    Log::Info("MediaPlayer %s Pipeline [%s]", std::to_string(id_).c_str(), description.c_str());
 #endif
+    gst_object_ref(pipeline_);
 
     // setup pipeline
     g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
@@ -738,7 +744,7 @@ bool MediaPlayer::failed() const
 
 void MediaPlayer::Frame::unmap()
 {
-    if ( full )
+    if (full)
         gst_video_frame_unmap(&vframe);
     full = false;
 }
@@ -749,12 +755,14 @@ void MediaPlayer::pipeline_terminate( GstElement *p )
 #ifdef MEDIA_PLAYER_DEBUG
     gchar *name = gst_element_get_name(p);
     g_printerr("MediaPlayer %s close\n", name);
-    Log::Info("MediaPlayer %s closed", name);
+    Log::Info("MediaPlayer %s Closed", name);
     g_free(name);
 #endif
 
-    // end pipeline
-    gst_element_set_state (p, GST_STATE_NULL);
+    // force end
+    GstStateChangeReturn ret = gst_element_set_state (p, GST_STATE_NULL);
+    if (ret == GST_STATE_CHANGE_ASYNC)
+        gst_element_get_state (p, NULL, NULL, 1000000);
 
     // unref to free pipeline
     gst_object_unref ( p );
@@ -775,16 +783,6 @@ void MediaPlayer::close()
         return;
     }
 
-    // un-ready the media player
-    opened_ = false;
-    failed_ = false;
-    pending_ = false;
-    seeking_ = false;
-    force_update_ = false;
-    rate_ = 1.0;
-    rate_change_ = RATE_CHANGE_NONE;
-    position_ = GST_CLOCK_TIME_NONE;
-
     // clean up GST
     if (pipeline_ != nullptr) {
         // end pipeline asynchronously
@@ -802,6 +800,15 @@ void MediaPlayer::close()
     write_index_ = 0;
     last_index_ = 0;
 
+    // un-ready the media player
+    opened_ = false;
+    failed_ = false;
+    pending_ = false;
+    seeking_ = false;
+    force_update_ = false;
+    rate_ = 1.0;
+    rate_change_ = RATE_CHANGE_NONE;
+    position_ = GST_CLOCK_TIME_NONE;
 }
 
 
@@ -1209,11 +1216,10 @@ void MediaPlayer::fill_texture(guint index)
             glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
             // map the buffer object into client's memory
             GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            if (ptr) {
+            if (ptr)
                 memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
-                // release pointer to mapping buffer
-                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-            }
+            // release pointer to mapping buffer
+            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 #endif
             // done with PBO
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);

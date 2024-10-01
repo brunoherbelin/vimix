@@ -106,6 +106,7 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     checker_background_->play(false);
     while (checker_background_->texture() == Resource::getTextureBlack())
         checker_background_->update();
+    checker_background_->close();
 }
 
 

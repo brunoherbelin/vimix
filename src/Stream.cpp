@@ -264,6 +264,10 @@ void Stream::execute_open()
         g_clear_error (&error);
         return;
     }
+    // ref gst_object (unrefed on close)
+    gst_object_ref(pipeline_);
+
+    // set pipeline name
     g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
     gst_pipeline_set_auto_flush_bus( GST_PIPELINE(pipeline_), true);
 
@@ -328,7 +332,7 @@ void Stream::execute_open()
 
 #ifdef IGNORE_GST_ERROR_MESSAGE
     // avoid filling up bus with messages
-    gst_bus_set_flushing(bus, true);
+    gst_bus_set_flushing(gst_element_get_bus(pipeline_), true);
 #else
     // set message handler for the pipeline's bus
     gst_bus_set_sync_handler(gst_element_get_bus(pipeline_),
@@ -387,12 +391,12 @@ void Stream::Frame::unmap()
 
 void Stream::pipeline_terminate( GstElement *p )
 {
-#ifdef STREAM_DEBUG
     gchar *name = gst_element_get_name(p);
+#ifdef STREAM_DEBUG
     g_printerr("Stream %s close\n", name);
-    Log::Info("Stream %s closed", name);
-    g_free(name);
 #endif
+    Log::Info("Stream %s Closed", name);
+    g_free(name);
 
     // force end
     GstStateChangeReturn ret = gst_element_set_state (p, GST_STATE_NULL);
@@ -672,11 +676,10 @@ void Stream::fill_texture(guint index)
             glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
             // map the buffer object into client's memory
             GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            if (ptr) {
+            if (ptr)
                 memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
-                // release pointer to mapping buffer
-                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-            }
+            // release pointer to mapping buffer
+            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 #endif
         // done with PBO
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);

@@ -87,8 +87,9 @@ if(UNIX)
 
     else()
         add_definitions(-DLINUX)
-#        add_definitions(-DUSE_GST_OPENGL_SYNC_HANDLER)
-#        add_definitions(-DUSE_GL_BUFFER_SUBDATA)
+        # add_definitions(-DUSE_GST_OPENGL_SYNC_HANDLER)
+        # add_definitions(-DUSE_GL_BUFFER_SUBDATA)
+        # add_definitions(-DIGNORE_GST_ERROR_MESSAGE)
 
         # CPACK
         set(CPACK_SYSTEM_NAME "${CMAKE_HOST_SYSTEM_NAME}")
