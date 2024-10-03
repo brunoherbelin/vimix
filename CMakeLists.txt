@@ -87,9 +87,6 @@ if(UNIX)
 
     else()
         add_definitions(-DLINUX)
-        # add_definitions(-DUSE_GST_OPENGL_SYNC_HANDLER)
-        # add_definitions(-DUSE_GL_BUFFER_SUBDATA)
-        # add_definitions(-DIGNORE_GST_ERROR_MESSAGE)
 
         # CPACK
         set(CPACK_SYSTEM_NAME "${CMAKE_HOST_SYSTEM_NAME}")
@@ -112,6 +109,14 @@ elseif(WIN32)
     add_definitions(-DWIN32)
     add_definitions(-DMINGW32)
 endif()
+
+#####
+##### Preprocessor options
+#####
+
+# add_definitions(-DUSE_GST_OPENGL_SYNC_HANDLER)
+# add_definitions(-DUSE_GL_BUFFER_SUBDATA)
+add_definitions(-DIGNORE_GST_BUS_MESSAGE)
 
 #####
 ##### Dependencies

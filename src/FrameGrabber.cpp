@@ -436,7 +436,7 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
             // if initialization succeeded
             if (initialized_) {
 
-#ifdef IGNORE_GST_ERROR_MESSAGE
+#ifdef IGNORE_GST_BUS_MESSAGE
                 //        avoid filling up bus with messages
                 gst_bus_set_flushing(gst_element_get_bus(pipeline_), true);
 #else

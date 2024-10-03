@@ -322,6 +322,7 @@ private:
     LoopMode loop_;
     GstState desired_state_;
     GstElement *pipeline_;
+    GstBus *bus_;
     GstVideoInfo v_frame_video_info_;
     std::atomic<bool> opened_;
     std::atomic<bool> failed_;
@@ -409,7 +410,7 @@ private:
     static void callback_element_setup (GstElement *pipeline, GstElement *element, MediaPlayer *mp);
 
     // global list of registered media player
-    static void pipeline_terminate(GstElement *p);
+    static void pipeline_terminate(GstElement *p, GstBus *b);
     static std::list<GstElement*> registered_;
 };
 

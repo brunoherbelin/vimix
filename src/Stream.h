@@ -184,6 +184,7 @@ protected:
     GstClockTime position_;
     GstState desired_state_;
     GstElement *pipeline_;
+    GstBus *bus_;
     GstVideoInfo v_frame_video_info_;
     std::atomic<bool> opened_;
     std::atomic<bool> failed_;
@@ -254,7 +255,7 @@ protected:
     static GstFlowReturn callback_new_sample  (GstAppSink *, gpointer);
 
     // global list of registered streams
-    static void pipeline_terminate(GstElement *p);
+    static void pipeline_terminate(GstElement *p, GstBus *b);
     static std::list<GstElement*> registered_;
 };
 

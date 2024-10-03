@@ -6364,6 +6364,16 @@ void ShowSandbox(bool* p_open)
     ImGui::Text("Testing sandox");
     ImGui::Separator();
 
+    ImGui::Separator();
+    ImGui::Text("Reset GST");
+
+    if (ImGui::Button("RESET GSTREAMER")){
+
+        gst_deinit();
+        // gst_init (NULL, NULL);
+    }
+
+
     ImGui::Text("Source list");
     Session *se = Mixer::manager().session();
     for (auto sit = se->begin(); sit != se->end(); ++sit) {

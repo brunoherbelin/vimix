@@ -104,7 +104,9 @@ MediaPlayer::~MediaPlayer()
     if (pbo_[0])
         glDeleteBuffers(2, pbo_);
 
-    Log::Info("MediaPlayer %s Deleted", std::to_string(id_).c_str());
+#ifdef MEDIA_PLAYER_DEBUG
+    g_printerr("MediaPlayer %s deleted\n", std::to_string(id_).c_str());
+#endif
 }
 
 void MediaPlayer::accept(Visitor& v) {
@@ -362,6 +364,7 @@ GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer 
     }
 
     // drop all messages to avoid filling up the stack
+    gst_message_unref (msg);
     return GST_BUS_DROP;
 }
 
@@ -372,8 +375,6 @@ void MediaPlayer::execute_open()
 {
     // create playbin
     pipeline_ = gst_element_factory_make ("playbin", std::to_string(id_).c_str());
-    // ref gst_object (unrefed on close)
-    gst_object_ref(pipeline_);
 
     // set uri of file to open
     g_object_set ( G_OBJECT (pipeline_),  "uri", uri_.c_str(),  NULL);
@@ -477,7 +478,6 @@ void MediaPlayer::execute_open()
 
     // set playbin sink
     g_object_set ( G_OBJECT (pipeline_), "video-sink", sink, NULL);
-    gst_object_unref (sink);
 
     // done with ref to caps
     gst_caps_unref (caps);
@@ -488,7 +488,7 @@ void MediaPlayer::execute_open()
 #endif
 
     // set to desired state (PLAY or PAUSE)
-    GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
+    GstStateChangeReturn ret = gst_element_set_state (GST_ELEMENT(pipeline_), desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         Log::Warning("MediaPlayer %s Could not open '%s'", std::to_string(id_).c_str(), uri_.c_str());
         failed_ = true;
@@ -502,13 +502,13 @@ void MediaPlayer::execute_open()
             timeline_.setEnd(d);
     }
 
-#ifdef IGNORE_GST_ERROR_MESSAGE
+    bus_ = gst_element_get_bus(pipeline_);
+#ifdef IGNORE_GST_BUS_MESSAGE
     // avoid filling up bus with messages
-    gst_bus_set_flushing(gst_element_get_bus(pipeline_), true);
+    gst_bus_set_flushing(bus_, true);
 #else
     // set message handler for the pipeline's bus
-    gst_bus_set_sync_handler(gst_element_get_bus(pipeline_),
-                             MediaPlayer::signal_handler, this, NULL);
+    gst_bus_set_sync_handler(bus_, MediaPlayer::signal_handler, this, NULL);
 #endif
 
     // all good
@@ -519,9 +519,8 @@ void MediaPlayer::execute_open()
         Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
                   timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
 
-    if (media_.hasaudio) {
+    if (media_.hasaudio)
         Log::Info("MediaPlayer %s Audio track %s", std::to_string(id_).c_str(), audio_enabled_ ? "enabled" : "disabled");
-    }
 
     opened_ = true;
 
@@ -690,6 +689,15 @@ void MediaPlayer::execute_open()
             timeline_.setEnd(d);
     }
 
+    bus_ = gst_element_get_bus(pipeline_);
+#ifdef IGNORE_GST_BUS_MESSAGE
+    // avoid filling up bus with messages
+    gst_bus_set_flushing(bus_, true);
+#else
+    // set message handler for the pipeline's bus
+    gst_bus_set_sync_handler(bus_, MediaPlayer::signal_handler, this, NULL);
+#endif
+
     // all good
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
               SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(), media_.width, media_.height);
@@ -746,26 +754,41 @@ void MediaPlayer::Frame::unmap()
 {
     if (full)
         gst_video_frame_unmap(&vframe);
+
     full = false;
 }
 
-
-void MediaPlayer::pipeline_terminate( GstElement *p )
+void MediaPlayer::pipeline_terminate( GstElement *p, GstBus *b )
 {
-#ifdef MEDIA_PLAYER_DEBUG
     gchar *name = gst_element_get_name(p);
-    g_printerr("MediaPlayer %s close\n", name);
-    Log::Info("MediaPlayer %s Closed", name);
-    g_free(name);
+#ifdef MEDIA_PLAYER_DEBUG
+    g_printerr("MediaPlayer %s closing\n", name);
 #endif
 
-    // force end
-    GstStateChangeReturn ret = gst_element_set_state (p, GST_STATE_NULL);
+#ifndef IGNORE_GST_BUS_MESSAGE
+    // empty pipeline bus (if used)
+    GstMessage *msg = NULL;
+    do {
+        if (msg)
+            gst_message_unref (msg);
+        msg = gst_bus_timed_pop_filtered(b, 1000000, GST_MESSAGE_ANY);
+    } while (msg != NULL);
+#endif
+    // unref bus
+    gst_object_unref( GST_OBJECT(b) );
+
+    // end pipeline
+    GstStateChangeReturn ret = gst_element_set_state(p, GST_STATE_NULL);
     if (ret == GST_STATE_CHANGE_ASYNC)
-        gst_element_get_state (p, NULL, NULL, 1000000);
+        gst_element_get_state(p, NULL, NULL, 1000000);
 
     // unref to free pipeline
-    gst_object_unref ( p );
+    while (GST_OBJECT_REFCOUNT_VALUE(p) > 0)
+        gst_object_unref( GST_OBJECT(p) );
+
+    // all done
+    Log::Info("MediaPlayer %s Closed", name);
+    g_free(name);
 
     // unregister
     MediaPlayer::registered_.remove(p);
@@ -783,13 +806,6 @@ void MediaPlayer::close()
         return;
     }
 
-    // clean up GST
-    if (pipeline_ != nullptr) {
-        // end pipeline asynchronously
-        std::thread(MediaPlayer::pipeline_terminate, pipeline_).detach();
-        pipeline_ = nullptr;
-    }
-
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_VFRAME; i++) {
         frame_[i].access.lock();
@@ -797,10 +813,19 @@ void MediaPlayer::close()
         frame_[i].status = INVALID;
         frame_[i].access.unlock();
     }
-    write_index_ = 0;
-    last_index_ = 0;
+
+    // clean up GST
+    if (pipeline_ != nullptr) {
+        // end pipeline asynchronously
+        std::thread(MediaPlayer::pipeline_terminate, pipeline_, bus_).detach();
+        // immediately invalidate access for other methods
+        pipeline_ = nullptr;
+        bus_ = nullptr;
+    }
 
     // un-ready the media player
+    write_index_ = 0;
+    last_index_ = 0;
     opened_ = false;
     failed_ = false;
     pending_ = false;
@@ -1358,6 +1383,12 @@ void MediaPlayer::update()
     if (need_loop && desired_state_ == GST_STATE_PLAYING)  // avoid repeated call
         execute_loop_command();
 
+#ifndef IGNORE_GST_BUS_MESSAGE
+    GstMessage *msg = gst_bus_pop_filtered(bus_, GST_MESSAGE_ANY);
+    if (msg != NULL)
+        gst_message_unref(msg);
+#endif
+
     force_update_ = false;
 }
 
@@ -1417,7 +1448,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     if (seek_event && gst_element_send_event(pipeline_, seek_event) ) {
         seeking_ = true;
 #ifdef MEDIA_PLAYER_DEBUG
-        Log::Info("MediaPlayer %s Seek %ld %.1f", std::to_string(id_).c_str(), seek_pos, rate_);
+        g_printerr("MediaPlayer %s Seek %ld %.1f", std::to_string(id_).c_str(), seek_pos, rate_);
 #endif
     }
     else
