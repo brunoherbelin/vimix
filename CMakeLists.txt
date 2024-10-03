@@ -116,7 +116,7 @@ endif()
 
 # add_definitions(-DUSE_GST_OPENGL_SYNC_HANDLER)
 # add_definitions(-DUSE_GL_BUFFER_SUBDATA)
-add_definitions(-DIGNORE_GST_BUS_MESSAGE)
+# add_definitions(-DIGNORE_GST_BUS_MESSAGE)
 
 #####
 ##### Dependencies

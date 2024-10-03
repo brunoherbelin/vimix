@@ -4705,9 +4705,12 @@ void Navigator::RenderMainPannelSession()
         ImGui::EndCombo();
     }
     ImVec2 pos = ImGui::GetCursorPos();
-//    ImGui::SameLine();
-//    if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save"))
-//        UserInterface::manager().saveOrSaveAs();
+    if (!Mixer::manager().session()->filename().empty()) {
+        ImGui::SameLine();
+        if ( ImGuiToolkit::IconButton(ICON_FA_TIMES, "Close"))
+            Mixer::manager().close();
+        ImGui::SetCursorPos(pos);
+    }
 ////    if ( Mixer::manager().session()->filename().empty()) {
 ////        if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save as"))
 ////            UserInterface::manager().saveOrSaveAs();
@@ -4715,7 +4718,6 @@ void Navigator::RenderMainPannelSession()
 ////        if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
 ////            SystemToolkit::open(SystemToolkit::path_filename(Mixer::manager().session()->filename()));
 ////    }
-//    ImGui::SetCursorPos(pos);
 
     //
     // Preview session
@@ -6367,10 +6369,11 @@ void ShowSandbox(bool* p_open)
     ImGui::Separator();
     ImGui::Text("Reset GST");
 
-    if (ImGui::Button("RESET GSTREAMER")){
+    if (ImGui::Button("RESET")){
 
-        gst_deinit();
-        // gst_init (NULL, NULL);
+
+
+
     }
 
 
