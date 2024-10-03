@@ -765,6 +765,11 @@ void MediaPlayer::pipeline_terminate( GstElement *p, GstBus *b )
     g_printerr("MediaPlayer %s closing\n", name);
 #endif
 
+    // end pipeline
+    GstStateChangeReturn ret = gst_element_set_state(p, GST_STATE_NULL);
+    if (ret == GST_STATE_CHANGE_ASYNC)
+        gst_element_get_state(p, NULL, NULL, 1000000);
+
 #ifndef IGNORE_GST_BUS_MESSAGE
     // empty pipeline bus (if used)
     GstMessage *msg = NULL;
@@ -776,11 +781,6 @@ void MediaPlayer::pipeline_terminate( GstElement *p, GstBus *b )
 #endif
     // unref bus
     gst_object_unref( GST_OBJECT(b) );
-
-    // end pipeline
-    GstStateChangeReturn ret = gst_element_set_state(p, GST_STATE_NULL);
-    if (ret == GST_STATE_CHANGE_ASYNC)
-        gst_element_get_state(p, NULL, NULL, 1000000);
 
     // unref to free pipeline
     while (GST_OBJECT_REFCOUNT_VALUE(p) > 0)
@@ -806,6 +806,16 @@ void MediaPlayer::close()
         return;
     }
 
+    // un-ready the media player
+    opened_ = false;
+    failed_ = false;
+    pending_ = false;
+    seeking_ = false;
+    force_update_ = false;
+    rate_ = 1.0;
+    rate_change_ = RATE_CHANGE_NONE;
+    position_ = GST_CLOCK_TIME_NONE;
+
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_VFRAME; i++) {
         frame_[i].access.lock();
@@ -824,16 +834,6 @@ void MediaPlayer::close()
         pipeline_ = nullptr;
         bus_ = nullptr;
     }
-
-    // un-ready the media player
-    opened_ = false;
-    failed_ = false;
-    pending_ = false;
-    seeking_ = false;
-    force_update_ = false;
-    rate_ = 1.0;
-    rate_change_ = RATE_CHANGE_NONE;
-    position_ = GST_CLOCK_TIME_NONE;
 }
 
 
@@ -1678,13 +1678,12 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
     // if got a valid sample
     if (sample != NULL) {
 
+        // get buffer from sample
+        GstBuffer *buf = gst_sample_get_buffer (sample);
+
         // send frames to media player only if ready
         MediaPlayer *m = static_cast<MediaPlayer *>(p);
         if (m && m->opened_) {
-
-            // get buffer from sample
-            GstBuffer *buf = gst_sample_get_buffer (sample);
-
             // fill frame from buffer
             if ( !m->fill_frame(buf, MediaPlayer::PREROLL) )
                 ret = GST_FLOW_ERROR;

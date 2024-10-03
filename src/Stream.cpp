@@ -398,6 +398,11 @@ void Stream::pipeline_terminate( GstElement *p, GstBus *b )
     g_printerr("Stream %s closing\n", name);
 #endif
 
+    // end pipeline
+    GstStateChangeReturn ret = gst_element_set_state (p, GST_STATE_NULL);
+    if (ret == GST_STATE_CHANGE_ASYNC)
+        gst_element_get_state (p, NULL, NULL, 1000000);
+
 #ifndef IGNORE_GST_BUS_MESSAGE
     // empty pipeline bus (if used)
     GstMessage *msg = NULL;
@@ -409,11 +414,6 @@ void Stream::pipeline_terminate( GstElement *p, GstBus *b )
 #endif
     // unref bus
     gst_object_unref( GST_OBJECT(b) );
-
-    // end pipeline
-    GstStateChangeReturn ret = gst_element_set_state (p, GST_STATE_NULL);
-    if (ret == GST_STATE_CHANGE_ASYNC)
-        gst_element_get_state (p, NULL, NULL, 1000000);
 
     // unref to free pipeline
     while (GST_OBJECT_REFCOUNT_VALUE(p) > 0)
@@ -438,6 +438,9 @@ void Stream::close()
         return;
     }
 
+    // un-ready
+    opened_ = false;
+
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_FRAME; ++i){
         frame_[i].access.lock();
@@ -457,8 +460,6 @@ void Stream::close()
         bus_ = nullptr;
     }
 
-    // un-ready
-    opened_ = false;
 }
 
 
