@@ -21,9 +21,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <algorithm>
 #include <string>
-#include <sstream>
 #include <regex>
 
 #include "defines.h"

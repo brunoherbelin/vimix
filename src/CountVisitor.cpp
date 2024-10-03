@@ -38,7 +38,7 @@ CountVisitor::CountVisitor() : num_source_(0), num_playable_(0)
 {
 }
 
-void CountVisitor::visit(Node &n)
+void CountVisitor::visit(Node &)
 {
 
 }
@@ -60,12 +60,12 @@ void CountVisitor::visit(Primitive &)
 }
 
 
-void CountVisitor::visit(MediaPlayer &mp)
+void CountVisitor::visit(MediaPlayer &)
 {
 
 }
 
-void CountVisitor::visit(Stream &n)
+void CountVisitor::visit(Stream &)
 {
 
 }
@@ -99,13 +99,13 @@ void CountVisitor::visit (SessionGroupSource& s)
         ++num_playable_;
 }
 
-void CountVisitor::visit (RenderSource& s)
+void CountVisitor::visit (RenderSource& )
 {
     ++num_source_;
     ++num_playable_;
 }
 
-void CountVisitor::visit (CloneSource& s)
+void CountVisitor::visit (CloneSource& )
 {
     ++num_source_;
     ++num_playable_;

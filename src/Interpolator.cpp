@@ -21,7 +21,6 @@
 **/
 
 #include "defines.h"
-#include "Log.h"
 #include "Source.h"
 #include "ImageProcessingShader.h"
 #include "UpdateCallback.h"

@@ -17,7 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <chrono>
 #include <ctime>
 
 #include <glm/gtc/matrix_access.hpp>

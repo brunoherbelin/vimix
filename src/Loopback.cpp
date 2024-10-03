@@ -19,7 +19,6 @@
 
 #include <vector>
 #include <sstream>
-#include <iostream>
 #include <stdexcept>
 
 // gstreamer
@@ -28,7 +27,6 @@
 #include <gst/app/gstappsrc.h>
 #include <gst/pbutils/pbutils.h>
 
-#include "defines.h"
 #include "GstToolkit.h"
 #include "SystemToolkit.h"
 #include "Log.h"

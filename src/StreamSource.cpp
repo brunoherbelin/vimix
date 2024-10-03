@@ -18,7 +18,6 @@
 **/
 
 #include <string>
-#include <sstream>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Resource.h"

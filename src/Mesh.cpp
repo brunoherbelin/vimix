@@ -20,7 +20,6 @@
 #include <iostream>
 #include <sstream>
 #include <istream>
-#include <iterator>
 #include <vector>
 #include <map>
 #include <utility>

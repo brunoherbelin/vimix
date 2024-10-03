@@ -17,11 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <fstream>
-#include <sstream>
-#include <iostream>
 #include <regex>
-#include <chrono>
 #include <ctime>
 
 #include <glad/glad.h> 
