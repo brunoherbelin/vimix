@@ -813,6 +813,8 @@ void MediaPlayer::close()
         frame_[i].status = INVALID;
         frame_[i].access.unlock();
     }
+    write_index_ = 0;
+    last_index_ = 0;
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -824,8 +826,6 @@ void MediaPlayer::close()
     }
 
     // un-ready the media player
-    write_index_ = 0;
-    last_index_ = 0;
     opened_ = false;
     failed_ = false;
     pending_ = false;

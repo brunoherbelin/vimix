@@ -1147,7 +1147,7 @@ void SessionLoader::visit (MediaSource& s)
     s.mediaplayer()->accept(*this);
 
     // add a callback to activate play speed
-    s.call( new PlaySpeed( s.mediaplayer()->playSpeed(), 100 ) );
+    s.call( new PlaySpeed( s.mediaplayer()->playSpeed(), 300 ) );
 }
 
 void SessionLoader::visit (SessionFileSource& s)
