@@ -421,12 +421,12 @@ include_directories(
 add_library(OSCPACK "${OSCPACK_SRCS}")
 set_property(TARGET OSCPACK PROPERTY CXX_STANDARD 17)
 set_property(TARGET OSCPACK PROPERTY C_STANDARD 11)
-if(APPLE)
+# if(APPLE)
 target_compile_definitions(OSCPACK
     PRIVATE
     _M_X64
 )
-endif(APPLE)
+# endif(APPLE)
 message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack -- ${OSCPACK_INCLUDE_DIR}")
 
 
