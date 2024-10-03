@@ -106,6 +106,7 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     checker_background_->play(false);
     while (checker_background_->texture() == Resource::getTextureBlack())
         checker_background_->update();
+    checker_background_->close();
 }
 
 
@@ -2828,7 +2829,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         static uint _status = 0;  // 0:unknown, 1:ok, 2:error
         static std::string _status_message = "";
         static std::vector< std::pair< std::string, std::string> > _examples = { {"Primary color", "frei0r-filter-primaries" },
-                                                                                 {"Histogram", "frei0r-filter-rgb-parade mix=0.5"},
+                                                                                 {"Histogram", "frei0r-filter-levels"},
                                                                                  {"Emboss", "frei0r-filter-emboss"},
                                                                                  {"Denoise", "frei0r-filter-hqdn3d spatial=0.05 temporal=0.1"},
                                                                                  {"Thermal", "coloreffects preset=heat"},

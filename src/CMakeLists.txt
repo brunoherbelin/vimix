@@ -309,10 +309,13 @@ IF(APPLE)
 
     ## POST INSTALL DMG SIGNING AND NOTARIZATION
     ## 1. SIGN DMG
-    ## codesign --verify --verbose=2 ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dm
+    ## codesign
+    ## codesign --verify --verbose=2 ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dmg
     ##
     ## 2. SUBMIT TO NOTARIZATION
     ## xcrun notarytool submit ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dmg --keychain-profile "vimix" --wait
+    ##
+    ## verify with: xcrun notarytool log xxxx-xxxx-xxx  --keychain-profile "vimix"
     ##
     ## NB: "vimix" is the name of the app-specific password in keychain
     ##     generated online : https://support.apple.com/en-us/102654

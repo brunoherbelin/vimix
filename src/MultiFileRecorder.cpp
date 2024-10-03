@@ -263,6 +263,9 @@ bool MultiFileRecorder::end_record ()
         ret = false;
     }
 
+    gst_message_unref (msg);
+    gst_object_unref (bus);
+
     // stop the pipeline
     GstStateChangeReturn r = gst_element_set_state (pipeline_, GST_STATE_NULL);
     if (r == GST_STATE_CHANGE_ASYNC) {

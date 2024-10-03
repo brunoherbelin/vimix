@@ -84,6 +84,10 @@ Stream::~Stream()
     // cleanup picture buffer
     if (pbo_[0])
         glDeleteBuffers(2, pbo_);
+
+#ifdef STREAM_DEBUG
+    g_printerr("Stream %s deleted\n", std::to_string(id_).c_str());
+#endif
 }
 
 void Stream::accept(Visitor& v) {
@@ -231,18 +235,15 @@ GstBusSyncReply stream_signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
     // only handle error messages
     if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR && ptr != nullptr) {
         GError *error;
-        gchar *debugs;
-        gst_message_parse_error(msg, &error, &debugs);
-
-        Log::Warning("Stream %s Error %s",
+        gst_message_parse_error(msg, &error, NULL);
+        Log::Warning("Stream %s : %s",
                      std::to_string(reinterpret_cast<Stream*>(ptr)->id()).c_str(),
                      error->message);
-
         g_error_free(error);
-        free(debugs);
     }
 
     // drop all messages to avoid filling up the stack
+    gst_message_unref (msg);
     return GST_BUS_DROP;
 }
 
@@ -264,6 +265,10 @@ void Stream::execute_open()
         g_clear_error (&error);
         return;
     }
+    // ref gst_object (unrefed on close)
+    gst_object_ref(pipeline_);
+
+    // set pipeline name
     g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
     gst_pipeline_set_auto_flush_bus( GST_PIPELINE(pipeline_), true);
 
@@ -326,13 +331,13 @@ void Stream::execute_open()
     // instruct the sink to send samples synched in time if not live source
     gst_base_sink_set_sync (GST_BASE_SINK(sink), !live_);
 
-#ifdef IGNORE_GST_ERROR_MESSAGE
+    bus_ = gst_element_get_bus(pipeline_);
+#ifdef IGNORE_GST_BUS_MESSAGE
     // avoid filling up bus with messages
-    gst_bus_set_flushing(bus, true);
+    gst_bus_set_flushing(bus_, true);
 #else
     // set message handler for the pipeline's bus
-    gst_bus_set_sync_handler(gst_element_get_bus(pipeline_),
-                             stream_signal_handler, this, NULL);
+    gst_bus_set_sync_handler(bus_, stream_signal_handler, this, NULL);
 #endif
 
     // done with refs
@@ -379,28 +384,44 @@ bool Stream::failed() const
 
 void Stream::Frame::unmap()
 {
-    if ( full )
+    if (full)
         gst_video_frame_unmap(&vframe);
+
     full = false;
 }
 
 
-void Stream::pipeline_terminate( GstElement *p )
+void Stream::pipeline_terminate( GstElement *p, GstBus *b )
 {
-#ifdef STREAM_DEBUG
     gchar *name = gst_element_get_name(p);
-    g_printerr("Stream %s close\n", name);
-    Log::Info("Stream %s closed", name);
-    g_free(name);
+#ifdef STREAM_DEBUG
+    g_printerr("Stream %s closing\n", name);
 #endif
 
-    // force end
+#ifndef IGNORE_GST_BUS_MESSAGE
+    // empty pipeline bus (if used)
+    GstMessage *msg = NULL;
+    do {
+        if (msg)
+            gst_message_unref (msg);
+        msg = gst_bus_timed_pop_filtered(b, 1000000, GST_MESSAGE_ANY);
+    } while (msg != NULL);
+#endif
+    // unref bus
+    gst_object_unref( GST_OBJECT(b) );
+
+    // end pipeline
     GstStateChangeReturn ret = gst_element_set_state (p, GST_STATE_NULL);
     if (ret == GST_STATE_CHANGE_ASYNC)
         gst_element_get_state (p, NULL, NULL, 1000000);
 
     // unref to free pipeline
-    gst_object_unref ( p );
+    while (GST_OBJECT_REFCOUNT_VALUE(p) > 0)
+        gst_object_unref( GST_OBJECT(p) );
+
+    // all done
+    Log::Info("Stream %s Closed", name);
+    g_free(name);
 
     // unregister
     Stream::registered_.remove(p);
@@ -417,25 +438,27 @@ void Stream::close()
         return;
     }
 
-    // un-ready
-    opened_ = false;
-
-    // clean up GST
-    if (pipeline_ != nullptr) {
-        // end pipeline asynchronously
-        std::thread(Stream::pipeline_terminate, pipeline_).detach();
-        pipeline_ = nullptr;
-    }
-
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_FRAME; ++i){
         frame_[i].access.lock();
         frame_[i].unmap();
+        frame_[i].status = INVALID;
         frame_[i].access.unlock();
     }
+
+    // clean up GST
+    if (pipeline_ != nullptr) {
+        // end pipeline asynchronously
+        std::thread(Stream::pipeline_terminate, pipeline_, bus_).detach();
+        // immediately invalidate access for other methods
+        pipeline_ = nullptr;
+        bus_ = nullptr;
+    }
+
+    // un-ready
+    opened_ = false;
     write_index_ = 0;
     last_index_ = 0;
-
 }
 
 
@@ -672,11 +695,10 @@ void Stream::fill_texture(guint index)
             glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
             // map the buffer object into client's memory
             GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            if (ptr) {
+            if (ptr)
                 memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
-                // release pointer to mapping buffer
-                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-            }
+            // release pointer to mapping buffer
+            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 #endif
         // done with PBO
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
@@ -782,6 +804,12 @@ void Stream::update()
         // stop on end of stream
         play(false);
     }
+
+#ifndef IGNORE_GST_BUS_MESSAGE
+    GstMessage *msg = gst_bus_pop_filtered(bus_, GST_MESSAGE_ANY);
+    if (msg != NULL)
+        gst_message_unref(msg);
+#endif
 }
 
 double Stream::updateFrameRate() const
