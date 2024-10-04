@@ -802,8 +802,10 @@ void MediaPlayer::close()
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_VFRAME; i++) {
         frame_[i].access.lock();
-        if (frame_[i].buffer)
+        if (frame_[i].buffer) {
             gst_buffer_unref(frame_[i].buffer);
+            frame_[i].buffer = NULL;
+        }
         frame_[i].status = INVALID;
         frame_[i].access.unlock();
     }
