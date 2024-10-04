@@ -657,7 +657,7 @@ const char* BlurFilter::method_label[BlurFilter::BLUR_INVALID] = {
 };
 
 std::vector< FilteringProgram > BlurFilter::programs_ = {
-    FilteringProgram("Gaussian", "shaders/filters/blur_1.glsl",        "shaders/filters/blur_2.glsl",     { { "Radius", 0.5} }),
+    FilteringProgram("Gaussian", "shaders/filters/blur_1.glsl",        "shaders/filters/blur_2.glsl",     { { "Radius", 0.55} }),
     FilteringProgram("Scattered","shaders/filters/hashedblur.glsl",    "",     { { "Radius", 0.5}, { "Iterations", 0.25 } }),
     FilteringProgram("Opening",  "shaders/filters/hashederosion.glsl", "shaders/filters/hasheddilation.glsl",   { { "Radius", 0.5} }),
     FilteringProgram("Closing",  "shaders/filters/hasheddilation.glsl","shaders/filters/hashederosion.glsl",   { { "Radius", 0.5} }),
@@ -800,7 +800,7 @@ const char* SharpenFilter::method_label[SharpenFilter::SHARPEN_INVALID] = {
 };
 
 std::vector< FilteringProgram > SharpenFilter::programs_ = {
-    FilteringProgram("UnsharpMask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.5} }),
+    FilteringProgram("UnsharpMask", "shaders/filters/sharpen_1.glsl",  "shaders/filters/sharpen_2.glsl",     { { "Amount", 0.25} }),
     FilteringProgram("Sharpen",      "shaders/filters/sharpen.glsl",    "",   { { "Amount", 0.5} }),
     FilteringProgram("Sharp Edge",   "shaders/filters/sharpenedge.glsl","",   { { "Amount", 0.25} }),
     FilteringProgram("TopHat",       "shaders/filters/erosion.glsl",    "shaders/filters/tophat.glsl",    { { "Radius", 0.5} }),

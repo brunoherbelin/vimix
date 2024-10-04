@@ -463,7 +463,15 @@ void ImGuiVisitor::visit (Source& s)
         if (s.ready()) {
             ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
             ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
+        } else {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            ImGui::SetCursorPos(
+                ImVec2(pos.x + (preview_width - ImGui::GetFrameHeight()) * 0.5f,
+                       pos.y + (preview_height - ImGui::GetFrameHeight()) * 0.5f));
+            ImGui::Text(ICON_FA_HOURGLASS_HALF);
+            ImGui::PopFont();
         }
+
         // inform on visibility status
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y ) );
         if (s.active()) {
@@ -637,9 +645,9 @@ void ImGuiVisitor::visit (Source& s)
         ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
 
         // centered icon of failed (skull)
-        ImGui::SetCursorPos( ImVec2(pos.x + (width  -ImGui::GetFrameHeightWithSpacing())* 0.5f ,
-                                    pos.y + (height -ImGui::GetFrameHeightWithSpacing()) * 0.5f) );
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetCursorPos( ImVec2(pos.x + (preview_width  -ImGui::GetFrameHeight())* 0.5f ,
+                                    pos.y + (preview_height -ImGui::GetFrameHeight()) * 0.5f) );
         ImGui::Text(ICON_FA_SKULL);
         ImGui::PopFont();
 
@@ -753,10 +761,12 @@ void ImGuiVisitor::visit (MediaSource& s)
         ImGui::SetCursorPos(botom);
 
         // because sometimes the error comes from gpu decoding
-        if ( Settings::application.render.gpu_decoding && SystemToolkit::file_exists(s.path()) )
+        if ( Settings::application.render.gpu_decoding &&
+            SystemToolkit::file_exists(s.path()) &&
+            !s.mediaplayer()->softwareDecodingForced() )
         {
             // offer to reload the source without hardware decoding
-            if ( ImGui::Button( ICON_FA_REDO_ALT " Try again without\nhardware decoding", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+            if ( ImGui::Button( ICON_FA_REDO_ALT " Try again ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
                 // replace current source with one created with a flag forcing software decoding
                 Mixer::manager().replaceSource(Mixer::manager().currentSource(),
                                                Mixer::manager().createSourceFile(s.path(), true));
@@ -1420,8 +1430,10 @@ void ImGuiVisitor::visit (PatternSource& s)
     {
         for (uint p = 0; p < Pattern::count(); ++p){
             pattern_descriptor pattern = Pattern::get(p);
-            std::string label = pattern.label + (pattern.animated ? "  " ICON_FA_PLAY_CIRCLE : " ");
-            if (pattern.available && ImGui::Selectable( label.c_str(), p == s.pattern()->type() )) {
+            std::string label = pattern.label;
+            if (pattern.available &&
+                pattern.animated == s.playable() &&
+                ImGui::Selectable( label.c_str(), p == s.pattern()->type() )) {
                 s.setPattern(p, s.pattern()->resolution());
                 info.reset();
                 std::ostringstream oss;
@@ -1448,7 +1460,7 @@ void ImGuiVisitor::visit (PatternSource& s)
             top.x += ImGui::GetFrameHeight();
         }
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy"))
+        if (ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy gstreamer code"))
             ImGui::SetClipboardText(Pattern::get( s.pattern()->type() ).pipeline.c_str());
     }
     else
