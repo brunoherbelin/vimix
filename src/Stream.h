@@ -213,18 +213,18 @@ protected:
     } FrameStatus;
 
     struct Frame {
-        GstVideoFrame vframe;
+        GstBuffer *buffer;
         FrameStatus status;
-        bool full;
+        bool is_new;
         GstClockTime position;
         std::mutex access;
 
         Frame() {
-            full = false;
+            buffer = NULL;
+            is_new = false;
             status = INVALID;
             position = GST_CLOCK_TIME_NONE;
         }
-        void unmap();
     };
     Frame frame_[N_FRAME];
     guint write_index_;

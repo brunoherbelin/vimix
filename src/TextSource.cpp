@@ -118,6 +118,7 @@ void TextContents::execute_open()
 
     // instruct sink to use the required caps
     gst_app_sink_set_caps(GST_APP_SINK(sink), caps);
+    gst_caps_unref(caps);
 
     // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
     gst_app_sink_set_max_buffers(GST_APP_SINK(sink), 30);
@@ -203,9 +204,9 @@ void TextContents::execute_open()
     // instruct the sink to send samples synched in time if not live source
     gst_base_sink_set_sync(GST_BASE_SINK(sink), !live_);
 
-    // done with refs
-    gst_object_unref(sink);
-    gst_caps_unref(caps);
+    bus_ = gst_element_get_bus(pipeline_);
+    // avoid filling up bus with messages
+    gst_bus_set_flushing(bus_, true);
 
     // all good
     Log::Info("TextContents: %s Opened '%s' (%d x %d)",

@@ -77,14 +77,6 @@ Stream::~Stream()
 {
     Stream::close();
 
-    // cleanup opengl texture
-    if (textureindex_)
-        glDeleteTextures(1, &textureindex_);
-
-    // cleanup picture buffer
-    if (pbo_[0])
-        glDeleteBuffers(2, pbo_);
-
 #ifdef STREAM_DEBUG
     g_printerr("Stream %s deleted\n", std::to_string(id_).c_str());
 #endif
@@ -137,6 +129,7 @@ GstFlowReturn callback_stream_discoverer (GstAppSink *sink, gpointer p)
             // release info to let StreamDiscoverer go forward
             info->discovered.notify_all();
         }
+        gst_caps_unref(caps);
     }
     else
         ret = GST_FLOW_FLUSHING;
@@ -265,8 +258,6 @@ void Stream::execute_open()
         g_clear_error (&error);
         return;
     }
-    // ref gst_object (unrefed on close)
-    gst_object_ref(pipeline_);
 
     // set pipeline name
     g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
@@ -290,6 +281,7 @@ void Stream::execute_open()
 
     // instruct sink to use the required caps
     gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
+    gst_caps_unref (caps);
 
     // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
     gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 30);
@@ -340,10 +332,6 @@ void Stream::execute_open()
     gst_bus_set_sync_handler(bus_, stream_signal_handler, this, NULL);
 #endif
 
-    // done with refs
-    gst_object_unref (sink);
-    gst_caps_unref (caps);
-
     // all good
     Log::Info("Stream %s Opened '%s' (%d x %d)", std::to_string(id_).c_str(), description.c_str(), width_, height_);
     opened_ = true;
@@ -380,14 +368,6 @@ bool Stream::isOpen() const
 bool Stream::failed() const
 {
     return failed_;
-}
-
-void Stream::Frame::unmap()
-{
-    if (full)
-        gst_video_frame_unmap(&vframe);
-
-    full = false;
 }
 
 
@@ -444,7 +424,8 @@ void Stream::close()
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_FRAME; ++i){
         frame_[i].access.lock();
-        frame_[i].unmap();
+        if (frame_[i].buffer)
+            gst_buffer_unref(frame_[i].buffer);
         frame_[i].status = INVALID;
         frame_[i].access.unlock();
     }
@@ -460,6 +441,17 @@ void Stream::close()
         bus_ = nullptr;
     }
 
+    // cleanup opengl texture
+    if (textureindex_) {
+        glDeleteTextures(1, &textureindex_);
+        textureindex_ = 0;
+    }
+
+    // cleanup picture buffer
+    if (pbo_[0]) {
+        glDeleteBuffers(2, pbo_);
+        pbo_[0] = 0;
+    }
 }
 
 
@@ -607,13 +599,21 @@ void Stream::init_texture(guint index)
     glGenTextures(1, &textureindex_);
     glBindTexture(GL_TEXTURE_2D, textureindex_);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width_, height_);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
-                    GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
+
+    // fill texture with frame at given index
+    if (frame_[index].buffer) {
+        GstMapInfo map;
+        gst_buffer_map(frame_[index].buffer, &map, GST_MAP_READ);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, map.data);
+        gst_buffer_unmap(frame_[index].buffer, &map);
+    }
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+    // use Pixel Buffer Objects only for performance needs of videos
     if (!single_frame_) {
 
         // set pbo image size
@@ -624,31 +624,7 @@ void Stream::init_texture(guint index)
             glDeleteBuffers(2, pbo_);
         glGenBuffers(2, pbo_);
 
-        for(int i = 0; i < 2; i++ ) {
-            // create 2 PBOs
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[i]);
-            // glBufferDataARB with NULL pointer reserves only memory space.
-            glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
-            // fill in with reset picture
-            GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            if (ptr)  {
-                // update data directly on the mapped buffer
-                memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
-                // release pointer to mapping buffer
-                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-            }
-            else {
-                // did not work, disable PBO
-                glDeleteBuffers(2, pbo_);
-                pbo_[0] = pbo_[1] = 0;
-                pbo_size_ = 0;
-                break;
-            }
-
-        }
-
-        // should be good to go, wrap it up
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        // should be good to go
         pbo_index_ = 0;
         pbo_next_index_ = 1;
 
@@ -670,48 +646,62 @@ void Stream::fill_texture(guint index)
     if ( !textureinitialized_ || !textureindex_)
     {
         // initialize texture
+        // (this also fills the texture with frame at index)
         init_texture(index);
     }
+    else {
+        // Use GST mapping to access pointer to RGBA data
+        GstMapInfo map;
+        gst_buffer_map(frame_[index].buffer, &map, GST_MAP_READ);
 
-    glBindTexture(GL_TEXTURE_2D, textureindex_);
+        // bind texture for writing
+        glBindTexture(GL_TEXTURE_2D, textureindex_);
 
-    // use dual Pixel Buffer Object
-    if (pbo_size_ > 0) {
-        // In dual PBO mode, increment current index first then get the next index
-        pbo_index_ = (pbo_index_ + 1) % 2;
-        pbo_next_index_ = (pbo_index_ + 1) % 2;
+        // use dual Pixel Buffer Object
+        if (pbo_size_ > 0 && map.size == pbo_size_) {
 
-        // bind PBO to read pixels
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
-        // copy pixels from PBO to texture object
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-        // bind the next PBO to write pixels
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
+            // In dual PBO mode, increment current index first then get the next index
+            pbo_index_ = (pbo_index_ + 1) % 2;
+            pbo_next_index_ = (pbo_index_ + 1) % 2;
+
+            // bind PBO to read pixels
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_index_]);
+            // copy pixels from PBO to texture object
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+            // bind the next PBO to write pixels
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
 #ifdef USE_GL_BUFFER_SUBDATA
-            glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, pbo_size_, frame_[index].vframe.data[0]);
+            glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, pbo_size_, map.data);
 #else
-            // update data directly on the mapped buffer
-            // NB : equivalent but faster than glBufferSubData (memmove instead of memcpy ?)
+            // update data directly on the mapped buffer \
+            // NB : equivalent but faster than glBufferSubData (memmove instead of memcpy ?) \
             // See http://www.songho.ca/opengl/gl_pbo.html#map for more details
             glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
+
             // map the buffer object into client's memory
             GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
             if (ptr)
-                memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
+                memmove(ptr, map.data, pbo_size_);
+
             // release pointer to mapping buffer
             glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 #endif
-        // done with PBO
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-    }
-    else {
-        // without PBO, use standard opengl (slower)
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
-                        GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
-    }
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+    // done with PBO
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        }
+        else {
+            // without PBO, use standard opengl (slower)
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_,
+                            GL_RGBA, GL_UNSIGNED_BYTE, map.data);
+        }
 
+        // unbind texture
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        // unmap buffer to let it free
+        gst_buffer_unmap (frame_[index].buffer, &map);
+    }
 }
 
 void Stream::update()
@@ -778,7 +768,7 @@ void Stream::update()
             need_loop = true;
         }
         // otherwise just fill non-empty SAMPLE or PREROLL
-        else if (frame_[read_index].full)
+        else if (frame_[read_index].is_new)
         {
             // fill the texture with the frame at reading index
             fill_texture(read_index);
@@ -788,7 +778,7 @@ void Stream::update()
                 fill_texture(read_index);
 
             // free frame
-            frame_[read_index].unmap();
+            frame_[read_index].is_new = false;
         }
 
         // we just displayed a vframe : set position time to frame PTS
@@ -833,43 +823,25 @@ bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
     frame_[write_index_].access.lock();
 
     // always empty frame before filling it again
-    frame_[write_index_].unmap();
+    if (frame_[write_index_].buffer) {
+        gst_buffer_unref(frame_[write_index_].buffer);
+        frame_[write_index_].buffer = NULL;
+    }
 
     // accept status of frame received
     frame_[write_index_].status = status;
 
     // a buffer is given (not EOS)
     if (buf != NULL) {
-        // get the frame from buffer
-        if ( !gst_video_frame_map (&frame_[write_index_].vframe, &v_frame_video_info_, buf, GST_MAP_READ ) )
-        {
-            Log::Info("Stream %s Failed to map the video buffer", std::to_string(id_).c_str());
-            // free access to frame & exit
-            frame_[write_index_].status = INVALID;
-            frame_[write_index_].access.unlock();
-            return false;
-        }
 
-        // successfully filled the frame
-        frame_[write_index_].full = true;
+        // copy the buffer in the frame
+        frame_[write_index_].buffer = gst_buffer_copy(buf);
 
-        // validate frame format
-        if( GST_VIDEO_INFO_IS_RGB(&(frame_[write_index_].vframe).info) && GST_VIDEO_INFO_N_PLANES(&(frame_[write_index_].vframe).info) == 1)
-        {
-            // set presentation time stamp
-            frame_[write_index_].position = buf->pts;
+        // indicate to update loop that buffer is new
+        frame_[write_index_].is_new = true;
 
-        }
-        // full but invalid frame : will be deleted next iteration
-        // (should never happen)
-        else {
-#ifdef STREAM_DEBUG
-            Log::Info("Stream %s Received an Invalid frame", std::to_string(id_).c_str());
-#endif
-            frame_[write_index_].status = INVALID;            
-            frame_[write_index_].access.unlock();
-            return false;
-        }
+        // set presentation time stamp
+        frame_[write_index_].position = buf->pts;
     }
     // else; null buffer for EOS: give a position
     else {
