@@ -1,8 +1,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
 
-#include <map>
-
 #include "View.h"
 #include "Scene.h"
 #include "Source.h"

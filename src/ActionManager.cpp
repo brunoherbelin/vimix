@@ -18,7 +18,6 @@
 **/
 
 #include <string>
-#include <algorithm>
 #include <thread>
 
 #include "Log.h"

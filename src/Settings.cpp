@@ -17,9 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <iostream>
-#include <locale>
-using namespace std;
 
 #include <tinyxml2.h>
 #include "tinyxml2Toolkit.h"
@@ -31,7 +28,7 @@ using namespace tinyxml2;
 
 
 Settings::Application Settings::application;
-string settingsFilename = "";
+std::string settingsFilename = "";
 
 
 XMLElement *save_history(Settings::History &h, const char *nodename, XMLDocument &xmlDoc)
@@ -89,7 +86,7 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     // runtime
     pRoot->SetAttribute("runtime", runtime + application.total_runtime);
 
-    string comment = "Settings for " + application.name;
+    std::string comment = "Settings for " + application.name;
     XMLComment *pComment = xmlDoc.NewComment(comment.c_str());
     pRoot->InsertEndChild(pComment);
 
@@ -241,7 +238,7 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
         viewsNode->SetAttribute("current", v);
         viewsNode->SetAttribute("workspace", application.current_workspace);
 
-        map<int, Settings::ViewConfig>::iterator iter;
+        std::map<int, Settings::ViewConfig>::iterator iter;
         for (iter=application.views.begin(); iter != application.views.end(); ++iter)
         {
             const Settings::ViewConfig& view_config = iter->second;
@@ -402,7 +399,7 @@ void load_knownhost(Settings::KnownHosts &h, const char *nodename, XMLElement *r
     }
 }
 
-void Settings::Load(const string &filename)
+void Settings::Load(const std::string &filename)
 {
     // impose C locale for all app
     setlocale(LC_ALL, "C");
@@ -767,13 +764,13 @@ void Settings::Load(const string &filename)
 
 }
 
-void Settings::History::assign(const string &filename)
+void Settings::History::assign(const std::string &filename)
 {
     path.assign(filename);
     changed = true;
 }
 
-void Settings::History::push(const string &filename)
+void Settings::History::push(const std::string &filename)
 {
     if (filename.empty()) {
         front_is_valid = false;
@@ -810,7 +807,7 @@ void Settings::History::validate()
     }
 }
 
-void Settings::KnownHosts::push(const string &ip, const string &port)
+void Settings::KnownHosts::push(const std::string &ip, const std::string &port)
 {
     if (!ip.empty()) {
 
@@ -822,7 +819,7 @@ void Settings::KnownHosts::push(const string &ip, const string &port)
     }
 }
 
-void Settings::KnownHosts::remove(const string &ip)
+void Settings::KnownHosts::remove(const std::string &ip)
 {
     for (auto hit = hosts.begin(); hit != hosts.end();) {
         if ( ip.compare( hit->first ) > 0 )

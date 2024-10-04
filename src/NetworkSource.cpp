@@ -17,11 +17,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <algorithm>
-#include <sstream>
 #include <thread>
 #include <chrono>
-#include <future>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <gst/pbutils/pbutils.h>

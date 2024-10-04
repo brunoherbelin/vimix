@@ -28,7 +28,6 @@
 #include "Decorations.h"
 #include "Visitor.h"
 #include "BaseToolkit.h"
-#include "Log.h"
 
 #include "MixingGroup.h"
 

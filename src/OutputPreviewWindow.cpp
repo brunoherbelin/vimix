@@ -17,9 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <iostream>
 #include <thread>
-#include <algorithm>
 
 // ImGui
 #include "ImGuiToolkit.h"

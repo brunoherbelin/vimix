@@ -17,7 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <sstream>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Decorations.h"

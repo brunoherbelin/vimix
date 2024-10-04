@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <fstream>
 #include <sstream>
 #include <iomanip>
 #include <chrono>
@@ -537,7 +536,7 @@ std::string SystemToolkit::filename_sequential(const std::string& path, const st
     std::list<std::string> ls = SystemToolkit::list_directory(p, pattern);
 
     // establish a filename for a consecutive sequence of numbers
-    for (int i = 0; i < ls.size() + 1; ++i) {
+    for (int i = 0; i < (int) ls.size() + 1; ++i) {
         // clear
         filename.str(std::string());
         // add path

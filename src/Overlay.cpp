@@ -16,7 +16,7 @@ void SnapshotOverlay::draw()
 }
 
 
-void SnapshotOverlay::update (float dt)
+void SnapshotOverlay::update (float )
 {
 
 

@@ -17,9 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <thread>
-#include<algorithm> // for copy() and assign()
-#include<iterator> // for back_inserter
 
 //  Desktop OpenGL function loader
 #include <glad/glad.h>

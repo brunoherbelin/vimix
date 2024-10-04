@@ -25,7 +25,6 @@
 // because of 'zenity' access rights nightmare :(
 // Thus this re-implementation of native GTK+ dialogs for linux
 
-#include "defines.h"
 #include "Settings.h"
 #include "SystemToolkit.h"
 #include "DialogToolkit.h"

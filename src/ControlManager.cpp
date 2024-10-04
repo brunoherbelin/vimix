@@ -20,7 +20,6 @@
 #include <thread>
 #include <mutex>
 #include <sstream>
-#include <algorithm>
 #include <iomanip>
 #include <regex>
 

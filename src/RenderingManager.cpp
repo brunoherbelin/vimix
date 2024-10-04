@@ -18,9 +18,6 @@
 **/
 
 #include <cstring>
-#include <thread>
-#include <mutex>
-#include <chrono>
 #include <stdlib.h>
 
 // Desktop OpenGL function loader

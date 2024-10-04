@@ -96,14 +96,6 @@ MediaPlayer::~MediaPlayer()
 {
     close();
 
-    // cleanup opengl texture
-    if (textureindex_)
-        glDeleteTextures(1, &textureindex_);
-
-    // cleanup picture buffer
-    if (pbo_[0])
-        glDeleteBuffers(2, pbo_);
-
 #ifdef MEDIA_PLAYER_DEBUG
     g_printerr("MediaPlayer %s deleted\n", std::to_string(id_).c_str());
 #endif
@@ -426,7 +418,6 @@ void MediaPlayer::execute_open()
         else {
             g_object_set( G_OBJECT (pipeline_), "video-filter", effect, nullptr);
             Log::Info("MediaPlayer %s Added filter '%s'", std::to_string(id_).c_str(), video_filter_.c_str());
-
         }
     }
 
@@ -750,20 +741,17 @@ bool MediaPlayer::failed() const
     return failed_;
 }
 
-void MediaPlayer::Frame::unmap()
-{
-    if (full)
-        gst_video_frame_unmap(&vframe);
-
-    full = false;
-}
-
 void MediaPlayer::pipeline_terminate( GstElement *p, GstBus *b )
 {
     gchar *name = gst_element_get_name(p);
 #ifdef MEDIA_PLAYER_DEBUG
     g_printerr("MediaPlayer %s closing\n", name);
 #endif
+
+    // end pipeline
+    GstStateChangeReturn ret = gst_element_set_state(p, GST_STATE_NULL);
+    if (ret == GST_STATE_CHANGE_ASYNC)
+        gst_element_get_state(p, NULL, NULL, 1000000);
 
 #ifndef IGNORE_GST_BUS_MESSAGE
     // empty pipeline bus (if used)
@@ -776,11 +764,6 @@ void MediaPlayer::pipeline_terminate( GstElement *p, GstBus *b )
 #endif
     // unref bus
     gst_object_unref( GST_OBJECT(b) );
-
-    // end pipeline
-    GstStateChangeReturn ret = gst_element_set_state(p, GST_STATE_NULL);
-    if (ret == GST_STATE_CHANGE_ASYNC)
-        gst_element_get_state(p, NULL, NULL, 1000000);
 
     // unref to free pipeline
     while (GST_OBJECT_REFCOUNT_VALUE(p) > 0)
@@ -806,13 +789,28 @@ void MediaPlayer::close()
         return;
     }
 
+    // un-ready the media player
+    opened_ = false;
+    failed_ = false;
+    pending_ = false;
+    seeking_ = false;
+    force_update_ = false;
+    rate_ = 1.0;
+    rate_change_ = RATE_CHANGE_NONE;
+    position_ = GST_CLOCK_TIME_NONE;
+
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_VFRAME; i++) {
         frame_[i].access.lock();
-        frame_[i].unmap();
+        if (frame_[i].buffer) {
+            gst_buffer_unref(frame_[i].buffer);
+            frame_[i].buffer = NULL;
+        }
         frame_[i].status = INVALID;
         frame_[i].access.unlock();
     }
+    write_index_ = 0;
+    last_index_ = 0;
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -823,17 +821,17 @@ void MediaPlayer::close()
         bus_ = nullptr;
     }
 
-    // un-ready the media player
-    write_index_ = 0;
-    last_index_ = 0;
-    opened_ = false;
-    failed_ = false;
-    pending_ = false;
-    seeking_ = false;
-    force_update_ = false;
-    rate_ = 1.0;
-    rate_change_ = RATE_CHANGE_NONE;
-    position_ = GST_CLOCK_TIME_NONE;
+    // cleanup opengl texture
+    if (textureindex_) {
+        glDeleteTextures(1, &textureindex_);
+        textureindex_ = 0;
+    }
+
+    // cleanup picture buffer
+    if (pbo_[0]) {
+        glDeleteBuffers(2, pbo_);
+        pbo_[0] = 0;
+    }
 }
 
 
@@ -1155,15 +1153,23 @@ void MediaPlayer::init_texture(guint index)
     glGenTextures(1, &textureindex_);
     glBindTexture(GL_TEXTURE_2D, textureindex_);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, media_.width, media_.height);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height,
-                    GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
+
+    // fill texture frame with frame at given index
+    if (frame_[index].buffer) {
+        GstMapInfo map;
+        gst_buffer_map(frame_[index].buffer, &map, GST_MAP_READ);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height,
+                        GL_RGBA, GL_UNSIGNED_BYTE, map.data);
+        gst_buffer_unmap (frame_[index].buffer, &map);
+    }
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+    // use Pixel Buffer Objects only for performance needs of videos
     if ( !singleFrame() ) {
-
         // set pbo image size
         pbo_size_ = media_.height * media_.width * 4;
 
@@ -1172,31 +1178,7 @@ void MediaPlayer::init_texture(guint index)
             glDeleteBuffers(2, pbo_);
         glGenBuffers(2, pbo_);
 
-        for(int i = 0; i < 2; i++ ) {
-            // create 2 PBOs
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[i]);
-            // glBufferDataARB with NULL pointer reserves only memory space.
-            glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo_size_, 0, GL_STREAM_DRAW);
-            // fill in with reset picture
-            GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            if (ptr)  {
-                // update data directly on the mapped buffer
-                memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
-                // release pointer to mapping buffer
-                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-            }
-            else {
-                // did not work, disable PBO
-                glDeleteBuffers(2, pbo_);
-                pbo_[0] = pbo_[1] = 0;
-                pbo_size_ = 0;
-                break;
-            }
-
-        }
-
-        // should be good to go, wrap it up
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        // should be good to go
         pbo_index_ = 0;
         pbo_next_index_ = 1;
 
@@ -1214,14 +1196,21 @@ void MediaPlayer::fill_texture(guint index)
     // is this the first frame ?
     if (textureindex_ < 1)
     {
-        // initialize texture
+        // initialize texture on first run
+        // (this also fills the texture with frame at index)
         init_texture(index);
     }
     else {
+        // Use GST mapping to access pointer to RGBA data
+        GstMapInfo map;
+        gst_buffer_map(frame_[index].buffer, &map, GST_MAP_READ);
+
+        // bind texture for writing
         glBindTexture(GL_TEXTURE_2D, textureindex_);
 
-        // use dual Pixel Buffer Object
-        if (pbo_size_ > 0) {
+        // use dual Pixel Buffer Object (faster)
+        if (pbo_size_ > 0 && map.size == pbo_size_) {
+
             // In dual PBO mode, increment current index first then get the next index
             pbo_index_ = (pbo_index_ + 1) % 2;
             pbo_next_index_ = (pbo_index_ + 1) % 2;
@@ -1232,8 +1221,9 @@ void MediaPlayer::fill_texture(guint index)
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height, GL_RGBA, GL_UNSIGNED_BYTE, 0);
             // bind the next PBO to write pixels
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo_[pbo_next_index_]);
+
 #ifdef USE_GL_BUFFER_SUBDATA
-            glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, pbo_size_, frame_[index].vframe.data[0]);
+            glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, pbo_size_, map.data);
 #else
             // update data directly on the mapped buffer
             // NB : equivalent but faster than glBufferSubData (memmove instead of memcpy ?)
@@ -1242,7 +1232,8 @@ void MediaPlayer::fill_texture(guint index)
             // map the buffer object into client's memory
             GLubyte* ptr = (GLubyte*) glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
             if (ptr)
-                memmove(ptr, frame_[index].vframe.data[0], pbo_size_);
+                memmove(ptr, map.data, pbo_size_);
+
             // release pointer to mapping buffer
             glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 #endif
@@ -1252,9 +1243,15 @@ void MediaPlayer::fill_texture(guint index)
         else {
             // without PBO, use standard opengl (slower)
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height,
-                            GL_RGBA, GL_UNSIGNED_BYTE, frame_[index].vframe.data[0]);
+                            GL_RGBA, GL_UNSIGNED_BYTE, map.data);
         }
+
+        // unbind texture
         glBindTexture(GL_TEXTURE_2D, 0);
+
+        // unmap buffer to let it free
+        gst_buffer_unmap (frame_[index].buffer, &map);
+
     }
 }
 
@@ -1318,7 +1315,7 @@ void MediaPlayer::update()
             need_loop = true;
         }
         // otherwise just fill non-empty SAMPLE or PREROLL
-        else if (frame_[read_index].full)
+        else if (frame_[read_index].is_new)
         {
             // fill the texture with the frame at reading index
             fill_texture(read_index);
@@ -1327,8 +1324,9 @@ void MediaPlayer::update()
             if ( (frame_[read_index].status == PREROLL || seeking_ ) && pbo_size_ > 0)
                 fill_texture(read_index);
 
-            // free frame
-            frame_[read_index].unmap();
+            // // free frame
+            // frame_[read_index].unmap();
+            frame_[read_index].is_new = false;
         }
 
         // we just displayed a vframe : set position time to frame PTS
@@ -1586,7 +1584,10 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
     frame_[write_index_].access.lock();
 
     // always empty frame before filling it again
-    frame_[write_index_].unmap();
+    if (frame_[write_index_].buffer) {
+        gst_buffer_unref(frame_[write_index_].buffer);
+        frame_[write_index_].buffer = NULL;
+    }
 
     // accept status of frame received
     frame_[write_index_].status = status;
@@ -1594,46 +1595,23 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
     // a buffer is given (not EOS)
     if (buf != NULL) {
 
-        // get the frame from buffer
-        if ( !gst_video_frame_map (&frame_[write_index_].vframe, &v_frame_video_info_, buf, GST_MAP_READ ) )
-        {
-#ifdef MEDIA_PLAYER_DEBUG
-            Log::Info("MediaPlayer %s Failed to map the video buffer", std::to_string(id_).c_str());
-#endif
-            // free access to frame & exit
-            frame_[write_index_].status = INVALID;
-            frame_[write_index_].access.unlock();
-            return false;
+        // copy the buffer in the frame
+        frame_[write_index_].buffer = gst_buffer_copy(buf);
+
+        // indicate to update loop that buffer is new
+        frame_[write_index_].is_new = true;
+
+        // set presentation time stamp
+        frame_[write_index_].position = buf->pts;
+
+        // set the start position (i.e. pts of first frame we got)
+        if (timeline_.first() == GST_CLOCK_TIME_NONE) {
+            timeline_.setFirst(buf->pts);
+            // add a gap to show that before
+            if (buf->pts > 0 && !timeline_.gapAt( buf->pts ))
+                timeline_.addGap(0, buf->pts);
         }
 
-        // successfully filled the frame
-        frame_[write_index_].full = true;
-
-        // validate frame format
-        if( GST_VIDEO_INFO_IS_RGB(&(frame_[write_index_].vframe).info) && GST_VIDEO_INFO_N_PLANES(&(frame_[write_index_].vframe).info) == 1)
-        {
-            // set presentation time stamp
-            frame_[write_index_].position = buf->pts;
-
-            // set the start position (i.e. pts of first frame we got)
-            if (timeline_.first() == GST_CLOCK_TIME_NONE) {
-                timeline_.setFirst(buf->pts);
-                // add a gap to show that before
-                if (buf->pts > 0 && !timeline_.gapAt( buf->pts ))
-                    timeline_.addGap(0, buf->pts);
-            }
-        }
-        // full but invalid frame : will be deleted next iteration
-        // (should never happen)
-        else {
-#ifdef MEDIA_PLAYER_DEBUG
-            Log::Info("MediaPlayer %s Received an Invalid frame", std::to_string(id_).c_str());
-#endif
-            // free access to frame & exit
-            frame_[write_index_].status = INVALID;
-            frame_[write_index_].access.unlock();
-            return false;
-        }
     }
     // else; null buffer for EOS: give a position
     else {
@@ -1678,13 +1656,12 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
     // if got a valid sample
     if (sample != NULL) {
 
+        // get buffer from sample
+        GstBuffer *buf = gst_sample_get_buffer (sample);
+
         // send frames to media player only if ready
         MediaPlayer *m = static_cast<MediaPlayer *>(p);
         if (m && m->opened_) {
-
-            // get buffer from sample
-            GstBuffer *buf = gst_sample_get_buffer (sample);
-
             // fill frame from buffer
             if ( !m->fill_frame(buf, MediaPlayer::PREROLL) )
                 ret = GST_FLOW_ERROR;
