@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <thread>
 
 #include <gst/gst.h>
 
@@ -43,7 +44,7 @@
 
 #include "SourceControlWindow.h"
 
-#define CHECKER_RESOLUTION 6000
+#define CHECKER_RESOLUTION 5000
 class Stream *checker_background_ = new Stream;
 
 typedef struct payload
@@ -104,8 +105,10 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
                               "videobalance saturation=0 contrast=1",
                               CHECKER_RESOLUTION, CHECKER_RESOLUTION);
     checker_background_->play(false);
-    while (checker_background_->texture() == Resource::getTextureBlack())
+    while (checker_background_->texture() == Resource::getTextureBlack()){
+        std::this_thread::sleep_for (std::chrono::milliseconds(30));
         checker_background_->update();
+    }
     checker_background_->close();
 }
 
