@@ -18,14 +18,9 @@
 **/
 
 #include <algorithm>
-#include <thread>
 #include <chrono>
 #include <sstream>
-#include <glm/gtc/matrix_transform.hpp>
-
-#include <gst/pbutils/gstdiscoverer.h>
-#include <gst/pbutils/pbutils.h>
-#include <gst/gst.h>
+#include <thread>
 
 #include "Log.h"
 #include "Decorations.h"
@@ -47,7 +42,7 @@ std::string gst_plugin_vidcap = "ximagesrc show-pointer=false";
 
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
-#include <X11/Xproto.h>
+#include <xcb/xproto.h>
 int X11_error_handler(Display *d, XErrorEvent *e);
 std::map<unsigned long, std::string> getListX11Windows();
 
@@ -87,18 +82,6 @@ private:
 
 void ScreenCaptureHandle::update(const std::string &newname)
 {
-    GstToolkit::PipelineConfigSet confs = GstToolkit::getPipelineConfigs(pipeline);
-
-    if (!confs.empty()) {
-        GstToolkit::PipelineConfig best = *confs.rbegin();
-        GstToolkit::PipelineConfigSet confscreen;
-        // limit framerate to 30fps
-        best.fps_numerator = MIN( best.fps_numerator, 30);
-        best.fps_denominator = 1;
-        confscreen.insert(best);
-
-        configs = confscreen;
-    }
     name = newname;
 }
 
@@ -159,7 +142,7 @@ void ScreenCapture::remove(const std::string &windowname, unsigned long id)
 
         // just inform if there is no source connected
         if (handle->associated_sources.empty()) {
-            Log::Info("Window %s closed.", windowname.c_str());
+            Log::Info("Window %s available.", windowname.c_str());
         }
         else {
             // otherwise unplug all sources and close their streams
