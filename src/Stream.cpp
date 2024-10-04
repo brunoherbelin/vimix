@@ -121,20 +121,17 @@ GstFlowReturn callback_stream_discoverer (GstAppSink *sink, gpointer p)
         StreamInfo *info = static_cast<StreamInfo *>(p);
         // get caps of the sample
         GstVideoInfo v_frame_video_info_;
-        GstCaps *caps = gst_sample_get_caps(sample);
-        if (gst_video_info_from_caps (&v_frame_video_info_, caps)) {
+        if (gst_video_info_from_caps (&v_frame_video_info_, gst_sample_get_caps(sample))) {
             // fill the info
             info->width = v_frame_video_info_.width;
             info->height = v_frame_video_info_.height;
             // release info to let StreamDiscoverer go forward
             info->discovered.notify_all();
         }
-        gst_caps_unref(caps);
+        gst_sample_unref (sample);
     }
     else
         ret = GST_FLOW_FLUSHING;
-
-    gst_sample_unref (sample);
 
     return ret;
 }
