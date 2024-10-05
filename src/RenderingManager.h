@@ -36,7 +36,7 @@ class RenderingWindow
     // objects to render
     uint textureid_;
     uint fbo_;
-    Stream *pattern_;
+    static Stream *pattern_;
     class WindowSurface *surface_;
     class ImageFilteringShader *shader_;
 
