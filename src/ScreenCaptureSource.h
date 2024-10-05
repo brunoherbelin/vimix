@@ -4,8 +4,6 @@
 
 #include <string>
 #include <vector>
-#include <set>
-#include <map>
 
 #include "GstToolkit.h"
 #include "StreamSource.h"

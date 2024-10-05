@@ -735,17 +735,21 @@ public:
     }
 };
 
+// pattern source can be shared because all windows render the same framebuffer resolution
+class Stream *RenderingWindow::pattern_ = new Stream;
+
 RenderingWindow::RenderingWindow() : window_(NULL), master_(NULL),
     index_(-1), dpi_scale_(1.f), textureid_(0), fbo_(0), surface_(nullptr), request_change_fullscreen_(false)
 {
-    pattern_ = new Stream;
+
 }
 
 RenderingWindow::~RenderingWindow()
 {
     if (window_ != NULL)
         terminate();
-    delete pattern_;
+    // delete pattern_;
+    RenderingWindow::pattern_->close();
 }
 
 void RenderingWindow::setTitle(const std::string &title)

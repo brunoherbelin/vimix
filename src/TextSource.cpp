@@ -405,7 +405,7 @@ glm::ivec2 TextSource::icon() const
 std::string TextSource::info() const
 {
     if ( contents()->isSubtitle() )
-        return "Subtitle text";
+        return "Subtitle file";
     else
-        return "Free text";
+        return "Text";
 }

@@ -78,6 +78,7 @@ public:
 
     // grab a source provided a start and an end point in screen coordinates and the picking point
     virtual void initiate ();
+    bool initiated() { return current_action_ongoing_;  }
     virtual void terminate (bool force = false);
     virtual Cursor grab (Source*, glm::vec2, glm::vec2, std::pair<Node *, glm::vec2>) {
         return Cursor ();

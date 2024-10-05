@@ -1446,7 +1446,7 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     if (seek_event && gst_element_send_event(pipeline_, seek_event) ) {
         seeking_ = true;
 #ifdef MEDIA_PLAYER_DEBUG
-        g_printerr("MediaPlayer %s Seek %ld %.1f", std::to_string(id_).c_str(), seek_pos, rate_);
+        g_printerr("MediaPlayer %s Seek %ld %.1f\n", std::to_string(id_).c_str(), seek_pos, rate_);
 #endif
     }
     else

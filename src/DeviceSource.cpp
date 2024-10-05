@@ -163,24 +163,25 @@ void Device::add(GstDevice *device)
     auto handle = std::find_if(handles_.cbegin(), handles_.cend(), hasDeviceName(device_name) );
     if ( handle == handles_.cend() ) {
 
-        std::string p = pipelineForDevice(device, handles_.size());
-        GstToolkit::PipelineConfigSet confs = GstToolkit::getPipelineConfigs(p);
-
         // add if not in the list and valid
-        if (!p.empty() && !confs.empty()) {
-            DeviceHandle dev;
-            dev.name = device_name;
-            dev.pipeline = p;
-            dev.configs = confs;
-            dev.properties = get_device_properties (device);
-#ifdef DEVICE_DEBUG
-            GstStructure *stru = gst_device_get_properties(device);
-            g_print("\n%s: %s\n", device_name, gst_structure_to_string(stru) );
-#endif
-            handles_.push_back(dev);
-            Log::Info("Device '%s' is plugged-in.", device_name);
-        }
+        std::string p = pipelineForDevice(device, handles_.size());
+        if (!p.empty()) {
 
+            GstToolkit::PipelineConfigSet confs = GstToolkit::getPipelineConfigs(p);
+            if (!confs.empty()) {
+                DeviceHandle dev;
+                dev.name = device_name;
+                dev.pipeline = p;
+                dev.configs = confs;
+                dev.properties = get_device_properties (device);
+#ifdef DEVICE_DEBUG
+                GstStructure *stru = gst_device_get_properties(device);
+                g_print("\n%s: %s\n", device_name, gst_structure_to_string(stru) );
+#endif
+                handles_.push_back(dev);
+                Log::Info("Device '%s' is plugged-in.", device_name);
+            }
+        }
     }
     // unlock access
     access_.unlock();
