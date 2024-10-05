@@ -28,6 +28,7 @@
 #include "MediaPlayer.h"
 #include "Visitor.h"
 #include "Log.h"
+#include "Mixer.h"
 
 #include "SourceCallback.h"
 
@@ -216,7 +217,10 @@ void ResetGeometry::update(Source *s, float dt)
 {
     SourceCallback::update(s, dt);
 
-    if (s->locked())
+    if (s->locked() ||
+        (s->mode() == Source::CURRENT
+         && Mixer::manager().view()->mode() == View::GEOMETRY
+         && Mixer::manager().view()->initiated()) )
         status_ = FINISHED;
 
     // apply when ready
@@ -250,7 +254,10 @@ void SetAlpha::update(Source *s, float dt)
 {
     SourceCallback::update(s, dt);
 
-    if (s->locked())
+    if (s->locked() ||
+        (s->mode() == Source::CURRENT
+         && Mixer::manager().view()->mode() == View::MIXING
+         && Mixer::manager().view()->initiated()) )
         status_ = FINISHED;
 
     // set start position on first time it is ready
@@ -367,7 +374,10 @@ void Loom::update(Source *s, float dt)
 {
     SourceCallback::update(s, dt);
 
-    if (s->locked())
+    if (s->locked() ||
+        (s->mode() == Source::CURRENT
+         && Mixer::manager().view()->mode() == View::MIXING
+         && Mixer::manager().view()->initiated()) )
         status_ = FINISHED;
 
     // current position
@@ -429,7 +439,10 @@ void SetDepth::update(Source *s, float dt)
 {
     SourceCallback::update(s, dt);
 
-    if (s->locked())
+    if (s->locked() ||
+        (s->mode() == Source::CURRENT
+         && Mixer::manager().view()->mode() == View::LAYER
+         && Mixer::manager().view()->initiated()) )
         status_ = FINISHED;
 
     // set start position on first time it is ready
@@ -724,7 +737,10 @@ void SetGeometry::update(Source *s, float dt)
 {
     SourceCallback::update(s, dt);
 
-    if (s->locked())
+    if (s->locked() ||
+        (s->mode() == Source::CURRENT
+         && Mixer::manager().view()->mode() == View::GEOMETRY
+         && Mixer::manager().view()->initiated()) )
         status_ = FINISHED;
 
     // set start position on first time it is ready
@@ -791,7 +807,10 @@ void Grab::update(Source *s, float dt)
 {
     SourceCallback::update(s, dt);
 
-    if (s->locked())
+    if (s->locked() ||
+        (s->mode() == Source::CURRENT
+         && Mixer::manager().view()->mode() == View::GEOMETRY
+         && Mixer::manager().view()->initiated()) )
         status_ = FINISHED;
 
     // set start on first time it is ready
@@ -839,7 +858,10 @@ void Resize::update(Source *s, float dt)
 {
     SourceCallback::update(s, dt);
 
-    if (s->locked())
+    if (s->locked() ||
+        (s->mode() == Source::CURRENT
+         && Mixer::manager().view()->mode() == View::GEOMETRY
+         && Mixer::manager().view()->initiated()) )
         status_ = FINISHED;
 
     if ( status_ == READY )
@@ -881,7 +903,10 @@ void Turn::update(Source *s, float dt)
 {
     SourceCallback::update(s, dt);
 
-    if (s->locked())
+    if (s->locked() ||
+        (s->mode() == Source::CURRENT
+                        && Mixer::manager().view()->mode() == View::GEOMETRY
+                        && Mixer::manager().view()->initiated()) )
         status_ = FINISHED;
 
     // set start on first time it is ready
