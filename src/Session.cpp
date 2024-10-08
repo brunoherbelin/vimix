@@ -970,6 +970,7 @@ Metronome::Synchronicity Session::inputSynchrony(uint input)
 
 void Session::applySnapshot(uint64_t key)
 {
+    snapshots_.access_.lock();
     tinyxml2::XMLElement *snapshot_node_ = snapshots_.xmlDoc_->FirstChildElement( SNAPSHOT_NODE(key).c_str() );;
     if (snapshot_node_) {
 
@@ -1008,6 +1009,7 @@ void Session::applySnapshot(uint64_t key)
 
         ++View::need_deep_update_;
     }
+    snapshots_.access_.unlock();
 }
 
 

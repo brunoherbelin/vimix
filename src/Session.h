@@ -2,7 +2,6 @@
 #define SESSION_H
 
 #include <mutex>
-#include <variant>
 
 #include "SourceList.h"
 #include "RenderView.h"
@@ -34,6 +33,7 @@ struct SessionSnapshots {
 
     tinyxml2::XMLDocument *xmlDoc_;
     std::list<uint64_t> keys_;
+    std::mutex access_;
 };
 
 class Session

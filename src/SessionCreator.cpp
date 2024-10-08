@@ -216,8 +216,10 @@ void SessionCreator::loadSnapshots(XMLElement *snapshotsNode)
             std::istringstream nodename( N->Name() );
             nodename >> c >> id;
 
+            session_->snapshots()->access_.lock();
             session_->snapshots()->keys_.push_back(id);
             session_->snapshots()->xmlDoc_->InsertEndChild( N->DeepClone(session_->snapshots()->xmlDoc_) );
+            session_->snapshots()->access_.unlock();
         }
     }
 }

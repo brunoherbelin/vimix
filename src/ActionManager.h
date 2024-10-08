@@ -3,7 +3,7 @@
 
 #include <list>
 #include <string>
-#include <atomic>
+#include <mutex>
 
 #include <tinyxml2.h>
 
@@ -62,11 +62,11 @@ public:
     void interpolate (float val, uint64_t snapshotid = 0);
 
 private:
-
     tinyxml2::XMLDocument history_doc_;
     uint history_step_;
     uint history_max_step_;
-    std::atomic<bool> locked_;
+    std::mutex history_access_;
+    static void storeSession(Session *se, std::string label);
     void restore(uint target);
 
     uint64_t snapshot_id_;
