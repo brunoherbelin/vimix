@@ -19,6 +19,7 @@
 
 #include <string>
 #include <thread>
+#include <regex>
 
 #include "Log.h"
 #include "View.h"
@@ -83,6 +84,28 @@ void captureMixerSession(Session *se, std::string node, std::string label, tinyx
         sessionNode->SetAttribute("date", SystemToolkit::date_time_string().c_str() );
         // view indicates the view when this action occurred
         sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
+
+        // generate short label, if possible
+        std::smatch match;
+        const std::regex pattern("([^:]*):(.*)");
+        // extract left and right part around colon in the label
+        if (std::regex_search(label, match, pattern) && match.size() > 1 && match[1].str().size() > 1) {
+            // take left part of ':'
+            std::string left = match[1].str();
+            // keep only the initials, i.e. front and back characters, to upper case
+            std::string short_label;
+            short_label.append( 1, static_cast<char>(std::toupper(static_cast<unsigned char>(left.front()))));
+            short_label.append( 1, static_cast<char>(std::toupper(static_cast<unsigned char>(left.back()))));
+
+            // separator
+            short_label.append(":");
+
+            // take the right part of ':'
+            if (match.size() > 2)
+                short_label.append(match[2].str());
+
+            sessionNode->SetAttribute("shortlabel", short_label.c_str() );
+        }
 
         // get the thumbnail (requires one opengl update to render)
         FrameBufferImage *thumbnail = se->renderThumbnail();
@@ -189,6 +212,22 @@ std::string Action::label(uint s) const
         const XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(s).c_str());
         if  (sessionNode)
             l = sessionNode->Attribute("label");
+    }
+    return l;
+}
+
+std::string Action::shortlabel(uint s) const
+{
+    std::string l = "";
+
+    if (s > 0 && s <= history_max_step_) {
+        const XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(s).c_str());
+        if  (sessionNode) {
+            if (sessionNode->Attribute("shortlabel"))
+                l = sessionNode->Attribute("shortlabel");
+            else
+                l = sessionNode->Attribute("label");
+        }
     }
     return l;
 }

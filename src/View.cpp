@@ -293,7 +293,7 @@ void View::lock(Source *s, bool on)
 {
     s->setLocked(on);
     if (on)
-        Action::manager().store(s->name() + std::string(": lock."));
+        Action::manager().store(s->name() + std::string(": Locked"));
     else
-        Action::manager().store(s->name() + std::string(": unlock."));
+        Action::manager().store(s->name() + std::string(": Unlocked"));
 }

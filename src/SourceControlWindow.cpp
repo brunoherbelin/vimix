@@ -3074,14 +3074,18 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
             if (ImGui::Button(ICON_FA_PAUSE) && enabled) {
                 for (auto source = selection_.begin(); source != selection_.end(); ++source)
                     (*source)->play(false);
-                Action::manager().store("Sources Pause");
+                Action::manager().store(std::string("Pause ") +
+                                        std::to_string(selection_.size()) +
+                                        " sources");
             }
         }
         else {
             if (ImGui::Button(ICON_FA_PLAY) && enabled){
                 for (auto source = selection_.begin(); source != selection_.end(); ++source)
                     (*source)->play(true);
-                Action::manager().store("Sources Play");
+                Action::manager().store(std::string("Play ") +
+                                        std::to_string(selection_.size()) +
+                                        " sources");
             }
         }
     }
@@ -3090,13 +3094,17 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
         if (ImGui::Button(ICON_FA_PLAY) && enabled) {
             for (auto source = selection_.begin(); source != selection_.end(); ++source)
                 (*source)->play(true);
-            Action::manager().store("Sources Play");
+            Action::manager().store(std::string("Play " ) +
+                                    std::to_string(selection_.size()) +
+                                    " sources");
         }
         ImGui::SameLine(0, h_space_);
         if (ImGui::Button(ICON_FA_PAUSE) && enabled) {
             for (auto source = selection_.begin(); source != selection_.end(); ++source)
                 (*source)->play(false);
-            Action::manager().store("Sources Pause");
+            Action::manager().store(std::string("Pause ") +
+                                    std::to_string(selection_.size()) +
+                                    " sources");
         }
     }
     ImGui::SameLine(0, h_space_);

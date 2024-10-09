@@ -1,12 +1,15 @@
 #ifndef IMGUIVISITOR_H
 #define IMGUIVISITOR_H
 
+#include <sstream>
+
 #include "Visitor.h"
 #include "InfoVisitor.h"
 
 class ImGuiVisitor: public Visitor
 {
     InfoVisitor info;
+    std::ostringstream oss;
 
 public:
     ImGuiVisitor();

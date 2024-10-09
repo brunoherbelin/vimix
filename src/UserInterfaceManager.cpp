@@ -1873,7 +1873,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 if (ImGuiToolkit::IconButton( 18, 9, "Angle")) {
                     n->rotation_.z = 0.f;
                     s->touch();
-                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    info << "Angle " << std::fixed << std::setprecision(2) << n->rotation_.z * 180.f / M_PI << UNICODE_DEGREE;
                     Action::manager().store(info.str());
                 }
                 float v_deg = n->rotation_.z * 360.0f / (2.f*M_PI);
@@ -1887,11 +1887,11 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                     v_deg = CLAMP(v_deg + 0.01f * io.MouseWheel, -180.f, 180.f);
                     n->rotation_.z = v_deg * (2.f*M_PI) / 360.0f;
                     s->touch();
-                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    info << "Angle " << std::fixed << std::setprecision(2) << n->rotation_.z * 180.f / M_PI << UNICODE_DEGREE;
                     Action::manager().store(info.str());
                 }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ) {
-                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    info << "Angle " << std::fixed << std::setprecision(2) << n->rotation_.z * 180.f / M_PI << UNICODE_DEGREE;
                     Action::manager().store(info.str());
                 }
 
@@ -3596,7 +3596,7 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
             // delete button
             if ( ImGui::Button( ACTION_DELETE, ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
                 Mixer::manager().deleteSource(s);
-                Action::manager().store(sname + std::string(": deleted"));
+                Action::manager().store(sname + std::string(": Deleted"));
             }
             if ( Mixer::manager().session()->failedSources().size() > 1 ) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
@@ -4922,7 +4922,7 @@ void Navigator::RenderMainPannelSession()
 
             for (uint i = Action::manager().max(); i > 0; --i) {
 
-                if (ImGui::Selectable( Action::manager().label(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick, size )) {
+                if (ImGui::Selectable( Action::manager().shortlabel(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick, size )) {
                     // go to on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                         Action::manager().stepTo(i);
@@ -4943,7 +4943,7 @@ void Navigator::RenderMainPannelSession()
                         _displayed_over = _over;
                         text = Action::manager().label(_over);
                         if (text.find_first_of(':') < text.size())
-                            text = text.insert( text.find_first_of(':') + 1, 1, '\n');
+                            text = text.insert( text.find_first_of(':') + 2, 1, '\n');
                         FrameBufferImage *im = Action::manager().thumbnail(_over);
                         if (im) {
                             // set image content to thumbnail display

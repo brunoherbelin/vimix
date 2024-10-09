@@ -19,7 +19,6 @@
 
 
 #include <vector>
-#include <sstream>
 #include <iomanip>
 
 #include <glm/glm.hpp>
@@ -109,7 +108,6 @@ void ImGuiVisitor::visit(Group &n)
         n.translation_.y = translation[1];
     }
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
         oss << "Position " << std::setprecision(3) << n.translation_.x << ", " << n.translation_.y;
         Action::manager().store(oss.str());
     }
@@ -127,7 +125,6 @@ void ImGuiVisitor::visit(Group &n)
         n.scale_.y = CLAMP_SCALE(scale[1]);
     }
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
         oss << "Scale " << std::setprecision(3) << n.scale_.x << " x " << n.scale_.y;
         Action::manager().store(oss.str());
     }
@@ -140,7 +137,6 @@ void ImGuiVisitor::visit(Group &n)
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     ImGui::SliderAngle("Angle", &(n.rotation_.z), -180.f, 180.f) ;
     if (ImGui::IsItemDeactivatedAfterEdit()) {
-        std::ostringstream oss;
         oss << "Angle " << std::setprecision(3) << n.rotation_.z * 180.f / M_PI;
         Action::manager().store(oss.str());
     }
@@ -205,7 +201,6 @@ void ImGuiVisitor::visit(Shader &n)
                      "\0Hard light\0Soft subtract\0Lighten only\0") ) {
         n.blending = Shader::BlendMode(mode);
 
-        std::ostringstream oss;
         oss << "Blending ";
         switch(n.blending) {
         case Shader::BLEND_OPACITY:
@@ -245,7 +240,6 @@ void ImGuiVisitor::visit(Shader &n)
 void ImGuiVisitor::visit(ImageProcessingShader &n)
 {
     ImGuiIO& io = ImGui::GetIO();
-    std::ostringstream oss;
     ImGui::PushID(std::to_string(n.id()).c_str());
 
     ///
@@ -380,7 +374,6 @@ void ImGuiVisitor::visit(ImageProcessingShader &n)
         Action::manager().store(oss.str());
     }
     if (ImGui::IsItemDeactivatedAfterEdit()){
-        std::ostringstream oss;
         oss << "Posterize ";
         if (n.nbColors == 0) oss << "Full range"; else oss << n.nbColors;
         Action::manager().store(oss.str());
@@ -442,6 +435,9 @@ void ImGuiVisitor::visit (Source& s)
     const float space = ImGui::GetStyle().ItemSpacing.y;
 
     ImGui::PushID(std::to_string(s.id()).c_str());
+
+    oss = std::ostringstream();
+    oss << s.name() << ": ";
 
     // blending selection
     s.blendingShader()->accept(*this);
@@ -521,12 +517,13 @@ void ImGuiVisitor::visit (Source& s)
             s.setLocked(l);
             if (l) {
                 Mixer::selection().clear();
-                Action::manager().store(s.name() + std::string(": lock."));
+                oss << "Locked";
             }
             else {
                 Mixer::selection().set(&s);
-                Action::manager().store(s.name() + std::string(": unlock."));
+                oss << "Unlocked";
             }
+            Action::manager().store(oss.str());
         }
 
         // Filter
@@ -549,8 +546,7 @@ void ImGuiVisitor::visit (Source& s)
         if (ImGui::BeginPopup( "MenuImageProcessing" ))
         {
             if (ImGui::MenuItem("Enable", NULL, &on)) {
-                std::ostringstream oss;
-                oss << s.name() << ": " << ( on ? "Enable Color correction" : "Disable Color correction");
+                oss << ( on ? "Enable Color correction" : "Disable Color correction");
                 Action::manager().store(oss.str());
                 s.setImageProcessingEnabled(on);
             }
@@ -565,8 +561,7 @@ void ImGuiVisitor::visit (Source& s)
                     ImageProcessingShader defaultvalues;
                     s.processingShader()->copy(defaultvalues);
                     s.processingshader_link_.disconnect();
-                    std::ostringstream oss;
-                    oss << s.name() << ": " << "Reset Filter";
+                    oss << "Reset Filter";
                     Action::manager().store(oss.str());
                 }
                 if (ImGui::MenuItem("Copy", NULL, false, on )){
@@ -578,8 +573,7 @@ void ImGuiVisitor::visit (Source& s)
                 const bool can_paste = (clipboard != nullptr && SessionLoader::isClipboard(clipboard));
                 if (ImGui::MenuItem("Paste", NULL, false, can_paste)) {
                     SessionLoader::applyImageProcessing(s, clipboard);
-                    std::ostringstream oss;
-                    oss << s.name() << ": " << "Change Filter";
+                    oss << "Change Filter";
                     Action::manager().store(oss.str());
                 }
                 //            // NON-stable style follow mechanism
@@ -816,19 +810,18 @@ void ImGuiVisitor::visit (SessionFileSource& s)
             }
 
             // fading
-            std::ostringstream oss;
             int f = 100 - int(s.session()->fading() * 100.f);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::SliderInt("##Fading", &f, 0, 100, f > 99 ? ICON_FA_ADJUST " None" : ICON_FA_ADJUST " %d %%") )
                 s.session()->setFadingTarget( float(100 - f) * 0.01f );
             if (ImGui::IsItemDeactivatedAfterEdit()){
-                oss << s.name() << ": Fading " << f << " %";
+                oss << "Fading " << f << " %";
                 Action::manager().store(oss.str());
             }
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (ImGuiToolkit::TextButton("Fading")) {
                 s.session()->setFadingTarget(0.f);
-                oss << s.name() << ": Fading 0 %";
+                oss << "Fading 0 %";
                 Action::manager().store(oss.str());
             }
 
@@ -984,7 +977,6 @@ void ImGuiVisitor::visit (PassthroughFilter&)
 void ImGuiVisitor::visit (DelayFilter& f)
 {
     ImGuiIO& io = ImGui::GetIO();
-    std::ostringstream oss;
 
 //    if (ImGuiToolkit::IconButton(ICON_FILTER_DELAY)) {
 //        f.setDelay(0.f);
@@ -1008,14 +1000,13 @@ void ImGuiVisitor::visit (DelayFilter& f)
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     if (ImGuiToolkit::TextButton("Delay ")) {
         f.setDelay(0.5f);
-        Action::manager().store("Delay 0.5 s");
+        oss << "Delay 0.5 s";
+        Action::manager().store(oss.str());
     }
 }
 
 void ImGuiVisitor::visit (ResampleFilter& f)
 {
-    std::ostringstream oss;
-
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) f.factor();
     if (ImGui::Combo("##Factor", &m, ResampleFilter::factor_label, IM_ARRAYSIZE(ResampleFilter::factor_label) )) {
@@ -1049,18 +1040,18 @@ void list_parameters_(ImageFilter &f, std::ostringstream &oss)
         if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
             v = CLAMP( v + 0.01f * io.MouseWheel, 0.f, 1.f);
             f.setProgramParameter(param->first, v);
-            oss << " : " << param->first << " " << std::setprecision(3) << v;
+            oss << " " << param->first << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
         }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
-            oss << " : " << param->first << " " << std::setprecision(3) <<param->second;
+            oss << " " << param->first << " " << std::setprecision(3) <<param->second;
             Action::manager().store(oss.str());
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton( param->first.c_str() )) {
             v = 0.5f;
             f.setProgramParameter(param->first, v);
-            oss << " : " << param->first << " " << std::setprecision(3) << v;
+            oss << " " << param->first << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
         }
         ImGui::PopID();
@@ -1069,7 +1060,6 @@ void list_parameters_(ImageFilter &f, std::ostringstream &oss)
 
 void ImGuiVisitor::visit (BlurFilter& f)
 {
-    std::ostringstream oss;
     oss << "Blur ";
 
     // Method selection
@@ -1093,7 +1083,6 @@ void ImGuiVisitor::visit (BlurFilter& f)
 
 void ImGuiVisitor::visit (SharpenFilter& f)
 {
-    std::ostringstream oss;
     oss << "Sharpen ";
 
     // Method selection
@@ -1117,7 +1106,6 @@ void ImGuiVisitor::visit (SharpenFilter& f)
 
 void ImGuiVisitor::visit (SmoothFilter& f)
 {
-    std::ostringstream oss;
     oss << "Smooth ";
 
     // Method selection
@@ -1141,7 +1129,6 @@ void ImGuiVisitor::visit (SmoothFilter& f)
 
 void ImGuiVisitor::visit (EdgeFilter& f)
 {
-    std::ostringstream oss;
     oss << "Edge ";
 
     // Method selection
@@ -1166,7 +1153,6 @@ void ImGuiVisitor::visit (EdgeFilter& f)
 void ImGuiVisitor::visit (AlphaFilter& f)
 {
     ImGuiIO& io = ImGui::GetIO();
-    std::ostringstream oss;
     oss << "Alpha ";
 
     // Alpha operation selection
@@ -1198,12 +1184,12 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             v = CLAMP( v + 0.01f * io.MouseWheel, 0.f, 1.f);
             f.setProgramParameter("Tolerance", v);
             oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Tolerance" << " " << std::setprecision(3) << v;
+            oss << " " << "Tolerance" << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
         }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Tolerance" << " " << std::setprecision(3) << v;
+            oss << " " << "Tolerance" << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -1211,7 +1197,7 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             v = 0.f;
             f.setProgramParameter("Tolerance", v);
             oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Tolerance" << " " << std::setprecision(3) << v;
+            oss << " " << "Tolerance" << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
         }
         float t = filter_parameters["Threshold"];
@@ -1223,12 +1209,12 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             t = CLAMP( t + 0.01f * io.MouseWheel, 0.f, 1.f);
             f.setProgramParameter("Threshold", t);
             oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
+            oss << " " << "Threshold" << " " << std::setprecision(3) << t;
             Action::manager().store(oss.str());
         }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
+            oss << " " << "Threshold" << " " << std::setprecision(3) << t;
             Action::manager().store(oss.str());
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -1236,7 +1222,7 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             t = 0.f;
             f.setProgramParameter("Threshold", t);
             oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Threshold" << " " << std::setprecision(3) << t;
+            oss << " " << "Threshold" << " " << std::setprecision(3) << t;
             Action::manager().store(oss.str());
         }
     }
@@ -1308,12 +1294,12 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             v = CLAMP( v + 0.01f * io.MouseWheel, 0.f, 1.f);
             f.setProgramParameter("Luminance", v);
             oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Luminance" << " " << std::setprecision(3) << v;
+            oss << " " << "Luminance" << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
         }
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Luminance" << " " << std::setprecision(3) << v;
+            oss << " " << "Luminance" << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -1321,7 +1307,7 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             v = 0.f;
             f.setProgramParameter("Luminance", v);
             oss << AlphaFilter::operation_label[ f.operation() ];
-            oss << " : " << "Luminance" << " " << std::setprecision(3) << v;
+            oss << " " << "Luminance" << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
         }
     }
@@ -1340,7 +1326,6 @@ void ImGuiVisitor::visit (ImageFilter& f)
     }
 
     // List of parameters
-    std::ostringstream oss;
     oss << "Custom ";
     list_parameters_(f, oss);
 
@@ -1372,20 +1357,18 @@ void ImGuiVisitor::visit (CloneSource& s)
         ImGui::Text("Origin");
 
         // filter selection
-        std::ostringstream oss;
-        oss << s.name();
         int type = (int) s.filter()->type();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGuiToolkit::ComboIcon("##SelectFilter", &type, FrameBufferFilter::Types)) {
             s.setFilter( FrameBufferFilter::Type(type) );
-            oss << ": Filter " << std::get<2>(FrameBufferFilter::Types[type]);
+            oss << "Filter " << std::get<2>(FrameBufferFilter::Types[type]);
             Action::manager().store(oss.str());
             info.reset();
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton("Filter")) {
             s.setFilter( FrameBufferFilter::FILTER_PASSTHROUGH );
-            oss << ": Filter None";
+            oss << "Filter None";
             Action::manager().store(oss.str());
             info.reset();
         }
@@ -1436,8 +1419,7 @@ void ImGuiVisitor::visit (PatternSource& s)
                 ImGui::Selectable( label.c_str(), p == s.pattern()->type() )) {
                 s.setPattern(p, s.pattern()->resolution());
                 info.reset();
-                std::ostringstream oss;
-                oss << s.name() << ": Pattern " << Pattern::get(p).label;
+                oss << "Pattern " << Pattern::get(p).label;
                 Action::manager().store(oss.str());
                 // ensure all sources are updated after the texture change of this one
                 Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
@@ -1493,8 +1475,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
                     else {
                         s.setDevice(namedev);
                         info.reset();
-                        std::ostringstream oss;
-                        oss << s.name() << " Device " << namedev;
+                        oss << "Device " << namedev;
                         Action::manager().store(oss.str());
                     }
                     // ensure all sources are updated after the texture change of this one
@@ -1562,8 +1543,7 @@ void ImGuiVisitor::visit (ScreenCaptureSource& s)
                     else {
                         s.setWindow(namedev);
                         info.reset();
-                        std::ostringstream oss;
-                        oss << s.name() << " Window " << namedev;
+                        oss << "Window '" << namedev << "'";
                         Action::manager().store(oss.str());
                     }
                     // ensure all sources are updated after the texture change of this one
@@ -1663,16 +1643,14 @@ void ImGuiVisitor::visit (MultiFileSource& s)
         ImGui::DragIntRange2("##Range", &_begin, &_end, 1, s.sequence().min, s.sequence().max);
         if (ImGui::IsItemDeactivatedAfterEdit()){
             s.setRange( _begin, _end );
-            std::ostringstream oss;
-            oss << s.name() << ": Range " << _begin << "-" << _end;
+            oss << "Range " << _begin << "-" << _end;
             Action::manager().store(oss.str());
             _begin = _end = -1;
         }
         ImGui::SameLine(0, 0);
         if (ImGuiToolkit::TextButton("Range")) {
             s.setRange( s.sequence().min, s.sequence().max );
-            std::ostringstream oss;
-            oss << s.name() << ": Range " << s.sequence().min << "-" << s.sequence().max;
+            oss << "Range " << s.sequence().min << "-" << s.sequence().max;
             Action::manager().store(oss.str());
             _begin = _end = -1;
         }
@@ -1685,16 +1663,14 @@ void ImGuiVisitor::visit (MultiFileSource& s)
         ImGui::SliderInt("##Framerate", &_fps, 1, 30, "%d fps");
         if (ImGui::IsItemDeactivatedAfterEdit()){
             s.setFramerate(_fps);
-            std::ostringstream oss;
-            oss << s.name() << ": Framerate " << _fps << " fps";
+            oss << "Framerate " << _fps << " fps";
             Action::manager().store(oss.str());
             _fps = -1;
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton("Framerate")) {
             s.setFramerate(25);
-            std::ostringstream oss;
-            oss << s.name() << ": Framerate 25 fps";
+            oss << "Framerate 25 fps";
             Action::manager().store(oss.str());
             _fps = -1;
         }
@@ -1768,7 +1744,8 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
     if (changed) {
         info.reset();
         s.setDescription(_description);
-        Action::manager().store( s.name() + ": Change pipeline");
+        oss << "Change pipeline";
+        Action::manager().store( oss.str() );
         // ensure all sources are updated after the texture change of this one
         Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
     }
@@ -1868,7 +1845,8 @@ void ImGuiVisitor::visit(TextSource &s)
             if (ImGuiToolkit::InputTextMultiline("Text", &_contents, fieldsize, &numlines)) {
                 info.reset();
                 tc->setText(_contents);
-                Action::manager().store(s.name() + " Change text");
+                oss << "Text changed";
+                Action::manager().store(oss.str());
             }
             botom = ImGui::GetCursorPos();
 
@@ -1878,11 +1856,16 @@ void ImGuiVisitor::visit(TextSource &s)
                 ImGui::SetClipboardText(_contents.c_str());
             ImGui::SetCursorPos(
                 ImVec2(top.x + 0.95 * ImGui::GetFrameHeight(), botom.y - ImGui::GetFrameHeight()));
-            if (ImGuiToolkit::IconButton(ICON_FA_PASTE, "Paste")) {
-                _contents = std::string(ImGui::GetClipboardText());
-                info.reset();
-                tc->setText(_contents);
-                Action::manager().store(s.name() + " Change text");
+            _contents = std::string(ImGui::GetClipboardText());
+            if (_contents.empty())
+                ImGui::TextDisabled(ICON_FA_PASTE);
+            else {
+                if (ImGuiToolkit::IconButton(ICON_FA_PASTE, "Paste")) {
+                    info.reset();
+                    tc->setText(_contents);
+                    oss << "Text changed";
+                    Action::manager().store(oss.str());
+                }
             }
             ImGui::SetCursorPos(ImVec2(top.x, botom.y - 2.f * ImGui::GetFrameHeight()));
             if (ImGuiToolkit::IconButton(ICON_FA_CODE, "Pango syntax"))
@@ -1897,21 +1880,25 @@ void ImGuiVisitor::visit(TextSource &s)
                           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ) {
             tc->setColor( ImGuiToolkit::ColorConvertFloat4ToARGB(color) );
         }
-        if (ImGui::IsItemDeactivatedAfterEdit())
-            Action::manager().store( s.name() + " Change font color" );
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << "Change font color";
+            Action::manager().store(oss.str());
+        }
         std::string font = tc->fontDescriptor();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGuiToolkit::InputText("##Font", &font, ImGuiInputTextFlags_EnterReturnsTrue);
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             tc->setFontDescriptor(font);
-            Action::manager().store( s.name() + " Change font");
+            oss << "Change font";
+            Action::manager().store(oss.str());
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton("Font")) {
             tc->setFontDescriptor("arial 24");
             tc->setColor(0xffffffff);
-            Action::manager().store(s.name() + " Reset font");
+            oss << "Reset font";
+            Action::manager().store(oss.str());
         }
         botom = ImGui::GetCursorPos();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -1924,20 +1911,24 @@ void ImGuiVisitor::visit(TextSource &s)
                               ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel) ) {
             tc->setOutlineColor( ImGuiToolkit::ColorConvertFloat4ToARGB(color) );
         }
-        if (ImGui::IsItemDeactivatedAfterEdit())
-            Action::manager().store( s.name() + " Change outline color" );
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            oss << "Change outline color";
+            Action::manager().store(oss.str());
+        }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         int outline = tc->outline();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::Combo("##Outline", &outline, "None\0Border\0Border & shadow\0")) {
             tc->setOutline(outline);
-            Action::manager().store(s.name() + " Change outline");
+            oss << "Change outline";
+            Action::manager().store(oss.str());
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton("Outline")) {
             tc->setOutline(2);
             tc->setOutlineColor(0xFF000000);
-            Action::manager().store(s.name() + " Reset outline");
+            oss << "Reset outline";
+            Action::manager().store(oss.str());
         }
 
         // HORIZONTAL alignment
@@ -1955,6 +1946,10 @@ void ImGuiVisitor::visit(TextSource &s)
                 if (ImGui::SliderFloat("##Posx", &align_x, 0.f, 1.f, "%.2f")) {
                     tc->setHorizontalPadding(align_x);
                 }
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    oss << "Change h-align coordinates";
+                    Action::manager().store(oss.str());
+                }
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip( "Coordinates" );
             } else {
@@ -1962,6 +1957,10 @@ void ImGuiVisitor::visit(TextSource &s)
                 int pad_x = (int) tc->horizontalPadding();
                 if (ImGui::SliderInt("##Padx", &pad_x, 0, 1000)) {
                     tc->setHorizontalPadding((float) pad_x);
+                }
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    oss << "Change h-align padding";
+                    Action::manager().store(oss.str());
                 }
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip( "Padding" );
@@ -1985,12 +1984,15 @@ void ImGuiVisitor::visit(TextSource &s)
         on = var == 3;
         if (ImGuiToolkit::ButtonIconToggle(6, 10, &on, "Absolute"))
             tc->setHorizontalAlignment(3);
-        if (var != tc->horizontalAlignment())
-            Action::manager().store(s.name() + " Change h-align");
+        if (var != tc->horizontalAlignment()){
+            oss << "Change h-align";
+            Action::manager().store(oss.str());
+        }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton("Horizontal")) {
             tc->setHorizontalAlignment(1);
-            Action::manager().store(s.name() + " Reset h-align");
+            oss << "Reset h-align";
+            Action::manager().store(oss.str());
         }
 
         // VERTICAL alignment
@@ -2007,6 +2009,10 @@ void ImGuiVisitor::visit(TextSource &s)
                 if (ImGui::SliderFloat("##Posy", &align_y, 0.f, 1.f, "%.2f")) {
                     tc->setVerticalPadding(align_y);
                 }
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    oss << "Change v-align coordinates";
+                    Action::manager().store(oss.str());
+                }
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip( "Coordinates" );
             } else {
@@ -2014,6 +2020,10 @@ void ImGuiVisitor::visit(TextSource &s)
                 int pad_y = (int) tc->verticalPadding();
                 if (ImGui::SliderInt("##Pady", &pad_y, 0, 1000)) {
                     tc->setVerticalPadding((float) pad_y);
+                }
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    oss << "Change v-align padding";
+                    Action::manager().store(oss.str());
                 }
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip( "Padding" );
@@ -2038,12 +2048,15 @@ void ImGuiVisitor::visit(TextSource &s)
         on = var == 3;
         if (ImGuiToolkit::ButtonIconToggle(3, 10, &on, "Absolute"))
             tc->setVerticalAlignment(3);
-        if (var != tc->verticalAlignment())
-            Action::manager().store(s.name() + " Change v-align");
+        if (var != tc->verticalAlignment()){
+            oss << "Change v-align";
+            Action::manager().store(oss.str());
+        }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton("Vertical")) {
             tc->setVerticalAlignment(2);
-            Action::manager().store(s.name() + " Reset v-align");
+            oss << "Reset v-align";
+            Action::manager().store(oss.str());
         }
 
         botom = ImGui::GetCursorPos();

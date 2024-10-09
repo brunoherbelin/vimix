@@ -549,7 +549,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
         attachSource(s);
 
         // new state in history manager
-        Action::manager().store(s->name() + std::string(": source inserted"));
+        Action::manager().store(s->name() + std::string(": Source inserted"));
 
         // Log & notification
         Log::Info("Adding source '%s'...", s->name().c_str());
@@ -742,7 +742,7 @@ void Mixer::deleteSelection()
         if (N > 1)
             info << N << " sources deleted";
         else
-            info << selection().front()->name() << ": deleted";
+            info << selection().front()->name() << ": Deleted";
 
         // get clones first : this way we store the history of deletion in the right order
         SourceList selection_clones_;
@@ -834,7 +834,7 @@ void Mixer::groupSelection()
 
         // store in action manager
         std::ostringstream info;
-        info << sessiongroup->name() << " inserted: " << sessiongroup->session()->size() << " sources groupped.";
+        info << sessiongroup->name() << ": inserted (" << sessiongroup->session()->size() << " sources group)";
         Action::manager().store(info.str());
 
         Log::Notify("Added %s source '%s' (group of %d sources)", sessiongroup->info().c_str(), sessiongroup->name().c_str(), sessiongroup->session()->size());
@@ -1383,7 +1383,7 @@ void Mixer::merge(Session *session)
 
     // import every sources
     std::ostringstream info;
-    info << session->size() << " sources imported from:" << session->filename();
+    info << session->size() << " sources imported from " << session->filename();
     for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
         // avoid name duplicates
         renameSource(s);
@@ -1422,7 +1422,7 @@ void Mixer::merge(SessionSource *source)
 
     // prepare Action manager info
     std::ostringstream info;
-    info << source->name().c_str() << " expanded:" << session->size() << " sources imported";
+    info << source->name().c_str() << ": expanded to " << session->size() << " sources";
 
     // import sources of the session (if not empty)
     if ( !session->empty() ) {

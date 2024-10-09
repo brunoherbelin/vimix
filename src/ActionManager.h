@@ -37,6 +37,7 @@ public:
     inline uint current () const { return history_step_; }
     inline uint max () const { return history_max_step_; }
     std::string label (uint s) const;
+    std::string shortlabel (uint s) const;
     FrameBufferImage *thumbnail (uint s) const;
 
     // Snapshots
