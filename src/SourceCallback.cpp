@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 #include <fstream>
+#include <algorithm>
 
 #include "defines.h"
 #include "Source.h"

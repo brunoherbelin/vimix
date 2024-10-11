@@ -20,6 +20,7 @@
 #include <iostream>
 #include <iomanip>
 #include <thread>
+#include <algorithm>
 
 #include <gst/gst.h>
 
