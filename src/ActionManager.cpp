@@ -19,6 +19,7 @@
 
 #include <string>
 #include <thread>
+#include <regex>
 
 #include "Log.h"
 #include "View.h"
@@ -42,7 +43,7 @@
 using namespace tinyxml2;
 
 
-Action::Action(): history_step_(0), history_max_step_(0), locked_(false),
+Action::Action(): history_step_(0), history_max_step_(0),
     snapshot_id_(0), snapshot_node_(nullptr), interpolator_(nullptr), interpolator_node_(nullptr)
 {
 
@@ -64,13 +65,19 @@ void Action::init()
 
 // must be called in a thread running in parrallel of the rendering
 // (needs opengl update to get thumbnail)
-void captureMixerSession(Session *se, tinyxml2::XMLDocument *doc, std::string node, std::string label)
+void captureMixerSession(Session *se, std::string node, std::string label, tinyxml2::XMLDocument *doc = nullptr)
 {
     if (se != nullptr) {
 
+        tinyxml2::XMLDocument *_doc = doc;
+        if (doc == nullptr) {
+            _doc = se->snapshots()->xmlDoc_;
+            se->snapshots()->access_.lock();
+        }
+
         // create node
-        XMLElement *sessionNode = doc->NewElement( node.c_str() );
-        doc->InsertEndChild(sessionNode);
+        XMLElement *sessionNode = _doc->NewElement( node.c_str() );
+        _doc->InsertEndChild(sessionNode);
         // label describes the action
         sessionNode->SetAttribute("label", label.c_str() );
         // label describes the action
@@ -78,10 +85,32 @@ void captureMixerSession(Session *se, tinyxml2::XMLDocument *doc, std::string no
         // view indicates the view when this action occurred
         sessionNode->SetAttribute("view", (int) Mixer::manager().view()->mode());
 
+        // generate short label, if possible
+        std::smatch match;
+        const std::regex pattern("([^:]*):(.*)");
+        // extract left and right part around colon in the label
+        if (std::regex_search(label, match, pattern) && match.size() > 1 && match[1].str().size() > 1) {
+            // take left part of ':'
+            std::string left = match[1].str();
+            // keep only the initials, i.e. front and back characters, to upper case
+            std::string short_label;
+            short_label.append( 1, static_cast<char>(std::toupper(static_cast<unsigned char>(left.front()))));
+            short_label.append( 1, static_cast<char>(std::toupper(static_cast<unsigned char>(left.back()))));
+
+            // separator
+            short_label.append(":");
+
+            // take the right part of ':'
+            if (match.size() > 2)
+                short_label.append(match[2].str());
+
+            sessionNode->SetAttribute("shortlabel", short_label.c_str() );
+        }
+
         // get the thumbnail (requires one opengl update to render)
         FrameBufferImage *thumbnail = se->renderThumbnail();
         if (thumbnail) {
-            XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, doc);
+            XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, _doc);
             if (imageelement)
                 sessionNode->InsertEndChild(imageelement);
             delete thumbnail;
@@ -91,34 +120,52 @@ void captureMixerSession(Session *se, tinyxml2::XMLDocument *doc, std::string no
         sessionNode->SetAttribute("activationThreshold", se->activationThreshold());
 
         // save all sources using source visitor
-        SessionVisitor sv(doc, sessionNode);
+        SessionVisitor sv(_doc, sessionNode);
         for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
             (*iter)->accept(sv);
 
+        if (doc == nullptr)
+            se->snapshots()->access_.unlock();
     }
 }
+
+void Action::storeSession(Session *se, std::string label)
+{
+    //
+    if (!Action::manager().history_access_.try_lock())
+        return;
+
+    // incremental naming of history nodes
+    Action::manager().history_step_++;
+
+    // erase future
+    for (uint e = Action::manager().history_step_; e <= Action::manager().history_max_step_; e++) {
+        XMLElement *node = Action::manager().history_doc_.FirstChildElement( HISTORY_NODE(e).c_str() );
+        if ( node )
+            Action::manager().history_doc_.DeleteChild(node);
+    }
+    Action::manager().history_max_step_ = Action::manager().history_step_;
+
+    // capture current session
+    captureMixerSession(se,
+                        HISTORY_NODE(Action::manager().history_step_),
+                        label,
+                        &Action::manager().history_doc_);
+
+    Action::manager().history_access_.unlock();
+}
+
 
 void Action::store(const std::string &label)
 {
     // TODO: set a maximum amount of stored steps? (even very big, just to ensure memory limit)
 
     // ignore if locked or if no label is given
-    if (locked_ || label.empty())
+    if (label.empty())
         return;
 
-    // incremental naming of history nodes
-    history_step_++;
-
-    // erase future
-    for (uint e = history_step_; e <= history_max_step_; e++) {
-        XMLElement *node = history_doc_.FirstChildElement( HISTORY_NODE(e).c_str() );
-        if ( node )
-            history_doc_.DeleteChild(node);
-    }
-    history_max_step_ = history_step_;
-
     // threaded capturing state of current session
-    std::thread(captureMixerSession, Mixer::manager().session(), &history_doc_, HISTORY_NODE(history_step_), label).detach();
+    std::thread(Action::storeSession, Mixer::manager().session(), label).detach();
 
 #ifdef ACTION_DEBUG
     Log::Info("Action stored %d '%s'", history_step_, label.c_str());
@@ -169,6 +216,22 @@ std::string Action::label(uint s) const
     return l;
 }
 
+std::string Action::shortlabel(uint s) const
+{
+    std::string l = "";
+
+    if (s > 0 && s <= history_max_step_) {
+        const XMLElement *sessionNode = history_doc_.FirstChildElement( HISTORY_NODE(s).c_str());
+        if  (sessionNode) {
+            if (sessionNode->Attribute("shortlabel"))
+                l = sessionNode->Attribute("shortlabel");
+            else
+                l = sessionNode->Attribute("label");
+        }
+    }
+    return l;
+}
+
 FrameBufferImage *Action::thumbnail(uint s) const
 {
     FrameBufferImage *img = nullptr;
@@ -184,8 +247,7 @@ FrameBufferImage *Action::thumbnail(uint s) const
 
 void Action::restore(uint target)
 {
-    // lock
-    locked_ = true;
+    history_access_.lock();
 
     // get history node of target step
     history_step_ = CLAMP(target, 1, history_max_step_);
@@ -203,8 +265,7 @@ void Action::restore(uint target)
         Mixer::manager().restore(sessionNode);
     }
 
-    // free
-    locked_ = false;
+    history_access_.unlock();
 }
 
 
@@ -220,9 +281,9 @@ void Action::takeSnapshot(Session *se, const std::string &label, bool create_thr
 
         if (create_thread)
             // threaded capture state of current session
-            std::thread(captureMixerSession, se, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), label).detach();
+            std::thread(captureMixerSession, se, SNAPSHOT_NODE(id), label, nullptr).detach();
         else
-            captureMixerSession(se, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(id), label);
+            captureMixerSession(se, SNAPSHOT_NODE(id), label);
 
 #ifdef ACTION_DEBUG
         Log::Info("Snapshot stored %d '%s'", id, label.c_str());
@@ -232,10 +293,6 @@ void Action::takeSnapshot(Session *se, const std::string &label, bool create_thr
 
 void Action::snapshot(const std::string &label)
 {
-    // ignore if locked
-    if (locked_)
-        return;
-
     // ensure label is unique
     std::string snap_label = BaseToolkit::uniqueName(label, labels());
 
@@ -250,7 +307,12 @@ void Action::open(uint64_t snapshotid)
     {
         // get snapshot node of target in current session
         Session *se = Mixer::manager().session();
-        snapshot_node_ = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid).c_str() );
+        if (se) {
+            se->snapshots()->access_.lock();
+            snapshot_node_ = se->snapshots()->xmlDoc_->FirstChildElement(
+                SNAPSHOT_NODE(snapshotid).c_str());
+            se->snapshots()->access_.unlock();
+        }
 
         if (snapshot_node_)
             snapshot_id_ = snapshotid;
@@ -263,10 +325,6 @@ void Action::open(uint64_t snapshotid)
 
 void Action::replace(uint64_t snapshotid)
 {
-    // ignore if locked or if no label is given
-    if (locked_)
-        return;
-
     if (snapshotid > 0)
         open(snapshotid);
 
@@ -277,14 +335,18 @@ void Action::replace(uint64_t snapshotid)
         // remove previous node
         Session *se = Mixer::manager().session();
         if (se) {
+
+            se->snapshots()->access_.lock();
             se->snapshots()->xmlDoc_->DeleteChild( snapshot_node_ );
+            se->snapshots()->access_.unlock();
 
             // threaded capture state of current session
-            std::thread(captureMixerSession, se, se->snapshots()->xmlDoc_, SNAPSHOT_NODE(snapshot_id_), label).detach();
+            std::thread(captureMixerSession, se, SNAPSHOT_NODE(snapshot_id_), label, nullptr).detach();
 
 #ifdef ACTION_DEBUG
             Log::Info("Snapshot replaced %d '%s'", snapshot_id_, label.c_str());
 #endif
+
         }
     }
 }
@@ -378,8 +440,10 @@ void Action::remove(uint64_t snapshotid)
     if (snapshot_node_) {
         // remove
         Session *se = Mixer::manager().session();
+        se->snapshots()->access_.lock();
         se->snapshots()->xmlDoc_->DeleteChild( snapshot_node_ );
         se->snapshots()->keys_.remove( snapshot_id_ );
+        se->snapshots()->access_.unlock();
     }
 
     snapshot_node_ = nullptr;
@@ -388,18 +452,12 @@ void Action::remove(uint64_t snapshotid)
 
 void Action::restore(uint64_t snapshotid)
 {
-    // lock
-    locked_ = true;
-
     if (snapshotid > 0)
         open(snapshotid);
 
     if (snapshot_node_)
         // actually restore
         Mixer::manager().restore(snapshot_node_);
-
-    // free
-    locked_ = false;
 
     store("Snapshot " + label(snapshot_id_));
 }
@@ -516,8 +574,7 @@ static void saveSnapshot(const std::string& filename, tinyxml2::XMLElement *snap
 
 void Action::saveas(const std::string& filename, uint64_t snapshotid)
 {
-    // ignore if locked or if no label is given
-    if (locked_)
+    if (filename.empty())
         return;
 
     if (snapshotid > 0)

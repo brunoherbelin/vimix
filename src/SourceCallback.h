@@ -51,7 +51,8 @@ public:
         CALLBACK_THRESHOLD,
         CALLBACK_INVERT,
         CALLBACK_POSTERIZE,
-        CALLBACK_FILTER
+        CALLBACK_FILTER,
+        CALLBACK_FILTER_UNIFORM
     } CallbackType;
 
     static SourceCallback *create(CallbackType type);
@@ -504,6 +505,30 @@ public:
     void multiply (float factor) override;
     SourceCallback *clone () const override;
     CallbackType type () const override { return CALLBACK_FILTER; }
+    void accept (Visitor& v) override;
+};
+
+class SetFilterUniform : public SourceCallback
+{
+    std::string uniform_;
+    float target_;
+    float start_;
+    float duration_;
+    class ImageFilter *imagefilter;
+
+public:
+    SetFilterUniform (const std::string &uniform = std::string(),
+                     float value = NAN, float ms = 0.f);
+
+    float value () const { return target_; }
+    void  setValue (float g) { target_ = g; }
+    float duration () const { return duration_; }
+    void  setDuration (float ms) { duration_ = ms; }
+
+    void update (Source *s, float) override;
+    void multiply (float factor) override;
+    SourceCallback *clone () const override;
+    CallbackType type () const override { return CALLBACK_FILTER_UNIFORM; }
     void accept (Visitor& v) override;
 };
 

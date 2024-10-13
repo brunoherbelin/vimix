@@ -45,8 +45,6 @@
 
 #include "TextureView.h"
 
-#define MASK_PAINT_ACTION_LABEL "Mask Paint"
-
 TextureView::TextureView() : View(TEXTURE), edit_source_(nullptr), need_edit_update_(true)
 {
     scene.root()->scale_ = glm::vec3(APPEARANCE_DEFAULT_SCALE, APPEARANCE_DEFAULT_SCALE, 1.0f);
@@ -734,6 +732,10 @@ void TextureView::draw()
                             edit_source_->maskSource()->connect( *iter );
                             edit_source_->touch(Source::SourceUpdate_Mask);
                             need_edit_update_ = true;
+                            // store action history
+                            std::ostringstream oss;
+                            oss << edit_source_->name() << ": " << MaskShader::mask_names[maskmode];
+                            Action::manager().store(oss.str());
                         }
                     }
                     ImGui::EndCombo();
@@ -863,19 +865,19 @@ void TextureView::draw()
                     {
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                         std::ostringstream oss;
-                        oss << edit_source_->name();
+                        oss << edit_source_->name() << ": " << MaskShader::mask_names[MaskShader::PAINT];
                         int e = 0;
                         if (ImGui::Selectable( ICON_FA_BACKSPACE "  Clear")) {
                             e = 1;
-                            oss << ": Clear " << MASK_PAINT_ACTION_LABEL;
+                            oss << " cleared";
                         }
                         if (ImGui::Selectable( ICON_FA_THEATER_MASKS "   Invert")) {
                             e = 2;
-                            oss << ": Invert " << MASK_PAINT_ACTION_LABEL;
+                            oss << " inverted";
                         }
                         if (ImGui::Selectable( ICON_FA_WAVE_SQUARE "  Edge")) {
                             e = 3;
-                            oss << ": Edge " << MASK_PAINT_ACTION_LABEL;
+                            oss << " edged";
                         }
                         if (e>0) {
                             edit_source_->maskShader()->effect = e;
@@ -904,7 +906,8 @@ void TextureView::draw()
                             edit_source_->storeMask();
                             // store history
                             std::ostringstream oss;
-                            oss << edit_source_->name() << ": Mask fill with " << maskdialog.path();
+                            oss << edit_source_->name() << ": " << MaskShader::mask_names[MaskShader::PAINT];
+                            oss << " filled with image";
                             Action::manager().store(oss.str());
                         }
                     }
@@ -943,6 +946,9 @@ void TextureView::draw()
 
                 if (mask_cursor_shape_ > 0) {
 
+                    std::ostringstream oss;
+                    oss << edit_source_->name() << ": " << MaskShader::mask_names[MaskShader::SHAPE];
+
                     ImGui::SameLine(0, 50);
                     ImGui::SetNextItemWidth( ImGui::GetTextLineHeight() * 6.5f);
                     if ( ImGui::Combo("##MaskShape", &shape, MaskShader::mask_shapes, IM_ARRAYSIZE(MaskShader::mask_shapes) ) ) {
@@ -950,8 +956,7 @@ void TextureView::draw()
                         edit_source_->touch(Source::SourceUpdate_Mask);
                         need_edit_update_ = true;
                         // store action history
-                        std::ostringstream oss;
-                        oss << edit_source_->name() << ": Mask Shape " << MaskShader::mask_shapes[shape];
+                        oss << " " << MaskShader::mask_shapes[shape];
                         Action::manager().store(oss.str());
                     }
                     if (ImGui::IsItemHovered())
@@ -978,8 +983,7 @@ void TextureView::draw()
                         }
                         else if (smoothchanged && ImGui::IsMouseReleased(ImGuiMouseButton_Left)){
                             // store action history
-                            std::ostringstream oss;
-                            oss << edit_source_->name() << ": Mask Shape Blur " << blur_percent << "%";
+                            oss << " Blur " << blur_percent << "%";
                             Action::manager().store(oss.str());
                             smoothchanged = false;
                         }
@@ -1032,12 +1036,12 @@ void TextureView::draw()
             if (s->textureMirrored()) {
                 if (ImGui::Selectable( ICON_FA_TH_LARGE "  Repeat " )){
                     s->setTextureMirrored(false);
-                    Action::manager().store(s->name() + std::string(": Texture Repeat"));
+                    Action::manager().store(s->name() + std::string(": Texture Repeat "));
                 }
             } else {
                 if (ImGui::Selectable( ICON_FA_TH_LARGE "  Mirror " )){
                     s->setTextureMirrored(true);
-                    Action::manager().store(s->name() + std::string(": Texture Mirror"));
+                    Action::manager().store(s->name() + std::string(": Texture Mirror "));
                 }
             }
             ImGui::Separator();
@@ -1047,24 +1051,24 @@ void TextureView::draw()
                 s->group(mode_)->rotation_.z = 0;
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset"));
+                Action::manager().store(s->name() + std::string(": Texture Reset "));
             }
             if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Reset position" )){
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset position"));
+                Action::manager().store(s->name() + std::string(": Texture Reset position "));
             }
             if (ImGui::Selectable( ICON_FA_CIRCLE_NOTCH "  Reset rotation" )){
                 s->group(mode_)->rotation_.z = 0;
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset rotation"));
+                Action::manager().store(s->name() + std::string(": Texture Reset rotation "));
             }
             if (ImGui::Selectable( ICON_FA_EXPAND_ALT "  Reset aspect ratio" )){
                 s->group(mode_)->scale_.x = s->group(mode_)->scale_.y;
                 s->group(mode_)->scale_.x *= (s->group(mode_)->crop_[1] - s->group(mode_)->crop_[0]) /
                                              (s->group(mode_)->crop_[2] - s->group(mode_)->crop_[3]);
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Texture Reset aspect ratio"));
+                Action::manager().store(s->name() + std::string(": Texture Reset aspect ratio "));
             }
         }
         ImGui::PopStyleColor(2);
@@ -1104,7 +1108,7 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
                                                                edit_source_->mixingsurface_->scale_.y);
                 edit_source_->touch(Source::SourceUpdate_Mask);
                 // action label
-                info << MASK_PAINT_ACTION_LABEL;
+                info << MaskShader::mask_names[MaskShader::PAINT] << " changed";
                 // cursor indication - no info, just cursor
                 ret.type = Cursor_Hand;
                 // store action in history
@@ -1140,7 +1144,8 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
                 edit_source_->touch(Source::SourceUpdate_Mask);
                 need_edit_update_ = true;
                 // action label
-                info << "Texture Mask " << std::fixed << std::setprecision(3) << edit_source_->maskShader()->size.x;
+                info << MaskShader::mask_names[MaskShader::SHAPE] << " "
+                     << std::fixed << std::setprecision(3) << edit_source_->maskShader()->size.x;
                 info << " x "  << edit_source_->maskShader()->size.y;
                 // cursor indication - no info, just cursor
                 ret.type = Cursor_Hand;
@@ -1227,7 +1232,7 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
             T = glm::scale(T, s->stored_status_->scale_);
             corner = T * glm::vec4( corner, 0.f, 0.f );
             ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
-            info << "Texture scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
+            info << "Texture Scale " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
             info << " x "  << sourceNode->scale_.y;
         }
         // picking on the BORDER RESIZING handles left or right
@@ -1427,7 +1432,7 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
             // compute rotation angle on Z axis
             float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
             handle_polar.y = s->stored_status_->rotation_.z + angle;
-            info << "Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << UNICODE_DEGREE;
+            info << "Texture Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << UNICODE_DEGREE;
 
             // compute scaling of diagonal to reach new coordinates
             handle_polar.x *= glm::length( glm::vec2(source_to) ) / glm::length( glm::vec2(source_from) );
@@ -1531,7 +1536,7 @@ void TextureView::initiate()
 void TextureView::terminate(bool force)
 {
     // special case for texture paint: store image on mouse release (end of action PAINT)
-    if ( edit_source_ != nullptr && current_action_.find(MASK_PAINT_ACTION_LABEL) != std::string::npos ) {
+    if ( edit_source_ != nullptr && current_action_.find(MaskShader::mask_names[MaskShader::PAINT]) != std::string::npos ) {
         edit_source_->storeMask();
         edit_source_->maskShader()->cursor = glm::vec4(100.0, 100.0, 0.f, 0.f);
     }

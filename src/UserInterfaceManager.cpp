@@ -1873,7 +1873,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 if (ImGuiToolkit::IconButton( 18, 9, "Angle")) {
                     n->rotation_.z = 0.f;
                     s->touch();
-                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    info << "Angle " << std::fixed << std::setprecision(2) << n->rotation_.z * 180.f / M_PI << UNICODE_DEGREE;
                     Action::manager().store(info.str());
                 }
                 float v_deg = n->rotation_.z * 360.0f / (2.f*M_PI);
@@ -1887,11 +1887,11 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                     v_deg = CLAMP(v_deg + 0.01f * io.MouseWheel, -180.f, 180.f);
                     n->rotation_.z = v_deg * (2.f*M_PI) / 360.0f;
                     s->touch();
-                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    info << "Angle " << std::fixed << std::setprecision(2) << n->rotation_.z * 180.f / M_PI << UNICODE_DEGREE;
                     Action::manager().store(info.str());
                 }
                 if ( ImGui::IsItemDeactivatedAfterEdit() ) {
-                    info << "Angle " << std::setprecision(3) << n->rotation_.z * 180.f / M_PI;
+                    info << "Angle " << std::fixed << std::setprecision(2) << n->rotation_.z * 180.f / M_PI << UNICODE_DEGREE;
                     Action::manager().store(info.str());
                 }
 
@@ -3596,7 +3596,7 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
             // delete button
             if ( ImGui::Button( ACTION_DELETE, ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
                 Mixer::manager().deleteSource(s);
-                Action::manager().store(sname + std::string(": deleted"));
+                Action::manager().store(sname + std::string(": Deleted"));
             }
             if ( Mixer::manager().session()->failedSources().size() > 1 ) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
@@ -4922,7 +4922,7 @@ void Navigator::RenderMainPannelSession()
 
             for (uint i = Action::manager().max(); i > 0; --i) {
 
-                if (ImGui::Selectable( Action::manager().label(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick, size )) {
+                if (ImGui::Selectable( Action::manager().shortlabel(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick, size )) {
                     // go to on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                         Action::manager().stepTo(i);
@@ -4943,7 +4943,7 @@ void Navigator::RenderMainPannelSession()
                         _displayed_over = _over;
                         text = Action::manager().label(_over);
                         if (text.find_first_of(':') < text.size())
-                            text = text.insert( text.find_first_of(':') + 1, 1, '\n');
+                            text = text.insert( text.find_first_of(':') + 2, 1, '\n');
                         FrameBufferImage *im = Action::manager().thumbnail(_over);
                         if (im) {
                             // set image content to thumbnail display
@@ -5811,17 +5811,15 @@ void Navigator::RenderMainPannelSettings()
         Settings::application.stream_protocol = 0;
 
     if (VideoBroadcast::available()) {
-        char msg[256];
-        ImFormatString(msg, IM_ARRAYSIZE(msg), "SRT Broadcast\n\n"
-                                               "vimix listens to SRT requests on Port %d. "
-                                               "Example network addresses to call:\n"
-                                               " srt//%s:%d (localhost)\n"
-                                               " srt//%s:%d (local IP)",
-                       Settings::application.broadcast_port,
-                       NetworkToolkit::host_ips()[0].c_str(), Settings::application.broadcast_port,
-                       NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port );
 
-        ImGuiToolkit::Indication(msg, ICON_FA_GLOBE);
+        std::ostringstream msg;
+        msg << "SRT Broadcast" << std::endl << std::endl;
+        msg << "vimix listens to SRT requests on Port " << Settings::application.broadcast_port << std::endl << std::endl;
+        msg << "Valid network addresses :" << std::endl;
+        for (const auto& ips : NetworkToolkit::host_ips()){
+            msg << "srt://" << ips << ":" << Settings::application.broadcast_port << std::endl;
+        }
+        ImGuiToolkit::Indication(msg.str().c_str(), ICON_FA_GLOBE);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -5885,17 +5883,15 @@ void Navigator::RenderMainPannelSettings()
     ImGuiToolkit::Spacing();
     ImGui::TextDisabled("OSC");
 
-    char msg[256];
-    ImFormatString(msg, IM_ARRAYSIZE(msg), "Open Sound Control\n\n"
-                                           "vimix accepts OSC messages sent by UDP on Port %d and replies on Port %d."
-                                           "Example network addresses:\n"
-                                           " udp//%s:%d (localhost)\n"
-                                           " udp//%s:%d (local IP)",
-                   Settings::application.control.osc_port_receive,
-                   Settings::application.control.osc_port_send,
-                   NetworkToolkit::host_ips()[0].c_str(), Settings::application.control.osc_port_receive,
-                   NetworkToolkit::host_ips()[1].c_str(), Settings::application.control.osc_port_receive );
-    ImGuiToolkit::Indication(msg, ICON_FA_NETWORK_WIRED);
+    std::ostringstream msg;
+    msg << "Open Sound Control" << std::endl << std::endl;
+    msg << "vimix accepts OSC messages sent by UDP on Port " << Settings::application.control.osc_port_receive;
+    msg << " and replies on Port " << Settings::application.control.osc_port_send << std::endl << std::endl;
+    msg << "Valid network addresses:" << std::endl;
+    for (const auto& ips : NetworkToolkit::host_ips()){
+        msg << "udp://" << ips << ":" << Settings::application.control.osc_port_receive << std::endl;
+    }
+    ImGuiToolkit::Indication(msg.str().c_str(), ICON_FA_NETWORK_WIRED);
     ImGui::SameLine(0);
 
     ImGui::SetCursorPosX(width_);

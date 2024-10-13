@@ -200,7 +200,7 @@ void MixingView::draw()
             if (ImGui::Selectable( ICON_FA_UNLINK "  Unlink" )){
                 // dismantle MixingGroup(s)
                 Mixer::manager().session()->unlink(selected);
-                Action::manager().store(std::string("Sources unlinked."));
+                Action::manager().store(std::string( "Unlink selected " ICON_FA_BULLSEYE));
             }
         }
         else if (ImGui::Selectable( ICON_FA_LINK "  Link" )){
@@ -209,7 +209,7 @@ void MixingView::draw()
         if (do_link){
             // assemble a MixingGroup
             Mixer::manager().session()->link(selected, scene.fg() );
-            Action::manager().store(std::string("Sources linked."));
+            Action::manager().store(std::string( "Link selected " ICON_FA_BULLSEYE));
             // clear selection and select one of the sources of the group
             Source *cur = Mixer::selection().front();
             Mixer::manager().unsetCurrentSource();
@@ -232,7 +232,7 @@ void MixingView::draw()
                 (*it)->group(View::MIXING)->translation_ -= glm::vec3(center, 0.f);
                 (*it)->touch();
             }
-            Action::manager().store(std::string("Selection: Mixing Center"));
+            Action::manager().store(std::string("Center selected " ICON_FA_BULLSEYE));
         }
         if (ImGui::Selectable( ICON_FA_HAYKAL "  Dispatch" )){
             glm::vec2 center = glm::vec2(0.f, 0.f);
@@ -246,7 +246,7 @@ void MixingView::draw()
                 (*it)->touch();
                 angle -= glm::two_pi<float>() / float(Mixer::selection().size());
             }
-            Action::manager().store(std::string("Selection: Mixing Dispatch"));
+            Action::manager().store(std::string("Dispatch selected " ICON_FA_BULLSEYE));
         }
         if (ImGui::Selectable( ICON_FA_FAN "  Distribute" )){
             SourceList list;
@@ -275,7 +275,7 @@ void MixingView::draw()
                 (*it)->touch();
                 angle -= glm::two_pi<float>() / float(list.size());
             }
-            Action::manager().store(std::string("Selection: Mixing Distribute in circle"));
+            Action::manager().store(std::string("Distribute selected " ICON_FA_BULLSEYE));
         }
         if (ImGui::Selectable( ICON_FA_ALIGN_CENTER "   Align & Distribute" )){
             SourceList list;
@@ -296,21 +296,21 @@ void MixingView::draw()
                 if (sign<0) i+=0.32f;
                 (*it)->touch();
             }
-            Action::manager().store(std::string("Selection: Mixing Align & Distribute"));
+            Action::manager().store(std::string("Align & distribute " ICON_FA_BULLSEYE));
         }
         if (ImGui::Selectable( ICON_FA_CLOUD_SUN " Expand & hide" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); ++it) {
                 (*it)->call( new SetAlpha(0.f) );
             }
-            Action::manager().store(std::string("Selection: Mixing Expand & hide"));
+            Action::manager().store(std::string( ICON_FA_BULLSEYE " Expand & hide selected"));
         }
         if (ImGui::Selectable( ICON_FA_SUN "  Compress & show" )){
             SourceList::iterator  it = Mixer::selection().begin();
             for (; it != Mixer::selection().end(); ++it) {
                 (*it)->call( new SetAlpha(0.999f) );
             }
-            Action::manager().store(std::string("Selection: Mixing Compress & show"));
+            Action::manager().store(std::string("Compress & show selected " ICON_FA_BULLSEYE));
         }
         ImGui::PopStyleColor(2);
         ImGui::EndPopup();

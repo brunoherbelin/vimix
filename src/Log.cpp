@@ -36,10 +36,12 @@ struct AppLog
     ImGuiTextFilter     Filter;
     ImVector<int>       LineOffsets; 
     bool                LogInTitle;
+    bool                LogOSC;
 
     AppLog()
     {
         Clear();
+        LogOSC = false;
     }
 
     void Clear()
@@ -100,13 +102,18 @@ struct AppLog
         //  window
         ImGui::SameLine(0, 0);
         static bool numbering = true;
-        ImGuiToolkit::ButtonIconToggle(4, 12, &numbering );
+        ImGuiToolkit::ButtonToggle( ICON_FA_SORT_NUMERIC_DOWN, &numbering, "Show line number" );
         ImGui::SameLine();
+        ImGuiToolkit::ButtonToggle( ICON_FA_NETWORK_WIRED, &LogOSC, "Log all incoming OSC messages");
+        ImGui::SameLine(0.4f * ImGui::GetWindowContentRegionMax().x);
         bool clear = ImGui::Button( ICON_FA_BACKSPACE " Clear");
         ImGui::SameLine();
         bool copy = ImGui::Button( ICON_FA_COPY " Copy");
         ImGui::SameLine();
-        Filter.Draw("Filter", -60.0f);
+        Filter.Draw("Filter", IMGUI_RIGHT_ALIGN);
+        ImGui::SameLine();
+        if (ImGuiToolkit::ButtonIcon(12, 14))
+            Filter.Clear();
 
         ImGui::Separator();
         if ( !ImGui::BeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_AlwaysHorizontalScrollbar) )
@@ -337,5 +344,15 @@ void Log::Error(const char* fmt, ...)
     DialogToolkit::ErrorDialog(buf.c_str());
 
     Log::Info("Error - %s\n", buf.c_str());
+}
+
+void Log::Osc(const char *fmt, ...)
+{
+    if (logs.LogOSC) {
+        va_list args;
+        va_start(args, fmt);
+        logs.AddLog(fmt, args);
+        va_end(args);
+    }
 }
 

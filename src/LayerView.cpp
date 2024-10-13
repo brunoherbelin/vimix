@@ -146,7 +146,7 @@ void LayerView::draw()
                 depth += depth_inc;
                 (*it)->call( new SetDepth(depth, 80.f) );
             }
-            Action::manager().store(std::string("Selection: Layer Distribute"));
+            Action::manager().store(std::string("Distribute selected " ICON_FA_LAYER_GROUP));
         }
         if (ImGui::Selectable( ICON_FA_CARET_RIGHT ICON_FA_CARET_LEFT "   Compress" )){
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
@@ -156,7 +156,7 @@ void LayerView::draw()
                 depth += LAYER_STEP;
                 (*it)->call( new SetDepth(depth, 80.f) );
             }
-            Action::manager().store(std::string("Selection: Layer Compress"));
+            Action::manager().store(std::string("Compress selected " ICON_FA_LAYER_GROUP));
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Reverse order" )){
             SourceList dsl = depth_sorted(Mixer::selection().getCopy());
@@ -165,7 +165,7 @@ void LayerView::draw()
             for (; it != dsl.end(); ++it, ++rit) {
                 (*it)->call( new SetDepth((*rit)->depth(), 80.f) );
             }
-            Action::manager().store(std::string("Selection: Layer Reverse order"));
+            Action::manager().store(std::string("Reverse order selected " ICON_FA_LAYER_GROUP));
         }
 
         ImGui::PopStyleColor(2);

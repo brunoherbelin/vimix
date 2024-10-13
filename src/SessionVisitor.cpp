@@ -157,10 +157,17 @@ void SessionVisitor::saveSnapshots(tinyxml2::XMLDocument *doc, Session *session)
 {
     if (doc != nullptr && session != nullptr)
     {
+        // create element
         XMLElement *snapshots = doc->NewElement("Snapshots");
+
+        // access to session snapshot
+        session->snapshots()->access_.lock();
         const XMLElement* N = session->snapshots()->xmlDoc_->FirstChildElement();
         for( ; N ; N=N->NextSiblingElement())
             snapshots->InsertEndChild( N->DeepClone( doc ));
+        session->snapshots()->access_.unlock();
+
+        // insert element
         doc->InsertEndChild(snapshots);
     }
 }

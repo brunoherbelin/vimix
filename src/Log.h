@@ -5,6 +5,7 @@ namespace Log
 {
     // log
     void Info(const char* fmt, ...);
+    void Osc(const char* fmt, ...);
     void Notify(const char* fmt, ...);
     void Warning(const char* fmt, ...);
     void Error(const char* fmt, ...);

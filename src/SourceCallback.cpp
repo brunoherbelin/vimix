@@ -1334,3 +1334,83 @@ void SetFilter::accept(Visitor& v)
     v.visit(*this);
 }
 
+SetFilterUniform::SetFilterUniform(const std::string &uniform, float value, float ms)
+    : SourceCallback()
+    , uniform_(uniform)
+    , target_(value)
+    , start_(0.f)
+    , duration_(ms)
+{
+    imagefilter = nullptr;
+}
+
+void SetFilterUniform::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+    CloneSource *clonesrc = dynamic_cast<CloneSource *>(s);
+
+    if (s->locked() || !clonesrc)
+        status_ = FINISHED;
+
+
+    // set start on first time it is ready
+    if (status_ == READY) {
+        // by default it will finish if all tests below fail
+        status_ = FINISHED;
+        // if there is an image filter in the clone source
+        imagefilter = dynamic_cast<ImageFilter *>(clonesrc->filter());
+        if (imagefilter) {
+            // get the list of parameters
+            std::map<std::string, float> params = imagefilter->program().parameters();
+            // if there is a parameter named as given
+            auto p = params.find(uniform_);
+            if (p != params.end()) {
+                // set start value to the current value
+                start_ = p->second;
+                // if a valid target value is given
+                if (!std::isnan(target_))
+                    // then activate for value update
+                    status_ = ACTIVE;
+            }
+            else
+                Log::Info("Filter : unknown uniform '%s'", uniform_.c_str());
+        }
+    }
+
+    // set value
+    if (status_ == ACTIVE && imagefilter) {
+
+        // time passed since start
+        float progress = elapsed_ - delay_;
+
+        // time-out or instantaneous
+        if (!(ABS(duration_) > 0.f) || progress > duration_) {
+            // apply target value
+            imagefilter->setProgramParameter(uniform_, target_);
+            // done
+            status_ = FINISHED;
+        }
+        else {
+            // apply calculated intermediate value
+            imagefilter->setProgramParameter(uniform_,
+                                             glm::mix(start_, target_, progress / duration_));
+        }
+    }
+
+}
+
+void SetFilterUniform::multiply (float factor)
+{
+    target_ *= factor;
+}
+
+SourceCallback *SetFilterUniform::clone() const
+{
+    return new SetFilterUniform(uniform_, target_, duration_);
+}
+
+void SetFilterUniform::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}

@@ -403,7 +403,7 @@ void GeometryView::draw()
                 s->group(mode_)->rotation_.z = 0;
                 s->group(mode_)->translation_ = glm::vec3(0.f);
                 s->touch();
-                Action::manager().store(s->name() + std::string(": Geometry Fit output"));
+                Action::manager().store(s->name() + std::string(": Fit to output"));
             }
         }
         ImGui::EndPopup();
@@ -427,7 +427,7 @@ void GeometryView::draw()
                 (*sit)->group(mode_)->translation_ = glm::vec3(0.f);
                 (*sit)->touch();
             }
-            Action::manager().store(std::string("Selection: Fit all."));
+            Action::manager().store(std::string("Fit selected " ICON_FA_OBJECT_UNGROUP));
         }
         if (ImGui::Selectable( ICON_FA_VECTOR_SQUARE "  Reset all" )){
             // apply to every sources in selection
@@ -438,7 +438,7 @@ void GeometryView::draw()
                 (*sit)->group(mode_)->translation_ = glm::vec3(0.f);
                 (*sit)->touch();
             }
-            Action::manager().store(std::string("Selection: Reset all."));
+            Action::manager().store(std::string("Reset selected " ICON_FA_OBJECT_UNGROUP));
         }
 //        if (ImGui::Selectable( ICON_FA_TH "  Mosaic" )){ // TODO
 
@@ -450,7 +450,7 @@ void GeometryView::draw()
             initiate();
             applySelectionTransform(T);
             terminate();
-            Action::manager().store(std::string("Selection: Center."));
+            Action::manager().store(std::string("Center selected " ICON_FA_OBJECT_UNGROUP));
         }
         if (ImGui::Selectable( ICON_FA_COMPASS "  Align" )){
             // apply to every sources in selection
@@ -458,7 +458,7 @@ void GeometryView::draw()
                 (*sit)->group(mode_)->rotation_.z = overlay_selection_->rotation_.z;
                 (*sit)->touch();
             }
-            Action::manager().store(std::string("Selection: Align."));
+            Action::manager().store(std::string("Align selected " ICON_FA_OBJECT_UNGROUP));
         }
         if (ImGui::Selectable( ICON_FA_OBJECT_GROUP "  Best Fit" )){
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
@@ -477,7 +477,7 @@ void GeometryView::draw()
             initiate();
             applySelectionTransform(M);
             terminate();
-            Action::manager().store(std::string("Selection: Best Fit."));
+            Action::manager().store(std::string("Best Fit selected " ICON_FA_OBJECT_UNGROUP));
         }
         if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Mirror" )){
             glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
@@ -486,7 +486,7 @@ void GeometryView::draw()
             initiate();
             applySelectionTransform(M);
             terminate();
-            Action::manager().store(std::string("Selection: Mirror."));
+            Action::manager().store(std::string("Mirror selected " ICON_FA_OBJECT_UNGROUP));
         }
 
         ImGui::PopStyleColor(2);
@@ -912,6 +912,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             // apply to source Node and to handles
             sourceNode->data_[0].x = CLAMP( node_pos.x, 0.f, 0.96f );
             sourceNode->data_[0].y = CLAMP( node_pos.y, 0.f, 0.96f );
+            info << "Corner low-left " << std::fixed << std::setprecision(3) << sourceNode->data_[0].x;
+            info << " x "  << sourceNode->data_[0].y;
         }
         else if (pick.first == s->handles_[mode_][Handles::NODE_UPPER_LEFT]) {
             // hide other grips
@@ -939,6 +941,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             // apply to source Node and to handles
             sourceNode->data_[1].x = CLAMP( node_pos.x, 0.f, 0.96f );
             sourceNode->data_[1].y = CLAMP( node_pos.y, -0.96f, 0.f );
+            info << "Corner up-left " << std::fixed << std::setprecision(3) << sourceNode->data_[1].x;
+            info << " x "  << sourceNode->data_[1].y;
         }
         else if ( pick.first == s->handles_[mode_][Handles::NODE_LOWER_RIGHT] ) {
             // hide other grips
@@ -966,6 +970,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             // apply to source Node and to handles
             sourceNode->data_[2].x = CLAMP( node_pos.x, -0.96f, 0.f );
             sourceNode->data_[2].y = CLAMP( node_pos.y, 0.f, 0.96f );
+            info << "Corner low-right " << std::fixed << std::setprecision(3) << sourceNode->data_[2].x;
+            info << " x "  << sourceNode->data_[2].y;
         }
         else if (pick.first == s->handles_[mode_][Handles::NODE_UPPER_RIGHT]) {
             // hide other grips
@@ -994,6 +1000,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             // apply to source Node and to handles
             sourceNode->data_[3].x = CLAMP( node_pos.x, -0.96f, 0.f );
             sourceNode->data_[3].y = CLAMP( node_pos.y, -0.96f, 0.f );
+            info << "Corner up-right " << std::fixed << std::setprecision(3) << sourceNode->data_[3].x;
+            info << " x "  << sourceNode->data_[3].y;
         }
         // horizontal CROP
         else if (pick.first == s->handles_[mode_][Handles::CROP_H]) {
@@ -1201,6 +1209,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             // apply to source Node and to handles
 //            sourceNode->data_[0].z = - CLAMP( node_pos.x, -1.f, 0.f );
             sourceNode->data_[0].w = - CLAMP( node_pos.x, -1.f, 0.f );
+            info << "Corner round " << std::fixed << std::setprecision(3) << sourceNode->data_[0].w;
         }
         // picking on the resizing handles in the corners RESIZE CORNER
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE] ) {
