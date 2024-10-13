@@ -5811,17 +5811,15 @@ void Navigator::RenderMainPannelSettings()
         Settings::application.stream_protocol = 0;
 
     if (VideoBroadcast::available()) {
-        char msg[256];
-        ImFormatString(msg, IM_ARRAYSIZE(msg), "SRT Broadcast\n\n"
-                                               "vimix listens to SRT requests on Port %d. "
-                                               "Example network addresses to call:\n"
-                                               " srt//%s:%d (localhost)\n"
-                                               " srt//%s:%d (local IP)",
-                       Settings::application.broadcast_port,
-                       NetworkToolkit::host_ips()[0].c_str(), Settings::application.broadcast_port,
-                       NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port );
 
-        ImGuiToolkit::Indication(msg, ICON_FA_GLOBE);
+        std::ostringstream msg;
+        msg << "SRT Broadcast" << std::endl << std::endl;
+        msg << "vimix listens to SRT requests on Port " << Settings::application.broadcast_port << std::endl << std::endl;
+        msg << "Valid network addresses :" << std::endl;
+        for (const auto& ips : NetworkToolkit::host_ips()){
+            msg << "srt://" << ips << ":" << Settings::application.broadcast_port << std::endl;
+        }
+        ImGuiToolkit::Indication(msg.str().c_str(), ICON_FA_GLOBE);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(width_);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -5885,17 +5883,15 @@ void Navigator::RenderMainPannelSettings()
     ImGuiToolkit::Spacing();
     ImGui::TextDisabled("OSC");
 
-    char msg[256];
-    ImFormatString(msg, IM_ARRAYSIZE(msg), "Open Sound Control\n\n"
-                                           "vimix accepts OSC messages sent by UDP on Port %d and replies on Port %d."
-                                           "Example network addresses:\n"
-                                           " udp//%s:%d (localhost)\n"
-                                           " udp//%s:%d (local IP)",
-                   Settings::application.control.osc_port_receive,
-                   Settings::application.control.osc_port_send,
-                   NetworkToolkit::host_ips()[0].c_str(), Settings::application.control.osc_port_receive,
-                   NetworkToolkit::host_ips()[1].c_str(), Settings::application.control.osc_port_receive );
-    ImGuiToolkit::Indication(msg, ICON_FA_NETWORK_WIRED);
+    std::ostringstream msg;
+    msg << "Open Sound Control" << std::endl << std::endl;
+    msg << "vimix accepts OSC messages sent by UDP on Port " << Settings::application.control.osc_port_receive;
+    msg << " and replies on Port " << Settings::application.control.osc_port_send << std::endl << std::endl;
+    msg << "Valid network addresses:" << std::endl;
+    for (const auto& ips : NetworkToolkit::host_ips()){
+        msg << "udp://" << ips << ":" << Settings::application.control.osc_port_receive << std::endl;
+    }
+    ImGuiToolkit::Indication(msg.str().c_str(), ICON_FA_NETWORK_WIRED);
     ImGui::SameLine(0);
 
     ImGui::SetCursorPosX(width_);

@@ -68,9 +68,9 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
     remoteEndpoint.AddressAndPortAsString(sender);
 
     try{
-#ifdef CONTROL_DEBUG
-        Log::Info(CONTROL_OSC_MSG "received '%s' from %s", FullMessage(m).c_str(), sender);
-#endif
+        // Log manager decides to show all OSC logs or not
+        Log::Osc(CONTROL_OSC_MSG "received '%s' from %s", FullMessage(m).c_str(), sender);
+
         // Preprocessing with Translator
         std::string address_pattern = Control::manager().translate(m.AddressPattern());
 
@@ -974,21 +974,25 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             std::string uniform_name;
             float uniform_value = NAN;
 
+            // get uniform name
             const char *str = nullptr;
             arguments >> str;
-            uniform_name = std::string(str);
+            if (str)
+            {
+                uniform_name = std::string(str);
 
-            arguments >> uniform_value >> osc::EndMessage;
+                // get uniform value
+                arguments >> uniform_value >> osc::EndMessage;
 
-
-            CloneSource *clonesrc = dynamic_cast<CloneSource *>(target);
-            if (clonesrc) {
-                ImageFilter *f = dynamic_cast<ImageFilter *>(clonesrc->filter());
-                if (f) {
-                    f->setProgramParameter(uniform_name, uniform_value);
+                // apply to ImageFilter source only
+                CloneSource *clonesrc = dynamic_cast<CloneSource *>(target);
+                if (clonesrc) {
+                    ImageFilter *f = dynamic_cast<ImageFilter *>(clonesrc->filter());
+                    if (f) {
+                        f->setProgramParameter(uniform_name, uniform_value);
+                    }
                 }
             }
-
         }
         /// e.g. '/vimix/current/filter sf blur 0.5'
         else if (attribute.compare(OSC_SOURCE_FILTER) == 0) {
