@@ -46,8 +46,6 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     vec2 uv = fragCoord.xy / iResolution.xy;
     
-    float radius = Radius * 0.01 * iResolution.y;
-    radius = pow(radius, 2.0);
- 
+    float radius = Radius * 10.0;
     fragColor = Blur(uv * vec2(1.0, -1.0), radius);
 }
