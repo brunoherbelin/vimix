@@ -67,7 +67,7 @@ std::vector< SessionSource * > sessionSourceToImport_;
 const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 
-Mixer::Mixer() : session_(nullptr), back_session_(nullptr), sessionSwapRequested_(false),
+Mixer::Mixer() : session_(new Session), back_session_(nullptr), sessionSwapRequested_(false),
     current_view_(nullptr), busy_(false), dt_(16.f), dt__(16.f)
 {
     // unsused initial empty session
