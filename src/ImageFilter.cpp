@@ -376,7 +376,7 @@ void ImageFilter::draw (FrameBuffer *input)
     bool forced = false;
 
     // if input changed (typically on first draw)
-    if (input_ != input) {
+    if (input_ != input || buffers_.first == nullptr || buffers_.second == nullptr) {
         // keep reference to input framebuffer
         input_ = input;
         // create first-pass surface and shader, taking as texture the input framebuffer
@@ -499,15 +499,21 @@ void ImageFilter::updateParameters()
 
 void ImageFilter::setProgramParameters(const std::map< std::string, float > &parameters)
 {
-    program_.setParameters(parameters);
+    for (const auto &p : parameters) {
+        if (p.second == NAN || p.first.empty())
+            return;
+    }
 
+    program_.setParameters(parameters);
     updateParameters();
 }
 
 void ImageFilter::setProgramParameter(const std::string &p, float value)
 {
-    program_.setParameter(p, value);
+    if (value == NAN || p.empty())
+        return;
 
+    program_.setParameter(p, value);
     updateParameters();
 }
 
@@ -721,7 +727,7 @@ void BlurFilter::draw (FrameBuffer *input)
         setMethod( BLUR_GAUSSIAN );
 
     // if input changed (typically on first draw)
-    if (input_ != input) {
+    if (input_ != input || buffers_.first == nullptr || buffers_.second == nullptr) {
         // keep reference to input framebuffer
         input_ = input;
 
