@@ -26,5 +26,5 @@ vec4 blur1D(vec2 U, vec2 D, float rad)
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-    fragColor = blur1D( fragCoord, vec2(0,1), Radius * 0.5 );
+    fragColor = blur1D( fragCoord, vec2(0,1), Radius * 0.25 );
 }
