@@ -223,7 +223,7 @@ void Mixer::update()
                 // (can be automatically repaired without user intervention)
                 if (fail == Source::FAIL_RETRY) {
                     if ( !recreateSource( *it ) ) {
-                        Log::Warning("Source '%s' failed and could not be fixed.", (*it)->name().c_str());
+                        Log::Notify("Source '%s' failed.", (*it)->name().c_str());
                         // delete failed source if could not recreate it
                         deleteSource( *it );
                     }
@@ -236,7 +236,7 @@ void Mixer::update()
                 // Delete FATAL failed sources from the mixer
                 // (nothing can be done by the user)
                 else {
-                    Log::Warning("Source '%s' failed and was deleted.", (*it)->name().c_str());
+                    Log::Warning("Source '%s' failed.", (*it)->name().c_str());
                     deleteSource( *it );
                 }
                 // needs refresh after intervention
@@ -246,7 +246,7 @@ void Mixer::update()
             else if ( fail < Source::FAIL_CRITICAL ) {
                 // This looks like we should try to recreate it
                 if ( !recreateSource( *it ) ) {
-                    Log::Warning("Source '%s' definitely failed and could not be fixed.", (*it)->name().c_str());
+                    Log::Warning("Source '%s' failed and could not be recovered.", (*it)->name().c_str());
                     // delete failed source if could not recreate it
                     deleteSource( *it );
                 }
