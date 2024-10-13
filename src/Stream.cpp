@@ -77,6 +77,18 @@ Stream::~Stream()
 {
     Stream::close();
 
+    // cleanup opengl texture
+    if (textureindex_) {
+        glDeleteTextures(1, &textureindex_);
+        textureindex_ = 0;
+    }
+
+    // cleanup picture buffer
+    if (pbo_[0]) {
+        glDeleteBuffers(2, pbo_);
+        pbo_[0] = 0;
+    }
+
 #ifdef STREAM_DEBUG
     g_printerr("Stream %s deleted\n", std::to_string(id_).c_str());
 #endif
@@ -440,17 +452,6 @@ void Stream::close()
         bus_ = nullptr;
     }
 
-    // cleanup opengl texture
-    if (textureindex_) {
-        glDeleteTextures(1, &textureindex_);
-        textureindex_ = 0;
-    }
-
-    // cleanup picture buffer
-    if (pbo_[0]) {
-        glDeleteBuffers(2, pbo_);
-        pbo_[0] = 0;
-    }
 }
 
 

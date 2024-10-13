@@ -2436,13 +2436,13 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 /// MERGE CUTS AT CURSOR
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(19, 3, "Drop in timeline to\nMerge right",
+                DragButtonIcon(19, 3, "Drop in timeline to\nMerge two gaps",
                                TimelinePayload(TimelinePayload::CUT_MERGE, 0, 0) );
                 ///
                 /// ERASE CUT AT CURSOR
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(0, 4, "Drop in timeline to\nErase right",
+                DragButtonIcon(0, 4, "Drop in timeline to\nErase a gap",
                                TimelinePayload(TimelinePayload::CUT_ERASE, 0, 0) );
             }
             else {
@@ -2468,11 +2468,14 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
             ImGui::SameLine(0, 0);
             ImVec2 draw_pos = ImGui::GetCursorPos();
-            ImGui::SetNextItemWidth(180); // TODO VARIABLE WIDTH
+            ImGui::SetCursorPosY(ImGui::GetTextLineHeightWithSpacing() * 0.333 );
+
+            float w = gap_dialog_size.x - 4.f * ImGui::GetTextLineHeightWithSpacing() ;
+            ImGui::SetNextItemWidth(w - draw_pos.x - IMGUI_SAME_LINE); // VARIABLE WIDTH
             ImGuiToolkit::InputTime("##Time", &target_time);
 
-            ImGui::SetCursorPos(ImVec2(draw_pos.x, draw_pos.y + 35));
-            ImGuiToolkit::HSliderUInt64("#SliderTime", ImVec2(180, 14), &target_time, 0, tl->duration());
+            // ImGui::SetCursorPos(ImVec2(draw_pos.x, draw_pos.y + 35));
+            // ImGuiToolkit::HSliderUInt64("#SliderTime", ImVec2(180, 14), &target_time, 0, tl->duration());
 
             // static int p = 5;
             // ImGuiToolkit::HSliderInt("#toto", ImVec2(140, 14), &p, 1, 9);
@@ -2505,10 +2508,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
             // Action buttons
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-
-            ImGui::SetCursorPos(
-                ImVec2(gap_dialog_size.x - 4.f * ImGui::GetTextLineHeightWithSpacing() - IMGUI_SAME_LINE,
-                       draw_pos.y));
+            ImGui::SetCursorPos( ImVec2(w, draw_pos.y));
 
             // ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (ImGuiToolkit::ButtonIcon(17, 3, "Cut left at given time")) {
@@ -2646,7 +2646,10 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
             // float md = 10000;
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            ImGui::SetNextItemWidth(180);
+
+            ImVec2 draw_pos = ImGui::GetCursorPos();
+            float w = gap_dialog_size.x - 3.f * ImGui::GetTextLineHeightWithSpacing() - IMGUI_SAME_LINE;
+            ImGui::SetNextItemWidth(w - draw_pos.x);
             float seconds = (float) d / 1000.f;
 
             if (current_curve > 0) {
