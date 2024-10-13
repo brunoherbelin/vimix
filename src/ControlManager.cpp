@@ -961,7 +961,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/contents s text'
         else if (attribute.compare(OSC_SOURCE_CONTENTS) == 0) {
-            // try by client name if given: remove all streams with that name
+            // get text
             const char *label = nullptr;
             arguments >> label >> osc::EndMessage;
             TextSource *textsrc = dynamic_cast<TextSource *>(target);
@@ -971,27 +971,17 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/uniform sf var 0.5'
         else if (attribute.compare(OSC_SOURCE_UNIFORM) == 0) {
-            std::string uniform_name;
+            float t = 0.f;
+            // get uniform name and value
             float uniform_value = NAN;
-
-            // get uniform name
             const char *str = nullptr;
-            arguments >> str;
-            if (str)
-            {
-                uniform_name = std::string(str);
-
-                // get uniform value
-                arguments >> uniform_value >> osc::EndMessage;
-
-                // apply to ImageFilter source only
-                CloneSource *clonesrc = dynamic_cast<CloneSource *>(target);
-                if (clonesrc) {
-                    ImageFilter *f = dynamic_cast<ImageFilter *>(clonesrc->filter());
-                    if (f) {
-                        f->setProgramParameter(uniform_name, uniform_value);
-                    }
-                }
+            arguments >> str >> uniform_value;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            if (str && uniform_value != NAN) {
+                target->call(new SetFilterUniform(std::string(str), uniform_value, t), true);
             }
         }
         /// e.g. '/vimix/current/filter sf blur 0.5'
