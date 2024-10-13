@@ -44,6 +44,9 @@ void MediaSource::setPath(const std::string &p)
 {
     path_ = p;
 
+    // prepare audio flag before openning
+    mediaplayer_->setAudioEnabled( audio_flags_ & Source::Audio_enabled );
+
     // open gstreamer
     mediaplayer_->open(path_);
     mediaplayer_->play(true);
