@@ -1598,7 +1598,7 @@ void SourceControlWindow::DrawSource(Source *s, ImVec2 framesize, ImVec2 top_ima
     }
     // no post-processed to show: draw simple texture
     else {
-        ImGui::Image((void *) (uintptr_t) s->texture(), framesize);
+        ImGui::Image((void *) (uintptr_t) s->frame()->texture(), framesize);
         slider = framesize;
     }
 
@@ -2947,7 +2947,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
                 // apply to pipeline
                 mediaplayer_active_->setVideoEffect(_effect_description);
-                oss << " gst effect";
+                oss << ": gstreamer effect";
                 Action::manager().store(oss.str());
             }
             ImGui::PopStyleColor(1);
