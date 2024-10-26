@@ -18,6 +18,7 @@
 **/
 
 #include <sstream>
+#include <algorithm>
 
 #include "Log.h"
 #include "defines.h"
