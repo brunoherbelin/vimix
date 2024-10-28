@@ -651,7 +651,7 @@ void TextureView::draw()
         P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
         // Set window position depending on icons size
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 1.5f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
         if (ImGui::Begin("##AppearanceMaskOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                          | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                          | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
@@ -706,6 +706,8 @@ void TextureView::draw()
                 }
                 ImGui::EndCombo();
             }
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip(MaskShader::mask_names[maskmode]);
 
             // GUI for selecting source mask
             if (maskmode == MaskShader::SOURCE) {

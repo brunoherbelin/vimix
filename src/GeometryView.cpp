@@ -298,7 +298,7 @@ void GeometryView::draw()
     P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
     // Set window position depending on icons size
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 1.5f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
     if (ImGui::Begin("##GeometryViewOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
@@ -312,8 +312,8 @@ void GeometryView::draw()
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
 
         // toggle sources visibility flag
-        std::string _label = std::to_string(hidden_count_) + " source" + (hidden_count_>1?"s ":" ")
-                             + "outside mixing circle " + ICON_FA_MOON;
+        std::string _label = "Show sources outside mixing circle (" + std::to_string(hidden_count_)
+                             + " source" + (hidden_count_>1?"s ":" ") + "not visible " + ICON_FA_MOON + ")";
         ImGuiToolkit::ButtonIconToggle(12, 0, &Settings::application.views[mode_].ignore_mix, _label.c_str());
 
         // select layers visibility
@@ -335,6 +335,8 @@ void GeometryView::draw()
             // need full update
             Mixer::manager().setView(mode_);
         }
+        if ( ImGui::IsItemHovered() )
+            ImGuiToolkit::ToolTip("Show sources per layer");
 
         ImGui::PopStyleColor(6);
         ImGui::End();
