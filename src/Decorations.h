@@ -156,7 +156,7 @@ public:
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
-    GlmToolkit::AxisAlignedBoundingBox bbox() const { return font_->bbox(); }
+    GlmToolkit::AxisAlignedBoundingBox bbox() const { return font_->bbox().scaled(glm::vec3(scale_.y, 1.f, 1.f)); }
 
     glm::vec4 color;
 
