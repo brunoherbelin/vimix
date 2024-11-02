@@ -22,6 +22,7 @@ public:
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     void terminate(bool force = false) override;
     void arrow (glm::vec2) override;
+    Cursor over (glm::vec2) override;
 
 private:
     Surface *output_surface_;

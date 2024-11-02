@@ -1599,6 +1599,53 @@ void GeometryView::terminate(bool force)
     adaptGridToSource();
 }
 
+
+View::Cursor GeometryView::over(glm::vec2 pos)
+{
+    View::Cursor ret = Cursor();
+
+    // unproject mouse coordinate into scene coordinates
+    glm::vec3 scene_point_ = Rendering::manager().unProject(pos);
+
+    // picking visitor traverses the scene
+    PickingVisitor pv(scene_point_, false);
+    scene.accept(pv);
+
+    //
+    // mouse over current source
+    //
+    Source *current = Mixer::manager().currentSource();
+    if (current != nullptr) {
+        // reset mouse over handles
+        current->handles_[mode_][Handles::EDIT_CROP]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+        current->handles_[mode_][Handles::EDIT_SHAPE]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+
+        // picking visitor found nodes?
+        if (!pv.empty()) {
+            // find pick in the current source
+            std::pair<Node *, glm::vec2> pick = {nullptr, glm::vec2(0.f)};
+            auto itp = pv.rbegin();
+            for (; itp != pv.rend(); ++itp){
+                // test if source contains this node
+                Source::hasNode is_in_source((*itp).first );
+                if ( is_in_source( current ) ){
+                    // a node in the current source was clicked !
+                    pick = *itp;
+                    break;
+                }
+            }
+            // mouse over handles
+            const ImVec4 h = ImGuiToolkit::HighlightColor();
+            if (pick.first == current->handles_[mode_][Handles::EDIT_CROP])
+                current->handles_[mode_][Handles::EDIT_CROP]->color = glm::vec4(h.x, h.y, h.z, 1.f);
+            else if (pick.first == current->handles_[mode_][Handles::EDIT_SHAPE])
+                current->handles_[mode_][Handles::EDIT_SHAPE]->color = glm::vec4(h.x, h.y, h.z, 1.f);
+        }
+    }
+
+    return ret;
+}
+
 #define MAX_DURATION 1000.f
 #define MIN_SPEED_A 0.005f
 #define MAX_SPEED_A 0.5f
