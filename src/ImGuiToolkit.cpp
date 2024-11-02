@@ -576,17 +576,19 @@ bool ImGuiToolkit::ComboIcon (const char* label, int* current_item,
     char text_buf[256];
     ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "      %s", std::get<2>( items.at(*current_item) ).c_str());
     if ( ImGui::BeginCombo( label, text_buf, ImGuiComboFlags_None) ) {
-        for (int p = 0; p < (int) items.size(); ++p){
-            ImGui::PushID((void*)(intptr_t)p);
-            if (ImGuiToolkit::SelectableIcon( std::get<0>( items.at(p) ),
-                                              std::get<1>( items.at(p) ),
-                                              std::get<2>( items.at(p) ).c_str(),
-                                              p == *current_item) ) {
-                *current_item = p;
+        for (auto item = items.cbegin(); item != items.cend(); ++item) {
+            int index = item - items.cbegin();
+            ImGui::PushID((void*)(intptr_t)index);
+            if (ImGuiToolkit::SelectableIcon(std::get<0>(*item),
+                                             std::get<1>(*item ),
+                                             std::get<2>(*item).c_str(),
+                                             index == *current_item) ) {
+                *current_item = index;
                 ret = true;
             }
-            if (ImGui::IsItemHovered() && p < (int) tooltips.size() )
-                ImGuiToolkit::ToolTip( tooltips.at(p).c_str() );
+
+            if (ImGui::IsItemHovered() && index < (int) tooltips.size() )
+                ImGuiToolkit::ToolTip( tooltips.at(index).c_str() );
             ImGui::PopID();
         }
         ImGui::EndCombo();

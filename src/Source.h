@@ -364,7 +364,7 @@ protected:
     std::map<View::Mode, Switch*> frames_;
     std::map<View::Mode, Handles*[15]> handles_;
     Handles *lock_, *unlock_;
-    Switch *locker_, *manipulator_;
+    Switch *locker_, *manipulator_, *blendmode_;
     Symbol *symbol_;
     Character  *initial_0_, *initial_1_;
 

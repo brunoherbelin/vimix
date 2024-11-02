@@ -96,7 +96,34 @@ void LayerView::draw()
     // initialize the verification of the selection
     static bool candidate_flatten_group = false;
 
-    // display popup menu
+    // display popup menu source
+    if (show_context_menu_ == MENU_SOURCE) {
+        ImGui::OpenPopup("LayerSourceContextMenu");
+        show_context_menu_ = MENU_NONE;
+    }
+    if (ImGui::BeginPopup("LayerSourceContextMenu")) {
+        // work on the current source
+        Source *s = Mixer::manager().currentSource();
+        if (s != nullptr) {
+            for (auto bmode = Shader::blendingFunction.cbegin();
+                 bmode != Shader::blendingFunction.cend();
+                 ++bmode) {
+                int index = bmode - Shader::blendingFunction.cbegin();
+                if (ImGuiToolkit::MenuItemIcon(std::get<0>(*bmode),
+                                               std::get<1>(*bmode),
+                                               std::get<2>(*bmode).c_str(),
+                                               nullptr,
+                                               s->blendingShader()->blending == index)) {
+                    s->blendingShader()->blending = Shader::BlendMode(index);
+                    s->touch();
+                    Action::manager().store(s->name() + ": Blending " + std::get<2>(*bmode));
+                }
+            }
+        }
+        ImGui::EndPopup();
+    }
+
+    // display popup menu selection
     if (show_context_menu_ == MENU_SELECTION) {
 
         // initialize the verification of the selection
@@ -272,6 +299,10 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
             // pick the initials: show in panel
             else if ( pick.first == s->initial_0_ || pick.first == s->initial_1_ ) {
                 UserInterface::manager().setSourceInPanel(s);
+            }
+            // pick blending icon
+            else if (pick.first == s->blendmode_->activeChild()) {
+                openContextMenu(MENU_SOURCE);
             }
         }
         else
