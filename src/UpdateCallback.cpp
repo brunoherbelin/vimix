@@ -144,5 +144,6 @@ void InfiniteGlowCallback::update(Node *n, float dt)
 
     n->scale_.x = initial_scale_.x + amplitude_ * sin(M_PI * time_);
     n->scale_.y = initial_scale_.y + amplitude_ * sin(M_PI * time_);
+    n->rotation_.z = 2.f * time_;
 
 }

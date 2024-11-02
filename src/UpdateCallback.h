@@ -76,7 +76,7 @@ class InfiniteGlowCallback : public UpdateCallback
     glm::vec3 initial_scale_;
 
 public:
-    InfiniteGlowCallback(float amplitude = 0.5f);
+    InfiniteGlowCallback(float amplitude = 0.1f);
     void update(Node *n, float dt);
 };
 
