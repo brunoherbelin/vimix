@@ -297,7 +297,7 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
                 UserInterface::manager().showSourceEditor(s);
             }
             // pick the initials: show in panel
-            else if ( pick.first == s->initial_0_ || pick.first == s->initial_1_ ) {
+            else if ( pick.first == s->initial_1_ ) {
                 UserInterface::manager().setSourceInPanel(s);
             }
             // pick blending icon
@@ -421,7 +421,7 @@ View::Cursor LayerView::over (glm::vec2 pos)
         if ( pick.first == s->symbol_ )
             s->symbol_->color = glm::vec4( h.x, h.y, h.z, 1.f );
         // overlay initials
-        else if ( pick.first == s->initial_0_ || pick.first == s->initial_1_ ) {
+        else if ( pick.first == s->initial_1_ ) {
             s->initial_1_->color = glm::vec4( h.x, h.y, h.z, 1.f );
             s->initial_0_->color = glm::vec4( h.x, h.y, h.z, 1.f );
         }
