@@ -1027,8 +1027,12 @@ void SourceControlWindow::RenderSelection(size_t i)
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
                 ImGuiToolkit::Icon( (*source)->icon().x, (*source)->icon().y);
                 if ((*source)->playable()) {
-                    ImGui::SameLine();
+                    ImGui::SameLine(ImGui::GetTextLineHeight(), 0);
                     ImGui::Text(" %s", GstToolkit::time_to_string((*source)->playtime()).c_str() );
+                    ImGui::SameLine(framesize.x - ImGui::GetTextLineHeightWithSpacing());
+                    if ( mp->syncToMetronome() > Metronome::SYNC_NONE )
+                        ImGuiToolkit::Icon( mp->syncToMetronome() > Metronome::SYNC_BEAT ? 7 : 6, 13);
+
                 }
                 ImGui::PopFont();
 
@@ -1119,7 +1123,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                                 ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Cut at %s",
                                                GstToolkit::time_to_string(cutposition, GstToolkit::TIME_STRING_MINIMAL).c_str());
 
-                                if ( ImGuiToolkit::ButtonIcon(9, 3, text_buf) ) {
+                                if ( ImGuiToolkit::ButtonIcon(11, 3, text_buf) ) {
                                     if ( mp->timeline()->cut(cutposition, false, true) ) {
                                         std::ostringstream info;
                                         info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline " <<text_buf;
@@ -1184,7 +1188,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
                 ImGuiToolkit::Icon( (*source)->icon().x, (*source)->icon().y);
                 if ((*source)->playable()) {
-                    ImGui::SameLine();
+                    ImGui::SameLine(ImGui::GetTextLineHeight(), 0);
                     ImGui::Text(" %s", GstToolkit::time_to_string((*source)->playtime()).c_str() );
                 }
                 ImGui::PopFont();
@@ -1537,8 +1541,8 @@ int SourceControlWindow::SourceButton(Source *s, ImVec2 framesize)
         draw_list->AddRect(frame_top, frame_top + framesize - ImVec2(1.f, 0.f), frame_color, 0, 0, 3.f);
         // centered icon in front of dark background
         if (s->active() && s->playable()) {
-            draw_list->AddRectFilled(frame_center - ImVec2(H * 0.2f, H * 0.2f),
-                                     frame_center + ImVec2(H * 1.1f, H * 1.1f), ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed), 6.f);
+            draw_list->AddRectFilled(frame_center - ImVec2(H * 0.3f, H * 0.2f),
+                                     frame_center + ImVec2(H * 1.1f, H * 1.2f), ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed), 6.f);
             draw_list->AddText(frame_center, icon_color, s->playing() ? ICON_FA_PAUSE : ICON_FA_PLAY);
         }
     }

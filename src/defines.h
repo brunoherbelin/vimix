@@ -235,7 +235,7 @@
 #define MENU_INPUTS           ICON_FA_HAND_PAPER "  Input mapping "
 #define TOOLTIP_INPUTS        "Inputs mapping "
 #define SHORTCUT_INPUTS       CTRL_MOD "I"
-#define MENU_SHADEREDITOR     ICON_FA_CODE "  Shader Editor "
+#define MENU_SHADEREDITOR     ICON_FA_CODE " Shader Editor "
 #define TOOLTIP_SHADEREDITOR  "Shader Editor "
 #define SHORTCUT_SHADEREDITOR CTRL_MOD "E"
 #define TOOLTIP_FULLSCREEN    "Fullscreen "
