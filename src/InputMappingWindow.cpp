@@ -345,7 +345,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Depth value to place the source front (12) or back (0) in the scene.", 6, 6);
+        ImGuiToolkit::Indication("Depth value to place the source front (12) or back (0) in the scene.", 11, 16);
     }
         break;
 
@@ -388,7 +388,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Factor to multiply the playback speed of a video source.", 16, 7);
+        ImGuiToolkit::Indication("Factor to multiply the playback speed of a video source.", 0, 12);
     }
         break;
 
@@ -579,7 +579,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Hue shift for color correction.", 12, 4);
+        ImGuiToolkit::Indication("Hue shift for color correction.", 3, 4);
     }
         break;
 
@@ -604,7 +604,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
-        ImGuiToolkit::Indication("Threshold for color correction.", 8, 1);
+        ImGuiToolkit::Indication("Threshold for color correction.", 5, 4);
     }
         break;
 
@@ -650,7 +650,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         if (ImGui::Combo("##CALLBACK_INVERT", &val, "None\0Color RGB\0Luminance\0"))
             edited->setValue( (float) val);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGuiToolkit::Indication("Invert mode for color correction.", 6, 16);
+        ImGuiToolkit::Indication("Invert mode for color correction.", 4, 4);
     }
         break;
 
