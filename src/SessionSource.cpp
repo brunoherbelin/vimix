@@ -266,9 +266,9 @@ SessionFileSource::SessionFileSource(uint64_t id) : SessionSource(id), path_("")
     overlays_[View::TRANSITION]->translation_.z = 0.1;
     overlays_[View::TRANSITION]->visible_ = false;
 
-    Symbol *loader = new Symbol(Symbol::DOTS);
-    loader->scale_ = glm::vec3(2.f, 2.f, 1.f);
-    loader->translation_.y = -0.8;
+    Symbol *loader = new Symbol(Symbol::BUSY);
+    loader->scale_ = glm::vec3(1.7f, 1.7f, 1.f);
+    loader->translation_.y = -0.7;
     loader->update_callbacks_.push_back(new InfiniteGlowCallback);
     overlays_[View::TRANSITION]->attach(loader);
 

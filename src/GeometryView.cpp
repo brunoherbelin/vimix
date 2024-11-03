@@ -298,7 +298,7 @@ void GeometryView::draw()
     P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
     // Set window position depending on icons size
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 1.5f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
     if (ImGui::Begin("##GeometryViewOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                      | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                      | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
@@ -312,28 +312,29 @@ void GeometryView::draw()
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
 
         // toggle sources visibility flag
-        std::string _label = std::to_string(hidden_count_) + " source" + (hidden_count_>1?"s ":" ")
-                             + "outside mixing circle " + ICON_FA_MOON;
+        std::string _label = Settings::application.views[mode_].ignore_mix ? "Show " : "Hide ";
+        _label += "non visible sources\n(";
+        _label += std::to_string(hidden_count_) + " source" + (hidden_count_>1?"s are ":" is ") + "outside mixing circle)";
         ImGuiToolkit::ButtonIconToggle(12, 0, &Settings::application.views[mode_].ignore_mix, _label.c_str());
 
         // select layers visibility
-        static std::vector< std::string > _tooltips = {
-            {"Sources in Background layer"},
-            {"Sources in Workspace layer"},
-            {"Sources in Foreground layer"},
-            {"Sources in all layers (total)"}
-        };
-        std::vector< std::tuple<int, int, std::string> > _workspaces = {
-            {ICON_WORKSPACE_BACKGROUND, std::to_string( workspaces_counts_[Source::WORKSPACE_BACKGROUND] )},
-            {ICON_WORKSPACE_CENTRAL,    std::to_string( workspaces_counts_[Source::WORKSPACE_CENTRAL] )},
-            {ICON_WORKSPACE_FOREGROUND, std::to_string( workspaces_counts_[Source::WORKSPACE_FOREGROUND] )},
-            {ICON_WORKSPACE,            std::to_string( workspaces_counts_[Source::WORKSPACE_ANY] )}
+        static std::vector<std::tuple<int, int, std::string> > _workspaces
+            = {{ICON_WORKSPACE_BACKGROUND, "Show only sources in\nBackground layer ("},
+               {ICON_WORKSPACE_CENTRAL,    "Show only sources in\nWorkspace layer ("},
+               {ICON_WORKSPACE_FOREGROUND, "Show only sources in\nForeground layer ("},
+               {ICON_WORKSPACE,            "Show sources in all layers ("}
         };
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth( ImGui::GetTextLineHeightWithSpacing() * 2.6);
-        if ( ImGuiToolkit::ComboIcon ("##WORKSPACE", &Settings::application.current_workspace, _workspaces, _tooltips) ){
-            // need full update
-            Mixer::manager().setView(mode_);
+        std::ostringstream oss;
+        oss << std::get<2>(_workspaces[Settings::application.current_workspace]);
+        oss << std::to_string(workspaces_counts_[Settings::application.current_workspace]);
+        oss << ")";
+        if (ImGuiToolkit::ButtonIcon(std::get<0>(
+                                         _workspaces[Settings::application.current_workspace]),
+                                     std::get<1>(
+                                         _workspaces[Settings::application.current_workspace]),
+                                     oss.str().c_str() )) {
+            Settings::application.current_workspace = (Settings::application.current_workspace+1)%4;
         }
 
         ImGui::PopStyleColor(6);
@@ -1595,6 +1596,52 @@ void GeometryView::terminate(bool force)
 
     // reset grid
     adaptGridToSource();
+}
+
+
+View::Cursor GeometryView::over(glm::vec2 pos)
+{
+    View::Cursor ret = Cursor();
+
+    // unproject mouse coordinate into scene coordinates
+    glm::vec3 scene_point_ = Rendering::manager().unProject(pos);
+
+    // picking visitor traverses the scene
+    PickingVisitor pv(scene_point_, false);
+    scene.accept(pv);
+
+    //
+    // mouse over current source
+    //
+    Source *current = Mixer::manager().currentSource();
+    if (current != nullptr) {
+        // reset mouse over handles
+        current->handles_[mode_][Handles::EDIT_CROP]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 0.6f);
+        current->handles_[mode_][Handles::EDIT_SHAPE]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 0.6f);
+
+        // picking visitor found nodes?
+        if (!pv.empty()) {
+            // find pick in the current source
+            std::pair<Node *, glm::vec2> pick = {nullptr, glm::vec2(0.f)};
+            auto itp = pv.rbegin();
+            for (; itp != pv.rend(); ++itp){
+                // test if source contains this node
+                Source::hasNode is_in_source((*itp).first );
+                if ( is_in_source( current ) ){
+                    // a node in the current source was clicked !
+                    pick = *itp;
+                    break;
+                }
+            }
+            // mouse over handles
+            if (pick.first == current->handles_[mode_][Handles::EDIT_CROP])
+                current->handles_[mode_][Handles::EDIT_CROP]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+            else if (pick.first == current->handles_[mode_][Handles::EDIT_SHAPE])
+                current->handles_[mode_][Handles::EDIT_SHAPE]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+        }
+    }
+
+    return ret;
 }
 
 #define MAX_DURATION 1000.f

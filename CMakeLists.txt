@@ -593,7 +593,6 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_vimix.ply
     ./rsc/mesh/icon_group_vimix.ply
     ./rsc/mesh/icon_circles.ply
-    ./rsc/mesh/icon_dots.ply
     ./rsc/mesh/icon_empty.ply
     ./rsc/mesh/icon_lock.ply
     ./rsc/mesh/icon_unlock.ply
@@ -603,7 +602,6 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_clock.ply
     ./rsc/mesh/icon_clock_hand.ply
     ./rsc/mesh/icon_grid.ply
-    ./rsc/mesh/icon_rightarrow.ply
     ./rsc/mesh/icon_crop.ply
     ./rsc/mesh/icon_eye.ply
     ./rsc/mesh/icon_eye_slash.ply
@@ -614,6 +612,14 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_text.ply
     ./rsc/mesh/icon_play.ply
     ./rsc/mesh/icon_fastforward.ply
+    ./rsc/mesh/icon_blend_normal.ply
+    ./rsc/mesh/icon_blend_add.ply
+    ./rsc/mesh/icon_blend_subtract.ply
+    ./rsc/mesh/icon_blend_mult.ply
+    ./rsc/mesh/icon_blend_soft_light.ply
+    ./rsc/mesh/icon_blend_hard_light.ply
+    ./rsc/mesh/icon_blend_soft_sub.ply
+    ./rsc/mesh/icon_blend_lighten.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
     ./rsc/shaders/filters/default.glsl

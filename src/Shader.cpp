@@ -320,6 +320,16 @@ bool ShadingProgram::setUniform<glm::mat4>(const std::string& name, glm::mat4 va
 
 
 bool Shader::force_blending_opacity = false;
+std::vector< std::tuple<int, int, std::string> > Shader::blendingFunction = {
+    {5, 6, "Normal"},
+    {7, 6, "Screen"},
+    {8, 6, "Subtract"},
+    {9, 6, "Multiply"},
+    {2, 6, "Hard light"},
+    {3, 6, "Soft light"},
+    {6, 6, "Soft subtract"},
+    {10, 6, "Lighten only"}
+};
 
 Shader::Shader() : blending(BLEND_OPACITY)
 {

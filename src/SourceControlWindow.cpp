@@ -567,194 +567,6 @@ void DrawTimeScale(const char* label, guint64 duration, double width_ratio)
 
 }
 
-
-
-bool EditPlotHistoLines (const char* label, float *histogram_array, float *lines_array,
-                                      int values_count, float values_min, float values_max, guint64 begin, guint64 end,
-                                      bool edit_histogram, bool *released, TimelinePayload **payload, const ImVec2 size)
-{
-    bool array_changed = false;
-
-    // get window
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return false;
-
-    // capture coordinates before any draw or action
-    const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
-    ImVec2 mouse_pos_in_canvas = ImVec2(ImGui::GetIO().MousePos.x - canvas_pos.x, ImGui::GetIO().MousePos.y - canvas_pos.y);
-
-    // get id
-    const ImGuiID id = window->GetID(label);
-
-    // add item
-    ImVec2 pos = window->DC.CursorPos;
-    ImRect bbox(pos, pos + size);
-    ImGui::ItemSize(size);
-    if (!ImGui::ItemAdd(bbox, id))
-        return false;
-
-    *released = false;
-
-    // read user input and activate widget
-    const bool mouse_press = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-    bool hovered = ImGui::ItemHoverable(bbox, id);
-    bool temp_input_is_active = ImGui::TempInputIsActive(id);
-    if (!temp_input_is_active)
-    {
-        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
-        if (focus_requested || (hovered && mouse_press) )
-        {
-            ImGui::SetActiveID(id, window);
-            ImGui::SetFocusID(id, window);
-            ImGui::FocusWindow(window);
-        }
-    }
-    else
-        return false;
-
-    const ImGuiContext& g = *GImGui;
-    const ImGuiStyle& style = g.Style;
-    const float _h_space = style.WindowPadding.x;
-    ImVec4 bg_color = hovered ? style.Colors[ImGuiCol_FrameBgHovered] : style.Colors[ImGuiCol_FrameBg];
-
-    // prepare index
-    double x = (mouse_pos_in_canvas.x - _h_space) / (size.x - 2.f * _h_space);
-    size_t index = CLAMP( (int) floor(static_cast<double>(values_count) * x), 0, values_count);
-    char cursor_text[64];
-    guint64 time = begin + (index * end) / static_cast<guint64>(values_count);
-
-    // enter edit if widget is active
-    if (ImGui::GetActiveID() == id) {
-
-        bg_color = style.Colors[ImGuiCol_FrameBgActive];
-
-        // keep active area while mouse is pressed
-        static bool active = false;
-        static size_t previous_index = UINT32_MAX;
-        if (mouse_press)
-        {
-            float val = mouse_pos_in_canvas.y / bbox.GetHeight();
-            val = CLAMP( (val * (values_max-values_min)) + values_min, values_min, values_max);
-
-            if (previous_index == UINT32_MAX)
-                previous_index = index;
-
-            const size_t left = MIN(previous_index, index);
-            const size_t right = MAX(previous_index, index);
-
-            if (edit_histogram){
-                static float target_value = values_min;
-
-                // toggle value histo
-                if (!active) {
-                    target_value = histogram_array[index] > 0.f ? 0.f : 1.f;
-                    active = true;
-                }
-
-                for (size_t i = left; i < right; ++i)
-                    histogram_array[i] = target_value;
-            }
-            else  {
-                const float target_value =  values_max - val;
-
-                for (size_t i = left; i < right; ++i)
-                    lines_array[i] = target_value;
-
-            }
-
-            previous_index = index;
-            array_changed = true;
-        }
-        // release active widget on mouse release
-        else {
-            active = false;
-            ImGui::ClearActiveID();
-            previous_index = UINT32_MAX;
-            *released = true;
-        }
-
-    }
-
-    // accept drops on timeline plot-histogram
-    else if (ImGui::BeginDragDropTarget()) {
-        const ImGuiPayload *tmp = ImGui::GetDragDropPayload();
-        if (tmp && tmp->IsDataType("DND_TIMELINE")) {
-            TimelinePayload *pl = (TimelinePayload *) tmp->Data;
-            if (pl->action != TimelinePayload::CUT
-                && pl->action != TimelinePayload::CUT_ERASE) {
-                hovered = true;
-                edit_histogram = true;
-            }
-        }
-        const ImGuiPayload *accepted = ImGui::AcceptDragDropPayload("DND_TIMELINE");
-        if (accepted) {
-            *payload = (TimelinePayload *) accepted->Data;
-            (*payload)->drop_time = time;
-        }
-        ImGui::EndDragDropTarget();
-    }
-
-    // back to draw
-    ImGui::SetCursorScreenPos(canvas_pos);
-
-    // plot histogram (with frame)
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
-    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_ModalWindowDimBg]); // a dark color
-    char buf[128];
-    snprintf(buf, 128, "##Histo%s", label);
-    ImGui::PlotHistogram(buf, histogram_array, values_count, 0, NULL, values_min, values_max, size);
-    ImGui::PopStyleColor(2);
-
-    // back to draw
-    ImGui::SetCursorScreenPos(canvas_pos);
-
-    // plot (transparent) lines
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
-    snprintf(buf, 128, "##Lines%s", label);
-    ImGui::PlotLines(buf, lines_array, values_count, 0, NULL, values_min, values_max, size);
-    ImGui::PopStyleColor(1);
-
-
-    // draw the cursor
-    if (hovered) {
-
-        ImFormatString(cursor_text, IM_ARRAYSIZE(cursor_text), "%s",
-                       GstToolkit::time_to_string(time).c_str());
-
-        // prepare color and text
-        const ImU32 cur_color = ImGui::GetColorU32(ImGuiCol_CheckMark);
-        ImGui::PushStyleColor(ImGuiCol_Text, cur_color);
-        ImVec2 label_size = ImGui::CalcTextSize(cursor_text, NULL);
-
-        // render cursor depending on action
-        mouse_pos_in_canvas.x = CLAMP(mouse_pos_in_canvas.x, _h_space, size.x - _h_space);
-        ImVec2 cursor_pos = canvas_pos;
-        if (edit_histogram) {
-            cursor_pos = cursor_pos + ImVec2(mouse_pos_in_canvas.x, 4.f);
-            window->DrawList->AddLine( cursor_pos, cursor_pos + ImVec2(0.f, size.y - 8.f), cur_color);
-        }
-        else {
-            cursor_pos = cursor_pos + mouse_pos_in_canvas;
-            window->DrawList->AddCircleFilled( cursor_pos, 3.f, cur_color, 8);
-        }
-
-        // draw text
-        cursor_pos.y = canvas_pos.y + size.y - label_size.y - 1.f;
-        if (mouse_pos_in_canvas.x > label_size.x * 1.5f + 2.f * _h_space)
-            cursor_pos.x -= label_size.x + _h_space;
-        else
-            cursor_pos.x += _h_space + style.WindowPadding.x;
-        ImGui::RenderTextClipped(cursor_pos, cursor_pos + label_size, cursor_text, NULL, &label_size);
-
-        ImGui::PopStyleColor(1);
-    }
-
-    return array_changed;
-}
-
-
-
 bool EditTimeline(const char *label,
                   Timeline *tl,
                   bool edit_histogram,
@@ -1215,8 +1027,12 @@ void SourceControlWindow::RenderSelection(size_t i)
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
                 ImGuiToolkit::Icon( (*source)->icon().x, (*source)->icon().y);
                 if ((*source)->playable()) {
-                    ImGui::SameLine();
+                    ImGui::SameLine(ImGui::GetTextLineHeight(), 0);
                     ImGui::Text(" %s", GstToolkit::time_to_string((*source)->playtime()).c_str() );
+                    ImGui::SameLine(framesize.x - ImGui::GetTextLineHeightWithSpacing());
+                    if ( mp->syncToMetronome() > Metronome::SYNC_NONE )
+                        ImGuiToolkit::Icon( mp->syncToMetronome() > Metronome::SYNC_BEAT ? 7 : 6, 13);
+
                 }
                 ImGui::PopFont();
 
@@ -1307,7 +1123,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                                 ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Cut at %s",
                                                GstToolkit::time_to_string(cutposition, GstToolkit::TIME_STRING_MINIMAL).c_str());
 
-                                if ( ImGuiToolkit::ButtonIcon(9, 3, text_buf) ) {
+                                if ( ImGuiToolkit::ButtonIcon(11, 3, text_buf) ) {
                                     if ( mp->timeline()->cut(cutposition, false, true) ) {
                                         std::ostringstream info;
                                         info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline " <<text_buf;
@@ -1372,7 +1188,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
                 ImGuiToolkit::Icon( (*source)->icon().x, (*source)->icon().y);
                 if ((*source)->playable()) {
-                    ImGui::SameLine();
+                    ImGui::SameLine(ImGui::GetTextLineHeight(), 0);
                     ImGui::Text(" %s", GstToolkit::time_to_string((*source)->playtime()).c_str() );
                 }
                 ImGui::PopFont();
@@ -1547,7 +1363,8 @@ void SourceControlWindow::DrawSource(Source *s, ImVec2 framesize, ImVec2 top_ima
     ImVec2 slider = framesize * ImVec2(Settings::application.widget.media_player_slider,1.f);
 
     // draw pre and post-processed parts if necessary
-    if (s->imageProcessingEnabled() ||
+    if ( (mediaplayer_active_ && !mediaplayer_active_->timeline()->fadingIsClear())||
+        s->imageProcessingEnabled() ||
         s->textureTransformed() ||
         s->icon() == glm::ivec2(ICON_SOURCE_CLONE))
     {
@@ -1724,8 +1541,8 @@ int SourceControlWindow::SourceButton(Source *s, ImVec2 framesize)
         draw_list->AddRect(frame_top, frame_top + framesize - ImVec2(1.f, 0.f), frame_color, 0, 0, 3.f);
         // centered icon in front of dark background
         if (s->active() && s->playable()) {
-            draw_list->AddRectFilled(frame_center - ImVec2(H * 0.2f, H * 0.2f),
-                                     frame_center + ImVec2(H * 1.1f, H * 1.1f), ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed), 6.f);
+            draw_list->AddRectFilled(frame_center - ImVec2(H * 0.3f, H * 0.2f),
+                                     frame_center + ImVec2(H * 1.1f, H * 1.2f), ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed), 6.f);
             draw_list->AddText(frame_center, icon_color, s->playing() ? ICON_FA_PAUSE : ICON_FA_PLAY);
         }
     }

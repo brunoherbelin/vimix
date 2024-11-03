@@ -73,7 +73,7 @@ public:
         BLEND_NONE
     } BlendMode;
     BlendMode blending;
-
+    static std::vector< std::tuple<int, int, std::string> > blendingFunction;
     static bool force_blending_opacity;
 
 protected:

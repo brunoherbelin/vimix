@@ -96,14 +96,10 @@ public:
         SHARE,
         RECEIVE,
         TEXT,
-        DOTS,
         BUSY,
         LOCK,
         UNLOCK,
-        EYE,
-        EYESLASH,
         TELEVISION,
-        ARROWS,
         ROTATION,
         CROP,
         CIRCLE,
@@ -114,6 +110,14 @@ public:
         CROSS,
         PLAY,
         FFWRD,
+        BLEND_NORMAL,
+        BLEND_SCREEN,
+        BLEND_SUBTRACT,
+        BLEND_MULT,
+        BLEND_H_LIGHT,
+        BLEND_S_LIGHT,
+        BLEND_S_SUB,
+        BLEND_LIGHTEN,
         EMPTY
     } Type;
     Symbol(Type t, glm::vec3 pos = glm::vec3(0.f));
@@ -156,7 +160,7 @@ public:
     void draw (glm::mat4 modelview, glm::mat4 projection) override;
     void accept (Visitor& v) override;
 
-    GlmToolkit::AxisAlignedBoundingBox bbox() const { return font_->bbox(); }
+    GlmToolkit::AxisAlignedBoundingBox bbox() const { return font_->bbox().scaled(glm::vec3(scale_.y, 1.f, 1.f)); }
 
     glm::vec4 color;
 

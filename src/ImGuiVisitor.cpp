@@ -197,40 +197,11 @@ void ImGuiVisitor::visit(Shader &n)
 //    ImGui::SameLine(0, 5);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int mode = n.blending;
-    if (ImGui::Combo("Blending", &mode, "Normal\0Screen\0Subtract\0Multiply\0Soft light"
-                     "\0Hard light\0Soft subtract\0Lighten only\0") ) {
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if (ImGuiToolkit::ComboIcon("Blending", &mode, Shader::blendingFunction) )
+    {
         n.blending = Shader::BlendMode(mode);
-
-        oss << "Blending ";
-        switch(n.blending) {
-        case Shader::BLEND_OPACITY:
-            oss<<"Normal";
-            break;
-        case Shader::BLEND_SCREEN:
-            oss<<"Screen";
-            break;
-        case Shader::BLEND_SUBTRACT:
-            oss<<"Subtract";
-            break;
-        case Shader::BLEND_MULTIPLY:
-            oss<<"Multiply";
-            break;
-        case Shader::BLEND_HARD_LIGHT:
-            oss<<"Hard light";
-            break;
-        case Shader::BLEND_SOFT_LIGHT:
-            oss<<"Soft light";
-            break;
-        case Shader::BLEND_SOFT_SUBTRACT:
-            oss<<"Soft subtract";
-            break;
-        case Shader::BLEND_LIGHTEN_ONLY:
-            oss<<"Lighten only";
-            break;
-        case Shader::BLEND_NONE:
-            oss<<"None";
-            break;
-        }
+        oss << "Blending " << std::get<2>(Shader::blendingFunction[mode]).c_str();
         Action::manager().store(oss.str());
     }
 
@@ -440,7 +411,10 @@ void ImGuiVisitor::visit (Source& s)
     oss << s.name() << ": ";
 
     // blending selection
+    Shader::BlendMode prevblend = s.blendingShader()->blending;
     s.blendingShader()->accept(*this);
+    if (s.blendingShader()->blending != prevblend)
+        s.touch();
 
     // Draw different info if failed or succeed
     if ( !s.failed() ) {

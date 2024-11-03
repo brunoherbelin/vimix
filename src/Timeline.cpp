@@ -81,6 +81,7 @@ Timeline& Timeline::operator = (const Timeline& b)
         this->gaps_array_need_update_ = b.gaps_array_need_update_;
         memcpy( this->gapsArray_, b.gapsArray_, MAX_TIMELINE_ARRAY * sizeof(float));
         memcpy( this->fadingArray_, b.fadingArray_, MAX_TIMELINE_ARRAY * sizeof(float));
+        this->fading_array_changed_ = true;
     }
     return *this;
 }
@@ -164,6 +165,7 @@ void Timeline::update()
 {
     updateGapsFromArray(gapsArray_, MAX_TIMELINE_ARRAY);
     gaps_array_need_update_ = false;
+    fading_array_changed_ = true;
 }
 
 void Timeline::refresh()
@@ -405,13 +407,13 @@ GstClockTime Timeline::timeFromPercent(const float p) const
 size_t Timeline::fillSectionsArrays( float* const gaps, float* const fading)
 {
     size_t arraysize = MAX_TIMELINE_ARRAY;
-    float* gapsptr = gaps;
-    float* fadingptr = fading;
 
     if (gaps_array_need_update_)
         fillArrayFromGaps(gapsArray_, MAX_TIMELINE_ARRAY);
 
     if (gaps_.size() > 0) {
+        float* gapsptr = gaps;
+        float* fadingptr = fading;
 
         // indices to define [s e[] sections
         size_t s = 0, e;
@@ -461,11 +463,13 @@ size_t Timeline::fillSectionsArrays( float* const gaps, float* const fading)
             arraysize += n;
         }
 
+        fading_array_changed_ = true;
     }
     else {
 
         memcpy( gaps, gapsArray_, MAX_TIMELINE_ARRAY * sizeof(float));
         memcpy( fading, fadingArray_, MAX_TIMELINE_ARRAY * sizeof(float));
+        fading_array_changed_ = true;
     }
 
     return arraysize;
@@ -538,6 +542,21 @@ void Timeline::clearFading()
     }
     // clear with static array
     memcpy(fadingArray_, empty_ones, MAX_TIMELINE_ARRAY * sizeof(float));
+    fading_array_allones_ = true;
+}
+
+
+bool Timeline::fadingIsClear()
+{
+    if (fading_array_changed_) {
+        int i = 0;
+        while (i < MAX_TIMELINE_ARRAY && fadingArray_[i] > 0.999f)
+            ++i;
+        fading_array_allones_ = i == MAX_TIMELINE_ARRAY;
+        fading_array_changed_ = false;
+    }
+
+    return fading_array_allones_;
 }
 
 void Timeline::smoothFading(uint N, TimeInterval interval)
@@ -576,6 +595,7 @@ void Timeline::smoothFading(uint N, TimeInterval interval)
             }
             // copy back to array
             memcpy(fadingArray_, tmparray, MAX_TIMELINE_ARRAY * sizeof(float));
+            fading_array_changed_ = true;
         }
     }
     // in absence of interval given, loop over all sections
@@ -596,7 +616,7 @@ void Timeline::autoFading(const GstClockTime duration, FadingCurve curve)
         N = duration / (timing_.end / MAX_TIMELINE_ARRAY);
 
     // clear with static array
-    memcpy(fadingArray_, empty_zeros, MAX_TIMELINE_ARRAY * sizeof(float));
+    clearFading();
 
     // get sections (inverse of gaps)
     TimeIntervalSet sec = sections();
@@ -638,6 +658,7 @@ void Timeline::autoFading(const GstClockTime duration, FadingCurve curve)
             else
                 fadingArray_[i] = x;
         }
+        fading_array_changed_ = true;
     }
 }
 
@@ -689,7 +710,7 @@ void Timeline::fadeOut(const GstClockTime from, const GstClockTime duration, Fad
             fadingArray_[i] = 0.f;
         // fadingArray_[i] *= val;
     }
-
+    fading_array_changed_ = true;
 }
 
 void Timeline::fadeIn(const GstClockTime to, const GstClockTime duration, FadingCurve curve)
@@ -739,7 +760,7 @@ void Timeline::fadeIn(const GstClockTime to, const GstClockTime duration, Fading
             fadingArray_[i] = 0.f;
         // fadingArray_[i] *= val;
     }
-
+    fading_array_changed_ = true;
 }
 
 void Timeline::fadeInOutRange(const GstClockTime t, const GstClockTime duration, bool in_and_out, FadingCurve curve)
@@ -809,8 +830,8 @@ void Timeline::fadeInOutRange(const GstClockTime t, const GstClockTime duration,
         }
         else // curve == FADING_SHARP
             fadingArray_[k] = in_and_out;
-    }
-
+    }    
+    fading_array_changed_ = true;
 }
 
 

@@ -21,7 +21,7 @@
 #define ICON_SOURCE_NETWORK 18, 11
 #define ICON_SOURCE_PATTERN 5, 3
 #define ICON_SOURCE_SESSION 19, 6
-#define ICON_SOURCE_GROUP 10, 6
+#define ICON_SOURCE_GROUP 0, 7
 #define ICON_SOURCE_RENDER 19, 1
 #define ICON_SOURCE_CLONE 9, 2
 #define ICON_SOURCE_GSTREAMER 16, 16
@@ -364,7 +364,7 @@ protected:
     std::map<View::Mode, Switch*> frames_;
     std::map<View::Mode, Handles*[15]> handles_;
     Handles *lock_, *unlock_;
-    Switch *locker_, *manipulator_;
+    Switch *locker_, *manipulator_, *blendmode_;
     Symbol *symbol_;
     Character  *initial_0_, *initial_1_;
 

@@ -148,6 +148,7 @@ public:
     size_t fadingIndexAt(const GstClockTime t) const;
     inline float *fadingArray() { return fadingArray_; }
     void clearFading();
+    bool fadingIsClear();
 
     // Edit
     typedef enum {
@@ -184,6 +185,7 @@ private:
     void fillArrayFromGaps(float *array, size_t array_size);
 
     float fadingArray_[MAX_TIMELINE_ARRAY];
+    bool fading_array_changed_, fading_array_allones_;
 
 };
 

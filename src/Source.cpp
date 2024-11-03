@@ -228,7 +228,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     handles_[View::GEOMETRY][Handles::SCALE]->translation_.z = 0.1;
     transform_manipulator->attach(handles_[View::GEOMETRY][Handles::SCALE]);
     handles_[View::GEOMETRY][Handles::EDIT_SHAPE] = new Handles(Handles::EDIT_SHAPE);
-    handles_[View::GEOMETRY][Handles::EDIT_SHAPE]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::EDIT_SHAPE]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 0.6f);
     handles_[View::GEOMETRY][Handles::EDIT_SHAPE]->translation_.z = 0.1;
     transform_manipulator->attach(handles_[View::GEOMETRY][Handles::EDIT_SHAPE]);
 
@@ -263,7 +263,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     handles_[View::GEOMETRY][Handles::ROUNDING]->translation_.z = 0.1;
     node_manipulator->attach(handles_[View::GEOMETRY][Handles::ROUNDING]);
     handles_[View::GEOMETRY][Handles::EDIT_CROP] = new Handles(Handles::EDIT_CROP);
-    handles_[View::GEOMETRY][Handles::EDIT_CROP]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::EDIT_CROP]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 0.6f);
     handles_[View::GEOMETRY][Handles::EDIT_CROP]->translation_.z = 0.1;
     node_manipulator->attach(handles_[View::GEOMETRY][Handles::EDIT_CROP]);
 
@@ -300,6 +300,19 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     overlays_[View::LAYER]->translation_.z = 0.15;
     overlays_[View::LAYER]->visible_ = false;
     groups_[View::LAYER]->attach(overlays_[View::LAYER]);
+
+    // blending change icon
+    blendmode_ = new Switch;
+    blendmode_->translation_ = glm::vec3(0.0f, 1.2f, 0.1f);
+    blendmode_->scale_ = glm::vec3(1.2f, 1.2f, 1.f);
+    groups_[View::LAYER]->attach(blendmode_);
+    for (uint B = Symbol::BLEND_NORMAL; B < Symbol::EMPTY; ++B) {
+        Symbol *blend_icon = new Symbol( (Symbol::Type) B);
+        blend_icon->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 0.6f);
+        blend_icon->translation_.z = 0.1;
+        blendmode_->attach(blend_icon);
+    }
+    blendmode_->setActive(0);
 
     // default appearance node
     frames_[View::TEXTURE] = new Switch;
@@ -469,9 +482,9 @@ void Source::setMode(Source::Mode m)
     for (auto o = overlays_.begin(); o != overlays_.end(); ++o)
         (*o).second->visible_ = (current && !locked_);
 
-    // the opacity of the initials changes if current
-    initial_0_->color.w = current ? 1.0 : 0.7;
-    initial_1_->color.w = current ? 1.0 : 0.7;
+    // the opacity of the initials and of blending icon change if current
+    initial_0_->color.w = initial_1_->color.w = current ? 1.0 : 0.7;
+    static_cast<Symbol *>(blendmode_->activeChild())->color.w = current ? 1.0 : 0.6;
 
     // the lock icon
     locker_->setActive( locked_ ? 0 : 1);
@@ -609,21 +622,24 @@ void Source::attach(FrameBuffer *renderbuffer)
 
     }
 
+    float AR = renderbuffer_->aspectRatio();
+
     // if a symbol is available
     if (symbol_)
         // hack to place the symbols in the corner independently of aspect ratio
-        symbol_->translation_.x = (renderbuffer_->aspectRatio() - 0.3f) / renderbuffer_->aspectRatio();
+        symbol_->translation_.x = (AR - 0.3f) / AR;
 
     // hack to place the initials in the corner independently of aspect ratio
-    initial_0_->translation_.x = 0.2f - renderbuffer_->aspectRatio();
-    initial_1_->translation_.x = 0.4f - renderbuffer_->aspectRatio();
+    initial_0_->translation_.x = 0.2f - AR;
+    initial_1_->translation_.x = 0.4f - AR;
+    blendmode_->translation_.x = - 0.2f - AR ;
 
     // scale all icon nodes to match aspect ratio
     for (int v = View::MIXING; v <= View::TRANSITION; v++) {
         NodeSet::iterator node;
         for (node = groups_[(View::Mode) v]->begin();
              node != groups_[(View::Mode) v]->end(); ++node) {
-            (*node)->scale_.x = renderbuffer_->aspectRatio();
+            (*node)->scale_.x = AR;
         }
     }
 
@@ -878,6 +894,11 @@ void Source::update(float dt)
             // Layers icons are displayed in Perspective (diagonal)
             groups_[View::LAYER]->translation_.x = -groups_[View::LAYER]->translation_.z;
             groups_[View::LAYER]->translation_.y = groups_[View::LAYER]->translation_.x / LAYER_PERSPECTIVE;
+
+            // update blending icon
+            static_cast<Symbol *>(blendmode_->activeChild())->color.w = 0.6;
+            blendmode_->setActive((int) blendingshader_->blending);
+            static_cast<Symbol *>(blendmode_->activeChild())->color.w = mode_ >= Source::CURRENT ? 1.0 : 0.6;
 
             // Update workspace based on depth, and
             // adjust vertical position of icon depending on workspace
