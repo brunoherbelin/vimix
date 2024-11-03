@@ -391,9 +391,11 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     current_action_ = s->name() + ": " + info.str();
 
     if ( d > LAYER_FOREGROUND )
-        info << "\n   (Foreground)";
+        info << "\n   (Foreground layer)";
     else if ( d < LAYER_BACKGROUND )
-        info << "\n   (Background)";
+        info << "\n   (Background layer)";
+    else
+        info << "\n   (Workspace layer)";
 
     return Cursor(Cursor_ResizeNESW, info.str() );
 }

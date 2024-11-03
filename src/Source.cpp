@@ -228,7 +228,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     handles_[View::GEOMETRY][Handles::SCALE]->translation_.z = 0.1;
     transform_manipulator->attach(handles_[View::GEOMETRY][Handles::SCALE]);
     handles_[View::GEOMETRY][Handles::EDIT_SHAPE] = new Handles(Handles::EDIT_SHAPE);
-    handles_[View::GEOMETRY][Handles::EDIT_SHAPE]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::EDIT_SHAPE]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 0.6f);
     handles_[View::GEOMETRY][Handles::EDIT_SHAPE]->translation_.z = 0.1;
     transform_manipulator->attach(handles_[View::GEOMETRY][Handles::EDIT_SHAPE]);
 
@@ -263,7 +263,7 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     handles_[View::GEOMETRY][Handles::ROUNDING]->translation_.z = 0.1;
     node_manipulator->attach(handles_[View::GEOMETRY][Handles::ROUNDING]);
     handles_[View::GEOMETRY][Handles::EDIT_CROP] = new Handles(Handles::EDIT_CROP);
-    handles_[View::GEOMETRY][Handles::EDIT_CROP]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 1.f);
+    handles_[View::GEOMETRY][Handles::EDIT_CROP]->color = glm::vec4(COLOR_HIGHLIGHT_SOURCE, 0.6f);
     handles_[View::GEOMETRY][Handles::EDIT_CROP]->translation_.z = 0.1;
     node_manipulator->attach(handles_[View::GEOMETRY][Handles::EDIT_CROP]);
 

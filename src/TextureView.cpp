@@ -668,11 +668,16 @@ void TextureView::draw()
 
             int maskmode = edit_source_->maskShader()->mode;
             ImGui::SetNextItemWidth( ImGui::GetTextLineHeightWithSpacing() * 2.6);
-
-            if (ImGui::BeginCombo("##Mask", MaskShader::mask_icons[maskmode])) {
-
+            if (ImGui::Button( std::string(std::string(MaskShader::mask_icons[maskmode])+" "+ICON_FA_SORT_DOWN ).c_str()))
+                ImGui::OpenPopup( "Mask_menu_popup" );
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip(MaskShader::mask_names[maskmode]);
+            if (ImGui::BeginPopup( "Mask_menu_popup" ))
+            {
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                 for (int m = MaskShader::NONE; m <= MaskShader::SOURCE; ++m){
-                    if (ImGui::Selectable( MaskShader::mask_icons[m] )) {
+                    if (ImGui::Selectable( std::string(std::string(MaskShader::mask_icons[m])
+                                                      + " " + MaskShader::mask_names[m]).c_str()) ) {
                         // on change of mode
                         if (maskmode != m) {
                             // cancel previous source mask
@@ -696,25 +701,26 @@ void TextureView::draw()
                             std::ostringstream oss;
                             oss << edit_source_->name() << ": " << MaskShader::mask_names[maskmode];
                             Action::manager().store(oss.str());
-                            // force take control of source for NONE and SOURCE modes
-                            if (maskmode == MaskShader::NONE || maskmode == MaskShader::SOURCE)
+                            // select source depending on mode and tool
+                            if ((maskmode == MaskShader::SHAPE && mask_cursor_shape_) ||
+                                (maskmode == MaskShader::PAINT && mask_cursor_paint_))
+                                Mixer::manager().unsetCurrentSource();
+                            else
                                 Mixer::manager().setCurrentSource(edit_source_);
                         }
                     }
-                    if (ImGui::IsItemHovered())
-                        ImGuiToolkit::ToolTip(MaskShader::mask_names[m]);
                 }
-                ImGui::EndCombo();
+                ImGui::PopFont();
+                ImGui::EndPopup();
             }
-            if (ImGui::IsItemHovered())
-                ImGuiToolkit::ToolTip(MaskShader::mask_names[maskmode]);
 
             // GUI for selecting source mask
             if (maskmode == MaskShader::SOURCE) {
 
                 ImGui::SameLine(0, 60);
                 bool on = true;
-                ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on, "Edit texture");
+                if (ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on, "Edit texture"))
+                    Mixer::manager().setCurrentSource(edit_source_);
 
                 // List of sources
                 ImGui::SameLine(0, 60);
@@ -1012,7 +1018,8 @@ void TextureView::draw()
                 // always active mouse pointer
                 ImGui::SameLine(0, 60);
                 bool on = true;
-                ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on, "Edit texture");
+                if (ImGuiToolkit::ButtonToggle(ICON_FA_MOUSE_POINTER, &on, "Edit texture"))
+                    Mixer::manager().setCurrentSource(edit_source_);
                 ImGui::SameLine(0, 60);
                 ImGui::TextDisabled( "No mask" );
             }
