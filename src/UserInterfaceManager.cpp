@@ -6021,7 +6021,7 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
 
         static std::vector< std::tuple<int, int, std::string> > profile_fading = {
             {0, 8, "Cross fading"},
-            {0, 2, "Fade to black"}
+            {9, 8, "Fade to black"}
         };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         int tmp = Settings::application.transition.cross_fade ? 0 : 1;
