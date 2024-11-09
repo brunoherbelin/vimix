@@ -40,6 +40,10 @@ float linestep(size_t edge0, size_t edge1, size_t i) {
     return x;
 }
 
+float sharpstep(size_t edge0, size_t edge1, size_t i) {
+    float x = clamp( static_cast<float>(i - edge0) / static_cast<float>(edge1 - edge0));
+    return fabs(x)<1.f ? 0.f : 1.f;
+}
 
 
 
@@ -545,7 +549,6 @@ void Timeline::clearFading()
     fading_array_allones_ = true;
 }
 
-
 bool Timeline::fadingIsClear()
 {
     if (fading_array_changed_) {
@@ -696,18 +699,16 @@ void Timeline::fadeOut(const GstClockTime from, const GstClockTime duration, Fad
         N = 2;
     }
 
-    // linear fade out starts at s
+    // fade out starts at s
     size_t i = s;
     // float val = fadingArray_[s];
     for (; i <= s+n; ++i) {
-        const float x = static_cast<float>(e-i) / static_cast<float>(n);
-        // const float x = 1.f - static_cast<float>(i-s) / static_cast<float>(n);
         if (curve==FADING_LINEAR)
-            fadingArray_[i] = x;
+            fadingArray_[i] = 1.f - linestep(s, s+n, i);
         else if (curve==FADING_SMOOTH)
             fadingArray_[i] = 1.f - smootherstep(s, s+n, i);
         else
-            fadingArray_[i] = 0.f;
+            fadingArray_[i] = sharpstep(s, s+n, i);
         // fadingArray_[i] *= val;
     }
     fading_array_changed_ = true;
@@ -746,18 +747,16 @@ void Timeline::fadeIn(const GstClockTime to, const GstClockTime duration, Fading
     // calculate size of the smooth transition in [s e] interval
     const size_t n = MIN( e-s, N );
 
-    // linear fade in ends at e
+    // fade in ends at e
     size_t i = e-n;
     // float val = fadingArray_[e];
     for (; i < e; ++i) {
-        // const float x = static_cast<float>(i-s) / static_cast<float>(n);
-        const float x = 1.f - static_cast<float>(e - i) / static_cast<float>(n);
         if (curve==FADING_LINEAR)
-            fadingArray_[i] = x;
+            fadingArray_[i] = linestep(e-n, e, i);
         else if (curve==FADING_SMOOTH)
             fadingArray_[i] = smootherstep(e-n, e, i);
         else
-            fadingArray_[i] = 0.f;
+            fadingArray_[i] = sharpstep(e-n, e, i);
         // fadingArray_[i] *= val;
     }
     fading_array_changed_ = true;
@@ -771,12 +770,7 @@ void Timeline::fadeInOutRange(const GstClockTime t, const GstClockTime duration,
     // find cuts at left and right of given time
     for (auto g = gaps_.begin(); g != gaps_.end(); g++) {
         if (g->begin < t) {
-            if (g->end > t) {
-                // inside a gap
-                range.begin = g->begin;
-                range.end = g->end;
-                break;
-            } else {
+            if (g->end < t) {
                 // after a gap
                 range.begin = g->end;
             }
@@ -794,48 +788,56 @@ void Timeline::fadeInOutRange(const GstClockTime t, const GstClockTime duration,
     const size_t e = (range.end * MAX_TIMELINE_ARRAY) / timing_.end;
 
     // get index of time in section
-    const size_t m = (t * MAX_TIMELINE_ARRAY) / timing_.end;
-
-    size_t l = m;
-    size_t r = m;
+    size_t l = ( MIN(t, range.begin + duration) * MAX_TIMELINE_ARRAY) / timing_.end;
+    size_t r = ( MAX(t, range.end   - duration) * MAX_TIMELINE_ARRAY) / timing_.end;
 
     // if duration too short for a linear or smooth
     if (duration < 2 * step_) {
         curve = FADING_SHARP;
     }
-    // if duration allows to fade in and out
-    else if (2 * duration < range.duration()) {
-        l = ( (range.begin + duration) * MAX_TIMELINE_ARRAY) / timing_.end;
-        r = ( (range.end - duration) * MAX_TIMELINE_ARRAY) / timing_.end;
+    else if (duration > range.duration()) {
+        if (curve == FADING_SHARP) {
+            l = s+1;
+            r = e-1;
+        }
+        else
+            l = r = (t * MAX_TIMELINE_ARRAY) / timing_.end;
     }
 
     // fill values inside range
-    for (size_t k = s; k < e; ++k) {
+    for (size_t k = s; k <= e; ++k) {
 
         if (curve == FADING_LINEAR){
             if (k<l)
                 fadingArray_[k] = in_and_out ? linestep(s, l, k) : 1.f - linestep(s, l, k);
             else if (k<r)
-                fadingArray_[k] = in_and_out  ? 1.f : 0.f;
+                fadingArray_[k] = in_and_out ? 1.f : 0.f;
             else
-                fadingArray_[k] = in_and_out  ? 1.f - linestep(r, e, k) : linestep(r, e, k);
+                fadingArray_[k] = in_and_out ? 1.f - linestep(r, e, k) : linestep(r, e, k);
         }
         else if (curve == FADING_SMOOTH) {
             if (k<l)
                 fadingArray_[k] = in_and_out ? smootherstep(s, l, k) : 1.f - smootherstep(s, l, k);
             else if (k<r)
-                fadingArray_[k] = in_and_out  ? 1.f : 0.f;
+                fadingArray_[k] = in_and_out ? 1.f : 0.f;
             else
                 fadingArray_[k] = in_and_out ? 1.f - smootherstep(r, e, k) : smootherstep(r, e, k);
         }
         else // curve == FADING_SHARP
-            fadingArray_[k] = in_and_out;
+        {
+            if (k<l)
+                fadingArray_[k] = in_and_out ? 0.f : 1.f ;
+            else if (k<r)
+                fadingArray_[k] = in_and_out ? 1.f : 0.f;
+            else
+                fadingArray_[k] = in_and_out ? 0.f : 1.f ;
+       }
     }    
     fading_array_changed_ = true;
 }
 
 
-bool Timeline::autoCut()
+bool Timeline::autoGapInFade()
 {
     bool changed = false;
     for (long i = 0; i < MAX_TIMELINE_ARRAY; ++i) {
@@ -850,6 +852,21 @@ bool Timeline::autoCut()
     gaps_array_need_update_ = false;
 
     return changed;
+}
+
+void Timeline::autoFadeInGaps()
+{
+    for (auto it = gaps_.begin(); it != gaps_.end(); ++it)
+    {
+        GstClockTime d = timing_.duration();
+        size_t s = ( (*it).begin * MAX_TIMELINE_ARRAY ) / d;
+        size_t e = ( (*it).end * MAX_TIMELINE_ARRAY ) / d;
+
+        // fill with 1 where there is a gap
+        for (size_t i = s; i < e + 1 ; ++i) {
+            fadingArray_[i] = i > 0 ? fadingArray_[i-1] : 0;
+        }
+    }
 }
 
 void Timeline::updateGapsFromArray(float *array, size_t array_size)

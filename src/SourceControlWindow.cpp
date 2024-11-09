@@ -697,17 +697,6 @@ bool EditTimeline(const char *label,
             hovered = true;
             cursor_dot = false;
 
-            // if a timing is given, ignore cursor timing
-            if (pl->timing != GST_CLOCK_TIME_NONE) {
-                // replace drop time by payload timing
-                // time = pl->timing;
-                // // replace mouse coordinate by position from time
-                // size_t index = ((pl->timing - begin) * static_cast<guint64>(MAX_TIMELINE_ARRAY)) / end ;
-                // double x = static_cast<double>(index) / static_cast<double>(MAX_TIMELINE_ARRAY);
-                // mouse_pos_in_canvas.x = ( x * (size.x - 2.f * _h_space)) + _h_space;
-
-            }
-
             // dragged onto the timeline : apply changes on local copy
             switch (pl->action) {
             case TimelinePayload::CUT:
@@ -751,7 +740,7 @@ bool EditTimeline(const char *label,
         }
 
         // dropped into the timeline : confirm change to timeline
-        if (ImGui::AcceptDragDropPayload("DND_TIMELINE")) {
+        if (ImGui::AcceptDragDropPayload("DND_TIMELINE", ImGuiDragDropFlags_AcceptNoDrawDefaultRect)) {
             // copy temporary timeline into given timeline
             *tl = _tl;
             // like a mouse release
@@ -2271,75 +2260,45 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             }
 
             ///
-            /// SEPARATOR
+            /// SECTION WITH BUTTONS
             ///
             ImGui::SameLine(0, 0);
             ImGui::Text("|");
 
-            ///
-            /// Enter time or percentage of time
-            ///
+            /// Enter time value for CUT
             target_time = MIN(target_time, tl->duration());
-
             ImGui::SameLine(0, 0);
             ImVec2 draw_pos = ImGui::GetCursorPos();
-            ImGui::SetCursorPosY(ImGui::GetTextLineHeightWithSpacing() * 0.333 );
-
             float w = gap_dialog_size.x - 4.f * ImGui::GetTextLineHeightWithSpacing() ;
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 11));
             ImGui::SetNextItemWidth(w - draw_pos.x - IMGUI_SAME_LINE); // VARIABLE WIDTH
             ImGuiToolkit::InputTime("##Time", &target_time);
+            ImGui::PopStyleVar();
 
-            // ImGui::SetCursorPos(ImVec2(draw_pos.x, draw_pos.y + 35));
-            // ImGuiToolkit::HSliderUInt64("#SliderTime", ImVec2(180, 14), &target_time, 0, tl->duration());
-
-            // static int p = 5;
-            // ImGuiToolkit::HSliderInt("#toto", ImVec2(140, 14), &p, 1, 9);
-            // if (ImGui::IsItemActive()) {
-            //     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-            //     ImGui::SetTooltip("%d%%", p * 10);
-            //     ImGui::PopFont();
-            // }
-            // if (ImGui::IsItemDeactivatedAfterEdit()){
-
-            // }
-
-            // ImGui::SameLine(0, IMGUI_SAME_LINE);
-            // ImVec2 draw_pos = ImGui::GetCursorPos() + ImVec2(0, v_space_);
-            // ImGui::SetCursorPos(ImVec2(gap_dialog_size.x - ImGui::GetTextLineHeightWithSpacing()- IMGUI_SAME_LINE,
-            //                            draw_pos.y));
-            // static bool percentage = false;
-            // ImGuiToolkit::IconToggle(19, 10, 3, 7, &percentage);
-            // ImGui::SetCursorPos(draw_pos);
-            // if (percentage) {
-            //     int target_percent = (int) ( (100 * target_time) / tl->duration() );
-            //     ImGui::SetNextItemWidth(-ImGui::GetTextLineHeightWithSpacing());
-            //     ImGui::DragInt("##percent", &target_percent, 1, 0, 100);
-            //     target_time = (tl->duration() * (guint64) target_percent) / 100;
-            // }
-            // else {
-            //     ImGui::SetNextItemWidth(-ImGui::GetTextLineHeightWithSpacing());
-            //     ImGuiToolkit::InputTime("##Time", &target_time);
-            // }
-
-            // Action buttons
+            /// CUT LEFT TIME
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
             ImGui::SetCursorPos( ImVec2(w, draw_pos.y));
-
-            // ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (ImGuiToolkit::ButtonIcon(17, 3, "Cut left at given time")) {
                 tl->cut(target_time, true);
                 tl->refresh();
+                oss << ": Timeline cut";
+                Action::manager().store(oss.str());
             }
-
+            /// CUT RIGHT TIME
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (ImGuiToolkit::ButtonIcon(18, 3, "Cut right at given time")){
                 tl->cut(target_time, false);
                 tl->refresh();
+                oss << ": Timeline cut";
+                Action::manager().store(oss.str());
             }
-
+            /// CLEAR
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::ButtonIcon(11, 14, "Clear all gaps"))
+            if (ImGuiToolkit::ButtonIcon(11, 14, "Clear all gaps")) {
                 tl->clearGaps();
+                oss << ": Timeline clear gaps";
+                Action::manager().store(oss.str());
+            }
 
             ImGui::PopStyleColor();
 
@@ -2365,9 +2324,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                    {14, 12}};
 
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-            // ImGuiToolkit::ButtonIconMultistate(options_curve, &current_curve, tooltips_curve);
             ImGuiToolkit::IconMultistate(options_curve, &current_curve, tooltips_curve);
-
             ImGui::PopStyleColor();
 
             ///
@@ -2392,12 +2349,6 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 DragButtonIcon(9, 10, "Drop in timeline to insert\nSharp fade in & out",
                                TimelinePayload(TimelinePayload::FADE_IN_OUT, d*GST_MSECOND, Timeline::FADING_SHARP));
-                ///
-                /// FADE OUT & IN
-                ///
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(10, 10, "Drop in timeline to insert\nSharp fade out & in",
-                               TimelinePayload(TimelinePayload::FADE_OUT_IN, d*GST_MSECOND, Timeline::FADING_SHARP));
             }
             ///
             /// FADE LINEAR
@@ -2421,12 +2372,6 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 DragButtonIcon(7, 10, "Drop in timeline to insert\nLinear fade in & out",
                                TimelinePayload(TimelinePayload::FADE_IN_OUT, d*GST_MSECOND, Timeline::FADING_LINEAR));
-                ///
-                /// FADE OUT & IN
-                ///
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(8, 10, "Drop in timeline to insert\nLinear fade out & in",
-                               TimelinePayload(TimelinePayload::FADE_OUT_IN, d*GST_MSECOND, Timeline::FADING_LINEAR));
             }
             ///
             /// FADE SMOOTH
@@ -2450,89 +2395,70 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 DragButtonIcon(17, 10, "Drop in timeline to insert\nSmooth fade in & out",
                                TimelinePayload(TimelinePayload::FADE_IN_OUT, d*GST_MSECOND, Timeline::FADING_SMOOTH));
-                ///
-                /// FADE OUT & IN
-                ///
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(18, 10, "Drop in timeline to insert\nSmooth fade out & in",
-                               TimelinePayload(TimelinePayload::FADE_OUT_IN, d*GST_MSECOND, Timeline::FADING_SMOOTH));
-
             }
 
-            // float md = 10000;
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-
-            ImVec2 draw_pos = ImGui::GetCursorPos();
-            float w = gap_dialog_size.x - 3.f * ImGui::GetTextLineHeightWithSpacing() - IMGUI_SAME_LINE;
-            ImGui::SetNextItemWidth(w - draw_pos.x);
+            ///
+            /// DURATION SLIDER
+            ///
             float seconds = (float) d / 1000.f;
+            float maxi = (float) GST_TIME_AS_MSECONDS(tl->duration()) / 1000.f;
+            float w = gap_dialog_size.x - 4.f * ImGui::GetTextLineHeightWithSpacing();
 
-            if (current_curve > 0) {
-                // ImGuiToolkit::SliderTiming("##Duration", &d, 60, md+50, 50, "Auto");
-                // if (d > md) d = UINT_MAX;
-                if (ImGui::SliderFloat("##DurationFading",
-                                       &seconds,
-                                       0.05f,
-                                       60.f,
-                                       seconds < 59.5f ? "%.2f s" : "Auto")) {
-                    if (seconds > 59.5f)
-                        d = UINT_MAX;
-                    else
-                        d = (uint) floor(seconds * 1000);
-                }
-            } else {
-                // ImGui::TextDisabled("%.2f s", seconds);
-                static char dummy_str[512];
-                if (seconds < 59.5f )
-                    snprintf(dummy_str, 512, "%.2f s", seconds);
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImVec2 draw_pos = ImGui::GetCursorPos();
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 11));
+            ImGui::SetNextItemWidth(w - draw_pos.x);
+            if (ImGui::SliderFloat("##DurationFading",
+                                   &seconds,
+                                   0.05f,
+                                   maxi,
+                                   d < UINT_MAX ? "%.2f s" : "Auto")) {
+                if (seconds > maxi - 0.05f)
+                    d = UINT_MAX;
                 else
-                    snprintf(dummy_str, 512, "Auto");
-
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-                ImGui::InputText("##disabledduration", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                ImGui::PopStyleColor(1);
-
+                    d = (uint) floor(seconds * 1000);
             }
+            ImGui::PopStyleVar();
+            ImGui::PopFont();
 
-
-            // Action buttons
+            ///
+            /// SECTION WITH BUTTONS
+            ///
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-
-            ///
-            /// SEPARATOR
-            ///
-            ImGui::SameLine(0, 0);
+            ImGui::SetCursorPos( ImVec2(w, draw_pos.y));
             ImGui::Text("|");
 
-            // action smooth
+            /// SMOOTH Curve
             static int _actionsmooth = 0;
             ImGui::SameLine(0, 0);
             ImGui::PushButtonRepeat(true);
             if (ImGuiToolkit::ButtonIcon(2, 7, "Apply smoothing filter")){
-                tl->smoothFading( 5 );
+                tl->smoothFading( 15 );
                 ++_actionsmooth;
             }
             ImGui::PopButtonRepeat();
             if (_actionsmooth > 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-                oss << ": Timeline opacity smooth";
+                oss << ": Timeline smooth curve";
                 Action::manager().store(oss.str());
                 _actionsmooth = 0;
             }
 
+            /// CLEANUP
+            ImGui::SameLine(0, 0);
+            if (ImGuiToolkit::ButtonIcon(3, 7, "Clean curve in gaps")) {
+                tl->autoFadeInGaps();
+                oss << ": Timeline cleanup curve";
+                Action::manager().store(oss.str());
+            }
 
-            // ImGui::SameLine(0, IMGUI_SAME_LINE);
-            // ImGui::SetNextItemWidth(140); // TODO VARIABLE WIDTH
-            // ImVec2 draw_pos = ImGui::GetCursorPos();
-            // ImGui::SetCursorPosY(draw_pos.y + 8); // TODO VARIABLE H
-            // ImGuiToolkit::InputTime("##Time", &target_time);
-
-
-            ///
             /// CLEAR
-            ///
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::ButtonIcon(11, 14, "Clear Fading curve"))
+            ImGui::SameLine(0, 0);
+            if (ImGuiToolkit::ButtonIcon(11, 14, "Clear fading curve")){
                 tl->clearFading();
+                oss << ": Timeline clear fading";
+                Action::manager().store(oss.str());
+            }
 
             ImGui::PopStyleColor();
 
