@@ -1363,10 +1363,7 @@ void SourceControlWindow::DrawSource(Source *s, ImVec2 framesize, ImVec2 top_ima
     ImVec2 slider = framesize * ImVec2(Settings::application.widget.media_player_slider,1.f);
 
     // draw pre and post-processed parts if necessary
-    if ( (mediaplayer_active_ && !mediaplayer_active_->timeline()->fadingIsClear())||
-        s->imageProcessingEnabled() ||
-        s->textureTransformed() ||
-        s->icon() == glm::ivec2(ICON_SOURCE_CLONE))
+    if ( s->texturePostProcessed() )
     {
         //
         // LEFT of slider  : original texture
@@ -2100,8 +2097,8 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         // loop modes button
         ImGui::SameLine(0, h_space_);
         static int current_loop = 0;
-        static std::vector< std::pair<int, int> > icons_loop = { {0,15}, {1,15}, {19,14} };
-        static std::vector< std::string > tooltips_loop = { "Stop at end", "Loop to start", "Bounce (reverse speed)" };
+        static std::vector< std::pair<int, int> > icons_loop = { {0, 15}, {1, 15}, {19, 14}, {18, 14} };
+        static std::vector< std::string > tooltips_loop = { "Stop at end", "Loop to start", "Bounce (reverse speed)", "Stop and blackout at end" };
         current_loop = (int) mediaplayer_active_->loop();
         if ( ImGuiToolkit::IconMultistate(icons_loop, &current_loop, tooltips_loop) )
             mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );

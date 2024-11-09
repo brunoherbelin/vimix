@@ -436,6 +436,11 @@ void SessionVisitor::visit(MediaPlayer &n)
 
     if (!n.singleFrame()) {
         newelement->SetAttribute("loop", (int) n.loop());
+        // special case; if media player stopped by loop (not by user)
+        // then override the play status of the Source to play the video
+        if (n.loopStatus() != MediaPlayer::LOOP_STATUS_DEFAULT)
+            xmlCurrent_->SetAttribute("play", true );
+
         newelement->SetAttribute("speed", n.playSpeed());
         newelement->SetAttribute("video_effect", n.videoEffect().c_str());
         newelement->SetAttribute("software_decoding", n.softwareDecodingForced());

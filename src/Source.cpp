@@ -542,7 +542,7 @@ bool Source::textureMirrored ()
     return texturesurface_->mirrorTexture();
 }
 
-bool Source::imageProcessingEnabled()
+bool Source::imageProcessingEnabled() const
 {
     return ( renderingshader_ == processingshader_ );
 }
@@ -733,8 +733,11 @@ bool Source::visible() const
 }
 
 
-bool Source::textureTransformed () const
+bool Source::texturePostProcessed () const
 {
+    if (imageProcessingEnabled())
+        return true;
+
     return frame()->projectionArea() != glm::vec4(-1.f, 1.f, 1.f, -1.f) ||       // cropped
            group(View::TEXTURE)->rotation_.z != 0.f ||          // rotation
            group(View::TEXTURE)->scale_ != glm::vec3(1.f) ||    // scaled

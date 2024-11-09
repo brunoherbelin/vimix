@@ -28,6 +28,7 @@ public:
     void render() override;
     glm::ivec2 icon() const override;
     std::string info() const override;
+    bool texturePostProcessed() const override { return true; }
 
     // implementation of cloning mechanism
     void detach();

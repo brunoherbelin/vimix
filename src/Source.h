@@ -134,7 +134,7 @@ public:
     // the image processing shader can be enabled or disabled
     // (NB: when disabled, a simple ImageShader is applied)
     void setImageProcessingEnabled (bool on);
-    bool imageProcessingEnabled ();
+    bool imageProcessingEnabled () const;
 
     // a Source has a shader to control mixing effects
     inline ImageShader *blendingShader () const { return blendingshader_; }
@@ -223,7 +223,7 @@ public:
     float depth () const;
     float alpha () const;
     bool visible() const;
-    bool textureTransformed () const;
+    virtual bool texturePostProcessed () const;
 
     // groups for mixing
     MixingGroup *mixingGroup() const { return mixinggroup_; }

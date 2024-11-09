@@ -76,6 +76,7 @@ MediaPlayer::MediaPlayer()
     video_filter_available_ = true;
     position_ = GST_CLOCK_TIME_NONE;
     loop_ = LoopMode::LOOP_REWIND;
+    loop_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
     fading_mode_ = FadingMode::FADING_COLOR;
 
     // start index in frame_ stack
@@ -980,6 +981,9 @@ void MediaPlayer::execute_play_command(bool on)
         Log::Info("MediaPlayer %s Stop [%ld]", std::to_string(id_).c_str(), position());
 #endif
 
+    // Revert loop status to default when playing
+    if (on)
+        loop_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
 }
 
 void MediaPlayer::play(bool on)
@@ -1399,7 +1403,12 @@ void MediaPlayer::execute_loop_command()
         rate_ *= -1.f;
         execute_seek_command();
     }
-    else { //LOOP_NONE
+    else {
+        if (loop_ == LOOP_BLACKOUT)
+            loop_status_ = LoopStatus::LOOP_STATUS_BLACKOUT;
+        else
+            loop_status_ = LoopStatus::LOOP_STATUS_STOPPED;
+        // stop
         play(false);
     }
 }
@@ -1538,6 +1547,9 @@ Timeline *MediaPlayer::timeline()
 
 float MediaPlayer::currentTimelineFading()
 {
+    if (loop_status_ == LOOP_STATUS_BLACKOUT && !isPlaying())
+        return 0.f;
+
     return timeline_.fadingAt(position_);
 }
 

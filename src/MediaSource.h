@@ -25,6 +25,7 @@ public:
     uint texture() const override;
     void accept (Visitor& v) override;
     void updateAudio() override;
+    bool texturePostProcessed () const override;
 
     // Media specific interface
     void setPath(const std::string &p);
