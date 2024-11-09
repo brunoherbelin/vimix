@@ -853,7 +853,7 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
 
     // PLOT of opacity is inside the bbox, at the top
     const ImVec2 plot_pos = frame_pos + style.FramePadding;
-    const ImRect plot_bbox( plot_pos, plot_pos + ImVec2(timeline_size.x, frame_size.y - 2.f * style.FramePadding.y - timeline_size.y));
+    const ImRect plot_bbox( plot_pos, plot_pos + ImVec2(timeline_size.x, frame_size.y - 4.f * style.FramePadding.y - timeline_size.y));
 
     //
     // THIRD RENDER
@@ -2037,7 +2037,6 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ///
         /// media player buttons bar (custom)
         ///
-
         bottom.x = top.x;
         bottom.y += 2.f * timeline_height_ + scrollbar_;
 
@@ -2143,16 +2142,21 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
     }
     else {
-
+        ///
+        /// Disabled areas for timeline and button bar
+        ///
+        // disabled timeline
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.f));
-
         const ImGuiContext& g = *GImGui;
         const double width_ratio = static_cast<double>(scrollwindow.x - slider_zoom_width + g.Style.FramePadding.x ) / static_cast<double>(mediaplayer_active_->timeline()->sectionsDuration());
         DrawTimeline("##timeline_mediaplayers", mediaplayer_active_->timeline(), mediaplayer_active_->position(), width_ratio, 2.f * timeline_height_);
 
-        ///
-        /// Play button bar
-        ///
+        // disabled area for timeline actions and zoom
+        bottom += ImVec2(scrollwindow.x + 2.f, 0.f);
+        draw_list->AddRectFilled(bottom, bottom + ImVec2(slider_zoom_width, 2.f * timeline_height_ -1.f),
+                                 ImGui::GetColorU32(ImGuiCol_FrameBgActive));
+        // disabled button bar
+        bottom.x = top.x;
         bottom.y += 2.f * timeline_height_ + scrollbar_;
         DrawButtonBar(bottom, rendersize.x);
     }
@@ -2195,7 +2199,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     ///
     /// Window area to edit gaps or fading
     ///
-    if (mediaplayer_edit_panel_) {
+    if (mediaplayer_edit_panel_ && mediaplayer_active_->isEnabled()) {
 
         const ImVec2 gap_dialog_size(buttons_width_ * 3.0f, buttons_height_ * 1.42);
         const ImVec2 gap_dialog_pos = rendersize + ImVec2(h_space_, buttons_height_) - gap_dialog_size;
