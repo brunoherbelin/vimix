@@ -25,6 +25,10 @@
     <image type="source">https://brunoherbelin.github.io/vimix/vimix_screenshot_2.png</image>
   </screenshot>
   </screenshots>
+  <branding>
+    <color type="primary" scheme_preference="light">#303030</color>
+    <color type="primary" scheme_preference="dark">#181818</color>
+  </branding>
   <provides>
     <binary>vimix</binary>
   </provides>
