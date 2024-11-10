@@ -1019,8 +1019,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             // prepare overlay frame showing full image size
             glm::vec3 _c_s = glm::vec3(s->stored_status_->crop_[0]
                                                        - s->stored_status_->crop_[1],
-                                                   s->stored_status_->crop_[3]
-                                                       - s->stored_status_->crop_[2],
+                                                   s->stored_status_->crop_[2]
+                                                       - s->stored_status_->crop_[3],
                                                    2.f)
                                          * 0.5f;
             overlay_crop_->scale_ = s->stored_status_->scale_ / _c_s;
@@ -1028,7 +1028,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             overlay_crop_->rotation_.z = s->stored_status_->rotation_.z;
             overlay_crop_->translation_ = s->stored_status_->translation_;
             glm::vec3 _t((s->stored_status_->crop_[1] + _c_s.x) * overlay_crop_->scale_.x,
-                         -s->stored_status_->crop_[3] + _c_s.y, 0.f);
+                         (-s->stored_status_->crop_[2] + _c_s.y) * overlay_crop_->scale_.y, 0.f);
             _t = glm::rotate(glm::identity<glm::mat4>(),
                              overlay_crop_->rotation_.z,
                              glm::vec3(0.f, 0.f, 1.f))
@@ -1112,8 +1112,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             // prepare overlay frame showing full image size
             glm::vec3 _c_s = glm::vec3(s->stored_status_->crop_[0]
                                            - s->stored_status_->crop_[1],
-                                       s->stored_status_->crop_[3]
-                                           - s->stored_status_->crop_[2],
+                                       s->stored_status_->crop_[2]
+                                           - s->stored_status_->crop_[3],
                                        2.f)
                              * 0.5f;
             overlay_crop_->scale_ = s->stored_status_->scale_ / _c_s;
@@ -1121,7 +1121,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             overlay_crop_->rotation_.z = s->stored_status_->rotation_.z;
             overlay_crop_->translation_ = s->stored_status_->translation_;
             glm::vec3 _t((s->stored_status_->crop_[1] + _c_s.x) * overlay_crop_->scale_.x,
-                         -s->stored_status_->crop_[3] + _c_s.y, 0.f);
+                         (-s->stored_status_->crop_[2] + _c_s.y) * overlay_crop_->scale_.y, 0.f);
             _t = glm::rotate(glm::identity<glm::mat4>(),
                              overlay_crop_->rotation_.z,
                              glm::vec3(0.f, 0.f, 1.f))
