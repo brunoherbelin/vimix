@@ -298,6 +298,7 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
             }
             // pick the initials: show in panel
             else if ( pick.first == s->initial_1_ ) {
+                UserInterface::manager().showPannel(Mixer::manager().indexCurrentSource());
                 UserInterface::manager().setSourceInPanel(s);
             }
             // pick blending icon

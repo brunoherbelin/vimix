@@ -3,7 +3,7 @@
 <component type="desktop-application">
   <id>io.github.brunoherbelin.Vimix</id>
   <launchable type="desktop-id">vimix.desktop</launchable>
-  <name>vimix</name>
+  <name>Vimix</name>
   <summary>Video live mixer</summary>
   <description>
     <p>vimix performs graphical mixing and blending of several movie clips and
@@ -25,6 +25,10 @@
     <image type="source">https://brunoherbelin.github.io/vimix/vimix_screenshot_2.png</image>
   </screenshot>
   </screenshots>
+  <branding>
+    <color type="primary" scheme_preference="light">#303030</color>
+    <color type="primary" scheme_preference="dark">#181818</color>
+  </branding>
   <provides>
     <binary>vimix</binary>
   </provides>
