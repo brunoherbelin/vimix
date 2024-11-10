@@ -494,7 +494,8 @@ void SetDepth::accept(Visitor& v)
     v.visit(*this);
 }
 
-Play::Play(bool on, bool revert) : SourceCallback(), play_(on), bidirectional_(revert)
+Play::Play(bool on, Session *parentsession, bool revert) : SourceCallback(),
+    session_(parentsession), play_(on), bidirectional_(revert)
 {
 }
 
@@ -503,7 +504,8 @@ void Play::update(Source *s, float dt)
     SourceCallback::update(s, dt);
 
     // toggle play status when ready
-    if ( status_ == READY && s->ready() ){
+    if ( status_ == READY && s->ready() &&
+        (session_ ? session_->ready() : true) ){
 
         if (s->playing() != play_)
             // call play function
@@ -516,7 +518,7 @@ void Play::update(Source *s, float dt)
 
 SourceCallback *Play::clone() const
 {
-    return new Play(play_, bidirectional_);
+    return new Play(play_, session_, bidirectional_);
 }
 
 SourceCallback *Play::reverse(Source *s) const

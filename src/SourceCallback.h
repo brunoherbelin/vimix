@@ -212,11 +212,12 @@ public:
 
 class Play : public SourceCallback
 {
+    class Session *session_;
     bool play_;
     bool bidirectional_;
 
 public:
-    Play (bool on = true, bool revert = false);
+    Play (bool on = true, Session *parentsession = nullptr, bool revert = false);
 
     bool value () const { return play_;}
     void setValue (bool on) { play_ = on; }
