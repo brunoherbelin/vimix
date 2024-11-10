@@ -157,7 +157,7 @@ void ValueSourceCallback::update(Source *s, float dt)
     }
 
     // update when active
-    if ( status_ == ACTIVE ) {
+    if ( status_ == ACTIVE && s->ready() ) {
 
         // time passed since start
         float progress = elapsed_ - delay_;
@@ -503,7 +503,7 @@ void Play::update(Source *s, float dt)
     SourceCallback::update(s, dt);
 
     // toggle play status when ready
-    if ( status_ == READY ){
+    if ( status_ == READY && s->ready() ){
 
         if (s->playing() != play_)
             // call play function
@@ -574,7 +574,7 @@ void PlaySpeed::writeValue(Source *s, float val)
 {
     // access media player if target source is a media source
     MediaSource *ms = dynamic_cast<MediaSource *>(s);
-    if (ms != nullptr && ms->ready()) {
+    if (ms != nullptr) {
         ms->mediaplayer()->setPlaySpeed((double) val);
     }
 }
