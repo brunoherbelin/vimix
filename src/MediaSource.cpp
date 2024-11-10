@@ -49,7 +49,6 @@ void MediaSource::setPath(const std::string &p)
 
     // open gstreamer
     mediaplayer_->open(path_);
-    mediaplayer_->play(true);
 
     // will be ready after init and one frame rendered
     ready_ = false;
@@ -243,3 +242,13 @@ void MediaSource::accept(Visitor& v)
     Source::accept(v);
     v.visit(*this);
 }
+
+bool MediaSource::texturePostProcessed() const
+{
+    if (Source::texturePostProcessed())
+        return true;
+
+    return !mediaplayer_->timeline()->fadingIsClear() ||
+           mediaplayer_->loopStatus() == MediaPlayer::LOOP_STATUS_BLACKOUT;
+}
+

@@ -76,6 +76,7 @@ MediaPlayer::MediaPlayer()
     video_filter_available_ = true;
     position_ = GST_CLOCK_TIME_NONE;
     loop_ = LoopMode::LOOP_REWIND;
+    loop_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
     fading_mode_ = FadingMode::FADING_COLOR;
 
     // start index in frame_ stack
@@ -513,13 +514,13 @@ void MediaPlayer::execute_open()
     if (media_.hasaudio)
         Log::Info("MediaPlayer %s Audio track %s", std::to_string(id_).c_str(), audio_enabled_ ? "enabled" : "disabled");
 
-    opened_ = true;
-
     // keep name in pipeline
     gst_element_set_name(pipeline_, std::to_string(id_).c_str());
 
     // register media player
     MediaPlayer::registered_.push_back(pipeline_);
+
+    opened_ = true;
 }
 
 #else
@@ -956,7 +957,7 @@ void MediaPlayer::execute_play_command(bool on)
     desired_state_ = requested_state;
 
     // if not ready yet, the requested state will be handled later
-    if ( pipeline_ == nullptr )
+    if ( !opened_ || pipeline_ == nullptr )
         return;
 
     // requesting to play, but stopped at end of stream : rewind first !
@@ -980,6 +981,9 @@ void MediaPlayer::execute_play_command(bool on)
         Log::Info("MediaPlayer %s Stop [%ld]", std::to_string(id_).c_str(), position());
 #endif
 
+    // Revert loop status to default when playing
+    if (on)
+        loop_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
 }
 
 void MediaPlayer::play(bool on)
@@ -992,6 +996,7 @@ void MediaPlayer::play(bool on)
     if (metro_sync_ > Metronome::SYNC_NONE) {
         // busy with this delayed action
         pending_ = true;
+
         // delayed execution function
          std::function<void()> playlater = std::bind([](MediaPlayer *p, bool o) {
                  p->execute_play_command(o); p->pending_=false; }, this, on);
@@ -1013,7 +1018,7 @@ bool MediaPlayer::isPlaying(bool testpipeline) const
         return false;
 
     // if not ready yet, answer with requested state
-    if ( !testpipeline || pipeline_ == nullptr || !enabled_)
+    if ( !testpipeline || !opened_ || pipeline_ == nullptr || !enabled_)
         return desired_state_ == GST_STATE_PLAYING;
 
     // if ready, answer with actual state
@@ -1399,14 +1404,19 @@ void MediaPlayer::execute_loop_command()
         rate_ *= -1.f;
         execute_seek_command();
     }
-    else { //LOOP_NONE
+    else {
+        if (loop_ == LOOP_BLACKOUT)
+            loop_status_ = LoopStatus::LOOP_STATUS_BLACKOUT;
+        else
+            loop_status_ = LoopStatus::LOOP_STATUS_STOPPED;
+        // stop
         play(false);
     }
 }
 
 void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
 {
-    if ( pipeline_ == nullptr || !media_.seekable )
+    if ( !opened_ || pipeline_ == nullptr || !media_.seekable )
         return;
 
     // ignore request to current position
@@ -1420,15 +1430,12 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     int seek_flags = GST_SEEK_FLAG_FLUSH;
 
     // no target given
-    if (target == GST_CLOCK_TIME_NONE) {
+    if (target == GST_CLOCK_TIME_NONE)
         // create seek event with current position (called for rate changed)
         // CLAMP the time to ensure we do not bounce outside of timeline
         seek_pos = CLAMP(position_, timeline_.first(), timeline_.last() - timeline_.step());
-        // seek with KEY mode if playing
-        seek_flags |= GST_SEEK_FLAG_KEY_UNIT | GST_SEEK_FLAG_SNAP_AFTER;
-    }
     else
-        // seek with accurate timing if paused
+        // seek with accurate timing if given target
         seek_flags |= GST_SEEK_FLAG_ACCURATE;
 
     // create seek event depending on direction
@@ -1538,6 +1545,9 @@ Timeline *MediaPlayer::timeline()
 
 float MediaPlayer::currentTimelineFading()
 {
+    if (loop_status_ == LOOP_STATUS_BLACKOUT && !isPlaying())
+        return 0.f;
+
     return timeline_.fadingAt(position_);
 }
 
@@ -1748,7 +1758,7 @@ void MediaPlayer::setAudioEnabled(bool on)
         // toggle
         audio_enabled_ = on;
         // if openned
-        if (media_.hasaudio ) {
+        if ( media_.hasaudio && opened_) {
             // apply
             reopen();
         }

@@ -1047,7 +1047,7 @@ void SessionLoader::visit (Source& s)
     s.call( new Lock(l) );
     bool p = true;
     sourceNode->QueryBoolAttribute("play", &p);
-    s.call( new Play(p) );
+    s.call( new Play(p, session_) );
 
     xmlCurrent_ = sourceNode->FirstChildElement("Mixing");
     if (xmlCurrent_) s.groupNode(View::MIXING)->accept(*this);
@@ -1150,7 +1150,7 @@ void SessionLoader::visit (MediaSource& s)
     s.mediaplayer()->accept(*this);
 
     // add a callback to activate play speed
-    s.call( new PlaySpeed( s.mediaplayer()->playSpeed(), 300 ) );
+    s.call( new PlaySpeed( s.mediaplayer()->playSpeed() ) );
 }
 
 void SessionLoader::visit (SessionFileSource& s)

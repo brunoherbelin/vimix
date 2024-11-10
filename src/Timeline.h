@@ -165,7 +165,10 @@ public:
     void fadeIn(const GstClockTime from, const GstClockTime duration, FadingCurve curve = FADING_SHARP);
     void fadeOut(const GstClockTime to, const GstClockTime duration, FadingCurve curve = FADING_SHARP);
     void fadeInOutRange(const GstClockTime t, const GstClockTime duration, bool in_and_out, FadingCurve curve = FADING_SHARP);
-    bool autoCut();
+
+    // link Fading and Gaps
+    bool autoGapInFade();
+    void autoFadeInGaps();
 
 private:
 

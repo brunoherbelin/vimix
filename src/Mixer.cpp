@@ -300,6 +300,7 @@ Source * Mixer::createSourceFile(const std::string &path, bool disable_hw_decodi
             MediaSource *ms = new MediaSource;
             ms->mediaplayer()->setSoftwareDecodingForced(disable_hw_decoding);
             ms->setPath(path);
+            ms->play(true);
             s = ms;
         }
         // propose a new name based on uri

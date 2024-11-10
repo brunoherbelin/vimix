@@ -151,7 +151,8 @@ public:
     typedef enum {
         LOOP_NONE = 0,
         LOOP_REWIND = 1,
-        LOOP_BIDIRECTIONAL = 2
+        LOOP_BIDIRECTIONAL = 2,
+        LOOP_BLACKOUT = 3
     } LoopMode;
     /**
      * Get the current loop mode
@@ -161,6 +162,12 @@ public:
      * Set the loop mode
      * */
     void setLoop(LoopMode mode);
+
+    typedef enum { LOOP_STATUS_DEFAULT = 0,
+                   LOOP_STATUS_STOPPED = 1,
+                   LOOP_STATUS_BLACKOUT = 2
+    } LoopStatus;
+    LoopStatus loopStatus() const { return loop_status_; }
     /**
      * Step when paused
      * (aka next frame)
@@ -320,6 +327,7 @@ private:
     // GST & Play status
     GstClockTime position_;
     LoopMode loop_;
+    LoopStatus loop_status_;
     GstState desired_state_;
     GstElement *pipeline_;
     GstBus *bus_;
