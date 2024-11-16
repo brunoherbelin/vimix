@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of vimix - video live mixer
  *
  * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
@@ -435,7 +435,8 @@ FilteringProgram ImageFilter::program () const
 }
 
 #define REGEX_UNIFORM_DECLARATION "uniform\\s+float\\s+"
-#define REGEX_UNIFORM_VALUE "(\\s*=\\s*[[:digit:]](\\.[[:digit:]])?)?\\s*\\;"
+#define REGEX_VARIABLE_NAME "[a-zA-Z_][\\w]+"
+#define REGEX_UNIFORM_VALUE "(\\s*=\\s*[[:digit:]]+(\\.[[:digit:]]*)?)?\\s*\\;"
 
 void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string> *ret)
 {
@@ -453,7 +454,7 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
     // Search for "uniform float", a variable name, with possibly a '=' and float value
     std::string glslcode(codes.first);
     std::smatch found_uniform;
-    std::regex is_a_uniform(REGEX_UNIFORM_DECLARATION "[[:alpha:]]+" REGEX_UNIFORM_VALUE);
+    std::regex is_a_uniform(REGEX_UNIFORM_DECLARATION REGEX_VARIABLE_NAME REGEX_UNIFORM_VALUE);
     // loop over every uniform declarations in the GLSL code
     while (std::regex_search(glslcode, found_uniform, is_a_uniform)) {
         // found a complete declaration of uniform variable
@@ -468,9 +469,12 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
 
         // try to find a value in uniform declaration, and set parameter value if valid
         float val = 0.f;
+        std::string valuestring =
+            std::regex_replace(declaration,std::regex(REGEX_UNIFORM_DECLARATION),"");
+        valuestring = std::regex_replace(valuestring, std::regex(REGEX_VARIABLE_NAME),"");
         std::smatch found_value;
-        std::regex is_a_float_value("[[:digit:]](\\.[[:digit:]])?");
-        if (std::regex_search(declaration, found_value, is_a_float_value)) {
+        std::regex is_a_float_value("[[:digit:]]+(\\.[[:digit:]]*)?");
+        if (std::regex_search(valuestring, found_value, is_a_float_value)) {
             // set value only if a value is given
             if ( BaseToolkit::is_a_value(found_value.str(), &val) )
                 program_.setParameter(varname, val);

@@ -109,6 +109,7 @@ void ShaderEditWindow::BuildShader()
 
         // set the code of the current filter
         filters_[current_].setCode( { _editor.GetText(), "" } );
+        filters_[current_].clearParameters();
 
         // filter changed, cannot be named as before
         filters_[current_].setName("Custom");

@@ -56,6 +56,7 @@ public:
     inline std::map< std::string, float > parameters() const { return parameters_; }
 
     // set the value of a parameter
+    inline void clearParameters() { parameters_.clear(); }
     inline void setParameter(const std::string &p, float value) { parameters_[p] = value; }
     bool hasParameter(const std::string &p);
     void removeParameter(const std::string &p);
