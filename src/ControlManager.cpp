@@ -35,7 +35,6 @@
 #include "Mixer.h"
 #include "Source.h"
 #include "TextSource.h"
-#include "CloneSource.h"
 #include "SourceCallback.h"
 #include "ImageProcessingShader.h"
 #include "ActionManager.h"
@@ -1278,6 +1277,10 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::str
         play  = _s->playing() ? 1.f : 0.f;
         depth = _s->depth();
         alpha = _s->alpha();
+        // return negative alpha from mixing coordinates to match Alpha() source callback behavior
+        float dist = glm::length( glm::vec2(_s->group(View::MIXING)->translation_) );
+        if (dist > 1.f)
+            alpha = -1.f * (dist -1.f);
     }
 
     // build socket to send message to indicated endpoint
