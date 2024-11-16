@@ -5560,9 +5560,20 @@ void Navigator::RenderMainPannelPlaylist()
     ImGuiToolkit::HelpToolTip("Double-clic on a filename to open the session.\n\n"
                               ICON_FA_ARROW_CIRCLE_RIGHT "  enable Smooth transition "
                                                          "to perform a cross fading with the current session.");
+
     // toggle button for smooth transition
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - ImGui::GetFrameHeightWithSpacing()) );
     ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition, "Smooth transition");
+
+    // transition mode icon if enabled
+    if (Settings::application.smooth_transition) {
+        const char *tooltip[2] = {"Fade to black", "Cross fading"};
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (Mixer::manager().session()->fading() > 0.01)
+            ImGuiToolkit::Icon(9, 8, false);
+        else
+            ImGuiToolkit::IconToggle(9, 8, 0, 8, &Settings::application.transition.cross_fade, tooltip );
+    }
 
     //
     // Popup window to create playlist
