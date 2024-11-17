@@ -30,10 +30,12 @@ Download and install a released [flatpak package](https://flathub.org/apps/detai
 
     flatpak install --user vimix
     
-NB: Building your flatpak package is an option for testing the latest beta version from git ; instructions are [here](https://github.com/brunoherbelin/vimix/tree/master/flatpak).
+NB: Build your flatpak package to get the latest beta version; instructions are [here](https://github.com/brunoherbelin/vimix/tree/master/flatpak).
     
 
-Download and install a released [snap package](https://snapcraft.io/vimix)  (slower release frequency)
+[![vimix](https://snapcraft.io/vimix/badge.svg)](https://snapcraft.io/vimix)
+
+Download and install a released [snap package](https://snapcraft.io/vimix) 
 
     snap install vimix
     

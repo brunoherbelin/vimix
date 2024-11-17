@@ -18,6 +18,7 @@ Publishing new a release
 - Test the snap for Beta
 
 - Merge Beta into origin/master
+- push origin/master
 - Create Release & Tag in https://github.com/brunoherbelin/vimix
   Document new features and major bugfixes
 
