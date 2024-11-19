@@ -1023,6 +1023,29 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             // operate on source
             target->call( new SetFilter(filter_name, filter_method, filter_value, t), true);
         }
+        /// e.g. '/vimix/current/blending s screen'
+        ///      '/vimix/current/blending i 1'
+        else if (attribute.compare(OSC_SOURCE_BLENDING) == 0) {
+            int mode = Shader::BLEND_NONE;
+            std::string blend_mode;
+            osc::ReceivedMessageArgumentStream args = arguments;
+            try {
+                arguments >> mode >> osc::EndMessage;
+                if (mode >= 0 && mode < Shader::BLEND_NONE)
+                    blend_mode = std::get<2>(Shader::blendingFunction[mode]);
+            }
+            // ignore invalid or Nil types
+            catch (osc::WrongArgumentTypeException &) {
+                mode = Shader::BLEND_NONE;
+            }
+            if (mode == Shader::BLEND_NONE) {
+                const char *str = nullptr;
+                args >> str >> osc::EndMessage;
+                blend_mode = std::string(str);
+            }
+            // operate on source
+            target->call( new SetBlending(blend_mode), true);
+        }
         /// e.g. '/vimix/name/sync'
         else if ( attribute.compare(OSC_SYNC) == 0) {
             // this will require to send feedback status about source

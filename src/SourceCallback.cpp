@@ -1417,3 +1417,50 @@ void SetFilterUniform::accept(Visitor& v)
     SourceCallback::accept(v);
     v.visit(*this);
 }
+
+SetBlending::SetBlending(const std::string &method)
+    : SourceCallback()
+    , target_method_(method)
+{}
+
+void SetBlending::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+
+    // set method on first time it is ready and finish
+    if (status_ == READY) {
+        if (!target_method_.empty()) {
+
+            // find blending mode ID of the blending name provided, if valid
+            size_t __t = Shader::BLEND_OPACITY;
+            for (; __t != Shader::BLEND_NONE; __t++) {
+                // get blending label, in lower case
+                std::string _b = std::get<2>(Shader::blendingFunction[__t]);
+                std::transform(_b.begin(), _b.end(), _b.begin(), ::tolower);
+                std::transform(target_method_.begin(), target_method_.end(), target_method_.begin(), ::tolower);
+                // end search if found same as target blending name (success)
+                if (target_method_.compare(_b) == 0)
+                    break;
+            }
+
+            // Provided blending name is valid
+            Shader::BlendMode __mode = Shader::BlendMode(__t);
+            if (__mode != Shader::BLEND_NONE) {
+                // change mode if different from source
+                if (s->blendingShader()->blending != __mode)
+                    s->blendingShader()->blending = __mode;
+            }
+            else
+                Log::Info("Blending : unknown mode '%s'", target_method_.c_str());
+        }
+        else
+            Log::Info("Blending : Invalid mode", target_method_.c_str());
+
+        status_ = FINISHED;
+    }
+}
+
+SourceCallback *SetBlending::clone() const
+{
+    return new SetBlending(target_method_);
+}

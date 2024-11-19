@@ -52,7 +52,8 @@ public:
         CALLBACK_INVERT,
         CALLBACK_POSTERIZE,
         CALLBACK_FILTER,
-        CALLBACK_FILTER_UNIFORM
+        CALLBACK_FILTER_UNIFORM,
+        CALLBACK_BLENDING
     } CallbackType;
 
     static SourceCallback *create(CallbackType type);
@@ -531,6 +532,22 @@ public:
     SourceCallback *clone () const override;
     CallbackType type () const override { return CALLBACK_FILTER_UNIFORM; }
     void accept (Visitor& v) override;
+};
+
+class SetBlending : public SourceCallback
+{
+    std::string target_method_;
+
+public:
+    SetBlending(int m = 0);
+    SetBlending(const std::string &method = std::string());
+
+    std::string method() const { return target_method_; }
+    void setMethod(const std::string &m) { target_method_ = m; }
+
+    void update (Source *s, float) override;
+    SourceCallback *clone () const override;
+    CallbackType type () const override { return CALLBACK_BLENDING; }
 };
 
 #endif // SOURCECALLBACK_H

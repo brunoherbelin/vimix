@@ -32,6 +32,8 @@
 #define OSC_CURRENT            "/current"
 #define OSC_NEXT               "/next"
 #define OSC_PREVIOUS           "/previous"
+#define OSC_METRONOME          "/metronome"
+#define OSC_METRO_SYNC         "/sync"
 
 #define OSC_SOURCE_NAME        "/name"
 #define OSC_SOURCE_RENAME      "/rename"
@@ -72,6 +74,7 @@
 #define OSC_SOURCE_TEXANGLE    "/texture_angle"
 #define OSC_SOURCE_FILTER      "/filter"
 #define OSC_SOURCE_UNIFORM     "/uniform"
+#define OSC_SOURCE_BLENDING    "/blending"
 
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"
