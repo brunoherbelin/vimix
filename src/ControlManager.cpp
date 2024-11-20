@@ -1278,6 +1278,18 @@ void Control::receiveStreamAttribute(const std::string &attribute,
 
 }
 
+float sourceAlpha(Source *s)
+{
+    float a = 0.f;
+    if (s != nullptr) {
+        a = s->alpha();
+        // return negative alpha from mixing coordinates to match Alpha() source callback behavior
+        float dist = glm::length( glm::vec2(s->group(View::MIXING)->translation_) );
+        if (dist > 1.f)
+            a = -1.f * (dist -1.f);
+    }
+    return a;
+}
 
 void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::string target, Source *s)
 {
@@ -1299,11 +1311,7 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::str
         lock  = _s->locked() ? 1.f : 0.f;
         play  = _s->playing() ? 1.f : 0.f;
         depth = _s->depth();
-        alpha = _s->alpha();
-        // return negative alpha from mixing coordinates to match Alpha() source callback behavior
-        float dist = glm::length( glm::vec2(_s->group(View::MIXING)->translation_) );
-        if (dist > 1.f)
-            alpha = -1.f * (dist -1.f);
+        alpha = sourceAlpha(_s);
     }
 
     // build socket to send message to indicated endpoint
@@ -1370,7 +1378,7 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
 
         // send status of alpha
         snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
-        p << osc::BeginMessage( oscaddr ) << Mixer::manager().sourceAtIndex(i)->alpha() << osc::EndMessage;
+        p << osc::BeginMessage( oscaddr ) << sourceAlpha(Mixer::manager().sourceAtIndex(i)) << osc::EndMessage;
 
         // send name
         snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
@@ -1437,7 +1445,7 @@ void Control::sendBatchStatus(const IpEndpointName &remoteEndpoint)
         for (auto id = plit->begin(); id != plit->end(); ++id) {
             SourceList::iterator s = _session->find( *id );
             if (s != _session->end() )
-                p << (*s)->alpha();
+                p << sourceAlpha(*s);
         }
 
         p << osc::EndMessage;
