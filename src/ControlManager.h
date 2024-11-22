@@ -52,6 +52,7 @@
 #define OSC_SOURCE_TURN        "/turn"
 #define OSC_SOURCE_RESET       "/reset"
 #define OSC_SOURCE_POSITION    "/position"
+#define OSC_SOURCE_CORNER      "/corner"
 #define OSC_SOURCE_SIZE        "/size"
 #define OSC_SOURCE_ANGLE       "/angle"
 #define OSC_SOURCE_SEEK        "/seek"

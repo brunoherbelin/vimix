@@ -749,6 +749,37 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
                 arguments >> t >> osc::EndMessage;
             target->call( new SetGeometry( &transform, t), true );
         }
+        /// e.g. '/vimix/current/corner ffffffff 0 0 0 0 0 0 0 0'
+        else if (attribute.compare(OSC_SOURCE_CORNER) == 0) {
+            // read 8 float values
+            float corners[8] = {0.f};
+            for (size_t i = 0; i < 8; ++i) {
+                try {
+                    float val = 0.f;
+                    arguments >> val;
+                    corners[i] = val;
+                } catch (osc::WrongArgumentTypeException &) {
+                }
+            }
+            // convert to data_ matrix format
+            Group transform;
+            transform.copyTransform(target->group(View::GEOMETRY));
+            transform.data_[0].x = corners[0];
+            transform.data_[0].y = corners[1];
+            transform.data_[1].x = corners[2];
+            transform.data_[1].y = corners[3];
+            transform.data_[2].x = corners[4];
+            transform.data_[2].y = corners[5];
+            transform.data_[3].x = corners[6];
+            transform.data_[3].y = corners[7];
+            // duration argument
+            float t = 0.f;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetGeometry( &transform, t), true );
+        }
         /// e.g. '/vimix/current/resize ff 10.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_RESIZE) == 0) {
             float x = 0.f, y = 0.f, t = 0.f;

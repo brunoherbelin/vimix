@@ -762,6 +762,10 @@ void SetGeometry::update(Source *s, float dt)
             intermediate.translation_ = glm::mix(start_.translation_, target_.translation_, progress/duration_);
             intermediate.scale_ = glm::mix(start_.scale_, target_.scale_, progress/duration_);
             intermediate.rotation_ = glm::mix(start_.rotation_, target_.rotation_, progress/duration_);
+            intermediate.data_[0] = glm::mix(start_.data_[0], target_.data_[0], progress/duration_);
+            intermediate.data_[1] = glm::mix(start_.data_[1], target_.data_[1], progress/duration_);
+            intermediate.data_[2] = glm::mix(start_.data_[2], target_.data_[2], progress/duration_);
+            intermediate.data_[3] = glm::mix(start_.data_[3], target_.data_[3], progress/duration_);
             // apply geometry
             s->group(View::GEOMETRY)->copyTransform(&intermediate);
             s->touch();
