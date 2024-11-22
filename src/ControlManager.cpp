@@ -1030,9 +1030,13 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             std::string blend_mode;
             osc::ReceivedMessageArgumentStream args = arguments;
             try {
-                arguments >> mode >> osc::EndMessage;
+                float v = 0;
+                arguments >> v >> osc::EndMessage;
+                mode = round(v);
                 if (mode >= 0 && mode < Shader::BLEND_NONE)
                     blend_mode = std::get<2>(Shader::blendingFunction[mode]);
+                else
+                    mode = Shader::BLEND_NONE;
             }
             // ignore invalid or Nil types
             catch (osc::WrongArgumentTypeException &) {
