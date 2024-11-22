@@ -880,6 +880,10 @@ void Source::update(float dt)
             mixingsurface_->update(dt_);
 
             // update nodes distortion
+            groups_[View::GEOMETRY]->data_[0] = glm::clamp(groups_[View::GEOMETRY]->data_[0], glm::vec4(0.f), glm::vec4(1.f));
+            groups_[View::GEOMETRY]->data_[1] = glm::clamp(groups_[View::GEOMETRY]->data_[1], glm::vec4(0.f, -1.f, 0.f, 0.f), glm::vec4(1.f, 0.f, 1.f, 1.f));
+            groups_[View::GEOMETRY]->data_[2] = glm::clamp(groups_[View::GEOMETRY]->data_[2], glm::vec4(-1.f, 0.f, 0.f, 0.f), glm::vec4(0.f, 1.f, 1.f, 1.f));
+            groups_[View::GEOMETRY]->data_[3] = glm::clamp(groups_[View::GEOMETRY]->data_[3], glm::vec4(-1.f, -1.f, 0.f, 0.f), glm::vec4(0.f, 0.f, 1.f, 1.f));
             blendingshader_->iNodes = groups_[View::GEOMETRY]->data_;
 
             handles_[View::GEOMETRY][Handles::NODE_LOWER_LEFT]->translation_.x = groups_[View::GEOMETRY]->data_[0].x;
