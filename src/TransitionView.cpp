@@ -215,8 +215,8 @@ void TransitionView::draw()
                 const glm::vec2 pos_play = Rendering::manager().project(glm::vec3(0.f, -0.15f, 0.f), scene.root()->transform_, false);
 
                 // style grey
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.27f, 0.27f, 0.27f, 0.55f));
-                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.79f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
                 ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.27f, 0.27f, 0.27f, 0.7f));
                 ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
                 ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.10f, 0.10f, 0.10f, 1.00f));

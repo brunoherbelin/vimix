@@ -73,11 +73,12 @@ struct WindowConfig
     bool show_pattern;
     glm::vec4 whitebalance;
     glm::mat4 nodes;
+    float brightness, contrast;
 
     WindowConfig() : name(APP_TITLE), x(15), y(15), w(1280), h(720),
         fullscreen(false), custom(false), decorated(true),
         monitor(""), show_pattern(false), whitebalance(glm::vec4(1.f, 1.f, 1.f, 0.5f)),
-        nodes(glm::zero<glm::mat4>())
+        nodes(glm::zero<glm::mat4>()), brightness(0.f), contrast(0.f)
     { }
 
 };

@@ -111,6 +111,8 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
             window->SetAttribute("d", w.decorated);
             window->SetAttribute("m", w.monitor.c_str());
             XMLElement *tmp = xmlDoc.NewElement("whitebalance");
+            tmp->SetAttribute("brightness", w.brightness);
+            tmp->SetAttribute("contrast", w.contrast);
             tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.whitebalance) );
             window->InsertEndChild( tmp );
             tmp = xmlDoc.NewElement("nodes");
@@ -594,8 +596,11 @@ void Settings::Load(const std::string &filename)
                         w.name = APP_TITLE;
                     // vec4 values for white balance correction
                     XMLElement *tmp = windowNode->FirstChildElement("whitebalance");
-                    if (tmp)
+                    if (tmp) {
                         tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec4"), w.whitebalance);
+                        tmp->QueryFloatAttribute("brightness", &w.brightness);
+                        tmp->QueryFloatAttribute("contrast", &w.contrast);
+                    }
                     // mat4 values for custom fit distortion
                     w.nodes = glm::zero<glm::mat4>();
                     tmp = windowNode->FirstChildElement("nodes");
