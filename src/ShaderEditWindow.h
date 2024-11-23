@@ -23,6 +23,7 @@ public:
     ShaderEditWindow();
 
     void Render();
+    void Refresh();
     void setVisible(bool on);
 
     void BuildShader();

@@ -1045,7 +1045,7 @@ void ImGuiVisitor::visit (BlurFilter& f)
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    if (ImGuiToolkit::TextButton("Method ")) {
+    if (ImGuiToolkit::TextButton("Method")) {
         f.setMethod( 0 );
         oss << BlurFilter::method_label[0];
         Action::manager().store(oss.str());
@@ -1297,6 +1297,7 @@ void ImGuiVisitor::visit (ImageFilter& f)
     if (ImGuiToolkit::TextButton("Code")) {
         FilteringProgram target;
         f.setProgram( target );
+        UserInterface::manager().shadercontrol.Refresh();
     }
 
     // List of parameters
@@ -1345,6 +1346,27 @@ void ImGuiVisitor::visit (CloneSource& s)
             oss << "Filter None";
             Action::manager().store(oss.str());
             info.reset();
+        }
+        // offer option to convert to Custom shader to be able to edit code
+        if (s.filter()->type() > FrameBufferFilter::FILTER_RESAMPLE
+            && s.filter()->type() < FrameBufferFilter::FILTER_IMAGE) {
+            ImageFilter *imf = static_cast<ImageFilter *>(s.filter());
+            if (!imf->program().isTwoPass()) {
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton(ICON_FA_CODE, "Convert to custom")) {
+                    // get code and values
+                    const std::pair<std::string, std::string> code = imf->program().code();
+                    const std::map<std::string, float> param = imf->program().parameters();
+                    FilteringProgram target;
+                    target.setCode(code);
+                    target.setParameters(param);
+                    // change filter and program
+                    s.setFilter(FrameBufferFilter::FILTER_IMAGE);
+                    imf = static_cast<ImageFilter *>(s.filter());
+                    imf->setProgram(target);
+                    info.reset();
+                }
+            }
         }
 
         // filter options

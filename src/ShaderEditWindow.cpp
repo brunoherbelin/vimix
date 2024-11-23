@@ -109,7 +109,7 @@ void ShaderEditWindow::BuildShader()
 
         // set the code of the current filter
         filters_[current_].setCode( { _editor.GetText(), "" } );
-        filters_[current_].clearParameters();
+        filters_[current_].setParameters(current_->program().parameters());
 
         // filter changed, cannot be named as before
         filters_[current_].setName("Custom");
@@ -166,9 +166,7 @@ void ShaderEditWindow::Render()
             // reload code from GPU
             if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload", nullptr, nullptr, current_ != nullptr)) {
                 // force reload
-                if ( current_ != nullptr )
-                    filters_.erase(current_);
-                current_ = nullptr;
+                Refresh();
             }
 
             if (ImGui::MenuItem( ICON_FA_FILE_EXPORT "  Import code", nullptr, nullptr, current_ != nullptr))
@@ -190,10 +188,7 @@ void ShaderEditWindow::Render()
                         compilation_return_ = compilation_->get_future();
                         // inform status
                         status_ = "Building...";
-                        // force reload
-                        if ( current_ != nullptr )
-                            filters_.erase(current_);
-                        current_ = nullptr;
+                        Refresh();
                     }
                 }
                 ImGui::EndMenu();
@@ -442,3 +437,10 @@ void ShaderEditWindow::Render()
     ImGui::End();
 }
 
+void ShaderEditWindow::Refresh()
+{
+    // force reload
+    if ( current_ != nullptr )
+        filters_.erase(current_);
+    current_ = nullptr;
+}

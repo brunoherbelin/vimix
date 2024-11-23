@@ -373,7 +373,7 @@ bool ImGuiToolkit::TextButton(const char* text, const char *tooltip, const char*
 
     // button size
     ImVec2 button_size = ImGui::CalcTextSize( text );
-    button_size.x += g.Style.FramePadding.x * 2.0f;
+    button_size.x += g.Style.FramePadding.x;
     button_size.y += g.Style.FramePadding.y * 2.0f;
 
     // remember position where button starts
