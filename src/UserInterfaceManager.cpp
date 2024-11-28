@@ -1064,7 +1064,7 @@ void UserInterface::showMenuEdit()
     bool has_clipboard = (clipboard != nullptr && strlen(clipboard) > 0 && SessionLoader::isClipboard(clipboard));
 
     // UNDO
-    if ( ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, false, Action::manager().current() > 1) )
+    if ( ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, false, Action::manager().current() > Action::manager().min()) )
         Action::manager().undo();
     if ( ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO, false, Action::manager().current() < Action::manager().max()) )
         Action::manager().redo();
@@ -4898,7 +4898,7 @@ void Navigator::RenderMainPannelSession()
         static bool _tooltip = 0;
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y -ImGui::GetFrameHeight() ));
-        if ( Action::manager().current() > 1 ) {
+        if ( Action::manager().current() > Action::manager().min() ) {
             if ( ImGuiToolkit::IconButton( ICON_FA_UNDO, "Undo" ) )
                 Action::manager().undo();
         } else
@@ -4920,7 +4920,8 @@ void Navigator::RenderMainPannelSession()
             int count_over = 0;
             ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
 
-            for (uint i = Action::manager().max(); i > 0; --i) {
+            for (uint i = Action::manager().max();
+                 i >= Action::manager().min(); --i) {
 
                 if (ImGui::Selectable( Action::manager().shortlabel(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick, size )) {
                     // go to on double clic
@@ -4978,7 +4979,7 @@ void Navigator::RenderMainPannelSession()
         if ( Action::manager().max() > 1 ) {
             ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
             if (ImGuiToolkit::IconButton( 12, 14, "Clear history"))
-                Action::manager().init();
+                Action::manager().init("Reset");
         }
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));

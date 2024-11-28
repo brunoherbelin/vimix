@@ -749,7 +749,11 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
                 arguments >> t >> osc::EndMessage;
             target->call( new SetGeometry( &transform, t), true );
         }
-        /// e.g. '/vimix/current/corner ffffffff 0 0 0 0 0 0 0 0'
+        /// e.g. '/vimix/current/corner ffffffff -1 -1 -1 +1 +1 -1 +1 +1'
+        /// 1. Lower left  (-1 -1)
+        /// 2. Upper left  (-1 +1)
+        /// 3. Lower right (+1 -1)
+        /// 4. Upper right (+1 +1)
         else if (attribute.compare(OSC_SOURCE_CORNER) == 0) {
             // read 8 float values
             float corners[8] = {0.f};
@@ -764,14 +768,14 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             // convert to data_ matrix format
             Group transform;
             transform.copyTransform(target->group(View::GEOMETRY));
-            transform.data_[0].x = corners[0];
-            transform.data_[0].y = corners[1];
-            transform.data_[1].x = corners[2];
-            transform.data_[1].y = corners[3];
-            transform.data_[2].x = corners[4];
-            transform.data_[2].y = corners[5];
-            transform.data_[3].x = corners[6];
-            transform.data_[3].y = corners[7];
+            transform.data_[0].x = corners[0] + 1.f;
+            transform.data_[0].y = corners[1] + 1.f;
+            transform.data_[1].x = corners[2] + 1.f;
+            transform.data_[1].y = corners[3] - 1.f;
+            transform.data_[2].x = corners[4] - 1.f;
+            transform.data_[2].y = corners[5] + 1.f;
+            transform.data_[3].x = corners[6] - 1.f;
+            transform.data_[3].y = corners[7] - 1.f;
             // duration argument
             float t = 0.f;
             if (arguments.Eos())

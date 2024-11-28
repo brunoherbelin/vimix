@@ -1555,7 +1555,7 @@ void Mixer::swap()
     }
 
     // reset History manager
-    Action::manager().init();
+    Action::manager().init("Session start");
 
     // notification
     if (session_->filename().empty())
