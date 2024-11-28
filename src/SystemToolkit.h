@@ -87,6 +87,8 @@ namespace SystemToolkit
     // remove file and return true if the file does not exist after this call
     bool remove_file(const std::string& path);
 
+    std::string get_text_content(const std::string& path);
+
     // try to open the file with system
     void open(const std::string& path);
 

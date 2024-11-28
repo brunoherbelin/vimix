@@ -260,23 +260,19 @@ void ShaderEditWindow::Render()
 
     // File dialog Import code
     if (importcodedialog.closed() && !importcodedialog.path().empty()) {
-        // Open the file
-        std::ifstream file(importcodedialog.path());
 
-        // Check if the file is opened successfully
-        if (file.is_open()) {
-            // Read the content of the file into an std::string
-            std::string fileContent((std::istreambuf_iterator<char>(file)),
-                                    std::istreambuf_iterator<char>());
+        // link to file
 
+
+        // read and display content
+        std::string filecontent = SystemToolkit::get_text_content(importcodedialog.path());
+
+        if (!filecontent.empty()) {
             // replace text of editor
-            _editor.SetText(fileContent);
+            _editor.SetText(filecontent);
             _editor.SetReadOnly(false);
             _editor.SetColorizerEnable(true);
         }
-
-        // Close the file
-        file.close();
 
         // build with new code
         BuildShader();

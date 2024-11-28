@@ -1290,6 +1290,8 @@ void ImGuiVisitor::visit (AlphaFilter& f)
 
 void ImGuiVisitor::visit (ImageFilter& f)
 {
+
+
     // Open Editor
     if ( ImGui::Button( ICON_FA_CODE "  Open editor", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         UserInterface::manager().shadercontrol.setVisible(true);
@@ -1298,6 +1300,8 @@ void ImGuiVisitor::visit (ImageFilter& f)
         FilteringProgram target;
         f.setProgram( target );
         UserInterface::manager().shadercontrol.Refresh();
+        oss << "Shader code reset";
+        Action::manager().store(oss.str());
     }
 
     // List of parameters
