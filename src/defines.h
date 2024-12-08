@@ -256,13 +256,17 @@
 #define MENU_PLAY_BEGIN       ICON_FA_FAST_BACKWARD "  Go to Beginning"
 #define SHORTCUT_PLAY_BEGIN   CTRL_MOD "B"
 
-#define LABEL_AUTO_MEDIA_PLAYER ICON_FA_USER_CIRCLE "  User selection"
-#define LABEL_STORE_SELECTION "  Create batch"
+#define LABEL_PLAYER_SELECTION ICON_FA_USER_CIRCLE "  User selection"
+#define LABEL_PLAYER_BATCH    ICON_FA_CHECK_CIRCLE "  Batch #"
+#define LABEL_PLAYER_BATCH_ADD "  Add batch"
+#define LABEL_PLAYER_TIMELINE_ADD    "Add timeline"
 #define LABEL_EDIT_FADING     ICON_FA_RANDOM "  Edit timeline fading"
 #define LABEL_EDIT_GAPS       ICON_FA_CUT "  Cut timeline"
 #define LABEL_VIDEO_SEQUENCE  "  Encode an image sequence"
-#define LABEL_ADD_TIMELINE    "Add timeline"
 #define DIALOG_TIMELINE_DURATION    ICON_FA_HOURGLASS_HALF " Set timeline duration"
 #define DIALOG_GST_EFFECT     "Gstreamer Video effect"
+#define LABEL_SHADER_EMBEDDED ICON_FA_FILE_ALT "  Embedded code"
+#define LABEL_SHADER_SAVE     ICON_FA_FILE_DOWNLOAD "  Save as"
+#define LABEL_SHADER_ADD      ICON_FA_FILE_MEDICAL  "  Load"
 
 #endif // VMIX_DEFINES_H
