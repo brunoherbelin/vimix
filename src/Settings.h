@@ -339,6 +339,7 @@ struct Application
     History recentImport;
     History recentImportFolders;
     History recentRecordings;
+    History recentShaderCode;
     std::map< std::string, std::string > dialogRecentFolder;
     glm::ivec2 dialogPosition;
 

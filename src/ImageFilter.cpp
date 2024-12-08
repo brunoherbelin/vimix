@@ -28,6 +28,7 @@
 #include "FrameBuffer.h"
 #include "Primitives.h"
 #include "BaseToolkit.h"
+#include "SystemToolkit.h"
 
 #include "Mixer.h"
 
@@ -141,6 +142,9 @@ std::pair< std::string, std::string > FilteringProgram::code()
         code_.first = Resource::getText(code_.first);
     if (Resource::hasPath(code_.second))
         code_.second = Resource::getText(code_.second);
+
+    // if (SystemToolkit::file_exists(code_.first))
+    //     code_.first = SystemToolkit::get_text_content(code_.first);
 
     return code_;
 }
@@ -448,11 +452,14 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
 
     // FIRST PASS
     // set code to the shader for first-pass
-    shaders_.first->setCode( codes.first, ret );
+    std::string __code = codes.first;
+    if (SystemToolkit::file_exists(__code))
+        __code = SystemToolkit::get_text_content(__code);
+    shaders_.first->setCode( __code, ret );
 
     // Parse code to detect additional declaration of uniform variables
     // Search for "uniform float", a variable name, with possibly a '=' and float value
-    std::string glslcode(codes.first);
+    std::string glslcode(__code);
     std::smatch found_uniform;
     std::regex is_a_uniform(REGEX_UNIFORM_DECLARATION REGEX_VARIABLE_NAME REGEX_UNIFORM_VALUE);
     // loop over every uniform declarations in the GLSL code

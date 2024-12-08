@@ -285,6 +285,9 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
         // recent recordings
         recent->InsertEndChild( save_history(application.recentRecordings, "Record", xmlDoc));
 
+        // recent shader files
+        recent->InsertEndChild( save_history(application.recentShaderCode, "Shaders", xmlDoc));
+
         // recent dialog path
         XMLElement *recentdialogpath = xmlDoc.NewElement( "Dialog" );
         for(auto it = application.dialogRecentFolder.cbegin();
@@ -731,6 +734,9 @@ void Settings::Load(const std::string &filename)
 
             // recent recordings
             load_history(application.recentRecordings, "Record", pElement);
+
+            // recent Shader files
+            load_history(application.recentShaderCode, "Shaders", pElement);
 
             // recent dialog path
             XMLElement * pDialog = pElement->FirstChildElement("Dialog");
