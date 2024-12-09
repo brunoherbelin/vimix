@@ -104,20 +104,21 @@ glm::vec4 FilteringProgram::iMouse = glm::vec4(0.f,0.f,0.f,0.f);
 ///                                 ////
 ////////////////////////////////////////
 
-FilteringProgram::FilteringProgram() : name_("Default"), code_({"shaders/filters/default.glsl",""}), two_pass_filter_(false)
+FilteringProgram::FilteringProgram() : name_("Default"), filename_(""),
+    code_({"shaders/filters/default.glsl",""}), two_pass_filter_(false)
 {
 
 }
 
 FilteringProgram::FilteringProgram(const std::string &name, const std::string &first_pass, const std::string &second_pass,
-                         const std::map<std::string, float> &parameters) :
-    name_(name), code_({first_pass, second_pass}), parameters_(parameters)
+                         const std::map<std::string, float> &parameters, const std::string &filename) :
+    name_(name), filename_(filename), code_({first_pass, second_pass}), parameters_(parameters)
 {
     two_pass_filter_ = !second_pass.empty();
 }
 
 FilteringProgram::FilteringProgram(const FilteringProgram &other) :
-    name_(other.name_), code_(other.code_), two_pass_filter_(other.two_pass_filter_), parameters_(other.parameters_)
+    name_(other.name_), filename_(other.filename_), code_(other.code_), two_pass_filter_(other.two_pass_filter_), parameters_(other.parameters_)
 {
 
 }
@@ -126,6 +127,7 @@ FilteringProgram& FilteringProgram::operator= (const FilteringProgram& other)
 {
     if (this != &other) {
         this->name_ = other.name_;
+        this->filename_ = other.filename_;
         this->code_ = other.code_;
         this->parameters_.clear();
         this->parameters_ = other.parameters_;
@@ -142,9 +144,6 @@ std::pair< std::string, std::string > FilteringProgram::code()
         code_.first = Resource::getText(code_.first);
     if (Resource::hasPath(code_.second))
         code_.second = Resource::getText(code_.second);
-
-    // if (SystemToolkit::file_exists(code_.first))
-    //     code_.first = SystemToolkit::get_text_content(code_.first);
 
     return code_;
 }
@@ -447,19 +446,20 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
     // always keep local copy
     program_ = f;
 
-    // change code
+    // get code
     std::pair<std::string, std::string> codes = program_.code();
+
+    // if program code is given by a filename, read the file
+    if (!program_.filename().empty() && SystemToolkit::file_exists(program_.filename()))
+        codes.first = SystemToolkit::get_text_content(program_.filename());
 
     // FIRST PASS
     // set code to the shader for first-pass
-    std::string __code = codes.first;
-    if (SystemToolkit::file_exists(__code))
-        __code = SystemToolkit::get_text_content(__code);
-    shaders_.first->setCode( __code, ret );
+    shaders_.first->setCode( codes.first, ret );
 
     // Parse code to detect additional declaration of uniform variables
     // Search for "uniform float", a variable name, with possibly a '=' and float value
-    std::string glslcode(__code);
+    std::string glslcode(codes.first);
     std::smatch found_uniform;
     std::regex is_a_uniform(REGEX_UNIFORM_DECLARATION REGEX_VARIABLE_NAME REGEX_UNIFORM_VALUE);
     // loop over every uniform declarations in the GLSL code

@@ -18,6 +18,7 @@ TextEditor _editor;
 #include "SystemToolkit.h"
 #include "CloneSource.h"
 #include "DialogToolkit.h"
+#include "BaseToolkit.h"
 #include "UserInterfaceManager.h"
 
 #include "ShaderEditWindow.h"
@@ -107,18 +108,14 @@ void ShaderEditWindow::BuildShader()
     // if the UI has a current clone, and ref to code for current clone is valid
     if (current_ != nullptr &&  filters_.find(current_) != filters_.end()) {
 
-        // set the code of the current filter
-        if (Settings::application.recentShaderCode.path.empty()
-            || !SystemToolkit::file_exists(Settings::application.recentShaderCode.path)) {
-            filters_[current_].setCode({_editor.GetText(), ""});
-            filters_[current_].setName("Custom"); // TODO SET BY FILENAME
-        }
-        else {
-            filters_[current_].setCode({Settings::application.recentShaderCode.path, ""});
-            filters_[current_].setName(SystemToolkit::base_filename(Settings::application.recentShaderCode.path));
-        }
+        // get the editor text and remove trailing '\n'
+        std::string code = _editor.GetText();
+        code = code.substr(0, code.size() -1);
 
-        // set parameters TODO VERIFY IT WORKS FOR LOADED FILE
+        // set the code to the current content of editor
+        filters_[current_].setCode({code, ""});
+
+        // set parameters
         filters_[current_].setParameters(current_->program().parameters());
 
         // change the filter of the current image filter
@@ -151,7 +148,7 @@ void ShaderEditWindow::Render()
         return;
     }
 
-    std::string file_to_open_ = "";
+    std::string file_to_build_ = "";
     Source *cs = Mixer::manager().currentSource();
 
     // menu (no title bar)
@@ -205,8 +202,9 @@ void ShaderEditWindow::Render()
             if (ImGui::MenuItem(LABEL_SHADER_EMBEDDED, NULL,
                                 Settings::application.recentShaderCode.path.empty())) {
                 // cancel path of recent shader
+                filters_[current_].resetFilename();
                 Settings::application.recentShaderCode.assign("");
-                // build with code
+                // build code
                 BuildShader();
             }
 
@@ -221,7 +219,10 @@ void ShaderEditWindow::Render()
                                               Settings::application.recentShaderCode.path)
                                           == 0;
                     if (ImGui::MenuItem(label.c_str(), NULL, selected)) {
-                        file_to_open_ = *filename;
+                        // set shader program to be a file
+                        file_to_build_ = *filename;
+                        // read file and display content in editor
+                        _editor.SetText(SystemToolkit::get_text_content(file_to_build_));
                     }
                 }
             }
@@ -247,16 +248,8 @@ void ShaderEditWindow::Render()
                      p != FilteringProgram::presets.end();
                      ++p) {
                     if (ImGui::MenuItem(p->name().c_str())) {
-                        // change the filter of the current image filter
-                        // => this triggers compilation of shader
-                        compilation_ = new std::promise<std::string>();
-                        current_->setProgram(*p, compilation_);
-                        compilation_return_ = compilation_->get_future();
-                        // inform status
-                        status_ = "Building...";
-                        Refresh();
-                        // cancel path of recent shader
-                        Settings::application.recentShaderCode.assign("");
+                        // copy text code into editor
+                        _editor.SetText( p->code().first );
                     }
                 }
 
@@ -298,8 +291,21 @@ void ShaderEditWindow::Render()
         }
 
         // Build action menu
-        if (ImGui::MenuItem( ICON_FA_HAMMER " Build", CTRL_MOD "B", nullptr, current_ != nullptr ))
+        if (ImGui::MenuItem( ICON_FA_HAMMER " Build", CTRL_MOD "B", nullptr, current_ != nullptr )) {
+
+            // if present, save the program file with current content of editor
+            if (!filters_[current_].filename().empty()) {
+                std::ofstream file(filters_[current_].filename());
+                if (file.is_open())
+                    file << _editor.GetText();
+                file.close();
+            }
+
+            // TODO Rebuild all clone sources with same custom shading file
+
+            // build
             BuildShader();
+        }
 
         ImGui::EndMenuBar();
     }
@@ -312,45 +318,40 @@ void ShaderEditWindow::Render()
         _editor.SetText("");
     }
 
-
     // File dialog Export code gives a filename to save to
     if (exportcodedialog.closed() && !exportcodedialog.path().empty()) {
-        // Open the file
-        std::ofstream file(exportcodedialog.path());
 
-        // Save content to file
+        // set shader program to be a file
+        file_to_build_ = exportcodedialog.path();
+
+        // save the current content of editor into given file
+        std::ofstream file(file_to_build_);
         if (file.is_open())
             file << _editor.GetText();
-
-        // Close the file
         file.close();
 
-        // set shader code by file
-        file_to_open_ = exportcodedialog.path();
     }
 
     // File dialog select code gives a filename to open
     if (selectcodedialog.closed() && !selectcodedialog.path().empty()) {
-        // set shader code by file
-        file_to_open_ = selectcodedialog.path();
+
+        // set shader program to be a file
+        file_to_build_ = selectcodedialog.path();
+
+        // read file and display content in editor
+        _editor.SetText(SystemToolkit::get_text_content(file_to_build_));
     }
 
-    if ( !file_to_open_.empty() ) {
+    if ( current_ != nullptr && !file_to_build_.empty() ) {
+
+        // ok editor
+        _editor.SetReadOnly(false);
+        _editor.SetColorizerEnable(true);
 
         // link to file
-        Settings::application.recentShaderCode.push(file_to_open_);
-        Settings::application.recentShaderCode.assign(file_to_open_);
-
-        // read and display content
-        std::string filecontent = SystemToolkit::get_text_content(file_to_open_);
-
-        // TODO = ACTIONS BUILD should save the file
-        if (!filecontent.empty()) {
-            // replace text of editor
-            _editor.SetText(filecontent);
-            _editor.SetReadOnly(false);
-            _editor.SetColorizerEnable(true);
-        }
+        filters_[current_].setFilename(file_to_build_);
+        Settings::application.recentShaderCode.push(file_to_build_);
+        Settings::application.recentShaderCode.assign(file_to_build_);
 
         // build with new code
         BuildShader();
@@ -385,7 +386,7 @@ void ShaderEditWindow::Render()
                     if (i != nullptr) {
                         // if the current clone was not already registered
                         if ( filters_.find(i) == filters_.end() )
-                            // remember code for this clone
+                            // remember program for this image filter
                             filters_[i] = i->program();
                     }
                 }
@@ -413,17 +414,11 @@ void ShaderEditWindow::Render()
 
             // if switch to another shader code
             if ( i != nullptr ) {
-                std::string c = filters_[i].code().first;
-                if (SystemToolkit::file_exists(c)) {
-                    Settings::application.recentShaderCode.push(c);
-                    Settings::application.recentShaderCode.assign(c);
-                    c = SystemToolkit::get_text_content(c);
-                }
-                else
-                    Settings::application.recentShaderCode.assign("");
+                // set current shader code menu
+                Settings::application.recentShaderCode.assign(filters_[i].filename());
 
                 // change editor
-                _editor.SetText( c );
+                _editor.SetText( filters_[i].code().first );
                 _editor.SetReadOnly(false);
                 _editor.SetColorizerEnable(true);
                 status_ = "Ready";
@@ -446,26 +441,37 @@ void ShaderEditWindow::Render()
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("Status: %s", status_.c_str());
 
-    // render filename and file close button
-    if (!Settings::application.recentShaderCode.path.empty()) { // if current is linked file
+    // Right-align on same line than status
+    // Display name of program for embedded code
+    if (filters_[current_].filename().empty()) {
+        // right-aligned in italics and greyed out
+        const float w = ImGui::GetContentRegionAvail().x - IMGUI_SAME_LINE;
+        ImVec2 txtsize = ImGui::CalcTextSize(filters_[current_].name().c_str(), NULL);
+        ImGui::SameLine(w - txtsize.x, 0);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.8, 0.9f));
+        ImGui::Text("%s", filters_[current_].name().c_str());
+        ImGui::PopStyleColor(1);
+    }
+    // or Display filename and close button for shaders from file
+    else {
         const float w = ImGui::GetContentRegionAvail().x - ImGui::GetTextLineHeight();
-
-        // right-aligned filename, in italics and greyed out
-        ImVec2 txtsize = ImGui::CalcTextSize(Settings::application.recentShaderCode.path.c_str(), NULL);
+        ImVec2 txtsize = ImGui::CalcTextSize(filters_[current_].filename().c_str(), NULL);
         ImGui::SameLine(w - txtsize.x - IMGUI_SAME_LINE, 0);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.8, 0.9f));
-        ImGui::Text("%s", Settings::application.recentShaderCode.path.c_str());
+        ImGui::Text("%s", filters_[current_].filename().c_str());
         ImGui::PopStyleColor(1);
 
         // top right X icon to close the file
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.f, 0.f));
         ImGui::SameLine(w, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton(ICON_FA_TIMES, "Close file")) {
+            // unset filename for program
+            filters_[current_].resetFilename();
             // remove the filename from list of menu
-            Settings::application.recentShaderCode.remove(
-                Settings::application.recentShaderCode.path);
-            // assign a non-filename to path and rebuild from existing code as embeded
+            Settings::application.recentShaderCode.remove(Settings::application.recentShaderCode.path);
+            // assign a non-filename to path
             Settings::application.recentShaderCode.assign("");
+            // rebuild from existing code as embeded
             BuildShader();
         }
         ImGui::PopStyleVar(1);

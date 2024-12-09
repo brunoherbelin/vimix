@@ -1476,8 +1476,7 @@ std::map< std::string, float > get_parameters_(XMLElement* parameters)
             float val = 0.f;
             param->QueryFloatAttribute("value", &val);
             const char * name;
-            param->QueryStringAttribute("name", &name);
-            if (name)
+            if ( param->QueryStringAttribute("name", &name) == XML_SUCCESS && name != NULL)
                 filter_params[name] = val;
         }
     }
@@ -1532,10 +1531,17 @@ void SessionLoader::visit (AlphaFilter& f)
 
 void SessionLoader::visit (ImageFilter& f)
 {
-    const char * filter_name;
     std::pair< std::string, std::string > filter_codes;
 
-    xmlCurrent_->QueryStringAttribute("name", &filter_name);
+    const char *name = NULL;
+    std::string filter_name;
+    if (xmlCurrent_->QueryStringAttribute("name", &name) == XML_SUCCESS && name != NULL)
+        filter_name = std::string(name);
+
+    const char *filename = NULL;
+    std::string filter_filename;
+    if (xmlCurrent_->QueryStringAttribute("filename", &filename) == XML_SUCCESS && filename != NULL)
+        filter_filename = std::string(filename);
 
     // image filter code
     XMLElement* firstpass  = xmlCurrent_->FirstChildElement("firstpass");
@@ -1555,7 +1561,8 @@ void SessionLoader::visit (ImageFilter& f)
     std::map< std::string, float > filter_params = get_parameters_(xmlCurrent_->FirstChildElement("parameters"));
 
     // set image filter program and parameters
-    f.setProgram( FilteringProgram(filter_name, filter_codes.first, filter_codes.second, filter_params) );
+    f.setProgram( FilteringProgram(filter_name, filter_codes.first, filter_codes.second,
+                                  filter_params, filter_filename) );
 
     // set global iMouse
     XMLElement* imouse = xmlCurrent_->FirstChildElement("iMouse");
