@@ -18,7 +18,6 @@ TextEditor _editor;
 #include "SystemToolkit.h"
 #include "CloneSource.h"
 #include "DialogToolkit.h"
-#include "BaseToolkit.h"
 #include "UserInterfaceManager.h"
 
 #include "ShaderEditWindow.h"
@@ -167,6 +166,29 @@ void ShaderEditWindow::Render()
                 Mixer::manager().addSource ( filteredclone );
                 UserInterface::manager().showPannel(  Mixer::manager().numSource() );
             }
+
+            // Menu entry to rebuild all
+            if (ImGui::MenuItem(ICON_FA_HAMMER "  Rebuild all")) {
+                // select all playable sources
+                for (auto s = Mixer::manager().session()->begin();
+                     s != Mixer::manager().session()->end();
+                     ++s) {
+                    if (!(*s)->failed()) {
+                        CloneSource *c = dynamic_cast<CloneSource *>(*s);
+                        // if the source is a clone
+                        if (c != nullptr) {
+                            FrameBufferFilter *f = c->filter();
+                            // if the filter seems to be an Image Filter
+                            if (f != nullptr && f->type() == FrameBufferFilter::FILTER_IMAGE) {
+                                ImageFilter *imf = dynamic_cast<ImageFilter *>(f);
+                                if (imf != nullptr)
+                                    imf->setProgram(imf->program());
+                            }
+                        }
+                    }
+                }
+            }
+
             ImGui::Separator();
 
             // Enable/Disable editor options
@@ -267,8 +289,12 @@ void ShaderEditWindow::Render()
             }
 
             // Menu item to synch code with GPU
-            if (ImGui::MenuItem( ICON_FA_SYNC "  Sync", nullptr, nullptr, current_ != nullptr))
-                Refresh();
+            if (ImGui::MenuItem( ICON_FA_SYNC "  Sync", nullptr, nullptr, current_ != nullptr)) {
+                if (filters_[current_].filename().empty())
+                    Refresh();
+                else
+                    BuildShader();
+            }
 
             // standard Edit menu actions
             ImGui::Separator();
@@ -385,9 +411,12 @@ void ShaderEditWindow::Render()
                     // if we can access the code of the filter
                     if (i != nullptr) {
                         // if the current clone was not already registered
-                        if ( filters_.find(i) == filters_.end() )
+                        if ( filters_.find(i) == filters_.end() ) {
                             // remember program for this image filter
                             filters_[i] = i->program();
+                            // set a name to the filter
+                            filters_[i].setName(c->name());
+                        }
                     }
                 }
             }

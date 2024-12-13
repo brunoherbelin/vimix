@@ -450,8 +450,10 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
     std::pair<std::string, std::string> codes = program_.code();
 
     // if program code is given by a filename, read the file
-    if (!program_.filename().empty() && SystemToolkit::file_exists(program_.filename()))
+    if (!program_.filename().empty() && SystemToolkit::file_exists(program_.filename())) {
         codes.first = SystemToolkit::get_text_content(program_.filename());
+        program_.setCode( codes );
+    }
 
     // FIRST PASS
     // set code to the shader for first-pass

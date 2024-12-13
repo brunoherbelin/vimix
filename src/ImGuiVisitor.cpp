@@ -1290,8 +1290,6 @@ void ImGuiVisitor::visit (AlphaFilter& f)
 
 void ImGuiVisitor::visit (ImageFilter& f)
 {
-
-
     // Open Editor
     if ( ImGui::Button( ICON_FA_CODE "  Open editor", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         UserInterface::manager().shadercontrol.setVisible(true);
@@ -1364,6 +1362,7 @@ void ImGuiVisitor::visit (CloneSource& s)
                     FilteringProgram target;
                     target.setCode(code);
                     target.setParameters(param);
+                    target.setName(imf->program().name());
                     // change filter and program
                     s.setFilter(FrameBufferFilter::FILTER_IMAGE);
                     imf = static_cast<ImageFilter *>(s.filter());
