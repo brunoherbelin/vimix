@@ -22,6 +22,40 @@ TextEditor _editor;
 
 #include "ShaderEditWindow.h"
 
+ImageFilter *getImageFilter(Source *s)
+{
+    ImageFilter *i = nullptr;
+
+    // if s is a source
+    if (s != nullptr) {
+        CloneSource *c = dynamic_cast<CloneSource *>(s);
+        // if s is a clone
+        if (c != nullptr) {
+            // it has a filter
+            FrameBufferFilter *f = c->filter();
+            // if the filter seems to be an Image Filter
+            if (f != nullptr && f->type() == FrameBufferFilter::FILTER_IMAGE) {
+                // cast to image filter
+                i = dynamic_cast<ImageFilter *>(f);
+            }
+        }
+    }
+
+    return i;
+}
+
+void saveEditorText(const std::string &filename)
+{
+    std::ofstream file(filename);
+    if (file.is_open()) {
+        // get the editor text and remove trailing '\n'
+        std::string code = _editor.GetText();
+        code = code.substr(0, code.size() -1);
+        file << code;
+    }
+    file.close();
+}
+
 ///
 /// SHADER EDITOR
 ///
@@ -76,6 +110,9 @@ ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), current_(nullp
     _editor.SetReadOnly(true);
     _editor.SetColorizerEnable(false);
 
+    // validate list for menu
+    Settings::application.recentShaderCode.validate();
+
     // status
     status_ = "-";
 }
@@ -129,6 +166,20 @@ void ShaderEditWindow::BuildShader()
     }
 }
 
+void ShaderEditWindow::BuildAll()
+{
+    // Loop over all sources
+    for (auto s = Mixer::manager().session()->begin(); s != Mixer::manager().session()->end(); ++s) {
+        // if image filter can be extracted from source
+        ImageFilter *imf = getImageFilter(*s);
+        if (imf != nullptr) {
+            // rebuild by re-injecting same program
+            imf->setProgram(imf->program());
+        }
+    }
+}
+
+
 void ShaderEditWindow::Render()
 {
     static DialogToolkit::OpenFileDialog selectcodedialog("Open GLSL shader code",
@@ -159,7 +210,7 @@ void ShaderEditWindow::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_SHADEREDITOR))
         {
             // Menu entry to allow creating a custom filter
-            if (ImGui::MenuItem(ICON_FA_SHARE_SQUARE "  Clone & Custom shader",
+            if (ImGui::MenuItem(ICON_FA_SHARE_SQUARE "  Clone source & add shader",
                                 nullptr, nullptr, cs != nullptr)) {
                 CloneSource *filteredclone = Mixer::manager().createSourceClone();
                 filteredclone->setFilter(FrameBufferFilter::FILTER_IMAGE);
@@ -168,26 +219,8 @@ void ShaderEditWindow::Render()
             }
 
             // Menu entry to rebuild all
-            if (ImGui::MenuItem(ICON_FA_HAMMER "  Rebuild all")) {
-                // select all playable sources
-                for (auto s = Mixer::manager().session()->begin();
-                     s != Mixer::manager().session()->end();
-                     ++s) {
-                    if (!(*s)->failed()) {
-                        CloneSource *c = dynamic_cast<CloneSource *>(*s);
-                        // if the source is a clone
-                        if (c != nullptr) {
-                            FrameBufferFilter *f = c->filter();
-                            // if the filter seems to be an Image Filter
-                            if (f != nullptr && f->type() == FrameBufferFilter::FILTER_IMAGE) {
-                                ImageFilter *imf = dynamic_cast<ImageFilter *>(f);
-                                if (imf != nullptr)
-                                    imf->setProgram(imf->program());
-                            }
-                        }
-                    }
-                }
-            }
+            if (ImGui::MenuItem(ICON_FA_HAMMER "  Rebuild all"))
+                BuildAll();
 
             ImGui::Separator();
 
@@ -320,14 +353,8 @@ void ShaderEditWindow::Render()
         if (ImGui::MenuItem( ICON_FA_HAMMER " Build", CTRL_MOD "B", nullptr, current_ != nullptr )) {
 
             // if present, save the program file with current content of editor
-            if (!filters_[current_].filename().empty()) {
-                std::ofstream file(filters_[current_].filename());
-                if (file.is_open())
-                    file << _editor.GetText();
-                file.close();
-            }
-
-            // TODO Rebuild all clone sources with same custom shading file
+            if (!filters_[current_].filename().empty())
+                saveEditorText(filters_[current_].filename());
 
             // build
             BuildShader();
@@ -339,9 +366,12 @@ void ShaderEditWindow::Render()
     // garbage collection
     if ( Mixer::manager().session()->numSources() < 1 )
     {
+        // empty list of edited filter when session empty
         filters_.clear();
         current_ = nullptr;
         _editor.SetText("");
+        // validate list for menu
+        Settings::application.recentShaderCode.validate();
     }
 
     // File dialog Export code gives a filename to save to
@@ -351,11 +381,7 @@ void ShaderEditWindow::Render()
         file_to_build_ = exportcodedialog.path();
 
         // save the current content of editor into given file
-        std::ofstream file(file_to_build_);
-        if (file.is_open())
-            file << _editor.GetText();
-        file.close();
-
+        saveEditorText(file_to_build_);
     }
 
     // File dialog select code gives a filename to open
@@ -368,7 +394,7 @@ void ShaderEditWindow::Render()
         _editor.SetText(SystemToolkit::get_text_content(file_to_build_));
     }
 
-    if ( current_ != nullptr && !file_to_build_.empty() ) {
+    if (current_ != nullptr && !file_to_build_.empty()) {
 
         // ok editor
         _editor.SetReadOnly(false);
@@ -401,23 +427,15 @@ void ShaderEditWindow::Render()
         ImageFilter *i = nullptr;
         // if there is a current source
         if (cs != nullptr) {
-            CloneSource *c = dynamic_cast<CloneSource *>(cs);
-            // if the current source is a clone
-            if ( c != nullptr ) {
-                FrameBufferFilter *f = c->filter();
-                // if the filter seems to be an Image Filter
-                if (f != nullptr && f->type() == FrameBufferFilter::FILTER_IMAGE ) {
-                    i = dynamic_cast<ImageFilter *>(f);
-                    // if we can access the code of the filter
-                    if (i != nullptr) {
-                        // if the current clone was not already registered
-                        if ( filters_.find(i) == filters_.end() ) {
-                            // remember program for this image filter
-                            filters_[i] = i->program();
-                            // set a name to the filter
-                            filters_[i].setName(c->name());
-                        }
-                    }
+            i = getImageFilter(cs);
+            // if we can access the code of the filter
+            if (i != nullptr) {
+                // if the current clone was not already registered
+                if ( filters_.find(i) == filters_.end() ) {
+                    // remember program for this image filter
+                    filters_[i] = i->program();
+                    // set a name to the filter
+                    filters_[i].setName(cs->name());
                 }
             }
             // there is a current source, and it is not a filter
@@ -426,6 +444,7 @@ void ShaderEditWindow::Render()
                 _editor.SetText("");
                 _editor.SetReadOnly(true);
                 current_ = nullptr;
+                Settings::application.recentShaderCode.assign("");
             }
         }
         else
@@ -443,7 +462,7 @@ void ShaderEditWindow::Render()
 
             // if switch to another shader code
             if ( i != nullptr ) {
-                // set current shader code menu
+                // set current shader code menu (can be empty for embedded)
                 Settings::application.recentShaderCode.assign(filters_[i].filename());
 
                 // change editor
@@ -470,34 +489,39 @@ void ShaderEditWindow::Render()
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("Status: %s", status_.c_str());
 
+    const float w = ImGui::GetContentRegionAvail().x - ImGui::GetTextLineHeight();
+    ImVec2 txtsize = ImGui::CalcTextSize(Settings::application.recentShaderCode.path.c_str(), NULL);
+    ImGui::SameLine(w - txtsize.x - IMGUI_SAME_LINE, 0);
+
     // Right-align on same line than status
     // Display name of program for embedded code
     if (filters_[current_].filename().empty()) {
         // right-aligned in italics and greyed out
-        const float w = ImGui::GetContentRegionAvail().x - IMGUI_SAME_LINE;
-        ImVec2 txtsize = ImGui::CalcTextSize(filters_[current_].name().c_str(), NULL);
-        ImGui::SameLine(w - txtsize.x, 0);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.8, 0.9f));
-        ImGui::Text("%s", filters_[current_].name().c_str());
+        ImGui::Text("%s", Settings::application.recentShaderCode.path.c_str());
         ImGui::PopStyleColor(1);
     }
     // or Display filename and close button for shaders from file
     else {
-        const float w = ImGui::GetContentRegionAvail().x - ImGui::GetTextLineHeight();
-        ImVec2 txtsize = ImGui::CalcTextSize(filters_[current_].filename().c_str(), NULL);
-        ImGui::SameLine(w - txtsize.x - IMGUI_SAME_LINE, 0);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.8, 0.9f));
-        ImGui::Text("%s", filters_[current_].filename().c_str());
-        ImGui::PopStyleColor(1);
+        // right-aligned in italics
+        ImGui::Text("%s", Settings::application.recentShaderCode.path.c_str());
 
         // top right X icon to close the file
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.f, 0.f));
         ImGui::SameLine(w, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton(ICON_FA_TIMES, "Close file")) {
+            // Test if there are other filters refering to this filename
+            uint count_file = 0;
+            for (auto const &fil : filters_) {
+                if (fil.first != nullptr &&
+                    filters_[current_].filename().compare(fil.first->program().filename()) == 0)
+                    count_file++;
+            }
+            // remove the filename from list of menu if was used by other filters
+            if (count_file > 1)
+                Settings::application.recentShaderCode.remove(Settings::application.recentShaderCode.path);
             // unset filename for program
             filters_[current_].resetFilename();
-            // remove the filename from list of menu
-            Settings::application.recentShaderCode.remove(Settings::application.recentShaderCode.path);
             // assign a non-filename to path
             Settings::application.recentShaderCode.assign("");
             // rebuild from existing code as embeded
@@ -556,7 +580,10 @@ void ShaderEditWindow::Render()
             BuildShader();
         // special case for 'CTRL + S' keyboard shortcut
         if (ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_V] - 3)) {
-            BuildShader();
+            // if present, save the program file with current content of editor
+            if (!filters_[current_].filename().empty())
+                saveEditorText(filters_[current_].filename());
+            // save session
             Mixer::manager().save();
         }
     }

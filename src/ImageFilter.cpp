@@ -23,12 +23,13 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "Resource.h"
-#include "Visitor.h"
-#include "FrameBuffer.h"
-#include "Primitives.h"
 #include "BaseToolkit.h"
+#include "FrameBuffer.h"
+#include "Log.h"
+#include "Primitives.h"
+#include "Resource.h"
 #include "SystemToolkit.h"
+#include "Visitor.h"
 
 #include "Mixer.h"
 
@@ -443,6 +444,9 @@ FilteringProgram ImageFilter::program () const
 
 void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string> *ret)
 {
+    // impose C locale
+    setlocale(LC_ALL, "C");
+
     // always keep local copy
     program_ = f;
 
@@ -450,9 +454,21 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
     std::pair<std::string, std::string> codes = program_.code();
 
     // if program code is given by a filename, read the file
-    if (!program_.filename().empty() && SystemToolkit::file_exists(program_.filename())) {
-        codes.first = SystemToolkit::get_text_content(program_.filename());
-        program_.setCode( codes );
+    if (!program_.filename().empty()) {
+        // read the file if it exists
+        std::string content_text_ = "";
+        if (SystemToolkit::file_exists(program_.filename()))
+            content_text_ = SystemToolkit::get_text_content(program_.filename());
+        // if content of text file is empty (also if file doesn't exists)
+        if (content_text_.empty()) {
+            Log::Info("File '%s' not found or not a text file; ignored.", program_.filename().c_str());
+            // use embedded code and reset filename
+            program_.resetFilename();
+        } else {
+            // set code to text content
+            codes.first = content_text_;
+            program_.setCode( codes );
+        }
     }
 
     // FIRST PASS
@@ -472,21 +488,22 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
         std::string varname =
             std::regex_replace(declaration,std::regex(REGEX_UNIFORM_DECLARATION),"");
         varname = std::regex_replace(varname, std::regex(REGEX_UNIFORM_VALUE), "");
-        // add to list of parameters if was not already there, with default value
-        if ( !program_.hasParameter(varname) )
-            program_.setParameter(varname, 0.f);
-
-        // try to find a value in uniform declaration, and set parameter value if valid
-        float val = 0.f;
-        std::string valuestring =
-            std::regex_replace(declaration,std::regex(REGEX_UNIFORM_DECLARATION),"");
-        valuestring = std::regex_replace(valuestring, std::regex(REGEX_VARIABLE_NAME),"");
-        std::smatch found_value;
-        std::regex is_a_float_value("[[:digit:]]+(\\.[[:digit:]]*)?");
-        if (std::regex_search(valuestring, found_value, is_a_float_value)) {
-            // set value only if a value is given
-            if ( BaseToolkit::is_a_value(found_value.str(), &val) )
-                program_.setParameter(varname, val);
+        // add to list of parameters if was not already there, with value
+        if ( !program_.hasParameter(varname) ) {
+            // try to find a value in uniform declaration, and set parameter value if valid
+            float val = 0.f;
+            std::string valuestring =
+                std::regex_replace(declaration,std::regex(REGEX_UNIFORM_DECLARATION),"");
+            valuestring = std::regex_replace(valuestring, std::regex(REGEX_VARIABLE_NAME),"");
+            std::smatch found_value;
+            std::regex is_a_float_value("[[:digit:]]+(\\.[[:digit:]]*)?");
+            if (std::regex_search(valuestring, found_value, is_a_float_value)) {
+                // set value only if a value is given
+                if ( BaseToolkit::is_a_value(found_value.str(), &val) )
+                    program_.setParameter(varname, val);
+                else
+                    program_.setParameter(varname, 0.f);
+            }
         }
         // keep parsing
         glslcode = found_uniform.suffix().str();
