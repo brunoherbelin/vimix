@@ -424,9 +424,6 @@ void DisplaysView::adaptGridToWindow(int w)
 
 void DisplaysView::draw()
 {
-    // White ballance color button
-    static DialogToolkit::ColorPickerDialog whitebalancedialog;
-
     // draw all windows
     int i = 0;
     for (; i < Settings::application.num_output_windows; ++i) {
@@ -626,14 +623,24 @@ void DisplaysView::draw()
                                                            Settings::application.windows[1+current_window_].whitebalance.y,
                                                            Settings::application.windows[1+current_window_].whitebalance.z, 1.f),
                                    ImGuiColorEditFlags_NoAlpha)) {
-                if ( DialogToolkit::ColorPickerDialog::busy()) {
+                if ( DialogToolkit::ColorPickerDialog::instance().busy()) {
                     Log::Warning("Close previously openned color picker.");
                 }
                 else {
-                    whitebalancedialog.setRGB( std::make_tuple(Settings::application.windows[1+current_window_].whitebalance.x,
+                    // prepare the color picker to start with white balance color
+                    DialogToolkit::ColorPickerDialog::instance().setRGB( std::make_tuple(Settings::application.windows[1+current_window_].whitebalance.x,
                                                            Settings::application.windows[1+current_window_].whitebalance.y,
                                                            Settings::application.windows[1+current_window_].whitebalance.z) );
-                    whitebalancedialog.open();
+                    // declare function to be called
+                    int w = 1+current_window_;
+                    auto applyColor = [w](std::tuple<float, float, float> c)  {
+                        Settings::application.windows[w].whitebalance.x = std::get<0>(c);
+                        Settings::application.windows[w].whitebalance.y = std::get<1>(c);
+                        Settings::application.windows[w].whitebalance.z = std::get<2>(c);
+                    };
+
+                    // open dialog (starts a thread that will call the 'applyColor' function
+                    DialogToolkit::ColorPickerDialog::instance().open( applyColor );
                 }
             }
             ImGui::PopFont();
@@ -699,14 +706,6 @@ void DisplaysView::draw()
         ImGui::End();
     }
     ImGui::PopFont();
-
-    // get picked color if dialog finished
-    if (whitebalancedialog.closed()){
-        std::tuple<float, float, float> c = whitebalancedialog.RGB();
-        Settings::application.windows[1+current_window_].whitebalance.x =  std::get<0>(c);
-        Settings::application.windows[1+current_window_].whitebalance.y =  std::get<1>(c);
-        Settings::application.windows[1+current_window_].whitebalance.z =  std::get<2>(c);
-    }
 
     // display popup menu
     if (show_window_menu_ && current_window_ > -1) {

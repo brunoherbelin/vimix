@@ -591,33 +591,18 @@ void DialogToolkit::ErrorDialog(const char* message)
 // Color Picker Dialog common functions
 //
 
-bool DialogToolkit::ColorPickerDialog::busy_ = false;
-
-DialogToolkit::ColorPickerDialog::ColorPickerDialog()
+DialogToolkit::ColorPickerDialog::ColorPickerDialog(): busy_(false)
 {
     rgb_ = std::make_tuple(0.f, 0.f, 0.f);
 }
 
-bool DialogToolkit::ColorPickerDialog::closed()
+void DialogToolkit::ColorPickerDialog::openColorDialog( std::function<void (std::tuple<float, float, float>)> func )
 {
-    if ( !promises_.empty() ) {
-        // check that file dialog thread finished
-        if (promises_.back().wait_for(timeout) == std::future_status::ready ) {
-            // get the filename from this file dialog
-            rgb_ = promises_.back().get();
-            // done with this file dialog
-            promises_.pop_back();
-            busy_ = false;
-            return true;
-        }
-    }
-    return false;
-}
+    DialogToolkit::ColorPickerDialog::instance().busy_ = true;
 
-std::tuple<float, float, float> openColorDialog( std::tuple<float, float, float> rgb)
-{
     // default return value to given value (so Cancel does nothing)
-    std::tuple<float, float, float> ret = rgb;
+    bool changed = false;
+    std::tuple<float, float, float> rgb = DialogToolkit::ColorPickerDialog::instance().RGB();
 
 #if USE_TINYFILEDIALOG
 
@@ -631,11 +616,12 @@ std::tuple<float, float, float> openColorDialog( std::tuple<float, float, float>
     if ( NULL != tinyfd_colorChooser("Choose or pick a color", NULL, prev_color, ret_color) )
     {
         ret = { (float) ret_color[0] / 255.f, (float) ret_color[1] / 255.f, (float) ret_color[2] / 255.f};
+        changed = true;
     }
 
 #else
     if (!gtk_init()) {
-        return ret;
+        return;
     }
 
     GtkWidget *dialog = gtk_color_chooser_dialog_new( "Choose or pick a color", NULL);
@@ -662,7 +648,8 @@ std::tuple<float, float, float> openColorDialog( std::tuple<float, float, float>
     if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_OK ) {
 
         gtk_color_chooser_get_rgba( GTK_COLOR_CHOOSER(dialog), &color );
-        ret = { color.red, color.green, color.blue};
+        rgb = { color.red, color.green, color.blue};
+        changed = true;
     }
 
     // remember position
@@ -674,14 +661,16 @@ std::tuple<float, float, float> openColorDialog( std::tuple<float, float, float>
 
 #endif
 
-    return ret;
+    // call the function with the selected color
+    if (changed)
+        func(rgb);
+
+    DialogToolkit::ColorPickerDialog::instance().busy_ = false;
 }
 
-void DialogToolkit::ColorPickerDialog::open()
+void DialogToolkit::ColorPickerDialog::open(std::function<void(std::tuple<float, float, float>)> func)
 {
-    if ( !DialogToolkit::ColorPickerDialog::busy_ && promises_.empty() ) {
-        promises_.emplace_back( std::async(std::launch::async, openColorDialog, rgb_) );
-        busy_ = true;
-    }
+    if (!busy_)
+        // launch thread to get color from dialog
+        std::thread( openColorDialog, func ).detach();
 }
-

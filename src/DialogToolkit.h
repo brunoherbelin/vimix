@@ -98,19 +98,30 @@ class ColorPickerDialog
 {
 protected:
     std::tuple<float, float, float> rgb_;
-    std::vector< std::future< std::tuple<float, float, float> > > promises_;
-    static bool busy_;
+    std::atomic<bool> busy_;
+
+    // private function to open dialog
+    static void openColorDialog( std::function<void(std::tuple<float, float, float>)> func);
+
+    // Private Constructor
+    ColorPickerDialog();
+    ColorPickerDialog(ColorPickerDialog const& copy) = delete;
+    ColorPickerDialog& operator=(ColorPickerDialog const& copy) = delete;
 
 public:
-    ColorPickerDialog();
 
-    void open();
-    bool closed();
+    static ColorPickerDialog& instance()
+    {
+        // The only instance
+        static ColorPickerDialog _instance;
+        return _instance;
+    }
 
+    void open( std::function<void(std::tuple<float, float, float>)> func);
+
+    inline bool busy() { return busy_; }
     inline void setRGB(std::tuple<float, float, float> rgb) { rgb_ = rgb; }
     inline std::tuple<float, float, float> RGB() const { return rgb_; }
-
-    static bool busy() { return busy_; }
 };
 
 

@@ -790,7 +790,7 @@ bool UserInterface::saveOrSaveAs(bool force_versioning)
 bool UserInterface::TryClose()
 {
     // cannot close if a file dialog is pending
-    if (DialogToolkit::FileDialog::busy() || DialogToolkit::ColorPickerDialog::busy())
+    if (DialogToolkit::FileDialog::busy() || DialogToolkit::ColorPickerDialog::instance().busy())
         return false;
 
     // always stop all recordings and pending actions
@@ -902,7 +902,7 @@ void UserInterface::NewFrame()
     }
 
     // overlay to ensure file color dialog is closed after use
-    if (DialogToolkit::ColorPickerDialog::busy()){
+    if (DialogToolkit::ColorPickerDialog::instance().busy()){
         if (!ImGui::IsPopupOpen("##ColorBusy"))
             ImGui::OpenPopup("##ColorBusy");
         if (ImGui::BeginPopup("##ColorBusy")) {
