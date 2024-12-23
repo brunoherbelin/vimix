@@ -22,6 +22,8 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/vector_angle.hpp>
 
 // ImGui
 #include "ImGuiToolkit.h"
@@ -43,7 +45,8 @@ InputMappingWindow::InputMappingWindow() : WorkspaceWindow("InputMappingInterfac
     input_mode = { ICON_FA_KEYBOARD "  Keyboard",
                    ICON_FA_CALCULATOR "   Numpad" ,
                    ICON_FA_TABLET_ALT "   TouchOSC" ,
-                   ICON_FA_GAMEPAD " Gamepad" };
+                   ICON_FA_GAMEPAD "  Gamepad",
+                   ICON_FA_CLOCK "   Timer"  };
     current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST, INPUT_MULTITOUCH_FIRST, INPUT_JOYSTICK_FIRST };
     current_input_ = current_input_for_mode[Settings::application.mapping.mode];
 }
@@ -1183,6 +1186,80 @@ void InputMappingWindow::Render()
 
         // Done with color and font change
         ImGui::PopStyleColor(2);
+
+    }
+    //
+    // TIMER
+    //
+    else if ( Settings::application.mapping.mode == 4 ) {
+
+        ImGuiIO& io = ImGui::GetIO();
+        const ImVec2 circle_center = frame_top + (ImVec2(inputarea_width, inputarea_width) )/ 2.f;
+        const float circle_radius = (inputarea_width - IMGUI_SAME_LINE) / 2.f;
+        const glm::vec2 mpo = glm::vec2 (io.MousePos.x - circle_center.x, io.MousePos.y - circle_center.y);
+        const float angle = - glm::orientedAngle( glm::normalize(mpo), glm::vec2(1.f,0.f));
+        const float lenght = glm::length(mpo);
+        const float cm = 0.02f ; // circle margin
+
+        // color palette
+        static ImU32 colorbg = ImGui::GetColorU32(ImGuiCol_FrameBgActive, 0.6f);
+        static ImU32 colorfg = ImGui::GetColorU32(ImGuiCol_FrameBg, 2.5f);
+        static ImU32 colorover = ImGui::GetColorU32(ImGuiCol_Header);
+
+        // draw background ring
+        draw_list->AddCircleFilled(circle_center, circle_radius, colorbg, PLOT_CIRCLE_SEGMENTS);
+
+        // draw slices
+        char text_buf[24] = {0};
+        const double q = Metronome::manager().quantum();
+        static const float resolution = PLOT_CIRCLE_SEGMENTS / (2.f * M_PI);
+        static ImVec2 buffer[PLOT_CIRCLE_SEGMENTS];
+
+        for (int p = 0.0 ; p < (int) floor(q) ; p++) {
+            float a0 = cm + - M_PI_2 + (float(p)/floor(q)) * (2.f * M_PI);
+            float a1 = (-2.f * 0.02) + a0 + (1.f / floor(q)) * (2.f * M_PI);
+            int n = ImMax(3, (int)((a1 - a0) * resolution));
+            double da = (a1 - a0) / (n - 1);
+            int index = 0;
+
+            float a01 =  -cm + a0 + (0.5f / floor(q)) * (2.f * M_PI);
+            buffer[index++] = circle_center + ImVec2(circle_radius * cm * cos(a01), circle_radius * cm * sin(a01));
+            for (int i = 0; i < n; ++i) {
+                double a = a0 + i * da;
+                buffer[index++] = ImVec2(circle_center.x + circle_radius * cos(a), circle_center.y + circle_radius * sin(a));
+            }
+
+            // test mouse over in slices of the circle
+            // 1) test if mouse is inside area
+            if (ImGui::IsMouseHoveringRect(frame_top, frame_top + ImVec2(inputarea_width, inputarea_width), true))
+            {
+                // 2) test angle of mouse coordinate in circle
+                if (lenght < circle_radius && ( ( angle > a0 && angle < a1) || (angle + (2.f * M_PI) > a0 && angle + (2.f * M_PI) < a1) ) )
+                {
+                    // draw the mouse-over slice
+                    draw_list->AddConvexPolyFilled(buffer, index, colorover);
+                    // indicate tempo of mouse-over slice
+                    snprintf(text_buf, 24, "%d/%d", p + 1, (int) floor(q) );
+                }
+            }
+
+            float border = 1.f;
+            // TODO : currently edited slice has a large border
+
+            // draw the border of the slice
+            draw_list->AddPolyline(buffer, index, colorfg, true, border);
+
+        }
+
+        // centered indicator 'x / N' on mouse over
+        draw_list->AddCircleFilled(circle_center, circle_radius * 0.25f, colorfg, PLOT_CIRCLE_SEGMENTS);
+
+        // display text indication in the center
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+        ImVec2 label_size = ImGui::CalcTextSize(text_buf, NULL);
+        ImGui::SetCursorScreenPos(circle_center - label_size/2);
+        ImGui::Text("%s", text_buf);
+        ImGui::PopFont();
 
     }
 

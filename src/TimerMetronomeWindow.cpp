@@ -28,8 +28,6 @@
 
 #include "TimerMetronomeWindow.h"
 
-#define PLOT_CIRCLE_SEGMENTS 64
-
 
 
 TimerMetronomeWindow::TimerMetronomeWindow() : WorkspaceWindow("Timer")
