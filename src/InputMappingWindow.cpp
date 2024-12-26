@@ -47,7 +47,7 @@ InputMappingWindow::InputMappingWindow() : WorkspaceWindow("InputMappingInterfac
                    ICON_FA_TABLET_ALT "   TouchOSC" ,
                    ICON_FA_GAMEPAD "  Gamepad",
                    ICON_FA_CLOCK "   Timer"  };
-    current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST, INPUT_MULTITOUCH_FIRST, INPUT_JOYSTICK_FIRST };
+    current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST, INPUT_MULTITOUCH_FIRST, INPUT_JOYSTICK_FIRST, INPUT_TIMER_FIRST };
     current_input_ = current_input_for_mode[Settings::application.mapping.mode];
 }
 
@@ -734,14 +734,15 @@ void InputMappingWindow::Render()
 
         // Options for current key
         const std::string key = (current_input_ < INPUT_NUMPAD_LAST) ? "  Key " : "  ";
-        const std::string keymenu = ICON_FA_HAND_POINT_RIGHT + key + Control::manager().inputLabel(current_input_);
+        const std::string keymenu = ICON_FA_ARROW_RIGHT + key + Control::manager().inputLabel(current_input_);
         if (ImGui::BeginMenu(keymenu.c_str()) )
         {
-            if ( ImGui::MenuItem( ICON_FA_WINDOW_CLOSE "  Reset mapping", NULL, false, S->inputAssigned(current_input_) ) )
+            if ( ImGui::MenuItem(ICON_FA_TIMES "  Reset", NULL, false, S->inputAssigned(current_input_) ) )
                 // remove all source callback of this input
                 S->deleteInputCallbacks(current_input_);
 
-            if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome", S->inputAssigned(current_input_)))
+            if (ImGui::BeginMenu(ICON_FA_CLOCK " Metronome",
+                                 S->inputAssigned(current_input_) && Settings::application.mapping.mode < 4 ))
             {
                 Metronome::Synchronicity sync = S->inputSynchrony(current_input_);
                 bool active = sync == Metronome::SYNC_NONE;
@@ -760,18 +761,21 @@ void InputMappingWindow::Render()
             }
 
             std::list<uint> models = S->assignedInputs();
-            if (ImGui::BeginMenu(ICON_FA_COPY "  Duplicate", models.size() > 0) )
-            {
-                for (auto m = models.cbegin(); m != models.cend(); ++m) {
-                    if ( *m != current_input_ )   {
-                        if ( ImGui::MenuItem( Control::inputLabel( *m ).c_str() ) ){
-                            S->copyInputCallback( *m, current_input_);
+            if (models.empty())
+                ImGui::TextDisabled(ICON_FA_COPY "  Copy from");
+            else {
+                if (ImGui::BeginMenu(ICON_FA_COPY "  Copy from", models.size() > 0) )
+                {
+                    for (auto m = models.cbegin(); m != models.cend(); ++m) {
+                        if ( *m != current_input_ )   {
+                            if ( ImGui::MenuItem( Control::inputLabel( *m ).c_str() ) ){
+                                S->copyInputCallback( *m, current_input_);
+                            }
                         }
                     }
+                    ImGui::EndMenu();
                 }
-                ImGui::EndMenu();
             }
-
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
@@ -783,7 +787,7 @@ void InputMappingWindow::Render()
     ImVec2 frame_top = ImGui::GetCursorScreenPos();
 
     // change mode if a key is pressed
-    for (uint k = INPUT_KEYBOARD_FIRST; k < INPUT_MAX; ++k) {
+    for (uint k = INPUT_KEYBOARD_FIRST; k < INPUT_TIMER_FIRST; ++k) {
         if (Control::manager().inputActive(k)) {
             if (k < INPUT_NUMPAD_FIRST)
                 Settings::application.mapping.mode = 0;
@@ -811,6 +815,7 @@ void InputMappingWindow::Render()
         color = ImGui::GetStyle().Colors[ImGuiCol_Text];
         color.w /= Settings::application.mapping.disabled ? 2.f : 1.0f;
         ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_Header, 0.4f));
 
         for (uint ik = INPUT_KEYBOARD_FIRST; ik < INPUT_KEYBOARD_LAST; ++ik){
             int i = ik - INPUT_KEYBOARD_FIRST;
@@ -861,7 +866,7 @@ void InputMappingWindow::Render()
                 draw_list->AddRect(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Button), 6.f, ImDrawCornerFlags_All, 0.1f);
 
         }
-        ImGui::PopStyleColor(2);
+        ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(2);
         ImGui::PopFont();
 
@@ -887,6 +892,7 @@ void InputMappingWindow::Render()
         color = ImGui::GetStyle().Colors[ImGuiCol_Text];
         color.w /= Settings::application.mapping.disabled ? 2.f : 1.0f;
         ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_Header, 0.4f));
 
         for (size_t p = 0; p < numpad_inputs.size(); ++p){
             uint ik = numpad_inputs[p];
@@ -939,7 +945,7 @@ void InputMappingWindow::Render()
                 draw_list->AddRect(pos, pos + iconsize, ImGui::GetColorU32(ImGuiCol_Button), 6.f, ImDrawCornerFlags_All, 0.1f);
 
         }
-        ImGui::PopStyleColor(2);
+        ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(2);
         ImGui::PopFont();
 
@@ -959,6 +965,7 @@ void InputMappingWindow::Render()
         color = ImGui::GetStyle().Colors[ImGuiCol_Text];
         color.w /= Settings::application.mapping.disabled ? 2.f : 1.0f;
         ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_Header, 0.4f));
 
         const ImVec2 touch_bar_size = keyNumpadItemSize * ImVec2(0.65f, 0.2f);
         const ImVec2 touch_bar_pos  = keyNumpadItemSize * ImVec2(0.125f, 0.6f);
@@ -1018,7 +1025,7 @@ void InputMappingWindow::Render()
 
         }
 
-        ImGui::PopStyleColor(2);
+        ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(2);
         ImGui::PopFont();
 
@@ -1055,6 +1062,7 @@ void InputMappingWindow::Render()
         color = ImGui::GetStyle().Colors[ImGuiCol_Text];
         color.w /= Settings::application.mapping.disabled ? 2.f : 1.0f;
         ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_Header, 0.4f));
 
         // CENTER text for button
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
@@ -1184,8 +1192,8 @@ void InputMappingWindow::Render()
 
         ImGui::PopStyleVar(2);
 
-        // Done with color and font change
-        ImGui::PopStyleColor(2);
+        // Done with color change
+        ImGui::PopStyleColor(3);
 
     }
     //
@@ -1199,37 +1207,43 @@ void InputMappingWindow::Render()
         const glm::vec2 mpo = glm::vec2 (io.MousePos.x - circle_center.x, io.MousePos.y - circle_center.y);
         const float angle = - glm::orientedAngle( glm::normalize(mpo), glm::vec2(1.f,0.f));
         const float lenght = glm::length(mpo);
-        const float cm = 0.02f ; // circle margin
+        const float cm = 0.03f ; // circle margin
 
         // color palette
-        static ImU32 colorbg = ImGui::GetColorU32(ImGuiCol_FrameBgActive, 0.6f);
-        static ImU32 colorfg = ImGui::GetColorU32(ImGuiCol_FrameBg, 2.5f);
-        static ImU32 colorover = ImGui::GetColorU32(ImGuiCol_Header);
+        ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
+        color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
+        ImGui::PushStyleColor(ImGuiCol_Header, color);
+        color = ImGui::GetStyle().Colors[ImGuiCol_Text];
+        color.w /= Settings::application.mapping.disabled ? 2.f : 1.0f;
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_Header, 0.4f));
 
         // draw background ring
+        static ImU32 colorbg = ImGui::GetColorU32(ImGuiCol_FrameBgActive, 0.6f);
         draw_list->AddCircleFilled(circle_center, circle_radius, colorbg, PLOT_CIRCLE_SEGMENTS);
 
-        // draw slices
+        // metronome timer info
         char text_buf[24] = {0};
         const double q = Metronome::manager().quantum();
         static const float resolution = PLOT_CIRCLE_SEGMENTS / (2.f * M_PI);
         static ImVec2 buffer[PLOT_CIRCLE_SEGMENTS];
 
-        for (int p = 0.0 ; p < (int) floor(q) ; p++) {
-            float a0 = cm + - M_PI_2 + (float(p)/floor(q)) * (2.f * M_PI);
-            float a1 = (-2.f * 0.02) + a0 + (1.f / floor(q)) * (2.f * M_PI);
+        // draw all slices of metronome ring
+        for (uint ip = 0 ; ip < (uint) floor(q) ; ++ip) {
+            float a0 = cm - M_PI_2 + (float(ip) * (2.f * M_PI)) / floor(q);
+            float a1 = (-2.f * cm) + a0 + (2.f * M_PI) / floor(q);
             int n = ImMax(3, (int)((a1 - a0) * resolution));
             double da = (a1 - a0) / (n - 1);
             int index = 0;
-
-            float a01 =  -cm + a0 + (0.5f / floor(q)) * (2.f * M_PI);
-            buffer[index++] = circle_center + ImVec2(circle_radius * cm * cos(a01), circle_radius * cm * sin(a01));
+            // start drawing at center point of slice
+            float a01 =  (a0 + a1) / 2.f;
+            buffer[index++] = ImVec2(circle_center.x + cm * circle_radius * cos(a01), circle_center.y + cm * circle_radius * sin(a01));
+            // draw round external border of slice
             for (int i = 0; i < n; ++i) {
                 double a = a0 + i * da;
                 buffer[index++] = ImVec2(circle_center.x + circle_radius * cos(a), circle_center.y + circle_radius * sin(a));
             }
-
-            // test mouse over in slices of the circle
+            // Test mouse over in slices of the circle
             // 1) test if mouse is inside area
             if (ImGui::IsMouseHoveringRect(frame_top, frame_top + ImVec2(inputarea_width, inputarea_width), true))
             {
@@ -1237,30 +1251,45 @@ void InputMappingWindow::Render()
                 if (lenght < circle_radius && ( ( angle > a0 && angle < a1) || (angle + (2.f * M_PI) > a0 && angle + (2.f * M_PI) < a1) ) )
                 {
                     // draw the mouse-over slice
-                    draw_list->AddConvexPolyFilled(buffer, index, colorover);
+                    draw_list->AddConvexPolyFilled(buffer, index, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
                     // indicate tempo of mouse-over slice
-                    snprintf(text_buf, 24, "%d/%d", p + 1, (int) floor(q) );
+                    snprintf(text_buf, 24, "%d/%d", ip + 1, (int) floor(q) );
+
+                    // mouse clic
+                    if (ImGui::IsMouseClicked(0)) {
+                        current_input_ = ip + INPUT_TIMER_FIRST;
+                    }
                 }
             }
 
-            float border = 1.f;
-            // TODO : currently edited slice has a large border
+            // draw the slice showing its assigned in this session
+            if (S->inputAssigned(ip + INPUT_TIMER_FIRST))
+                draw_list->AddConvexPolyFilled(buffer, index, ImGui::GetColorU32(ImGuiCol_Header));
 
             // draw the border of the slice
-            draw_list->AddPolyline(buffer, index, colorfg, true, border);
+            if (ip + INPUT_TIMER_FIRST == current_input_)
+                // current active slice has bold white border
+                draw_list->AddPolyline(buffer, index, ImGui::GetColorU32(ImGuiCol_Text), true, 3.f);
+            else
+                draw_list->AddPolyline(buffer, index, ImGui::GetColorU32(ImGuiCol_Button), true, 0.5f);
 
         }
 
-        // centered indicator 'x / N' on mouse over
-        draw_list->AddCircleFilled(circle_center, circle_radius * 0.25f, colorfg, PLOT_CIRCLE_SEGMENTS);
+        // draw clock hand
+        float a = -M_PI_2 + (Metronome::manager().phase()/q) * (2.f * M_PI);
+        draw_list->AddLine(ImVec2(circle_center.x + cos(a), circle_center.y + sin(a)),
+                           ImVec2(circle_center.x + circle_radius * cos(a), circle_center.y + circle_radius * sin(a)),
+                           ImGui::GetColorU32(ImGuiCol_PlotHistogram), 2.f);
 
-        // display text indication in the center
+        // display text indication 'x / N' on mouse over in a central circle
+        draw_list->AddCircleFilled(circle_center, circle_radius * 0.25f, ImGui::GetColorU32(ImGuiCol_Button, 10.f), PLOT_CIRCLE_SEGMENTS);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
         ImVec2 label_size = ImGui::CalcTextSize(text_buf, NULL);
         ImGui::SetCursorScreenPos(circle_center - label_size/2);
         ImGui::Text("%s", text_buf);
         ImGui::PopFont();
 
+        ImGui::PopStyleColor(3);
     }
 
     // Draw child Window (right) to list reactions to input

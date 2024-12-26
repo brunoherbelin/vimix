@@ -901,7 +901,7 @@ void UserInterface::NewFrame()
         }
     }
 
-    // overlay to ensure file color dialog is closed after use
+    // overlay to ensure color dialog is closed after use
     if (DialogToolkit::ColorPickerDialog::instance().busy()){
         if (!ImGui::IsPopupOpen("##ColorBusy"))
             ImGui::OpenPopup("##ColorBusy");

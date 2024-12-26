@@ -321,7 +321,7 @@ Control::Control() : receiver_(nullptr)
 
     for (size_t i = 0; i < INPUT_MAX; ++i) {
         input_active[i] = false;
-        input_values[i] = 0.f;
+        input_values[i] = 1.f;
     }
 }
 
@@ -464,24 +464,27 @@ bool Control::init()
 
 void Control::update()
 {
-    // read joystick buttons
-    int num_buttons = 0;
-    const unsigned char *state_buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &num_buttons );
-    // map to Control input array
-    for (int b = 0; b < num_buttons; ++b) {
-        input_access_.lock();
-        input_active[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS;
-        input_values[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS ? 1.f : 0.f;
-        input_access_.unlock();
-    }
+    if (glfwJoystickPresent(GLFW_JOYSTICK_1) == GLFW_TRUE) {
+        // read joystick buttons
+        int num_buttons = 0;
+        const unsigned char *state_buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &num_buttons);
 
-    // read joystick axis
-    int num_axis = 0;
-    const float *state_axis = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &num_axis );
-    for (int a = 0; a < num_axis; ++a) {
+        // map to Control input array
         input_access_.lock();
-        input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.02 ? true : false;
-        input_values[INPUT_JOYSTICK_FIRST_AXIS + a] = state_axis[a];
+        for (int b = 0; b < MIN(num_buttons, INPUT_JOYSTICK_COUNT_BUTTON); ++b) {
+            input_active[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS;
+            input_values[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS ? 1.f : 0.f;
+        }
+        input_access_.unlock();
+
+        // read joystick axis
+        int num_axis = 0;
+        const float *state_axis = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &num_axis);
+        input_access_.lock();
+        for (int a = 0; a < MIN(num_axis, INPUT_JOYSTICK_COUNT_AXIS); ++a) {
+            input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.02 ? true : false;
+            input_values[INPUT_JOYSTICK_FIRST_AXIS + a] = state_axis[a];
+        }
         input_access_.unlock();
     }
 
@@ -498,21 +501,17 @@ void Control::update()
         }
     }
 
-    // draft : react to metronome
-    //    int p = (int) Metronome::manager().phase();
-    //    static bool bip = false;
-    //    static int t = 2;
-    //    if (!bip) {
-    //        if (p + 1 == t){
-    //            g_print("bip");
-    //            bip = true;
-    //        }
-    //    }
-    //    else {
-    //        if (p + 1 != t){
-    //            bip = false;
-    //        }
-    //    }
+    // React to metronome
+    uint p = (uint) Metronome::manager().phase();
+    static uint prev_p = UINT_MAX;
+    input_access_.lock();
+    if (prev_p != p) {
+        input_active[INPUT_TIMER_FIRST + (prev_p > INPUT_TIMER_COUNT ? 0 : prev_p) ] = false;
+        input_active[INPUT_TIMER_FIRST + p] = true;
+        prev_p = p;
+    }
+    input_access_.unlock();
+
 }
 
 void Control::listen()
@@ -1613,9 +1612,9 @@ std::string Control::inputLabel(uint id)
     {
         label = std::string( "Multitouch ") + std::to_string(id - INPUT_MULTITOUCH_FIRST);
     }
-    else if ( id >= INPUT_CUSTOM_FIRST && id <= INPUT_CUSTOM_LAST )
+    else if ( id >= INPUT_TIMER_FIRST && id <= INPUT_TIMER_LAST )
     {
-        label = std::string( "Custom ") + std::to_string(id - INPUT_CUSTOM_FIRST);
+        label = std::string( "Beat ") + std::to_string(id - INPUT_TIMER_FIRST + 1);
     }
 
     return label;

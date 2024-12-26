@@ -1594,8 +1594,9 @@ void SourceControlWindow::RenderSelectedSources()
         {
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, 2.f * v_space_));
 
-            // area horizontal pack
-            int numcolumns = CLAMP( int(ceil(1.0f * rendersize.x / rendersize.y)), 1, numsources );
+            // area horizontal
+            rendersize.y -= buttons_height_ + 2.f * v_space_;
+            int numcolumns = CLAMP( int(ceil(rendersize.x / rendersize.y)), 1, numsources );
             ImGui::Columns( numcolumns, "##selectiongrid", false);
             float widthcolumn = rendersize.x / static_cast<float>(numcolumns);
             widthcolumn -= scrollbar_;
