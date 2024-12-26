@@ -185,7 +185,7 @@ void TimerMetronomeWindow::Render()
         // left slider : quantum
         float float_value = ceil(Metronome::manager().quantum());
         ImGui::SetCursorPos(ImVec2(0.5f * margin, 1.5f * margin));
-        if ( ImGui::VSliderFloat("##quantum", ImVec2(0.5f * margin, 2.f * circle_radius ), &float_value, 2, 200, "", 2.f) ){
+        if ( ImGui::VSliderFloat("##quantum", ImVec2(0.5f * margin, 2.f * circle_radius ), &float_value, MIN_BEAT, MAX_BEAT, "", 2.f) ){
             Metronome::manager().setQuantum( ceil(float_value) );
         }
         if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {

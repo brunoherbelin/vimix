@@ -506,7 +506,7 @@ void Control::update()
     static uint prev_p = UINT_MAX;
     input_access_.lock();
     if (prev_p != p) {
-        input_active[INPUT_TIMER_FIRST + (prev_p > INPUT_TIMER_COUNT ? 0 : prev_p) ] = false;
+        input_active[INPUT_TIMER_FIRST + (prev_p > MAX_BEAT ? 0 : prev_p) ] = false;
         input_active[INPUT_TIMER_FIRST + p] = true;
         prev_p = p;
     }

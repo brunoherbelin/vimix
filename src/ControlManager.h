@@ -1,4 +1,4 @@
-#ifndef CONTROL_H
+﻿#ifndef CONTROL_H
 #define CONTROL_H
 
 #include <glm/fwd.hpp>
@@ -106,9 +106,8 @@
 #define INPUT_MULTITOUCH_COUNT 16
 #define INPUT_MULTITOUCH_LAST  81
 #define INPUT_TIMER_FIRST      82
-#define INPUT_TIMER_COUNT      17
-#define INPUT_TIMER_LAST       99
-#define INPUT_MAX              100
+#define INPUT_TIMER_LAST       114
+#define INPUT_MAX              115
 
 
 class Session;
