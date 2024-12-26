@@ -464,10 +464,10 @@ bool Control::init()
 
 void Control::update()
 {
-    if (glfwJoystickPresent(GLFW_JOYSTICK_1) == GLFW_TRUE) {
+    if (glfwJoystickPresent(Settings::application.gamepad_id) == GLFW_TRUE) {
         // read joystick buttons
         int num_buttons = 0;
-        const unsigned char *state_buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &num_buttons);
+        const unsigned char *state_buttons = glfwGetJoystickButtons(Settings::application.gamepad_id, &num_buttons);
 
         // map to Control input array
         input_access_.lock();
@@ -479,7 +479,7 @@ void Control::update()
 
         // read joystick axis
         int num_axis = 0;
-        const float *state_axis = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &num_axis);
+        const float *state_axis = glfwGetJoystickAxes(Settings::application.gamepad_id, &num_axis);
         input_access_.lock();
         for (int a = 0; a < MIN(num_axis, INPUT_JOYSTICK_COUNT_AXIS); ++a) {
             input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.02 ? true : false;

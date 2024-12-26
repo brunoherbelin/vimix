@@ -329,6 +329,7 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     mappingConfNode->SetAttribute("mode", application.mapping.mode);
     mappingConfNode->SetAttribute("current", application.mapping.current);
     mappingConfNode->SetAttribute("disabled", application.mapping.disabled);
+    mappingConfNode->SetAttribute("gamepad", application.gamepad_id);
     pRoot->InsertEndChild(mappingConfNode);
 
     // Controller
@@ -693,6 +694,7 @@ void Settings::Load(const std::string &filename)
             mappingconfnode->QueryUnsigned64Attribute("mode", &application.mapping.mode);
             mappingconfnode->QueryUnsignedAttribute("current", &application.mapping.current);
             mappingconfnode->QueryBoolAttribute("disabled", &application.mapping.disabled);
+            mappingconfnode->QueryIntAttribute("gamepad", &application.gamepad_id);
         }
 
         // Timer Metronome

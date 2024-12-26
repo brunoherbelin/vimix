@@ -5963,6 +5963,28 @@ void Navigator::RenderMainPannelSettings()
     }
     ImGui::Spacing();
 
+    // GAMEPAD
+    ImGui::SetCursorPosX(width_);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+
+    char text_buf[256];
+    if ( glfwJoystickPresent( Settings::application.gamepad_id ) )
+        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(Settings::application.gamepad_id));
+    else
+        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Joystick %d", Settings::application.gamepad_id);
+
+    if (ImGui::BeginCombo("Gamepad", text_buf, ImGuiComboFlags_None)) {
+        for( int g = GLFW_JOYSTICK_1; g < GLFW_JOYSTICK_LAST; ++g) {
+            if ( glfwJoystickPresent( g ) ) {
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(g));
+                if (ImGui::Selectable(text_buf, Settings::application.gamepad_id == g) ) {
+                    Settings::application.gamepad_id = g;
+                }
+            }
+        }
+        ImGui::EndCombo();
+    }
+
     static bool need_restart = false;
     static bool vsync = (Settings::application.render.vsync > 0);
     static bool multi = (Settings::application.render.multisampling > 0);

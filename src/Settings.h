@@ -348,6 +348,7 @@ struct Application
 
     // Inputs mapping (callbacks)
     InputMappingConfig mapping;
+    int gamepad_id;
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         total_runtime = 0;
@@ -382,6 +383,7 @@ struct Application
         accept_audio = false;
         dialogPosition = glm::ivec2(-1, -1);
         image_sequence.framerate_mode = 15;
+        gamepad_id = 0;
     }
 
 };
