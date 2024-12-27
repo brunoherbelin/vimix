@@ -741,7 +741,7 @@ void InputMappingWindow::Render()
                 // remove all source callback of this input
                 S->deleteInputCallbacks(current_input_);
 
-            if (ImGui::BeginMenu(ICON_FA_CLOCK " Metronome",
+            if (ImGuiToolkit::BeginMenuIcon(4, 13, "Metronome",
                                  S->inputAssigned(current_input_) && Settings::application.mapping.mode < 4 ))
             {
                 Metronome::Synchronicity sync = S->inputSynchrony(current_input_);

@@ -478,10 +478,7 @@ void SourceControlWindow::Render()
                     _alpha_fading ? MediaPlayer::FADING_ALPHA : MediaPlayer::FADING_COLOR);
             }
 
-            // if (ImGui::MenuItem(LABEL_EDIT_FADING))
-            //     mediaplayer_edit_fading_ = true;
-
-            if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
+            if (ImGuiToolkit::BeginMenuIcon(4, 13, "Metronome"))
             {
                 Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
                 bool active = sync == Metronome::SYNC_NONE;
