@@ -246,7 +246,7 @@ SourceCallback *ResetGeometry::clone() const
 SetAlpha::SetAlpha(float alpha, float ms, bool revert) : SourceCallback(),
     duration_(ms), alpha_(alpha), bidirectional_(revert)
 {
-    alpha_ = glm::clamp(alpha_, -1.f, 1.f);
+    alpha_  = glm::clamp(alpha_, -3.f, 1.f);
     start_  = glm::vec2();
     target_ = glm::vec2();
 }
@@ -334,7 +334,7 @@ SourceCallback *SetAlpha::reverse(Source *s) const
 {
     float _a = glm::length( glm::vec2(s->group(View::MIXING)->translation_) );
     if (_a > 1.f)
-        _a *= -1.f;
+        _a = -_a +1.f;
     else
         _a = s->alpha();
 
