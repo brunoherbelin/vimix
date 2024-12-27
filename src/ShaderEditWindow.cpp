@@ -489,13 +489,13 @@ void ShaderEditWindow::Render()
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("Status: %s", status_.c_str());
 
-    const float w = ImGui::GetContentRegionAvail().x - ImGui::GetTextLineHeight();
-    ImVec2 txtsize = ImGui::CalcTextSize(Settings::application.recentShaderCode.path.c_str(), NULL);
-    ImGui::SameLine(w - txtsize.x - IMGUI_SAME_LINE, 0);
-
     // Right-align on same line than status
     // Display name of program for embedded code
     if (current_ != nullptr) {
+
+        const float w = ImGui::GetContentRegionAvail().x - ImGui::GetTextLineHeight();
+        ImVec2 txtsize = ImGui::CalcTextSize(Settings::application.recentShaderCode.path.c_str(), NULL);
+        ImGui::SameLine(w - txtsize.x - IMGUI_SAME_LINE, 0);
 
         if (filters_[current_].filename().empty()) {
             // right-aligned in italics and greyed out
