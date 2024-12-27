@@ -190,15 +190,17 @@ void PointerSpring::update(const glm::vec2 &pos, float dt)
 
     // compute delta betwen initial and current position
     glm::vec2 delta = pos - target_;
-    // apply force on velocity : spring stiffness / mass
-    velocity_ += delta * ( (POINTER_SPRING_MAX_MASS * stiffness) / mass );
-    // apply damping dynamics
-    velocity_ -= damping * glm::max(dt,0.001f) * glm::normalize(delta);
-    // compute new position : add velocity x time
-    target_ += glm::max(dt,0.001f) * velocity_;
-    // diminish velocity by viscousness of substrate
-    // (loss of energy between updates)
-    velocity_ *= viscousness;
+    if ( glm::length(delta) > 0.0001f ) {
+        // apply force on velocity : spring stiffness / mass
+        velocity_ += delta * ( (POINTER_SPRING_MAX_MASS * stiffness) / mass );
+        // apply damping dynamics
+        velocity_ -= damping * glm::max(dt,0.001f) * glm::normalize(delta);
+        // compute new position : add velocity x time
+        target_ += glm::max(dt,0.001f) * velocity_;
+        // diminish velocity by viscousness of substrate
+        // (loss of energy between updates)
+        velocity_ *= viscousness;
+    }
 }
 
 void PointerSpring::draw()
