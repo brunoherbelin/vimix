@@ -364,14 +364,14 @@ void ShaderEditWindow::Render()
     }
 
     // garbage collection
-    if ( Mixer::manager().session()->numSources() < 1 )
+    if ( !filters_.empty() && Mixer::manager().session()->numSources() < 1 )
     {
         // empty list of edited filter when session empty
         filters_.clear();
         current_ = nullptr;
+        // clear editor text and recent file
         _editor.SetText("");
-        // validate list for menu
-        Settings::application.recentShaderCode.validate();
+        Settings::application.recentShaderCode.assign("");
     }
 
     // File dialog Export code gives a filename to save to
@@ -408,7 +408,6 @@ void ShaderEditWindow::Render()
         // build with new code
         BuildShader();
     }
-
 
     // if compiling, cannot change source nor do anything else
     static std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
@@ -463,6 +462,7 @@ void ShaderEditWindow::Render()
             // if switch to another shader code
             if ( i != nullptr ) {
                 // set current shader code menu (can be empty for embedded)
+                Settings::application.recentShaderCode.push(filters_[i].filename());
                 Settings::application.recentShaderCode.assign(filters_[i].filename());
 
                 // change editor
@@ -495,39 +495,42 @@ void ShaderEditWindow::Render()
 
     // Right-align on same line than status
     // Display name of program for embedded code
-    if (filters_[current_].filename().empty()) {
-        // right-aligned in italics and greyed out
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.8, 0.9f));
-        ImGui::Text("%s", Settings::application.recentShaderCode.path.c_str());
-        ImGui::PopStyleColor(1);
-    }
-    // or Display filename and close button for shaders from file
-    else {
-        // right-aligned in italics
-        ImGui::Text("%s", Settings::application.recentShaderCode.path.c_str());
+    if (current_ != nullptr) {
 
-        // top right X icon to close the file
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.f, 0.f));
-        ImGui::SameLine(w, IMGUI_SAME_LINE);
-        if (ImGuiToolkit::TextButton(ICON_FA_TIMES, "Close file")) {
-            // Test if there are other filters refering to this filename
-            uint count_file = 0;
-            for (auto const &fil : filters_) {
-                if (fil.first != nullptr &&
-                    filters_[current_].filename().compare(fil.first->program().filename()) == 0)
-                    count_file++;
-            }
-            // remove the filename from list of menu if was used by other filters
-            if (count_file > 1)
-                Settings::application.recentShaderCode.remove(Settings::application.recentShaderCode.path);
-            // unset filename for program
-            filters_[current_].resetFilename();
-            // assign a non-filename to path
-            Settings::application.recentShaderCode.assign("");
-            // rebuild from existing code as embeded
-            BuildShader();
+        if (filters_[current_].filename().empty()) {
+            // right-aligned in italics and greyed out
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.8, 0.9f));
+            ImGui::Text("%s", Settings::application.recentShaderCode.path.c_str());
+            ImGui::PopStyleColor(1);
         }
-        ImGui::PopStyleVar(1);
+        // or Display filename and close button for shaders from file
+        else {
+            // right-aligned in italics
+            ImGui::Text("%s", Settings::application.recentShaderCode.path.c_str());
+
+            // top right X icon to close the file
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.f, 0.f));
+            ImGui::SameLine(w, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton(ICON_FA_TIMES, "Close file")) {
+                // Test if there are other filters refering to this filename
+                uint count_file = 0;
+                for (auto const &fil : filters_) {
+                    if (fil.first != nullptr &&
+                        filters_[current_].filename().compare(fil.first->program().filename()) == 0)
+                        count_file++;
+                }
+                // remove the filename from list of menu if was used by other filters
+                if (count_file > 1)
+                    Settings::application.recentShaderCode.remove(Settings::application.recentShaderCode.path);
+                // unset filename for program
+                filters_[current_].resetFilename();
+                // assign a non-filename to path
+                Settings::application.recentShaderCode.assign("");
+                // rebuild from existing code as embeded
+                BuildShader();
+            }
+            ImGui::PopStyleVar(1);
+        }
     }
 
     ImGui::PopFont();
