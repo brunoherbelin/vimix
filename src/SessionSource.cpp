@@ -447,6 +447,11 @@ void SessionGroupSource::init()
         // get the texture index from framebuffer of session, apply it to the surface
         texturesurface_->setTextureIndex( session_->frame()->texture() );
 
+        // special case for session group using FrameBuffer_alpha
+        // shader should not pre-multiply alpha
+        ImageShader *ish = static_cast<ImageShader *>(texturesurface_->shader());
+        ish->premultiply = 0.f;
+
         // create Frame buffer matching size of session
         FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution(), FrameBuffer::FrameBuffer_alpha );
 

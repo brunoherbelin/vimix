@@ -930,6 +930,7 @@ void Source::update(float dt)
             static glm::mat4 UVtoScene = GlmToolkit::transform(glm::vec3(1.f, -1.f, 0.f),
                                                                glm::vec3(0.f, 0.f, 0.f),
                                                                glm::vec3(-2.f, 2.f, 1.f));
+            static glm::mat4 ScenetoUV = glm::inverse(UVtoScene);
             // Aspect Ratio correction transform : coordinates of Appearance Frame are scaled by render buffer width
             glm::mat4 Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(renderbuffer_->aspectRatio(), 1.f, 1.f) );
             // Translation : same as Appearance Frame (modified by Ar)
@@ -948,7 +949,7 @@ void Source::update(float dt)
             // 5. Revert aspect ration correction
             // 6. Apply the Scaling (independent of aspect ratio)
             // 7. switch back to UV coordinate system
-            texturesurface_->shader()->iTransform = glm::inverse(UVtoScene) * glm::inverse(Sca) * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
+            texturesurface_->shader()->iTransform = ScenetoUV * glm::inverse(Sca) * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
 
             // inform mixing group
             if (mixinggroup_)

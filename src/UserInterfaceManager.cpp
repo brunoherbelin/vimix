@@ -3464,6 +3464,9 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
 
         // index indicator
         ImGui::SetCursorPos(ImVec2(pannel_width_ - 2.8f * ImGui::GetTextLineHeightWithSpacing(), IMGUI_TOP_ALIGN));
+
+        if (Mixer::manager().indexCurrentSource() < 0)
+            Mixer::manager().setCurrentIndex(selected_index);
         ImGui::TextDisabled("#%d", Mixer::manager().indexCurrentSource());
 
         ImGui::PopFont();
@@ -3564,17 +3567,27 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
         ImGui::Text(" ");
         if (s->ready() || s->failed()) {
 
+            ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, 0);
+
             // clone button
-            if ( s->failed() ) {
-                ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0));
-            }
-            else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+            if ( s->failed() )
+                ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", size);
+            else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", size) ) {
                 Mixer::manager().addSource ( (Source *) Mixer::manager().createSourceClone() );
                 UserInterface::manager().showPannel(  Mixer::manager().numSource() );
             }
 
+            // bundle button
+            if ( s->failed() )
+                ImGuiToolkit::ButtonDisabled( ICON_FA_SIGN_IN_ALT " Bundle", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0));
+            else if ( ImGui::Button( ICON_FA_SIGN_IN_ALT " Bundle", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
+                Mixer::manager().groupCurrent();
+                UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+            }
+
             // replace button
-            if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
                 // prepare panel for new source of same type
                 MediaSource *file = dynamic_cast<MediaSource *>(s);
                 MultiFileSource *sequence = dynamic_cast<MultiFileSource *>(s);
@@ -3587,20 +3600,21 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
                     Settings::application.source.new_type = SOURCE_GENERATED;
                 else
                     Settings::application.source.new_type = SOURCE_CONNECTED;
-
                 // switch to panel new source
                 showPannelSource(NAV_NEW);
                 // set source to be replaced
                 source_to_replace = s;
             }
+
             // delete button
-            if ( ImGui::Button( ACTION_DELETE, ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+            if ( ImGui::Button( ACTION_DELETE, size) ) {
                 Mixer::manager().deleteSource(s);
                 Action::manager().store(sname + std::string(": Deleted"));
             }
+            // delete all button
             if ( Mixer::manager().session()->failedSources().size() > 1 ) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
-                if ( ImGui::Button( ICON_FA_BACKSPACE " Delete all failed", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+                if ( ImGui::Button( ICON_FA_BACKSPACE " Delete all failed", size) ) {
                     auto failedsources = Mixer::manager().session()->failedSources();
                     for (auto sit = failedsources.cbegin(); sit != failedsources.cend(); ++sit) {
                         Mixer::manager().deleteSource( Mixer::manager().findSource( (*sit)->id() ) );

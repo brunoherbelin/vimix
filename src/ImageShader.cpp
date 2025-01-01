@@ -43,7 +43,7 @@ const char* MaskShader::mask_icons[4]  = { ICON_FA_WINDOW_CLOSE, ICON_FA_EDIT, I
 const char* MaskShader::mask_names[4]  = { "Mask None", "Mask Paint", "Mask Shape", "Mask Source" };
 const char* MaskShader::mask_shapes[5] = { "Ellipse", "Oblong", "Rectangle", "Horizontal", "Vertical" };
 
-ImageShader::ImageShader(): Shader(), secondary_texture(0), stipple(0.f)
+ImageShader::ImageShader(): Shader(), secondary_texture(0), stipple(0.f), premultiply(1.f)
 {
     // static program shader
     program_ = &imageShadingProgram;
@@ -57,6 +57,7 @@ void ImageShader::use()
 
     // set stippling
     program_->setUniform("stipple", stipple);
+    program_->setUniform("premultiply", premultiply);
     program_->setUniform("iNodes", iNodes);
 
     // default mask

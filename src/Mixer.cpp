@@ -771,8 +771,27 @@ void Mixer::groupSelection()
     if (selection().empty())
         return;
 
-    // work on non-empty selection of sources
-    auto _selection = selection().getCopy();
+    // group the current selection
+    group(selection().getCopy());
+}
+
+void Mixer::groupCurrent()
+{
+    if ( current_source_ != session_->end() ) {
+
+        SourceList L;
+        L.emplace_front( *current_source_ );
+
+        // group the current selection
+        group( L );
+    }
+}
+
+void Mixer::group(SourceList sourcelist)
+{
+    // work on non-empty list of sources
+    if (sourcelist.empty())
+        return;
 
     // create session group where to transfer sources into
     SessionGroupSource *sessiongroup = new SessionGroupSource;
@@ -781,25 +800,25 @@ void Mixer::groupSelection()
     // prepare for new session group name
     std::string name;
     // prepare for depth to place the group source
-    float d = _selection.front()->depth();
+    float d = sourcelist.front()->depth();
 
     // remember groups before emptying the session
     std::list<SourceList> allgroups = session_->getMixingGroups();
     std::list<SourceList> selectgroups;
     for (auto git = allgroups.begin(); git != allgroups.end(); ++git){
-        selectgroups.push_back( intersect( *git, _selection));
+        selectgroups.push_back( intersect( *git, sourcelist));
     }
 
-    // browse the selection
-    for (auto sit = _selection.begin(); sit != _selection.end(); ++sit) {
+    // browse the list
+    for (auto sit = sourcelist.begin(); sit != sourcelist.end(); ++sit) {
 
         // import source into group
         if ( sessiongroup->import(*sit) ) {
-            // find lower depth in _selection
+            // find lower depth in list
             d = MIN( (*sit)->depth(), d);
             // generate name from intials of all sources
             name += (*sit)->initials();
-            // detach & remove element from selection()
+            // detach & remove element from list
             detachSource (*sit);
             // remove source from session
             session_->removeSource(*sit);
@@ -813,6 +832,7 @@ void Mixer::groupSelection()
 
         // set depth at given location
         sessiongroup->group(View::LAYER)->translation_.z = d;
+        sessiongroup->group(View::RENDERING)->translation_.z = d;
 
         // set alpha to full opacity
         sessiongroup->group(View::MIXING)->translation_.x = 0.f;
@@ -1498,6 +1518,7 @@ void Mixer::merge(SessionSource *source)
 
     // avoid display issues
     current_view_->update(0.f);
+    unsetCurrentSource();
 
     // new state in history manager
     Action::manager().store(info.str());
