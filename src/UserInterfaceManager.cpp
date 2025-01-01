@@ -3582,7 +3582,7 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
                 ImGuiToolkit::ButtonDisabled( ICON_FA_SIGN_IN_ALT " Bundle", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0));
             else if ( ImGui::Button( ICON_FA_SIGN_IN_ALT " Bundle", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
                 Mixer::manager().groupCurrent();
-                UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+                UserInterface::manager().showPannel(  Mixer::manager().numSource() - 1 );
             }
 
             // replace button

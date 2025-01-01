@@ -487,7 +487,7 @@ void ImGuiVisitor::visit (Source& s)
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
         static const char *tooltip[2] = {"Unlocked", "Locked"};
         bool l = s.locked();
-        if (ImGuiToolkit::IconToggle(15,6,17,6, &l, tooltip ) ) {
+        if (ImGuiToolkit::IconToggle(15, 6, 17, 6, &l, tooltip ) ) {
             s.setLocked(l);
             if (l) {
                 Mixer::selection().clear();
