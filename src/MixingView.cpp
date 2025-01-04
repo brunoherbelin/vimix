@@ -460,6 +460,7 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
             }
             // pick the initials: show in panel
             else if ( pick.first == s->initial_1_ ) {
+                UserInterface::manager().showPannel(Mixer::manager().indexCurrentSource());
                 UserInterface::manager().setSourceInPanel(s);
             }
             // pick on the mixing group rotation icon

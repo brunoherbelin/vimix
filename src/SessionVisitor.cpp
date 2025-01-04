@@ -800,6 +800,7 @@ void SessionVisitor::visit (AlphaFilter& f)
 void SessionVisitor::visit (ImageFilter& f)
 {
     xmlCurrent_->SetAttribute("name", f.program().name().c_str() );
+    xmlCurrent_->SetAttribute("filename", f.program().filename().c_str() );
 
     // image filter code
     std::pair< std::string, std::string > filter_codes = f.program().code();

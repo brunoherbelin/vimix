@@ -20,6 +20,7 @@ public:
 
     // uniforms
     float stipple;
+    float premultiply;
     glm::mat4 iNodes;
 };
 

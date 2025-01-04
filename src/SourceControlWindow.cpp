@@ -91,7 +91,7 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     min_width_(0.f), h_space_(0.f), v_space_(0.f), scrollbar_(0.f),
     timeline_height_(0.f),  mediaplayer_height_(0.f), buttons_width_(0.f), buttons_height_(0.f),
     play_toggle_request_(false), replay_request_(false), pending_(false),
-    active_label_(LABEL_AUTO_MEDIA_PLAYER), active_selection_(-1),
+    active_label_(LABEL_PLAYER_SELECTION), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
     mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0),
     mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f),
@@ -118,7 +118,7 @@ void SourceControlWindow::resetActiveSelection()
 {
     info_.reset();
     active_selection_ = -1;
-    active_label_ = LABEL_AUTO_MEDIA_PLAYER;
+    active_label_ = LABEL_PLAYER_SELECTION;
     play_toggle_request_ = false;
     replay_request_ = false;
     capture_request_ = false;
@@ -348,29 +348,29 @@ void SourceControlWindow::Render()
             bool enabled = !selection_.empty() && active_selection_ < 0;
 
             // Menu : Dynamic selection
-            if (ImGui::MenuItem(LABEL_AUTO_MEDIA_PLAYER))
+            if (ImGui::MenuItem(LABEL_PLAYER_SELECTION, NULL, active_selection_ < 0))
                 resetActiveSelection();
-            // Menu : store selection
-            if (ImGui::MenuItem(ICON_FA_PLUS_CIRCLE LABEL_STORE_SELECTION, NULL, false, enabled))
-            {
-                active_selection_ = N;
-                active_label_ = std::string(ICON_FA_CHECK_CIRCLE "  Batch #") + std::to_string(active_selection_);
-                Mixer::manager().session()->addBatch( ids(selection_) );
-                info_.reset();
-            }
             // Menu : list of selections
             if (N>0) {
-                ImGui::Separator();
                 for (size_t i = 0 ; i < N; ++i)
                 {
-                    std::string label = std::string(ICON_FA_CHECK_CIRCLE "  Batch #") + std::to_string(i);
-                    if (ImGui::MenuItem( label.c_str() ))
+                    std::string label = std::string(LABEL_PLAYER_BATCH) + std::to_string(i);
+                    if (ImGui::MenuItem( label.c_str(), NULL, active_selection_ == (int) i ))
                     {
                         active_selection_ = i;
                         active_label_ = label;
                         info_.reset();
                     }
                 }
+            }
+            // Menu : store selection
+            ImGui::Separator();
+            if (ImGui::MenuItem(ICON_FA_PLUS_CIRCLE LABEL_PLAYER_BATCH_ADD, NULL, false, enabled))
+            {
+                active_selection_ = N;
+                active_label_ = std::string(LABEL_PLAYER_BATCH) + std::to_string(active_selection_);
+                Mixer::manager().session()->addBatch( ids(selection_) );
+                info_.reset();
             }
 
             ImGui::EndMenu();
@@ -478,10 +478,7 @@ void SourceControlWindow::Render()
                     _alpha_fading ? MediaPlayer::FADING_ALPHA : MediaPlayer::FADING_COLOR);
             }
 
-            // if (ImGui::MenuItem(LABEL_EDIT_FADING))
-            //     mediaplayer_edit_fading_ = true;
-
-            if (ImGui::BeginMenu(ICON_FA_CLOCK "  Metronome"))
+            if (ImGuiToolkit::BeginMenuIcon(4, 13, "Metronome"))
             {
                 Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
                 bool active = sync == Metronome::SYNC_NONE;
@@ -1594,8 +1591,9 @@ void SourceControlWindow::RenderSelectedSources()
         {
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, 2.f * v_space_));
 
-            // area horizontal pack
-            int numcolumns = CLAMP( int(ceil(1.0f * rendersize.x / rendersize.y)), 1, numsources );
+            // area horizontal
+            rendersize.y -= buttons_height_ + 2.f * v_space_;
+            int numcolumns = CLAMP( int(ceil(rendersize.x / rendersize.y)), 1, numsources );
             ImGui::Columns( numcolumns, "##selectiongrid", false);
             float widthcolumn = rendersize.x / static_cast<float>(numcolumns);
             widthcolumn -= scrollbar_;
@@ -1650,7 +1648,7 @@ void SourceControlWindow::RenderSelectedSources()
         float width = buttons_height_;
         std::string label(ICON_FA_PLUS_CIRCLE);
         if (space > buttons_width_) { // enough space to show full button with label text
-            label += LABEL_STORE_SELECTION;
+            label += LABEL_PLAYER_BATCH_ADD;
             width = buttons_width_ - ImGui::GetTextLineHeightWithSpacing();
         }
         ImGui::SameLine(0, space -width);
@@ -1661,7 +1659,7 @@ void SourceControlWindow::RenderSelectedSources()
             Mixer::manager().session()->addBatch( ids(selection_) );
         }
         if (space < buttons_width_ && ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip(LABEL_STORE_SELECTION);
+            ImGuiToolkit::ToolTip(LABEL_PLAYER_BATCH_ADD);
 
         ImGui::PopStyleColor(2);
     }
@@ -1770,7 +1768,7 @@ void SourceControlWindow::RenderSingleSource(Source *s)
                     width = buttons_width_ - ImGui::GetTextLineHeightWithSpacing();
                 ImGui::SameLine(0, space -width);
                 ImGui::SetNextItemWidth(width);
-                if (ImGuiToolkit::ButtonIcon( 0, 14, LABEL_ADD_TIMELINE, true, space > buttons_width_ )) {
+                if (ImGuiToolkit::ButtonIcon( 0, 14, LABEL_PLAYER_TIMELINE_ADD, true, space > buttons_width_ )) {
 
                     // activate mediaplayer
                     mediaplayer_active_ = ms->mediaplayer();

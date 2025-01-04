@@ -111,6 +111,8 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
             window->SetAttribute("d", w.decorated);
             window->SetAttribute("m", w.monitor.c_str());
             XMLElement *tmp = xmlDoc.NewElement("whitebalance");
+            tmp->SetAttribute("brightness", w.brightness);
+            tmp->SetAttribute("contrast", w.contrast);
             tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.whitebalance) );
             window->InsertEndChild( tmp );
             tmp = xmlDoc.NewElement("nodes");
@@ -283,6 +285,9 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
         // recent recordings
         recent->InsertEndChild( save_history(application.recentRecordings, "Record", xmlDoc));
 
+        // recent shader files
+        recent->InsertEndChild( save_history(application.recentShaderCode, "Shaders", xmlDoc));
+
         // recent dialog path
         XMLElement *recentdialogpath = xmlDoc.NewElement( "Dialog" );
         for(auto it = application.dialogRecentFolder.cbegin();
@@ -324,6 +329,7 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     mappingConfNode->SetAttribute("mode", application.mapping.mode);
     mappingConfNode->SetAttribute("current", application.mapping.current);
     mappingConfNode->SetAttribute("disabled", application.mapping.disabled);
+    mappingConfNode->SetAttribute("gamepad", application.gamepad_id);
     pRoot->InsertEndChild(mappingConfNode);
 
     // Controller
@@ -425,14 +431,17 @@ void Settings::Load(const std::string &filename)
     if (pRoot == nullptr)
         return;
 
-    // version
+    // test version
+    bool version_same = true;
+#ifdef VIMIX_VERSION_MAJOR
     int major = 0, minor = 0, patch = 0;
     pRoot->QueryIntAttribute("major", &major);
     pRoot->QueryIntAttribute("minor", &minor);
     pRoot->QueryIntAttribute("patch", &patch);
-    bool version_same = (major == VIMIX_VERSION_MAJOR)
-                        && (minor == VIMIX_VERSION_MINOR)
-                        && (patch == VIMIX_VERSION_PATCH);
+    version_same = (major == VIMIX_VERSION_MAJOR)
+                   && (minor == VIMIX_VERSION_MINOR)
+                   && (patch == VIMIX_VERSION_PATCH);
+#endif
 
     //
     // Restore settings only if version is same
@@ -594,8 +603,11 @@ void Settings::Load(const std::string &filename)
                         w.name = APP_TITLE;
                     // vec4 values for white balance correction
                     XMLElement *tmp = windowNode->FirstChildElement("whitebalance");
-                    if (tmp)
+                    if (tmp) {
                         tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec4"), w.whitebalance);
+                        tmp->QueryFloatAttribute("brightness", &w.brightness);
+                        tmp->QueryFloatAttribute("contrast", &w.contrast);
+                    }
                     // mat4 values for custom fit distortion
                     w.nodes = glm::zero<glm::mat4>();
                     tmp = windowNode->FirstChildElement("nodes");
@@ -685,6 +697,7 @@ void Settings::Load(const std::string &filename)
             mappingconfnode->QueryUnsigned64Attribute("mode", &application.mapping.mode);
             mappingconfnode->QueryUnsignedAttribute("current", &application.mapping.current);
             mappingconfnode->QueryBoolAttribute("disabled", &application.mapping.disabled);
+            mappingconfnode->QueryIntAttribute("gamepad", &application.gamepad_id);
         }
 
         // Timer Metronome
@@ -726,6 +739,9 @@ void Settings::Load(const std::string &filename)
 
             // recent recordings
             load_history(application.recentRecordings, "Record", pElement);
+
+            // recent Shader files
+            load_history(application.recentShaderCode, "Shaders", pElement);
 
             // recent dialog path
             XMLElement * pDialog = pElement->FirstChildElement("Dialog");

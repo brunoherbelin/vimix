@@ -424,9 +424,6 @@ void DisplaysView::adaptGridToWindow(int w)
 
 void DisplaysView::draw()
 {
-    // White ballance color button
-    static DialogToolkit::ColorPickerDialog whitebalancedialog;
-
     // draw all windows
     int i = 0;
     for (; i < Settings::application.num_output_windows; ++i) {
@@ -442,6 +439,8 @@ void DisplaysView::draw()
         windows_[i].shader_->uniforms_["Green"] = Settings::application.windows[i+1].whitebalance.y;
         windows_[i].shader_->uniforms_["Blue"] = Settings::application.windows[i+1].whitebalance.z;
         windows_[i].shader_->uniforms_["Temperature"] = Settings::application.windows[i+1].whitebalance.w;
+        windows_[i].shader_->uniforms_["Contrast"] = Settings::application.windows[i+1].contrast;
+        windows_[i].shader_->uniforms_["Brightness"] = Settings::application.windows[i+1].brightness;
 
         // update overlay
         if ( Settings::application.windows[i+1].fullscreen ) {
@@ -561,13 +560,12 @@ void DisplaysView::draw()
         // colors for UI
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
         ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
         ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
-
         //
         // Buttons on top
         //
@@ -625,14 +623,24 @@ void DisplaysView::draw()
                                                            Settings::application.windows[1+current_window_].whitebalance.y,
                                                            Settings::application.windows[1+current_window_].whitebalance.z, 1.f),
                                    ImGuiColorEditFlags_NoAlpha)) {
-                if ( DialogToolkit::ColorPickerDialog::busy()) {
+                if ( DialogToolkit::ColorPickerDialog::instance().busy()) {
                     Log::Warning("Close previously openned color picker.");
                 }
                 else {
-                    whitebalancedialog.setRGB( std::make_tuple(Settings::application.windows[1+current_window_].whitebalance.x,
+                    // prepare the color picker to start with white balance color
+                    DialogToolkit::ColorPickerDialog::instance().setRGB( std::make_tuple(Settings::application.windows[1+current_window_].whitebalance.x,
                                                            Settings::application.windows[1+current_window_].whitebalance.y,
                                                            Settings::application.windows[1+current_window_].whitebalance.z) );
-                    whitebalancedialog.open();
+                    // declare function to be called
+                    int w = 1+current_window_;
+                    auto applyColor = [w](std::tuple<float, float, float> c)  {
+                        Settings::application.windows[w].whitebalance.x = std::get<0>(c);
+                        Settings::application.windows[w].whitebalance.y = std::get<1>(c);
+                        Settings::application.windows[w].whitebalance.z = std::get<2>(c);
+                    };
+
+                    // open dialog (starts a thread that will call the 'applyColor' function
+                    DialogToolkit::ColorPickerDialog::instance().open( applyColor );
                 }
             }
             ImGui::PopFont();
@@ -640,31 +648,54 @@ void DisplaysView::draw()
             // White ballance temperature
             ImGui::SameLine();
             window->DC.CursorPos.y -= g.Style.FramePadding.y;
-            if (ImGui::Button(ICON_FA_THERMOMETER_HALF ICON_FA_SORT_DOWN ))
-                ImGui::OpenPopup("temperature_popup");
+            if (ImGui::Button(ICON_FA_SLIDERS_H ICON_FA_SORT_DOWN ))
+                ImGui::OpenPopup("adjustments_popup");
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-            if (ImGui::IsItemHovered()){
-                ImGui::BeginTooltip();
-                ImGui::Text("%d Kelvin", 4000 + (int) ceil(Settings::application.windows[1+current_window_].whitebalance.w * 5000.f));
-                ImGui::EndTooltip();
-            }
-            if (ImGui::BeginPopup("temperature_popup", ImGuiWindowFlags_NoMove))  {
-                // High Kelvin = blue
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 1.f, 1.0f));
-                ImGui::Text("  " ICON_FA_THERMOMETER_FULL );
+            if (ImGui::BeginPopup("adjustments_popup", ImGuiWindowFlags_NoMove))  {
+
+                // top icons
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 1.f, 1.0f)); // High Kelvin = blue
+                ImGui::Text("  " ICON_FA_THERMOMETER_FULL "  ");
                 ImGui::PopStyleColor(1);
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Color Temperature, in Kelvin");
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGuiToolkit::Indication("Contrast", 2, 1);
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGuiToolkit::Indication("Brightness", 4, 1 );
 
                 // Slider Temperature K
-                ImGui::VSliderFloat("##Temperature", ImVec2(30,260), &Settings::application.windows[1+current_window_].whitebalance.w, 0.0, 1.0, "");
+                ImGui::VSliderFloat("##Temperatureslider", ImVec2(30,260), &Settings::application.windows[1+current_window_].whitebalance.w, 0.0, 1.0, "");
                 if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
                     ImGui::BeginTooltip();
                     ImGui::Text("%d K", 4000 + (int) ceil(Settings::application.windows[1+current_window_].whitebalance.w * 5000.f));
                     ImGui::EndTooltip();
                 }
-                // High Kelvin = blue
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.4f, 0.4f, 1.0f));
-                ImGui::Text("  " ICON_FA_THERMOMETER_EMPTY );
+                // Slider Contrast
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::VSliderFloat("##contrastslider", ImVec2(30,260), &Settings::application.windows[1+current_window_].contrast, -0.5, 0.5, "");
+                if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("%.1f %%", (100.f * Settings::application.windows[1+current_window_].contrast));
+                    ImGui::EndTooltip();
+                }
+                // Slider Brightness
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::VSliderFloat("##brightnessslider", ImVec2(30,260), &Settings::application.windows[1+current_window_].brightness, -0.5, 0.5, "");
+                if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("%.1f %%", (100.f * Settings::application.windows[1+current_window_].brightness));
+                    ImGui::EndTooltip();
+                }
+
+                // bottom icons
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.4f, 0.4f, 1.0f));  // Low Kelvin = red
+                ImGui::Text("  " ICON_FA_THERMOMETER_EMPTY  "  ");
                 ImGui::PopStyleColor(1);
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGuiToolkit::Icon(1, 1, false);
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGuiToolkit::Icon(3, 1, false);
 
                 ImGui::EndPopup();
             }
@@ -675,14 +706,6 @@ void DisplaysView::draw()
         ImGui::End();
     }
     ImGui::PopFont();
-
-    // get picked color if dialog finished
-    if (whitebalancedialog.closed()){
-        std::tuple<float, float, float> c = whitebalancedialog.RGB();
-        Settings::application.windows[1+current_window_].whitebalance.x =  std::get<0>(c);
-        Settings::application.windows[1+current_window_].whitebalance.y =  std::get<1>(c);
-        Settings::application.windows[1+current_window_].whitebalance.z =  std::get<2>(c);
-    }
 
     // display popup menu
     if (show_window_menu_ && current_window_ > -1) {
@@ -776,8 +799,16 @@ void DisplaysView::draw()
             Rendering::manager().outputWindow(current_window_).setDecoration(true);
             windows_[current_window_].need_update_ += 2;
         }
-        if ( ImGui::MenuItem( ICON_FA_TEMPERATURE_LOW "   Reset white balance") ) {
-            Settings::application.windows[1+current_window_].whitebalance = glm::vec4(1.f, 1.f, 1.f, 0.5f);
+        if ( ImGui::MenuItem( ICON_FA_TINT_SLASH "  Reset white balance") ) {
+            Settings::application.windows[1+current_window_].whitebalance.x = 1.f;
+            Settings::application.windows[1+current_window_].whitebalance.y = 1.f;
+            Settings::application.windows[1+current_window_].whitebalance.z = 1.f;
+            windows_[current_window_].need_update_ += 2;
+        }
+        if ( ImGui::MenuItem( ICON_FA_SLIDERS_H "   Reset color corrections") ) {
+            Settings::application.windows[1+current_window_].whitebalance.w = 0.5f;
+            Settings::application.windows[1+current_window_].brightness = 0.f;
+            Settings::application.windows[1+current_window_].contrast = 0.f;
             windows_[current_window_].need_update_ += 2;
         }
         if ( Settings::application.windows[current_window_+1].custom ) {

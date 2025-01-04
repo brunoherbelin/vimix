@@ -40,7 +40,8 @@
 #define POS_TARGET 0.4f
 
 
-TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
+TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr),
+    transition_cross_fade(true)
 {
     // read default settings
     if ( Settings::application.views[mode_].name.empty() )
@@ -126,7 +127,7 @@ void TransitionView::update(float dt)
 
             // Transfer this movement to changes in mixing
             // cross fading
-            if ( Settings::application.transition.cross_fade )
+            if ( transition_cross_fade )
             {
                 float f = 0.f;
                 // change alpha of session:
@@ -176,7 +177,7 @@ void TransitionView::update(float dt)
 void TransitionView::draw()
 {
     // update the GUI depending on changes in settings
-    gradient_->setActive( 2 * (Settings::application.transition.profile ? 1 : 0) + (Settings::application.transition.cross_fade ? 0 : 1) );
+    gradient_->setActive( 2 * (Settings::application.transition.profile ? 1 : 0) + (transition_cross_fade ? 0 : 1) );
 
     // draw scene of this view
     View::draw();
@@ -214,8 +215,8 @@ void TransitionView::draw()
                 const glm::vec2 pos_play = Rendering::manager().project(glm::vec3(0.f, -0.15f, 0.f), scene.root()->transform_, false);
 
                 // style grey
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.27f, 0.27f, 0.27f, 0.55f));
-                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.79f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
                 ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.27f, 0.27f, 0.27f, 0.7f));
                 ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
                 ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.10f, 0.10f, 0.10f, 1.00f));
@@ -234,7 +235,10 @@ void TransitionView::draw()
                 // toggle transition mode
                 ImGui::SetCursorScreenPos(ImVec2(pos_tran.x - 60.f, pos_tran.y +2.f));
                 const char *tooltip[2] = {"Fade to black", "Cross fading"};
-                ImGuiToolkit::IconToggle(9, 8, 0, 8, &Settings::application.transition.cross_fade, tooltip );
+                if (ImGuiToolkit::IconToggle(9, 8, 0, 8,
+                                             &transition_cross_fade,
+                                             tooltip))
+                    Settings::application.transition.cross_fade = transition_cross_fade;
 
                 ImGui::SetCursorScreenPos(ImVec2(pos_tran.x + 10.f, pos_tran.y + 2.f));
                 const char *_tooltip[2] = {"Linear", "Quadratic"};
@@ -272,8 +276,17 @@ void TransitionView::attach(SessionFileSource *ts)
         tg->visible_ = true;
         scene.ws()->attach(tg);
 
+        transition_cross_fade = Settings::application.transition.cross_fade;
+
+        // automatically change fading mode to 'fade to black' if
+        // the session is already faded to black
+        if (Mixer::manager().session()->fading() > 0.01
+            && Settings::application.transition.cross_fade) {
+            transition_cross_fade = false;
+        }
+
         // in fade to black transition, start transition from current fading value
-        if ( !Settings::application.transition.cross_fade) {
+        if ( !transition_cross_fade) {
 
             // reverse calculate x position to match actual fading of session
             float d = 0.f;

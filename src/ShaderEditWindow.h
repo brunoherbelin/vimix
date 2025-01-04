@@ -23,9 +23,11 @@ public:
     ShaderEditWindow();
 
     void Render();
+    void Refresh();
     void setVisible(bool on);
 
     void BuildShader();
+    void BuildAll();
 
     // from WorkspaceWindow
     bool Visible() const override;

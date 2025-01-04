@@ -305,8 +305,8 @@ void GeometryView::draw()
     {
         // style
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
@@ -362,10 +362,10 @@ void GeometryView::draw()
                 }
                 ImGui::Text(ICON_FA_ANGLE_LEFT);
                 ImGui::SameLine(18);
-                if (ImGui::MenuItem(ICON_FA_ANGLE_RIGHT "   Reset distortion")) {
+                if (ImGui::MenuItem(ICON_FA_ANGLE_RIGHT "   Reset corners")) {
                     s->group(mode_)->data_ = glm::zero<glm::mat4>();
                     s->touch();
-                    Action::manager().store(s->name() + std::string(": Reset distortion"));
+                    Action::manager().store(s->name() + std::string(": Reset corners"));
                 }
             }
             // SHAPE source manipulation mode

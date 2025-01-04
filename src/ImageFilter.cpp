@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of vimix - video live mixer
  *
  * **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
@@ -23,11 +23,13 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "Resource.h"
-#include "Visitor.h"
-#include "FrameBuffer.h"
-#include "Primitives.h"
 #include "BaseToolkit.h"
+#include "FrameBuffer.h"
+#include "Log.h"
+#include "Primitives.h"
+#include "Resource.h"
+#include "SystemToolkit.h"
+#include "Visitor.h"
 
 #include "Mixer.h"
 
@@ -103,20 +105,21 @@ glm::vec4 FilteringProgram::iMouse = glm::vec4(0.f,0.f,0.f,0.f);
 ///                                 ////
 ////////////////////////////////////////
 
-FilteringProgram::FilteringProgram() : name_("Default"), code_({"shaders/filters/default.glsl",""}), two_pass_filter_(false)
+FilteringProgram::FilteringProgram() : name_("Default"), filename_(""),
+    code_({"shaders/filters/default.glsl",""}), two_pass_filter_(false)
 {
 
 }
 
 FilteringProgram::FilteringProgram(const std::string &name, const std::string &first_pass, const std::string &second_pass,
-                         const std::map<std::string, float> &parameters) :
-    name_(name), code_({first_pass, second_pass}), parameters_(parameters)
+                         const std::map<std::string, float> &parameters, const std::string &filename) :
+    name_(name), filename_(filename), code_({first_pass, second_pass}), parameters_(parameters)
 {
     two_pass_filter_ = !second_pass.empty();
 }
 
 FilteringProgram::FilteringProgram(const FilteringProgram &other) :
-    name_(other.name_), code_(other.code_), two_pass_filter_(other.two_pass_filter_), parameters_(other.parameters_)
+    name_(other.name_), filename_(other.filename_), code_(other.code_), two_pass_filter_(other.two_pass_filter_), parameters_(other.parameters_)
 {
 
 }
@@ -125,6 +128,7 @@ FilteringProgram& FilteringProgram::operator= (const FilteringProgram& other)
 {
     if (this != &other) {
         this->name_ = other.name_;
+        this->filename_ = other.filename_;
         this->code_ = other.code_;
         this->parameters_.clear();
         this->parameters_ = other.parameters_;
@@ -435,15 +439,37 @@ FilteringProgram ImageFilter::program () const
 }
 
 #define REGEX_UNIFORM_DECLARATION "uniform\\s+float\\s+"
-#define REGEX_UNIFORM_VALUE "(\\s*=\\s*[[:digit:]](\\.[[:digit:]])?)?\\s*\\;"
+#define REGEX_VARIABLE_NAME "[a-zA-Z_][\\w]+"
+#define REGEX_UNIFORM_VALUE "(\\s*=\\s*[[:digit:]]+(\\.[[:digit:]]*)?)?\\s*\\;"
 
 void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string> *ret)
 {
+    // impose C locale
+    setlocale(LC_ALL, "C");
+
     // always keep local copy
     program_ = f;
 
-    // change code
+    // get code
     std::pair<std::string, std::string> codes = program_.code();
+
+    // if program code is given by a filename, read the file
+    if (!program_.filename().empty()) {
+        // read the file if it exists
+        std::string content_text_ = "";
+        if (SystemToolkit::file_exists(program_.filename()))
+            content_text_ = SystemToolkit::get_text_content(program_.filename());
+        // if content of text file is empty (also if file doesn't exists)
+        if (content_text_.empty()) {
+            Log::Info("File '%s' not found or not a text file; ignored.", program_.filename().c_str());
+            // use embedded code and reset filename
+            program_.resetFilename();
+        } else {
+            // set code to text content
+            codes.first = content_text_;
+            program_.setCode( codes );
+        }
+    }
 
     // FIRST PASS
     // set code to the shader for first-pass
@@ -453,7 +479,7 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
     // Search for "uniform float", a variable name, with possibly a '=' and float value
     std::string glslcode(codes.first);
     std::smatch found_uniform;
-    std::regex is_a_uniform(REGEX_UNIFORM_DECLARATION "[[:alpha:]]+" REGEX_UNIFORM_VALUE);
+    std::regex is_a_uniform(REGEX_UNIFORM_DECLARATION REGEX_VARIABLE_NAME REGEX_UNIFORM_VALUE);
     // loop over every uniform declarations in the GLSL code
     while (std::regex_search(glslcode, found_uniform, is_a_uniform)) {
         // found a complete declaration of uniform variable
@@ -462,18 +488,22 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
         std::string varname =
             std::regex_replace(declaration,std::regex(REGEX_UNIFORM_DECLARATION),"");
         varname = std::regex_replace(varname, std::regex(REGEX_UNIFORM_VALUE), "");
-        // add to list of parameters if was not already there, with default value
-        if ( !program_.hasParameter(varname) )
-            program_.setParameter(varname, 0.f);
-
-        // try to find a value in uniform declaration, and set parameter value if valid
-        float val = 0.f;
-        std::smatch found_value;
-        std::regex is_a_float_value("[[:digit:]](\\.[[:digit:]])?");
-        if (std::regex_search(declaration, found_value, is_a_float_value)) {
-            // set value only if a value is given
-            if ( BaseToolkit::is_a_value(found_value.str(), &val) )
-                program_.setParameter(varname, val);
+        // add to list of parameters if was not already there, with value
+        if ( !program_.hasParameter(varname) ) {
+            // try to find a value in uniform declaration, and set parameter value if valid
+            float val = 0.f;
+            std::string valuestring =
+                std::regex_replace(declaration,std::regex(REGEX_UNIFORM_DECLARATION),"");
+            valuestring = std::regex_replace(valuestring, std::regex(REGEX_VARIABLE_NAME),"");
+            std::smatch found_value;
+            std::regex is_a_float_value("[[:digit:]]+(\\.[[:digit:]]*)?");
+            if (std::regex_search(valuestring, found_value, is_a_float_value)) {
+                // set value only if a value is given
+                if ( BaseToolkit::is_a_value(found_value.str(), &val) )
+                    program_.setParameter(varname, val);
+                else
+                    program_.setParameter(varname, 0.f);
+            }
         }
         // keep parsing
         glslcode = found_uniform.suffix().str();

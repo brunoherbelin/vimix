@@ -487,7 +487,7 @@ void ImGuiVisitor::visit (Source& s)
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
         static const char *tooltip[2] = {"Unlocked", "Locked"};
         bool l = s.locked();
-        if (ImGuiToolkit::IconToggle(15,6,17,6, &l, tooltip ) ) {
+        if (ImGuiToolkit::IconToggle(15, 6, 17, 6, &l, tooltip ) ) {
             s.setLocked(l);
             if (l) {
                 Mixer::selection().clear();
@@ -1045,7 +1045,7 @@ void ImGuiVisitor::visit (BlurFilter& f)
         Action::manager().store(oss.str());
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    if (ImGuiToolkit::TextButton("Method ")) {
+    if (ImGuiToolkit::TextButton("Method")) {
         f.setMethod( 0 );
         oss << BlurFilter::method_label[0];
         Action::manager().store(oss.str());
@@ -1203,8 +1203,6 @@ void ImGuiVisitor::visit (AlphaFilter& f)
 
     if ( m == AlphaFilter::ALPHA_CHROMAKEY || m == AlphaFilter::ALPHA_FILL)
     {        
-        static DialogToolkit::ColorPickerDialog colordialog;
-
         // read color from filter
         float color[3] = {filter_parameters["Red"], filter_parameters["Green"], filter_parameters["Blue"]};
 
@@ -1227,12 +1225,30 @@ void ImGuiVisitor::visit (AlphaFilter& f)
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::Button( ICON_FA_EYE_DROPPER " Open selector", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            if ( DialogToolkit::ColorPickerDialog::busy()) {
+            if ( DialogToolkit::ColorPickerDialog::instance().busy()) {
                 Log::Warning("Close previously openned color picker.");
             }
             else {
-                colordialog.setRGB( std::make_tuple(color[0], color[1], color[2]) );
-                colordialog.open();
+                // prepare the color picker to start with filter's color
+                DialogToolkit::ColorPickerDialog::instance().setRGB( std::make_tuple(color[0], color[1], color[2]) );
+
+                // declare function to be called
+                std::string msg = oss.str();
+                auto applyColor = [&f, msg]( std::tuple<float, float, float> c)  {
+                    f.setProgramParameter("Red",   std::get<0>(c));
+                    f.setProgramParameter("Green", std::get<1>(c));
+                    f.setProgramParameter("Blue",  std::get<2>(c));
+                    char buf[1024];
+                    ImFormatString(buf, IM_ARRAYSIZE(buf), "%scolor #%02X%02X%02X",
+                                   msg.c_str(),
+                                   ImClamp((int)ceil(255.f * std::get<0>(c)),0,255),
+                                   ImClamp((int)ceil(255.f * std::get<1>(c)),0,255),
+                                   ImClamp((int)ceil(255.f * std::get<2>(c)),0,255));
+                    Action::manager().store(buf);
+                };
+
+                // open dialog (starts a thread that will callthe 'applyColor' function
+                DialogToolkit::ColorPickerDialog::instance().open( applyColor );
             }
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -1244,18 +1260,6 @@ void ImGuiVisitor::visit (AlphaFilter& f)
             Action::manager().store(oss.str());
         }
 
-        // get picked color if dialog finished
-        if (colordialog.closed()){
-            std::tuple<float, float, float> c = colordialog.RGB();
-            f.setProgramParameter("Red",   std::get<0>(c));
-            f.setProgramParameter("Green", std::get<1>(c));
-            f.setProgramParameter("Blue",  std::get<2>(c));
-            char buf[64];
-            ImFormatString(buf, IM_ARRAYSIZE(buf), "#%02X%02X%02X", ImClamp((int)ceil(255.f * std::get<0>(c)),0,255),
-                           ImClamp((int)ceil(255.f * std::get<1>(c)),0,255), ImClamp((int)ceil(255.f * std::get<2>(c)),0,255));
-            oss << " Color " << buf;
-            Action::manager().store(oss.str());
-        }
     }
     // Luminance extra parameter
     else {
@@ -1297,6 +1301,9 @@ void ImGuiVisitor::visit (ImageFilter& f)
     if (ImGuiToolkit::TextButton("Code")) {
         FilteringProgram target;
         f.setProgram( target );
+        UserInterface::manager().shadercontrol.Refresh();
+        oss << "Shader code reset";
+        Action::manager().store(oss.str());
     }
 
     // List of parameters
@@ -1345,6 +1352,28 @@ void ImGuiVisitor::visit (CloneSource& s)
             oss << "Filter None";
             Action::manager().store(oss.str());
             info.reset();
+        }
+        // offer option to convert to Custom shader to be able to edit code
+        if (s.filter()->type() > FrameBufferFilter::FILTER_RESAMPLE
+            && s.filter()->type() < FrameBufferFilter::FILTER_IMAGE) {
+            ImageFilter *imf = static_cast<ImageFilter *>(s.filter());
+            if (!imf->program().isTwoPass()) {
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton(ICON_FA_CODE, "Convert to custom")) {
+                    // get code and values
+                    const std::pair<std::string, std::string> code = imf->program().code();
+                    const std::map<std::string, float> param = imf->program().parameters();
+                    FilteringProgram target;
+                    target.setCode(code);
+                    target.setParameters(param);
+                    target.setName(imf->program().name());
+                    // change filter and program
+                    s.setFilter(FrameBufferFilter::FILTER_IMAGE);
+                    imf = static_cast<ImageFilter *>(s.filter());
+                    imf->setProgram(target);
+                    info.reset();
+                }
+            }
         }
 
         // filter options

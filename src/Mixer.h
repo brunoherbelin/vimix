@@ -69,8 +69,9 @@ public:
     int  numSource    () const;
 
     // operations on selection
-    void deleteSelection  ();
-    void groupSelection ();
+    void deleteSelection ();
+    void groupSelection  ();
+    void groupCurrent    ();
     void groupAll (bool only_active = false);
     void ungroupAll ();
     void groupSession ();
@@ -148,6 +149,7 @@ protected:
     void attachSource  (Source *s);
     void detachSource  (Source *s);
     bool attached      (Source *s) const;
+    void group         (SourceList sources);
 
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;

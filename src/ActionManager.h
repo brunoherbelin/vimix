@@ -7,6 +7,8 @@
 
 #include <tinyxml2.h>
 
+#define MAX_COUNT_HISTORY 1000
+
 class Session;
 class Interpolator;
 class FrameBufferImage;
@@ -26,7 +28,7 @@ public:
         static Action _instance;
         return _instance;
     }
-    void init ();
+    void init (const std::string &label);
 
     // Undo History
     void store (const std::string &label);
@@ -36,6 +38,7 @@ public:
 
     inline uint current () const { return history_step_; }
     inline uint max () const { return history_max_step_; }
+    inline uint min () const { return history_min_step_; }
     std::string label (uint s) const;
     std::string shortlabel (uint s) const;
     FrameBufferImage *thumbnail (uint s) const;
@@ -66,6 +69,7 @@ private:
     tinyxml2::XMLDocument history_doc_;
     uint history_step_;
     uint history_max_step_;
+    uint history_min_step_;
     std::mutex history_access_;
     static void storeSession(Session *se, std::string label);
     void restore(uint target);

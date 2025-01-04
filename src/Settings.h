@@ -73,11 +73,12 @@ struct WindowConfig
     bool show_pattern;
     glm::vec4 whitebalance;
     glm::mat4 nodes;
+    float brightness, contrast;
 
     WindowConfig() : name(APP_TITLE), x(15), y(15), w(1280), h(720),
         fullscreen(false), custom(false), decorated(true),
         monitor(""), show_pattern(false), whitebalance(glm::vec4(1.f, 1.f, 1.f, 0.5f)),
-        nodes(glm::zero<glm::mat4>())
+        nodes(glm::zero<glm::mat4>()), brightness(0.f), contrast(0.f)
     { }
 
 };
@@ -338,6 +339,7 @@ struct Application
     History recentImport;
     History recentImportFolders;
     History recentRecordings;
+    History recentShaderCode;
     std::map< std::string, std::string > dialogRecentFolder;
     glm::ivec2 dialogPosition;
 
@@ -346,6 +348,7 @@ struct Application
 
     // Inputs mapping (callbacks)
     InputMappingConfig mapping;
+    int gamepad_id;
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         total_runtime = 0;
@@ -380,6 +383,7 @@ struct Application
         accept_audio = false;
         dialogPosition = glm::ivec2(-1, -1);
         image_sequence.framerate_mode = 15;
+        gamepad_id = 0;
     }
 
 };

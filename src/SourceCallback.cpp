@@ -246,7 +246,7 @@ SourceCallback *ResetGeometry::clone() const
 SetAlpha::SetAlpha(float alpha, float ms, bool revert) : SourceCallback(),
     duration_(ms), alpha_(alpha), bidirectional_(revert)
 {
-    alpha_ = glm::clamp(alpha_, -1.f, 1.f);
+    alpha_  = glm::clamp(alpha_, -3.f, 1.f);
     start_  = glm::vec2();
     target_ = glm::vec2();
 }
@@ -334,7 +334,7 @@ SourceCallback *SetAlpha::reverse(Source *s) const
 {
     float _a = glm::length( glm::vec2(s->group(View::MIXING)->translation_) );
     if (_a > 1.f)
-        _a *= -1.f;
+        _a = -_a +1.f;
     else
         _a = s->alpha();
 
@@ -762,6 +762,10 @@ void SetGeometry::update(Source *s, float dt)
             intermediate.translation_ = glm::mix(start_.translation_, target_.translation_, progress/duration_);
             intermediate.scale_ = glm::mix(start_.scale_, target_.scale_, progress/duration_);
             intermediate.rotation_ = glm::mix(start_.rotation_, target_.rotation_, progress/duration_);
+            intermediate.data_[0] = glm::mix(start_.data_[0], target_.data_[0], progress/duration_);
+            intermediate.data_[1] = glm::mix(start_.data_[1], target_.data_[1], progress/duration_);
+            intermediate.data_[2] = glm::mix(start_.data_[2], target_.data_[2], progress/duration_);
+            intermediate.data_[3] = glm::mix(start_.data_[3], target_.data_[3], progress/duration_);
             // apply geometry
             s->group(View::GEOMETRY)->copyTransform(&intermediate);
             s->touch();
@@ -1416,4 +1420,51 @@ void SetFilterUniform::accept(Visitor& v)
 {
     SourceCallback::accept(v);
     v.visit(*this);
+}
+
+SetBlending::SetBlending(const std::string &method)
+    : SourceCallback()
+    , target_method_(method)
+{}
+
+void SetBlending::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+
+    // set method on first time it is ready and finish
+    if (status_ == READY) {
+        if (!target_method_.empty()) {
+
+            // find blending mode ID of the blending name provided, if valid
+            size_t __t = Shader::BLEND_OPACITY;
+            for (; __t != Shader::BLEND_NONE; __t++) {
+                // get blending label, in lower case
+                std::string _b = std::get<2>(Shader::blendingFunction[__t]);
+                std::transform(_b.begin(), _b.end(), _b.begin(), ::tolower);
+                std::transform(target_method_.begin(), target_method_.end(), target_method_.begin(), ::tolower);
+                // end search if found same as target blending name (success)
+                if (target_method_.compare(_b) == 0)
+                    break;
+            }
+
+            // Provided blending name is valid
+            Shader::BlendMode __mode = Shader::BlendMode(__t);
+            if (__mode != Shader::BLEND_NONE) {
+                // change mode if different from source
+                if (s->blendingShader()->blending != __mode)
+                    s->blendingShader()->blending = __mode;
+            }
+            else
+                Log::Info("Blending : unknown mode '%s'", target_method_.c_str());
+        }
+        else
+            Log::Info("Blending : Invalid mode", target_method_.c_str());
+
+        status_ = FINISHED;
+    }
+}
+
+SourceCallback *SetBlending::clone() const
+{
+    return new SetBlending(target_method_);
 }

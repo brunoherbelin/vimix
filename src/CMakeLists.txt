@@ -3,7 +3,7 @@
 #####  **Copyright** (C) 2019-2023 Bruno Herbelin <bruno.herbelin@gmail.com>
 #####
 
-cmake_minimum_required(VERSION 3.8.2)
+cmake_minimum_required(VERSION 3.10)
 include( InstallRequiredSystemLibraries )
 
 #####
@@ -309,7 +309,7 @@ IF(APPLE)
 
     ## POST INSTALL DMG SIGNING AND NOTARIZATION
     ## 1. SIGN DMG
-    ## codesign
+    ## codesign --force --sign "Developer ID Application: <identityIdentifier>" <pathToDMG>
     ## codesign --verify --verbose=2 ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dmg
     ##
     ## 2. SUBMIT TO NOTARIZATION

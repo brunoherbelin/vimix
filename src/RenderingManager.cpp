@@ -1157,7 +1157,17 @@ void RenderingWindow::makeCurrent()
 }
 
 
-FilteringProgram whitebalance("Whitebalance", "shaders/filters/whitebalance.glsl", "", { { "Red", 1.0}, { "Green", 1.0}, { "Blue", 1.0}, { "Temperature", 0.5} });
+FilteringProgram whitebalance("Whitebalance",
+                              "shaders/filters/whitebalance.glsl",
+                              "",
+                              {{"Red", 1.0},
+                               {"Green", 1.0},
+                               {"Blue", 1.0},
+                               {"Temperature", 0.5},
+                               {"Contrast", 0.0},
+                               {"Brightness", 0.0}
+                              }
+                              );
 
 bool RenderingWindow::draw(FrameBuffer *fb)
 {
@@ -1203,6 +1213,8 @@ bool RenderingWindow::draw(FrameBuffer *fb)
                 shader_->uniforms_["Green"] = Settings::application.windows[index_].whitebalance.y;
                 shader_->uniforms_["Blue"] = Settings::application.windows[index_].whitebalance.z;
                 shader_->uniforms_["Temperature"] = Settings::application.windows[index_].whitebalance.w;
+                shader_->uniforms_["Contrast"] = Settings::application.windows[index_].contrast;
+                shader_->uniforms_["Brightness"] = Settings::application.windows[index_].brightness;
 
                 if (Settings::application.windows[index_].custom)
                     shader_->iNodes = Settings::application.windows[index_].nodes;

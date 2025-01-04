@@ -14,6 +14,7 @@ uniform vec4 color;
 uniform sampler2D iChannel0;        // input channel (texture id).
 uniform sampler2D iChannel1;        // input mask
 uniform float stipple;
+uniform float premultiply;
 
 void main()
 {
@@ -33,5 +34,5 @@ void main()
     A = clamp(A, 0.0, 1.0);
 
     // output RGB with Alpha pre-multiplied
-    FragColor = vec4(RGB * A, A);
+    FragColor = vec4(RGB * mix(1.0 / max(A, 0.001), A, premultiply), A);
 }

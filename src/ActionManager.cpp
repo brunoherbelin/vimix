@@ -43,24 +43,25 @@
 using namespace tinyxml2;
 
 
-Action::Action(): history_step_(0), history_max_step_(0),
+Action::Action(): history_step_(0), history_max_step_(0), history_min_step_(0),
     snapshot_id_(0), snapshot_node_(nullptr), interpolator_(nullptr), interpolator_node_(nullptr)
 {
 
 }
 
-void Action::init()
+void Action::init(const std::string &label)
 {
     // clean the history
     history_doc_.Clear();
     history_step_ = 0;
-    history_max_step_ = 0;
+    history_min_step_ = 1;
+    history_max_step_ = 1;
 
     // reset snapshot
     snapshot_id_ = 0;
     snapshot_node_ = nullptr;
 
-    store("Session start");
+    store(label);
 }
 
 // must be called in a thread running in parrallel of the rendering
@@ -131,8 +132,12 @@ void captureMixerSession(Session *se, std::string node, std::string label, tinyx
 
 void Action::storeSession(Session *se, std::string label)
 {
-    //
-    if (!Action::manager().history_access_.try_lock())
+    // force lock for creation of first step
+    if (Action::manager().history_step_ < 1)
+        Action::manager().history_access_.lock();
+    // try lock for storing history in normal case
+    // (i.e. priority to realtime performance over storing history)
+    else if (!Action::manager().history_access_.try_lock())
         return;
 
     // incremental naming of history nodes
@@ -146,6 +151,14 @@ void Action::storeSession(Session *se, std::string label)
     }
     Action::manager().history_max_step_ = Action::manager().history_step_;
 
+    // Ensure a maximum amount of stored steps (even very big, just to ensure memory limit)
+    if (Action::manager().history_max_step_ - Action::manager().history_min_step_  > MAX_COUNT_HISTORY) {
+        XMLElement *node = Action::manager().history_doc_.FirstChildElement( HISTORY_NODE(Action::manager().history_min_step_+1).c_str() );
+        if ( node )
+            Action::manager().history_doc_.DeleteChild(node);
+        Action::manager().history_min_step_++;
+    }
+
     // capture current session
     captureMixerSession(se,
                         HISTORY_NODE(Action::manager().history_step_),
@@ -158,9 +171,7 @@ void Action::storeSession(Session *se, std::string label)
 
 void Action::store(const std::string &label)
 {
-    // TODO: set a maximum amount of stored steps? (even very big, just to ensure memory limit)
-
-    // ignore if locked or if no label is given
+    // ignore if no label is given
     if (label.empty())
         return;
 

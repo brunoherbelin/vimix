@@ -1,4 +1,4 @@
-#ifndef CONTROL_H
+﻿#ifndef CONTROL_H
 #define CONTROL_H
 
 #include <glm/fwd.hpp>
@@ -32,6 +32,8 @@
 #define OSC_CURRENT            "/current"
 #define OSC_NEXT               "/next"
 #define OSC_PREVIOUS           "/previous"
+#define OSC_METRONOME          "/metronome"
+#define OSC_METRO_SYNC         "/sync"
 
 #define OSC_SOURCE_NAME        "/name"
 #define OSC_SOURCE_RENAME      "/rename"
@@ -50,6 +52,7 @@
 #define OSC_SOURCE_TURN        "/turn"
 #define OSC_SOURCE_RESET       "/reset"
 #define OSC_SOURCE_POSITION    "/position"
+#define OSC_SOURCE_CORNER      "/corner"
 #define OSC_SOURCE_SIZE        "/size"
 #define OSC_SOURCE_ANGLE       "/angle"
 #define OSC_SOURCE_SEEK        "/seek"
@@ -72,6 +75,7 @@
 #define OSC_SOURCE_TEXANGLE    "/texture_angle"
 #define OSC_SOURCE_FILTER      "/filter"
 #define OSC_SOURCE_UNIFORM     "/uniform"
+#define OSC_SOURCE_BLENDING    "/blending"
 
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"
@@ -93,15 +97,17 @@
 #define INPUT_JOYSTICK_COUNT   20
 #define INPUT_JOYSTICK_LAST    64
 #define INPUT_JOYSTICK_FIRST_BUTTON  44
+#define INPUT_JOYSTICK_COUNT_BUTTON  15
 #define INPUT_JOYSTICK_LAST_BUTTON   58
 #define INPUT_JOYSTICK_FIRST_AXIS    59
+#define INPUT_JOYSTICK_COUNT_AXIS    6
 #define INPUT_JOYSTICK_LAST_AXIS     64
 #define INPUT_MULTITOUCH_FIRST 65
 #define INPUT_MULTITOUCH_COUNT 16
 #define INPUT_MULTITOUCH_LAST  81
-#define INPUT_CUSTOM_FIRST     82
-#define INPUT_CUSTOM_LAST      99
-#define INPUT_MAX              100
+#define INPUT_TIMER_FIRST      82
+#define INPUT_TIMER_LAST       114
+#define INPUT_MAX              115
 
 
 class Session;

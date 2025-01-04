@@ -35,7 +35,6 @@
 #include "Mixer.h"
 #include "Source.h"
 #include "TextSource.h"
-#include "CloneSource.h"
 #include "SourceCallback.h"
 #include "ImageProcessingShader.h"
 #include "ActionManager.h"
@@ -322,7 +321,7 @@ Control::Control() : receiver_(nullptr)
 
     for (size_t i = 0; i < INPUT_MAX; ++i) {
         input_active[i] = false;
-        input_values[i] = 0.f;
+        input_values[i] = 1.f;
     }
 }
 
@@ -465,24 +464,27 @@ bool Control::init()
 
 void Control::update()
 {
-    // read joystick buttons
-    int num_buttons = 0;
-    const unsigned char *state_buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &num_buttons );
-    // map to Control input array
-    for (int b = 0; b < num_buttons; ++b) {
-        input_access_.lock();
-        input_active[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS;
-        input_values[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS ? 1.f : 0.f;
-        input_access_.unlock();
-    }
+    if (glfwJoystickPresent(Settings::application.gamepad_id) == GLFW_TRUE) {
+        // read joystick buttons
+        int num_buttons = 0;
+        const unsigned char *state_buttons = glfwGetJoystickButtons(Settings::application.gamepad_id, &num_buttons);
 
-    // read joystick axis
-    int num_axis = 0;
-    const float *state_axis = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &num_axis );
-    for (int a = 0; a < num_axis; ++a) {
+        // map to Control input array
         input_access_.lock();
-        input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.02 ? true : false;
-        input_values[INPUT_JOYSTICK_FIRST_AXIS + a] = state_axis[a];
+        for (int b = 0; b < MIN(num_buttons, INPUT_JOYSTICK_COUNT_BUTTON); ++b) {
+            input_active[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS;
+            input_values[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS ? 1.f : 0.f;
+        }
+        input_access_.unlock();
+
+        // read joystick axis
+        int num_axis = 0;
+        const float *state_axis = glfwGetJoystickAxes(Settings::application.gamepad_id, &num_axis);
+        input_access_.lock();
+        for (int a = 0; a < MIN(num_axis, INPUT_JOYSTICK_COUNT_AXIS); ++a) {
+            input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.02 ? true : false;
+            input_values[INPUT_JOYSTICK_FIRST_AXIS + a] = state_axis[a];
+        }
         input_access_.unlock();
     }
 
@@ -499,21 +501,17 @@ void Control::update()
         }
     }
 
-    // draft : react to metronome
-    //    int p = (int) Metronome::manager().phase();
-    //    static bool bip = false;
-    //    static int t = 2;
-    //    if (!bip) {
-    //        if (p + 1 == t){
-    //            g_print("bip");
-    //            bip = true;
-    //        }
-    //    }
-    //    else {
-    //        if (p + 1 != t){
-    //            bip = false;
-    //        }
-    //    }
+    // React to metronome
+    uint p = (uint) Metronome::manager().phase();
+    static uint prev_p = UINT_MAX;
+    input_access_.lock();
+    if (prev_p != p) {
+        input_active[INPUT_TIMER_FIRST + (prev_p > MAX_BEAT ? 0 : prev_p) ] = false;
+        input_active[INPUT_TIMER_FIRST + p] = true;
+        prev_p = p;
+    }
+    input_access_.unlock();
+
 }
 
 void Control::listen()
@@ -743,6 +741,41 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             catch (osc::WrongArgumentTypeException &) {
             }
+            float t = 0.f;
+            if (arguments.Eos())
+                arguments >> osc::EndMessage;
+            else
+                arguments >> t >> osc::EndMessage;
+            target->call( new SetGeometry( &transform, t), true );
+        }
+        /// e.g. '/vimix/current/corner ffffffff -1 -1 -1 +1 +1 -1 +1 +1'
+        /// 1. Lower left  (-1 -1)
+        /// 2. Upper left  (-1 +1)
+        /// 3. Lower right (+1 -1)
+        /// 4. Upper right (+1 +1)
+        else if (attribute.compare(OSC_SOURCE_CORNER) == 0) {
+            // read 8 float values
+            float corners[8] = {0.f};
+            for (size_t i = 0; i < 8; ++i) {
+                try {
+                    float val = 0.f;
+                    arguments >> val;
+                    corners[i] = val;
+                } catch (osc::WrongArgumentTypeException &) {
+                }
+            }
+            // convert to data_ matrix format
+            Group transform;
+            transform.copyTransform(target->group(View::GEOMETRY));
+            transform.data_[0].x = corners[0] + 1.f;
+            transform.data_[0].y = corners[1] + 1.f;
+            transform.data_[1].x = corners[2] + 1.f;
+            transform.data_[1].y = corners[3] - 1.f;
+            transform.data_[2].x = corners[4] - 1.f;
+            transform.data_[2].y = corners[5] + 1.f;
+            transform.data_[3].x = corners[6] - 1.f;
+            transform.data_[3].y = corners[7] - 1.f;
+            // duration argument
             float t = 0.f;
             if (arguments.Eos())
                 arguments >> osc::EndMessage;
@@ -1024,6 +1057,33 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             // operate on source
             target->call( new SetFilter(filter_name, filter_method, filter_value, t), true);
         }
+        /// e.g. '/vimix/current/blending s screen'
+        ///      '/vimix/current/blending i 1'
+        else if (attribute.compare(OSC_SOURCE_BLENDING) == 0) {
+            int mode = Shader::BLEND_NONE;
+            std::string blend_mode;
+            osc::ReceivedMessageArgumentStream args = arguments;
+            try {
+                float v = 0;
+                arguments >> v >> osc::EndMessage;
+                mode = round(v);
+                if (mode >= 0 && mode < Shader::BLEND_NONE)
+                    blend_mode = std::get<2>(Shader::blendingFunction[mode]);
+                else
+                    mode = Shader::BLEND_NONE;
+            }
+            // ignore invalid or Nil types
+            catch (osc::WrongArgumentTypeException &) {
+                mode = Shader::BLEND_NONE;
+            }
+            if (mode == Shader::BLEND_NONE) {
+                const char *str = nullptr;
+                args >> str >> osc::EndMessage;
+                blend_mode = std::string(str);
+            }
+            // operate on source
+            target->call( new SetBlending(blend_mode), true);
+        }
         /// e.g. '/vimix/name/sync'
         else if ( attribute.compare(OSC_SYNC) == 0) {
             // this will require to send feedback status about source
@@ -1256,6 +1316,18 @@ void Control::receiveStreamAttribute(const std::string &attribute,
 
 }
 
+float sourceAlpha(Source *s)
+{
+    float a = 0.f;
+    if (s != nullptr) {
+        a = s->alpha();
+        // return negative alpha from mixing coordinates to match Alpha() source callback behavior
+        float dist = glm::length( glm::vec2(s->group(View::MIXING)->translation_) );
+        if (dist > 1.f)
+            a = -1.f * (dist -1.f);
+    }
+    return a;
+}
 
 void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::string target, Source *s)
 {
@@ -1277,7 +1349,7 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::str
         lock  = _s->locked() ? 1.f : 0.f;
         play  = _s->playing() ? 1.f : 0.f;
         depth = _s->depth();
-        alpha = _s->alpha();
+        alpha = sourceAlpha(_s);
     }
 
     // build socket to send message to indicated endpoint
@@ -1344,7 +1416,7 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
 
         // send status of alpha
         snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
-        p << osc::BeginMessage( oscaddr ) << Mixer::manager().sourceAtIndex(i)->alpha() << osc::EndMessage;
+        p << osc::BeginMessage( oscaddr ) << sourceAlpha(Mixer::manager().sourceAtIndex(i)) << osc::EndMessage;
 
         // send name
         snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
@@ -1411,7 +1483,7 @@ void Control::sendBatchStatus(const IpEndpointName &remoteEndpoint)
         for (auto id = plit->begin(); id != plit->end(); ++id) {
             SourceList::iterator s = _session->find( *id );
             if (s != _session->end() )
-                p << (*s)->alpha();
+                p << sourceAlpha(*s);
         }
 
         p << osc::EndMessage;
@@ -1540,9 +1612,9 @@ std::string Control::inputLabel(uint id)
     {
         label = std::string( "Multitouch ") + std::to_string(id - INPUT_MULTITOUCH_FIRST);
     }
-    else if ( id >= INPUT_CUSTOM_FIRST && id <= INPUT_CUSTOM_LAST )
+    else if ( id >= INPUT_TIMER_FIRST && id <= INPUT_TIMER_LAST )
     {
-        label = std::string( "Custom ") + std::to_string(id - INPUT_CUSTOM_FIRST);
+        label = std::string( "Beat ") + std::to_string(id - INPUT_TIMER_FIRST + 1);
     }
 
     return label;

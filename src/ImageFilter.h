@@ -16,6 +16,7 @@
 class FilteringProgram
 {
     std::string name_;
+    std::string filename_;
 
     // code : resource file or GLSL (ShaderToy style)
     std::pair< std::string, std::string > code_;
@@ -30,7 +31,7 @@ public:
 
     FilteringProgram();
     FilteringProgram(const std::string &name, const std::string &first_pass, const std::string &second_pass,
-                     const std::map<std::string, float> &parameters);
+                     const std::map<std::string, float> &parameters, const std::string &filename = std::string());
     FilteringProgram(const FilteringProgram &other);
 
     FilteringProgram& operator= (const FilteringProgram& other);
@@ -39,6 +40,11 @@ public:
     // get the name
     inline void setName(const std::string &name) { name_ = name; }
     inline std::string name() const { return name_; }
+
+    // get the filename
+    inline void resetFilename() { filename_ = std::string(); }
+    inline void setFilename(const std::string &filename) { filename_ = filename; }
+    inline std::string filename() const { return filename_; }
 
     // set the code
     inline void setCode(const std::pair< std::string, std::string > &code) { code_ = code; }
@@ -56,6 +62,7 @@ public:
     inline std::map< std::string, float > parameters() const { return parameters_; }
 
     // set the value of a parameter
+    inline void clearParameters() { parameters_.clear(); }
     inline void setParameter(const std::string &p, float value) { parameters_[p] = value; }
     bool hasParameter(const std::string &p);
     void removeParameter(const std::string &p);

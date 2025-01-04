@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sstream>
+#include <fstream>
 #include <iomanip>
 #include <chrono>
 #include <algorithm>
@@ -395,6 +396,29 @@ list<string> SystemToolkit::list_directory(const string& path, const list<string
     reorder_file_list( ls, m );
 
     return ls;
+}
+
+std::string SystemToolkit::get_text_content(const std::string& path)
+{
+    string content = "";
+
+    // Open the file
+    std::ifstream file(path);
+
+    // Check if the file is opened successfully
+    if (file.is_open()) {
+        // Read the content of the file into an std::string
+        std::string fileContent((std::istreambuf_iterator<char>(file)),
+                                std::istreambuf_iterator<char>());
+
+        // return content
+        content = fileContent;
+    }
+
+    // Close the file
+    file.close();
+
+    return content;
 }
 
 void SystemToolkit::open(const string& url)

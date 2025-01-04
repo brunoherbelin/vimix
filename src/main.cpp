@@ -134,8 +134,10 @@ int main(int argc, char *argv[])
             fprintf(stderr, "%s: test Failed\n", argv[0]);
             ret = 1;
         }
-        printf("%s: test OK\n", argv[0]);
-        ret = 0;
+        else {
+            fprintf(stderr, "%s: test OK\n", argv[0]);
+            ret = 0;
+        }
     }
 
     if (cleanRequested) {
@@ -159,7 +161,7 @@ int main(int argc, char *argv[])
         printf("  --clean      : Reset user settings\n");
         printf("Filename:\n");
         printf("  vimix session file (.mix extension)\n");
-        ret = 0;ret = 0;
+        ret = 0;
     }
 
     if (ret >= 0)

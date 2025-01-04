@@ -373,7 +373,7 @@ bool ImGuiToolkit::TextButton(const char* text, const char *tooltip, const char*
 
     // button size
     ImVec2 button_size = ImGui::CalcTextSize( text );
-    button_size.x += g.Style.FramePadding.x * 2.0f;
+    button_size.x += g.Style.FramePadding.x;
     button_size.y += g.Style.FramePadding.y * 2.0f;
 
     // remember position where button starts
@@ -649,7 +649,7 @@ bool ImGuiToolkit::BeginMenuIcon(int i, int j, const char *label, bool enabled)
     ImGuiWindow *win = ImGui::GetCurrentWindow();
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
     ImGuiContext &g = *GImGui;
-    draw_pos.y += g.Style.ItemSpacing.y * 0.5f;
+    draw_pos.y -= g.Style.ItemSpacing.y * 0.5f;
 
     char text_buf[256];
     ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "      %s", label);

@@ -8,6 +8,8 @@
 
 #include "WorkspaceWindow.h"
 
+#define MIN_BEAT      2
+#define MAX_BEAT      32
 
 
 class TimerMetronomeWindow : public WorkspaceWindow

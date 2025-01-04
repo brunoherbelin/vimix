@@ -172,7 +172,7 @@ bool UserInterface::Init(int font_size)
     // Load Fonts (using resource manager, NB: a temporary copy of the raw data is necessary)
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_DEFAULT, "Roboto-Regular", int(base_font_size) );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_BOLD, "Roboto-Bold", int(base_font_size) + 1 );
-    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", int(base_font_size) + 1 );
+    ImGuiToolkit::SetFont(ImGuiToolkit::FONT_ITALIC, "Roboto-Italic", int(base_font_size) + 4 );
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_MONO, "Hack-Regular", int(base_font_size) - 2);
     ImGuiToolkit::SetFont(ImGuiToolkit::FONT_LARGE, "Hack-Regular", MIN(int(base_font_size * 1.5f), 50) );
 
@@ -790,7 +790,7 @@ bool UserInterface::saveOrSaveAs(bool force_versioning)
 bool UserInterface::TryClose()
 {
     // cannot close if a file dialog is pending
-    if (DialogToolkit::FileDialog::busy() || DialogToolkit::ColorPickerDialog::busy())
+    if (DialogToolkit::FileDialog::busy() || DialogToolkit::ColorPickerDialog::instance().busy())
         return false;
 
     // always stop all recordings and pending actions
@@ -901,8 +901,8 @@ void UserInterface::NewFrame()
         }
     }
 
-    // overlay to ensure file color dialog is closed after use
-    if (DialogToolkit::ColorPickerDialog::busy()){
+    // overlay to ensure color dialog is closed after use
+    if (DialogToolkit::ColorPickerDialog::instance().busy()){
         if (!ImGui::IsPopupOpen("##ColorBusy"))
             ImGui::OpenPopup("##ColorBusy");
         if (ImGui::BeginPopup("##ColorBusy")) {
@@ -1064,7 +1064,7 @@ void UserInterface::showMenuEdit()
     bool has_clipboard = (clipboard != nullptr && strlen(clipboard) > 0 && SessionLoader::isClipboard(clipboard));
 
     // UNDO
-    if ( ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, false, Action::manager().current() > 1) )
+    if ( ImGui::MenuItem( MENU_UNDO, SHORTCUT_UNDO, false, Action::manager().current() > Action::manager().min()) )
         Action::manager().undo();
     if ( ImGui::MenuItem( MENU_REDO, SHORTCUT_REDO, false, Action::manager().current() < Action::manager().max()) )
         Action::manager().redo();
@@ -2175,7 +2175,7 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGui::Image((void*)(intptr_t)img_crow, ImVec2(512, 340));
 
     ImGui::Text("vimix performs graphical mixing and blending of\nseveral movie clips and computer generated graphics,\nwith image processing effects in real-time.");
-    ImGui::Text("\nvimix is licensed under GNU GPL version 3 or later.\n" UNICODE_COPYRIGHT " 2019-2023 Bruno Herbelin.");
+    ImGui::Text("\nvimix is licensed under GNU GPL version 3 or later.\n" UNICODE_COPYRIGHT " 2019-2025 Bruno Herbelin.");
 
     ImGui::Spacing();
     ImGuiToolkit::ButtonOpenUrl("Visit vimix website", "https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));
@@ -3464,6 +3464,9 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
 
         // index indicator
         ImGui::SetCursorPos(ImVec2(pannel_width_ - 2.8f * ImGui::GetTextLineHeightWithSpacing(), IMGUI_TOP_ALIGN));
+
+        if (Mixer::manager().indexCurrentSource() < 0)
+            Mixer::manager().setCurrentIndex(selected_index);
         ImGui::TextDisabled("#%d", Mixer::manager().indexCurrentSource());
 
         ImGui::PopFont();
@@ -3564,17 +3567,27 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
         ImGui::Text(" ");
         if (s->ready() || s->failed()) {
 
+            ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, 0);
+
             // clone button
-            if ( s->failed() ) {
-                ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0));
-            }
-            else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+            if ( s->failed() )
+                ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", size);
+            else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", size) ) {
                 Mixer::manager().addSource ( (Source *) Mixer::manager().createSourceClone() );
                 UserInterface::manager().showPannel(  Mixer::manager().numSource() );
             }
 
+            // bundle button
+            if ( s->failed() )
+                ImGuiToolkit::ButtonDisabled( ICON_FA_SIGN_IN_ALT " Bundle", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0));
+            else if ( ImGui::Button( ICON_FA_SIGN_IN_ALT " Bundle", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
+                Mixer::manager().groupCurrent();
+                UserInterface::manager().showPannel(  Mixer::manager().numSource() - 1 );
+            }
+
             // replace button
-            if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
                 // prepare panel for new source of same type
                 MediaSource *file = dynamic_cast<MediaSource *>(s);
                 MultiFileSource *sequence = dynamic_cast<MultiFileSource *>(s);
@@ -3587,20 +3600,21 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
                     Settings::application.source.new_type = SOURCE_GENERATED;
                 else
                     Settings::application.source.new_type = SOURCE_CONNECTED;
-
                 // switch to panel new source
                 showPannelSource(NAV_NEW);
                 // set source to be replaced
                 source_to_replace = s;
             }
+
             // delete button
-            if ( ImGui::Button( ACTION_DELETE, ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+            if ( ImGui::Button( ACTION_DELETE, size) ) {
                 Mixer::manager().deleteSource(s);
                 Action::manager().store(sname + std::string(": Deleted"));
             }
+            // delete all button
             if ( Mixer::manager().session()->failedSources().size() > 1 ) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
-                if ( ImGui::Button( ICON_FA_BACKSPACE " Delete all failed", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+                if ( ImGui::Button( ICON_FA_BACKSPACE " Delete all failed", size) ) {
                     auto failedsources = Mixer::manager().session()->failedSources();
                     for (auto sit = failedsources.cbegin(); sit != failedsources.cend(); ++sit) {
                         Mixer::manager().deleteSource( Mixer::manager().findSource( (*sit)->id() ) );
@@ -4898,7 +4912,7 @@ void Navigator::RenderMainPannelSession()
         static bool _tooltip = 0;
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y -ImGui::GetFrameHeight() ));
-        if ( Action::manager().current() > 1 ) {
+        if ( Action::manager().current() > Action::manager().min() ) {
             if ( ImGuiToolkit::IconButton( ICON_FA_UNDO, "Undo" ) )
                 Action::manager().undo();
         } else
@@ -4920,7 +4934,8 @@ void Navigator::RenderMainPannelSession()
             int count_over = 0;
             ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
 
-            for (uint i = Action::manager().max(); i > 0; --i) {
+            for (uint i = Action::manager().max();
+                 i >= Action::manager().min(); --i) {
 
                 if (ImGui::Selectable( Action::manager().shortlabel(i).c_str(), i == Action::manager().current(), ImGuiSelectableFlags_AllowDoubleClick, size )) {
                     // go to on double clic
@@ -4978,7 +4993,7 @@ void Navigator::RenderMainPannelSession()
         if ( Action::manager().max() > 1 ) {
             ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
             if (ImGuiToolkit::IconButton( 12, 14, "Clear history"))
-                Action::manager().init();
+                Action::manager().init("Reset");
         }
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
@@ -5560,9 +5575,20 @@ void Navigator::RenderMainPannelPlaylist()
     ImGuiToolkit::HelpToolTip("Double-clic on a filename to open the session.\n\n"
                               ICON_FA_ARROW_CIRCLE_RIGHT "  enable Smooth transition "
                                                          "to perform a cross fading with the current session.");
+
     // toggle button for smooth transition
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - ImGui::GetFrameHeightWithSpacing()) );
     ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition, "Smooth transition");
+
+    // transition mode icon if enabled
+    if (Settings::application.smooth_transition) {
+        const char *tooltip[2] = {"Fade to black", "Cross fading"};
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (Mixer::manager().session()->fading() > 0.01)
+            ImGuiToolkit::Icon(9, 8, false);
+        else
+            ImGuiToolkit::IconToggle(9, 8, 0, 8, &Settings::application.transition.cross_fade, tooltip );
+    }
 
     //
     // Popup window to create playlist
@@ -5950,6 +5976,28 @@ void Navigator::RenderMainPannelSettings()
             UserInterface::manager().settingsexportdialog->open();
     }
     ImGui::Spacing();
+
+    // GAMEPAD
+    ImGui::SetCursorPosX(width_);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+
+    char text_buf[256];
+    if ( glfwJoystickPresent( Settings::application.gamepad_id ) )
+        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(Settings::application.gamepad_id));
+    else
+        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Joystick %d", Settings::application.gamepad_id);
+
+    if (ImGui::BeginCombo("Gamepad", text_buf, ImGuiComboFlags_None)) {
+        for( int g = GLFW_JOYSTICK_1; g < GLFW_JOYSTICK_LAST; ++g) {
+            if ( glfwJoystickPresent( g ) ) {
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(g));
+                if (ImGui::Selectable(text_buf, Settings::application.gamepad_id == g) ) {
+                    Settings::application.gamepad_id = g;
+                }
+            }
+        }
+        ImGui::EndCombo();
+    }
 
     static bool need_restart = false;
     static bool vsync = (Settings::application.render.vsync > 0);

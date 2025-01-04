@@ -832,6 +832,7 @@ void MediaPlayer::close()
     if (pbo_[0]) {
         glDeleteBuffers(2, pbo_);
         pbo_[0] = 0;
+        pbo_size_ = 0;
     }
 }
 

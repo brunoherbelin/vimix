@@ -18,10 +18,14 @@ const float maxTemp = 9000.0;
 // [0 1] value slider between min and max Temp
 uniform float Temperature;
 
-// Color for picked 'grey'
+// Color for white balance
 uniform float Red;
 uniform float Green;
 uniform float Blue;
+
+// Color correction
+uniform float Contrast;
+uniform float Brightness;
 
 
 // Parameters for transfer characteristics (gamma curves)
@@ -209,6 +213,9 @@ void mainImage(out vec4 color, in vec2 coord)
 
 	// Convert to display gamma curve
 	color = toGamma(color, Srgb.trc);
+
+    // brightness and contrast transformation
+    color.rgb = mix(vec3(0.62), color.rgb, Contrast + 1.0) + Brightness;
 }
 
 

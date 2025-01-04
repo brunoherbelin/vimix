@@ -35,6 +35,7 @@ private:
     Mesh *mark_100ms_, *mark_1s_;
     Switch *gradient_;
     SessionFileSource *transition_source_;
+    bool transition_cross_fade;
 };
 
 
