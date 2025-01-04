@@ -35,7 +35,8 @@ Install the runtime environments:
     flatpak install org.gnome.Sdk/x86_64
     flatpak install org.gnome.Platform
 
-Select version **45** in the list of proposed version
+
+_Select version **47** in the list of proposed versions_
 
 
 ### 2. Build vimix flatpak
