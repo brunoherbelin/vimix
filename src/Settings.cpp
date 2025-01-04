@@ -431,14 +431,17 @@ void Settings::Load(const std::string &filename)
     if (pRoot == nullptr)
         return;
 
-    // version
+    // test version
+    bool version_same = true;
+#ifdef VIMIX_VERSION_MAJOR
     int major = 0, minor = 0, patch = 0;
     pRoot->QueryIntAttribute("major", &major);
     pRoot->QueryIntAttribute("minor", &minor);
     pRoot->QueryIntAttribute("patch", &patch);
-    bool version_same = (major == VIMIX_VERSION_MAJOR)
-                        && (minor == VIMIX_VERSION_MINOR)
-                        && (patch == VIMIX_VERSION_PATCH);
+    version_same = (major == VIMIX_VERSION_MAJOR)
+                   && (minor == VIMIX_VERSION_MINOR)
+                   && (patch == VIMIX_VERSION_PATCH);
+#endif
 
     //
     // Restore settings only if version is same
