@@ -4148,7 +4148,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     generated_type = 1;
                     pattern_type = -1;
                 }
-                if (ImGui::BeginMenu(ICON_FA_CUBES "  Static patterns"))
+                if ( ImGuiToolkit::BeginMenuIcon(ICON_SOURCE_PATTERN, "Static patterns"))
                 {
                     for (int p = 0; p < (int) Pattern::count(); ++p) {
                         pattern_descriptor pattern = Pattern::get(p);
@@ -4162,7 +4162,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     }
                     ImGui::EndMenu();
                 }
-                if (ImGui::BeginMenu(ICON_FA_PLAY_CIRCLE "  Animated patterns"))
+                if ( ImGuiToolkit::BeginMenuIcon(ICON_SOURCE_PATTERN, "Animated patterns"))
                 {
                     for (int p = 0; p < (int) Pattern::count(); ++p) {
                         pattern_descriptor pattern = Pattern::get(p);
