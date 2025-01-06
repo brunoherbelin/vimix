@@ -376,6 +376,12 @@ void DisplaysView::resize ( int scale )
     z *= z; // square
     z *= DISPLAYS_MAX_SCALE - DISPLAYS_MIN_SCALE;
     z += DISPLAYS_MIN_SCALE;
+
+    // centered zoom : if zooming, adjust translation to ratio of scaling
+    if (scale != size())
+        scene.root()->translation_ *= z / scene.root()->scale_.x;
+
+    // apply scaling
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
 }

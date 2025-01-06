@@ -615,49 +615,48 @@ void DialogToolkit::ColorPickerDialog::openColorDialog( std::function<void (std:
 
     if ( NULL != tinyfd_colorChooser("Choose or pick a color", NULL, prev_color, ret_color) )
     {
-        ret = { (float) ret_color[0] / 255.f, (float) ret_color[1] / 255.f, (float) ret_color[2] / 255.f};
+        rgb = { (float) ret_color[0] / 255.f, (float) ret_color[1] / 255.f, (float) ret_color[2] / 255.f};
         changed = true;
     }
 
 #else
-    if (!gtk_init()) {
-        return;
+    if (gtk_init()) {
+
+        GtkWidget *dialog = gtk_color_chooser_dialog_new( "Choose or pick a color", NULL);
+
+        // set initial color
+        GdkRGBA color;
+        color.red   = std::get<0>(rgb);
+        color.green = std::get<1>(rgb);
+        color.blue  = std::get<2>(rgb);
+        color.alpha = 1.f;
+        gtk_color_chooser_set_rgba( GTK_COLOR_CHOOSER(dialog), &color );
+
+        // no alpha, with editor for picking color
+        gtk_color_chooser_set_use_alpha( GTK_COLOR_CHOOSER(dialog), false);
+        g_object_set( GTK_WINDOW(dialog), "show-editor", TRUE, NULL );
+
+        // prepare dialog
+        gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
+        static int x = 0, y = 0;
+        if (x != 0)
+            gtk_window_move( GTK_WINDOW(dialog), x, y);
+
+        // display and get color
+        if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_OK ) {
+
+            gtk_color_chooser_get_rgba( GTK_COLOR_CHOOSER(dialog), &color );
+            rgb = { color.red, color.green, color.blue};
+            changed = true;
+        }
+
+        // remember position
+        gtk_window_get_position( GTK_WINDOW(dialog), &x, &y);
+
+        // done
+        gtk_widget_destroy( dialog );
+        wait_for_event();
     }
-
-    GtkWidget *dialog = gtk_color_chooser_dialog_new( "Choose or pick a color", NULL);
-
-    // set initial color
-    GdkRGBA color;
-    color.red   = std::get<0>(rgb);
-    color.green = std::get<1>(rgb);
-    color.blue  = std::get<2>(rgb);
-    color.alpha = 1.f;
-    gtk_color_chooser_set_rgba( GTK_COLOR_CHOOSER(dialog), &color );
-
-    // no alpha, with editor for picking color
-    gtk_color_chooser_set_use_alpha( GTK_COLOR_CHOOSER(dialog), false);
-    g_object_set( GTK_WINDOW(dialog), "show-editor", TRUE, NULL );
-
-    // prepare dialog
-    gtk_window_set_keep_above( GTK_WINDOW(dialog), TRUE );
-    static int x = 0, y = 0;
-    if (x != 0)
-        gtk_window_move( GTK_WINDOW(dialog), x, y);
-
-    // display and get color
-    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_OK ) {
-
-        gtk_color_chooser_get_rgba( GTK_COLOR_CHOOSER(dialog), &color );
-        rgb = { color.red, color.green, color.blue};
-        changed = true;
-    }
-
-    // remember position
-    gtk_window_get_position( GTK_WINDOW(dialog), &x, &y);
-
-    // done
-    gtk_widget_destroy( dialog );
-    wait_for_event();
 
 #endif
 
