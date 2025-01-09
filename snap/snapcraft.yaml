@@ -103,6 +103,7 @@ parts:
     -  libslang2
     -  libicu74
     -  libtinyxml2-10
+    -  pciutils
     override-prime: |
        craftctl default
        # try remove execstack on armhf

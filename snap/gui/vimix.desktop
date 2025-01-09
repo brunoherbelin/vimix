@@ -5,6 +5,6 @@ GenericName=Video mixer
 Comment=Video live mixer
 Categories=AudioVideo;Video;Graphics;
 Icon=${SNAP}/meta/gui/vimix.svg
-Exec=launch_vimix.sh
+Exec=vimix
 MimeType=application/x-vimix;text/xml
 Terminal=false
