@@ -338,14 +338,11 @@ bool Rendering::init()
         return false;
     }
 
-
-    int major, minor;
-    glfwGetVersion(&major, &minor, NULL);
-    if (major > 2 && minor > 3) {
-        wayland_ = glfwGetPlatform() == GLFW_PLATFORM_WAYLAND;
-        if (wayland_)
-            Log::Info("Warning: some features are not available with WAYLAND window manager and framerate might be slow. Vimix prefers X11 window manager.");
-    }
+#if GLFW_VERSION_MAJOR > 2 && GLFW_VERSION_MINOR > 2
+    wayland_ = glfwGetPlatform() == GLFW_PLATFORM_WAYLAND;
+    if (wayland_)
+        Log::Info("Warning: some features are not available with WAYLAND window manager and framerate might be slow. Vimix prefers X11 window manager.");
+#endif
 
     //
     // Gstreamer setup
