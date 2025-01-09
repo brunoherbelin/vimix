@@ -307,30 +307,14 @@ IF(APPLE)
         )
     endif()
 
-    ## POST INSTALL DMG SIGNING AND NOTARIZATION
-    ## 1. SIGN DMG
-    ## codesign --force --sign "Developer ID Application: <identityIdentifier>" <pathToDMG>
-    ## codesign --verify --verbose=2 ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dmg
-    ##
-    ## 2. SUBMIT TO NOTARIZATION
-    ## xcrun notarytool submit ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dmg --keychain-profile "vimix" --wait
-    ##
-    ## verify with: xcrun notarytool log xxxx-xxxx-xxx  --keychain-profile "vimix"
-    ##
-    ## NB: "vimix" is the name of the app-specific password in keychain
-    ##     generated online : https://support.apple.com/en-us/102654
-    ##
-    ## 3. STAPLE THE TICKET TO THE DISK IMAGE
-    ## xcrun stapler staple ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dmg
-    ##
-    ## 4. VERIFY NOTARIZATION
-    ## spctl -a -vv -t install ./_CPack_Packages/OSX_13_arm64/DragNDrop/vimix_0.8.2_OSX_13_arm64.dmg
-    ##
-    ## NB: more info at https://wiki.lazarus.freepascal.org/Notarization_for_macOS_10.14.5%2B
-
 ELSE(APPLE)
 
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/share DESTINATION ${CMAKE_INSTALL_PREFIX})
+    install(FILES "${CMAKE_SOURCE_DIR}/rsc/launch_vimix.sh"
+        DESTINATION bin
+        PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+        COMPONENT Runtime
+    )
 
     install(TARGETS ${VMIX_BINARY}
             CONFIGURATIONS Release RelWithDebInfo

@@ -3,7 +3,7 @@
     "runtime": "org.gnome.Platform",
     "runtime-version": "47",
     "sdk": "org.gnome.Sdk",
-    "command": "vimix",
+    "command": "launch_vimix.sh",
     "rename-desktop-file": "vimix.desktop",
     "rename-icon": "vimix",
     "finish-args": [
@@ -18,9 +18,7 @@
         "--filesystem=host",
         "--filesystem=/tmp",
         "--talk-name=org.gtk.vfs.*",
-        "--env=FREI0R_PATH=/app/lib/frei0r-1",
-        "--env=__NV_PRIME_RENDER_OFFLOAD=1",
-        "--env=__GLX_VENDOR_LIBRARY_NAME=nvidia"
+        "--env=FREI0R_PATH=/app/lib/frei0r-1"
     ],
     "cleanup": [
         "/include",

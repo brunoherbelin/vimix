@@ -145,7 +145,7 @@ bool openGLExtensionAvailable(const char *extensionname)
 
 static void glfw_error_callback(int error, const char* description)
 {
-    g_printerr("Glfw Error %d: %s\n",  error, description);
+    g_printerr("GLFW Error %d: %s\n",  error, description);
 }
 
 static void WindowResizeCallback( GLFWwindow *w, int width, int height)
@@ -324,6 +324,7 @@ Rendering::Rendering()
 {
 //    main_window_ = nullptr;
     request_screenshot_ = false;
+    wayland_ = false;
 }
 
 bool Rendering::init()
@@ -335,6 +336,15 @@ bool Rendering::init()
     if (!glfwInit()){
         g_printerr("Failed to Initialize GLFW.\n");
         return false;
+    }
+
+
+    int major, minor;
+    glfwGetVersion(&major, &minor, NULL);
+    if (major > 2 && minor > 3) {
+        wayland_ = glfwGetPlatform() == GLFW_PLATFORM_WAYLAND;
+        if (wayland_)
+            Log::Info("Warning: some features are not available with WAYLAND window manager and framerate might be slow. Vimix prefers X11 window manager.");
     }
 
     //
@@ -767,13 +777,15 @@ void RenderingWindow::setTitle(const std::string &title)
 void RenderingWindow::setIcon(const std::string &resource)
 {
 #ifndef APPLE
-    size_t fpsize = 0;
-    const char *fp = Resource::getData(resource, &fpsize);
-    if (fp != nullptr && window_) {
-        GLFWimage icon;
-        icon.pixels = stbi_load_from_memory( (const stbi_uc*)fp, fpsize, &icon.width, &icon.height, nullptr, 4 );
-        glfwSetWindowIcon( window_, 1, &icon );
-        free( icon.pixels );
+    if (!Rendering::manager().wayland_) {
+        size_t fpsize = 0;
+        const char *fp = Resource::getData(resource, &fpsize);
+        if (fp != nullptr && window_) {
+            GLFWimage icon;
+            icon.pixels = stbi_load_from_memory( (const stbi_uc*)fp, fpsize, &icon.width, &icon.height, nullptr, 4 );
+            glfwSetWindowIcon( window_, 1, &icon );
+            free( icon.pixels );
+        }
     }
 #endif
 }
@@ -784,7 +796,9 @@ GLFWmonitor *RenderingWindow::monitor()
     int x = 0, y = 0, w = 2, h = 2;
     if (window_) {
         glfwGetWindowSize(window_, &w, &h);
-        glfwGetWindowPos(window_, &x, &y);
+
+        if (!Rendering::manager().wayland_)
+           glfwGetWindowPos(window_, &x, &y);
     }
     return Rendering::manager().monitorAt(x + w/2, y + h/2);
 }
@@ -897,8 +911,17 @@ void RenderingWindow::setCoordinates(glm::ivec4 rect)
     if (glfwGetWindowAttrib(window_, GLFW_MAXIMIZED))
         glfwRestoreWindow(window_);
 
-    glfwSetWindowSize( window_, glm::max(50, rect.p), glm::max(50, rect.q));
-    glfwSetWindowPos( window_, rect.x, rect.y);
+    glfwSetWindowSize(window_, glm::max(50, rect.p), glm::max(50, rect.q));
+
+    if (!Rendering::manager().wayland_)
+        glfwSetWindowPos(window_, rect.x, rect.y);
+    else {
+        static bool once = false;
+        if (!once) {
+            Log::Warning("Set window coordilates is not possible under Wayland window manager");
+            once = true;
+        }
+    }
 }
 
 int RenderingWindow::width()
@@ -953,6 +976,7 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+
 #if __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #endif
@@ -974,7 +998,7 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     // create the window
     window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, master_);
     if (window_ == NULL){
-        Log::Error("Failed to create GLFW Window %d", index_);
+        g_printerr("Failed to create GLFW Window %d", index_);
         return false;
     }
 
@@ -983,7 +1007,8 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     previous_size = glm::vec2(winset.w, winset.h);
 
     // set initial position
-    glfwSetWindowPos(window_, winset.x, winset.y);
+    if (!Rendering::manager().wayland_)
+        glfwSetWindowPos(window_, winset.x, winset.y);
 
     // set icon
     setIcon("images/vimix_256x256.png");
@@ -997,7 +1022,8 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     //
     // window position and resize callbacks
     //
-    glfwSetWindowPosCallback( window_, WindowMoveCallback );
+    if (!Rendering::manager().wayland_)
+        glfwSetWindowPosCallback( window_, WindowMoveCallback );
     glfwSetWindowSizeCallback( window_, WindowResizeCallback );
 
     //
@@ -1027,7 +1053,7 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     if ( !glad_initialized ) {
         bool err = gladLoadGL((GLADloadfunc) glfwGetProcAddress) == 0;
         if (err) {
-            Log::Error("Failed to initialize GLAD OpenGL loader.");
+            g_printerr("Failed to initialize GLAD OpenGL loader.");
             return false;
         }
         glad_initialized = true;

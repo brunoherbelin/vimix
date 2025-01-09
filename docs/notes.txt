@@ -42,7 +42,35 @@ Mac OSX specificities
   Instructions to reset in finder, do "Go to folder" (shift+command+G),
   enter "/Users/[username]/Library/Application Support/vimix" and delete the folder 'vimix'
 
--
+-  POST INSTALL DMG SIGNING AND NOTARIZATION
+
+1. SIGN DMG
+
+    codesign --force --sign "Developer ID Application: <identityIdentifier>" <pathToDMG>
+
+verify with:
+
+    codesign --verify --verbose=2 <pathToDMG>
+
+2. SUBMIT TO NOTARIZATION
+
+    xcrun notarytool submit <pathToDMG> --keychain-profile "vimix" --wait
+
+verify with:
+
+    xcrun notarytool log xxxx-xxxx-xxx  --keychain-profile "vimix"
+
+NB: "vimix" is the name of the app-specific password in keychain generated online: https://support.apple.com/en-us/102654
+
+3. STAPLE THE TICKET TO THE DISK IMAGE
+
+    xcrun stapler staple <pathToDMG>
+
+4. VERIFY NOTARIZATION
+
+    spctl -a -vv -t install <pathToDMG>
+
+NB: more info at https://wiki.lazarus.freepascal.org/Notarization_for_macOS_10.14.5%2B
 
 
 Testing performance
