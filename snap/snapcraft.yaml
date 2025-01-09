@@ -1,5 +1,5 @@
 name: vimix
-base: core22
+base: core24
 version: '0.8.4'
 summary: Video live mixer
 title: vimix
@@ -18,18 +18,34 @@ icon: snap/gui/vimix.svg
 license: GPL-3.0+
 grade: stable # must be 'stable' to release into candidate/stable channels
 confinement: strict # use 'strict' once you have the right plugs and slots
-
+platforms:
+  amd64:
+  armhf:
+  arm64:
+  
+layout:
+  /usr/share/X11/XErrorDB:
+    symlink: $SNAP/gpu/X11/XErrorDB
+    
+plugs:
+  gpu-2404:
+    interface: content
+    target: $SNAP/gpu-2404
+    default-provider: mesa-2404
+    
 apps:
   vimix:
     extensions: [gnome]
-    command: usr/bin/vimix
+    command-chain:
+      - bin/gpu-2404-wrapper
+    command: usr/bin/launch_vimix.sh
     plugs:
       - desktop
       - desktop-legacy
       - gsettings
+      - opengl
       - wayland
       - x11
-      - opengl
       - home
       - network
       - camera
@@ -67,7 +83,6 @@ parts:
     stage-packages:
     -  libpng16-16
     -  libglu1-mesa
-    -  freeglut3
     -  libblas3
     -  liblapack3
     -  libglfw3
@@ -86,8 +101,9 @@ parts:
     -  gstreamer1.0-plugins-ugly
     -  libgpm2
     -  libslang2
-    -  libicu70
-    -  libtinyxml2-9
+    -  libicu74
+    -  libtinyxml2-10
+    -  pciutils
     override-prime: |
        craftctl default
        # try remove execstack on armhf
@@ -96,3 +112,13 @@ parts:
            execstack -c $f
          fi
        done
+
+  gpu-2404:
+    after: [vimix-binary]
+    source: https://github.com/canonical/gpu-snap.git
+    plugin: dump
+    override-prime: |
+      craftctl default
+      ${CRAFT_PART_SRC}/bin/gpu-2404-cleanup mesa-2404
+    prime:
+    - bin/gpu-2404-wrapper

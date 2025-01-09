@@ -3,11 +3,12 @@
     "runtime": "org.gnome.Platform",
     "runtime-version": "47",
     "sdk": "org.gnome.Sdk",
-    "command": "vimix",
+    "command": "launch_vimix.sh",
     "rename-desktop-file": "vimix.desktop",
     "rename-icon": "vimix",
     "finish-args": [
-        "--socket=x11",
+        "--socket=wayland",
+        "--socket=fallback-x11",
         "--socket=pulseaudio",
         "--share=ipc",
         "--share=network",
@@ -173,8 +174,8 @@
             ],
             "sources": [
                 {
-                "type":"git",
-                "branch":"beta",
+                "type": "git",
+                "branch": "beta",
                 "url": "https://github.com/brunoherbelin/vimix.git"
                 }
             ]

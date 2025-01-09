@@ -181,6 +181,8 @@ protected:
     // file drop callback
     static void FileDropped(GLFWwindow* main_window_, int path_count, const char* paths[]);
 
+    bool wayland_;
+
 private:
 
     // list of rendering attributes
