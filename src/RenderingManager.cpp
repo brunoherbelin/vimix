@@ -338,7 +338,7 @@ bool Rendering::init()
         return false;
     }
 
-#if GLFW_VERSION_MAJOR > 2 && GLFW_VERSION_MINOR > 2
+#if GLFW_VERSION_MAJOR > 2 && GLFW_VERSION_MINOR > 3
     wayland_ = glfwGetPlatform() == GLFW_PLATFORM_WAYLAND;
     if (wayland_)
         Log::Info("Warning: some features are not available with WAYLAND window manager and framerate might be slow. Vimix prefers X11 window manager.");
