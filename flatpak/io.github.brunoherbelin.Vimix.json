@@ -7,7 +7,8 @@
     "rename-desktop-file": "vimix.desktop",
     "rename-icon": "vimix",
     "finish-args": [
-        "--socket=x11",
+        "--socket=wayland",
+        "--socket=fallback-x11",
         "--socket=pulseaudio",
         "--share=ipc",
         "--share=network",
@@ -17,7 +18,9 @@
         "--filesystem=host",
         "--filesystem=/tmp",
         "--talk-name=org.gtk.vfs.*",
-        "--env=FREI0R_PATH=/app/lib/frei0r-1"
+        "--env=FREI0R_PATH=/app/lib/frei0r-1",
+        "--env=__NV_PRIME_RENDER_OFFLOAD=1",
+        "--env=__GLX_VENDOR_LIBRARY_NAME=nvidia"
     ],
     "cleanup": [
         "/include",
@@ -173,8 +176,8 @@
             ],
             "sources": [
                 {
-                "type":"git",
-                "branch":"beta",
+                "type": "git",
+                "branch": "beta",
                 "url": "https://github.com/brunoherbelin/vimix.git"
                 }
             ]
