@@ -18,7 +18,7 @@ Publishing new a release
 - Test the snap for Beta
   $ snap remove vimix
   $ snapcraft (from vimix base dir)
-  $ snap install ./vimix_0.X.Y_amd64.snap --dangerous
+  $ snap install ./vimix_0.X.Y_amd64.snap --devmode
   $ snap connections vimix
 
 - Merge Beta into origin/master
