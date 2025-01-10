@@ -52,12 +52,15 @@ apps:
       - raw-usb
       - removable-media
       - audio-playback
+      - shared-memory
+      - joystick
+      - screencast-legacy
     environment:
-       GST_PLUGIN_PATH: $SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0
-       GST_PLUGIN_SYSTEM_PATH : $SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0
-       GST_PLUGIN_SCANNER: $SNAP/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner
+       GST_PLUGIN_PATH: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gstreamer-1.0
+       GST_PLUGIN_SYSTEM_PATH : $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gstreamer-1.0
+       GST_PLUGIN_SCANNER: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner
        FREI0R_PATH: $SNAP/usr/lib/frei0r-1
-       LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$SNAP/usr/lib/x86_64-linux-gnu/blas:$SNAP/usr/lib/x86_64-linux-gnu/lapack
+       LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/blas:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/lapack
 
 parts:
   vimix-binary:
@@ -81,7 +84,6 @@ parts:
     -  libglm-dev
     -  execstack
     stage-packages:
-    -  libpng16-16
     -  libglu1-mesa
     -  libblas3
     -  liblapack3
@@ -95,6 +97,7 @@ parts:
     -  gstreamer1.0-libav
     -  gstreamer1.0-vaapi
     -  gstreamer1.0-x
+    -  gstreamer1.0-pipewire
     -  gstreamer1.0-plugins-base
     -  gstreamer1.0-plugins-good
     -  gstreamer1.0-plugins-bad
