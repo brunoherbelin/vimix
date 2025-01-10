@@ -110,7 +110,7 @@ parts:
     override-prime: |
        craftctl default
        # try remove execstack on armhf
-       for f in usr/lib/arm-linux-gnueabihf/libde265.so.0.1.1 usr/lib/arm-linux-gnueabihf/libmpeg2.so.0.1.0; do
+       for f in usr/lib/arm-linux-gnueabihf/libde265.so.0.1.8 usr/lib/arm-linux-gnueabihf/libmpeg2.so.0.1.0 usr/lib/arm-linux-gnueabihf/libdirect-1.7.so.7.0.0; do
          if [ -f $f ]; then
            execstack -c $f
          fi
