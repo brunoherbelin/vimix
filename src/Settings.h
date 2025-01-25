@@ -83,6 +83,17 @@ struct WindowConfig
 
 };
 
+struct CanvasConfig
+{
+    int x, y, w, h;
+
+    CanvasConfig() : x(0), y(0), w(1), h(1)
+    {
+
+    }
+
+};
+
 struct ViewConfig
 {
     std::string name;
@@ -332,6 +343,10 @@ struct Application
     int num_output_windows;
     std::vector<WindowConfig> windows;
 
+    // multiple surfaces handling
+    int num_output_surfaces;
+    std::vector<CanvasConfig> surfaces;
+
     // recent files histories
     History recentSessions;
     History recentPlaylists;
@@ -380,6 +395,8 @@ struct Application
         windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
         windows[0].w = 1600;
         windows[0].h = 930;
+        num_output_surfaces = 1;
+        surfaces = std::vector<CanvasConfig>(MAX_OUTPUT_CANVAS);
         accept_audio = false;
         dialogPosition = glm::ivec2(-1, -1);
         image_sequence.framerate_mode = 15;

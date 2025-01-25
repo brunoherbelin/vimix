@@ -583,6 +583,15 @@ void DisplaysView::draw()
 
         // Add / Remove windows
         ImGui::SameLine();
+        if ( Settings::application.num_output_windows > 0 ) {
+            if (ImGuiToolkit::IconButton(19, 4, "Less windows")) {
+                --Settings::application.num_output_windows;
+                current_window_ = -1;
+            }
+        }
+        else
+            ImGuiToolkit::Icon(19, 4, false);
+        ImGui::SameLine();
         if ( Settings::application.num_output_windows < MAX_OUTPUT_WINDOW) {
             if (ImGuiToolkit::IconButton(18, 4, "More windows")) {
                 ++Settings::application.num_output_windows;
@@ -592,15 +601,6 @@ void DisplaysView::draw()
         }
         else
             ImGuiToolkit::Icon(18, 4, false);
-        ImGui::SameLine();
-        if ( Settings::application.num_output_windows > 0 ) {
-            if (ImGuiToolkit::IconButton(19, 4, "Less windows")) {
-                --Settings::application.num_output_windows;
-                current_window_ = -1;
-            }
-        }
-        else
-            ImGuiToolkit::Icon(19, 4, false);
 
         // Modify current window
         if (current_window_ > -1) {
