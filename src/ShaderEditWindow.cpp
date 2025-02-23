@@ -17,6 +17,7 @@ TextEditor _editor;
 #include "Mixer.h"
 #include "SystemToolkit.h"
 #include "CloneSource.h"
+#include "ShaderSource.h"
 #include "DialogToolkit.h"
 #include "UserInterfaceManager.h"
 
@@ -37,6 +38,14 @@ ImageFilter *getImageFilter(Source *s)
             if (f != nullptr && f->type() == FrameBufferFilter::FILTER_IMAGE) {
                 // cast to image filter
                 i = dynamic_cast<ImageFilter *>(f);
+            }
+        }
+        else {
+            ShaderSource *sc = dynamic_cast<ShaderSource *>(s);
+            // if s is a shader source
+            if (sc != nullptr) {
+                // it has an Image filter
+                i = sc->filter();
             }
         }
     }
@@ -60,7 +69,7 @@ void saveEditorText(const std::string &filename)
 /// SHADER EDITOR
 ///
 ///
-ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), current_(nullptr), show_shader_inputs_(false)
+ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), _cs_id(0), current_(nullptr), show_shader_inputs_(false)
 {
     auto lang = TextEditor::LanguageDefinition::GLSL();
 
@@ -299,16 +308,31 @@ void ShaderEditWindow::Render()
 
             // Menu section for presets and examples
             if (ImGui::BeginMenu(ICON_FA_SCROLL " Examples", current_ != nullptr)) {
-                for (auto p = FilteringProgram::presets.begin();
-                     p != FilteringProgram::presets.end();
-                     ++p) {
-                    if (ImGui::MenuItem(p->name().c_str())) {
-                        // copy text code into editor
-                        _editor.SetText( p->code().first );
+
+                if (ImGui::BeginMenu("Filters", current_ != nullptr)) {
+                    for (auto p = FilteringProgram::example_filters.begin();
+                         p != FilteringProgram::example_filters.end();
+                         ++p) {
+                        if (ImGui::MenuItem(p->name().c_str())) {
+                            // copy text code into editor
+                            _editor.SetText( p->code().first );
+                        }
                     }
+                    ImGui::EndMenu();
                 }
 
-                ImGui::Separator();
+                if (ImGui::BeginMenu("Patterns", current_ != nullptr)) {
+                    for (auto p = FilteringProgram::example_patterns.begin();
+                         p != FilteringProgram::example_patterns.end();
+                         ++p) {
+                        if (ImGui::MenuItem(p->name().c_str())) {
+                            // copy text code into editor
+                            _editor.SetText( p->code().first );
+                        }
+                    }
+                    ImGui::EndMenu();
+                }
+
                 // Open browser to vimix wiki doc
                 if (ImGui::MenuItem( ICON_FA_EXTERNAL_LINK_ALT " Documentation") )
                     SystemToolkit::open(
@@ -423,64 +447,77 @@ void ShaderEditWindow::Render()
     // not compiling
     else {
 
-        ImageFilter *i = nullptr;
         // if there is a current source
         if (cs != nullptr) {
-            i = getImageFilter(cs);
-            // if we can access the code of the filter
-            if (i != nullptr) {
-                // if the current clone was not already registered
-                if ( filters_.find(i) == filters_.end() ) {
-                    // remember program for this image filter
-                    filters_[i] = i->program();
-                    // set a name to the filter
-                    filters_[i].setName(cs->name());
+            // if current source is different from previous one
+            if (cs->id() != _cs_id) {
+                // if we can access the shader of that source
+                ImageFilter *i = getImageFilter(cs);
+                if (i != nullptr) {
+
+                    // if the current clone was not already registered
+                    if (filters_.find(i) == filters_.end()) {
+                        // remember program for this image filter
+                        filters_[i] = i->program();
+                        // set a name to the filter
+                        filters_[i].setName(cs->name());
+                    }
+
+                    // keep unsaved code of current editor
+                    if (current_ != nullptr) {
+                        // get the editor text and remove trailing '\n'
+                        std::string code = _editor.GetText();
+                        code = code.substr(0, code.size() -1);
+                        // remember this code as buffered for this filter
+                        filters_[current_].setCode( { code, "" } );
+                    }
+
+                    // set current shader code menu (can be empty for embedded)
+                    Settings::application.recentShaderCode.push(filters_[i].filename());
+                    Settings::application.recentShaderCode.assign(filters_[i].filename());
+
+                    // change editor
+                    _editor.SetText( filters_[i].code().first );
+                    _editor.SetReadOnly(false);
+                    _editor.SetColorizerEnable(true);
+                    status_ = "Ready";
+
+                    // change current
+                    current_ = i;
                 }
-            }
-            // there is a current source, and it is not a filter
-            if (i == nullptr) {
-                status_ = "-";
-                _editor.SetText("");
-                _editor.SetReadOnly(true);
-                current_ = nullptr;
-                Settings::application.recentShaderCode.assign("");
+                // there is a current source, and it is not a shader
+                else {
+                    _editor.SetText("");
+                    _editor.SetReadOnly(true);
+                    Settings::application.recentShaderCode.assign("");
+                    status_ = "-";
+                    // reset current
+                    current_ = nullptr;
+                }
+
+                // keep track of source currently shown to do that only on change
+                _cs_id = cs->id();
             }
         }
-        else
-            status_ = "-";
-
-        // change editor text only if current changed
-        if ( current_ != i )
-        {
-            // get the editor text and remove trailing '\n'
-            std::string code = _editor.GetText();
-            code = code.substr(0, code.size() -1);
-
-            // remember this code as buffered for the filter of this source
-            filters_[current_].setCode( { code, "" } );
-
-            // if switch to another shader code
-            if ( i != nullptr ) {
-                // set current shader code menu (can be empty for embedded)
-                Settings::application.recentShaderCode.push(filters_[i].filename());
-                Settings::application.recentShaderCode.assign(filters_[i].filename());
-
-                // change editor
-                _editor.SetText( filters_[i].code().first );
-                _editor.SetReadOnly(false);
-                _editor.SetColorizerEnable(true);
-                status_ = "Ready";
+        // no current source
+        else if (_cs_id > 0) {
+            // if previous was probably removed
+            if (current_ != nullptr && !Mixer::manager().findSource(_cs_id)) {
+                _editor.SetText("");
+                _editor.SetReadOnly(true);
+                Settings::application.recentShaderCode.assign("");
+                // reset current
+                current_ = nullptr;
             }
-            // cancel edit clone
             else {
-                // possibility that source was removed
-                // disable editor
+                // disable but keep code in editor
                 _editor.SetReadOnly(true);
                 _editor.SetColorizerEnable(false);
-                status_ = "-";
             }
-            // current changed
-            current_ = i;
+
+            // keep track that no source currently shown to do this once only
+            _cs_id = 0;
+            status_ = "-";
         }
 
     }
@@ -605,4 +642,5 @@ void ShaderEditWindow::Refresh()
     if ( current_ != nullptr )
         filters_.erase(current_);
     current_ = nullptr;
+    _cs_id = 0;
 }

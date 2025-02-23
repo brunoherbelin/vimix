@@ -63,7 +63,7 @@ std::string fragmentFooter = "void main() {\n"
                              "    mainImage( FragColor, texcoord.xy * iResolution.xy );\n"
                              "}\n";
 
-std::list< FilteringProgram > FilteringProgram::presets = {
+std::list< FilteringProgram > FilteringProgram::example_filters = {
     FilteringProgram(),
     FilteringProgram("Blend",    "shaders/filters/blend.glsl",      "",     { }),
     FilteringProgram("Bilateral","shaders/filters/focus.glsl",      "",     { }),
@@ -74,8 +74,16 @@ std::list< FilteringProgram > FilteringProgram::presets = {
     FilteringProgram("Talk",     "shaders/filters/talk.glsl",       "",     { }),
     FilteringProgram("Stippling","shaders/filters/stippling.glsl",  "",     { }),
     FilteringProgram("Dithering","shaders/filters/dithering.glsl",  "",     { }),
-    FilteringProgram("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { }),
-    FilteringProgram("Logo",     "shaders/filters/logo.glsl",       "",     { })
+    FilteringProgram("Fisheye",  "shaders/filters/fisheye.glsl",    "",     { })
+};
+
+std::list< FilteringProgram > FilteringProgram::example_patterns = {
+    FilteringProgram("Color",         "shaders/filters/color.glsl",          "",     { }),
+    FilteringProgram("Color noise",   "shaders/filters/RGBnoise.glsl",       "",     { }),
+    FilteringProgram("Simplex Noise", "shaders/filters/3DSimplexNoise.glsl", "",     { }),
+    FilteringProgram("Perlin Noise",  "shaders/filters/3DPerlinNoise.glsl",  "",     { }),
+    FilteringProgram("HSV map",       "shaders/filters/HSV.glsl",            "",     { }),
+    FilteringProgram("Vimix logo",    "shaders/filters/logo.glsl",           "",     { })
 };
 
 std::string FilteringProgram::getFilterCodeInputs()

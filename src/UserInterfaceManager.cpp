@@ -4136,18 +4136,6 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", "Select", ImGuiComboFlags_HeightLarge))
             {
-                if ( ImGuiToolkit::SelectableIcon(16, 16, "Custom gstreamer", false) )
-                {
-                    update_new_source = true;
-                    generated_type = 0;
-                    pattern_type = -1;
-                }
-                if ( ImGuiToolkit::SelectableIcon(0, 13, "Text", false) )
-                {
-                    update_new_source = true;
-                    generated_type = 1;
-                    pattern_type = -1;
-                }
                 if ( ImGuiToolkit::BeginMenuIcon(ICON_SOURCE_PATTERN, "Static patterns"))
                 {
                     for (int p = 0; p < (int) Pattern::count(); ++p) {
@@ -4175,6 +4163,24 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                         }
                     }
                     ImGui::EndMenu();
+                }
+                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_TEXT, "Text", false) )
+                {
+                    update_new_source = true;
+                    generated_type = 1;
+                    pattern_type = -1;
+                }
+                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_SHADER, "Custom shader", false) )
+                {
+                    update_new_source = true;
+                    generated_type = 3;
+                    pattern_type = -1;
+                }
+                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_GSTREAMER, "Custom gstreamer", false) )
+                {
+                    update_new_source = true;
+                    generated_type = 0;
+                    pattern_type = -1;
                 }
                 ImGui::EndCombo();
             }
@@ -4226,7 +4232,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 ImGui::SetCursorPos(pos_bot);
                 // take action
                 if (update_new_source)
-                    new_source_preview_.setSource( Mixer::manager().createSourceStream(_description), "Custom");
+                    new_source_preview_.setSource( Mixer::manager().createSourceStream(_description), "Gstreamer source");
 
             }
             // if text source selected
@@ -4312,10 +4318,28 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // take action
                 if (update_new_source) {
                     glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);
-                    new_source_preview_.setSource(Mixer::manager().createSourceText(_contents, res), "Text");
+                    new_source_preview_.setSource(Mixer::manager().createSourceText(_contents, res), "Text source");
                 }
             }
-            // if pattern selected
+            // if shader source selected
+            else if (generated_type == 3 ) {
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::Combo("Ratio", &Settings::application.source.ratio,
+                                 GlmToolkit::aspect_ratio_names, IM_ARRAYSIZE(GlmToolkit::aspect_ratio_names) ) )
+                    update_new_source = true;
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::Combo("Height", &Settings::application.source.res,
+                                 GlmToolkit::height_names, IM_ARRAYSIZE(GlmToolkit::height_names) ) )
+                    update_new_source = true;
+
+                // create preview
+                if (update_new_source) {
+                    glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);
+                    new_source_preview_.setSource( Mixer::manager().createSourceShader(res), "Shader source");
+                }
+            }
             else {
                 // resolution
                 if (pattern_type >= 0) {

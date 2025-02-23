@@ -48,6 +48,7 @@ using namespace tinyxml2;
 #include "MediaPlayer.h"
 #include "MixingGroup.h"
 #include "SystemToolkit.h"
+#include "ShaderSource.h"
 
 #include "SessionVisitor.h"
 
@@ -901,6 +902,23 @@ void SessionVisitor::visit (TextSource& s)
     XMLElement *resolution = xmlDoc_->NewElement("resolution");
     resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, glm::ivec2(s.stream()->width(), s.stream()->height())) );
     xmlCurrent_->InsertEndChild(resolution);
+}
+
+void SessionVisitor::visit (ShaderSource& s)
+{
+    XMLElement *_node = xmlCurrent_;
+    _node->SetAttribute("type", "ShaderSource");
+
+    XMLElement *resolution = xmlDoc_->NewElement("resolution");
+    resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.filter()->resolution()) );
+    _node->InsertEndChild(resolution);
+
+    // Filter
+    xmlCurrent_ = xmlDoc_->NewElement("Filter");
+    s.filter()->accept(*this);
+    _node->InsertEndChild(xmlCurrent_);
+
+    xmlCurrent_ = _node;  // parent for next visits
 }
 
 void SessionVisitor::visit (DeviceSource& s)

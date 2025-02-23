@@ -102,6 +102,7 @@ set(VMIX_SRCS
     Playlist.cpp
     Audio.cpp
     TextSource.cpp
+    ShaderSource.cpp
 )
 
 #####

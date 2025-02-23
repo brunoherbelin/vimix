@@ -11,6 +11,7 @@
 
 class ShaderEditWindow : public WorkspaceWindow
 {
+    uint64_t _cs_id;
     ImageFilter *current_;
     std::map<ImageFilter *, FilteringProgram> filters_;
     std::promise<std::string> *compilation_;

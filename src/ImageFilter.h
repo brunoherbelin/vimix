@@ -70,7 +70,8 @@ public:
     // globals
     static std::string getFilterCodeInputs();
     static std::string getFilterCodeDefault();
-    static std::list< FilteringProgram > presets;
+    static std::list< FilteringProgram > example_filters;
+    static std::list< FilteringProgram > example_patterns;
     static glm::vec4 iMouse;
 };
 

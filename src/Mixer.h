@@ -59,6 +59,7 @@ public:
     Source * createSourceNetwork(const std::string &nameconnection);
     Source * createSourceSrt    (const std::string &ip, const std::string &port);
     Source * createSourceText   (const std::string &contents, glm::ivec2 res);
+    Source * createSourceShader (glm::ivec2 res);
     Source * createSourceGroup  ();
 
     // operations on sources

@@ -33,7 +33,7 @@
 #include "DeviceSource.h"
 
 #ifndef NDEBUG
-//#define DEVICE_DEBUG
+#define DEVICE_DEBUG
 #endif
 
 

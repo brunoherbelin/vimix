@@ -50,6 +50,7 @@ public:
     virtual void visit (class CloneSource&) {}
     virtual void visit (class MultiFileSource&) {}
     virtual void visit (class TextSource&) {}
+    virtual void visit (class ShaderSource&) {}
 
     virtual void visit (class FrameBufferFilter&) {}
     virtual void visit (class PassthroughFilter&) {}

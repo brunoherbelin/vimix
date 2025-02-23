@@ -83,7 +83,7 @@ glm::ivec2 GenericStreamSource::icon() const
 
 std::string GenericStreamSource::info() const
 {
-    return "Custom gstreamer";
+    return "Gstreamer";
 }
 
 StreamSource::StreamSource(uint64_t id) : Source(id), stream_(nullptr)
