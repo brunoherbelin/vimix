@@ -297,8 +297,9 @@ struct Application
 
     int  pannel_main_mode;
     int  pannel_playlist_mode;
-    int  pannel_current_session_mode;
+    bool pannel_session[3];
     bool pannel_always_visible;
+    bool pannel_settings[4];
 
     // connection settings
     bool accept_connections;
@@ -387,7 +388,9 @@ struct Application
         shm_socket_path = "";
         pannel_main_mode = 0;
         pannel_playlist_mode = 0;
-        pannel_current_session_mode = 0;
+        pannel_session[0] = true;
+        pannel_session[1] = false;
+        pannel_session[2] = false;
         current_view = 1;
         current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);

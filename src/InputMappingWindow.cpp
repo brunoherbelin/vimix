@@ -29,6 +29,8 @@
 #include "ImGuiToolkit.h"
 #include "imgui_internal.h"
 
+#include <GLFW/glfw3.h>
+
 #include "defines.h"
 #include "BaseToolkit.h"
 #include "Settings.h"
@@ -702,6 +704,28 @@ void InputMappingWindow::Render()
             // Clear all
             if ( ImGui::MenuItem( ICON_FA_BACKSPACE " Clear all" ) )
                 S->clearInputCallbacks();
+
+            // Gamepad selection
+            ImGui::Separator();
+            float combo_width = ImGui::GetTextLineHeightWithSpacing() * 7.f;
+            ImGui::SetNextItemWidth(combo_width);
+            char text_buf[256];
+            if ( glfwJoystickPresent( Settings::application.gamepad_id ) )
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(Settings::application.gamepad_id));
+            else
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Joystick %d", Settings::application.gamepad_id);
+
+            if (ImGui::BeginCombo("Gamepad", text_buf, ImGuiComboFlags_None)) {
+                for( int g = GLFW_JOYSTICK_1; g < GLFW_JOYSTICK_LAST; ++g) {
+                    if ( glfwJoystickPresent( g ) ) {
+                        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(g));
+                        if (ImGui::Selectable(text_buf, Settings::application.gamepad_id == g) ) {
+                            Settings::application.gamepad_id = g;
+                        }
+                    }
+                }
+                ImGui::EndCombo();
+            }
 
             // output manager menu
             ImGui::Separator();

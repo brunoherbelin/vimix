@@ -1,7 +1,7 @@
 #ifndef GEOMETRYVIEW_H
 #define GEOMETRYVIEW_H
 
-// #define ENABLE_CANVAS
+#define ENABLE_CANVAS
 
 #include "View.h"
 
