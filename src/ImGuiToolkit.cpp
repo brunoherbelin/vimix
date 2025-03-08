@@ -648,8 +648,6 @@ bool ImGuiToolkit::BeginMenuIcon(int i, int j, const char *label, bool enabled)
 {
     ImGuiWindow *win = ImGui::GetCurrentWindow();
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
-    ImGuiContext &g = *GImGui;
-    draw_pos.y -= g.Style.ItemSpacing.y * 0.5f;
 
     char text_buf[256];
     ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "      %s", label);

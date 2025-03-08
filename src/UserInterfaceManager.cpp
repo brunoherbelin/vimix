@@ -5857,7 +5857,7 @@ void Navigator::RenderMainPannelSettings()
     //
     // Steaming preferences
     //
-    Settings::application.pannel_settings[1] = ImGui::CollapsingHeader("Stream",
+    Settings::application.pannel_settings[1] = ImGui::CollapsingHeader("Streaming",
                                                                        Settings::application.pannel_settings[1] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
 
     if (Settings::application.pannel_settings[1]){
@@ -5941,7 +5941,7 @@ void Navigator::RenderMainPannelSettings()
     //
     // OSC preferences
     //
-    Settings::application.pannel_settings[2] = ImGui::CollapsingHeader("OSC",
+    Settings::application.pannel_settings[2] = ImGui::CollapsingHeader("Open Sound Control",
                                                                        Settings::application.pannel_settings[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
 
     if (Settings::application.pannel_settings[2]){
@@ -5949,7 +5949,6 @@ void Navigator::RenderMainPannelSettings()
         // ImGui::TextDisabled("OSC");
 
         std::ostringstream msg;
-        msg << "Open Sound Control" << std::endl << std::endl;
         msg << "vimix accepts OSC messages sent by UDP on Port " << Settings::application.control.osc_port_receive;
         msg << " and replies on Port " << Settings::application.control.osc_port_send << std::endl << std::endl;
         msg << "Valid network addresses:" << std::endl;
@@ -5997,6 +5996,7 @@ void Navigator::RenderMainPannelSettings()
             Control::manager().init();
         ImGui::SameLine();
         ImGui::Text("Translator");
+        ImGuiToolkit::Spacing();
     }
 
     //
