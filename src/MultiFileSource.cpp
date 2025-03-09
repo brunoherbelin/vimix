@@ -105,7 +105,7 @@ void MultiFile::open (const MultiFileSequence &sequence, uint framerate )
     gstreamer_pipeline << sequence.min;
     gstreamer_pipeline << " stop-index=";
     gstreamer_pipeline << sequence.max;
-    gstreamer_pipeline << " ! decodebin ! videoconvert";
+    gstreamer_pipeline << " ! decodebin force-sw-decoders=true ! videoconvert";
 
     // (private) open stream - asynchronous threaded process
     Stream::open(gstreamer_pipeline.str(), sequence.width, sequence.height);

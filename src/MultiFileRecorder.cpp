@@ -76,8 +76,8 @@ bool MultiFileRecorder::add_image (const std::string &image_filename, GstCaps *c
     // set uri of file to open
     g_object_set(G_OBJECT(img_pipeline), "uri", uri.c_str(), NULL);
 
-    // set flag to only read VIDEO
-    g_object_set(G_OBJECT(img_pipeline), "flags", 0x00000001, NULL);
+    // set flag to only read VIDEO with software decoding
+    g_object_set(G_OBJECT(img_pipeline), "flags", 0x00001001, NULL);
 
     // instruct sink to use the required caps
     GstElement *sink = gst_element_factory_make("appsink", "imgsink");
