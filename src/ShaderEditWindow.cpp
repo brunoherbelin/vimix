@@ -124,6 +124,7 @@ ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), _cs_id(0), cur
 
     // status
     status_ = "-";
+
 }
 
 void ShaderEditWindow::setVisible(bool on)
@@ -139,6 +140,7 @@ void ShaderEditWindow::setVisible(bool on)
         Settings::application.widget.shader_editor_view = -1;
 
     Settings::application.widget.shader_editor = on;
+
 }
 
 bool ShaderEditWindow::Visible() const
@@ -188,7 +190,6 @@ void ShaderEditWindow::BuildAll()
     }
 }
 
-
 void ShaderEditWindow::Render()
 {
     static DialogToolkit::OpenFileDialog selectcodedialog("Open GLSL shader code",
@@ -198,17 +199,53 @@ void ShaderEditWindow::Render()
                                                           "Text files",
                                                           {"*.glsl", "*.fs", "*.txt"} );
 
-    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    std::string file_to_build_ = "";
+    Source *cs = Mixer::manager().currentSource();
 
+    // garbage collection
+    if ( !filters_.empty() && Mixer::manager().session()->numSources() < 1 )
+    {
+        // empty list of edited filter when session empty
+        filters_.clear();
+        current_ = nullptr;
+
+        // clear editor text and recent file
+        _editor.SetText("");
+        Settings::application.recentShaderCode.assign("");
+    }
+
+    // File dialog Export code gives a filename to save to
+    if (exportcodedialog.closed() && !exportcodedialog.path().empty()) {
+
+        // set shader program to be a file
+        file_to_build_ = exportcodedialog.path();
+
+        // save the current content of editor into given file
+        saveEditorText(file_to_build_);
+    }
+
+    // File dialog select code gives a filename to open
+    if (selectcodedialog.closed() && !selectcodedialog.path().empty()) {
+
+        // set shader program to be a file
+        file_to_build_ = selectcodedialog.path();
+
+        // read file and display content in editor
+        _editor.SetText(SystemToolkit::get_text_content(file_to_build_));
+    }
+
+    // AUTO COLLAPSE
+    setCollapsed(current_ == nullptr);
+
+    // Render window
+    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if ( !ImGui::Begin(name_, &Settings::application.widget.shader_editor,
-                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar |
+                          ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse))
     {
         ImGui::End();
         return;
     }
-
-    std::string file_to_build_ = "";
-    Source *cs = Mixer::manager().currentSource();
 
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
@@ -387,37 +424,25 @@ void ShaderEditWindow::Render()
         ImGui::EndMenuBar();
     }
 
-    // garbage collection
-    if ( !filters_.empty() && Mixer::manager().session()->numSources() < 1 )
-    {
-        // empty list of edited filter when session empty
-        filters_.clear();
-        current_ = nullptr;
-        // clear editor text and recent file
-        _editor.SetText("");
-        Settings::application.recentShaderCode.assign("");
+    // the TextEditor captures keyboard focus from the main imgui context
+    // so UserInterface::handleKeyboard cannot capture this event:
+    // reading key press before render bypasses this problem
+    const ImGuiIO& io = ImGui::GetIO();
+    if (io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl) {
+        // special case for 'CTRL + B' keyboard shortcut
+        if (ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_A] + 1))
+            BuildShader();
+        // special case for 'CTRL + S' keyboard shortcut
+        if (ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_V] - 3)) {
+            // if present, save the program file with current content of editor
+            if (!filters_[current_].filename().empty())
+                saveEditorText(filters_[current_].filename());
+            // save session
+            Mixer::manager().save();
+        }
     }
 
-    // File dialog Export code gives a filename to save to
-    if (exportcodedialog.closed() && !exportcodedialog.path().empty()) {
-
-        // set shader program to be a file
-        file_to_build_ = exportcodedialog.path();
-
-        // save the current content of editor into given file
-        saveEditorText(file_to_build_);
-    }
-
-    // File dialog select code gives a filename to open
-    if (selectcodedialog.closed() && !selectcodedialog.path().empty()) {
-
-        // set shader program to be a file
-        file_to_build_ = selectcodedialog.path();
-
-        // read file and display content in editor
-        _editor.SetText(SystemToolkit::get_text_content(file_to_build_));
-    }
-
+    // compile
     if (current_ != nullptr && !file_to_build_.empty()) {
 
         // ok editor
@@ -446,7 +471,6 @@ void ShaderEditWindow::Render()
     }
     // not compiling
     else {
-
         // if there is a current source
         if (cs != nullptr) {
             // if current source is different from previous one
@@ -519,7 +543,6 @@ void ShaderEditWindow::Render()
             _cs_id = 0;
             status_ = "-";
         }
-
     }
 
     // render status message
@@ -527,10 +550,11 @@ void ShaderEditWindow::Render()
     ImGui::Text("Status: %s", status_.c_str());
 
     // Right-align on same line than status
+    const float w = ImGui::GetContentRegionAvail().x - ImGui::GetTextLineHeight();
+
     // Display name of program for embedded code
     if (current_ != nullptr) {
 
-        const float w = ImGui::GetContentRegionAvail().x - ImGui::GetTextLineHeight();
         ImVec2 txtsize = ImGui::CalcTextSize(Settings::application.recentShaderCode.path.c_str(), NULL);
         ImGui::SameLine(w - txtsize.x - IMGUI_SAME_LINE, 0);
 
@@ -569,6 +593,14 @@ void ShaderEditWindow::Render()
             ImGui::PopStyleVar(1);
         }
     }
+    else {
+        ImVec2 txtsize = ImGui::CalcTextSize("No shader", NULL);
+        ImGui::SameLine(w - txtsize.x - IMGUI_SAME_LINE, 0);
+        // right-aligned in italics and greyed out
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.8, 0.9f));
+        ImGui::Text("No Shader");
+        ImGui::PopStyleColor(1);
+    }
 
     ImGui::PopFont();
 
@@ -576,7 +608,7 @@ void ShaderEditWindow::Render()
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
 
     // render shader input
-    if (show_shader_inputs_) {
+    if (current_ != nullptr && show_shader_inputs_) {
         ImGuiTextBuffer info;
         info.append(FilteringProgram::getFilterCodeInputs().c_str());
 
@@ -610,26 +642,9 @@ void ShaderEditWindow::Render()
     else
         ImGui::Spacing();
 
-    // the TextEditor captures keyboard focus from the main imgui context
-    // so UserInterface::handleKeyboard cannot capture this event:
-    // reading key press before render bypasses this problem
-    const ImGuiIO& io = ImGui::GetIO();
-    if (io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl) {
-        // special case for 'CTRL + B' keyboard shortcut
-        if (ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_A] + 1))
-            BuildShader();
-        // special case for 'CTRL + S' keyboard shortcut
-        if (ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_V] - 3)) {
-            // if present, save the program file with current content of editor
-            if (!filters_[current_].filename().empty())
-                saveEditorText(filters_[current_].filename());
-            // save session
-            Mixer::manager().save();
-        }
-    }
-
     // render main editor
-    _editor.Render("Shader Editor");
+    if (_editor.GetTotalLines()>1)
+        _editor.Render("Shader Editor");
 
     ImGui::PopFont();
 

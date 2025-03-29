@@ -31,21 +31,24 @@ std::list<WorkspaceWindow *> WorkspaceWindow::windows_;
 struct ImGuiProperties
 {
     ImGuiWindow *ptr;
-    ImVec2 user_pos;
-    ImVec2 outside_pos;
     float progress;  // [0 1]
-    float target;    //  1 go to outside, 0 go to user pos
-    bool  animation;     // need animation
+    bool  animation; // need animation
     bool  resizing_workspace;
+    bool  hidden;
+    bool  collapsed;
+    ImVec2 user_pos;
+    ImVec2 user_size;
+    ImVec2 hidden_pos;
     ImVec2 resized_pos;
 
     ImGuiProperties ()
     {
         ptr = nullptr;
         progress = 0.f;
-        target = 0.f;
         animation = false;
         resizing_workspace = false;
+        hidden = false;
+        collapsed = false;
     }
 };
 
@@ -69,32 +72,98 @@ void WorkspaceWindow::toggleClearRestoreWorkspace()
         clearWorkspace();
 }
 
-void WorkspaceWindow::restoreWorkspace(bool instantaneous)
+void WorkspaceWindow::setHidden(bool h, bool force)
 {
-    if (clear_workspace_enabled) {
+    // hide if valid pointer and if status 'hidden' is changing (or forcing entry)
+    if (impl_ && impl_->ptr && ( impl_->hidden != h || force )) {
+
+        // set status
+        impl_->hidden = h;
+
+        // utility variables
         const ImVec2 display_size = ImGui::GetIO().DisplaySize;
-        for(auto it = windows_.cbegin(); it != windows_.cend(); ++it) {
-            ImGuiProperties *impl = (*it)->impl_;
-            if (impl && impl->ptr)
-            {
-                float margin = (impl->ptr->MenuBarHeight() + impl->ptr->TitleBarHeight()) * 3.f;
-                impl->user_pos.x = CLAMP(impl->user_pos.x, -impl->ptr->SizeFull.x +margin, display_size.x -margin);
-                impl->user_pos.y = CLAMP(impl->user_pos.y, -impl->ptr->SizeFull.y +margin, display_size.y -margin);
 
-                if (instantaneous) {
-                    impl->animation = false;
-                    ImGui::SetWindowPos(impl->ptr, impl->user_pos);
-                }
-                else {
-                    // remember outside position before move
-                    impl->outside_pos = impl->ptr->Pos;
+        if (h) {
+            // remember user position before animation
+            impl_->user_pos = impl_->ptr->Pos;
 
-                    // initialize animation
-                    impl->progress = 1.f;
-                    impl->target = 0.f;
-                    impl->animation = true;
-                }
+            // distance to right side, top & bottom
+            float right = display_size.x - (impl_->ptr->Pos.x + impl_->ptr->SizeFull.x * 0.7);
+            float top = impl_->ptr->Pos.y;
+            float bottom = display_size.y - (impl_->ptr->Pos.y + impl_->ptr->SizeFull.y);
+
+            // hidden_pos starts from user position,
+            // + moved to closest border, with a margin to keep visible
+            impl_->hidden_pos = impl_->ptr->Pos;
+            float margin = (impl_->ptr->MenuBarHeight() + impl_->ptr->TitleBarHeight()) * 1.5f;
+            if (top < bottom && top < right)
+                impl_->hidden_pos.y = margin - impl_->ptr->SizeFull.y;
+            else if (right < top && right < bottom)
+                impl_->hidden_pos.x = display_size.x - margin;
+            else
+                impl_->hidden_pos.y = display_size.y - margin;
+
+            if (force) {
+                impl_->animation = false;
+                ImGui::SetWindowPos(impl_->ptr, impl_->hidden_pos);
             }
+            else {
+                // initialize animation
+                impl_->progress = 0.f;
+                impl_->animation = true;
+            }
+
+        }
+        else {
+            // remember outside position before animation
+            impl_->hidden_pos = impl_->ptr->Pos;
+
+            float margin = (impl_->ptr->MenuBarHeight() + impl_->ptr->TitleBarHeight()) * 3.f;
+            impl_->user_pos.x = CLAMP(impl_->user_pos.x,
+                                      -impl_->ptr->SizeFull.x + margin,
+                                      display_size.x - margin);
+            impl_->user_pos.y = CLAMP(impl_->user_pos.y,
+                                      -impl_->ptr->SizeFull.y + margin,
+                                      display_size.y - margin);
+
+            if (force) {
+                impl_->animation = false;
+                // ImGui::SetWindowPos(impl_->ptr, impl_->user_pos);
+            }
+            else {
+                // initialize animation
+                impl_->progress = 1.f;
+                impl_->animation = true;
+            }
+        }
+    }
+}
+
+void WorkspaceWindow::setCollapsed(bool c)
+{
+    // hide if valid pointer and if status 'collapsed' is changing
+    if (impl_ && impl_->ptr && impl_->collapsed != c && !impl_->hidden) {
+        impl_->collapsed = c;
+
+        ImVec2 s = impl_->ptr->SizeFull;
+        if (c) {
+            impl_->user_size = s;
+            s.y = impl_->ptr->MenuBarHeight() * 2.3f;
+        } else
+            s.y = impl_->user_size.y;
+
+        ImGui::SetWindowSize(impl_->ptr, s);
+    }
+}
+
+void WorkspaceWindow::restoreWorkspace(bool force)
+{
+    if (clear_workspace_enabled || force) {
+        // const ImVec2 display_size = ImGui::GetIO().DisplaySize;
+        for(auto it = windows_.cbegin(); it != windows_.cend(); ++it) {
+            if (force)
+                (*it)->setCollapsed(false);
+            (*it)->setHidden(false, force);
         }
     }
     clear_workspace_enabled = false;
@@ -103,36 +172,9 @@ void WorkspaceWindow::restoreWorkspace(bool instantaneous)
 void WorkspaceWindow::clearWorkspace()
 {
     if (!clear_workspace_enabled) {
-        const ImVec2 display_size = ImGui::GetIO().DisplaySize;
+        // const ImVec2 display_size = ImGui::GetIO().DisplaySize;
         for(auto it = windows_.cbegin(); it != windows_.cend(); ++it) {
-            ImGuiProperties *impl = (*it)->impl_;
-            if (impl && impl->ptr)
-            {
-                // remember user position before move
-                impl->user_pos = impl->ptr->Pos;
-
-                // init before decision
-                impl->outside_pos = impl->ptr->Pos;
-
-                // distance to right side, top & bottom
-                float right = display_size.x - (impl->ptr->Pos.x + impl->ptr->SizeFull.x * 0.7);
-                float top = impl->ptr->Pos.y;
-                float bottom = display_size.y - (impl->ptr->Pos.y + impl->ptr->SizeFull.y);
-
-                // move to closest border, with a margin to keep visible
-                float margin = (impl->ptr->MenuBarHeight() + impl->ptr->TitleBarHeight()) * 1.5f;
-                if (top < bottom && top < right)
-                    impl->outside_pos.y = margin - impl->ptr->SizeFull.y;
-                else if (right < top && right < bottom)
-                    impl->outside_pos.x = display_size.x - margin;
-                else
-                    impl->outside_pos.y = display_size.y - margin;
-
-                // initialize animation
-                impl->progress = 0.f;
-                impl->target = 1.f;
-                impl->animation = true;
-            }
+            (*it)->setHidden(true);
         }
     }
     clear_workspace_enabled = true;
@@ -180,17 +222,18 @@ void WorkspaceWindow::Update()
         if ( Visible() ) {
             // perform animation for clear/restore workspace
             if (impl_->animation) {
+                const float target = impl_->hidden ? 1.f : 0.f;
                 // increment animation progress by small steps
-                impl_->progress += SIGN(impl_->target -impl_->progress) * 0.1f;
+                impl_->progress += SIGN(target -impl_->progress) * 0.1f;
                 // finished animation : apply full target position
-                if (ABS_DIFF(impl_->target, impl_->progress) < 0.05f) {
+                if (ABS_DIFF(target, impl_->progress) < 0.05f) {
                     impl_->animation = false;
-                    ImVec2 pos = impl_->user_pos * (1.f -impl_->target) + impl_->outside_pos * impl_->target;
+                    ImVec2 pos = impl_->user_pos * (1.f -target) + impl_->hidden_pos * target;
                     ImGui::SetWindowPos(impl_->ptr, pos);
                 }
                 // move window by interpolation between user position and outside target position
                 else {
-                    ImVec2 pos = impl_->user_pos * (1.f -impl_->progress) + impl_->outside_pos * impl_->progress;
+                    ImVec2 pos = impl_->user_pos * (1.f -impl_->progress) + impl_->hidden_pos * impl_->progress;
                     ImGui::SetWindowPos(impl_->ptr, pos);
                 }
             }
