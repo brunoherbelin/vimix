@@ -106,7 +106,7 @@ Target InputMappingWindow::ComboSelectTarget(const Target &current)
                 selected = *sit;
             }
         }
-        for (size_t b = 0; b < Mixer::manager().session()->numBatch(); ++b){
+        for (size_t b = 0; b < ses->numBatch(); ++b){
             label = std::string("Batch #") + std::to_string(b);
             if (ImGui::Selectable( label.c_str() )) {
                 selected = b;
@@ -705,28 +705,6 @@ void InputMappingWindow::Render()
             if ( ImGui::MenuItem( ICON_FA_BACKSPACE " Clear all" ) )
                 S->clearInputCallbacks();
 
-            // Gamepad selection
-            ImGui::Separator();
-            float combo_width = ImGui::GetTextLineHeightWithSpacing() * 7.f;
-            ImGui::SetNextItemWidth(combo_width);
-            char text_buf[256];
-            if ( glfwJoystickPresent( Settings::application.gamepad_id ) )
-                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(Settings::application.gamepad_id));
-            else
-                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Joystick %d", Settings::application.gamepad_id);
-
-            if (ImGui::BeginCombo("Gamepad", text_buf, ImGuiComboFlags_None)) {
-                for( int g = GLFW_JOYSTICK_1; g < GLFW_JOYSTICK_LAST; ++g) {
-                    if ( glfwJoystickPresent( g ) ) {
-                        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(g));
-                        if (ImGui::Selectable(text_buf, Settings::application.gamepad_id == g) ) {
-                            Settings::application.gamepad_id = g;
-                        }
-                    }
-                }
-                ImGui::EndCombo();
-            }
-
             // output manager menu
             ImGui::Separator();
             bool pinned = Settings::application.widget.inputs_view == Settings::application.current_view;
@@ -1321,132 +1299,162 @@ void InputMappingWindow::Render()
     {
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2.f, g.Style.ItemSpacing.y * 2.f) );
         ImGui::BeginChild("InputsMappingInterfacePanel", ImVec2(0, 0), false);
-
         float w = ImGui::GetWindowWidth() *0.25f;
 
-        ///
-        /// list of input callbacks for the current input
-        ///
-        if (S->inputAssigned(current_input_)) {
+        // selection of device for joystick mode
+        if ( Settings::application.mapping.mode == 3 ){
+            char text_buf[512];
+            if ( glfwJoystickPresent( Settings::application.gamepad_id ) )
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(Settings::application.gamepad_id));
+            else
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Joystick %d", Settings::application.gamepad_id);
 
-            auto result = S->getSourceCallbacks(current_input_);
-            for (auto kit = result.cbegin(); kit != result.cend(); ++kit) {
-
-                Target target = kit->first;
-                SourceCallback *callback = kit->second;
-
-                // push ID because we repeat the same UI
-                ImGui::PushID( (void*) callback);
-
-                // Delete interface
-                if (ImGuiToolkit::IconButton(ICON_FA_MINUS, "Remove") ){
-                    S->deleteInputCallback(callback);
-                    // reload
-                    ImGui::PopID();
-                    break;
-                }
-
-                // Select Target
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGui::SetNextItemWidth(w);
-                Target selected_target = ComboSelectTarget(target);
-                // if the selected target variant was filled with a value
-                if (selected_target.index() > 0) {
-                    // reassign the callback to newly selected source
-                    S->assignInputCallback(current_input_, selected_target, callback);
-                    // reload
-                    ImGui::PopID();
-                    break;
-                }
-
-                // check if target is a Source with image processing enabled
-                bool withimageprocessing = false;
-                if ( target.index() == 1 ) {
-                    if (Source * const* v = std::get_if<Source *>(&target)) {
-                        withimageprocessing = (*v)->imageProcessingEnabled();
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::BeginCombo("Device", text_buf, ImGuiComboFlags_None)) {
+                for( int g = GLFW_JOYSTICK_1; g < GLFW_JOYSTICK_LAST; ++g) {
+                    if ( glfwJoystickPresent( g ) ) {
+                        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(g));
+                        if (ImGui::Selectable(text_buf, Settings::application.gamepad_id == g) ) {
+                            Settings::application.gamepad_id = g;
+                        }
                     }
                 }
-
-                // Select Reaction
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGui::SetNextItemWidth(w);
-                uint type = ComboSelectCallback( callback->type(), withimageprocessing );
-                if (type > 0) {
-                    // remove previous callback
-                    S->deleteInputCallback(callback);
-                    // assign callback
-                    S->assignInputCallback(current_input_, target, SourceCallback::create((SourceCallback::CallbackType)type) );
-                    // reload
-                    ImGui::PopID();
-                    break;
-                }
-
-                // Adjust parameters
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                if (callback)
-                    SliderParametersCallback( callback, target );
-
-                ImGui::PopID();
-
-            }
-
-        }
-        else {
-            ImGui::Text("No action mapped to this input. Add one with +.");
-        }
-
-        ///
-        /// Add a new interface
-        ///
-        static bool temp_new_input = false;
-        static Target temp_new_target;
-        static uint temp_new_callback = 0;
-
-        // step 1 : press '+'
-        if (temp_new_input) {
-            if (ImGuiToolkit::IconButton(ICON_FA_TIMES, "Cancel") ){
-                temp_new_target = std::monostate();
-                temp_new_callback = 0;
-                temp_new_input = false;
+                ImGui::EndCombo();
             }
         }
-        else if (ImGuiToolkit::IconButton(ICON_FA_PLUS, "Add mapping") )
-            temp_new_input = true;
 
-        if (temp_new_input) {
-            // step 2 : Get input for source
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            ImGui::SetNextItemWidth(w);
+        // adding actions is possible only if there are sources in the session
+        if (!Mixer::manager().session()->empty()) {
 
-            Target selected_target = ComboSelectTarget(temp_new_target);
-            // if the selected target variant was filled with a value
-            if (selected_target.index() > 0) {
-                temp_new_target = selected_target;
-                temp_new_callback = 0;
-            }
-            // possible new target
-            if (temp_new_target.index() > 0) {
-                // check if target is a Source with image processing enabled
-                bool withimageprocessing = false;
-                if ( temp_new_target.index() == 1 ) {
-                    if (Source * const* v = std::get_if<Source *>(&temp_new_target)) {
-                        withimageprocessing = (*v)->imageProcessingEnabled();
+            ///
+            /// list of input callbacks for the current input
+            ///
+            if (S->inputAssigned(current_input_)) {
+
+                auto result = S->getSourceCallbacks(current_input_);
+                for (auto kit = result.cbegin(); kit != result.cend(); ++kit) {
+
+                    Target target = kit->first;
+                    SourceCallback *callback = kit->second;
+
+                    // push ID because we repeat the same UI
+                    ImGui::PushID( (void*) callback);
+
+                    // Delete interface
+                    if (ImGuiToolkit::IconButton(ICON_FA_MINUS, "Remove") ){
+                        S->deleteInputCallback(callback);
+                        // reload
+                        ImGui::PopID();
+                        break;
                     }
+
+                    // Select Target
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    ImGui::SetNextItemWidth(w);
+                    Target selected_target = ComboSelectTarget(target);
+                    // if the selected target variant was filled with a value
+                    if (selected_target.index() > 0) {
+                        // reassign the callback to newly selected source
+                        S->assignInputCallback(current_input_, selected_target, callback);
+                        // reload
+                        ImGui::PopID();
+                        break;
+                    }
+
+                    // check if target is a Source with image processing enabled
+                    bool withimageprocessing = false;
+                    if ( target.index() == 1 ) {
+                        if (Source * const* v = std::get_if<Source *>(&target)) {
+                            withimageprocessing = (*v)->imageProcessingEnabled();
+                        }
+                    }
+
+                    // Select Reaction
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    ImGui::SetNextItemWidth(w);
+                    uint type = ComboSelectCallback( callback->type(), withimageprocessing );
+                    if (type > 0) {
+                        // remove previous callback
+                        S->deleteInputCallback(callback);
+                        // assign callback
+                        S->assignInputCallback(current_input_, target, SourceCallback::create((SourceCallback::CallbackType)type) );
+                        // reload
+                        ImGui::PopID();
+                        break;
+                    }
+
+                    // Adjust parameters
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    if (callback)
+                        SliderParametersCallback( callback, target );
+
+                    ImGui::PopID();
+
                 }
-                // step 3: Get input for callback type
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGui::SetNextItemWidth(w);
-                temp_new_callback = ComboSelectCallback( temp_new_callback, withimageprocessing );
-                // user selected a callback type
-                if (temp_new_callback > 0) {
-                    // step 4 : create new callback and add it to source
-                    S->assignInputCallback(current_input_, temp_new_target, SourceCallback::create((SourceCallback::CallbackType)temp_new_callback) );
-                    // done
+
+            }
+            else {
+                ImGui::Text("No action mapped to this input. Add one with +.");
+            }
+
+            ///
+            /// Add a new interface
+            ///
+            ///
+
+            static bool temp_new_input = false;
+            static Target temp_new_target;
+            static uint temp_new_callback = 0;
+
+            // step 1 : press '+'
+            if (temp_new_input) {
+                if (ImGuiToolkit::IconButton(ICON_FA_TIMES, "Cancel") ){
                     temp_new_target = std::monostate();
                     temp_new_callback = 0;
                     temp_new_input = false;
                 }
             }
+            else if (ImGuiToolkit::IconButton(ICON_FA_PLUS, "Add mapping") )
+                temp_new_input = true;
+
+            if (temp_new_input) {
+                // step 2 : Get input for source
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::SetNextItemWidth(w);
+
+                Target selected_target = ComboSelectTarget(temp_new_target);
+                // if the selected target variant was filled with a value
+                if (selected_target.index() > 0) {
+                    temp_new_target = selected_target;
+                    temp_new_callback = 0;
+                }
+                // possible new target
+                if (temp_new_target.index() > 0) {
+                    // check if target is a Source with image processing enabled
+                    bool withimageprocessing = false;
+                    if ( temp_new_target.index() == 1 ) {
+                        if (Source * const* v = std::get_if<Source *>(&temp_new_target)) {
+                            withimageprocessing = (*v)->imageProcessingEnabled();
+                        }
+                    }
+                    // step 3: Get input for callback type
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    ImGui::SetNextItemWidth(w);
+                    temp_new_callback = ComboSelectCallback( temp_new_callback, withimageprocessing );
+                    // user selected a callback type
+                    if (temp_new_callback > 0) {
+                        // step 4 : create new callback and add it to source
+                        S->assignInputCallback(current_input_, temp_new_target, SourceCallback::create((SourceCallback::CallbackType)temp_new_callback) );
+                        // done
+                        temp_new_target = std::monostate();
+                        temp_new_callback = 0;
+                        temp_new_input = false;
+                    }
+                }
+            }
+        }
+        else {
+            ImGui::Text("No source to perform an action.");
         }
 
         ///
