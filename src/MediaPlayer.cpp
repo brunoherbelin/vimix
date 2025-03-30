@@ -1346,10 +1346,9 @@ void MediaPlayer::update()
     frame_[read_index].access.unlock();
 
     // if already seeking (asynch)
-    if (seeking_) {
-        // request status update to pipeline (re-sync gst thread)
-        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
-        // seek should be resolved next frame
+    // && request status update to pipeline (re-sync gst thread)
+    if (seeking_ && gst_element_get_state(pipeline_, NULL, NULL, GST_MSECOND * 5)==GST_STATE_CHANGE_SUCCESS) {
+        // seek is resolved for next frame
         seeking_ = false;
         // do NOT do another seek yet
         need_loop = false;
