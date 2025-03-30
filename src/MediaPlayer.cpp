@@ -1346,10 +1346,22 @@ void MediaPlayer::update()
     frame_[read_index].access.unlock();
 
     // if already seeking (asynch)
-    // && request status update to pipeline (re-sync gst thread)
-    if (seeking_ && gst_element_get_state(pipeline_, NULL, NULL, GST_MSECOND * 5)==GST_STATE_CHANGE_SUCCESS) {
-        // seek is resolved for next frame
-        seeking_ = false;
+    if (seeking_) {
+        // fail counter
+        static uint counter = 0;
+        counter++;
+        // request ASYNC status update to pipeline (re-sync gst thread)
+        GstStateChangeReturn ret = gst_element_get_state(pipeline_, NULL, NULL, GST_MSECOND * 5);
+        if (ret == GST_STATE_CHANGE_SUCCESS) {
+            // finished ! seek is resolved for next frame
+            seeking_ = false;
+            counter = 0;
+        }
+        else if (counter > 50) {
+            Log::Notify("MediaPlayer %s Seek failed. Reseting media...", std::to_string(id_).c_str());
+            counter = 0;
+            reopen();
+        }
         // do NOT do another seek yet
         need_loop = false;
     }
@@ -1456,8 +1468,6 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
         g_printerr("MediaPlayer %s Seek %ld %.1f\n", std::to_string(id_).c_str(), seek_pos, rate_);
 #endif
     }
-    else
-        Log::Info("MediaPlayer %s Seek failed", std::to_string(id_).c_str());
 
     // Force update
     if (force) {
