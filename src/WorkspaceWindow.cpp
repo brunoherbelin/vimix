@@ -49,6 +49,8 @@ struct ImGuiProperties
         resizing_workspace = false;
         hidden = false;
         collapsed = false;
+        user_pos = ImVec2(0.f, 0.f);
+        user_size = ImVec2(0.f, 0.f);
     }
 };
 
@@ -128,7 +130,7 @@ void WorkspaceWindow::setHidden(bool h, bool force)
 
             if (force) {
                 impl_->animation = false;
-                // ImGui::SetWindowPos(impl_->ptr, impl_->user_pos);
+                ImGui::SetWindowPos(impl_->ptr, impl_->user_pos);
             }
             else {
                 // initialize animation
@@ -142,15 +144,23 @@ void WorkspaceWindow::setHidden(bool h, bool force)
 void WorkspaceWindow::setCollapsed(bool c)
 {
     // hide if valid pointer and if status 'collapsed' is changing
-    if (impl_ && impl_->ptr && impl_->collapsed != c && !impl_->hidden) {
+    if (impl_ && impl_->ptr && impl_->collapsed != c ) {
+
+        // remember status
         impl_->collapsed = c;
 
         ImVec2 s = impl_->ptr->SizeFull;
         if (c) {
+            // remember user size
             impl_->user_size = s;
+            // set small height
             s.y = impl_->ptr->MenuBarHeight() * 2.3f;
-        } else
-            s.y = impl_->user_size.y;
+        }
+        else {
+            // restore user height
+            if (impl_->user_size.y > 0.f)
+                s.y = impl_->user_size.y;
+        }
 
         ImGui::SetWindowSize(impl_->ptr, s);
     }
@@ -163,7 +173,8 @@ void WorkspaceWindow::restoreWorkspace(bool force)
         for(auto it = windows_.cbegin(); it != windows_.cend(); ++it) {
             if (force)
                 (*it)->setCollapsed(false);
-            (*it)->setHidden(false, force);
+            if (clear_workspace_enabled)
+                (*it)->setHidden(false, force);
         }
     }
     clear_workspace_enabled = false;

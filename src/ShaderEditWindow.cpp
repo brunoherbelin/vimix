@@ -173,7 +173,6 @@ void ShaderEditWindow::BuildShader()
 
         // inform status
         status_ = "Building...";
-        Refresh();
     }
 }
 
@@ -353,6 +352,11 @@ void ShaderEditWindow::Render()
                         if (ImGui::MenuItem(p->name().c_str())) {
                             // copy text code into editor
                             _editor.SetText( p->code().first );
+                            // cancel path of recent shader
+                            filters_[current_].resetFilename();
+                            Settings::application.recentShaderCode.assign("");
+                            // build code
+                            BuildShader();
                         }
                     }
                     ImGui::EndMenu();
@@ -365,6 +369,11 @@ void ShaderEditWindow::Render()
                         if (ImGui::MenuItem(p->name().c_str())) {
                             // copy text code into editor
                             _editor.SetText( p->code().first );
+                            // cancel path of recent shader
+                            filters_[current_].resetFilename();
+                            Settings::application.recentShaderCode.assign("");
+                            // build code
+                            BuildShader();
                         }
                     }
                     ImGui::EndMenu();
@@ -604,49 +613,51 @@ void ShaderEditWindow::Render()
 
     ImGui::PopFont();
 
-    // render the window content in mono font
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+    if (current_ != nullptr) {
 
-    // render shader input
-    if (current_ != nullptr && show_shader_inputs_) {
-        ImGuiTextBuffer info;
-        info.append(FilteringProgram::getFilterCodeInputs().c_str());
+        // render the window content in mono font
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
 
-        // Show info text bloc (multi line, dark background)
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.8, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::InputTextMultiline("##Info", (char *)info.c_str(), info.size(), ImVec2(-1, 8*ImGui::GetTextLineHeightWithSpacing()), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopStyleColor(2);
+        // render shader input
+        if (show_shader_inputs_) {
+            ImGuiTextBuffer info;
+            info.append(FilteringProgram::getFilterCodeInputs().c_str());
 
-        // sliders iMouse
-        ImGui::SetNextItemWidth(200);
-        ImGui::SliderFloat("##iMouse.x",
-                           &FilteringProgram::iMouse.x, 0.f,
-                           Mixer::manager().session()->frame()->width(), "iMouse.x %.f");
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth(200);
-        ImGui::SliderFloat("##iMouse.y",
-                           &FilteringProgram::iMouse.y, 0.f,
-                           Mixer::manager().session()->frame()->height(), "iMouse.y %.f");
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth(200);
-        ImGui::SliderFloat("##iMouse.z",
-                           &FilteringProgram::iMouse.z, 0.f, 1.f, "iMouse.z %.2f");
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth(200);
-        ImGui::SliderFloat("##iMouse.w",
-                           &FilteringProgram::iMouse.w, 0.f, 1.f, "iMouse.w %.2f");
+            // Show info text bloc (multi line, dark background)
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.8, 0.9f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            ImGui::InputTextMultiline("##Info", (char *)info.c_str(), info.size(), ImVec2(-1, 8*ImGui::GetTextLineHeightWithSpacing()), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopStyleColor(2);
 
-    }
-    else
-        ImGui::Spacing();
+            // sliders iMouse
+            ImGui::SetNextItemWidth(200);
+            ImGui::SliderFloat("##iMouse.x",
+                               &FilteringProgram::iMouse.x, 0.f,
+                               Mixer::manager().session()->frame()->width(), "iMouse.x %.f");
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::SetNextItemWidth(200);
+            ImGui::SliderFloat("##iMouse.y",
+                               &FilteringProgram::iMouse.y, 0.f,
+                               Mixer::manager().session()->frame()->height(), "iMouse.y %.f");
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::SetNextItemWidth(200);
+            ImGui::SliderFloat("##iMouse.z",
+                               &FilteringProgram::iMouse.z, 0.f, 1.f, "iMouse.z %.2f");
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::SetNextItemWidth(200);
+            ImGui::SliderFloat("##iMouse.w",
+                               &FilteringProgram::iMouse.w, 0.f, 1.f, "iMouse.w %.2f");
 
-    // render main editor
-    if (_editor.GetTotalLines()>1)
+        }
+        else
+            ImGui::Spacing();
+
+        // render main editor
         _editor.Render("Shader Editor");
 
-    ImGui::PopFont();
+        ImGui::PopFont();
+    }
 
     ImGui::End();
 }
