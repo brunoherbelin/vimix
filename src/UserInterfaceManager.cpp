@@ -2508,14 +2508,11 @@ void UserInterface::RenderHelp()
         ImGui::Text("General"); ImGui::NextColumn();
         ImGuiToolkit::ButtonOpenUrl("User manual", "https://github.com/brunoherbelin/vimix/wiki/User-manual", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
-        ImGui::Text("Filters"); ImGui::NextColumn();
-        ImGuiToolkit::ButtonOpenUrl("Filters and ShaderToy reference", "https://github.com/brunoherbelin/vimix/wiki/Filters-and-ShaderToy", ImVec2(ImGui::GetContentRegionAvail().x, 0));
-        ImGui::NextColumn();
         ImGui::Text("OSC"); ImGui::NextColumn();
         ImGuiToolkit::ButtonOpenUrl("Open Sound Control API", "https://github.com/brunoherbelin/vimix/wiki/Open-Sound-Control-API", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
-        ImGui::Text("SRT"); ImGui::NextColumn();
-        ImGuiToolkit::ButtonOpenUrl("Secure Reliable Transport Broadcast", "https://github.com/brunoherbelin/vimix/wiki/SRT-stream-I-O", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGui::Text("Command"); ImGui::NextColumn();
+        ImGuiToolkit::ButtonOpenUrl("Command line usage", "https://github.com/brunoherbelin/vimix/wiki/Command-line-usage", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 
         ImGui::Columns(1);
     }
@@ -2563,10 +2560,13 @@ void UserInterface::RenderHelp()
         ImGui::Text ("Play, pause, rewind videos or dynamic sources. Control play duration, speed and synchronize multiple videos.");
         ImGui::NextColumn();
         ImGui::Text(IMGUI_TITLE_TIMER); ImGui::NextColumn();
-        ImGui::Text ("Keep track of time with a stopwatch or a metronome (Ableton Link).");
+        ImGui::Text ("Setup the metronome (Ableton Link) that is used to trigger actions, and keep track of time with a stopwatch.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_HAND_PAPER "  Inputs"); ImGui::NextColumn();
-        ImGui::Text ("Define how user inputs (e.g. keyboard, joystick) are mapped to custom actions in the session.");
+        ImGui::Text ("Map several user inputs (e.g. keyboard, joystick) to custom actions in the session.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CODE "  Shader"); ImGui::NextColumn();
+        ImGui::Text ("Edit and compiles the GLSL code of custom shader sources and filters. Load .glsl text files.");
         ImGui::NextColumn();
         ImGui::Text(IMGUI_TITLE_LOGS); ImGui::NextColumn();
         ImGui::Text ("History of program logs, with information on success and failure of commands.");
@@ -2650,37 +2650,52 @@ void UserInterface::RenderHelp()
         ImGui::Text ("Video file (*.mpg, *mov, *.avi, etc.). Decoding can be optimized with hardware acceleration.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_IMAGE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Image"); ImGui::NextColumn();
-        ImGui::Text ("Image file (*.jpg, *.png, etc.) or vector graphics (*.svg).");
+        ImGui::Text ("Image file (*.jpg, *.png, etc.) or vector graphics (*.svg). Transparency is supported.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_SESSION); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Session"); ImGui::NextColumn();
-        ImGui::Text ("Render a session (*.mix) as a source. Recursion is limited.");
+        ImGui::Text ("Render a vimix session (*.mix) as a source. Recursion is limited.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_SEQUENCE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Sequence"); ImGui::NextColumn();
-        ImGui::Text ("Set of images numbered sequentially (*.jpg, *.png, etc.).");
+        ImGui::Text ("Displays a set of images numbered sequentially (*.jpg, *.png, etc.) or assemble a video from a selection of images.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Loopback"); ImGui::NextColumn();
         ImGui::Text ("Loopback the rendering output as a source, with or without recursion.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Screen"); ImGui::NextColumn();
-        ImGui::Text ("Screen capture of the entire screen or a selected window.");
+        ImGui::Text ("Screen capture of the entire screen or of a selected window (Linux X11 only).");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_DEVICE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Device"); ImGui::NextColumn();
         ImGui::Text ("Connected webcam or frame grabber. Highest resolution and framerate automatically selected.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_NETWORK); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Shared"); ImGui::NextColumn();
-        ImGui::Text ("Connected stream from another vimix in the local network (peer-to-peer).");
+        ImGui::Text ("Peer-to-peer stream from another vimix on the same machine (SHM shared memory) or in the local network (RTP Real-time Transport Protocol).");
+        ImGuiToolkit::ButtonOpenUrl("Example script", "https://github.com/brunoherbelin/vimix/blob/master/rsc/osc/vimix_connect.sh", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_SRT); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("SRT"); ImGui::NextColumn();
         ImGui::Text ("Connected Secure Reliable Transport (SRT) stream emitted on the network (e.g. broadcasted by vimix).");
+        ImGuiToolkit::ButtonOpenUrl("Documentation", "https://github.com/brunoherbelin/vimix/wiki/SRT-stream-I-O", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_PATTERN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Pattern"); ImGui::NextColumn();
-        ImGui::Text ("Algorithmically generated source; colors, grids, test patterns, timers...");
+        ImGui::Text ("Algorithmically generated source, static or animated (colors, grids, test patterns, timers, etc.).");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_TEXT); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Text"); ImGui::NextColumn();
+        ImGui::Text ("Renders rich text or subtitle files (SRT), with layout control (alignment and margins) and Pango markup and font description.");
+        ImGuiToolkit::ButtonOpenUrl("Pango font", "https://docs.gtk.org/Pango/pango_fonts.html", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGuiToolkit::ButtonOpenUrl("Pango markup", "https://docs.gtk.org/Pango/pango_markup.html", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGuiToolkit::ButtonOpenUrl("SubRip file format", "https://en.wikipedia.org/wiki/SubRip", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_SOURCE_SHADER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Shader"); ImGui::NextColumn();
+        ImGui::Text ("Custom GLSL shader, compatible with ShaderToy syntax.");
+        ImGuiToolkit::ButtonOpenUrl("About GLSL", "https://www.khronos.org/opengl/wiki/OpenGL_Shading_Language", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGuiToolkit::ButtonOpenUrl("Browse shadertoy.com", "https://www.shadertoy.com", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_GSTREAMER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("GStreamer"); ImGui::NextColumn();
         ImGui::Text ("Custom gstreamer pipeline, as described in command line for gst-launch-1.0 (without the target sink).");
+        ImGuiToolkit::ButtonOpenUrl("GST Documentation", "https://gstreamer.freedesktop.org/documentation/tools/gst-launch.html?gi-language=c#pipeline-description", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+        ImGuiToolkit::ButtonOpenUrl("Examples", "https://github.com/thebruce87m/gstreamer-cheat-sheet", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_CLONE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Clone"); ImGui::NextColumn();
-        ImGui::Text ("Clones the frames of a source into another one and applies a GPU filter.");
+        ImGui::Text ("Clones the frames of a source into another one and optionnaly applies a filter (see below).");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Bundle"); ImGui::NextColumn();
         ImGui::Text ("Bundles together several sources and renders them as an internal session.");
@@ -2692,6 +2707,8 @@ void UserInterface::RenderHelp()
     if (ImGui::CollapsingHeader("Filters"))
     {
         ImGui::Text("Select 'Clone & Filter' on a source to access filters;");
+        ImGuiToolkit::ButtonOpenUrl("Filters and ShaderToy reference", "https://github.com/brunoherbelin/vimix/wiki/Filters-and-ShaderToy", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+
 
         ImGui::Columns(2, "filterscolumn", false); // 4-ways, with border
         ImGui::SetColumnWidth(0, width_column0);
@@ -2752,7 +2769,10 @@ void UserInterface::RenderHelp()
         ImGuiToolkit::ButtonOpenUrl("Install TouchOSC", "https://github.com/brunoherbelin/vimix/wiki/TouchOSC-companion", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_GAMEPAD " Gamepad"); ImGui::NextColumn();
-        ImGui::Text ("React to button press and axis movement on a gamepad or a joystick. Only the first plugged device is considered.");
+        ImGui::Text ("React to button press and axis movement on a gamepad or a joystick.");
+        ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CLOCK " Timer"); ImGui::NextColumn();
+        ImGui::Text ("React to beats of the metronome (configured in the Timer window).");
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
@@ -2985,7 +3005,7 @@ void Navigator::togglePannelNew()
     new_media_mode_changed = true;
 
     if (Settings::application.pannel_always_visible)
-        showPannelSource( Mixer::manager().numSource() );
+        showPannelSource( NAV_NEW );
 
 }
 
@@ -4225,8 +4245,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     ImGui::TextDisabled("Explore online");
                     if (ImGui::Selectable( ICON_FA_EXTERNAL_LINK_ALT " Documentation" ) )
                         SystemToolkit::open("https://gstreamer.freedesktop.org/documentation/tools/gst-launch.html?gi-language=c#pipeline-description");
-                    if (ImGui::Selectable( ICON_FA_EXTERNAL_LINK_ALT " Video test source" ) )
-                         SystemToolkit::open("https://gstreamer.freedesktop.org/documentation/videotestsrc/index.html?gi-language=c#videotestsrc-page");
+                    if (ImGui::Selectable( ICON_FA_EXTERNAL_LINK_ALT " Examples" ) )
+                         SystemToolkit::open("https://github.com/thebruce87m/gstreamer-cheat-sheet");
                     ImGui::EndCombo();
                 }
                 ImGui::SetCursorPos(pos_bot);
@@ -4279,7 +4299,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     }
                     ImGui::Separator();
                     ImGui::TextDisabled("Explore online");
-                    if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " Pango syntax"))
+                    if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " Pango markup syntax"))
                          SystemToolkit::open("https://docs.gtk.org/Pango/pango_markup.html");
                     if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " SubRip file format"))
                          SystemToolkit::open("https://en.wikipedia.org/wiki/SubRip");
