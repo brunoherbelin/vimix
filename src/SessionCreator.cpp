@@ -464,6 +464,7 @@ void SessionLoader::load(XMLElement *sessionNode)
                 }
                 else {
                     Log::Info("Unknown source type '%s' ignored.", pType);
+                    loaded_xml_ids[i] = 0;
                 }
 
                 // skip failed (including clones)
