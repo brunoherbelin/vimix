@@ -399,17 +399,16 @@ void SessionLoader::load(XMLElement *sessionNode)
         // source lists
         //
         XMLElement* sourceNode = sessionNode->FirstChildElement("Source");
-        for(int i = 0 ; sourceNode ; sourceNode = sourceNode->NextSiblingElement("Source"), ++i)
+        for(int i = 0 ; sourceNode ; sourceNode = sourceNode->NextSiblingElement("Source"))
         {
             xmlCurrent_ = sourceNode;
 
             // source to load
             Source *load_source = nullptr;
 
-            // read the xml id of this source element, and store it in ordered list
+            // read the xml id of this source element
             uint64_t id_xml_ = 0;
             xmlCurrent_->QueryUnsigned64Attribute("id", &id_xml_);
-            loaded_xml_ids[i] = id_xml_;
 
             // check if a source with the given id exists in the session
             SourceList::iterator sit = session_->find(id_xml_);
@@ -461,15 +460,15 @@ void SessionLoader::load(XMLElement *sessionNode)
                 }
                 else if ( std::string(pType) == "CloneSource") {
                     cloneNodesToAdd.push_front(xmlCurrent_);
+                    continue;
                 }
                 else {
                     Log::Info("Unknown source type '%s' ignored.", pType);
-                    loaded_xml_ids[i] = 0;
+                    continue;
                 }
 
-                // skip failed (including clones)
-                if (!load_source)
-                    continue;
+                // and store id as loaded
+                loaded_xml_ids[i++] = id_xml_;
 
                 // add source to session
                 session_->addSource(load_source);
