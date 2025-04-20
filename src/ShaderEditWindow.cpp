@@ -233,9 +233,6 @@ void ShaderEditWindow::Render()
         _editor.SetText(SystemToolkit::get_text_content(file_to_build_));
     }
 
-    // AUTO COLLAPSE
-    setCollapsed(current_ == nullptr);
-
     // Render window
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if ( !ImGui::Begin(name_, &Settings::application.widget.shader_editor,
@@ -245,6 +242,10 @@ void ShaderEditWindow::Render()
         ImGui::End();
         return;
     }
+
+    // AUTO COLLAPSE
+    // setCollapsed(!ImGui::IsWindowFocused() || current_ == nullptr);
+    setCollapsed(current_ == nullptr);
 
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
@@ -534,19 +535,11 @@ void ShaderEditWindow::Render()
         }
         // no current source
         else if (_cs_id > 0) {
-            // if previous was probably removed
-            if (current_ != nullptr && !Mixer::manager().findSource(_cs_id)) {
-                _editor.SetText("");
-                _editor.SetReadOnly(true);
-                Settings::application.recentShaderCode.assign("");
-                // reset current
-                current_ = nullptr;
-            }
-            else {
-                // disable but keep code in editor
-                _editor.SetReadOnly(true);
-                _editor.SetColorizerEnable(false);
-            }
+            _editor.SetText("");
+            _editor.SetReadOnly(true);
+            Settings::application.recentShaderCode.assign("");
+            // reset current
+            current_ = nullptr;
 
             // keep track that no source currently shown to do this once only
             _cs_id = 0;

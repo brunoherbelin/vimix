@@ -28,7 +28,6 @@
 #include "FrameBuffer.h"
 #include "FrameBufferFilter.h"
 #include "DelayFilter.h"
-#include "ImageFilter.h"
 
 #include "ShaderSource.h"
 
