@@ -1442,10 +1442,13 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     int seek_flags = GST_SEEK_FLAG_FLUSH;
 
     // no target given
-    if (target == GST_CLOCK_TIME_NONE)
+    if (target == GST_CLOCK_TIME_NONE) {
         // create seek event with current position (called for rate changed)
         // CLAMP the time to ensure we do not bounce outside of timeline
         seek_pos = CLAMP(position_, timeline_.first(), timeline_.last() - timeline_.step());
+        seek_flags |= GST_SEEK_FLAG_KEY_UNIT;
+        seek_flags |= GST_SEEK_FLAG_SNAP_NEAREST;
+    }
     else
         // seek with accurate timing if given target
         seek_flags |= GST_SEEK_FLAG_ACCURATE;
