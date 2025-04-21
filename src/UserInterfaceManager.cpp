@@ -71,6 +71,7 @@
 #include "MediaSource.h"
 #include "PatternSource.h"
 #include "DeviceSource.h"
+#include "ShaderSource.h"
 #include "ScreenCaptureSource.h"
 #include "MultiFileSource.h"
 #include "ShmdataBroadcast.h"
@@ -1374,7 +1375,13 @@ void UserInterface::showSourceEditor(Source *s)
     if (s) {
         Mixer::manager().setCurrentSource( s );
         if (!s->failed()) {
+            // show player
             sourcecontrol.setVisible(true);
+            // show code editor for shader sources
+            ShaderSource *sc = dynamic_cast<ShaderSource *>(s);
+            if (sc != nullptr)
+                shadercontrol.setVisible(true);
+            // select
             sourcecontrol.resetActiveSelection();
         }
         else
@@ -3598,7 +3605,7 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
             }
 
             // bundle button
-            if ( s->failed() )
+            if ( s->failed() || s->cloned() || s->icon() == glm::ivec2(ICON_SOURCE_CLONE) )
                 ImGuiToolkit::ButtonDisabled( ICON_FA_SIGN_IN_ALT " Bundle", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0));
             else if ( ImGui::Button( ICON_FA_SIGN_IN_ALT " Bundle", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
                 Mixer::manager().groupCurrent();
@@ -3608,18 +3615,20 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
             // replace button
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
+
                 // prepare panel for new source of same type
-                MediaSource *file = dynamic_cast<MediaSource *>(s);
-                MultiFileSource *sequence = dynamic_cast<MultiFileSource *>(s);
-                PatternSource *generated = dynamic_cast<PatternSource *>(s);
-                if (file != nullptr)
+                glm::ivec2 i = s->icon();
+                if ( i == glm::ivec2(ICON_SOURCE_VIDEO) || i == glm::ivec2(ICON_SOURCE_IMAGE)
+                     || i == glm::ivec2(ICON_SOURCE_CLONE) )
                     Settings::application.source.new_type = SOURCE_FILE;
-                else if (sequence != nullptr)
+                else if ( i == glm::ivec2(ICON_SOURCE_SEQUENCE) )
                     Settings::application.source.new_type = SOURCE_SEQUENCE;
-                else if (generated != nullptr)
+                else if ( i == glm::ivec2(ICON_SOURCE_PATTERN) || i == glm::ivec2(ICON_SOURCE_TEXT)
+                          || i == glm::ivec2(ICON_SOURCE_GSTREAMER) || i == glm::ivec2(ICON_SOURCE_SHADER)  )
                     Settings::application.source.new_type = SOURCE_GENERATED;
                 else
                     Settings::application.source.new_type = SOURCE_CONNECTED;
+
                 // switch to panel new source
                 showPannelSource(NAV_NEW);
                 // set source to be replaced
