@@ -824,6 +824,16 @@ CloneSource *Source::clone(uint64_t id)
     return s;
 }
 
+SourceList Source::clones() const
+{
+    SourceList l;
+
+    for (auto it = clones_.begin(); it != clones_.end(); ++it)
+        l.emplace_back((Source *) *it);
+
+    return l;
+}
+
 void Source::update(float dt)
 {
     // keep delta-t

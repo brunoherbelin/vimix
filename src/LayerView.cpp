@@ -26,6 +26,7 @@
 
 #include "ImGuiToolkit.h"
 
+#include <algorithm>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -33,6 +34,7 @@
 #include "Mixer.h"
 #include "defines.h"
 #include "Source.h"
+#include "CloneSource.h"
 #include "SourceCallback.h"
 #include "Settings.h"
 #include "Decorations.h"
@@ -128,6 +130,7 @@ void LayerView::draw()
 
         // initialize the verification of the selection
         candidate_flatten_group = true;
+        SourceList _selected = Mixer::selection().getCopy();
         // start loop on selection
         SourceList::iterator  it = Mixer::selection().begin();
         float depth_first = (*it)->depth();
@@ -135,11 +138,34 @@ void LayerView::draw()
             // test if selection is contiguous in layer (i.e. not interrupted)
             SourceList::iterator inter = Mixer::manager().session()->find(depth_first, (*it)->depth());
             if ( inter != Mixer::manager().session()->end() && !Mixer::selection().contains(*inter)){
-                // NOT a group: there is a source in the session that
+                // CANNOT group: there is a source in the session that
                 // - is between two selected sources (in depth)
                 // - is not part of the selection
                 candidate_flatten_group = false;
                 break;
+            }
+            // test if the source is a clone
+            CloneSource *_cs = dynamic_cast<CloneSource *>(*it);
+            if (_cs != nullptr) {
+                uint64_t _id_cloned = (*_cs).origin()->id();
+                SourceList::const_iterator _it = std::find_if(_selected.begin(),
+                                                              _selected.end(),
+                                                              Source::hasId(_id_cloned));
+                // CANNOT group: there is a clone selected and its origin is not selected
+                if (_it == _selected.end()) {
+                    candidate_flatten_group = false;
+                    break;
+                }
+            }
+            // test if the selected source is cloned
+            if ((*it)->cloned()) {
+                SourceList _clones = (*it)->clones();
+                SourceListCompare _diff = compare(_selected, _clones);
+                // CANNOT group: there all clones are not included in selection
+                if (_diff != SOURCELIST_SECOND_IN_FIRST){
+                    candidate_flatten_group = false;
+                    break;
+                }
             }
         }
 
@@ -161,6 +187,27 @@ void LayerView::draw()
         else {
             ImGui::TextDisabled( ICON_FA_SIGN_IN_ALT "  Bundle" );
         }
+
+        // Blending all selection
+        if (ImGuiToolkit::BeginMenuIcon( 5, 6, "Blending" )) {
+            for (auto bmode = Shader::blendingFunction.cbegin();
+                 bmode != Shader::blendingFunction.cend();
+                 ++bmode) {
+                int index = bmode - Shader::blendingFunction.cbegin();
+                if (ImGuiToolkit::MenuItemIcon(std::get<0>(*bmode),
+                                               std::get<1>(*bmode),
+                                               std::get<2>(*bmode).c_str())) {
+                    SourceList dsl = depth_sorted(Mixer::selection().getCopy());
+                    for (SourceList::iterator  it = dsl.begin(); it != dsl.end(); ++it) {
+                        (*it)->blendingShader()->blending = Shader::BlendMode(index);
+                        (*it)->touch();
+                    }
+                    Action::manager().store(std::string("Blending selected " ICON_FA_LAYER_GROUP));
+                }
+            }
+            ImGui::EndMenu();
+        }
+
         ImGui::Separator();
 
         // manipulation of sources in Mixing view
