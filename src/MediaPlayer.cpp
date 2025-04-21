@@ -1357,7 +1357,7 @@ void MediaPlayer::update()
             seeking_ = false;
             counter = 0;
         }
-        else if (counter > 50) {
+        else if (counter > 150) {
             Log::Notify("MediaPlayer %s Seek failed. Reseting media...", std::to_string(id_).c_str());
             counter = 0;
             reopen();
