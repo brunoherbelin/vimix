@@ -24,6 +24,7 @@ public:
     void visit (Stream& n) override;
     void visit (MediaPlayer& n) override;
     void visit (MediaSource& s) override;
+    void visit (StreamSource& s) override;
     void visit (SessionFileSource& s) override;
     void visit (SessionGroupSource& s) override;
     void visit (RenderSource& s) override;
@@ -34,6 +35,7 @@ public:
     void visit (MultiFileSource& s) override;
     void visit (GenericStreamSource& s) override;
     void visit (SrtReceiverSource& s) override;
+    void visit (ShaderSource &) override;
 };
 
 #endif // INFOVISITOR_H
