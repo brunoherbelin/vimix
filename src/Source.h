@@ -27,6 +27,7 @@
 #define ICON_SOURCE_GSTREAMER 16, 16
 #define ICON_SOURCE_SRT 14, 5
 #define ICON_SOURCE_TEXT 0, 13
+#define ICON_SOURCE_SHADER 16, 14
 #define ICON_SOURCE 13, 11
 #define ICON_WORKSPACE_BACKGROUND 10, 16
 #define ICON_WORKSPACE_CENTRAL 11, 16
@@ -117,6 +118,7 @@ public:
     // cloning mechanism
     virtual CloneSource *clone (uint64_t id = 0);
     inline bool cloned() const { return !clones_.empty(); }
+    SourceList clones() const;
 
     // Display mode
     typedef enum {

@@ -152,6 +152,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             // Current source target: apply attribute to the current sources
             else if ( target.compare(OSC_CURRENT) == 0 )
             {
+                Source *_cs = Mixer::manager().findSource(attribute.substr(1));
                 int sourceid = -1;
                 if ( attribute.compare(OSC_SYNC) == 0) {
                     // send the status of all sources
@@ -172,6 +173,12 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 else if ( BaseToolkit::is_a_number( attribute.substr(1), &sourceid) ){
                     // set current to given INDEX
                     Mixer::manager().setCurrentIndex(sourceid);
+                    // send the status of all sources
+                    Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
+                }
+                else if ( _cs != nullptr ) {
+                    // set current to given source by name
+                    Mixer::manager().setCurrentSource(_cs);
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }

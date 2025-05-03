@@ -124,6 +124,27 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
         pRoot->InsertEndChild(windowsNode);
 	}
 
+    // Surfaces
+    {
+        XMLElement *surfacesNode = xmlDoc.NewElement( "OutputSurfaces" );
+        surfacesNode->SetAttribute("num_output_surfaces", application.num_output_surfaces);
+
+        for (int i = 0; i < (int) application.surfaces.size(); ++i)
+        {
+            const Settings::CanvasConfig& w = application.surfaces[i];
+
+            XMLElement *surface = xmlDoc.NewElement( "Surface" );
+            surface->SetAttribute("id", i);
+            surface->SetAttribute("x", w.x);
+            surface->SetAttribute("y", w.y);
+            surface->SetAttribute("w", w.w);
+            surface->SetAttribute("h", w.h);
+            surfacesNode->InsertEndChild(surface);
+        }
+
+        pRoot->InsertEndChild(surfacesNode);
+    }
+
     // General application preferences
     XMLElement *applicationNode = xmlDoc.NewElement( "Application" );
     applicationNode->SetAttribute("scale", application.scale);
@@ -135,7 +156,13 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
     applicationNode->SetAttribute("pannel_main_mode", application.pannel_main_mode);
     applicationNode->SetAttribute("pannel_playlist_mode", application.pannel_playlist_mode);
-    applicationNode->SetAttribute("pannel_history_mode", application.pannel_current_session_mode);
+    applicationNode->SetAttribute("pannel_session_0", application.pannel_session[0]);
+    applicationNode->SetAttribute("pannel_session_1", application.pannel_session[1]);
+    applicationNode->SetAttribute("pannel_session_2", application.pannel_session[2]);
+    applicationNode->SetAttribute("pannel_settings_0", application.pannel_settings[0]);
+    applicationNode->SetAttribute("pannel_settings_1", application.pannel_settings[1]);
+    applicationNode->SetAttribute("pannel_settings_2", application.pannel_settings[2]);
+    applicationNode->SetAttribute("pannel_settings_3", application.pannel_settings[3]);
     applicationNode->SetAttribute("pannel_always_visible", application.pannel_always_visible);
     applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
     applicationNode->SetAttribute("broadcast_port", application.broadcast_port);
@@ -464,7 +491,13 @@ void Settings::Load(const std::string &filename)
             applicationNode->QueryBoolAttribute("pannel_always_visible", &application.pannel_always_visible);
             applicationNode->QueryIntAttribute("pannel_main_mode", &application.pannel_main_mode);
             applicationNode->QueryIntAttribute("pannel_playlist_mode", &application.pannel_playlist_mode);
-            applicationNode->QueryIntAttribute("pannel_history_mode", &application.pannel_current_session_mode);
+            applicationNode->QueryBoolAttribute("pannel_session_0", &application.pannel_session[0]);
+            applicationNode->QueryBoolAttribute("pannel_session_1", &application.pannel_session[1]);
+            applicationNode->QueryBoolAttribute("pannel_session_2", &application.pannel_session[2]);
+            applicationNode->QueryBoolAttribute("pannel_settings_0", &application.pannel_settings[0]);
+            applicationNode->QueryBoolAttribute("pannel_settings_1", &application.pannel_settings[1]);
+            applicationNode->QueryBoolAttribute("pannel_settings_2", &application.pannel_settings[2]);
+            applicationNode->QueryBoolAttribute("pannel_settings_3", &application.pannel_settings[3]);
             applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
             applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
             applicationNode->QueryIntAttribute("loopback_camera", &application.loopback_camera);
@@ -635,6 +668,28 @@ void Settings::Load(const std::string &filename)
                         }
                     }
                     application.windows[i] = w;
+                }
+            }
+        }
+
+        // Surfaces
+        {
+            XMLElement *pElement = pRoot->FirstChildElement("OutputSurfaces");
+            if (pElement) {
+                pElement->QueryIntAttribute("num_output_surfaces", &application.num_output_surfaces);
+
+                XMLElement *surfaceNode = pElement->FirstChildElement("Surface");
+                for (; surfaceNode; surfaceNode = surfaceNode->NextSiblingElement()) {
+                    Settings::CanvasConfig w;
+                    surfaceNode->QueryIntAttribute("x", &w.x);
+                    surfaceNode->QueryIntAttribute("y", &w.y);
+                    surfaceNode->QueryIntAttribute("w", &w.w);
+                    surfaceNode->QueryIntAttribute("h", &w.h);
+
+                    int i = 0;
+                    surfaceNode->QueryIntAttribute("id", &i);
+
+                    application.surfaces[i] = w;
                 }
             }
         }

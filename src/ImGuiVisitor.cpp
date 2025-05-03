@@ -52,6 +52,7 @@
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
 #include "TextSource.h"
+#include "ShaderSource.h"
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
 #include "Settings.h"
@@ -1298,13 +1299,7 @@ void ImGuiVisitor::visit (ImageFilter& f)
     if ( ImGui::Button( ICON_FA_CODE "  Open editor", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         UserInterface::manager().shadercontrol.setVisible(true);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    if (ImGuiToolkit::TextButton("Code")) {
-        FilteringProgram target;
-        f.setProgram( target );
-        UserInterface::manager().shadercontrol.Refresh();
-        oss << "Shader code reset";
-        Action::manager().store(oss.str());
-    }
+    ImGui::Text("Code");
 
     // List of parameters
     oss << "Custom ";
@@ -1397,6 +1392,42 @@ void ImGuiVisitor::visit (CloneSource& s)
         ImGui::Text("Origin");
         info.reset();
     }
+}
+
+void ImGuiVisitor::visit (ShaderSource& s)
+{
+    ImVec2 top = ImGui::GetCursorPos();
+    top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
+
+    // stream info
+    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
+    s.accept(info);
+    ImGui::Text("%s", info.str().c_str());
+    ImGui::PopTextWrapPos();
+    ImGui::Spacing();
+
+    // filter options : open editor
+    s.filter()->accept(*this);
+
+    ImVec2 botom = ImGui::GetCursorPos();
+
+    if ( !s.failed() ) {
+        // icon (>) to open player
+        if ( s.playable() ) {
+            ImGui::SetCursorPos(top);
+            std::string msg = s.playing() ? "Open Player\n(source is playing)" : "Open Player\n(source is paused)";
+            if (ImGuiToolkit::IconButton( s.playing() ? ICON_FA_PLAY_CIRCLE : ICON_FA_PAUSE_CIRCLE, msg.c_str()))
+                UserInterface::manager().showSourceEditor(&s);
+            top.x += ImGui::GetFrameHeight();
+        }
+        ImGui::SetCursorPos(top);
+        if (ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy shader code"))
+            ImGui::SetClipboardText( s.filter()->program().code().first.c_str() );
+    }
+    else
+        info.reset();
+
+    ImGui::SetCursorPos(botom);
 }
 
 void ImGuiVisitor::visit (PatternSource& s)
@@ -1871,7 +1902,7 @@ void ImGuiVisitor::visit(TextSource &s)
                 }
             }
             ImGui::SetCursorPos(ImVec2(top.x, botom.y - 2.f * ImGui::GetFrameHeight()));
-            if (ImGuiToolkit::IconButton(ICON_FA_CODE, "Pango syntax"))
+            if (ImGuiToolkit::IconButton(ICON_FA_CODE, "Pango markup"))
                 SystemToolkit::open("https://docs.gtk.org/Pango/pango_markup.html");
         }
 

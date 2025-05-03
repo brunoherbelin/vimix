@@ -17,6 +17,7 @@ TextEditor _editor;
 #include "Mixer.h"
 #include "SystemToolkit.h"
 #include "CloneSource.h"
+#include "ShaderSource.h"
 #include "DialogToolkit.h"
 #include "UserInterfaceManager.h"
 
@@ -37,6 +38,14 @@ ImageFilter *getImageFilter(Source *s)
             if (f != nullptr && f->type() == FrameBufferFilter::FILTER_IMAGE) {
                 // cast to image filter
                 i = dynamic_cast<ImageFilter *>(f);
+            }
+        }
+        else {
+            ShaderSource *sc = dynamic_cast<ShaderSource *>(s);
+            // if s is a shader source
+            if (sc != nullptr) {
+                // it has an Image filter
+                i = sc->filter();
             }
         }
     }
@@ -60,7 +69,7 @@ void saveEditorText(const std::string &filename)
 /// SHADER EDITOR
 ///
 ///
-ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), current_(nullptr), show_shader_inputs_(false)
+ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), _cs_id(0), current_(nullptr), show_shader_inputs_(false)
 {
     auto lang = TextEditor::LanguageDefinition::GLSL();
 
@@ -115,6 +124,7 @@ ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), current_(nullp
 
     // status
     status_ = "-";
+
 }
 
 void ShaderEditWindow::setVisible(bool on)
@@ -130,6 +140,10 @@ void ShaderEditWindow::setVisible(bool on)
         Settings::application.widget.shader_editor_view = -1;
 
     Settings::application.widget.shader_editor = on;
+
+    // reset current
+    current_ = nullptr;
+    _cs_id = 0;
 }
 
 bool ShaderEditWindow::Visible() const
@@ -162,7 +176,6 @@ void ShaderEditWindow::BuildShader()
 
         // inform status
         status_ = "Building...";
-        Refresh();
     }
 }
 
@@ -179,7 +192,6 @@ void ShaderEditWindow::BuildAll()
     }
 }
 
-
 void ShaderEditWindow::Render()
 {
     static DialogToolkit::OpenFileDialog selectcodedialog("Open GLSL shader code",
@@ -189,17 +201,54 @@ void ShaderEditWindow::Render()
                                                           "Text files",
                                                           {"*.glsl", "*.fs", "*.txt"} );
 
-    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    std::string file_to_build_ = "";
+    Source *cs = Mixer::manager().currentSource();
 
+    // garbage collection
+    if ( !filters_.empty() && Mixer::manager().session()->numSources() < 1 )
+    {
+        // empty list of edited filter when session empty
+        filters_.clear();
+        current_ = nullptr;
+
+        // clear editor text and recent file
+        _editor.SetText("");
+        Settings::application.recentShaderCode.assign("");
+    }
+
+    // File dialog Export code gives a filename to save to
+    if (exportcodedialog.closed() && !exportcodedialog.path().empty()) {
+
+        // set shader program to be a file
+        file_to_build_ = exportcodedialog.path();
+
+        // save the current content of editor into given file
+        saveEditorText(file_to_build_);
+    }
+
+    // File dialog select code gives a filename to open
+    if (selectcodedialog.closed() && !selectcodedialog.path().empty()) {
+
+        // set shader program to be a file
+        file_to_build_ = selectcodedialog.path();
+
+        // read file and display content in editor
+        _editor.SetText(SystemToolkit::get_text_content(file_to_build_));
+    }
+
+    // Render window
+    ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
     if ( !ImGui::Begin(name_, &Settings::application.widget.shader_editor,
-                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar |
+                          ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse))
     {
         ImGui::End();
         return;
     }
 
-    std::string file_to_build_ = "";
-    Source *cs = Mixer::manager().currentSource();
+    // AUTO COLLAPSE
+    // setCollapsed(!ImGui::IsWindowFocused() || current_ == nullptr);
+    setCollapsed(current_ == nullptr);
 
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
@@ -299,16 +348,41 @@ void ShaderEditWindow::Render()
 
             // Menu section for presets and examples
             if (ImGui::BeginMenu(ICON_FA_SCROLL " Examples", current_ != nullptr)) {
-                for (auto p = FilteringProgram::presets.begin();
-                     p != FilteringProgram::presets.end();
-                     ++p) {
-                    if (ImGui::MenuItem(p->name().c_str())) {
-                        // copy text code into editor
-                        _editor.SetText( p->code().first );
+
+                if (ImGui::BeginMenu("Filters", current_ != nullptr)) {
+                    for (auto p = FilteringProgram::example_filters.begin();
+                         p != FilteringProgram::example_filters.end();
+                         ++p) {
+                        if (ImGui::MenuItem(p->name().c_str())) {
+                            // copy text code into editor
+                            _editor.SetText( p->code().first );
+                            // cancel path of recent shader
+                            filters_[current_].resetFilename();
+                            Settings::application.recentShaderCode.assign("");
+                            // build code
+                            BuildShader();
+                        }
                     }
+                    ImGui::EndMenu();
                 }
 
-                ImGui::Separator();
+                if (ImGui::BeginMenu("Patterns", current_ != nullptr)) {
+                    for (auto p = FilteringProgram::example_patterns.begin();
+                         p != FilteringProgram::example_patterns.end();
+                         ++p) {
+                        if (ImGui::MenuItem(p->name().c_str())) {
+                            // copy text code into editor
+                            _editor.SetText( p->code().first );
+                            // cancel path of recent shader
+                            filters_[current_].resetFilename();
+                            Settings::application.recentShaderCode.assign("");
+                            // build code
+                            BuildShader();
+                        }
+                    }
+                    ImGui::EndMenu();
+                }
+
                 // Open browser to vimix wiki doc
                 if (ImGui::MenuItem( ICON_FA_EXTERNAL_LINK_ALT " Documentation") )
                     SystemToolkit::open(
@@ -363,37 +437,25 @@ void ShaderEditWindow::Render()
         ImGui::EndMenuBar();
     }
 
-    // garbage collection
-    if ( !filters_.empty() && Mixer::manager().session()->numSources() < 1 )
-    {
-        // empty list of edited filter when session empty
-        filters_.clear();
-        current_ = nullptr;
-        // clear editor text and recent file
-        _editor.SetText("");
-        Settings::application.recentShaderCode.assign("");
+    // the TextEditor captures keyboard focus from the main imgui context
+    // so UserInterface::handleKeyboard cannot capture this event:
+    // reading key press before render bypasses this problem
+    const ImGuiIO& io = ImGui::GetIO();
+    if (io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl) {
+        // special case for 'CTRL + B' keyboard shortcut
+        if (ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_A] + 1))
+            BuildShader();
+        // special case for 'CTRL + S' keyboard shortcut
+        if (ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_V] - 3)) {
+            // if present, save the program file with current content of editor
+            if (!filters_[current_].filename().empty())
+                saveEditorText(filters_[current_].filename());
+            // save session
+            Mixer::manager().save();
+        }
     }
 
-    // File dialog Export code gives a filename to save to
-    if (exportcodedialog.closed() && !exportcodedialog.path().empty()) {
-
-        // set shader program to be a file
-        file_to_build_ = exportcodedialog.path();
-
-        // save the current content of editor into given file
-        saveEditorText(file_to_build_);
-    }
-
-    // File dialog select code gives a filename to open
-    if (selectcodedialog.closed() && !selectcodedialog.path().empty()) {
-
-        // set shader program to be a file
-        file_to_build_ = selectcodedialog.path();
-
-        // read file and display content in editor
-        _editor.SetText(SystemToolkit::get_text_content(file_to_build_));
-    }
-
+    // compile
     if (current_ != nullptr && !file_to_build_.empty()) {
 
         // ok editor
@@ -422,67 +484,70 @@ void ShaderEditWindow::Render()
     }
     // not compiling
     else {
-
-        ImageFilter *i = nullptr;
         // if there is a current source
         if (cs != nullptr) {
-            i = getImageFilter(cs);
-            // if we can access the code of the filter
-            if (i != nullptr) {
-                // if the current clone was not already registered
-                if ( filters_.find(i) == filters_.end() ) {
-                    // remember program for this image filter
-                    filters_[i] = i->program();
-                    // set a name to the filter
-                    filters_[i].setName(cs->name());
+            // if current source is different from previous one
+            if (cs->id() != _cs_id) {
+                // if we can access the shader of that source
+                ImageFilter *i = getImageFilter(cs);
+                if (i != nullptr) {
+
+                    // if the current clone was not already registered
+                    if (filters_.find(i) == filters_.end()) {
+                        // remember program for this image filter
+                        filters_[i] = i->program();
+                        // set a name to the filter
+                        filters_[i].setName(cs->name());
+                    }
+
+                    // keep unsaved code of current editor
+                    if (current_ != nullptr) {
+                        // get the editor text and remove trailing '\n'
+                        std::string code = _editor.GetText();
+                        code = code.substr(0, code.size() -1);
+                        // remember this code as buffered for this filter
+                        filters_[current_].setCode( { code, "" } );
+                    }
+
+                    // set current shader code menu (can be empty for embedded)
+                    Settings::application.recentShaderCode.push(filters_[i].filename());
+                    Settings::application.recentShaderCode.assign(filters_[i].filename());
+
+                    // change editor
+                    _editor.SetText( filters_[i].code().first );
+                    _editor.SetReadOnly(false);
+                    _editor.SetColorizerEnable(true);
+                    status_ = "Ready";
+
+                    // change current
+                    current_ = i;
                 }
-            }
-            // there is a current source, and it is not a filter
-            if (i == nullptr) {
-                status_ = "-";
-                _editor.SetText("");
-                _editor.SetReadOnly(true);
-                current_ = nullptr;
-                Settings::application.recentShaderCode.assign("");
+                // there is a current source, and it is not a shader
+                else {
+                    _editor.SetText("");
+                    _editor.SetReadOnly(true);
+                    Settings::application.recentShaderCode.assign("");
+                    status_ = "-";
+                    // reset current
+                    current_ = nullptr;
+                }
+
+                // keep track of source currently shown to do that only on change
+                _cs_id = cs->id();
             }
         }
-        else
+        // no current source
+        else if (_cs_id > 0) {
+            _editor.SetText("");
+            _editor.SetReadOnly(true);
+            Settings::application.recentShaderCode.assign("");
+            // reset current
+            current_ = nullptr;
+
+            // keep track that no source currently shown to do this once only
+            _cs_id = 0;
             status_ = "-";
-
-        // change editor text only if current changed
-        if ( current_ != i )
-        {
-            // get the editor text and remove trailing '\n'
-            std::string code = _editor.GetText();
-            code = code.substr(0, code.size() -1);
-
-            // remember this code as buffered for the filter of this source
-            filters_[current_].setCode( { code, "" } );
-
-            // if switch to another shader code
-            if ( i != nullptr ) {
-                // set current shader code menu (can be empty for embedded)
-                Settings::application.recentShaderCode.push(filters_[i].filename());
-                Settings::application.recentShaderCode.assign(filters_[i].filename());
-
-                // change editor
-                _editor.SetText( filters_[i].code().first );
-                _editor.SetReadOnly(false);
-                _editor.SetColorizerEnable(true);
-                status_ = "Ready";
-            }
-            // cancel edit clone
-            else {
-                // possibility that source was removed
-                // disable editor
-                _editor.SetReadOnly(true);
-                _editor.SetColorizerEnable(false);
-                status_ = "-";
-            }
-            // current changed
-            current_ = i;
         }
-
     }
 
     // render status message
@@ -490,10 +555,11 @@ void ShaderEditWindow::Render()
     ImGui::Text("Status: %s", status_.c_str());
 
     // Right-align on same line than status
+    const float w = ImGui::GetContentRegionAvail().x - ImGui::GetTextLineHeight();
+
     // Display name of program for embedded code
     if (current_ != nullptr) {
 
-        const float w = ImGui::GetContentRegionAvail().x - ImGui::GetTextLineHeight();
         ImVec2 txtsize = ImGui::CalcTextSize(Settings::application.recentShaderCode.path.c_str(), NULL);
         ImGui::SameLine(w - txtsize.x - IMGUI_SAME_LINE, 0);
 
@@ -532,69 +598,62 @@ void ShaderEditWindow::Render()
             ImGui::PopStyleVar(1);
         }
     }
-
-    ImGui::PopFont();
-
-    // render the window content in mono font
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
-
-    // render shader input
-    if (show_shader_inputs_) {
-        ImGuiTextBuffer info;
-        info.append(FilteringProgram::getFilterCodeInputs().c_str());
-
-        // Show info text bloc (multi line, dark background)
+    else {
+        ImVec2 txtsize = ImGui::CalcTextSize("No shader", NULL);
+        ImGui::SameLine(w - txtsize.x - IMGUI_SAME_LINE, 0);
+        // right-aligned in italics and greyed out
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.8, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::InputTextMultiline("##Info", (char *)info.c_str(), info.size(), ImVec2(-1, 8*ImGui::GetTextLineHeightWithSpacing()), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopStyleColor(2);
-
-        // sliders iMouse
-        ImGui::SetNextItemWidth(200);
-        ImGui::SliderFloat("##iMouse.x",
-                           &FilteringProgram::iMouse.x, 0.f,
-                           Mixer::manager().session()->frame()->width(), "iMouse.x %.f");
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth(200);
-        ImGui::SliderFloat("##iMouse.y",
-                           &FilteringProgram::iMouse.y, 0.f,
-                           Mixer::manager().session()->frame()->height(), "iMouse.y %.f");
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth(200);
-        ImGui::SliderFloat("##iMouse.z",
-                           &FilteringProgram::iMouse.z, 0.f, 1.f, "iMouse.z %.2f");
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::SetNextItemWidth(200);
-        ImGui::SliderFloat("##iMouse.w",
-                           &FilteringProgram::iMouse.w, 0.f, 1.f, "iMouse.w %.2f");
-
+        ImGui::Text("No Shader");
+        ImGui::PopStyleColor(1);
     }
-    else
-        ImGui::Spacing();
-
-    // the TextEditor captures keyboard focus from the main imgui context
-    // so UserInterface::handleKeyboard cannot capture this event:
-    // reading key press before render bypasses this problem
-    const ImGuiIO& io = ImGui::GetIO();
-    if (io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl) {
-        // special case for 'CTRL + B' keyboard shortcut
-        if (ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_A] + 1))
-            BuildShader();
-        // special case for 'CTRL + S' keyboard shortcut
-        if (ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_V] - 3)) {
-            // if present, save the program file with current content of editor
-            if (!filters_[current_].filename().empty())
-                saveEditorText(filters_[current_].filename());
-            // save session
-            Mixer::manager().save();
-        }
-    }
-
-    // render main editor
-    _editor.Render("Shader Editor");
 
     ImGui::PopFont();
+
+    if (current_ != nullptr) {
+
+        // render the window content in mono font
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+
+        // render shader input
+        if (show_shader_inputs_) {
+            ImGuiTextBuffer info;
+            info.append(FilteringProgram::getFilterCodeInputs().c_str());
+
+            // Show info text bloc (multi line, dark background)
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.8, 0.9f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            ImGui::InputTextMultiline("##Info", (char *)info.c_str(), info.size(), ImVec2(-1, 8*ImGui::GetTextLineHeightWithSpacing()), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopStyleColor(2);
+
+            // sliders iMouse
+            ImGui::SetNextItemWidth(200);
+            ImGui::SliderFloat("##iMouse.x",
+                               &FilteringProgram::iMouse.x, 0.f,
+                               Mixer::manager().session()->frame()->width(), "iMouse.x %.f");
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::SetNextItemWidth(200);
+            ImGui::SliderFloat("##iMouse.y",
+                               &FilteringProgram::iMouse.y, 0.f,
+                               Mixer::manager().session()->frame()->height(), "iMouse.y %.f");
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::SetNextItemWidth(200);
+            ImGui::SliderFloat("##iMouse.z",
+                               &FilteringProgram::iMouse.z, 0.f, 1.f, "iMouse.z %.2f");
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::SetNextItemWidth(200);
+            ImGui::SliderFloat("##iMouse.w",
+                               &FilteringProgram::iMouse.w, 0.f, 1.f, "iMouse.w %.2f");
+
+        }
+        else
+            ImGui::Spacing();
+
+        // render main editor
+        _editor.Render("Shader Editor");
+
+        ImGui::PopFont();
+    }
 
     ImGui::End();
 }
@@ -605,4 +664,5 @@ void ShaderEditWindow::Refresh()
     if ( current_ != nullptr )
         filters_.erase(current_);
     current_ = nullptr;
+    _cs_id = 0;
 }

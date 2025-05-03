@@ -46,6 +46,7 @@
 #include "MediaPlayer.h"
 #include "SystemToolkit.h"
 #include "SessionVisitor.h"
+#include "ShaderSource.h"
 
 #include "tinyxml2Toolkit.h"
 using namespace tinyxml2;
@@ -398,17 +399,16 @@ void SessionLoader::load(XMLElement *sessionNode)
         // source lists
         //
         XMLElement* sourceNode = sessionNode->FirstChildElement("Source");
-        for(int i = 0 ; sourceNode ; sourceNode = sourceNode->NextSiblingElement("Source"), ++i)
+        for(int i = 0 ; sourceNode ; sourceNode = sourceNode->NextSiblingElement("Source"))
         {
             xmlCurrent_ = sourceNode;
 
             // source to load
             Source *load_source = nullptr;
 
-            // read the xml id of this source element, and store it in ordered list
+            // read the xml id of this source element
             uint64_t id_xml_ = 0;
             xmlCurrent_->QueryUnsigned64Attribute("id", &id_xml_);
-            loaded_xml_ids[i] = id_xml_;
 
             // check if a source with the given id exists in the session
             SourceList::iterator sit = session_->find(id_xml_);
@@ -455,16 +455,20 @@ void SessionLoader::load(XMLElement *sessionNode)
                 else if ( std::string(pType) == "TextSource") {
                     load_source = new TextSource(id_xml_);
                 }
+                else if ( std::string(pType) == "ShaderSource") {
+                    load_source = new ShaderSource(id_xml_);
+                }
                 else if ( std::string(pType) == "CloneSource") {
                     cloneNodesToAdd.push_front(xmlCurrent_);
+                    continue;
                 }
                 else {
                     Log::Info("Unknown source type '%s' ignored.", pType);
+                    continue;
                 }
 
-                // skip failed (including clones)
-                if (!load_source)
-                    continue;
+                // and store id as loaded
+                loaded_xml_ids[i++] = id_xml_;
 
                 // add source to session
                 session_->addSource(load_source);
@@ -643,6 +647,9 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
             }
             else if ( std::string(pType) == "TextSource") {
                 load_source = new TextSource(id__);
+            }
+            else if ( std::string(pType) == "ShaderSource") {
+                load_source = new ShaderSource(id__);
             }
             else if ( std::string(pType) == "CloneSource") {
                 // clone from given origin
@@ -1568,6 +1575,24 @@ void SessionLoader::visit (ImageFilter& f)
     XMLElement* imouse = xmlCurrent_->FirstChildElement("iMouse");
     if (imouse)
         tinyxml2::XMLElementToGLM( imouse->FirstChildElement("vec4"), FilteringProgram::iMouse);
+
+}
+
+void SessionLoader::visit(ShaderSource &s)
+{
+    XMLElement *res = xmlCurrent_->FirstChildElement("resolution");
+    if (res) {
+        glm::vec3 resolution(64.f, 64.f, 0.f);
+        tinyxml2::XMLElementToGLM(res->FirstChildElement("vec3"), resolution);
+        s.setResolution(resolution);
+    }
+
+    // shader code
+    xmlCurrent_ = xmlCurrent_->FirstChildElement("Filter");
+    if (xmlCurrent_) {
+        // set config filter
+        s.filter()->accept(*this);
+    }
 
 }
 

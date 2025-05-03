@@ -531,8 +531,8 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[GROUP]  = shadow;
         icons[PATTERN]  = new Mesh("mesh/icon_pattern.ply");
         shadows[PATTERN]= shadow;
-        icons[GEAR]     = new Mesh("mesh/icon_gear.ply");
-        shadows[GEAR]   = shadow;
+        icons[CODE]     = new Mesh("mesh/icon_code.ply");
+        shadows[CODE]   = shadow;
         icons[CAMERA]   = new Mesh("mesh/icon_camera.ply");
         shadows[CAMERA] = shadow;
         icons[SCREEN]   = new Mesh("mesh/icon_cube.ply");

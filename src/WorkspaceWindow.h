@@ -14,12 +14,14 @@ public:
     static bool clear() { return clear_workspace_enabled; }
     static void toggleClearRestoreWorkspace();
     static void clearWorkspace();
-    static void restoreWorkspace(bool instantaneous = false);
+    static void restoreWorkspace(bool force = false);
     static void notifyWorkspaceSizeChanged(int prev_width, int prev_height, int curr_width, int curr_height);
 
     // for inherited classes
     virtual void Update();
     virtual bool Visible() const { return true; }
+    virtual void setHidden(bool h, bool force = false);
+    virtual void setCollapsed(bool c);
 
 protected:
 

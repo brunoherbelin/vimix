@@ -1,15 +1,17 @@
-#ifndef CLONESOURCE_H
-#define CLONESOURCE_H
+#ifndef SHADERSOURCE_H
+#define SHADERSOURCE_H
 
 #include "Source.h"
-#include "FrameBufferFilter.h"
+#include "ImageFilter.h"
 
-class CloneSource : public Source
+class ShaderSource : public Source
 {
     friend class Source;
 
 public:
-    ~CloneSource();
+    // only Source class can create new ShaderSource via clone();
+    ShaderSource(uint64_t id = 0);
+    ~ShaderSource();
 
     // implementation of source API
     void update (float dt) override;
@@ -28,33 +30,23 @@ public:
     std::string info() const override;
     bool texturePostProcessed() const override { return true; }
 
-    // implementation of cloning mechanism
-    void detach();
-    inline Source *origin() const { return origin_; }
-    std::string origin_name() const;
+    // setup shader
+    void setResolution(glm::vec3 resolution);
+    void setProgram(const FilteringProgram &f);
 
-    // Filtering
-    void setFilter(FrameBufferFilter::Type T);
-    inline FrameBufferFilter *filter() { return filter_; }
-
+    // access shader
+    inline ImageFilter *filter() { return filter_; }
 
 protected:
-    // only Source class can create new CloneSource via clone();
-    CloneSource(Source *origin, uint64_t id = 0);
 
     void init() override;
-    Source *origin_;
-    std::string origin_name_;
 
     // control
     bool paused_;
 
-    // connecting line
-    class DotLine *connection_;
-
     // Filter
-    FrameBufferFilter *filter_;
-
+    ImageFilter *filter_;
+    FrameBuffer *background_;
 };
 
 

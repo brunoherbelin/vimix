@@ -50,6 +50,7 @@
 #include "MultiFileSource.h"
 #include "StreamSource.h"
 #include "NetworkSource.h"
+#include "ShaderSource.h"
 #include "SrtReceiverSource.h"
 #include "SourceCallback.h"
 
@@ -450,6 +451,18 @@ Source *Mixer::createSourceText(const std::string &contents, glm::ivec2 res)
             basestring = BaseToolkit::splitted(basestring, '\n').front();
     }
     s->setName( basestring );
+
+    return s;
+}
+
+Source *Mixer::createSourceShader(glm::ivec2 res)
+{
+    ShaderSource *s = new ShaderSource;
+
+    s->setResolution(glm::vec3(res.x, res.y, 0.f));
+
+    // propose a new name
+    s->setName("Shader");
 
     return s;
 }

@@ -586,7 +586,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_image.ply
     ./rsc/mesh/icon_render.ply
     ./rsc/mesh/icon_pattern.ply
-    ./rsc/mesh/icon_gear.ply
+    ./rsc/mesh/icon_code.ply
     ./rsc/mesh/icon_camera.ply
     ./rsc/mesh/icon_share.ply
     ./rsc/mesh/icon_clone.ply
@@ -668,6 +668,11 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/earlybird.glsl
     ./rsc/shaders/filters/logo.glsl
     ./rsc/shaders/filters/whitebalance.glsl
+    ./rsc/shaders/filters/color.glsl
+    ./rsc/shaders/filters/HSV.glsl
+    ./rsc/shaders/filters/RGBnoise.glsl
+    ./rsc/shaders/filters/3DPerlinNoise.glsl
+    ./rsc/shaders/filters/3DSimplexNoise.glsl
     ./rsc/images/logo.vmx
 )
 

@@ -77,6 +77,13 @@ void CountVisitor::visit (MediaSource& s)
         ++num_playable_;
 }
 
+void CountVisitor::visit (StreamSource& s)
+{
+    ++num_source_;
+    if (s.playable())
+        ++num_playable_;
+}
+
 void CountVisitor::visit (SessionFileSource& s)
 {
     if (s.session() != nullptr)
@@ -151,4 +158,10 @@ void CountVisitor::visit (SrtReceiverSource& s)
     ++num_source_;
     if (s.playable())
         ++num_playable_;
+}
+
+void CountVisitor::visit (ShaderSource& )
+{
+    ++num_source_;
+    ++num_playable_;
 }

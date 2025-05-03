@@ -40,6 +40,7 @@
 #include "SrtReceiverSource.h"
 #include "MultiFileSource.h"
 #include "TextSource.h"
+#include "ShaderSource.h"
 #include "Session.h"
 #include "BaseToolkit.h"
 #include "SystemToolkit.h"
@@ -516,6 +517,31 @@ void InfoVisitor::visit (TextSource& s)
                 oss << "RGBA" << std::endl;
                 oss << ptn->width() << " x " << ptn->height();
             }
+        }
+    }
+    else
+        oss << "Undefined";
+
+    information_ = oss.str();
+    current_id_ = s.id();
+}
+
+void InfoVisitor::visit (ShaderSource& s)
+{
+    if (current_id_ == s.id())
+        return;
+
+    std::ostringstream oss;
+
+    ImageFilter *ft = s.filter();
+    if (ft) {
+        if (brief_) {
+            oss << "RGB, " << (int) ft->resolution().x << " x " << (int) ft->resolution().y;
+        }
+        else {
+            oss << "Shader code" << std::endl;
+            oss << "RGB" << std::endl;
+            oss << (int) ft->resolution().x << " x " << (int) ft->resolution().y;
         }
     }
     else

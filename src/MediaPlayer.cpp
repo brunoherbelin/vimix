@@ -1347,10 +1347,21 @@ void MediaPlayer::update()
 
     // if already seeking (asynch)
     if (seeking_) {
-        // request status update to pipeline (re-sync gst thread)
-        gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
-        // seek should be resolved next frame
-        seeking_ = false;
+        // fail counter
+        static uint counter = 0;
+        counter++;
+        // request ASYNC status update to pipeline (re-sync gst thread)
+        GstStateChangeReturn ret = gst_element_get_state(pipeline_, NULL, NULL, GST_MSECOND * 5);
+        if (ret == GST_STATE_CHANGE_SUCCESS) {
+            // finished ! seek is resolved for next frame
+            seeking_ = false;
+            counter = 0;
+        }
+        else if (counter > 150) {
+            Log::Notify("MediaPlayer %s Seek failed. Reseting media...", std::to_string(id_).c_str());
+            counter = 0;
+            reopen();
+        }
         // do NOT do another seek yet
         need_loop = false;
     }
@@ -1431,10 +1442,13 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     int seek_flags = GST_SEEK_FLAG_FLUSH;
 
     // no target given
-    if (target == GST_CLOCK_TIME_NONE)
+    if (target == GST_CLOCK_TIME_NONE) {
         // create seek event with current position (called for rate changed)
         // CLAMP the time to ensure we do not bounce outside of timeline
         seek_pos = CLAMP(position_, timeline_.first(), timeline_.last() - timeline_.step());
+        seek_flags |= GST_SEEK_FLAG_KEY_UNIT;
+        seek_flags |= GST_SEEK_FLAG_SNAP_NEAREST;
+    }
     else
         // seek with accurate timing if given target
         seek_flags |= GST_SEEK_FLAG_ACCURATE;
@@ -1457,8 +1471,6 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
         g_printerr("MediaPlayer %s Seek %ld %.1f\n", std::to_string(id_).c_str(), seek_pos, rate_);
 #endif
     }
-    else
-        Log::Info("MediaPlayer %s Seek failed", std::to_string(id_).c_str());
 
     // Force update
     if (force) {

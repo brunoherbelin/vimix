@@ -40,6 +40,7 @@ public:
     void visit (GenericStreamSource& s) override;
     void visit (SrtReceiverSource& s) override;
     void visit (TextSource& s) override;
+    void visit (ShaderSource& s) override;
 };
 
 #endif // INFOVISITOR_H

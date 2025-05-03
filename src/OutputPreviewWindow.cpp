@@ -323,8 +323,10 @@ void OutputPreviewWindow::Render()
 
                     // offer to open config panel from here for more options
                     ImGui::SameLine(combo_width, IMGUI_SAME_LINE);
-                    if (ImGuiToolkit::IconButton(13, 5, "Advanced settings"))
+                    if (ImGuiToolkit::IconButton(13, 5, "Settings")) {
+                        Settings::application.pannel_settings[0] = true;
                         UserInterface::manager().navigator.showConfig();
+                    }
 
                     // BASIC OPTIONS
                     static char* name_path[4] = { nullptr };

@@ -66,7 +66,6 @@
 #include "GstToolkit.h"
 #include "UserInterfaceManager.h"
 #include "ControlManager.h"
-#include "ImageFilter.h"
 #include "Primitives.h"
 
 #include "RenderingManager.h"

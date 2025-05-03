@@ -47,6 +47,16 @@
 #include "GeometryView.h"
 
 
+const char* GeometryView::editor_icons[2]  = { ICON_FA_OBJECT_UNGROUP, ICON_FA_BORDER_ALL };
+const char *GeometryView::editor_names[2] = {"Edit sources", " Edit canvas"};
+
+
+void Canvas::setCurrent(bool on)
+{
+    root_->visible_ = true;
+    frames_->setActive( on ? 1 : 0);
+}
+
 GeometryView::GeometryView() : View(GEOMETRY)
 {
     scene.root()->scale_ = glm::vec3(GEOMETRY_DEFAULT_SCALE, GEOMETRY_DEFAULT_SCALE, 1.0f);
@@ -62,9 +72,52 @@ GeometryView::GeometryView() : View(GEOMETRY)
     output_surface_ = new Surface;
     output_surface_->visible_ = false;
     scene.fg()->attach(output_surface_);
-    Frame *border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
-    border->color = glm::vec4( COLOR_FRAME, 1.f );
-    scene.fg()->attach(border);
+
+    // Geometry surfaces
+    canvas_ = std::vector<Canvas>(MAX_OUTPUT_CANVAS);
+    for (auto &c : canvas_) {
+        // root node
+        c.root_ = new Group;
+        scene.fg()->attach(c.root_);
+        c.root_->visible_ = false;
+
+        // attach all modes of frame to the switch node
+        c.frames_ = new Switch;
+        c.root_->attach(c.frames_);
+
+        // frames_[0] : not current
+        Frame *frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+        frame->color = glm::vec4(COLOR_FRAME, 0.95f);
+        c.frames_->attach(frame);
+
+        // frames_[1] : current
+        c.overlays_ = new Group;
+        c.frames_->attach(c.overlays_);
+
+        frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::GLOW); // current
+        frame->color = glm::vec4(COLOR_FRAME, 1.f);
+        c.overlays_->attach(frame);
+
+        c.menu_ = new Handles(Handles::MENU);
+        c.menu_->color = glm::vec4(COLOR_FRAME, 1.f);
+        c.overlays_->attach(c.menu_);
+
+        c.handles_[Handles::RESIZE] = new Handles(Handles::RESIZE);
+        c.handles_[Handles::RESIZE]->color = glm::vec4(COLOR_FRAME, 1.f);
+        c.overlays_->attach(c.handles_[Handles::RESIZE]);
+        c.handles_[Handles::RESIZE_H] = new Handles(Handles::RESIZE_H);
+        c.handles_[Handles::RESIZE_H]->color = glm::vec4(COLOR_FRAME, 1.f);
+        c.overlays_->attach(c.handles_[Handles::RESIZE_H]);
+        c.handles_[Handles::RESIZE_V] = new Handles(Handles::RESIZE_V);
+        c.handles_[Handles::RESIZE_V]->color = glm::vec4(COLOR_FRAME, 1.f);
+        c.overlays_->attach(c.handles_[Handles::RESIZE_V]);
+    }
+
+    // first surface is always visible
+    canvas_current_ = 0;
+    canvas_[canvas_current_].setCurrent(false);
+    canvas_stored_status_ = new Group;
+
 
     // User interface foreground
     //
@@ -131,7 +184,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
     scene.fg()->attach(overlay_scaling_);
     overlay_scaling_->visible_ = false;
 
-    border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    Frame *border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     border->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.2f );
     overlay_crop_ = border;
     scene.fg()->attach(overlay_crop_);
@@ -235,24 +288,28 @@ void GeometryView::draw()
     std::vector<Node *> overlays;
     uint workspaces_counts_[Source::WORKSPACE_ANY+1] = {0};
     uint hidden_count_ = 0;
-    for (auto source_iter = Mixer::manager().session()->begin();
-         source_iter != Mixer::manager().session()->end(); ++source_iter) {
-        // count if it is visible
-        if (Settings::application.views[mode_].ignore_mix || (*source_iter)->visible()) {
-            // if it is in the current workspace
-            if (Settings::application.current_workspace == Source::WORKSPACE_ANY
-                || (*source_iter)->workspace() == Settings::application.current_workspace) {
-                // will draw its surface
-                surfaces.push_back((*source_iter)->groups_[mode_]);
-                // will draw its frame and locker icon
-                overlays.push_back((*source_iter)->frames_[mode_]);
-                overlays.push_back((*source_iter)->locker_);
+
+    // fills list of sources only in SOURCE EDIT MODE
+    if (editor_mode_ == EDIT_SOURCES) {
+        for (auto source_iter = Mixer::manager().session()->begin();
+             source_iter != Mixer::manager().session()->end(); ++source_iter) {
+            // count if it is visible
+            if (Settings::application.views[mode_].ignore_mix || (*source_iter)->visible()) {
+                // if it is in the current workspace
+                if (Settings::application.current_workspace == Source::WORKSPACE_ANY
+                    || (*source_iter)->workspace() == Settings::application.current_workspace) {
+                    // will draw its surface
+                    surfaces.push_back((*source_iter)->groups_[mode_]);
+                    // will draw its frame and locker icon
+                    overlays.push_back((*source_iter)->frames_[mode_]);
+                    overlays.push_back((*source_iter)->locker_);
+                }
+                // count number of sources per workspace
+                workspaces_counts_[(*source_iter)->workspace()]++;
+                workspaces_counts_[Source::WORKSPACE_ANY]++;
             }
-            // count number of sources per workspace
-            workspaces_counts_[(*source_iter)->workspace()]++;
-            workspaces_counts_[Source::WORKSPACE_ANY]++;
+            hidden_count_ += (*source_iter)->visible() ? 0 : 1;
         }
-        hidden_count_ += (*source_iter)->visible() ? 0 : 1;
     }
 
     // 0. prepare projection for draw visitors
@@ -266,20 +323,22 @@ void GeometryView::draw()
     DrawVisitor draw_rendering(output_surface_, projection, true);
     scene.accept(draw_rendering);
 
-    // 3. Draw frames and icons of sources in the current workspace
-    DrawVisitor draw_overlays(overlays, projection);
-    scene.accept(draw_overlays);
+    if (!overlays.empty())  {
+        // 3. Draw frames and icons of sources in the current workspace
+        DrawVisitor draw_overlays(overlays, projection);
+        scene.accept(draw_overlays);
 
-    // 4. Draw control overlays of current source on top (if selected)
-    if (s != nullptr &&
-        (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
-                         s->workspace() == Settings::application.current_workspace) &&
-        (Settings::application.views[mode_].ignore_mix || s->visible()))
-    {
-        DrawVisitor dv(s->overlays_[mode_], projection);
-        scene.accept(dv);
-        // Always restore current source after draw
-        s->setMode(Source::CURRENT);
+        // 4. Draw control overlays of current source on top (if selected)
+        if (s != nullptr &&
+            (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
+             s->workspace() == Settings::application.current_workspace) &&
+            (Settings::application.views[mode_].ignore_mix || s->visible()))
+        {
+            DrawVisitor dv(s->overlays_[mode_], projection);
+            scene.accept(dv);
+            // Always restore current source after draw
+            s->setMode(Source::CURRENT);
+        }
     }
 
     // 5. Finally, draw overlays of view
@@ -311,30 +370,91 @@ void GeometryView::draw()
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
 
-        // toggle sources visibility flag
-        std::string _label = Settings::application.views[mode_].ignore_mix ? "Show " : "Hide ";
-        _label += "non visible sources\n(";
-        _label += std::to_string(hidden_count_) + " source" + (hidden_count_>1?"s are ":" is ") + "outside mixing circle)";
-        ImGuiToolkit::ButtonIconToggle(12, 0, &Settings::application.views[mode_].ignore_mix, _label.c_str());
+#ifdef ENABLE_CANVAS
 
-        // select layers visibility
-        static std::vector<std::tuple<int, int, std::string> > _workspaces
-            = {{ICON_WORKSPACE_BACKGROUND, "Show only sources in\nBackground layer ("},
-               {ICON_WORKSPACE_CENTRAL,    "Show only sources in\nWorkspace layer ("},
-               {ICON_WORKSPACE_FOREGROUND, "Show only sources in\nForeground layer ("},
-               {ICON_WORKSPACE,            "Show sources in all layers ("}
-        };
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        std::ostringstream oss;
-        oss << std::get<2>(_workspaces[Settings::application.current_workspace]);
-        oss << std::to_string(workspaces_counts_[Settings::application.current_workspace]);
-        oss << ")";
-        if (ImGuiToolkit::ButtonIcon(std::get<0>(
-                                         _workspaces[Settings::application.current_workspace]),
-                                     std::get<1>(
-                                         _workspaces[Settings::application.current_workspace]),
-                                     oss.str().c_str() )) {
-            Settings::application.current_workspace = (Settings::application.current_workspace+1)%4;
+        // SELECT EDITOR MODE
+        ImGui::SetNextItemWidth(ImGui::GetTextLineHeightWithSpacing() * 2.6);
+        if (ImGui::Button(
+                std::string(std::string(editor_icons[editor_mode_]) + " " + ICON_FA_SORT_DOWN)
+                    .c_str()))
+            ImGui::OpenPopup("Geometry_mode_menu_popup");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip(editor_names[editor_mode_]);
+        if (ImGui::BeginPopup("Geometry_mode_menu_popup")) {
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+            for (int m = GeometryView::EDIT_SOURCES; m <= GeometryView::EDIT_CANVAS; ++m) {
+                if (ImGui::Selectable(
+                        std::string(std::string(editor_icons[m]) + " " + editor_names[m]).c_str())) {
+                    // change edit mode
+                    editor_mode_ = m;
+                    // cancel selection of sources
+                    if (m != GeometryView::EDIT_SOURCES){
+                        Mixer::selection().clear();
+                        canvas_[canvas_current_].setCurrent(true);
+                    }
+                    else {
+                        canvas_[canvas_current_].setCurrent(false);
+                    }
+                }
+            }
+            ImGui::PopFont();
+            ImGui::EndPopup();
+        }
+#endif
+
+        // SURFACES EDIT OPTIONS
+        if (editor_mode_ == EDIT_CANVAS) {
+
+            // add / remove surfaces
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (Settings::application.num_output_surfaces > 1) {
+                if (ImGuiToolkit::IconButton(19, 4, "Less canvas")) {
+                    Settings::application.num_output_surfaces--;
+                }
+            }
+            else
+                ImGuiToolkit::Icon(19, 4, false);
+
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (Settings::application.num_output_surfaces < MAX_OUTPUT_CANVAS) {
+                if (ImGuiToolkit::IconButton(18, 4, "More canvas")) {
+                    Settings::application.num_output_surfaces++;
+                }
+            } else
+                ImGuiToolkit::Icon(18, 4, false);
+
+
+        }
+        // SOURCES EDIT OPTIONS
+        else {
+
+            // toggle sources visibility flag
+            std::string _label = Settings::application.views[mode_].ignore_mix ? "Show " : "Hide ";
+            _label += "non visible sources\n(";
+            _label += std::to_string(hidden_count_) + " source" + (hidden_count_>1?"s are ":" is ") + "outside mixing circle)";            
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGuiToolkit::ButtonIconToggle(12, 0, &Settings::application.views[mode_].ignore_mix, _label.c_str());
+
+            // select layers visibility
+            static std::vector<std::tuple<int, int, std::string> > _workspaces
+                = {{ICON_WORKSPACE_BACKGROUND, "Show only sources in\nBackground layer ("},
+                   {ICON_WORKSPACE_CENTRAL,    "Show only sources in\nWorkspace layer ("},
+                   {ICON_WORKSPACE_FOREGROUND, "Show only sources in\nForeground layer ("},
+                   {ICON_WORKSPACE,            "Show sources in all layers ("}
+                };
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            std::ostringstream oss;
+            oss << std::get<2>(_workspaces[Settings::application.current_workspace]);
+            oss << std::to_string(workspaces_counts_[Settings::application.current_workspace]);
+            oss << ")";
+            if (ImGuiToolkit::ButtonIcon(std::get<0>(
+                                             _workspaces[Settings::application.current_workspace]),
+                                         std::get<1>(
+                                             _workspaces[Settings::application.current_workspace]),
+                                         oss.str().c_str() )) {
+                Settings::application.current_workspace = (Settings::application.current_workspace+1)%4;
+            }
+
         }
 
         ImGui::PopStyleColor(6);
@@ -565,139 +685,163 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
 
     // picking visitor found nodes?
     if ( !pv.empty() ) {
-        // keep current source active if it is clicked
-        Source *current = Mixer::manager().currentSource();
-        if (current != nullptr) {
-            if ((Settings::application.current_workspace < Source::WORKSPACE_ANY &&
-                 current->workspace() != Settings::application.current_workspace) ||
-                (!Settings::application.views[mode_].ignore_mix && !current->visible()) )
-            {
-                current = nullptr;
-            }
-            else {
-                // find if the current source was picked
-                auto itp = pv.rbegin();
-                for (; itp != pv.rend(); ++itp){
-                    // test if source contains this node
-                    Source::hasNode is_in_source((*itp).first );
-                    if ( is_in_source( current ) ){
-                        // a node in the current source was clicked !
-                        pick = *itp;
-                        // adapt grid to prepare grab action
-                        adaptGridToSource(current, pick.first);
-                        break;
-                    }
-                }
-                // not found: the current source was not clicked
-                // OR the selection contains multiple sources and actions on single source are disabled
-                if (itp == pv.rend() || Mixer::selection().size() > 1) {
+
+        // SOURCE EDIT
+        if (editor_mode_ == EDIT_SOURCES) {
+
+            // keep current source active if it is clicked
+            Source *current = Mixer::manager().currentSource();
+            if (current != nullptr) {
+                if ((Settings::application.current_workspace < Source::WORKSPACE_ANY &&
+                     current->workspace() != Settings::application.current_workspace) ||
+                    (!Settings::application.views[mode_].ignore_mix && !current->visible()) )
+                {
                     current = nullptr;
-                    pick = { nullptr, glm::vec2(0.f) };
                 }
-                // picking on the menu handle: show context menu
-                else if ( pick.first == current->handles_[mode_][Handles::MENU] ) {
-                    openContextMenu(MENU_SOURCE);
-                }
-                // picking on the crop handle : switch to shape manipulation mode
-                else if (pick.first == current->handles_[mode_][Handles::EDIT_CROP]) {
-                    current->manipulator_->setActive(0);
-                    pick = { current->handles_[mode_][Handles::EDIT_SHAPE], glm::vec2(0.f) };
-                }
-                // picking on the shape handle : switch to crop manipulation mode
-                else if (pick.first == current->handles_[mode_][Handles::EDIT_SHAPE]) {
-                    current->manipulator_->setActive(1);
-                    pick = { current->handles_[mode_][Handles::EDIT_CROP], glm::vec2(0.f) };
-                }
-                // pick on the lock icon; unlock source
-                else if ( UserInterface::manager().ctrlModifier() && pick.first == current->lock_ ) {
-                    lock(current, false);
-                    pick = { current->locker_, pick.second };
-//                    pick = { nullptr, glm::vec2(0.f) };
-                }
-                // pick on the open lock icon; lock source and cancel pick
-                else if ( UserInterface::manager().ctrlModifier() && pick.first == current->unlock_ ) {
-                    lock(current, true);
-                    pick = { nullptr, glm::vec2(0.f) };
-                }
-                // pick a locked source ; cancel pick
-                else if ( !UserInterface::manager().ctrlModifier() && current->locked() ) {
-                    pick = { nullptr, glm::vec2(0.f) };
-                }
-            }
-        }
-        // the clicked source changed (not the current source)
-        if (current == nullptr) {
-
-            if (UserInterface::manager().ctrlModifier()) {
-
-                // default to failed pick
-                pick = { nullptr, glm::vec2(0.f) };
-
-                // loop over all nodes picked to detect clic on locks
-                for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
-                    // get if a source was picked
-                    Source *s = Mixer::manager().findSource((*itp).first);
-                    // lock icon of a source (not current) is picked : unlock
-                    if ( s != nullptr && s->locked() && (*itp).first == s->lock_) {
-                        lock(s, false);
-                        pick = { s->locker_, (*itp).second };
-                        break;
-                    }
-                }
-            }
-            // no lock icon picked, find what else was picked
-            if ( pick.first == nullptr) {
-
-                // loop over all nodes picked
-                for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
-                    // get if a source was picked
-                    Source *s = Mixer::manager().findSource((*itp).first);
-                    // accept picked sources in current workspaces
-                    if ( s!=nullptr &&
-                        (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
-                        s->workspace() == Settings::application.current_workspace) &&
-                        (Settings::application.views[mode_].ignore_mix || s->visible()) )
-                    {
-                        if ( !UserInterface::manager().ctrlModifier() ) {
-                            // source is locked; can't move
-                            if ( s->locked() )
-                                continue;
-                            // a non-locked source is picked (anywhere)
-                            // not in an active selection? don't pick this one!
-                            if ( Mixer::selection().size() > 1 && !Mixer::selection().contains(s) )
-                                continue;
+                else {
+                    // find if the current source was picked
+                    auto itp = pv.rbegin();
+                    for (; itp != pv.rend(); ++itp){
+                        // test if source contains this node
+                        Source::hasNode is_in_source((*itp).first );
+                        if ( is_in_source( current ) ){
+                            // a node in the current source was clicked !
+                            pick = *itp;
+                            // adapt grid to prepare grab action
+                            adaptGridToSource(current, pick.first);
+                            break;
                         }
-                        // yeah, pick this one
-                        pick = { s->group(mode_),  (*itp).second };
-                        break;
                     }
-                    // not a source picked
-                    else {
-                        // picked on selection handles
-                        if ( (*itp).first == overlay_selection_scale_ || (*itp).first == overlay_selection_rotate_ ) {
-                            pick = (*itp);
-                            // initiate selection manipulation
-                            if (overlay_selection_stored_status_) {
-                                overlay_selection_stored_status_->copyTransform(overlay_selection_);
-                                overlay_selection_active_ = true;
+                    // not found: the current source was not clicked
+                    // OR the selection contains multiple sources and actions on single source are disabled
+                    if (itp == pv.rend() || Mixer::selection().size() > 1) {
+                        current = nullptr;
+                        pick = { nullptr, glm::vec2(0.f) };
+                    }
+                    // picking on the menu handle: show context menu
+                    else if ( pick.first == current->handles_[mode_][Handles::MENU] ) {
+                        openContextMenu(MENU_SOURCE);
+                    }
+                    // picking on the crop handle : switch to shape manipulation mode
+                    else if (pick.first == current->handles_[mode_][Handles::EDIT_CROP]) {
+                        current->manipulator_->setActive(0);
+                        pick = { current->handles_[mode_][Handles::EDIT_SHAPE], glm::vec2(0.f) };
+                    }
+                    // picking on the shape handle : switch to crop manipulation mode
+                    else if (pick.first == current->handles_[mode_][Handles::EDIT_SHAPE]) {
+                        current->manipulator_->setActive(1);
+                        pick = { current->handles_[mode_][Handles::EDIT_CROP], glm::vec2(0.f) };
+                    }
+                    // pick on the lock icon; unlock source
+                    else if ( UserInterface::manager().ctrlModifier() && pick.first == current->lock_ ) {
+                        lock(current, false);
+                        pick = { current->locker_, pick.second };
+                        //                    pick = { nullptr, glm::vec2(0.f) };
+                    }
+                    // pick on the open lock icon; lock source and cancel pick
+                    else if ( UserInterface::manager().ctrlModifier() && pick.first == current->unlock_ ) {
+                        lock(current, true);
+                        pick = { nullptr, glm::vec2(0.f) };
+                    }
+                    // pick a locked source ; cancel pick
+                    else if ( !UserInterface::manager().ctrlModifier() && current->locked() ) {
+                        pick = { nullptr, glm::vec2(0.f) };
+                    }
+                }
+            }
+            // the clicked source changed (not the current source)
+            if (current == nullptr) {
+
+                if (UserInterface::manager().ctrlModifier()) {
+
+                    // default to failed pick
+                    pick = { nullptr, glm::vec2(0.f) };
+
+                    // loop over all nodes picked to detect clic on locks
+                    for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
+                        // get if a source was picked
+                        Source *s = Mixer::manager().findSource((*itp).first);
+                        // lock icon of a source (not current) is picked : unlock
+                        if ( s != nullptr && s->locked() && (*itp).first == s->lock_) {
+                            lock(s, false);
+                            pick = { s->locker_, (*itp).second };
+                            break;
+                        }
+                    }
+                }
+                // no lock icon picked, find what else was picked
+                if ( pick.first == nullptr) {
+
+                    // loop over all nodes picked
+                    for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
+                        // get if a source was picked
+                        Source *s = Mixer::manager().findSource((*itp).first);
+                        // accept picked sources in current workspaces
+                        if ( s!=nullptr &&
+                            (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
+                             s->workspace() == Settings::application.current_workspace) &&
+                            (Settings::application.views[mode_].ignore_mix || s->visible()) )
+                        {
+                            if ( !UserInterface::manager().ctrlModifier() ) {
+                                // source is locked; can't move
+                                if ( s->locked() )
+                                    continue;
+                                // a non-locked source is picked (anywhere)
+                                // not in an active selection? don't pick this one!
+                                if ( Mixer::selection().size() > 1 && !Mixer::selection().contains(s) )
+                                    continue;
                             }
+                            // yeah, pick this one
+                            pick = { s->group(mode_),  (*itp).second };
                             break;
                         }
-                        else if ( overlay_selection_icon_ != nullptr && (*itp).first == overlay_selection_icon_ ) {
-                            pick = (*itp);
-                            openContextMenu(MENU_SELECTION);
-                            break;
+                        // not a source picked
+                        else {
+                            // picked on selection handles
+                            if ( (*itp).first == overlay_selection_scale_ || (*itp).first == overlay_selection_rotate_ ) {
+                                pick = (*itp);
+                                // initiate selection manipulation
+                                if (overlay_selection_stored_status_) {
+                                    overlay_selection_stored_status_->copyTransform(overlay_selection_);
+                                    overlay_selection_active_ = true;
+                                }
+                                break;
+                            }
+                            else if ( overlay_selection_icon_ != nullptr && (*itp).first == overlay_selection_icon_ ) {
+                                pick = (*itp);
+                                openContextMenu(MENU_SELECTION);
+                                break;
+                            }
                         }
                     }
                 }
             }
         }
+        // CANVAS EDIT
+        else {
+            // picking node
+            pick = pv.back();
+
+            if (pick.first == canvas_[canvas_current_].menu_) {
+                // TODO context menu canvas
+                g_printerr("Canvas MENU\n");
+            }
+            // else {
+
+            //     g_printerr("Pick x %f  y %f\n", pick.second.x, pick.second.y);
+            // }
+
+        }
+
     }
 
     return pick;
 }
 
-bool GeometryView::canSelect(Source *s) {
+bool GeometryView::canSelect(Source *s)
+{
+    if (editor_mode_ != EDIT_SOURCES)
+        return false;
 
     return ( s!=nullptr && View::canSelect(s) && s->ready() &&
             (Settings::application.views[mode_].ignore_mix || s->visible()) &&
@@ -729,6 +873,71 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     // grab coordinates in scene-View reference frame
     glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
+
+    if (editor_mode_ == EDIT_CANVAS && pick.first) {
+        const glm::mat4 scene_to_canvas_transform = glm::inverse(canvas_stored_status_->transform_);
+        // const glm::mat4 canvas_to_scene_transform = scene_to_canvas_transform;
+
+        // which corner was picked ?
+        glm::vec2 corner = glm::round(pick.second);
+
+        // keep transform from source center to opposite corner
+        const glm::mat4 canvas_to_corner_transform = glm::translate(glm::identity<glm::mat4>(),
+                                                                    glm::vec3(corner, 0.f));
+        // transformation from scene to corner:
+        const glm::mat4 scene_to_corner_transform = canvas_to_corner_transform
+                                                    * scene_to_canvas_transform;
+        const glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
+
+        // clamp coordinates of target cursor position to remain inside output surface
+        scene_to = glm::clamp(scene_to, glm::vec3(-output_surface_->scale_.x, -1.f, -10.f),
+                              glm::vec3(output_surface_->scale_.x, 1.f, 10.f));
+
+        if (pick.first == canvas_[canvas_current_].handles_[Handles::RESIZE]) {
+            // hide other grips
+            canvas_[canvas_current_].menu_->visible_ = false;
+            canvas_[canvas_current_].handles_[Handles::RESIZE_H]->visible_ = false;
+            canvas_[canvas_current_].handles_[Handles::RESIZE_V]->visible_ = false;
+            // inform on which corner should be overlayed (opposite)
+            canvas_[canvas_current_].handles_[Handles::RESIZE]->overlayActiveCorner(-corner);
+
+            //
+            // Manipulate the handle in the SCENE coordinates to apply grid snap
+            //
+            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f);
+            // move the corner we hold by the mouse translation (in scene reference frame)
+            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
+            // snap handle coordinates to grid (if active)
+            if (grid->active())
+                handle = grid->snap(handle);
+            // Compute handleNODE_UPPER_RIGHT coordinates back in CORNER reference frame
+            handle = scene_to_corner_transform * handle;
+            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
+            glm::vec2 corner_scaling = glm::vec2(handle) / glm::vec2(corner * 2.f);
+            // proportional SCALING with SHIFT
+            if (UserInterface::manager().shiftModifier()) {
+                corner_scaling = glm::vec2(glm::compMax(corner_scaling));
+            }
+            // Apply scaling to the source
+            canvas_[canvas_current_].root_->scale_ = canvas_stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
+
+            //
+            // Adjust translation
+            //
+            // The center of the source in CORNER reference frame
+            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
+            // scale center of source in CORNER reference frame
+            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
+            // convert center back into scene reference frame
+            corner_center = corner_to_scene_transform * corner_center;
+            // Apply scaling to the source
+            canvas_[canvas_current_].root_->translation_ = glm::vec3(corner_center);
+
+        }
+
+        // update cursor
+        return ret;
+    }
 
     // No source is given
     if (!s) {
@@ -885,6 +1094,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         // transformation from scene to corner:
         const glm::mat4 scene_to_corner_transform = source_to_corner_transform * scene_to_source_transform;
         const glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
+
 
         // picking on a Node
         if (pick.first == s->handles_[mode_][Handles::NODE_LOWER_LEFT]) {
@@ -1198,7 +1408,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             s->handles_[mode_][Handles::MENU]->visible_ = false;
             s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
             // get stored status
-//            glm::vec3 node_pos = glm::vec3( -s->stored_status_->data_[0].z, 0.f, 0.f);
             glm::vec3 node_pos = glm::vec3( -s->stored_status_->data_[0].w, 0.f, 0.f);
             // Compute target coordinates of manipulated handle into SCENE reference frame
             node_pos = source_to_scene_transform * glm::vec4(node_pos, 1.f);
@@ -1208,7 +1417,6 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);
 
             // apply to source Node and to handles
-//            sourceNode->data_[0].z = - CLAMP( node_pos.x, -1.f, 0.f );
             sourceNode->data_[0].w = - CLAMP( node_pos.x, -1.f, 0.f );
             info << "Corner round " << std::fixed << std::setprecision(3) << sourceNode->data_[0].w;
         }
@@ -1558,6 +1766,21 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     return ret;
 }
 
+void GeometryView::initiate()
+{
+    if (editor_mode_ == EDIT_SOURCES)
+        View::initiate();
+    else if (!current_action_ongoing_ ) {
+        // store status current canvas
+        canvas_stored_status_->copyTransform(canvas_[canvas_current_].root_);
+        canvas_stored_status_->update(0.f);
+
+        // initiated
+        current_action_ = "";
+        current_action_ongoing_ = true;
+    }
+}
+
 void GeometryView::terminate(bool force)
 {
     View::terminate(force);
@@ -1593,6 +1816,16 @@ void GeometryView::terminate(bool force)
     }
 
     overlay_selection_active_ = false;
+
+    // restore all handles canvas
+    for (auto &c : canvas_) {
+        c.menu_->visible_ = true;
+        c.handles_[Handles::RESIZE]->visible_ = true;
+        c.handles_[Handles::RESIZE]->overlayActiveCorner( glm::vec2(0.f, 0.f) );
+        c.handles_[Handles::RESIZE_H]->visible_ = true;
+        c.handles_[Handles::RESIZE_V]->visible_ = true;
+    }
+
 
     // reset grid
     adaptGridToSource();

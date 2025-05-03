@@ -90,7 +90,7 @@ public:
         RENDER,
         GROUP,
         PATTERN,
-        GEAR,
+        CODE,
         CAMERA,
         SCREEN,
         SHARE,
