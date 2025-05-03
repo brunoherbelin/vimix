@@ -994,7 +994,8 @@ bool RenderingWindow::init(int index, GLFWwindow *share)
     // create the window
     window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, master_);
     if (window_ == NULL){
-        g_printerr("Failed to create GLFW Window %d", index_);
+        g_printerr("Failed to create GLFW Window %d (%s, %d x %d)\n",
+                   index_, winset.name.c_str(), winset.w, winset.h);
         return false;
     }
 
