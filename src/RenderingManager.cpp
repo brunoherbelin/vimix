@@ -510,6 +510,20 @@ void Rendering::draw()
         main_new_title_.clear();
     }
 
+    // draw output windows and count number of success
+    int count = 0;
+    for (auto it = outputs_.begin(); it != outputs_.end(); ++it) {
+        if ( it->draw( Mixer::manager().session()->frame() ) )
+            ++count;
+    }
+    // terminate or initialize output windows to match number of output windows
+    if (count > Settings::application.num_output_windows)
+        outputs_[count-1].terminate();
+    else if (count < Settings::application.num_output_windows) {
+        outputs_[count].init( count+1, main_.window());
+        outputs_[count].show();
+    }
+
     // operate on main window context
     main_.makeCurrent();
 
@@ -527,21 +541,6 @@ void Rendering::draw()
     }
 
     glfwSwapBuffers(main_.window());
-
-
-    // draw output windows and count number of success
-    int count = 0;
-    for (auto it = outputs_.begin(); it != outputs_.end(); ++it) {
-        if ( it->draw( Mixer::manager().session()->frame() ) )
-            ++count;
-    }
-    // terminate or initialize output windows to match number of output windows
-    if (count > Settings::application.num_output_windows)
-        outputs_[count-1].terminate();
-    else if (count < Settings::application.num_output_windows) {
-        outputs_[count].init( count+1, main_.window());
-        outputs_[count].show();
-    }
 
     // software framerate limiter < 62 FPS
     {
