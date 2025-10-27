@@ -149,13 +149,6 @@ static void glfw_error_callback(int error, const char* description)
 
 static void WindowResizeCallback( GLFWwindow *w, int width, int height)
 {
-    if (Rendering::manager().mainWindow().window() == w) {
-        // UI manager tries to keep windows in the workspace
-        WorkspaceWindow::notifyWorkspaceSizeChanged(Rendering::manager().mainWindow().previous_size.x, Rendering::manager().mainWindow().previous_size.y, width, height);
-        Rendering::manager().mainWindow().previous_size = glm::vec2(width, height);
-        Rendering::manager().draw();
-    }
-
     int id = Rendering::manager().window(w)->index();
     Settings::application.windows[id].fullscreen = glfwGetWindowMonitor(w) != nullptr;
     if (!Settings::application.windows[id].fullscreen) {
@@ -163,6 +156,12 @@ static void WindowResizeCallback( GLFWwindow *w, int width, int height)
         Settings::application.windows[id].h = height;
     }
 
+    if (Rendering::manager().mainWindow().window() == w) {
+        // UI manager tries to keep windows in the workspace
+        WorkspaceWindow::notifyWorkspaceSizeChanged(Rendering::manager().mainWindow().previous_size.x, Rendering::manager().mainWindow().previous_size.y, width, height);
+        Rendering::manager().mainWindow().previous_size = glm::vec2(width, height);
+        Rendering::manager().draw();
+    }
 }
 
 static void WindowMoveCallback( GLFWwindow *w, int x, int y)
@@ -328,6 +327,17 @@ Rendering::Rendering()
 
 bool Rendering::init()
 {
+    // Forcing X11 on Gnome makes the server use xWayland which has proper Server Side Decorations as opposed to Wayland.
+    if (strcmp(getenv("XDG_CURRENT_DESKTOP"), "GNOME") == 0 || 
+        strcmp(getenv("XDG_CURRENT_DESKTOP"), "Unity") == 0 ){
+        g_printerr("Forcing X11 on GNOME desktop\n");
+        glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+    }
+    else {
+        g_printerr("Detected %s desktop\n", getenv("XDG_CURRENT_DESKTOP"));
+        glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
+    }
+
     //
     // Setup GLFW
     //
