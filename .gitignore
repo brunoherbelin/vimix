@@ -32,3 +32,6 @@ flatpak/.flatpak-builder
 flatpak/repo/
 
 flatpak/build/
+
+build/
+.vscode/
