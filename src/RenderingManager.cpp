@@ -70,6 +70,116 @@
 
 #include "RenderingManager.h"
 
+// GDBus for screensaver inhibition (works on both X11 and Wayland)
+#ifdef GLFW_EXPOSE_NATIVE_GLX
+#include <gio/gio.h>
+guint screensaver_inhibit_cookie_ = 0;
+GDBusConnection *session_dbus_ = NULL;
+
+void inhibitScreensaver (bool on) 
+{
+    /*
+     * Inhibit or un-inhibit the desktop screensaver via the
+     * org.freedesktop.ScreenSaver D-Bus API.
+     *
+     * When 'on' is true:
+     *  - Obtain a connection to the session bus (cached in session_dbus_).
+     *  - Call the Inhibit method with two strings: the application name
+     *    ("vimix") and a human-readable reason.
+     *  - The call returns a uint 'cookie' which must be kept and later
+     *    passed to UnInhibit to release the inhibition.
+     *
+     * When 'on' is false:
+     *  - If we previously inhibited the screensaver (screensaver_inhibit_cookie_ != 0)
+     *    call UnInhibit with that cookie.
+     *  - Release the cached D-Bus connection (session_dbus_) and reset the cookie.
+     *
+     * Notes:
+     *  - This function uses synchronous D-Bus calls. They may block briefly.
+     *  - Errors from g_dbus_connection_call_sync are reported to the log and freed.
+     *  - The code is guarded by an #ifdef so it only compiles for platforms
+     *    where GLFW_EXPOSE_NATIVE_GLX is defined (historically used for X11/GLX),
+     *    but the org.freedesktop.ScreenSaver D-Bus interface works on both
+     *    X11 and Wayland session daemons that implement the spec.
+     */
+    if (on ) {
+        GError *error = NULL;
+        /* Lazily open a connection to the session bus and cache it. */
+        if (session_dbus_ == NULL)
+            session_dbus_ = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+
+        /* Only inhibit once: do nothing if we already have a cookie. */
+        if (session_dbus_ != NULL && screensaver_inhibit_cookie_ == 0) {
+            /* Call org.freedesktop.ScreenSaver.Inhibit(application_name, reason) */
+            GVariant *result = g_dbus_connection_call_sync(
+                session_dbus_,
+                "org.freedesktop.ScreenSaver",
+                "/org/freedesktop/ScreenSaver",
+                "org.freedesktop.ScreenSaver",
+                "Inhibit",
+                g_variant_new("(ss)", "vimix", "Video mixing in progress"),
+                G_VARIANT_TYPE("(u)"),
+                G_DBUS_CALL_FLAGS_NONE,
+                -1,
+                NULL,
+                &error
+            );
+
+            if (result != NULL) {
+                /* The returned variant contains a single unsigned integer cookie. */
+                g_variant_get(result, "(u)", &screensaver_inhibit_cookie_);
+                g_variant_unref(result);
+                Log::Info("Screensaver inhibited for vimix (cookie: %u)", screensaver_inhibit_cookie_);
+            } else {
+                /* If the call failed, log the error and ensure cookie is zero. */
+                if (error != NULL) {
+                    Log::Info("Could not inhibit screensaver: %s", error->message);
+                    g_error_free(error);
+                    screensaver_inhibit_cookie_ = 0;
+                }
+            }
+        }
+    }
+    else {
+        /* Un-inhibit only if we have a valid cookie recorded. */
+        if (screensaver_inhibit_cookie_ != 0) {
+            GError *error = NULL;
+            if (session_dbus_ != NULL) {
+                /* Call org.freedesktop.ScreenSaver.UnInhibit(cookie) */
+                g_dbus_connection_call_sync(
+                    session_dbus_,
+                    "org.freedesktop.ScreenSaver",
+                    "/org/freedesktop/ScreenSaver",
+                    "org.freedesktop.ScreenSaver",
+                    "UnInhibit",
+                    g_variant_new("(u)", screensaver_inhibit_cookie_),
+                    NULL,
+                    G_DBUS_CALL_FLAGS_NONE,
+                    -1,
+                    NULL,
+                    &error
+                );
+
+                if (error != NULL) {
+                    /* Report failure to release inhibition but continue cleanup. */
+                    g_printerr("Could not un-inhibit screensaver: %s\n", error->message);
+                    g_error_free(error);
+                } else {
+                    g_printerr("Screensaver inhibition disabled\n");
+                    Log::Info("Screensaver inhibition disabled\n");
+                }
+
+                /* Close and drop our cached session bus connection. */
+                g_object_unref(session_dbus_);
+                session_dbus_ = NULL;
+            }
+            /* Reset cookie so subsequent calls can re-inhibit if needed. */
+            screensaver_inhibit_cookie_ = 0;
+        }
+    }
+}
+#endif
+
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
 
 GLFW_EXPOSE_NATIVE_X11
@@ -1152,6 +1262,9 @@ void RenderingWindow::terminate()
     fbo_     = 0;
     index_   = -1;
     textureid_ = Resource::getTextureBlack();
+
+    // SCREENSAVER UNINHIBIT
+    inhibitScreensaver( Settings::application.num_output_windows > 0 );
 }
 
 void RenderingWindow::show()
@@ -1165,6 +1278,9 @@ void RenderingWindow::show()
         GLFWmonitor *mo = Rendering::manager().monitorNamed(Settings::application.windows[index_].monitor);
         setFullscreen_(mo);
     }
+
+    // SCREENSAVER INHIBIT
+    inhibitScreensaver( Settings::application.num_output_windows > 0 );
 }
 
 
