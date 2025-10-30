@@ -1156,10 +1156,13 @@ void SessionLoader::visit (MediaSource& s)
     // set config media player
     s.mediaplayer()->accept(*this);
 
-    // add a callback to activate play speed
+    // read source play speed from media player SessionLoader::visit
     double r = s.mediaplayer()->playSpeed();
-    s.mediaplayer()->setRate(1.0); // reset to normal speed
-    s.call( new PlaySpeed( r, 100 ) );
+    // reset media player to normal speed
+    s.mediaplayer()->setRate(1.0); 
+    // add a callback to activate source play speed and rewind
+    s.call( new PlaySpeed( r ) );
+    s.call( new RePlay( ) );
 }
 
 void SessionLoader::visit (SessionFileSource& s)
