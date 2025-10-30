@@ -127,52 +127,74 @@ endif()
 #
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 find_package(Threads REQUIRED)
-
 find_package(ZLIB REQUIRED)
 
 #
 # GSTREAMER
 #
-find_package(GLIB2 REQUIRED)
-macro_log_feature(GLIB2_FOUND "GLib" "GTK general-purpose utility library" "http://www.gtk.org" TRUE)
+if (PKG_CONFIG_FOUND)
+    pkg_check_modules(GSTREAMER REQUIRED gstreamer-base-1.0>=1.24
+        gstreamer-pbutils-1.0
+        gstreamer-app-1.0
+        gstreamer-audio-1.0
+        gstreamer-video-1.0
+        gstreamer-gl-1.0
+    )
 
-find_package(GObject REQUIRED)
-macro_log_feature(GOBJECT_FOUND "GObject" "GTK object-oriented framework" "http://www.gtk.org" TRUE)
+    include_directories(
+        ${GSTREAMER_INCLUDE_DIRS}
+    )
 
-find_package(GStreamer 1.0.0 COMPONENTS base)
-macro_log_feature(GSTREAMER_FOUND "GStreamer"
-"Open Source Multiplatform Multimedia Framework"
-"http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+    link_directories(
+        ${GSTREAMER_LIBRARY_DIRS}
+    )
 
-find_package(GStreamerPluginsBase 1.0.0 COMPONENTS app audio video pbutils gl)
-macro_log_feature(GSTREAMER_APP_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer app library"
-"http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+else ()
+    find_package(GLIB2 REQUIRED)
+    macro_log_feature(GLIB2_FOUND "GLib" "GTK general-purpose utility library" "http://www.gtk.org" TRUE)
 
-macro_log_feature(GSTREAMER_AUDIO_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer audio library"
-"http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+    find_package(GObject REQUIRED)
+    macro_log_feature(GOBJECT_FOUND "GObject" "GTK object-oriented framework" "http://www.gtk.org" TRUE)
 
-macro_log_feature(GSTREAMER_VIDEO_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer video library"
-"http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+    find_package(GStreamer 1.0 COMPONENTS base REQUIRED)
 
-macro_log_feature(GSTREAMER_PBUTILS_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer pbutils library"
-"http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+    find_package(GStreamerPluginsBase 1.0.0 COMPONENTS app audio video pbutils gl)
+    macro_log_feature(GSTREAMER_APP_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer app library"
+    "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+    macro_log_feature(GSTREAMER_AUDIO_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer audio library"
+    "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+    macro_log_feature(GSTREAMER_VIDEO_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer video library"
+    "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+    macro_log_feature(GSTREAMER_PBUTILS_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer pbutils library"
+    "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+    macro_log_feature(GSTREAMER_GL_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer opengl library"
+    "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
 
-macro_log_feature(GSTREAMER_GL_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer opengl library"
-"http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+    include_directories(
+        ${GLIB2_INCLUDE_DIR}
+        ${GSTREAMER_INCLUDE_DIR}
+        ${GSTREAMER_AUDIO_INCLUDE_DIR}
+        ${GSTREAMER_VIDEO_INCLUDE_DIR}
+        ${GSTREAMER_BASE_INCLUDE_DIR}
+        ${GSTREAMER_APP_INCLUDE_DIR}
+        ${GSTREAMER_PBUTILS_INCLUDE_DIR}
+        ${GSTREAMER_GL_INCLUDE_DIR}
+    )
+    set( GSTREAMER_LIBRARIES
+        ${GOBJECT_LIBRARIES}
+        ${GSTREAMER_BASE_LIBRARY}
+        ${GSTREAMER_APP_LIBRARY}
+        ${GSTREAMER_AUDIO_LIBRARY}
+        ${GSTREAMER_VIDEO_LIBRARY}
+        ${GSTREAMER_PBUTILS_LIBRARY}
+        ${GSTREAMER_GL_LIBRARY}
+    )
+
+endif ()
+
 
 # Various preprocessor definitions for GST
 add_definitions(-DGST_DISABLE_XML -DGST_DISABLE_LOADSAVE)
-
-include_directories(
-    ${GLIB2_INCLUDE_DIR}
-    ${GSTREAMER_INCLUDE_DIR}
-    ${GSTREAMER_AUDIO_INCLUDE_DIR}
-    ${GSTREAMER_VIDEO_INCLUDE_DIR}
-    ${GSTREAMER_BASE_INCLUDE_DIR}
-    ${GSTREAMER_APP_INCLUDE_DIR}
-    ${GSTREAMER_PBUTILS_INCLUDE_DIR}
-    ${GSTREAMER_GL_INCLUDE_DIR}
-)
 
 #
 # ICU4C

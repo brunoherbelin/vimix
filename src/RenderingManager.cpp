@@ -70,6 +70,116 @@
 
 #include "RenderingManager.h"
 
+// GDBus for screensaver inhibition (works on both X11 and Wayland)
+#ifdef GLFW_EXPOSE_NATIVE_GLX
+#include <gio/gio.h>
+guint screensaver_inhibit_cookie_ = 0;
+GDBusConnection *session_dbus_ = NULL;
+
+void inhibitScreensaver (bool on) 
+{
+    /*
+     * Inhibit or un-inhibit the desktop screensaver via the
+     * org.freedesktop.ScreenSaver D-Bus API.
+     *
+     * When 'on' is true:
+     *  - Obtain a connection to the session bus (cached in session_dbus_).
+     *  - Call the Inhibit method with two strings: the application name
+     *    ("vimix") and a human-readable reason.
+     *  - The call returns a uint 'cookie' which must be kept and later
+     *    passed to UnInhibit to release the inhibition.
+     *
+     * When 'on' is false:
+     *  - If we previously inhibited the screensaver (screensaver_inhibit_cookie_ != 0)
+     *    call UnInhibit with that cookie.
+     *  - Release the cached D-Bus connection (session_dbus_) and reset the cookie.
+     *
+     * Notes:
+     *  - This function uses synchronous D-Bus calls. They may block briefly.
+     *  - Errors from g_dbus_connection_call_sync are reported to the log and freed.
+     *  - The code is guarded by an #ifdef so it only compiles for platforms
+     *    where GLFW_EXPOSE_NATIVE_GLX is defined (historically used for X11/GLX),
+     *    but the org.freedesktop.ScreenSaver D-Bus interface works on both
+     *    X11 and Wayland session daemons that implement the spec.
+     */
+    if (on ) {
+        GError *error = NULL;
+        /* Lazily open a connection to the session bus and cache it. */
+        if (session_dbus_ == NULL)
+            session_dbus_ = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+
+        /* Only inhibit once: do nothing if we already have a cookie. */
+        if (session_dbus_ != NULL && screensaver_inhibit_cookie_ == 0) {
+            /* Call org.freedesktop.ScreenSaver.Inhibit(application_name, reason) */
+            GVariant *result = g_dbus_connection_call_sync(
+                session_dbus_,
+                "org.freedesktop.ScreenSaver",
+                "/org/freedesktop/ScreenSaver",
+                "org.freedesktop.ScreenSaver",
+                "Inhibit",
+                g_variant_new("(ss)", "vimix", "Video mixing in progress"),
+                G_VARIANT_TYPE("(u)"),
+                G_DBUS_CALL_FLAGS_NONE,
+                -1,
+                NULL,
+                &error
+            );
+
+            if (result != NULL) {
+                /* The returned variant contains a single unsigned integer cookie. */
+                g_variant_get(result, "(u)", &screensaver_inhibit_cookie_);
+                g_variant_unref(result);
+                Log::Info("Screensaver inhibited for vimix (cookie: %u)", screensaver_inhibit_cookie_);
+            } else {
+                /* If the call failed, log the error and ensure cookie is zero. */
+                if (error != NULL) {
+                    Log::Info("Could not inhibit screensaver: %s", error->message);
+                    g_error_free(error);
+                    screensaver_inhibit_cookie_ = 0;
+                }
+            }
+        }
+    }
+    else {
+        /* Un-inhibit only if we have a valid cookie recorded. */
+        if (screensaver_inhibit_cookie_ != 0) {
+            GError *error = NULL;
+            if (session_dbus_ != NULL) {
+                /* Call org.freedesktop.ScreenSaver.UnInhibit(cookie) */
+                g_dbus_connection_call_sync(
+                    session_dbus_,
+                    "org.freedesktop.ScreenSaver",
+                    "/org/freedesktop/ScreenSaver",
+                    "org.freedesktop.ScreenSaver",
+                    "UnInhibit",
+                    g_variant_new("(u)", screensaver_inhibit_cookie_),
+                    NULL,
+                    G_DBUS_CALL_FLAGS_NONE,
+                    -1,
+                    NULL,
+                    &error
+                );
+
+                if (error != NULL) {
+                    /* Report failure to release inhibition but continue cleanup. */
+                    g_printerr("Could not un-inhibit screensaver: %s\n", error->message);
+                    g_error_free(error);
+                } else {
+                    g_printerr("Screensaver inhibition disabled\n");
+                    Log::Info("Screensaver inhibition disabled\n");
+                }
+
+                /* Close and drop our cached session bus connection. */
+                g_object_unref(session_dbus_);
+                session_dbus_ = NULL;
+            }
+            /* Reset cookie so subsequent calls can re-inhibit if needed. */
+            screensaver_inhibit_cookie_ = 0;
+        }
+    }
+}
+#endif
+
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
 
 GLFW_EXPOSE_NATIVE_X11
@@ -149,13 +259,6 @@ static void glfw_error_callback(int error, const char* description)
 
 static void WindowResizeCallback( GLFWwindow *w, int width, int height)
 {
-    if (Rendering::manager().mainWindow().window() == w) {
-        // UI manager tries to keep windows in the workspace
-        WorkspaceWindow::notifyWorkspaceSizeChanged(Rendering::manager().mainWindow().previous_size.x, Rendering::manager().mainWindow().previous_size.y, width, height);
-        Rendering::manager().mainWindow().previous_size = glm::vec2(width, height);
-        Rendering::manager().draw();
-    }
-
     int id = Rendering::manager().window(w)->index();
     Settings::application.windows[id].fullscreen = glfwGetWindowMonitor(w) != nullptr;
     if (!Settings::application.windows[id].fullscreen) {
@@ -163,6 +266,12 @@ static void WindowResizeCallback( GLFWwindow *w, int width, int height)
         Settings::application.windows[id].h = height;
     }
 
+    if (Rendering::manager().mainWindow().window() == w) {
+        // UI manager tries to keep windows in the workspace
+        WorkspaceWindow::notifyWorkspaceSizeChanged(Rendering::manager().mainWindow().previous_size.x, Rendering::manager().mainWindow().previous_size.y, width, height);
+        Rendering::manager().mainWindow().previous_size = glm::vec2(width, height);
+        Rendering::manager().draw();
+    }
 }
 
 static void WindowMoveCallback( GLFWwindow *w, int x, int y)
@@ -328,6 +437,17 @@ Rendering::Rendering()
 
 bool Rendering::init()
 {
+    // Forcing X11 on Gnome makes the server use xWayland which has proper Server Side Decorations as opposed to Wayland.
+    if (strcmp(getenv("XDG_CURRENT_DESKTOP"), "GNOME") == 0 || 
+        strcmp(getenv("XDG_CURRENT_DESKTOP"), "Unity") == 0 ){
+        g_printerr("Forcing X11 on GNOME desktop\n");
+        glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+    }
+    else {
+        g_printerr("Detected %s desktop\n", getenv("XDG_CURRENT_DESKTOP"));
+        glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
+    }
+
     //
     // Setup GLFW
     //
@@ -510,6 +630,20 @@ void Rendering::draw()
         main_new_title_.clear();
     }
 
+    // draw output windows and count number of success
+    int count = 0;
+    for (auto it = outputs_.begin(); it != outputs_.end(); ++it) {
+        if ( it->draw( Mixer::manager().session()->frame() ) )
+            ++count;
+    }
+    // terminate or initialize output windows to match number of output windows
+    if (count > Settings::application.num_output_windows)
+        outputs_[count-1].terminate();
+    else if (count < Settings::application.num_output_windows) {
+        outputs_[count].init( count+1, main_.window());
+        outputs_[count].show();
+    }
+
     // operate on main window context
     main_.makeCurrent();
 
@@ -527,21 +661,6 @@ void Rendering::draw()
     }
 
     glfwSwapBuffers(main_.window());
-
-
-    // draw output windows and count number of success
-    int count = 0;
-    for (auto it = outputs_.begin(); it != outputs_.end(); ++it) {
-        if ( it->draw( Mixer::manager().session()->frame() ) )
-            ++count;
-    }
-    // terminate or initialize output windows to match number of output windows
-    if (count > Settings::application.num_output_windows)
-        outputs_[count-1].terminate();
-    else if (count < Settings::application.num_output_windows) {
-        outputs_[count].init( count+1, main_.window());
-        outputs_[count].show();
-    }
 
     // software framerate limiter < 62 FPS
     {
@@ -1143,6 +1262,9 @@ void RenderingWindow::terminate()
     fbo_     = 0;
     index_   = -1;
     textureid_ = Resource::getTextureBlack();
+
+    // SCREENSAVER UNINHIBIT
+    inhibitScreensaver( Settings::application.num_output_windows > 0 );
 }
 
 void RenderingWindow::show()
@@ -1156,6 +1278,9 @@ void RenderingWindow::show()
         GLFWmonitor *mo = Rendering::manager().monitorNamed(Settings::application.windows[index_].monitor);
         setFullscreen_(mo);
     }
+
+    // SCREENSAVER INHIBIT
+    inhibitScreensaver( Settings::application.num_output_windows > 0 );
 }
 
 

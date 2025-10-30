@@ -541,7 +541,7 @@ void RePlay::update(Source *s, float dt)
     SourceCallback::update(s, dt);
 
     // apply when ready
-    if ( status_ == READY ){
+    if ( status_ == READY && s->ready()){
 
         // call replay function
         s->replay();
