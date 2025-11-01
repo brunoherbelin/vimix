@@ -137,6 +137,17 @@ public:
     bool gapAt(const GstClockTime t) const;
     bool getGapAt(const GstClockTime t, TimeInterval &gap) const;
 
+    // Manipulation of flags
+    inline TimeIntervalSet flags() const { return flags_; };
+    inline size_t numFlags() const { return flags_.size(); };
+    float *flagsArray();
+    bool addFlag(GstClockTime t);
+    bool addFlag(TimeInterval s);
+    bool removeFlagAt(GstClockTime t);
+    bool isFlagged(GstClockTime t) const;
+    GstClockTime getFlagAt(GstClockTime t) const;
+    void clearFlags();
+    
     // inverse of gaps: sections of play areas
     TimeIntervalSet sections() const;
     GstClockTime sectionsDuration() const;
@@ -190,6 +201,11 @@ private:
     float fadingArray_[MAX_TIMELINE_ARRAY];
     bool fading_array_changed_, fading_array_allones_;
 
+    TimeIntervalSet flags_;
+    float flagsArray_[MAX_TIMELINE_ARRAY];
+    bool flags_array_need_update_;
+    // synchronize data structures
+    void fillArrayFromFlags(float *array, size_t array_size);
 };
 
 #endif // TIMELINE_H

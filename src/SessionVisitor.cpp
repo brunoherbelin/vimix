@@ -469,6 +469,18 @@ void SessionVisitor::visit(MediaPlayer &n)
         XMLElement *array = XMLElementEncodeArray(xmlDoc_, n.timeline()->fadingArray(), MAX_TIMELINE_ARRAY * sizeof(float));
         fadingelement->InsertEndChild(array);
         timelineelement->InsertEndChild(fadingelement);
+
+        // flags in timeline
+        XMLElement *flagselement = xmlDoc_->NewElement("Flags");
+        TimeIntervalSet flags = n.timeline()->flags();
+        for( auto it = flags.begin(); it!= flags.end(); ++it) {
+            XMLElement *f = xmlDoc_->NewElement("Interval");
+            f->SetAttribute("begin", (uint64_t) (*it).begin);
+            f->SetAttribute("end", (uint64_t) (*it).end);
+            flagselement->InsertEndChild(f);
+        }
+        timelineelement->InsertEndChild(flagselement);
+
         newelement->InsertEndChild(timelineelement);
         fadingelement->SetAttribute("mode", (uint) n.timelineFadingMode());
     }

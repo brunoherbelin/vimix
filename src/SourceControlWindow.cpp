@@ -57,7 +57,9 @@ typedef struct payload
         FADE_OUT_IN,
         CUT,
         CUT_MERGE,
-        CUT_ERASE
+        CUT_ERASE, 
+        FLAG_ADD,
+        FLAG_REMOVE
     };
     Action  action;
     guint64 drop_time;
@@ -464,6 +466,7 @@ void SourceControlWindow::Render()
                 mediaplayer_timeline_zoom_ = 1.f;
                 mediaplayer_active_->timeline()->clearFading();
                 mediaplayer_active_->timeline()->clearGaps();
+                mediaplayer_active_->timeline()->clearFlags();
                 mediaplayer_active_->setVideoEffect("");
                 std::ostringstream oss;
                 oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
@@ -566,7 +569,7 @@ void DrawTimeScale(const char* label, guint64 duration, double width_ratio)
 
 bool EditTimeline(const char *label,
                   Timeline *tl,
-                  bool edit_histogram,
+                  int edit_mode,
                   bool *released,
                   const ImVec2 size)
 {
@@ -575,11 +578,13 @@ bool EditTimeline(const char *label,
     const guint64 begin = tl->begin();
     const guint64 end = tl->end();
 
-    bool cursor_dot = !edit_histogram;
+    bool cursor_dot = edit_mode == 1;
+    bool cursor_flag = false;
     Timeline _tl;
     bool array_changed = false;
     float *lines_array = tl->fadingArray();
-    float *histogram_array = tl->gapsArray();
+    float *gaps_array = tl->gapsArray();
+    float *flags_array = tl->flagsArray();
 
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -629,6 +634,7 @@ bool EditTimeline(const char *label,
     size_t index = CLAMP( (int) floor(static_cast<double>(MAX_TIMELINE_ARRAY) * x), 0, MAX_TIMELINE_ARRAY);
     char cursor_text[64];
     guint64 time = begin + (index * end) / static_cast<guint64>(MAX_TIMELINE_ARRAY);
+    static guint64 removed_flag_time = 0;
 
     // enter edit if widget is active
     if (ImGui::GetActiveID() == id) {
@@ -649,24 +655,39 @@ bool EditTimeline(const char *label,
             const size_t left = MIN(previous_index, index);
             const size_t right = MAX(previous_index, index);
 
-            if (edit_histogram){
+            if (edit_mode == 0) {
                 static float target_value = values_min;
 
                 // toggle value histo
                 if (!active) {
-                    target_value = histogram_array[index] > 0.f ? 0.f : 1.f;
+                    target_value = gaps_array[index] > 0.f ? 0.f : 1.f;
                     active = true;
                 }
 
                 for (size_t i = left; i < right; ++i)
-                    histogram_array[i] = target_value;
+                    gaps_array[i] = target_value;
             }
-            else  {
+            else if (edit_mode == 1) {
                 const float target_value =  values_max - val;
 
                 for (size_t i = left; i < right; ++i)
                     lines_array[i] = target_value;
 
+            }
+            else if (edit_mode == 2) {
+                if (!active) {
+                    // remove flag on mouse press       
+                    if ( tl->isFlagged(time) ) {
+                        removed_flag_time = time; 
+                        tl->removeFlagAt(time);
+                    }
+                    // add flag on mouse release   
+                    else
+                        active = true;  
+                }
+                else if (! tl->isFlagged(time) ) {
+                    cursor_flag = true; 
+                }
             }
 
             previous_index = index;
@@ -674,6 +695,15 @@ bool EditTimeline(const char *label,
         }
         // release active widget on mouse release
         else {
+            // add flag on mouse release   
+            if (edit_mode == 2 && active) {
+                // exception: if flag was removed at same time, do not add it back
+                if ( removed_flag_time != time ) {
+                    tl->addFlag(time);
+                }
+                removed_flag_time = 0;
+            }
+            
             active = false;
             ImGui::ClearActiveID();
             previous_index = UINT32_MAX;
@@ -699,17 +729,17 @@ bool EditTimeline(const char *label,
             case TimelinePayload::CUT:
                 _tl = *tl;
                 _tl.cut(time, (bool) pl->argument);
-                histogram_array = _tl.gapsArray();
+                gaps_array = _tl.gapsArray();
                 break;
             case TimelinePayload::CUT_MERGE:
                 _tl = *tl;
                 _tl.mergeGapstAt(time);
-                histogram_array = _tl.gapsArray();
+                gaps_array = _tl.gapsArray();
                 break;
             case TimelinePayload::CUT_ERASE:
                 _tl = *tl;
                 _tl.removeGaptAt(time);
-                histogram_array = _tl.gapsArray();
+                gaps_array = _tl.gapsArray();
                 break;
             case TimelinePayload::FADE_IN:
                 _tl = *tl;
@@ -731,6 +761,16 @@ bool EditTimeline(const char *label,
                 _tl.fadeInOutRange(time, pl->timing, false, (Timeline::FadingCurve) pl->argument);
                 lines_array = _tl.fadingArray();
                 break;
+            case TimelinePayload::FLAG_ADD:
+                _tl = *tl;
+                _tl.addFlag(time);
+                flags_array = _tl.flagsArray();
+                break;
+            case TimelinePayload::FLAG_REMOVE:
+                _tl = *tl;
+                _tl.removeFlagAt(time);
+                flags_array = _tl.flagsArray();
+                break;
             default:
                 break;
             }
@@ -745,16 +785,21 @@ bool EditTimeline(const char *label,
         }
         ImGui::EndDragDropTarget();
     }
+    else {
+        if ( edit_mode == 2 && tl->isFlagged(time) ) {
+            cursor_flag = true; 
+        }
+    }
 
     // back to draw
     ImGui::SetCursorScreenPos(canvas_pos);
 
-    // plot histogram (with frame)
+    // plot gaps (with frame)
     ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_ModalWindowDimBg]); // a dark color
     char buf[128];
     snprintf(buf, 128, "##Histo%s", label);
-    ImGui::PlotHistogram(buf, histogram_array, MAX_TIMELINE_ARRAY, 0, NULL, values_min, values_max, size);
+    ImGui::PlotHistogram(buf, gaps_array, MAX_TIMELINE_ARRAY, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(2);
 
     // back to draw
@@ -766,6 +811,15 @@ bool EditTimeline(const char *label,
     ImGui::PlotLines(buf, lines_array, MAX_TIMELINE_ARRAY, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(1);
 
+    // back to draw
+    ImGui::SetCursorScreenPos(canvas_pos);
+
+    // plot flags (transparent background)
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_TabActive]); // cursor color
+    snprintf(buf, 128, "##Flags%s", label);    
+    ImGui::PlotHistogram(buf, flags_array, MAX_TIMELINE_ARRAY, 0, NULL, values_min, values_max, size);
+    ImGui::PopStyleColor(2);
 
     // draw the cursor
     if (hovered) {
@@ -785,6 +839,11 @@ bool EditTimeline(const char *label,
             cursor_pos = cursor_pos + mouse_pos_in_canvas;
             window->DrawList->AddCircleFilled( cursor_pos, 3.f, cur_color, 8);
         }
+        else if (cursor_flag) {
+            cursor_pos = cursor_pos + ImVec2(mouse_pos_in_canvas.x, 12.f);
+            window->DrawList->AddLine( cursor_pos, cursor_pos + ImVec2(0.f, size.y - 8.f), cur_color);
+            _drawIcon(cursor_pos - ImVec2(2.f, 1.f), 12, 6, true, window);
+        } 
         else {
             cursor_pos = cursor_pos + ImVec2(mouse_pos_in_canvas.x, 4.f);
             window->DrawList->AddLine( cursor_pos, cursor_pos + ImVec2(0.f, size.y - 8.f), cur_color);
@@ -1850,6 +1909,8 @@ void DragButtonIcon(int i, int j, const char *tooltip, TimelinePayload payload)
 void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 {
     static bool show_overlay_info = false;
+    static std::vector< std::pair<int,int> > editmode_icon = { {8, 3}, {7, 4}, {12, 6} };
+    static std::vector< std::string > editmode_tooltip = { "Cutting tool", "Fading tool", "Flag tool" };
 
     mediaplayer_active_ = ms->mediaplayer();
 
@@ -1999,10 +2060,12 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 else if (released)
                 {
                     tl->refresh();
-                    if (Settings::application.widget.media_player_timeline_editmode)
+                    if (Settings::application.widget.media_player_timeline_editmode == 0)
                         oss << ": Timeline cut";
-                    else
+                    else if (Settings::application.widget.media_player_timeline_editmode == 1)
                         oss << ": Timeline fading";
+                    else
+                        oss << ": Timeline flags";
                     Action::manager().store(oss.str());
                 }
                 // custom timeline slider
@@ -2022,8 +2085,8 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         if (mediaplayer_edit_panel_ && ImGuiToolkit::IconButton(10, 0, "Close panel"))
             mediaplayer_edit_panel_ = false;
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.5f * timeline_height_));
-        const char *tooltip[2] = {"Fading tool", "Cutting tool"};
-        ImGuiToolkit::IconToggle(7,4,8,3, &Settings::application.widget.media_player_timeline_editmode, tooltip);
+        // select timeline editmode; cut, fade, flag
+        ImGuiToolkit::IconMultistate(editmode_icon, &Settings::application.widget.media_player_timeline_editmode, editmode_tooltip );
 
         // zoom slider
         ImGui::SetCursorScreenPos(bottom + ImVec2(0.f, timeline_height_));
@@ -2220,7 +2283,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         /// PANEL FOR CUT TIMELINE MODE
         ///
         ImGui::Spacing();
-        if (Settings::application.widget.media_player_timeline_editmode) {
+        if (Settings::application.widget.media_player_timeline_editmode == 0) {
 
             // PANEL WITH LARGE FONTS
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
@@ -2308,9 +2371,9 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::PopFont();
         }
         ///
-        /// FADING
+        /// PANEL FOR FADING
         ///
-        else {
+        else if (Settings::application.widget.media_player_timeline_editmode == 1) {
             // Icons for Drag & Drop
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
@@ -2398,6 +2461,9 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 DragButtonIcon(17, 10, "Drop in timeline to insert\nSmooth fade in & out",
                                TimelinePayload(TimelinePayload::FADE_IN_OUT, d*GST_MSECOND, Timeline::FADING_SMOOTH));
             }
+            else {
+
+            }
 
             ///
             /// DURATION SLIDER
@@ -2463,6 +2529,28 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             }
 
             ImGui::PopStyleColor();
+
+            // end icons
+            ImGui::PopFont();
+        }
+        ///
+        /// PANEL FOR FLAGS
+        ///
+        else if (Settings::application.widget.media_player_timeline_editmode == 2) {
+
+            // PANEL WITH LARGE FONTS
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+
+            ///
+            /// CUT LEFT OF CURSOR
+            ///
+            DragButtonIcon(12, 6, "Drop in timeline to\nAdd flag",
+                           TimelinePayload(TimelinePayload::FLAG_ADD, 0, 1) );
+
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+
+            DragButtonIcon(6, 0, "Drop in timeline to\nDelete flag",
+                           TimelinePayload(TimelinePayload::FLAG_REMOVE, 0, 1) );
 
             // end icons
             ImGui::PopFont();

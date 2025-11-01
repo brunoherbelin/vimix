@@ -926,6 +926,18 @@ void SessionLoader::visit(MediaPlayer &n)
                 fadingselement->QueryUnsignedAttribute("mode", &mode);
                 n.setTimelineFadingMode((MediaPlayer::FadingMode) mode);
             }
+            XMLElement *flagselement = timelineelement->FirstChildElement("Flags");
+            if (flagselement) {
+                XMLElement* flag = flagselement->FirstChildElement("Interval");
+                for( ; flag ; flag = flag->NextSiblingElement())
+                {
+                    uint64_t a = GST_CLOCK_TIME_NONE;
+                    uint64_t b = GST_CLOCK_TIME_NONE;
+                    flag->QueryUnsigned64Attribute("begin", &a);
+                    flag->QueryUnsigned64Attribute("end", &b);
+                    tl.addFlag( TimeInterval( (GstClockTime) a, (GstClockTime) b ) );
+                }
+            }
             n.setTimeline(tl);
         }
 

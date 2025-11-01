@@ -86,6 +86,9 @@ Timeline& Timeline::operator = (const Timeline& b)
         memcpy( this->gapsArray_, b.gapsArray_, MAX_TIMELINE_ARRAY * sizeof(float));
         memcpy( this->fadingArray_, b.fadingArray_, MAX_TIMELINE_ARRAY * sizeof(float));
         this->fading_array_changed_ = true;
+        this->flags_ = b.flags_;
+        this->flags_array_need_update_ = b.flags_array_need_update_;
+        memcpy( this->flagsArray_, b.flagsArray_, MAX_TIMELINE_ARRAY * sizeof(float));
     }
     return *this;
 }
@@ -100,6 +103,7 @@ void Timeline::reset()
 
     clearGaps();
     clearFading();
+    clearFlags();
 }
 
 bool Timeline::is_valid() const
@@ -175,6 +179,7 @@ void Timeline::update()
 void Timeline::refresh()
 {
     fillArrayFromGaps(gapsArray_, MAX_TIMELINE_ARRAY);
+    fillArrayFromFlags(flagsArray_, MAX_TIMELINE_ARRAY);
 }
 
 bool Timeline::gapAt(const GstClockTime t) const
@@ -511,8 +516,7 @@ void Timeline::clearGaps()
 {
     gaps_.clear();
 
-    for(int i=0;i<MAX_TIMELINE_ARRAY;++i)
-        gapsArray_[i] = 0.f;
+    memcpy(gapsArray_, empty_zeros, MAX_TIMELINE_ARRAY * sizeof(float));
 
     gaps_array_need_update_ = true;
 }
@@ -941,4 +945,110 @@ void Timeline::fillArrayFromGaps(float *array, size_t array_size)
     //            GstClockTime t = (timing_.duration() * i) / array_size;
     //            array[i] = gapAt(t, gap) ? 1.f : 0.f;
     //        }
+}
+
+#define FLAG_MARGIN 100
+
+float *Timeline::flagsArray()
+{
+    if (flags_array_need_update_) {
+        fillArrayFromFlags(flagsArray_, MAX_TIMELINE_ARRAY);
+    }
+    return flagsArray_;
+}
+
+bool Timeline::addFlag(GstClockTime t)
+{
+    if (t > timing_.begin + (step_ * 2)
+        && t < timing_.end - (step_ * 2)
+        && !isFlagged(t)) {
+
+        // compute nearest frame time
+        GstClockTime t_frame = ( (t - timing_.begin) / step_ ) * step_ + timing_.begin + step_;
+
+        // Flag interval centered on t_frame 
+        TimeInterval f(t_frame - step_ - FLAG_MARGIN, t_frame + step_ + FLAG_MARGIN);
+
+        flags_array_need_update_ = true;
+        return flags_.insert(f).second;
+    }
+
+    return false;
+}
+
+bool Timeline::addFlag(TimeInterval s)
+{
+    if ( s.is_valid() ) {
+        flags_array_need_update_ = true;
+        return flags_.insert(s).second;
+    }
+    return false;
+}
+
+
+bool Timeline::removeFlagAt(GstClockTime t)
+{
+    if (flags_.empty())
+        return false;
+
+    TimeIntervalSet::const_iterator f = std::find_if(flags_.begin(), flags_.end(), includesTime(t));
+
+    if ( f != flags_.end() ) {
+        flags_.erase(f);
+        flags_array_need_update_ = true;
+        return true;
+    }
+
+    return false;
+}
+
+bool Timeline::isFlagged(GstClockTime t) const
+{
+    TimeIntervalSet::const_iterator f = std::find_if(flags_.begin(), flags_.end(), includesTime(t));
+    return ( f != flags_.end() );
+}
+
+
+GstClockTime Timeline::getFlagAt(GstClockTime t) const
+{
+    TimeIntervalSet::const_iterator f = std::find_if(flags_.begin(), flags_.end(), includesTime(t));
+
+    if ( f != flags_.end() ) {
+        return ( (*f).begin + step_ + FLAG_MARGIN);
+    }
+
+    return GST_CLOCK_TIME_NONE;
+}
+
+void Timeline::clearFlags()
+{
+    flags_.clear();
+    memcpy(flagsArray_, empty_zeros, MAX_TIMELINE_ARRAY * sizeof(float));
+
+    flags_array_need_update_ = true;
+}
+
+void Timeline::fillArrayFromFlags(float *array, size_t array_size)
+{
+    // fill the array from flags list
+    if (array != nullptr && array_size > 0 && timing_.is_valid()) {
+
+        // clear with static array
+        memcpy(flagsArray_, empty_zeros, MAX_TIMELINE_ARRAY * sizeof(float));
+
+        // for each flag
+        GstClockTime d = timing_.duration();
+        for (auto it = flags_.begin(); it != flags_.end(); ++it)
+        {
+            size_t e = ( ( (*it).begin + step_ + FLAG_MARGIN ) * array_size ) / d ;
+
+            // fill with 1 where there is a flag
+            flagsArray_[e-1] = 1.f;
+            flagsArray_[ e ] = 1.f;
+            flagsArray_[e+1] = 1.f;
+        }
+
+        // done !
+        flags_array_need_update_ = false;
+    }
 }
