@@ -173,11 +173,14 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* too
 
 
 
-void _drawIcon(ImVec2 screenpos, int i, int j, bool enabled = true, ImGuiWindow* window = ImGui::GetCurrentWindow() )
+void _drawIcon(ImVec2 screenpos, int i, int j, bool enabled,  ImGuiWindow* window )
 {
     // icons.dds is a 20 x 20 grid of icons
     if (textureicons == 0)
         textureicons = Resource::getTextureDDS("images/icons.dds");
+
+    if (window == nullptr)
+        window = ImGui::GetCurrentWindow();
 
     ImVec2 uv0( static_cast<float>(i) * 0.05, static_cast<float>(j) * 0.05 );
     ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
