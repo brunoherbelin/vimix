@@ -437,6 +437,7 @@ Rendering::Rendering()
 
 bool Rendering::init()
 {
+#if GLFW_VERSION_MAJOR > 2 && GLFW_VERSION_MINOR > 3
     // Forcing X11 on Gnome makes the server use xWayland which has proper Server Side Decorations as opposed to Wayland.
     if (strcmp(getenv("XDG_CURRENT_DESKTOP"), "GNOME") == 0 || 
         strcmp(getenv("XDG_CURRENT_DESKTOP"), "Unity") == 0 ){
@@ -447,7 +448,7 @@ bool Rendering::init()
         g_printerr("Detected %s desktop\n", getenv("XDG_CURRENT_DESKTOP"));
         glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
     }
-
+#endif
     //
     // Setup GLFW
     //
