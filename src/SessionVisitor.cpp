@@ -477,6 +477,7 @@ void SessionVisitor::visit(MediaPlayer &n)
             XMLElement *f = xmlDoc_->NewElement("Interval");
             f->SetAttribute("begin", (uint64_t) (*it).begin);
             f->SetAttribute("end", (uint64_t) (*it).end);
+            f->SetAttribute("type", (int) (*it).type);
             flagselement->InsertEndChild(f);
         }
         timelineelement->InsertEndChild(flagselement);

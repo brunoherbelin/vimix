@@ -957,17 +957,20 @@ float *Timeline::flagsArray()
     return flagsArray_;
 }
 
-bool Timeline::addFlag(GstClockTime t)
+bool Timeline::addFlag(GstClockTime t, int type)
 {
     if (t > timing_.begin + (step_ * 2)
         && t < timing_.end - (step_ * 2)
         && !isFlagged(t)) {
 
         // compute nearest frame time
-        GstClockTime t_frame = ( (t - timing_.begin) / step_ ) * step_ + timing_.begin + step_;
+        GstClockTime t_frame = ( (t - timing_.begin) / step_ ) * step_ + timing_.begin;
+        if (t - t_frame > (step_ / 2))
+            t_frame += step_;
 
         // Flag interval centered on t_frame 
         TimeInterval f(t_frame - step_ - FLAG_MARGIN, t_frame + step_ + FLAG_MARGIN);
+        f.type = type;
 
         flags_array_need_update_ = true;
         return flags_.insert(f).second;
@@ -976,9 +979,10 @@ bool Timeline::addFlag(GstClockTime t)
     return false;
 }
 
-bool Timeline::addFlag(TimeInterval s)
+bool Timeline::addFlag(TimeInterval s, int type)
 {
     if ( s.is_valid() ) {
+        s.type = type;
         flags_array_need_update_ = true;
         return flags_.insert(s).second;
     }
@@ -1008,16 +1012,46 @@ bool Timeline::isFlagged(GstClockTime t) const
     return ( f != flags_.end() );
 }
 
-
-GstClockTime Timeline::getFlagAt(GstClockTime t) const
+int Timeline::flagTypeAt(GstClockTime t) const
 {
     TimeIntervalSet::const_iterator f = std::find_if(flags_.begin(), flags_.end(), includesTime(t));
+    if ( f != flags_.end() )
+        return (*f).type;
+    else
+        return -1;
+}
+
+void Timeline::setFlagTypeAt(GstClockTime t, int type)
+{
+    TimeIntervalSet::iterator f = std::find_if(flags_.begin(), flags_.end(), includesTime(t));
 
     if ( f != flags_.end() ) {
-        return ( (*f).begin + step_ + FLAG_MARGIN);
+        TimeInterval i = (*f);
+        flags_.erase(f);
+        i.type = type;
+        flags_.insert(i);
+    }   
+}
+
+TimeInterval Timeline::getNextFlag(GstClockTime t) const
+{
+    if ( !flags_.empty() ) {
+        // loop over flags
+        auto f = flags_.begin();
+        for (; f != flags_.end(); ++f) {
+            // gap before target?
+            if ( f->begin > t ) 
+                // done
+                break;
+        }
+
+        if ( f != flags_.end() )
+            return (*f);
+        else
+            return *(flags_.begin());
     }
 
-    return GST_CLOCK_TIME_NONE;
+    return TimeInterval();
 }
 
 void Timeline::clearFlags()

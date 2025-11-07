@@ -1401,16 +1401,16 @@ void MediaPlayer::update()
         }
         // test if position is flagged
         else if ( isPlaying() ) {
+            int t  = timeline_.flagTypeAt(position_);
+            if ( t > 0  ) {
             // Avoid to pause repeatedly when inside a flagged section
-            static bool _in_flagged = false;
-            if (timeline_.isFlagged(position_)) {
-                // pause at this position
-                if (!_in_flagged)
+                if (flag_status_ == LoopStatus::LOOP_STATUS_DEFAULT) {
+                    loop_status_ = flag_status_ = (LoopStatus) t;
                     play(false);
-                _in_flagged = true;
+                }
             }
-            else 
-                _in_flagged = false;
+            else
+                flag_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
         }
     }
 

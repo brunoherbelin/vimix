@@ -933,9 +933,11 @@ void SessionLoader::visit(MediaPlayer &n)
                 {
                     uint64_t a = GST_CLOCK_TIME_NONE;
                     uint64_t b = GST_CLOCK_TIME_NONE;
+                    int t = 0;
                     flag->QueryUnsigned64Attribute("begin", &a);
                     flag->QueryUnsigned64Attribute("end", &b);
-                    tl.addFlag( TimeInterval( (GstClockTime) a, (GstClockTime) b ) );
+                    flag->QueryIntAttribute("type", &t);
+                    tl.addFlag( TimeInterval( (GstClockTime) a, (GstClockTime) b ), t );
                 }
             }
             n.setTimeline(tl);

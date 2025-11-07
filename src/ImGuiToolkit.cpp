@@ -220,7 +220,7 @@ bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip, bool enabled, b
         const int space_num = static_cast<int>( ceil(g.FontSize / space_size.x) );
         space_buf[space_num]='\0';
 
-        char text_buf[256];
+        char text_buf[512];
         ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s %s", space_buf, tooltip);
 
         ImVec2 draw_pos = ImGui::GetCursorScreenPos() + g.Style.FramePadding * 0.5;
@@ -237,7 +237,9 @@ bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip, bool enabled, b
         ImVec2 uv0( static_cast<float>(i) * 0.05, static_cast<float>(j) * 0.05 );
         ImVec2 uv1( uv0.x + 0.05, uv0.y + 0.05 );
 
-        ImGui::PushID( i*20 + j);
+        char text_buf[512];
+        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "ButtonIcon %d %d %s", i, j, tooltip);
+        ImGui::PushID( text_buf );
         if (enabled)
             ret = ImGui::ImageButton((void*)(intptr_t)textureicons,
                                      ImVec2(g.FontSize, g.FontSize),
@@ -297,7 +299,9 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip, const char* sho
     if (window->SkipItems)
         return false;
 
-    ImGui::PushID( i * 20 + j  + ( tooltip ? window->GetID(tooltip) : 0) );
+    char text_buf[512];
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "IconButton %d %d %s", i, j, tooltip);
+    ImGui::PushID( text_buf );
 
     // duplicate of ImGui::InvisibleButton to handle ImGuiButtonFlags_Repeat
     const ImGuiID id = window->GetID("##iconijbutton");
@@ -338,7 +342,9 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip, const char* sho
 bool ImGuiToolkit::IconButton(const char* icon, const char *tooltip, const char* shortcut)
 {
     bool ret = false;
-    ImGui::PushID( icon );
+    char text_buf[512];
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "IconButton %s %s", icon, tooltip);
+    ImGui::PushID( text_buf );
 
     float frame_height = ImGui::GetFrameHeight();
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
@@ -414,7 +420,9 @@ bool ImGuiToolkit::TextButton(const char* text, const char *tooltip, const char*
 bool ImGuiToolkit::IconToggle(int i, int j, int i_toggle, int j_toggle, bool* toggle, const char *tooltips[])
 {
     bool ret = false;
-    ImGui::PushID( i * 20 + j + i_toggle * 20 + j_toggle);
+    char text_buf[512];
+    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "IconToggle %d %d %d %d ", i, j, i_toggle, j_toggle);
+    ImGui::PushID( text_buf );
 
     float frame_height = ImGui::GetFrameHeight();
     float frame_width = frame_height;
@@ -612,7 +620,9 @@ bool ImGuiToolkit::SelectableIcon(int i, int j, const char* label, bool selected
     char text_buf[256];
     ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "      %s", label);
 
-    ImGui::PushID( i * 20 + j  + ImGui::GetID(text_buf) );
+    char id_buf[512];
+    ImFormatString(id_buf, IM_ARRAYSIZE(id_buf), "SelectableIcon %d %d %s", i, j, label);
+    ImGui::PushID( id_buf );
 
     // draw menu item
     bool ret = ImGui::Selectable(text_buf, selected, ImGuiSelectableFlags_None, size_arg);
@@ -1098,107 +1108,6 @@ void ImGuiToolkit::RenderTimelineBPM (ImVec2 min_bbox, ImVec2 max_bbox, double t
     ImGui::PopStyleColor(1);
 }
 
-
-bool ImGuiToolkit::TimelineSlider (const char* label, guint64 *time, guint64 begin, guint64 first,
-                                   guint64 end, guint64 step, const float width)
-{
-    // get window
-    ImGuiWindow* window = ImGui::GetCurrentWindow();
-    if (window->SkipItems)
-        return false;
-
-    // get style & id
-    const ImGuiContext& g = *GImGui;
-    const ImGuiStyle& style = g.Style;
-    const float fontsize = g.FontSize;
-    const ImGuiID id = window->GetID(label);
-
-    //
-    // FIRST PREPARE ALL data structures
-    //
-
-    // widget bounding box
-    const float height = 2.f * (fontsize + style.FramePadding.y);
-    ImVec2 pos = window->DC.CursorPos;
-    ImVec2 size = ImVec2(width, height);
-    ImRect bbox(pos, pos + size);
-    ImGui::ItemSize(size, style.FramePadding.y);
-    if (!ImGui::ItemAdd(bbox, id))
-        return false;
-
-    // cursor size
-    const float cursor_width = 0.5f * fontsize;
-
-    // TIMELINE is inside the bbox, in a slightly smaller bounding box
-    ImRect timeline_bbox(bbox);
-    timeline_bbox.Expand( ImVec2() - style.FramePadding );
-
-    // SLIDER is inside the timeline
-    ImRect slider_bbox( timeline_bbox.GetTL() + ImVec2(-cursor_width + 2.f, cursor_width + 4.f ), timeline_bbox.GetBR() + ImVec2( cursor_width - 2.f, 0.f ) );
-
-    // units conversion: from time to float (calculation made with higher precision first)
-    float time_ = static_cast<float> ( static_cast<double>(*time - begin) / static_cast<double>(end - begin) );
-
-    //
-    // SECOND GET USER INPUT AND PERFORM CHANGES AND DECISIONS
-    //
-
-    // read user input from system
-    bool left_mouse_press = false;
-    const bool hovered = ImGui::ItemHoverable(bbox, id);
-    bool temp_input_is_active = ImGui::TempInputIsActive(id);
-    if (!temp_input_is_active)
-    {
-        const bool focus_requested = ImGui::FocusableItemRegister(window, id);
-        left_mouse_press = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left);
-        if (focus_requested || left_mouse_press || g.NavActivateId == id || g.NavInputId == id)
-        {
-            ImGui::SetActiveID(id, window);
-            ImGui::SetFocusID(id, window);
-            ImGui::FocusWindow(window);
-        }
-    }
-
-    // time Slider behavior
-    ImRect grab_slider_bb;
-    ImU32 grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrab);
-    float time_slider = time_ * 10.f; // x 10 precision on grab
-    float time_zero = 0.f;
-    float time_end = 10.f;
-    bool value_changed = ImGui::SliderBehavior(slider_bbox, id, ImGuiDataType_Float, &time_slider, &time_zero,
-                                               &time_end, "%.2f", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
-    if (value_changed){
-        *time = static_cast<guint64> ( 0.1 * static_cast<double>(time_slider) * static_cast<double>(end - begin) );
-        if (first != GST_CLOCK_TIME_NONE)
-            *time -= first;
-        grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrabActive);
-    }
-
-    //
-    // THIRD RENDER
-    //
-
-    // Render the bounding box
-    const ImU32 frame_col = ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : g.HoveredId == id ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
-    ImGui::RenderFrame(bbox.Min, bbox.Max, frame_col, true, style.FrameRounding);
-
-    // render the timeline
-    RenderTimeline(timeline_bbox.Min, timeline_bbox.Max, begin, end, step);
-
-    // draw slider grab handle
-    if (grab_slider_bb.Max.x > grab_slider_bb.Min.x) {
-        window->DrawList->AddRectFilled(grab_slider_bb.Min, grab_slider_bb.Max, grab_slider_color, style.GrabRounding);
-    }
-
-    // draw the cursor
-    pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
-    ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_SliderGrab), ImGuiDir_Up);
-
-    return left_mouse_press;
-}
-
-
-
 bool ImGuiToolkit::InvisibleSliderInt (const char* label, uint *index, uint min, uint max, ImVec2 size)
 {
     // get window
@@ -1680,12 +1589,11 @@ void word_wrap(std::string *str, unsigned per_line)
 
 
 
-bool ImGuiToolkit::InputTime(const char *label, guint64 *time, ImGuiInputTextFlags flag)
+bool ImGuiToolkit::InputTime(const char *label, guint64 *time, guint64 max_time, bool *valid, ImGuiInputTextFlags flag)
 {
     bool changed = false;
 
     // filtering for reading MM:SS.MS text entry
-    static bool valid = false;
     static std::regex RegExTime("([0-9]+\\:)?([0-9]+\\:)?([0-5][0-9]|[0-9])((\\.|\\,)[0-9]+)?");
     struct TextFilters
     {
@@ -1698,7 +1606,8 @@ bool ImGuiToolkit::InputTime(const char *label, guint64 *time, ImGuiInputTextFla
     };
 
     // convert gst time to hh mm s.ms
-    guint64 ms = GST_TIME_AS_MSECONDS(*time);
+    guint64 tmp_time = *time;
+    guint64 ms = GST_TIME_AS_MSECONDS(tmp_time);
     guint64 hh = ms / 3600000;
     guint64 mm = (ms % 3600000) / 60000;
     ms -= (hh * 3600000 + mm * 60000);
@@ -1713,7 +1622,7 @@ bool ImGuiToolkit::InputTime(const char *label, guint64 *time, ImGuiInputTextFla
     ImGui::PushStyleColor(ImGuiCol_Text,
                           flag & ImGuiInputTextFlags_ReadOnly
                               ? g.Style.Colors[ImGuiCol_TextDisabled]
-                              : ImVec4(1.0f, valid ? 1.0f : 0.2f, valid ? 1.0f : 0.2f, 1.f));
+                              : ImVec4(1.0f, *valid ? 1.0f : 0.2f, *valid ? 1.0f : 0.2f, 1.f));
     ImGui::PushStyleColor(ImGuiCol_FrameBg,
                           flag & ImGuiInputTextFlags_ReadOnly ? g.Style.Colors[ImGuiCol_WindowBg]
                                                               : g.Style.Colors[ImGuiCol_FrameBg]);
@@ -1727,41 +1636,41 @@ bool ImGuiToolkit::InputTime(const char *label, guint64 *time, ImGuiInputTextFla
     ImGui::PopStyleColor(2);
 
     // test string format with regular expression
-    valid = std::regex_match(buf_time_input, RegExTime);
+    *valid = std::regex_match(buf_time_input, RegExTime);
 
-    if (ImGui::IsItemDeactivatedAfterEdit()) {
-        if (valid) {
-            ms = 0;
-            sec = 0.f;
-            // user confirmed the entry and the input is valid
-            // split the "HH:MM:SS.ms" string in HH MM SS.ms
-            std::string timing(buf_time_input);
-            std::size_t found = timing.find_last_of(':');
-            // read the right part SS.ms as a value
+    if (valid) {
+        ms = 0;
+        sec = 0.f;
+        // split the "HH:MM:SS.ms" string in HH MM SS.ms
+        std::string timing(buf_time_input);
+        std::size_t found = timing.find_last_of(':');
+        // read the right part SS.ms as a value
+        if (std::string::npos != found
+            && BaseToolkit::is_a_value(timing.substr(found + 1), &sec)) {
+            ms = (guint64) (sec * 1000.f);
+            // read right part MM as a number
+            timing = timing.substr(0, found);
+            found = timing.find_last_of(':');
+            int min = 0;
             if (std::string::npos != found
-                && BaseToolkit::is_a_value(timing.substr(found + 1), &sec)) {
-                ms = (guint64) (sec * 1000.f);
-                // read right part MM as a number
+                && BaseToolkit::is_a_number(timing.substr(found + 1), &min)) {
+                ms += 60000 * (guint64) min;
+                // read right part HH as a number
                 timing = timing.substr(0, found);
-                found = timing.find_last_of(':');
-                int min = 0;
-                if (std::string::npos != found
-                    && BaseToolkit::is_a_number(timing.substr(found + 1), &min)) {
-                    ms += 60000 * (guint64) min;
-                    // read right part HH as a number
-                    timing = timing.substr(0, found);
-                    int hour = 0;
-                    if (std::string::npos != found && BaseToolkit::is_a_number(timing, &hour)) {
-                        ms += 3600000 * (guint64) hour;
-                    }
+                int hour = 0;
+                if (std::string::npos != found && BaseToolkit::is_a_number(timing, &hour)) {
+                    ms += 3600000 * (guint64) hour;
                 }
             }
-            // set time
-            *time = GST_MSECOND * ms;
-            changed = true;
         }
-        // force to test validity next frame
-        valid = false;
+        // set time
+        tmp_time = GST_MSECOND * ms;
+        *valid &= tmp_time < max_time;
+    }
+
+    if (valid && ImGui::IsItemDeactivatedAfterEdit()) {
+        *time = tmp_time;
+        changed = true;
     }
 
     return changed;

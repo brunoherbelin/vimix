@@ -14,6 +14,8 @@ struct TimeInterval
 {
     GstClockTime begin;
     GstClockTime end;
+    int type; 
+
     TimeInterval()
     {
         reset();
@@ -22,22 +24,29 @@ struct TimeInterval
     {
         begin = b.begin;
         end = b.end;
+        type = b.type;
     }
     TimeInterval(GstClockTime a, GstClockTime b) : TimeInterval()
     {
         if ( a != GST_CLOCK_TIME_NONE && b != GST_CLOCK_TIME_NONE) {
             begin = MIN(a, b);
             end = MAX(a, b);
+            type = 0;
         }
     }
     inline void reset()
     {
         begin = GST_CLOCK_TIME_NONE;
         end = GST_CLOCK_TIME_NONE;
+        type = 0;
     }
     inline GstClockTime duration() const
     {
         return is_valid() ? (end - begin) : GST_CLOCK_TIME_NONE;
+    }
+    inline GstClockTime midpoint() const
+    {
+        return is_valid() ? (end - begin) / 2 + begin : GST_CLOCK_TIME_NONE;
     }
     inline bool is_valid() const
     {
@@ -141,11 +150,13 @@ public:
     inline TimeIntervalSet flags() const { return flags_; };
     inline size_t numFlags() const { return flags_.size(); };
     float *flagsArray();
-    bool addFlag(GstClockTime t);
-    bool addFlag(TimeInterval s);
+    bool addFlag(GstClockTime t, int type = 0);
+    bool addFlag(TimeInterval s, int type = 0);
     bool removeFlagAt(GstClockTime t);
     bool isFlagged(GstClockTime t) const;
-    GstClockTime getFlagAt(GstClockTime t) const;
+    int  flagTypeAt(GstClockTime t) const;
+    void setFlagTypeAt(GstClockTime t, int type);
+    TimeInterval getNextFlag(GstClockTime t) const;
     void clearFlags();
     
     // inverse of gaps: sections of play areas
