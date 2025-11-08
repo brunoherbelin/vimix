@@ -337,7 +337,7 @@ void ImageFilteringShader::copy(ImageFilteringShader const& S)
 ///                                 ////
 ////////////////////////////////////////
 
-ImageFilter::ImageFilter (): FrameBufferFilter(), buffers_({nullptr, nullptr}), channel1_output_session(true)
+ImageFilter::ImageFilter (): FrameBufferFilter(), buffers_({nullptr, nullptr})
 {
     // surface and shader for first pass
     shaders_.first  = new ImageFilteringShader;
@@ -459,8 +459,6 @@ void ImageFilter::draw (FrameBuffer *input)
     if ( enabled() || forced )
     {
         // FIRST PASS
-        if (channel1_output_session)
-            shaders_.first->secondary_texture = Mixer::manager().session()->frame()->texture();
 
         // loop over sampler2D uniforms to bind textures 
         uint texture_unit = 0;
@@ -480,8 +478,6 @@ void ImageFilter::draw (FrameBuffer *input)
 
         // SECOND PASS
         if ( program_.isTwoPass() ) {
-            if (channel1_output_session)
-                shaders_.second->secondary_texture = Mixer::manager().session()->frame()->texture();
             // render filtered surface from first pass into frame buffer
             buffers_.second->begin();
             surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
@@ -703,7 +699,7 @@ std::vector< FilteringProgram > ResampleFilter::programs_ = {
 
 ResampleFilter::ResampleFilter (): ImageFilter(), factor_(RESAMPLE_INVALID)
 {
-    channel1_output_session = false;
+    
 }
 
 void ResampleFilter::setFactor(int factor)
@@ -841,7 +837,6 @@ std::vector< FilteringProgram > BlurFilter::programs_ = {
 BlurFilter::BlurFilter (): ImageFilter(), method_(BLUR_INVALID), mipmap_buffer_(nullptr)
 {
     mipmap_surface_ = new Surface;
-    channel1_output_session = false;
 }
 
 BlurFilter::~BlurFilter ()
@@ -983,7 +978,7 @@ std::vector< FilteringProgram > SharpenFilter::programs_ = {
 
 SharpenFilter::SharpenFilter (): ImageFilter(), method_(SHARPEN_INVALID)
 {
-    channel1_output_session = false;
+    
 }
 
 void SharpenFilter::setMethod(int method)
@@ -1061,7 +1056,7 @@ std::vector< FilteringProgram > SmoothFilter::programs_ = {
 
 SmoothFilter::SmoothFilter (): ImageFilter(), method_(SMOOTH_INVALID)
 {
-    channel1_output_session = false;
+    
 }
 
 void SmoothFilter::setMethod(int method)
@@ -1132,7 +1127,7 @@ std::vector< FilteringProgram > EdgeFilter::programs_ = {
 
 EdgeFilter::EdgeFilter (): ImageFilter(), method_(EDGE_INVALID)
 {
-    channel1_output_session = false;
+    
 }
 
 void EdgeFilter::setMethod(int method)
@@ -1203,7 +1198,7 @@ std::vector< FilteringProgram > AlphaFilter::programs_ = {
 
 AlphaFilter::AlphaFilter (): ImageFilter(), operation_(ALPHA_INVALID)
 {
-    channel1_output_session = false;
+    
 }
 
 void AlphaFilter::setOperation(int op)
