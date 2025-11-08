@@ -810,6 +810,20 @@ void SessionVisitor::visit (AlphaFilter& f)
     xmlCurrent_->InsertEndChild( list_parameters_(xmlDoc_, f.program().parameters()) );
 }
 
+
+XMLElement *list_textures_(tinyxml2::XMLDocument *doc, std::map< std::string, uint64_t > filter_params)
+{
+    XMLElement *parameters = doc->NewElement( "textures" );
+    for (auto p = filter_params.begin(); p != filter_params.end(); ++p)
+    {
+        XMLElement *param = doc->NewElement( "sampler2D" );
+        param->SetAttribute("name", p->first.c_str() );
+        param->SetAttribute("id", p->second );
+        parameters->InsertEndChild(param);
+    }
+    return parameters;
+}
+
 void SessionVisitor::visit (ImageFilter& f)
 {
     xmlCurrent_->SetAttribute("name", f.program().name().c_str() );
@@ -833,6 +847,9 @@ void SessionVisitor::visit (ImageFilter& f)
 
     // image filter parameters
     xmlCurrent_->InsertEndChild( list_parameters_(xmlDoc_, f.program().parameters()) );
+
+    // image filter texture inputs
+    xmlCurrent_->InsertEndChild( list_textures_(xmlDoc_, f.program().textures()) );
 
     // global iMouse
     XMLElement *imouse = xmlDoc_->NewElement("iMouse");

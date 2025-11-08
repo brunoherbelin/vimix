@@ -27,11 +27,15 @@ class FilteringProgram
     // list of parameters : uniforms names and values
     std::map< std::string, float > parameters_;
 
+    // list of texture inputs : uniform sampler2D names and source id
+    std::map< std::string, uint64_t > textures_;
+
 public:
 
     FilteringProgram();
     FilteringProgram(const std::string &name, const std::string &first_pass, const std::string &second_pass,
-                     const std::map<std::string, float> &parameters, const std::string &filename = std::string());
+                     const std::map<std::string, float> &parameters, const std::string &filename = std::string(),
+                     const std::map<std::string, uint64_t> &textures = std::map<std::string, uint64_t>() );
     FilteringProgram(const FilteringProgram &other);
 
     FilteringProgram& operator= (const FilteringProgram& other);
@@ -67,6 +71,18 @@ public:
     bool hasParameter(const std::string &p);
     void removeParameter(const std::string &p);
 
+    // set the list of textures
+    inline void setTextures(const std::map< std::string, uint64_t > &textures) { textures_ = textures; }
+
+    // get the list of textures
+    inline std::map< std::string, uint64_t > textures() const { return textures_; }
+
+    // get / set texture
+    inline void clearTextures() { textures_.clear(); }
+    inline void setTexture(const std::string &t, uint64_t id) { textures_[t] = id; }
+    bool hasTexture(const std::string &t);
+    void removeTexture(const std::string &t);
+
     // globals
     static std::string getFilterCodeInputs();
     static std::string getFilterCodeDefault();
@@ -95,6 +111,8 @@ public:
 
     // list of uniforms to control shader
     std::map< std::string, float > uniforms_;
+    // list of uniforms to control shader textures id
+    std::map< std::string, uint >  sampler2D_;
     bool uniforms_changed_;
 
     ImageFilteringShader();
@@ -130,6 +148,10 @@ public:
     // update parameters of program
     void setProgramParameters(const std::map< std::string, float > &parameters);
     void setProgramParameter(const std::string &p, float value);
+
+    // update textures of program
+    void setProgramTextures(const std::map< std::string, uint64_t > &textures);
+    void setProgramTexture(const std::string &t, uint64_t id);
 
     // implementation of FrameBufferFilter
     Type type() const override { return FrameBufferFilter::FILTER_IMAGE; }

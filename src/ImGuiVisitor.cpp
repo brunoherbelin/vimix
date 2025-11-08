@@ -1293,6 +1293,39 @@ void ImGuiVisitor::visit (AlphaFilter& f)
 
 }
 
+
+void list_textures_(ImageFilter &f, std::ostringstream &oss)
+{
+    std::map<std::string, uint64_t > filter_textures = f.program().textures();
+
+    for (auto tex = filter_textures.rbegin(); tex != filter_textures.rend(); ++tex)
+    {
+        ImGui::PushID( tex->first.c_str() );
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+
+        Source *source = Mixer::manager().findSource( tex->second );
+        std::string label = source == nullptr ? "Select source" : ""
+            + std::string( source->initials() )
+            + " - "
+            + source->name();
+        if (ImGui::BeginCombo(tex->first.c_str(), label.c_str()) )
+        {
+            SourceList::iterator iter;
+            for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter)
+            {
+                label = std::string((*iter)->initials()) + " - " + (*iter)->name();
+                if (ImGui::Selectable( label.c_str())) {
+                    f.setProgramTexture(tex->first, (*iter)->id() );
+                    oss << " Texture " << tex->first << " " << label;
+                    Action::manager().store(oss.str());
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::PopID();
+    }
+}
+
 void ImGuiVisitor::visit (ImageFilter& f)
 {
     // Open Editor
@@ -1301,9 +1334,10 @@ void ImGuiVisitor::visit (ImageFilter& f)
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Code");
 
-    // List of parameters
+    // List of parameters & textures
     oss << "Custom ";
     list_parameters_(f, oss);
+    list_textures_(f, oss);
 
 }
 

@@ -1555,6 +1555,23 @@ void SessionLoader::visit (AlphaFilter& f)
     f.setProgramParameters( get_parameters_(xmlCurrent_->FirstChildElement("parameters")) );
 }
 
+std::map< std::string, uint64_t > get_textures_(XMLElement* textures)
+{
+    std::map< std::string, uint64_t > filter_params;
+    if (textures) {
+        XMLElement* param = textures->FirstChildElement("sampler2D");
+        for( ; param ; param = param->NextSiblingElement())
+        {
+            uint64_t val = 0.f;
+            param->QueryUnsigned64Attribute("id", &val);
+            const char * name;
+            if ( param->QueryStringAttribute("name", &name) == XML_SUCCESS && name != NULL)
+                filter_params[name] = val;
+        }
+    }
+    return filter_params;
+}
+
 void SessionLoader::visit (ImageFilter& f)
 {
     std::pair< std::string, std::string > filter_codes;
@@ -1586,9 +1603,12 @@ void SessionLoader::visit (ImageFilter& f)
     // image filter parameters
     std::map< std::string, float > filter_params = get_parameters_(xmlCurrent_->FirstChildElement("parameters"));
 
+   // image filter textures
+    std::map< std::string, uint64_t > filter_textures = get_textures_(xmlCurrent_->FirstChildElement("textures"));
+
     // set image filter program and parameters
     f.setProgram( FilteringProgram(filter_name, filter_codes.first, filter_codes.second,
-                                  filter_params, filter_filename) );
+                                  filter_params, filter_filename, filter_textures) );
 
     // set global iMouse
     XMLElement* imouse = xmlCurrent_->FirstChildElement("iMouse");
