@@ -203,16 +203,21 @@ std::string ShmdataBroadcast::gst_pipeline() const
     return pipeline;
 }
 
-std::string ShmdataBroadcast::info() const
+std::string ShmdataBroadcast::info(bool extended) const
 {
     std::ostringstream ret;
 
-    if (!initialized_)
-        ret << "Shared Memory starting..";
-    else if (active_)
-        ret << "Shared Memory " << socket_path_;
-    else
-        ret << "Shared Memory terminated";
+    if (extended) {
+        ret << gst_pipeline();
+    }
+    else {
+        if (!initialized_)
+            ret << "Shared Memory starting..";
+        else if (active_)
+            ret << "Shared Memory " << socket_path_;
+        else
+            ret << "Shared Memory terminated";
+    }
 
     return ret.str();
 }

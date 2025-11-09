@@ -42,6 +42,7 @@
 #include "NetworkToolkit.h"
 #include "UserInterfaceManager.h"
 #include "Streamer.h"
+#include "VideoBroadcast.h"
 
 #include "ControlManager.h"
 
@@ -604,6 +605,16 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
                 arguments >> f >> osc::EndMessage;
             Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() + f * 0.01);
             need_feedback = true;
+        }
+        else if ( attribute.compare(OSC_OUTPUT_SRT_START) == 0) {
+            float f = (float) Settings::application.broadcast_port;
+            // if argument is given, it is the connection port
+            if (!arguments.Eos())
+                arguments >> f >> osc::EndMessage;
+            Broadcast::manager().start( new VideoBroadcast((int) f), true);
+        }
+        else if ( attribute.compare(OSC_OUTPUT_SRT_STOP) == 0) {
+            Broadcast::manager().stop(FrameGrabber::GRABBER_BROADCAST);
         }
         // inform of invalid attribute name
         else {

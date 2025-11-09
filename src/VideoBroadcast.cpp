@@ -29,6 +29,7 @@
 
 #include "Log.h"
 #include "GstToolkit.h"
+#include "NetworkToolkit.h"
 #include "Settings.h"
 
 #include "VideoBroadcast.h"
@@ -210,16 +211,24 @@ void VideoBroadcast::stop ()
     active_ = false;
 }
 
-std::string VideoBroadcast::info() const
+std::string VideoBroadcast::info(bool extended) const
 {
     std::ostringstream ret;
 
-    if (!initialized_)
-        ret << "SRT starting..";
-    else if (active_)
-        ret << "SRT Broadcast on port " << port_;
-    else
-        ret << "SRT terminated";
+    if (extended) {
+        ret << "srt://";
+        ret << NetworkToolkit::host_ips()[1];
+        ret << ":";
+        ret << port_;
+    }
+    else {
+        if (!initialized_)
+            ret << "SRT starting..";
+        else if (active_)
+            ret << "SRT Broadcast on port " << port_;
+        else
+            ret << "SRT terminated";
+    }
 
     return ret.str();
 }

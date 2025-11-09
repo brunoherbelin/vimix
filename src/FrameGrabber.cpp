@@ -106,6 +106,28 @@ FrameGrabber *FrameGrabbing::get(uint64_t id)
     return nullptr;
 }
 
+struct fgType
+{
+    inline bool operator()(const FrameGrabber* elem) const {
+       return (elem && elem->type() == _t);
+    }
+    explicit fgType(FrameGrabber::Type t) : _t(t) { }
+private:
+    FrameGrabber::Type _t;
+};
+
+FrameGrabber *FrameGrabbing::get(FrameGrabber::Type t)
+{
+    if (grabbers_.size() > 0 )
+    {
+        std::list<FrameGrabber *>::iterator iter = std::find_if(grabbers_.begin(), grabbers_.end(), fgType(t));
+        if (iter != grabbers_.end())
+            return (*iter);
+    }
+
+    return nullptr;
+}
+
 void FrameGrabbing::stopAll()
 {
     std::list<FrameGrabber *>::iterator iter;
@@ -349,8 +371,37 @@ void FrameGrabber::stop ()
 
 }
 
-std::string FrameGrabber::info() const
+std::string FrameGrabber::info(bool extended) const
 {
+    if (extended) {
+        std::string typestring;
+        switch ( type() )
+        {
+        case GRABBER_PNG :
+        typestring = "Portable Network Graphics frame grabber";
+            break;
+        case GRABBER_VIDEO :
+        typestring = "Video file frame grabber";
+            break;
+        case GRABBER_P2P :
+        typestring = "Peer-to-Peer stream frame grabber";
+            break;
+        case GRABBER_BROADCAST :
+        typestring = "SRT Broarcast frame grabber";
+            break;
+        case GRABBER_SHM :
+        typestring = "Shared Memory frame grabber";
+            break;
+        case GRABBER_LOOPBACK :
+        typestring = "Loopback frame grabber";
+            break;
+        default:
+        typestring = "Generic frame grabber";
+            break;
+        }
+        return typestring;
+    }
+
     if (!initialized_)
         return "Initializing";
     if (active_)
@@ -602,4 +653,57 @@ uint FrameGrabber::buffering() const
 guint64 FrameGrabber::frames() const
 {
     return frame_count_;
+}
+
+
+uint64_t Broadcast::start(FrameGrabber *ptr, bool singleton)
+{
+    if (singleton) 
+        stop( ptr->type() );
+
+    uint64_t b = ptr->id();
+    FrameGrabbing::manager().add(ptr);
+    return b;
+}
+
+bool Broadcast::enabled(uint64_t b)
+{
+    return ( FrameGrabbing::manager().get(b) != nullptr);
+}
+
+bool Broadcast::busy(uint64_t b)
+{
+    FrameGrabber *ptr = FrameGrabbing::manager().get(b);
+    if (ptr != nullptr)        
+        return ptr->busy();
+    
+    return false;
+}
+
+std::string Broadcast::info(uint64_t b, bool extended)
+{
+    FrameGrabber *ptr = FrameGrabbing::manager().get(b);
+    if (ptr != nullptr)        
+        return ptr->info(extended);
+    
+    return "Disabled";
+}
+
+void Broadcast::stop(uint64_t b)
+{
+    FrameGrabber *ptr = FrameGrabbing::manager().get(b);
+    if (ptr != nullptr)
+        ptr->stop();
+
+}
+
+void Broadcast::stop(FrameGrabber::Type T)
+{
+    FrameGrabber *prev = nullptr;
+    do {            
+        prev = FrameGrabbing::manager().get( T );
+        if (prev != nullptr)        
+            prev->stop();
+    }
+    while (prev != nullptr);
 }

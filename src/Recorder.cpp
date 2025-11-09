@@ -516,8 +516,11 @@ void VideoRecorder::terminate()
         Settings::application.recentRecordings.remove(filename_);
 }
 
-std::string VideoRecorder::info() const
+std::string VideoRecorder::info(bool extended) const
 {
+    if (extended)
+        return filename();
+
     if (initialized_ && !active_ && !endofstream_)
         return "Saving file...";
 
