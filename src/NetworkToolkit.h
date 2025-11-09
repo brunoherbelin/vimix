@@ -20,11 +20,11 @@ namespace NetworkToolkit
 {
 
 typedef enum {
-    UDP_RAW = 0,
-    UDP_JPEG,
-    UDP_H264,
-    SHM_RAW,
-    DEFAULT
+    UDP_RAW  = 0,
+    UDP_JPEG = 1,
+    UDP_H264 = 2,
+    SHM_RAW  = 3,
+    DEFAULT  = 4
 } StreamProtocol;
 
 extern const char* stream_protocol_label[DEFAULT];

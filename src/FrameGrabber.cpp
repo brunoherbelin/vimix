@@ -312,6 +312,9 @@ FrameGrabber::~FrameGrabber()
         gst_object_unref (timer_);
 
     if (pipeline_ != nullptr) {
+        // ignore errors on ending
+        gst_bus_set_flushing(gst_element_get_bus(pipeline_), true);
+        // force pipeline stop
         GstState state = GST_STATE_NULL;
         gst_element_set_state (pipeline_, state);
         gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
@@ -438,7 +441,7 @@ GstBusSyncReply FrameGrabber::signal_handler(GstBus *, GstMessage *msg, gpointer
         // inform user
         GError *error;
         gst_message_parse_error(msg, &error, NULL);
-        Log::Warning("FrameGrabber %s : %s",
+        Log::Warning("FrameGrabber Error %s : %s",
                      std::to_string(reinterpret_cast<FrameGrabber *>(ptr)->id()).c_str(),
                      error->message);
         g_error_free(error);

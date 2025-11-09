@@ -321,7 +321,7 @@ void Stream::execute_open()
     live_ = false;
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        fail(std::string("Could not open ") + description_);
+        fail(std::string("Could not open '") + description_ + "'");
         return;
     }
     else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
@@ -355,7 +355,7 @@ void Stream::execute_open()
 void Stream::fail(const std::string &message)
 {
     log_ = message;
-    Log::Warning("Stream %s %s.", std::to_string(id_).c_str(), log_.c_str() );
+    Log::Warning("Stream %s failed: %s.", std::to_string(id_).c_str(), log_.c_str() );
     failed_ = true;
 }
 
