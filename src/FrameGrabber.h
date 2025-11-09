@@ -173,7 +173,7 @@ private:
  * 
  * FrameGrabbers can terminate (normal behavior or failure) and the FrameGrabber
  * is deleted automatically; pointer is then invalid and cannot be accessed. To avoid this, 
- * the Broadcast::manager() gives access to FrameGrabbers by id.
+ * the Broadcast::manager() gives access to FrameGrabbers by type (single instance).
  * 
  * Singleton mechanism also allows starting a unique instance of each FrameGrabber::Type
  */
@@ -193,11 +193,10 @@ public:
         return _instance;
     }
 
-    uint64_t start(FrameGrabber *ptr, bool singleton = false);
-    bool enabled(uint64_t);
-    bool busy(uint64_t);
-    std::string info(uint64_t, bool extended = false);
-    void stop(uint64_t);
+    void start(FrameGrabber *ptr);
+    bool enabled(FrameGrabber::Type);
+    bool busy(FrameGrabber::Type);
+    std::string info(FrameGrabber::Type, bool extended = false);
     void stop(FrameGrabber::Type);
 };
 

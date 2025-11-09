@@ -659,54 +659,38 @@ guint64 FrameGrabber::frames() const
 }
 
 
-uint64_t Broadcast::start(FrameGrabber *ptr, bool singleton)
+void Broadcast::start(FrameGrabber *ptr)
 {
-    if (singleton) 
-        stop( ptr->type() );
-
-    uint64_t b = ptr->id();
+    stop( ptr->type() );
     FrameGrabbing::manager().add(ptr);
-    return b;
 }
 
-bool Broadcast::enabled(uint64_t b)
+bool Broadcast::busy(FrameGrabber::Type T)
 {
-    return ( FrameGrabbing::manager().get(b) != nullptr);
-}
-
-bool Broadcast::busy(uint64_t b)
-{
-    FrameGrabber *ptr = FrameGrabbing::manager().get(b);
+    FrameGrabber *ptr = FrameGrabbing::manager().get( T );
     if (ptr != nullptr)        
         return ptr->busy();
     
     return false;
 }
 
-std::string Broadcast::info(uint64_t b, bool extended)
+std::string Broadcast::info(FrameGrabber::Type T, bool extended)
 {
-    FrameGrabber *ptr = FrameGrabbing::manager().get(b);
+    FrameGrabber *ptr = FrameGrabbing::manager().get( T );
     if (ptr != nullptr)        
         return ptr->info(extended);
     
     return "Disabled";
 }
 
-void Broadcast::stop(uint64_t b)
+bool Broadcast::enabled(FrameGrabber::Type T)
 {
-    FrameGrabber *ptr = FrameGrabbing::manager().get(b);
-    if (ptr != nullptr)
-        ptr->stop();
-
+    return ( FrameGrabbing::manager().get( T ) != nullptr);
 }
 
 void Broadcast::stop(FrameGrabber::Type T)
 {
-    FrameGrabber *prev = nullptr;
-    do {            
-        prev = FrameGrabbing::manager().get( T );
-        if (prev != nullptr)        
-            prev->stop();
-    }
-    while (prev != nullptr);
+    FrameGrabber *prev = FrameGrabbing::manager().get( T );
+    if (prev != nullptr)        
+        prev->stop();
 }

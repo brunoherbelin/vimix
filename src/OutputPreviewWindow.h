@@ -12,9 +12,6 @@ class OutputPreviewWindow : public WorkspaceWindow
 {
     // frame grabbers
     VideoRecorder *video_recorder_;
-    uint64_t srt_;
-    uint64_t shm_;
-    uint64_t loopback_;
 
     // delayed trigger for recording
     std::vector< std::future<VideoRecorder *> > _video_recorders;

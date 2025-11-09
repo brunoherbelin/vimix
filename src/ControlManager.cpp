@@ -611,7 +611,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             // if argument is given, it is the connection port
             if (!arguments.Eos())
                 arguments >> f >> osc::EndMessage;
-            Broadcast::manager().start( new VideoBroadcast((int) f), true);
+            Broadcast::manager().start( new VideoBroadcast((int) f));
         }
         else if ( attribute.compare(OSC_OUTPUT_SRT_STOP) == 0) {
             Broadcast::manager().stop(FrameGrabber::GRABBER_BROADCAST);
