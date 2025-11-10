@@ -19,13 +19,15 @@ public:
     ShmdataBroadcast(Method m = SHM_SHMSINK, const std::string &socketpath = "");
     virtual ~ShmdataBroadcast() {}
 
+    FrameGrabber::Type type () const override { return FrameGrabber::GRABBER_SHM; }
+
     static bool available(Method m = SHM_SHMDATAANY);
 
     inline Method method() const { return method_; }
     inline std::string socket_path() const { return socket_path_; }
     std::string gst_pipeline() const;
 
-    std::string info() const override;
+    std::string info(bool extended = false) const override;
 
 private:
     std::string init(GstCaps *caps) override;

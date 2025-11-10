@@ -167,6 +167,7 @@ void ShaderEditWindow::BuildShader()
 
         // set parameters
         filters_[current_].setParameters(current_->program().parameters());
+        filters_[current_].setTextures(current_->program().textures());
 
         // change the filter of the current image filter
         // => this triggers compilation of shader

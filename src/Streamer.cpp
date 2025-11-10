@@ -491,6 +491,10 @@ void VideoStreamer::terminate()
     // send EOS
     gst_app_src_end_of_stream (src_);
 
+    // force finished
+    endofstream_ = true;
+    active_ = false;
+
     // make sure the shared memory socket is deleted
     if (config_.protocol == NetworkToolkit::SHM_RAW) {
         std::string path = SystemToolkit::full_filename(SystemToolkit::temp_path(), "shm");
@@ -510,23 +514,26 @@ void VideoStreamer::stop ()
     // inform streaming manager to remove myself
     // NB: will not be effective if called inside a locked streamers_lock_
     Streaming::manager().removeStream(this);
-
-    // force finished
-    endofstream_ = true;
-    active_ = false;
 }
 
-std::string VideoStreamer::info() const
+std::string VideoStreamer::info(bool extended) const
 {
     std::ostringstream ret;
-    if (!initialized_)
-        ret << "Connecting";
-    else if (active_) {
-        ret << NetworkToolkit::stream_protocol_label[config_.protocol];
-        ret << " to ";
-        ret << config_.client_name;
+
+    if (extended) {
+        ret << NetworkToolkit::stream_send_pipeline[config_.protocol];
     }
-    else
-        ret <<  "Streaming terminated.";
+    else {    
+        if (!initialized_)
+            ret << "Connecting";
+        else if (active_) {
+            ret << NetworkToolkit::stream_protocol_label[config_.protocol];
+            ret << " to ";
+            ret << config_.client_name;
+        }
+        else
+            ret <<  "Streaming terminated.";
+    }
+
     return ret.str();
 }

@@ -4471,8 +4471,10 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                       ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                       ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network.");
             ImGui::SameLine();
-            if (ImGuiToolkit::IconButton(5, 15, "Reload list"))
+            if (ImGuiToolkit::IconButton(5, 15, "Reload list")) {
                 Device::manager().reload();
+                clearNewPannel();
+            }
             ImGui::Spacing();
 
             if (custom_connected) {

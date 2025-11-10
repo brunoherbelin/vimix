@@ -32,6 +32,7 @@
 #include "Connection.h"
 #include "Metronome.h"
 #include "Audio.h"
+#include "VideoBroadcast.h"
 
 #if defined(APPLE)
 extern "C"{
@@ -72,6 +73,7 @@ int main(int argc, char *argv[])
     int headlessRequested = 0;
     int helpRequested = 0;
     int fontsizeRequested = 0;
+    int broadcastRequested = 0;
     std::string settingsRequested;
     int ret = -1;
 
@@ -102,6 +104,15 @@ int main(int argc, char *argv[])
                 i++; // Skip the next argument since it's already processed
             } else {
                 fprintf(stderr, "Error: Integer value missing after --fontsize\n");
+                helpRequested = 1;
+            }
+        } else if (strcmp(argv[i], "--broadcast") == 0 || strcmp(argv[i], "-B") == 0) {
+            // get font size argument
+            if (i + 1 < argc) {
+                broadcastRequested = atoi(argv[i + 1]); // Parse next argument as integer
+                i++; // Skip the next argument since it's already processed
+            } else {
+                fprintf(stderr, "Error: Port value missing after --broadcast\n");
                 helpRequested = 1;
             }
         } else if ( strchr(argv[i], '-')-argv[i] == 0 ) {
@@ -148,7 +159,7 @@ int main(int argc, char *argv[])
     }
 
     if (helpRequested) {
-        printf("Usage: %s [-H, --help] [-V, --version] [-F, --fontsize] [-L, --headless]\n"
+        printf("Usage: %s [-H, --help] [-V, --version] [-F, --fontsize] [-L, --headless] [-B, --broadcast]\n"
                "               [-S, --settings] [-T, --test] [-C, --clean] [filename]\n",
                argv[0]);
         printf("Options:\n");
@@ -157,6 +168,7 @@ int main(int argc, char *argv[])
         printf("  --fontsize   : Force rendering font size to specified value, e.g., '-F 25'\n");
         printf("  --settings   : Run with given settings file, e.g., '-S settingsfile.xml'\n");
         printf("  --headless   : Run without GUI (only if output windows configured)\n");
+        printf("  --broadcast  : Starts network broadcasting on given port, e.g., '-B 7070'\n");
         printf("  --test       : Run rendering test and return\n");
         printf("  --clean      : Reset user settings\n");
         printf("Filename:\n");
@@ -236,6 +248,12 @@ int main(int argc, char *argv[])
 
     // try to load file given in argument
     Mixer::manager().load(_openfile);
+
+    ///
+    /// Broadcast launch
+    ///
+    if (broadcastRequested > 0)
+        Broadcast::manager().start( new VideoBroadcast(broadcastRequested));
 
     ///
     /// Main LOOP

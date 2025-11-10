@@ -183,6 +183,7 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     widgetsNode->SetAttribute("media_player", application.widget.media_player);
     widgetsNode->SetAttribute("media_player_view", application.widget.media_player_view);
     widgetsNode->SetAttribute("timeline_editmode", application.widget.media_player_timeline_editmode);
+    widgetsNode->SetAttribute("timeline_flag", application.widget.media_player_timeline_flag);
     widgetsNode->SetAttribute("media_player_slider", application.widget.media_player_slider);
     widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
     widgetsNode->SetAttribute("shader_editor_view", application.widget.shader_editor_view);
@@ -521,7 +522,8 @@ void Settings::Load(const std::string &filename)
             widgetsNode->QueryIntAttribute("inputs_view", &application.widget.inputs_view);
             widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
             widgetsNode->QueryIntAttribute("media_player_view", &application.widget.media_player_view);
-            widgetsNode->QueryBoolAttribute("timeline_editmode", &application.widget.media_player_timeline_editmode);
+            widgetsNode->QueryIntAttribute("timeline_editmode", &application.widget.media_player_timeline_editmode);
+            widgetsNode->QueryIntAttribute("timeline_flag", &application.widget.media_player_timeline_flag);
             widgetsNode->QueryFloatAttribute("media_player_slider", &application.widget.media_player_slider);
             widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
             widgetsNode->QueryIntAttribute("shader_editor_view", &application.widget.shader_editor_view);

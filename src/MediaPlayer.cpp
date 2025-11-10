@@ -150,6 +150,9 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
             Log::Warning("MediaPlayer Error creating discoverer instance: %s\n", err->message);
         }
         else {
+            // disable GPU decoding plugins to avoid conflicts during discovery
+            GstToolkit::enable_gpu_decoding_plugins(false);
+
             GstDiscovererInfo *info = NULL;
             info = gst_discoverer_discover_uri (discoverer, uri.c_str(), &err);
             GstDiscovererResult result = gst_discoverer_info_get_result (info);
@@ -255,6 +258,10 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
                 gst_discoverer_info_unref (info);
 
             g_object_unref( discoverer );
+
+            // restore GPU decoding plugins state
+            GstToolkit::enable_gpu_decoding_plugins(Settings::application.render.gpu_decoding);
+
         }
 
         g_clear_error (&err);
@@ -1391,6 +1398,19 @@ void MediaPlayer::update()
                 else
                     need_loop = true;
             }
+        }
+        // test if position is flagged
+        else if ( isPlaying() ) {
+            int t  = timeline_.flagTypeAt(position_);
+            if ( t > 0  ) {
+            // Avoid to pause repeatedly when inside a flagged section
+                if (flag_status_ == LoopStatus::LOOP_STATUS_DEFAULT) {
+                    loop_status_ = flag_status_ = (LoopStatus) t;
+                    play(false);
+                }
+            }
+            else
+                flag_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
         }
     }
 

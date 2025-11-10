@@ -40,9 +40,22 @@ public:
     virtual ~FrameGrabber();
 
     inline uint64_t id() const { return id_; }
+    
+    // types of sub-classes of FrameGrabber
+    typedef enum {
+        GRABBER_GENERIC = 0,
+        GRABBER_PNG = 1,
+        GRABBER_VIDEO = 2,
+        GRABBER_P2P,
+        GRABBER_BROADCAST,
+        GRABBER_SHM,
+        GRABBER_LOOPBACK,
+        GRABBER_INVALID
+    } Type;
+    virtual Type type () const { return GRABBER_GENERIC; }
 
     virtual void stop();
-    virtual std::string info() const;
+    virtual std::string info(bool extended = false) const;
     virtual uint64_t duration() const;
     virtual bool finished() const;
     virtual bool busy() const;
@@ -133,6 +146,7 @@ public:
     void verify(FrameGrabber **rec);
     bool busy() const;
     FrameGrabber *get(uint64_t id);
+    FrameGrabber *get(FrameGrabber::Type t);
     void stopAll();
     void clearAll();
 
@@ -154,6 +168,37 @@ private:
     GstCaps *caps_;
 };
 
+/**
+ * @brief The Broadcast class gives a global access to launch and stop FrameGrabbers
+ * 
+ * FrameGrabbers can terminate (normal behavior or failure) and the FrameGrabber
+ * is deleted automatically; pointer is then invalid and cannot be accessed. To avoid this, 
+ * the Broadcast::manager() gives access to FrameGrabbers by type (single instance).
+ * 
+ * Singleton mechanism also allows starting a unique instance of each FrameGrabber::Type
+ */
+class Broadcast
+{
+    // Private Constructor
+    Broadcast() {};
+    Broadcast(Broadcast const& copy) = delete;
+    Broadcast& operator=(Broadcast const& copy) = delete;
+
+public:
+
+    static Broadcast& manager ()
+    {
+        // The only instance
+        static Broadcast _instance;
+        return _instance;
+    }
+
+    void start(FrameGrabber *ptr);
+    bool enabled(FrameGrabber::Type);
+    bool busy(FrameGrabber::Type);
+    std::string info(FrameGrabber::Type, bool extended = false);
+    void stop(FrameGrabber::Type);
+};
 
 
 #endif // FRAMEGRABBER_H

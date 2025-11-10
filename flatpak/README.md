@@ -47,7 +47,7 @@ These settings of git are needed to enable clone of local repos during build:
 
 Get the flatpak manifest for vimix:
 
-    curl -O https://raw.githubusercontent.com/brunoherbelin/vimix/master/flatpak/io.github.brunoherbelin.Vimix.json
+    curl -O https://raw.githubusercontent.com/brunoherbelin/vimix/beta/flatpak/io.github.brunoherbelin.Vimix.json
 
 Launch the build of the flatpak:
 

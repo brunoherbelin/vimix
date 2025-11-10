@@ -81,7 +81,9 @@ public:
 
     VideoStreamer(const NetworkToolkit::StreamConfig &conf);
     virtual ~VideoStreamer() {}
-    std::string info() const override;
+
+    FrameGrabber::Type type () const override { return FrameGrabber::GRABBER_P2P; }
+    std::string info(bool extended = false) const override;
 
 };
 

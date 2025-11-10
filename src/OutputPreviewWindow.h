@@ -5,7 +5,6 @@
 #include "WorkspaceWindow.h"
 
 class VideoRecorder;
-class VideoBroadcast;
 class ShmdataBroadcast;
 class Loopback;
 
@@ -13,9 +12,6 @@ class OutputPreviewWindow : public WorkspaceWindow
 {
     // frame grabbers
     VideoRecorder *video_recorder_;
-    VideoBroadcast *video_broadcaster_;
-    ShmdataBroadcast *shm_broadcaster_;
-    Loopback *loopback_broadcaster_;
 
     // delayed trigger for recording
     std::vector< std::future<VideoRecorder *> > _video_recorders;
@@ -34,13 +30,8 @@ public:
     inline bool isRecording() const { return video_recorder_ != nullptr; }
 
     void ToggleVideoBroadcast();
-    inline bool videoBroadcastEnabled() const { return video_broadcaster_ != nullptr; }
-
     void ToggleSharedMemory();
-    inline bool sharedMemoryEnabled() const { return shm_broadcaster_ != nullptr; }
-
     bool ToggleLoopbackCamera();
-    inline bool loopbackCameraEnabled() const { return loopback_broadcaster_!= nullptr; }
 
     void Render();
     void setVisible(bool on);

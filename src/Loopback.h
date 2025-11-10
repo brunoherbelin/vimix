@@ -12,13 +12,15 @@ public:
     Loopback(int deviceid = LOOPBACK_DEFAULT_DEVICE);
     virtual ~Loopback() {}
 
+    FrameGrabber::Type type () const override { return FrameGrabber::GRABBER_LOOPBACK; }
+
     static bool available();
 
     inline int  device_id() const { return loopback_device_; }
     std::string device_name() const;
 
     void stop() override;
-    std::string info() const override;
+    std::string info(bool extended = false) const override;
 
 private:
     std::string init(GstCaps *caps) override;

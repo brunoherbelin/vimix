@@ -41,7 +41,7 @@
 
 
 OutputPreviewWindow::OutputPreviewWindow() : WorkspaceWindow("OutputPreview"),
-    video_recorder_(nullptr), video_broadcaster_(nullptr), loopback_broadcaster_(nullptr),
+    video_recorder_(nullptr), 
     magnifying_glass(false)
 {
 
@@ -96,11 +96,6 @@ void OutputPreviewWindow::Update()
         video_recorder_->stop();
     }
 
-    // verify the frame grabbers are valid (change to nullptr if invalid)
-    FrameGrabbing::manager().verify( (FrameGrabber**) &video_broadcaster_);
-    FrameGrabbing::manager().verify( (FrameGrabber**) &shm_broadcaster_);
-    FrameGrabbing::manager().verify( (FrameGrabber**) &loopback_broadcaster_);
-
 }
 
 VideoRecorder *delayTrigger(VideoRecorder *g, std::chrono::milliseconds delay) {
@@ -140,22 +135,19 @@ void OutputPreviewWindow::ToggleRecordPause()
 
 void OutputPreviewWindow::ToggleVideoBroadcast()
 {
-    if (video_broadcaster_) {
-        video_broadcaster_->stop();
-    }
+    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_BROADCAST ) )
+        Broadcast::manager().stop( FrameGrabber::GRABBER_BROADCAST );
     else {
         if (Settings::application.broadcast_port<1000)
             Settings::application.broadcast_port = BROADCAST_DEFAULT_PORT;
-        video_broadcaster_ = new VideoBroadcast(Settings::application.broadcast_port);
-        FrameGrabbing::manager().add(video_broadcaster_);
+        Broadcast::manager().start( new VideoBroadcast(Settings::application.broadcast_port));
     }
 }
 
 void OutputPreviewWindow::ToggleSharedMemory()
 {
-    if (shm_broadcaster_) {
-        shm_broadcaster_->stop();
-    }
+    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_SHM ) )
+        Broadcast::manager().stop( FrameGrabber::GRABBER_SHM );
     else {
         // find a folder to put the socket for shm
         std::string _shm_socket_file = Settings::application.shm_socket_path;
@@ -164,25 +156,22 @@ void OutputPreviewWindow::ToggleSharedMemory()
         _shm_socket_file = SystemToolkit::full_filename(_shm_socket_file, ".shm_vimix" + std::to_string(Settings::application.instance_id));
 
         // create shhmdata broadcaster with method
-        shm_broadcaster_ = new ShmdataBroadcast( (ShmdataBroadcast::Method) Settings::application.shm_method, _shm_socket_file);
-        FrameGrabbing::manager().add(shm_broadcaster_);
+        Broadcast::manager().start( new ShmdataBroadcast( (ShmdataBroadcast::Method) Settings::application.shm_method, _shm_socket_file));
     }
 }
 
 bool OutputPreviewWindow::ToggleLoopbackCamera()
 {
     bool need_initialization = false;
-    if (loopback_broadcaster_) {
-        loopback_broadcaster_->stop();
-    }
+    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) 
+        Broadcast::manager().stop( FrameGrabber::GRABBER_LOOPBACK );
     else {
         if (Settings::application.loopback_camera < 1)
             Settings::application.loopback_camera = LOOPBACK_DEFAULT_DEVICE;
         Settings::application.loopback_camera += Settings::application.instance_id;
 
         try {
-            loopback_broadcaster_ = new Loopback(Settings::application.loopback_camera);
-            FrameGrabbing::manager().add(loopback_broadcaster_);
+            Broadcast::manager().start( new Loopback(Settings::application.loopback_camera) );
         }
         catch (const std::runtime_error &e) {
             need_initialization = true;
@@ -400,26 +389,28 @@ void OutputPreviewWindow::Render()
                 // Broadcasting menu
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.9f));
                 if (VideoBroadcast::available()) {
-                    if ( ImGui::MenuItem( ICON_FA_GLOBE "   SRT Broadcast", NULL, videoBroadcastEnabled()) )
+                    if ( ImGui::MenuItem( ICON_FA_GLOBE "   SRT Broadcast", NULL, Broadcast::manager().enabled( FrameGrabber::GRABBER_BROADCAST ) ) )
                         ToggleVideoBroadcast();
                 }
 
                 // Shared Memory menu
                 if (ShmdataBroadcast::available()) {
-                    if ( ImGui::MenuItem( ICON_FA_MEMORY "  SHM Shared Memory", NULL, sharedMemoryEnabled()) )
+                    if ( ImGui::MenuItem( ICON_FA_MEMORY "  SHM Shared Memory", NULL, Broadcast::manager().enabled( FrameGrabber::GRABBER_SHM ) ) )
                         ToggleSharedMemory();
                 }
 
                 // Loopback camera menu
                 if (Loopback::available()) {
-                    if ( ImGui::MenuItem( ICON_FA_VIDEO "  Loopback Camera", NULL, loopbackCameraEnabled()) )
+                    if ( ImGui::MenuItem( ICON_FA_VIDEO "  Loopback Camera", NULL, Broadcast::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) )
                         openInitializeSystemLoopback = ToggleLoopbackCamera();
                 }
 
                 ImGui::PopStyleColor(1);
 
                 // Display list of active stream
-                if (ls.size()>0 || videoBroadcastEnabled() || sharedMemoryEnabled() || loopbackCameraEnabled()) {
+                if (ls.size()>0 || Broadcast::manager().enabled( FrameGrabber::GRABBER_BROADCAST ) || 
+                                   Broadcast::manager().enabled( FrameGrabber::GRABBER_SHM ) || 
+                                   Broadcast::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) {
                     ImGui::Separator();
                     ImGui::MenuItem("Active streams:", nullptr, false, false);
 
@@ -428,37 +419,38 @@ void OutputPreviewWindow::Render()
                         ImGui::Text(" %s ", (*it).c_str() );
 
                     // SRT broadcast description
-                    if (videoBroadcastEnabled()) {
-                        ImGui::Text(" %s        ", video_broadcaster_->info().c_str());
+                    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_BROADCAST )) {
+                        ImGui::Text(" %s        ", Broadcast::manager().info( FrameGrabber::GRABBER_BROADCAST ).c_str());
                         // copy text icon to give user the srt link to connect to
                         ImVec2 draw_pos = ImGui::GetCursorPos();
                         ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
-                        char msg[256];
-                        ImFormatString(msg, IM_ARRAYSIZE(msg), "srt//%s:%d", NetworkToolkit::host_ips()[1].c_str(), Settings::application.broadcast_port );
-                        if (ImGuiToolkit::IconButton( ICON_FA_COPY, msg))
-                            ImGui::SetClipboardText(msg);
+                        std::string moreinfo = Broadcast::manager().info( FrameGrabber::GRABBER_BROADCAST , true);
+                        if (ImGuiToolkit::IconButton( ICON_FA_COPY, moreinfo.c_str()))
+                            ImGui::SetClipboardText(moreinfo.c_str());
                         ImGui::SetCursorPos(draw_pos);
                     }
 
                     // Shared memory broadcast description
-                    if (sharedMemoryEnabled()) {
-                        ImGui::Text(" %s        ", shm_broadcaster_->info().c_str());
+                    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_SHM )) {
+                        ImGui::Text(" %s        ", Broadcast::manager().info( FrameGrabber::GRABBER_SHM ).c_str());
                         // copy text icon to give user the socket path to connect to
                         ImVec2 draw_pos = ImGui::GetCursorPos();
                         ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
-                        if (ImGuiToolkit::IconButton( ICON_FA_COPY, shm_broadcaster_->gst_pipeline().c_str()))
-                            ImGui::SetClipboardText(shm_broadcaster_->gst_pipeline().c_str());
+                        std::string moreinfo = Broadcast::manager().info( FrameGrabber::GRABBER_SHM , true);
+                        if (ImGuiToolkit::IconButton( ICON_FA_COPY, moreinfo.c_str()))
+                            ImGui::SetClipboardText(moreinfo.c_str());
                         ImGui::SetCursorPos(draw_pos);
                     }
 
                     // Loopback camera description
-                    if (loopbackCameraEnabled()) {
-                        ImGui::Text(" %s        ", loopback_broadcaster_->info().c_str());
+                    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) {
+                        ImGui::Text(" %s        ", Broadcast::manager().info( FrameGrabber::GRABBER_LOOPBACK ).c_str());
                         // copy text icon to give user the device path to connect to
                         ImVec2 draw_pos = ImGui::GetCursorPos();
                         ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
-                        if (ImGuiToolkit::IconButton( ICON_FA_COPY, loopback_broadcaster_->device_name().c_str()))
-                            ImGui::SetClipboardText(loopback_broadcaster_->device_name().c_str());
+                        std::string moreinfo = Broadcast::manager().info( FrameGrabber::GRABBER_LOOPBACK , true);
+                        if (ImGuiToolkit::IconButton( ICON_FA_COPY, moreinfo.c_str()))
+                            ImGui::SetClipboardText(moreinfo.c_str());
                         ImGui::SetCursorPos(draw_pos);
                     }
                 }
@@ -558,10 +550,10 @@ void OutputPreviewWindow::Render()
         }
         // broadcast indicator
         float vertical = r;
-        if (video_broadcaster_)
+        if (Broadcast::manager().enabled( FrameGrabber::GRABBER_BROADCAST ))
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
-            if (video_broadcaster_->busy())
+            if (Broadcast::manager().busy( FrameGrabber::GRABBER_BROADCAST ))
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));
@@ -570,10 +562,10 @@ void OutputPreviewWindow::Render()
             vertical += 2.f * r;
         }
         // shmdata indicator
-        if (shm_broadcaster_)
+        if (Broadcast::manager().enabled( FrameGrabber::GRABBER_SHM ))
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
-            if (shm_broadcaster_->busy())
+            if (Broadcast::manager().busy( FrameGrabber::GRABBER_SHM ))
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));
@@ -582,10 +574,10 @@ void OutputPreviewWindow::Render()
             vertical += 2.f * r;
         }
         // loopback camera indicator
-        if (loopback_broadcaster_)
+        if (Broadcast::manager().enabled( FrameGrabber::GRABBER_LOOPBACK ))
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
-            if (loopback_broadcaster_->busy())
+            if (Broadcast::manager().busy( FrameGrabber::GRABBER_LOOPBACK ))
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));

@@ -1,7 +1,7 @@
 {
     "app-id": "io.github.brunoherbelin.Vimix",
     "runtime": "org.gnome.Platform",
-    "runtime-version": "47",
+    "runtime-version": "49",
     "sdk": "org.gnome.Sdk",
     "command": "launch_vimix.sh",
     "rename-desktop-file": "vimix.desktop",
@@ -57,7 +57,7 @@
             "sources": [
             {
                 "type": "git",
-                "commit": "373697b467f7cd0af88f1e9e32d4f10540df4687",
+                "commit": "b35605ace3ddf7c1a5d67a2eb553f034aef41d55",
                 "url": "https://code.videolan.org/videolan/x264.git"
             }
             ]
@@ -73,8 +73,7 @@
             "sources": [
             {
                 "type": "git",
-                "tag": "4.1",
-                "commit": "1d117bed4747758b51bd2c124d738527e30392cb",
+                "commit": "b858f483959b805895f77e700d81544be84e4c6b",
                 "url": "https://bitbucket.org/multicoreware/x265_git.git"
             }
             ]
@@ -90,8 +89,8 @@
             "sources": [
             {
                 "type": "git",
-                "tag": "v1.5.4",
-                "commit": "a8c6b65520f814c5bd8f801be48c33ceece7c4a6",
+                "tag": "v1.5.5-rc.0a",
+                "commit": "bab403744b4d02005b03dac12a79988bc4590038",
                 "url": "https://github.com/Haivision/srt.git"
             }
             ]
@@ -105,8 +104,8 @@
             "sources": [
             {
                 "type": "git",
-                "tag": "v2.3.3",
-                "commit": "cdeddc7553bbfdc446c61d1bfa6a51bcc029b4a8",
+                "tag": "v2.5.0",
+                "commit": "0dbbac5258c518e596a64fedcbb1198403dcc981",
                 "url": "https://github.com/dyne/frei0r.git"
             }
             ]
@@ -137,11 +136,14 @@
                "-Dgst-plugins-ugly:x264=enabled",
                "-Dvaapi=enabled"
             ],
+            "build-options": {
+                "build-args": [ "--share=network" ]
+            },
             "sources": [
               {
                 "type": "git",
-                "tag": "1.24.10",
-                "commit": "5be4b6f03689ab438822f6cfcd13f1f300afe203",
+                "tag": "1.26.7",
+                "commit": "c5a5c302f5e7218182c0633decec16b25de82add",
                 "url": "https://gitlab.freedesktop.org/gstreamer/gstreamer.git",
                 "disable-submodules": false
               }

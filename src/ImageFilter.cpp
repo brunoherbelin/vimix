@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <regex>
 
+#include <glad/glad.h>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -30,6 +31,7 @@
 #include "Resource.h"
 #include "SystemToolkit.h"
 #include "Visitor.h"
+#include "Source.h"
 
 #include "Mixer.h"
 
@@ -120,14 +122,17 @@ FilteringProgram::FilteringProgram() : name_("Default"), filename_(""),
 }
 
 FilteringProgram::FilteringProgram(const std::string &name, const std::string &first_pass, const std::string &second_pass,
-                         const std::map<std::string, float> &parameters, const std::string &filename) :
-    name_(name), filename_(filename), code_({first_pass, second_pass}), parameters_(parameters)
+                         const std::map<std::string, float> &parameters, const std::string &filename,
+                         const std::map<std::string, uint64_t> &textures ) :
+    name_(name), filename_(filename), code_({first_pass, second_pass}), parameters_(parameters), textures_(textures)
 {
     two_pass_filter_ = !second_pass.empty();
 }
 
 FilteringProgram::FilteringProgram(const FilteringProgram &other) :
-    name_(other.name_), filename_(other.filename_), code_(other.code_), two_pass_filter_(other.two_pass_filter_), parameters_(other.parameters_)
+    name_(other.name_), filename_(other.filename_), code_(other.code_), 
+    two_pass_filter_(other.two_pass_filter_), parameters_(other.parameters_),
+    textures_(other.textures_)
 {
 
 }
@@ -140,6 +145,8 @@ FilteringProgram& FilteringProgram::operator= (const FilteringProgram& other)
         this->code_ = other.code_;
         this->parameters_.clear();
         this->parameters_ = other.parameters_;
+        this->textures_.clear();
+        this->textures_ = other.textures_;
         this->two_pass_filter_ = other.two_pass_filter_;
     }
 
@@ -176,6 +183,17 @@ void FilteringProgram::removeParameter(const std::string &p)
 {
     if (hasParameter(p))
         parameters_.erase(p);
+}
+
+bool FilteringProgram::hasTexture(const std::string &t)
+{
+    return textures_.find(t) != textures_.end();
+}
+
+void FilteringProgram::removeTexture(const std::string &t)
+{
+    if (hasTexture(t))
+        textures_.erase(t);
 }
 
 
@@ -251,11 +269,26 @@ void ImageFilteringShader::use()
             // uniform variable could be set, keep it
             ++u;
         else {
-            // uniform variable does not exist in code, remove it
+            // uniform variable is not used in code, remove it
             u = uniforms_.erase(u);
             uniforms_changed_ = true;
         }
     }
+
+    // loop over sampler2D uniforms for channels (start at 2)
+    int sampler_index = 2;
+    for (auto u = sampler2D_.begin(); u != sampler2D_.end(); ) {
+        // set uniform sampler2D to current sampler_index
+        if ( program_->setUniform(u->first, sampler_index++) ) 
+            // uniform variable could be set, keep it
+            ++u;
+        else {
+            // uniform variable is not used in code, remove it
+            u = sampler2D_.erase(u);
+            uniforms_changed_ = true;
+        }
+    }
+    
 }
 
 void ImageFilteringShader::reset()
@@ -304,7 +337,7 @@ void ImageFilteringShader::copy(ImageFilteringShader const& S)
 ///                                 ////
 ////////////////////////////////////////
 
-ImageFilter::ImageFilter (): FrameBufferFilter(), buffers_({nullptr, nullptr}), channel1_output_session(true)
+ImageFilter::ImageFilter (): FrameBufferFilter(), buffers_({nullptr, nullptr})
 {
     // surface and shader for first pass
     shaders_.first  = new ImageFilteringShader;
@@ -356,6 +389,15 @@ void ImageFilter::update (float dt)
             if (shaders_.first->uniforms_.count(param->first) < 1)
                 program_.removeParameter(param->first);
         }
+
+        // loop over the textures of the program...
+        std::map<std::string, uint64_t > __T = program_.textures();
+        for (auto tex = __T.begin(); tex != __T.end(); ++tex) {
+            // .. and remove the textures that are not valid sampler2D
+            if (shaders_.first->sampler2D_.count(tex->first) < 1)
+                program_.removeTexture(tex->first);
+        }
+
         // done
         shaders_.first->uniforms_changed_ = false;
     }
@@ -408,6 +450,8 @@ void ImageFilter::draw (FrameBuffer *input)
         if (buffers_.second != nullptr)
             delete buffers_.second;
         buffers_.second = new FrameBuffer( buffers_.first->resolution(), buffers_.first->flags() );
+        // force update 
+        updateParameters();
         // forced draw
         forced = true;
     }
@@ -415,8 +459,18 @@ void ImageFilter::draw (FrameBuffer *input)
     if ( enabled() || forced )
     {
         // FIRST PASS
-        if (channel1_output_session)
-            shaders_.first->secondary_texture = Mixer::manager().session()->frame()->texture();
+
+        // loop over sampler2D uniforms to bind textures 
+        uint texture_unit = 0;
+        for (auto u = shaders_.first->sampler2D_.begin(); u != shaders_.first->sampler2D_.end(); ++u) {
+            // setup mask texture
+            glActiveTexture(GL_TEXTURE2 + texture_unit++);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glBindTexture  (GL_TEXTURE_2D, u->second);
+            glActiveTexture(GL_TEXTURE0);
+        }
+
         // render input surface into frame buffer
         buffers_.first->begin();
         surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
@@ -424,8 +478,6 @@ void ImageFilter::draw (FrameBuffer *input)
 
         // SECOND PASS
         if ( program_.isTwoPass() ) {
-            if (channel1_output_session)
-                shaders_.second->secondary_texture = Mixer::manager().session()->frame()->texture();
             // render filtered surface from first pass into frame buffer
             buffers_.second->begin();
             surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
@@ -449,6 +501,7 @@ FilteringProgram ImageFilter::program () const
 #define REGEX_UNIFORM_DECLARATION "uniform\\s+float\\s+"
 #define REGEX_VARIABLE_NAME "[a-zA-Z_][\\w]+"
 #define REGEX_UNIFORM_VALUE "(\\s*=\\s*[[:digit:]]+(\\.[[:digit:]]*)?)?\\s*\\;"
+#define REGEX_SAMPLER_DECLARATION "uniform\\s+sampler2D\\s+"
 
 void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string> *ret)
 {
@@ -512,9 +565,33 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
                 else
                     program_.setParameter(varname, 0.f);
             }
+            else
+                program_.setParameter(varname, 0.f);
         }
         // keep parsing
         glslcode = found_uniform.suffix().str();
+    }
+
+    // Parse code to detect additional declaration of uniform sampler2D
+    // Search for "uniform sampler2D" and a variable name
+    glslcode = codes.first;
+    std::smatch found_sampler2D;
+    std::regex is_a_sampler2D(REGEX_SAMPLER_DECLARATION REGEX_VARIABLE_NAME);
+    // loop over every uniform declarations in the GLSL code
+    while (std::regex_search(glslcode, found_sampler2D, is_a_sampler2D)) {
+        // found a complete declaration of uniform sampler2D
+        std::string declaration = found_sampler2D.str();
+        // extract variable name by erasing everything else
+        std::string varname =
+            std::regex_replace(declaration,std::regex(REGEX_SAMPLER_DECLARATION),"");
+        if  (!varname.empty()) {
+            // add new detected texture with unknown source
+            if ( !program_.hasTexture(varname) ){
+                program_.setTexture(varname, 0);
+            }
+        }
+        // keep parsing
+        glslcode = found_sampler2D.suffix().str();
     }
 
     // SECOND PASS
@@ -530,6 +607,35 @@ void ImageFilter::updateParameters()
 {
     // change uniforms
     shaders_.first->uniforms_ = program_.parameters();
+
+    // change textures into sampler2D
+    auto texturelist = program_.textures();
+    if ( !texturelist.empty() ) {
+        auto copy_sampler2D = shaders_.first->sampler2D_;
+        for (auto T = texturelist.begin(); T != texturelist.end(); ++T) {
+            // get texture id from source
+            uint texture_id = Resource::getTextureBlack();
+            Source *s = Mixer::manager().findSource(T->second);
+            if ( s != nullptr ) 
+                texture_id = s->texture();
+
+            // set or insert a texture id into sampler2D list
+            shaders_.first->sampler2D_[T->first] = texture_id;
+
+            // remove from copy list
+            if ( copy_sampler2D.find(T->first) != copy_sampler2D.end() ) {
+                copy_sampler2D.erase(T->first);
+            }
+        }
+        // remove textures that are not used anymore
+        for (auto S = copy_sampler2D.begin(); S != copy_sampler2D.end(); ++S) {
+            shaders_.first->sampler2D_.erase(S->first);
+        }
+    }
+    else {
+        // no texture, clear sampler2D list
+        shaders_.first->sampler2D_.clear();
+    }
 
     if ( program_.isTwoPass() )
         shaders_.second->uniforms_ = program_.parameters();
@@ -555,6 +661,26 @@ void ImageFilter::setProgramParameter(const std::string &p, float value)
     updateParameters();
 }
 
+void ImageFilter::setProgramTextures(const std::map< std::string, uint64_t > &textures)
+{
+    for (const auto &p : textures) {
+        if (p.first.empty())
+            return;
+    }
+
+    program_.setTextures(textures);
+    updateParameters();
+}
+
+void ImageFilter::setProgramTexture(const std::string &p, uint64_t id)
+{
+    if (p.empty())
+        return;
+
+    program_.setTexture(p, id);
+    updateParameters();
+}
+
 ////////////////////////////////////////
 /////                                 //
 ////  RESAMPLING FILTERS             ///
@@ -573,7 +699,7 @@ std::vector< FilteringProgram > ResampleFilter::programs_ = {
 
 ResampleFilter::ResampleFilter (): ImageFilter(), factor_(RESAMPLE_INVALID)
 {
-    channel1_output_session = false;
+    
 }
 
 void ResampleFilter::setFactor(int factor)
@@ -711,7 +837,6 @@ std::vector< FilteringProgram > BlurFilter::programs_ = {
 BlurFilter::BlurFilter (): ImageFilter(), method_(BLUR_INVALID), mipmap_buffer_(nullptr)
 {
     mipmap_surface_ = new Surface;
-    channel1_output_session = false;
 }
 
 BlurFilter::~BlurFilter ()
@@ -853,7 +978,7 @@ std::vector< FilteringProgram > SharpenFilter::programs_ = {
 
 SharpenFilter::SharpenFilter (): ImageFilter(), method_(SHARPEN_INVALID)
 {
-    channel1_output_session = false;
+    
 }
 
 void SharpenFilter::setMethod(int method)
@@ -931,7 +1056,7 @@ std::vector< FilteringProgram > SmoothFilter::programs_ = {
 
 SmoothFilter::SmoothFilter (): ImageFilter(), method_(SMOOTH_INVALID)
 {
-    channel1_output_session = false;
+    
 }
 
 void SmoothFilter::setMethod(int method)
@@ -1002,7 +1127,7 @@ std::vector< FilteringProgram > EdgeFilter::programs_ = {
 
 EdgeFilter::EdgeFilter (): ImageFilter(), method_(EDGE_INVALID)
 {
-    channel1_output_session = false;
+    
 }
 
 void EdgeFilter::setMethod(int method)
@@ -1073,7 +1198,7 @@ std::vector< FilteringProgram > AlphaFilter::programs_ = {
 
 AlphaFilter::AlphaFilter (): ImageFilter(), operation_(ALPHA_INVALID)
 {
-    channel1_output_session = false;
+    
 }
 
 void AlphaFilter::setOperation(int op)

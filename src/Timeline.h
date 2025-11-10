@@ -14,6 +14,8 @@ struct TimeInterval
 {
     GstClockTime begin;
     GstClockTime end;
+    int type; 
+
     TimeInterval()
     {
         reset();
@@ -22,22 +24,29 @@ struct TimeInterval
     {
         begin = b.begin;
         end = b.end;
+        type = b.type;
     }
     TimeInterval(GstClockTime a, GstClockTime b) : TimeInterval()
     {
         if ( a != GST_CLOCK_TIME_NONE && b != GST_CLOCK_TIME_NONE) {
             begin = MIN(a, b);
             end = MAX(a, b);
+            type = 0;
         }
     }
     inline void reset()
     {
         begin = GST_CLOCK_TIME_NONE;
         end = GST_CLOCK_TIME_NONE;
+        type = 0;
     }
     inline GstClockTime duration() const
     {
         return is_valid() ? (end - begin) : GST_CLOCK_TIME_NONE;
+    }
+    inline GstClockTime midpoint() const
+    {
+        return is_valid() ? (end - begin) / 2 + begin : GST_CLOCK_TIME_NONE;
     }
     inline bool is_valid() const
     {
@@ -137,6 +146,19 @@ public:
     bool gapAt(const GstClockTime t) const;
     bool getGapAt(const GstClockTime t, TimeInterval &gap) const;
 
+    // Manipulation of flags
+    inline TimeIntervalSet flags() const { return flags_; };
+    inline size_t numFlags() const { return flags_.size(); };
+    float *flagsArray();
+    bool addFlag(GstClockTime t, int type = 0);
+    bool addFlag(TimeInterval s, int type = 0);
+    bool removeFlagAt(GstClockTime t);
+    bool isFlagged(GstClockTime t) const;
+    int  flagTypeAt(GstClockTime t) const;
+    void setFlagTypeAt(GstClockTime t, int type);
+    TimeInterval getNextFlag(GstClockTime t) const;
+    void clearFlags();
+    
     // inverse of gaps: sections of play areas
     TimeIntervalSet sections() const;
     GstClockTime sectionsDuration() const;
@@ -190,6 +212,11 @@ private:
     float fadingArray_[MAX_TIMELINE_ARRAY];
     bool fading_array_changed_, fading_array_allones_;
 
+    TimeIntervalSet flags_;
+    float flagsArray_[MAX_TIMELINE_ARRAY];
+    bool flags_array_need_update_;
+    // synchronize data structures
+    void fillArrayFromFlags(float *array, size_t array_size);
 };
 
 #endif // TIMELINE_H

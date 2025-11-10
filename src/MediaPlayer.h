@@ -328,6 +328,7 @@ private:
     GstClockTime position_;
     LoopMode loop_;
     LoopStatus loop_status_;
+    LoopStatus flag_status_;
     GstState desired_state_;
     GstElement *pipeline_;
     GstBus *bus_;

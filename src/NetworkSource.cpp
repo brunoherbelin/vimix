@@ -115,8 +115,10 @@ void wait_for_stream_(UdpListeningReceiveSocket *receiver)
 void NetworkStream::connect(const std::string &nameconnection)
 {
     // start fresh
-    if (connected())
+    if (connected()) {
+        std::this_thread::sleep_for (std::chrono::milliseconds(80));
         disconnect();
+    }
 
     received_config_ = false;
 
@@ -243,21 +245,22 @@ void NetworkStream::update()
             // make sure the shared memory socket exists
             if (config_.protocol == NetworkToolkit::SHM_RAW) {
                 // for shared memory, the parameter is a file location in settings
-                parameter = SystemToolkit::full_filename(SystemToolkit::temp_path(), "shm") + parameter;
+                std::string shm_file = SystemToolkit::full_filename(SystemToolkit::temp_path(), "shm") + parameter;
                 // try few times to see if file exists and wait 20ms each time
-                for(int trial = 0; trial < 5; trial ++){
-                    if ( SystemToolkit::file_exists(parameter))
+                for(int trial = 0; trial < 50; trial ++){
+                    if ( SystemToolkit::file_exists(shm_file))
                         break;
-                    std::this_thread::sleep_for (std::chrono::milliseconds(20));
+                    std::this_thread::sleep_for (std::chrono::milliseconds(80));
                 }
                 // failed to find the shm socket file: try to reconnect
-                if (!SystemToolkit::file_exists(parameter)) {
+                if ( !SystemToolkit::file_exists(shm_file)) {
                     failed_ = true;
-                    Log::Warning("Cannot connect to %s with shared memory: reverting to UDP.", streamer_.name.c_str());
+                    Log::Warning("Cannot connect to %s with shared memory: reverting to UDP.", shm_file.c_str());
                     // quickly disconnect and re-connect
                     connect( streamer_.name );
                 }
-                parameter = "\"" + parameter + "\"";
+                else
+                    parameter = "\"" + shm_file + "\"";
             }
 
             // if not disconnected : create pipeline and open

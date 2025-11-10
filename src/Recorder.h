@@ -20,6 +20,8 @@ public:
     PNGRecorder(const std::string &basename = std::string());
     std::string filename() const { return filename_; }
 
+    FrameGrabber::Type type () const override { return FrameGrabber::GRABBER_PNG; }
+
 protected:
 
     std::string init(GstCaps *caps) override;
@@ -60,7 +62,9 @@ public:
     static const int     framerate_preset_value[3];
 
     VideoRecorder(const std::string &basename = std::string());
-    std::string info() const override;
+    FrameGrabber::Type type () const override { return FrameGrabber::GRABBER_VIDEO; }
+
+    std::string info(bool extended = false) const override;
     std::string filename() const { return filename_; }
 };
 

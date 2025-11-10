@@ -299,6 +299,9 @@ void Log::Render(bool *showWarnings)
             ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width);
             for (list<string>::iterator it=warnings.begin(); it != warnings.end(); ++it) {
                 ImGui::Text("%s \n", (*it).c_str());
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if ( ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy to clipboard") )
+                    ImGui::SetClipboardText((*it).c_str());
                 ImGui::Separator();
             }
             ImGui::PopTextWrapPos();

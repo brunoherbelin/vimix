@@ -14,11 +14,13 @@ public:
     VideoBroadcast(int port = BROADCAST_DEFAULT_PORT);
     virtual ~VideoBroadcast() {}
 
+    FrameGrabber::Type type () const override { return FrameGrabber::GRABBER_BROADCAST; }
+
     static bool available();
     inline int port() const { return port_; }
 
     void stop() override;
-    std::string info() const override;
+    std::string info(bool extended = false) const override;
 
 private:
     std::string init(GstCaps *caps) override;

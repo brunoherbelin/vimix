@@ -12,6 +12,8 @@
 
 #include "IconsFontAwesome5.h"
 
+void _drawIcon(ImVec2 screenpos, int i, int j, bool enabled = true, struct ImGuiWindow* window = nullptr );
+    
 namespace ImGuiToolkit
 {
     // Icons from resource icon.dds
@@ -50,7 +52,6 @@ namespace ImGuiToolkit
 
     // sliders
     bool SliderTiming (const char* label, uint *ms, uint v_min, uint v_max, uint v_step, const char* text_max = nullptr);
-    bool TimelineSlider (const char* label, guint64 *time, guint64 begin, guint64 first, guint64 end, guint64 step, const float width);
     void RenderTimeline (ImVec2 min_bbox, ImVec2 max_bbox, guint64 begin, guint64 end, guint64 step, bool verticalflip = false);
     void RenderTimelineBPM (ImVec2 min_bbox, ImVec2 max_bbox, double tempo, double quantum, guint64 begin, guint64 end, guint64 step, bool verticalflip = false);
     bool InvisibleSliderInt(const char* label, uint *index, uint min, uint max, const ImVec2 size);
@@ -73,7 +74,7 @@ namespace ImGuiToolkit
     void Spacing();
 
     // text input
-    bool InputTime(const char *label, guint64 *time, ImGuiInputTextFlags flag = 0);
+    bool InputTime(const char *label, guint64 *time, guint64 max_time, bool *valid, ImGuiInputTextFlags flag = 0);
     bool InputText(const char* label, std::string* str, ImGuiInputTextFlags flag = ImGuiInputTextFlags_CharsNoBlank);
     bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size = ImVec2(0, 0), int *numline = NULL);
     void TextMultiline(const char* label, const std::string &str, float width);

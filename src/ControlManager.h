@@ -24,6 +24,8 @@
 #define OSC_OUTPUT_FADING      "/fading"
 #define OSC_OUTPUT_FADE_IN     "/fade-in"
 #define OSC_OUTPUT_FADE_OUT    "/fade-out"
+#define OSC_OUTPUT_SRT_START   "/srt-start"
+#define OSC_OUTPUT_SRT_STOP    "/srt-stop"
 
 #define OSC_ALL                "/all"
 #define OSC_SELECTION          "/selection"

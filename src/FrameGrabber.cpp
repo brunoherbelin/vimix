@@ -106,6 +106,28 @@ FrameGrabber *FrameGrabbing::get(uint64_t id)
     return nullptr;
 }
 
+struct fgType
+{
+    inline bool operator()(const FrameGrabber* elem) const {
+       return (elem && elem->type() == _t);
+    }
+    explicit fgType(FrameGrabber::Type t) : _t(t) { }
+private:
+    FrameGrabber::Type _t;
+};
+
+FrameGrabber *FrameGrabbing::get(FrameGrabber::Type t)
+{
+    if (grabbers_.size() > 0 )
+    {
+        std::list<FrameGrabber *>::iterator iter = std::find_if(grabbers_.begin(), grabbers_.end(), fgType(t));
+        if (iter != grabbers_.end())
+            return (*iter);
+    }
+
+    return nullptr;
+}
+
 void FrameGrabbing::stopAll()
 {
     std::list<FrameGrabber *>::iterator iter;
@@ -290,6 +312,9 @@ FrameGrabber::~FrameGrabber()
         gst_object_unref (timer_);
 
     if (pipeline_ != nullptr) {
+        // ignore errors on ending
+        gst_bus_set_flushing(gst_element_get_bus(pipeline_), true);
+        // force pipeline stop
         GstState state = GST_STATE_NULL;
         gst_element_set_state (pipeline_, state);
         gst_element_get_state (pipeline_, &state, NULL, GST_CLOCK_TIME_NONE);
@@ -349,8 +374,37 @@ void FrameGrabber::stop ()
 
 }
 
-std::string FrameGrabber::info() const
+std::string FrameGrabber::info(bool extended) const
 {
+    if (extended) {
+        std::string typestring;
+        switch ( type() )
+        {
+        case GRABBER_PNG :
+        typestring = "Portable Network Graphics frame grabber";
+            break;
+        case GRABBER_VIDEO :
+        typestring = "Video file frame grabber";
+            break;
+        case GRABBER_P2P :
+        typestring = "Peer-to-Peer stream frame grabber";
+            break;
+        case GRABBER_BROADCAST :
+        typestring = "SRT Broarcast frame grabber";
+            break;
+        case GRABBER_SHM :
+        typestring = "Shared Memory frame grabber";
+            break;
+        case GRABBER_LOOPBACK :
+        typestring = "Loopback frame grabber";
+            break;
+        default:
+        typestring = "Generic frame grabber";
+            break;
+        }
+        return typestring;
+    }
+
     if (!initialized_)
         return "Initializing";
     if (active_)
@@ -387,7 +441,7 @@ GstBusSyncReply FrameGrabber::signal_handler(GstBus *, GstMessage *msg, gpointer
         // inform user
         GError *error;
         gst_message_parse_error(msg, &error, NULL);
-        Log::Warning("FrameGrabber %s : %s",
+        Log::Warning("FrameGrabber Error %s : %s",
                      std::to_string(reinterpret_cast<FrameGrabber *>(ptr)->id()).c_str(),
                      error->message);
         g_error_free(error);
@@ -602,4 +656,41 @@ uint FrameGrabber::buffering() const
 guint64 FrameGrabber::frames() const
 {
     return frame_count_;
+}
+
+
+void Broadcast::start(FrameGrabber *ptr)
+{
+    stop( ptr->type() );
+    FrameGrabbing::manager().add(ptr);
+}
+
+bool Broadcast::busy(FrameGrabber::Type T)
+{
+    FrameGrabber *ptr = FrameGrabbing::manager().get( T );
+    if (ptr != nullptr)        
+        return ptr->busy();
+    
+    return false;
+}
+
+std::string Broadcast::info(FrameGrabber::Type T, bool extended)
+{
+    FrameGrabber *ptr = FrameGrabbing::manager().get( T );
+    if (ptr != nullptr)        
+        return ptr->info(extended);
+    
+    return "Disabled";
+}
+
+bool Broadcast::enabled(FrameGrabber::Type T)
+{
+    return ( FrameGrabbing::manager().get( T ) != nullptr);
+}
+
+void Broadcast::stop(FrameGrabber::Type T)
+{
+    FrameGrabber *prev = FrameGrabbing::manager().get( T );
+    if (prev != nullptr)        
+        prev->stop();
 }

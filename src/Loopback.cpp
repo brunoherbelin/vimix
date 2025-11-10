@@ -175,16 +175,21 @@ void Loopback::stop ()
     active_ = false;
 }
 
-std::string Loopback::info() const
+std::string Loopback::info(bool extended) const
 {
     std::ostringstream ret;
 
-    if (!initialized_)
-        ret << "Loopback starting..";
-    else if (active_)
-        ret << "V4L2 Loopback on " << device_name();
-    else
-        ret << "Loopback terminated";
+    if (extended) {
+        ret << device_name();
+    }
+    else {
+        if (!initialized_)
+            ret << "Loopback starting..";
+        else if (active_)
+            ret << "V4L2 Loopback on " << device_name();
+        else
+            ret << "Loopback terminated";
+    }
 
     return ret.str();
 }
