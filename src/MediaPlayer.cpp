@@ -77,6 +77,7 @@ MediaPlayer::MediaPlayer()
     position_ = GST_CLOCK_TIME_NONE;
     loop_ = LoopMode::LOOP_REWIND;
     loop_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
+    flag_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
     fading_mode_ = FadingMode::FADING_COLOR;
 
     // start index in frame_ stack
@@ -1121,6 +1122,7 @@ bool MediaPlayer::go_to(GstClockTime pos)
 
         GstClockTime jumpPts = pos;
 
+        // jump in a gap
         if (timeline_.getGapAt(pos, gap)) {
             // if in a gap, find closest seek target
             if (gap.is_valid()) {
@@ -1132,6 +1134,12 @@ bool MediaPlayer::go_to(GstClockTime pos)
         if (ABS_DIFF (position_, jumpPts) > 2 * timeline_.step() ) {
             ret = true;
             seek( jumpPts );
+
+            // timeline flags for target jump position
+            if (timeline_.flagTypeAt(jumpPts) == LoopStatus::LOOP_STATUS_BLACKOUT)
+                loop_status_ = flag_status_ = LoopStatus::LOOP_STATUS_BLACKOUT;
+            else
+                loop_status_ = flag_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
         }
     }
     return ret;

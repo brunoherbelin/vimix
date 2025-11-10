@@ -2292,21 +2292,23 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         // flag buttons
         if ( !mediaplayer_mode_ && mediaplayer_active_->timeline()->numFlags() > 0 ) {
 
+            GstClockTime _paused_time = mediaplayer_active_->position();
+
             ImGui::SameLine(0, h_space_);
             if( ImGuiToolkit::ButtonIcon(3, 0, "Go to next flag") ){
                 // find next flag and go to its midpoint
-                TimeInterval next_flag = mediaplayer_active_->timeline()->getNextFlag( mediaplayer_active_->position() );
+                TimeInterval next_flag = mediaplayer_active_->timeline()->getNextFlag( _paused_time );
                 if ( next_flag.is_valid() ) 
-                    mediaplayer_active_->go_to( next_flag.midpoint() );
+                    mediaplayer_active_->go_to( next_flag.begin );
             }
 
             // if stopped at a flag, show flag type editor
-            if (mediaplayer_active_->timeline()->isFlagged( mediaplayer_active_->position() )) {
+            if (mediaplayer_active_->timeline()->isFlagged( _paused_time )) {
                 static int current_flag = 0;
-                current_flag = mediaplayer_active_->timeline()->flagTypeAt( mediaplayer_active_->position() );
+                current_flag = mediaplayer_active_->timeline()->flagTypeAt( _paused_time );
                 ImGui::SameLine(0, h_space_);
                 if ( ImGuiToolkit::IconMultistate(icons_flags, &current_flag, tooltips_flags) ){
-                    mediaplayer_active_->timeline()->setFlagTypeAt( mediaplayer_active_->position(), current_flag );
+                    mediaplayer_active_->timeline()->setFlagTypeAt( _paused_time, current_flag );
                     oss << ": Flag type changed";
                     Action::manager().store(oss.str());
                 }
