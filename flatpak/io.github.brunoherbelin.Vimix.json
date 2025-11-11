@@ -142,8 +142,8 @@
             "sources": [
               {
                 "type": "git",
-                "tag": "1.26.7",
-                "commit": "c5a5c302f5e7218182c0633decec16b25de82add",
+                "tag": "1.26.8",
+                "commit": "16d77e12ad213ef24e76a8cc34d347b8221c9975",
                 "url": "https://gitlab.freedesktop.org/gstreamer/gstreamer.git",
                 "disable-submodules": false
               }
