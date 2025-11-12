@@ -69,6 +69,7 @@ struct TimeInterval
         if (this != &b) {
             this->begin = b.begin;
             this->end = b.end;
+            this->type = b.type;
         }
         return *this;
     }
@@ -150,13 +151,16 @@ public:
     inline TimeIntervalSet flags() const { return flags_; };
     inline size_t numFlags() const { return flags_.size(); };
     float *flagsArray();
-    bool addFlag(GstClockTime t, int type = 0);
-    bool addFlag(TimeInterval s, int type = 0);
+    bool addFlag(TimeInterval f);
+    bool replaceFlag(TimeInterval f);
+    bool addFlagAt(GstClockTime t, int type = 0);
     bool removeFlagAt(GstClockTime t);
     bool isFlagged(GstClockTime t) const;
     int  flagTypeAt(GstClockTime t) const;
     void setFlagTypeAt(GstClockTime t, int type);
+    TimeInterval getFlagAt(GstClockTime t) const;
     TimeInterval getNextFlag(GstClockTime t) const;
+    TimeInterval getPreviousFlag(GstClockTime t) const;
     void clearFlags();
     
     // inverse of gaps: sections of play areas
