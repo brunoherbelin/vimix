@@ -36,22 +36,18 @@ Install the runtime environments:
     flatpak install org.gnome.Platform
 
 
-_Select version **47** in the list of proposed versions_
+_Select version **49** in the list of proposed versions_
 
 
 ### 2. Build vimix flatpak
 
-These settings of git are needed to enable clone of local repos during build:
+These settings of git are needed to enable clone of local repos during build (done only once):
 
     git config --global --add protocol.file.allow always
 
-Get the flatpak manifest for vimix:
-
-    curl -O https://raw.githubusercontent.com/brunoherbelin/vimix/beta/flatpak/io.github.brunoherbelin.Vimix.json
-
 Launch the build of the flatpak:
 
-    flatpak-builder --user --install --force-clean build io.github.brunoherbelin.Vimix.json
+    flatpak-builder --user --install --from-git=https://github.com/brunoherbelin/vimix.git --from-git-branch=beta --delete-build-dirs --force-clean build flatpak/io.github.brunoherbelin.Vimix.json
 
 The build will be quite long as some dependencies are also re-build from source. However, the build of dependencies is kept in cache; rebuilding vimix will subsequently be much faster.
 
@@ -85,7 +81,7 @@ To build the vimix flatpak with code from local folder (debugging), change the f
             "sources": [
                 {
                 "type":"dir",
-                "path": "/home/bhbn/Development/vimix",
+                "path": "[your_development_dir]/vimix",
                 }
             ]
         }
