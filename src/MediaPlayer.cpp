@@ -1091,7 +1091,7 @@ void MediaPlayer::step(uint milisecond)
     else {
         // step event
         if (milisecond < media_.dt)
-            milisecond = media_.dt;
+            milisecond = timeline_.step() < media_.dt ? timeline_.step() : media_.dt;
         GstEvent *stepevent = gst_event_new_step (GST_FORMAT_TIME, milisecond, ABS(rate_), TRUE,  FALSE);
 
         // Metronome
