@@ -26,6 +26,9 @@
 
 // ImGui
 #include "ImGuiToolkit.h"
+#include "Timeline.h"
+#include "gst/gstclock.h"
+#include "imgui.h"
 #include "imgui_internal.h"
 
 #include "defines.h"
@@ -702,9 +705,9 @@ bool EditTimeline(const char *label,
                 // exception: if flag was removed at same time, do not add it back
                 if ( removed_flag_time != time ) {
                     if (removed_flag_type >= 0)
-                        tl->addFlag(time, removed_flag_type);
+                        tl->addFlagAt(time, removed_flag_type);
                     else
-                        tl->addFlag(time, Settings::application.widget.media_player_timeline_flag);
+                        tl->addFlagAt(time, Settings::application.widget.media_player_timeline_flag);
                 }
                 removed_flag_time = 0;
                 removed_flag_type = -1;
@@ -769,7 +772,7 @@ bool EditTimeline(const char *label,
                 break;
             case TimelinePayload::FLAG_ADD:
                 _tl = *tl;
-                _tl.addFlag(time, pl->argument);
+                _tl.addFlagAt(time, pl->argument);
                 flags_array = _tl.flagsArray();
                 break;
             case TimelinePayload::FLAG_REMOVE:
@@ -869,7 +872,7 @@ bool EditTimeline(const char *label,
     return array_changed;
 }
 
-bool TimelineSlider (const char* label, guint64 *time, Timeline *tl, const float width)
+bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timeline *tl, const float width)
 {
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -908,52 +911,16 @@ bool TimelineSlider (const char* label, guint64 *time, Timeline *tl, const float
     // units conversion: from time to float (calculation made with higher precision first)
     float time_ = static_cast<float> ( static_cast<double>(*time - tl->begin()) / static_cast<double>(tl->duration()) );
 
-   // Render the bounding box
-    const ImU32 frame_col = ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : g.HoveredId == id ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
-    ImGui::RenderFrame(bbox.Min, bbox.Max, frame_col, true, style.FrameRounding);
-
-    // render the timeline
-    ImGuiToolkit::RenderTimeline(timeline_bbox.Min, timeline_bbox.Max, tl->begin(), tl->end(), tl->step());
-
     //
-    // FLAGS
-    //
-    bool flag_clicked = false;
-    const TimeIntervalSet flags = tl->flags();
-    for (const auto &flag_Interval : flags) {
-
-        GstClockTime flag_time = flag_Interval.midpoint();
-        float flag_pos_ = static_cast<float> ( static_cast<double>(flag_time - tl->begin()) / static_cast<double>(tl->duration()) );
-        ImVec2 flag_pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), flag_pos_);
-        flag_pos -= ImVec2(2.f, -3.f); 
-
-        bool hovered = false, held = false;
-        ImRect bb(flag_pos, flag_pos + ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()));
-
-        const ImGuiID fid = window->GetID((void*)(intptr_t)(flag_time));
-        if ( ImGui::ButtonBehavior(bb, fid, &hovered, &held, ImGuiButtonFlags_PressedOnClick) ) {
-            *time = flag_time;
-            flag_clicked = true;
-        }
-
-        // icon depends on flag type
-        _drawIcon(flag_pos, 11 + flag_Interval.type, 6, hovered, window);
-        // show time when hovering
-        if (hovered) 
-            ImGui::SetTooltip(" %s ", GstToolkit::time_to_string(flag_time).c_str());
-    }   
-
-    //
-    // GET SLIDER INPUT AND PERFORM CHANGES AND DECISIONS
+    // GET INPUT 
     //
 
     // read user input from system
     bool left_mouse_press = false;
-    const bool hovered = ImGui::ItemHoverable(bbox, id);
+    bool hovered = ImGui::ItemHoverable(bbox, id);
     bool temp_input_is_active = ImGui::TempInputIsActive(id);
 
-    // slider only if no flag clicked
-    if (!flag_clicked && !temp_input_is_active)
+    if (!temp_input_is_active)
     {
         const bool focus_requested = ImGui::FocusableItemRegister(window, id);
         left_mouse_press = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left);
@@ -965,30 +932,76 @@ bool TimelineSlider (const char* label, guint64 *time, Timeline *tl, const float
         }
     }
 
-    // time Slider behavior
+    //
+    // BACKGROUND
+    //
+
+    // Render the bounding box
+    const ImU32 frame_col = ImGui::GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : g.HoveredId == id ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+    ImGui::RenderFrame(bbox.Min, bbox.Max, frame_col, true, style.FrameRounding);
+
+    // render the timeline
+    ImGuiToolkit::RenderTimeline(timeline_bbox.Min, timeline_bbox.Max, tl->begin(), tl->end(), tl->step());
+
+    //
+    // FLAGS 
+    //
+    bool flag_pressed = false;
+    const TimeIntervalSet flags = tl->flags();
+    for (const auto &flag_Interval : flags) {
+
+        // set position in screen corresponding to flag time
+        GstClockTime flag_time = flag_Interval.midpoint();
+        float flag_pos_ = static_cast<float> ( static_cast<double>(flag_time - tl->begin()) / static_cast<double>(tl->duration()) );
+        ImVec2 draw_pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), flag_pos_);
+        draw_pos -= ImVec2(2.f, -3.f); 
+
+        // simulate Button behavior : if mouse hovering flag and mouse pressed
+        ImRect bb(draw_pos, draw_pos + ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()));
+        bool hovered = ImGui::ItemHoverable(bb, id);
+        if (hovered && left_mouse_press) {
+            flag_pressed = true;
+            *flag = flag_Interval;
+            ImGui::MarkItemEdited(id);
+        }
+
+        // icon depends on flag type & color on hovered
+        ImGui::PushStyleColor( ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_NavHighlight) );
+        _drawIcon(draw_pos, 11 + flag_Interval.type, 6, hovered, window);
+        ImGui::PopStyleColor();
+
+        // show time when hovering
+        if (hovered) 
+            ImGui::SetTooltip(" %s ", GstToolkit::time_to_string(flag_time).c_str());
+    }   
+
+    //
+    // CURSOR 
+    //
+    bool cursor_pressed = false;
     ImRect grab_slider_bb;
     ImU32 grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrab);
 
-    float time_slider = time_ * 10.f; // x 10 precision on grab
-    float time_zero = 0.f;
-    float time_end = 10.f;
-    bool value_changed = ImGui::SliderBehavior(slider_bbox, id, ImGuiDataType_Float, &time_slider, &time_zero,
-                                            &time_end, "%.2f", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
+    if (!flag_pressed) 
+    {
+        float time_slider = time_ * 10.f; // x 10 precision on grab
+        float time_zero = 0.f;
+        float time_end = 10.f;
+        cursor_pressed = ImGui::SliderBehavior(slider_bbox, id, ImGuiDataType_Float, &time_slider, &time_zero,
+                                                &time_end, "%.2f", 1.f, ImGuiSliderFlags_None, &grab_slider_bb);
 
-    if (value_changed){
+        if (cursor_pressed){
 
-        *time = static_cast<guint64> ( 0.1 * static_cast<double>(time_slider) * static_cast<double>(tl->duration()) );
-        if (tl->first() != GST_CLOCK_TIME_NONE)
-            *time -= tl->first();
-        grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrabActive);
+            *time = static_cast<guint64> ( 0.1 * static_cast<double>(time_slider) * static_cast<double>(tl->duration()) );
+            if (tl->first() != GST_CLOCK_TIME_NONE)
+                *time -= tl->first();
+            grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrabActive);
 
-        ImGui::MarkItemEdited(id);
+            ImGui::MarkItemEdited(id);
+        }
+        
     }
 
-    //
-    // RENDER CURSOR
-    //
- 
     // draw slider grab handle
     if (grab_slider_bb.Max.x > grab_slider_bb.Min.x) {
         window->DrawList->AddRectFilled(grab_slider_bb.Min, grab_slider_bb.Max, grab_slider_color, style.GrabRounding);
@@ -998,7 +1011,7 @@ bool TimelineSlider (const char* label, guint64 *time, Timeline *tl, const float
     pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), time_) - ImVec2(cursor_width, 2.f);
     ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_SliderGrab), ImGuiDir_Up);
 
-    return (flag_clicked || left_mouse_press);
+    return cursor_pressed;
 }
 
 
@@ -2165,7 +2178,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     static std::vector< std::pair<int, int> > icons_loop = { {0, 15}, {1, 15}, {19, 14}, {18, 14} };
     static std::vector< std::string > tooltips_loop = { "Stop at end", "Loop to start", "Bounce (reverse speed)", "Stop and blackout at end" };
     static std::vector< std::pair<int, int> > icons_flags = { {11, 6}, {12, 6}, {13, 6} };
-    static std::vector< std::string > tooltips_flags = { "Bookmark", "Stop Flag", "Blackout Flag" };
+    static std::vector< std::string > tooltips_flags = { " Bookmark", " Stop Flag", " Blackout Flag" };
 
     double current_play_speed = mediaplayer_active_->playSpeed();
     static uint counter_menu_timeout = 0;
@@ -2180,6 +2193,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         // seek position
         guint64 seek_t = mediaplayer_active_->position();
+        TimeInterval seek_flag;
 
         // scrolling sub-window
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1.f, 1.f));
@@ -2215,7 +2229,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 }
                 // custom timeline slider
                 // TODO  : if (mediaplayer_active_->syncToMetronome() > Metronome::SYNC_NONE)
-                mediaplayer_slider_pressed_ = TimelineSlider("##timeline", &seek_t, tl, size.x);
+                mediaplayer_slider_pressed_ = TimelineSlider("##timeline", &seek_t, &seek_flag, tl, size.x);
             }
         }
         ImGui::EndChild();
@@ -2290,40 +2304,53 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         }
 
         // flag buttons
-        if ( !mediaplayer_mode_ && mediaplayer_active_->timeline()->numFlags() > 0 ) {
+        if (rendersize.x > buttons_height_ * 6.0f) {
+            if ( !mediaplayer_mode_ && mediaplayer_active_->timeline()->numFlags() > 0 ) {
 
-            GstClockTime _paused_time = mediaplayer_active_->position();
+                GstClockTime _paused_time = mediaplayer_active_->position();
 
-            ImGui::SameLine(0, h_space_);
-            if( ImGuiToolkit::ButtonIcon(3, 0, "Go to next flag") ){
-                // find next flag and go to its midpoint
-                TimeInterval next_flag = mediaplayer_active_->timeline()->getNextFlag( _paused_time );
-                if ( next_flag.is_valid() ) 
-                    mediaplayer_active_->go_to( next_flag.begin );
-            }
-
-            // if stopped at a flag, show flag type editor
-            if (mediaplayer_active_->timeline()->isFlagged( _paused_time )) {
-                static int current_flag = 0;
-                current_flag = mediaplayer_active_->timeline()->flagTypeAt( _paused_time );
                 ImGui::SameLine(0, h_space_);
-                if ( ImGuiToolkit::IconMultistate(icons_flags, &current_flag, tooltips_flags) ){
-                    mediaplayer_active_->timeline()->setFlagTypeAt( _paused_time, current_flag );
-                    oss << ": Flag type changed";
-                    Action::manager().store(oss.str());
+                if( mediaplayer_active_->playSpeed() < 0 ) {
+                    // Go to previous flag when playing backward
+                    TimeInterval target_flag = mediaplayer_active_->timeline()->getPreviousFlag( _paused_time );
+                    bool has_prev = target_flag.is_valid() && 
+                      !( mediaplayer_active_->currentFlag().is_valid() && mediaplayer_active_->timeline()->numFlags() == 1) &&
+                      ( mediaplayer_active_->loop() == MediaPlayer::LOOP_REWIND || (target_flag.end < _paused_time) );
+                    if( ImGuiToolkit::ButtonIcon(6, 0, "Go to previous flag", has_prev) )
+                        mediaplayer_active_->go_to_flag( target_flag );
+                }
+                else {
+                    // go to next flag when playing forward
+                    TimeInterval target_flag = mediaplayer_active_->timeline()->getNextFlag( _paused_time );
+                    bool has_next = target_flag.is_valid() && 
+                      !( mediaplayer_active_->currentFlag().is_valid() && mediaplayer_active_->timeline()->numFlags() == 1) &&
+                      ( mediaplayer_active_->loop() == MediaPlayer::LOOP_REWIND || (target_flag.begin > _paused_time) );
+                    if( ImGuiToolkit::ButtonIcon(5, 0, "Go to next flag", has_next) )
+                        mediaplayer_active_->go_to_flag( target_flag );
+                }
+
+                // if stopped at a flag, show flag menu
+                if (mediaplayer_active_->currentFlag().is_valid()) {
+                    ImGui::SameLine(0, h_space_);
+                    if (ImGuiToolkit::IconButton(3, 0) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+                        counter_menu_timeout=0;
+                        ImGui::OpenPopup( "MenuMediaPlayerFlags" );
+                    }
                 }
             }
-        }
-        else {
-            ImGui::SameLine(0, h_space_);
-            ImGuiToolkit::ButtonIcon(3, 0, nullptr, false);
+            else {
+                ImGui::SameLine(0, h_space_);
+                ImGuiToolkit::ButtonIcon(mediaplayer_active_->playSpeed() < 0 ? 6 : 5, 0, nullptr, false);
+            }
         }
 
         // right aligned buttons (if enough space)
-        if ( rendersize.x > min_width_ * 1.5f ) {
+        if ( rendersize.x > buttons_height_ * 9.5f ) {
+
+            ImGui::SameLine();
+            ImGui::SetCursorPosX(rendersize.x - buttons_height_ * 4.f);
 
             // loop modes button
-            ImGui::SameLine(0, MAX(h_space_ , rendersize.x - min_width_ * 1.55f) );
             static int current_loop = 0;
             current_loop = (int) mediaplayer_active_->loop();
             if ( ImGuiToolkit::IconMultistate(icons_loop, &current_loop, tooltips_loop) )
@@ -2331,7 +2358,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
             // speed slider
             ImGui::SameLine(0, h_space_);
-            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - buttons_height_ );
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - buttons_height_ - h_space_);
             float s = fabs(static_cast<float>(current_play_speed));
             if (ImGui::DragFloat( "##Speed", &s, 0.01f, 0.1f, 10.f, UNICODE_MULTIPLY " %.2f"))
                 mediaplayer_active_->setPlaySpeed( SIGN(current_play_speed) * static_cast<double>(s) );
@@ -2370,6 +2397,16 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         // play/stop command should be following the playing mode (buttons)
         // AND force to stop when the slider is pressed
         bool media_play = mediaplayer_mode_ & (!mediaplayer_slider_pressed_);
+
+        // Flag pressed in timeline
+        if (seek_flag.is_valid()) {
+            // go to the flag position
+            if ( mediaplayer_active_->go_to_flag(seek_flag) ){
+                // stop if flag type is 'Stop' (1) or 'Blackout' (2)
+                if (seek_flag.type > 0)
+                    media_play = false;
+            }
+        }
 
         // apply play action to media only if status should change
         if ( mediaplayer_active_->isPlaying() != media_play ) {
@@ -2432,6 +2469,35 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::EndPopup();
     }
     
+    if (ImGui::BeginPopup( "MenuMediaPlayerFlags" ))
+    {
+        int num_flags = static_cast<int>(icons_flags.size());
+        TimeInterval copy_flag = mediaplayer_active_->currentFlag();
+        for (int i = 0; i < num_flags; ++i) {
+            if (ImGuiToolkit::MenuItemIcon(icons_flags[i].first,icons_flags[i].second, 
+                tooltips_flags[i].c_str(), nullptr, copy_flag.type == i )) {
+                copy_flag.type = i;    
+                mediaplayer_active_->timeline()->replaceFlag( copy_flag );
+                mediaplayer_active_->setCurrentFlag( copy_flag );
+                oss << ": Flag changed";
+                Action::manager().store(oss.str());
+            }
+        }
+        ImGui::Separator();
+        if (ImGuiToolkit::MenuItemIcon(2,0, "Delete flag")) {
+            mediaplayer_active_->timeline()->removeFlagAt(mediaplayer_active_->currentFlag().midpoint() );
+            oss << ": Flag removed";
+            Action::manager().store(oss.str());
+        }
+
+        if (ImGui::IsWindowHovered())
+            counter_menu_timeout=0;
+        else if (++counter_menu_timeout > 10)
+            ImGui::CloseCurrentPopup();
+
+        ImGui::EndPopup();
+    }
+
     ///
     /// Window area to edit gaps or fading
     ///
@@ -2758,7 +2824,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::SetCursorPos( ImVec2(w, draw_pos.y));
             if (ImGuiToolkit::ButtonIcon(1, 0, "Add flag at given time", target_time_valid)) {
                 tl->removeFlagAt(target_time);
-                tl->addFlag(target_time, Settings::application.widget.media_player_timeline_flag);
+                tl->addFlagAt(target_time, Settings::application.widget.media_player_timeline_flag);
                 tl->refresh();
                 oss << ": Timeline flag add";
                 Action::manager().store(oss.str());
@@ -2768,7 +2834,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (ImGuiToolkit::ButtonIcon(0, 0, "Add flag at cursor position", !mediaplayer_active_->isPlaying()) ) {
                 tl->removeFlagAt(mediaplayer_active_->position());
-                tl->addFlag(mediaplayer_active_->position(), Settings::application.widget.media_player_timeline_flag);
+                tl->addFlagAt(mediaplayer_active_->position(), Settings::application.widget.media_player_timeline_flag);
                 tl->refresh();
                 oss << ": Timeline flag add";
                 Action::manager().store(oss.str());
