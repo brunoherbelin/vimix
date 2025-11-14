@@ -22,6 +22,7 @@
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
 
+#include "Timeline.h"
 #include "defines.h"
 #include "Log.h"
 #include "Resource.h"
@@ -1121,6 +1122,7 @@ bool MediaPlayer::go_to(GstClockTime pos)
 
         GstClockTime jumpPts = pos;
 
+        // jump in a gap
         if (timeline_.getGapAt(pos, gap)) {
             // if in a gap, find closest seek target
             if (gap.is_valid()) {
@@ -1399,18 +1401,23 @@ void MediaPlayer::update()
                     need_loop = true;
             }
         }
-        // test if position is flagged
+        // detect flags if playing 
         else if ( isPlaying() ) {
-            int t  = timeline_.flagTypeAt(position_);
-            if ( t > 0  ) {
-            // Avoid to pause repeatedly when inside a flagged section
-                if (flag_status_ == LoopStatus::LOOP_STATUS_DEFAULT) {
-                    loop_status_ = flag_status_ = (LoopStatus) t;
-                    play(false);
-                }
-            }
-            else
-                flag_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
+            // check if position is flagged 
+            TimeInterval flag = timeline_.getFlagAt(position_);
+            // if type of flag requires stop and not already current
+            if ( flag.is_valid() && flag.type > 0 ) {
+              if (flag != current_flag_) {
+                // set flag as current
+                current_flag_ = flag;
+                // set timeline to temporary state (stop or blackout)
+                loop_status_ = (LoopStatus)current_flag_.type;
+                // effectively stop playing
+                play(false);
+              }
+            } 
+            else 
+                current_flag_.reset();
         }
     }
 
@@ -1587,6 +1594,33 @@ float MediaPlayer::currentTimelineFading()
 void MediaPlayer::setTimeline(const Timeline &tl)
 {
     timeline_ = tl;
+}
+
+bool MediaPlayer::go_to_flag(TimeInterval flag)
+{
+    bool ret = false;
+    if ( flag.is_valid() ) {
+
+        // flag target position
+        GstClockTime flagPts = flag.midpoint();
+
+        if (ABS_DIFF (position_, flagPts) > 2 * timeline_.step() ) {
+
+            // seek if valid target position
+            ret = true;
+            seek( flagPts );
+
+            // will reach that flag
+            current_flag_ = flag;
+
+            // change timeline status accordingly
+            if ( flag.type == (int) LoopStatus::LOOP_STATUS_BLACKOUT) 
+                loop_status_ = LoopStatus::LOOP_STATUS_BLACKOUT;
+            else if ( flag.type == (int) LoopStatus::LOOP_STATUS_STOPPED) 
+                loop_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
+        }
+    }
+    return ret;
 }
 
 MediaInfo MediaPlayer::media() const

@@ -937,7 +937,9 @@ void SessionLoader::visit(MediaPlayer &n)
                     flag->QueryUnsigned64Attribute("begin", &a);
                     flag->QueryUnsigned64Attribute("end", &b);
                     flag->QueryIntAttribute("type", &t);
-                    tl.addFlag( TimeInterval( (GstClockTime) a, (GstClockTime) b ), t );
+                    TimeInterval flag((GstClockTime) a, (GstClockTime) b);
+                    flag.type = t;
+                    tl.addFlag( flag );
                 }
             }
             n.setTimeline(tl);

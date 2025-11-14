@@ -226,6 +226,17 @@ public:
      * */
     void setTimelineFadingMode(FadingMode m) { fading_mode_ = m; }
     /**
+     * go to a flag position in media timeline.
+     * return true if seek is performed
+     * */
+    bool go_to_flag(TimeInterval flag);
+    /**
+     * Set / Get the flag where media player currently is.
+     * Flag is invalid if player is not currenlty on a flag.
+     * */
+    void setCurrentFlag(TimeInterval flag) { current_flag_ = flag; }
+    TimeInterval currentFlag() const { return current_flag_; };
+    /**
      * Get framerate of the media
      * */
     double frameRate() const;
@@ -328,7 +339,7 @@ private:
     GstClockTime position_;
     LoopMode loop_;
     LoopStatus loop_status_;
-    LoopStatus flag_status_;
+    TimeInterval current_flag_;
     GstState desired_state_;
     GstElement *pipeline_;
     GstBus *bus_;

@@ -243,7 +243,9 @@ bool ImGuiToolkit::ButtonIcon(int i, int j, const char *tooltip, bool enabled, b
         if (enabled)
             ret = ImGui::ImageButton((void*)(intptr_t)textureicons,
                                      ImVec2(g.FontSize, g.FontSize),
-                                     uv0, uv1, g.Style.FramePadding.y);
+                                     uv0, uv1, g.Style.FramePadding.y,
+                                    ImVec4(0.f, 0.f, 0.f, 0.f),
+                                    g.Style.Colors[ImGuiCol_Text]);
         else
             ImGui::ImageButton((void*)(intptr_t)textureicons,
                                ImVec2(g.FontSize, g.FontSize),
@@ -804,11 +806,9 @@ bool ImGuiToolkit::SliderTiming (const char* label, uint* ms, uint v_min, uint v
 //    *ms = val * v_step;
 
     // quadratic scale
-    float val = *ms / v_step;
-    bool ret = ImGui::SliderFloat(label, &val, v_min / v_step, v_max / v_step, text_buf, 2.f);
+    float val = (float) (*ms / v_step);
+    bool ret = ImGui::SliderFloat(label, &val, (float) (v_min / v_step), (float) (v_max / v_step), text_buf, 2.f);
     *ms = int(floor(val)) * v_step;
-
-
 
     return ret;
 }
@@ -853,23 +853,24 @@ void ImGuiToolkit::RenderTimeline (ImVec2 min_bbox, ImVec2 max_bbox, guint64 beg
     float tick_step_pixels = timeline_bbox.GetWidth() * step_;
 
     // large space
-    if (tick_step_pixels > 5.f && step > 0)
+    if (tick_step_pixels > 10.f && step > 0)
     {
-        // try to put a label ticks every second
-        label_tick_step = (SECOND / step) * step;
-        large_tick_step = label_tick_step % 5 ? (label_tick_step % 2 ?  label_tick_step : label_tick_step / 2 ) : label_tick_step / 5;
-        tick_delta = SECOND - label_tick_step;
-
         // round to nearest
         if (tick_delta > step / 2) {
             label_tick_step += step;
             large_tick_step += step;
             tick_delta = SECOND - label_tick_step;
         }
+        else {
+            // try to put a label ticks every second
+            label_tick_step = (SECOND / step) * step;
+            large_tick_step = label_tick_step % 5 ? (label_tick_step % 2 ?  label_tick_step : label_tick_step / 2 ) : label_tick_step / 5;
+            tick_delta = SECOND - label_tick_step;
+        }
     }
     else {
         // while there is less than 5 pixels between two tick marks (or at last optimal tick mark)
-        for ( int i=0; i<10 && tick_step_pixels < 5.f; ++i )
+        for ( int i=0; i<10 && tick_step_pixels < 10.f; ++i )
         {
             // try to use the optimal tick marks pre-defined
             tick_step = optimal_tick_marks[i];
@@ -1327,7 +1328,7 @@ void ImGuiToolkit::SetFont (ImGuiToolkit::font_style style, const std::string &t
         static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
         font_config.MergeMode = true; // Merging glyphs into current font
         font_config.PixelSnapH = true;
-        font_config.GlyphOffset.y = pointsize/20;
+        font_config.GlyphOffset.y = (float) (pointsize/20);
         fontname = "icons" + fontname;
         fontname.copy(font_config.Name, 40);  
         // load FontAwesome only once

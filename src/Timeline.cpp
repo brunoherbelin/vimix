@@ -957,7 +957,7 @@ float *Timeline::flagsArray()
     return flagsArray_;
 }
 
-bool Timeline::addFlag(GstClockTime t, int type)
+bool Timeline::addFlagAt(GstClockTime t, int type)
 {
     if (t > timing_.begin + (step_ * 2)
         && t < timing_.end - (step_ * 2)
@@ -979,16 +979,27 @@ bool Timeline::addFlag(GstClockTime t, int type)
     return false;
 }
 
-bool Timeline::addFlag(TimeInterval s, int type)
+bool Timeline::addFlag(TimeInterval f)
 {
-    if ( s.is_valid() ) {
-        s.type = type;
+    if ( f.is_valid() ) {
         flags_array_need_update_ = true;
-        return flags_.insert(s).second;
+        return flags_.insert(f).second;
     }
     return false;
 }
 
+bool Timeline::replaceFlag(TimeInterval f)
+{
+    if ( f.is_valid() ) {
+
+        if (!removeFlagAt(f.midpoint()))
+            return false;
+
+        flags_array_need_update_ = true;
+        return flags_.insert(f).second;
+    }
+    return false;
+}
 
 bool Timeline::removeFlagAt(GstClockTime t)
 {
@@ -1033,6 +1044,19 @@ void Timeline::setFlagTypeAt(GstClockTime t, int type)
     }   
 }
 
+TimeInterval Timeline::getFlagAt(GstClockTime t) const
+{
+    TimeInterval ret;
+
+    TimeIntervalSet::iterator f = std::find_if(flags_.begin(), flags_.end(), includesTime(t));
+
+    if ( f != flags_.end() ) {
+        ret = *f;
+    }
+
+    return ret;
+}
+
 TimeInterval Timeline::getNextFlag(GstClockTime t) const
 {
     if ( !flags_.empty() ) {
@@ -1049,6 +1073,27 @@ TimeInterval Timeline::getNextFlag(GstClockTime t) const
             return (*f);
         else
             return *(flags_.begin());
+    }
+
+    return TimeInterval();
+}
+
+TimeInterval Timeline::getPreviousFlag(GstClockTime t) const
+{
+    if ( !flags_.empty() ) {
+        // loop over flags
+        auto f = flags_.rbegin();
+        for (; f != flags_.rend(); ++f) {
+            // gap before target?
+            if ( f->end < t ) 
+                // done
+                break;
+        }
+
+        if ( f != flags_.rend() )
+            return (*f);
+        else
+            return *(flags_.rbegin());
     }
 
     return TimeInterval();

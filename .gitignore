@@ -35,3 +35,4 @@ flatpak/build/
 
 build/
 .vscode/
+.cache/
