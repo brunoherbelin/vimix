@@ -1058,6 +1058,11 @@ void SessionVisitor::visit (PlayFastForward &c)
     xmlCurrent_->SetAttribute("duration", c.duration());
 }
 
+void SessionVisitor::visit (Flag &c)
+{
+    xmlCurrent_->SetAttribute("value", (int) c.value());
+}
+
 void SessionVisitor::visit (Seek &c)
 {
     xmlCurrent_->SetAttribute("value", (uint64_t) c.value());

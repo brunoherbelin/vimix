@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <glib.h>
 #include <iostream>
 #include <iomanip>
 #include <thread>
@@ -946,6 +947,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
     //
     // FLAGS 
     //
+    int index = 0;
     bool flag_pressed = false;
     const TimeIntervalSet flags = tl->flags();
     for (const auto &flag_Interval : flags) {
@@ -972,7 +974,9 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
 
         // show time when hovering
         if (hovered) 
-            ImGui::SetTooltip(" %s ", GstToolkit::time_to_string(flag_time).c_str());
+            ImGui::SetTooltip(" <%d>  %s ", index, GstToolkit::time_to_string(flag_time).c_str());
+
+        ++index;
     }   
 
     //
@@ -2305,7 +2309,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         // flag buttons
         if (rendersize.x > buttons_height_ * 6.0f) {
-            if ( !mediaplayer_mode_ && mediaplayer_active_->timeline()->numFlags() > 0 ) {
+            if (  mediaplayer_active_->timeline()->numFlags() > 0 ) {
 
                 GstClockTime _paused_time = mediaplayer_active_->position();
 
@@ -2317,7 +2321,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                       !( mediaplayer_active_->currentFlag().is_valid() && mediaplayer_active_->timeline()->numFlags() == 1) &&
                       ( mediaplayer_active_->loop() == MediaPlayer::LOOP_REWIND || (target_flag.end < _paused_time) );
                     if( ImGuiToolkit::ButtonIcon(6, 0, "Go to previous flag", has_prev) )
-                        mediaplayer_active_->go_to_flag( target_flag );
+                        seek_flag = target_flag;
                 }
                 else {
                     // go to next flag when playing forward
@@ -2326,11 +2330,11 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                       !( mediaplayer_active_->currentFlag().is_valid() && mediaplayer_active_->timeline()->numFlags() == 1) &&
                       ( mediaplayer_active_->loop() == MediaPlayer::LOOP_REWIND || (target_flag.begin > _paused_time) );
                     if( ImGuiToolkit::ButtonIcon(5, 0, "Go to next flag", has_next) )
-                        mediaplayer_active_->go_to_flag( target_flag );
+                        seek_flag = target_flag;
                 }
 
                 // if stopped at a flag, show flag menu
-                if (mediaplayer_active_->currentFlag().is_valid()) {
+                if (!mediaplayer_mode_ && mediaplayer_active_->currentFlag().is_valid()) {
                     ImGui::SameLine(0, h_space_);
                     if (ImGuiToolkit::IconButton(3, 0) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
                         counter_menu_timeout=0;
@@ -2396,23 +2400,18 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         // play/stop command should be following the playing mode (buttons)
         // AND force to stop when the slider is pressed
-        bool media_play = mediaplayer_mode_ & (!mediaplayer_slider_pressed_);
-
-        // Flag pressed in timeline
-        if (seek_flag.is_valid()) {
-            // go to the flag position
-            if ( mediaplayer_active_->go_to_flag(seek_flag) ){
-                // stop if flag type is 'Stop' (1) or 'Blackout' (2)
-                if (seek_flag.type > 0)
-                    media_play = false;
-            }
-        }
+        bool media_play = mediaplayer_mode_  & (!mediaplayer_slider_pressed_);
 
         // apply play action to media only if status should change
         if ( mediaplayer_active_->isPlaying() != media_play ) {
             mediaplayer_active_->play( media_play );
         }
 
+        // Flag pressed in timeline
+        if (seek_flag.is_valid()) {
+            // go to the flag position
+            mediaplayer_active_->go_to_flag(seek_flag);
+        }
     }
     else {
         ///

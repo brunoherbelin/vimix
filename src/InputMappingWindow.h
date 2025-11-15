@@ -16,7 +16,7 @@ class InputMappingWindow : public WorkspaceWindow
     uint current_input_;
 
     Target ComboSelectTarget(const Target &current);
-    uint ComboSelectCallback(uint current, bool imageprocessing);
+    uint ComboSelectCallback(uint current, bool imageprocessing, bool mediaplayer);
     void SliderParametersCallback(SourceCallback *callback, const Target &target);
 
 public:

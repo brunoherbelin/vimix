@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "MediaSource.h"
 #include <string>
 #include <regex>
 
@@ -39,6 +40,7 @@
 #include "SourceCallback.h"
 #include "ControlManager.h"
 #include "Metronome.h"
+#include "MediaPlayer.h"
 
 #include "InputMappingWindow.h"
 
@@ -119,9 +121,9 @@ Target InputMappingWindow::ComboSelectTarget(const Target &current)
     return selected;
 }
 
-uint InputMappingWindow::ComboSelectCallback(uint current, bool imageprocessing)
+uint InputMappingWindow::ComboSelectCallback(uint current, bool imageprocessing, bool ismediaplayer)
 {
-    const char* callback_names[23] = { "Select",
+    const char* callback_names[24] = { "Select",
                                        ICON_FA_BULLSEYE "  Alpha",
                                        ICON_FA_BULLSEYE "  Loom",
                                        ICON_FA_OBJECT_UNGROUP "  Geometry",
@@ -133,6 +135,7 @@ uint InputMappingWindow::ComboSelectCallback(uint current, bool imageprocessing)
                                        ICON_FA_PLAY_CIRCLE "  Speed",
                                        ICON_FA_PLAY_CIRCLE "  Fast forward",
                                        ICON_FA_PLAY_CIRCLE "  Seek",
+                                       ICON_FA_PLAY_CIRCLE "  Flag",
                                        "  None",
                                        "  None",
                                        "  None",
@@ -148,7 +151,8 @@ uint InputMappingWindow::ComboSelectCallback(uint current, bool imageprocessing)
 
     uint selected = 0;
     if (ImGui::BeginCombo("##ComboSelectCallback", callback_names[current]) ) {
-        for (uint i = SourceCallback::CALLBACK_ALPHA; i <= SourceCallback::CALLBACK_SEEK; ++i){
+        for (uint i = SourceCallback::CALLBACK_ALPHA; 
+            i <= (ismediaplayer ? SourceCallback::CALLBACK_FLAG : SourceCallback::CALLBACK_PLAY) ; ++i){
             if ( ImGui::Selectable( callback_names[i]) ) {
                 selected = i;
             }
@@ -485,6 +489,32 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
         ImGuiToolkit::Indication("Target time (HH:MM:SS.MS) to set where to jump to in a video source.", 15, 7);
+    }
+        break;
+
+    case SourceCallback::CALLBACK_FLAG:
+    {
+        Flag *edited = static_cast<Flag*>(callback);
+
+        ImGuiToolkit::Indication(press_tooltip[0], 2, 13);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+
+        int max = -1;
+        if (Source * const* v = std::get_if<Source *>(&target)) {
+            MediaSource *ms = dynamic_cast<MediaSource*>(*v);
+            if (ms) 
+                max = ms->mediaplayer()->timeline()->numFlags() - 1;
+        }
+        int val = MIN( (int) edited->value(), max);
+
+        ImGui::SetNextItemWidth(right_align);
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
+        if (ImGui::SliderInt("##CALLBACK_PLAY_FLAG", &val, -1, max, val < 0 ? "Next Flag" : "Flag <%d>"))
+            edited->setValue(val );
+
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
+        ImGuiToolkit::Indication("Flag to jump to in a video source.", 12, 6);
+
     }
         break;
 
@@ -1362,17 +1392,19 @@ void InputMappingWindow::Render()
                     }
 
                     // check if target is a Source with image processing enabled
+                    bool ismediaplayer = false;
                     bool withimageprocessing = false;
                     if ( target.index() == 1 ) {
                         if (Source * const* v = std::get_if<Source *>(&target)) {
                             withimageprocessing = (*v)->imageProcessingEnabled();
+                            ismediaplayer = dynamic_cast<MediaSource*>(*v) != nullptr;
                         }
                     }
 
                     // Select Reaction
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
                     ImGui::SetNextItemWidth(w);
-                    uint type = ComboSelectCallback( callback->type(), withimageprocessing );
+                    uint type = ComboSelectCallback( callback->type(), withimageprocessing, ismediaplayer );
                     if (type > 0) {
                         // remove previous callback
                         S->deleteInputCallback(callback);
@@ -1431,16 +1463,18 @@ void InputMappingWindow::Render()
                 // possible new target
                 if (temp_new_target.index() > 0) {
                     // check if target is a Source with image processing enabled
+                    bool mediaplayer = false;
                     bool withimageprocessing = false;
                     if ( temp_new_target.index() == 1 ) {
                         if (Source * const* v = std::get_if<Source *>(&temp_new_target)) {
                             withimageprocessing = (*v)->imageProcessingEnabled();
+                            mediaplayer = dynamic_cast<MediaSource*>(*v) != nullptr;
                         }
                     }
                     // step 3: Get input for callback type
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
                     ImGui::SetNextItemWidth(w);
-                    temp_new_callback = ComboSelectCallback( temp_new_callback, withimageprocessing );
+                    temp_new_callback = ComboSelectCallback( temp_new_callback, withimageprocessing, mediaplayer );
                     // user selected a callback type
                     if (temp_new_callback > 0) {
                         // step 4 : create new callback and add it to source

@@ -1703,6 +1703,12 @@ void SessionLoader::visit (Seek &c)
     xmlCurrent_->QueryBoolAttribute("bidirectional", &b);
     c.setBidirectional(b);
 }
+void SessionLoader::visit (Flag &c)
+{
+    int v = -1;
+    xmlCurrent_->QueryIntAttribute("value", &v);
+    c.setValue(v);
+}
 
 void SessionLoader::visit (SetAlpha &c)
 {

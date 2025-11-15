@@ -78,6 +78,7 @@
 #define OSC_SOURCE_FILTER      "/filter"
 #define OSC_SOURCE_UNIFORM     "/uniform"
 #define OSC_SOURCE_BLENDING    "/blending"
+#define OSC_SOURCE_FLAG        "/flag"
 
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"
