@@ -35,7 +35,7 @@ float sdSegment( in vec2 v1, in vec2 v2, float r )
 {
     vec2 ba = v2 - v1;
     vec2 pa = -v1;
-    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+    float h = clamp( dot(pa,ba) / dot(ba,ba), 0.0, 1.0 );
     return length(pa-h*ba) / r;
 }
 

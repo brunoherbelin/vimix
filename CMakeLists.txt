@@ -103,6 +103,22 @@ if(UNIX)
             ${X11_INCLUDE_DIR}
         )
 
+        # libinput and libudev for tablet pressure support
+        if (PKG_CONFIG_FOUND)
+            pkg_check_modules(LIBINPUT libinput>=1.19)
+            pkg_check_modules(LIBUDEV libudev)
+        endif()
+
+        if(LIBINPUT_FOUND AND LIBUDEV_FOUND)
+            include_directories(${LIBINPUT_INCLUDE_DIRS} ${LIBUDEV_INCLUDE_DIRS})
+            link_directories(${LIBINPUT_LIBRARY_DIRS} ${LIBUDEV_LIBRARY_DIRS})
+            add_definitions(-DHAVE_LIBINPUT)
+            macro_log_feature(LIBINPUT_FOUND "libinput" "Input device library for tablet support" "https://wayland.freedesktop.org/libinput" FALSE)
+            macro_log_feature(LIBUDEV_FOUND "libudev" "Device management library" "https://www.freedesktop.org/software/systemd/man/libudev.html" FALSE)
+        else()
+            message(STATUS "libinput or libudev not found - tablet pressure support will be disabled")
+        endif()
+
     endif()
     add_definitions(-DUNIX)
 elseif(WIN32)

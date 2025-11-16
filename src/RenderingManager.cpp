@@ -69,6 +69,7 @@
 #include "Primitives.h"
 
 #include "RenderingManager.h"
+#include "TabletInput.h"
 
 // GDBus for screensaver inhibition (works on both X11 and Wayland)
 #ifdef GLFW_EXPOSE_NATIVE_GLX
@@ -567,6 +568,9 @@ bool Rendering::init()
 #endif
 #endif
 
+    // Initialize tablet input for pressure support
+    TabletInput::instance().init();
+
     return true;
 }
 
@@ -619,6 +623,11 @@ void Rendering::draw()
     // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     glfwPollEvents();
+
+    // Poll tablet input for pressure support
+#ifndef WIN32
+    TabletInput::instance().pollEvents();
+#endif
 
     // change windows fullscreen mode if requested
     main_.changeFullscreen_();
@@ -675,6 +684,11 @@ void Rendering::draw()
 
 void Rendering::terminate()
 {
+    // Terminate tablet input
+#ifndef WIN32
+    TabletInput::instance().terminate();
+#endif
+
     // terminate all windows
     for (auto it = outputs_.begin(); it != outputs_.end(); ++it)
         it->terminate();
