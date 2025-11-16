@@ -426,66 +426,24 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         bool bd = edited->bidirectional();
         if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
-
-        // get value (gst time) and convert to hh mm s.ms
-        guint64 ms = GST_TIME_AS_MSECONDS(edited->value());
-        guint64 hh = ms / 3600000;
-        guint64 mm = (ms % 3600000) / 60000;
-        ms -= (hh * 3600000 + mm * 60000);
-        float sec = (float) (ms) / 1000.f;
-
-        // filtering for reading MM:SS.MS text entry
-        static bool valid = true;
-        static std::regex RegExTime("([0-9]+\\:)?([0-9]+\\:)?([0-5][0-9]|[0-9])((\\.|\\,)[0-9]+)?");
-        struct TextFilters { static int FilterTime(ImGuiInputTextCallbackData* data) {
-                if (data->EventChar < 256 && strchr("0123456789.,:", (char)data->EventChar)) return 0; return 1; }
-        };
-        char buf6[64] = "";
-        snprintf(buf6, 64, "%lu:%lu:%.2f", (unsigned long) hh, (unsigned long) mm, sec );
-
+        
         // Text input field for MM:SS:MS seek target time
         ImGui::SetNextItemWidth(right_align);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        ImGui::PushStyleColor(ImGuiCol_Text,
-                              ImVec4(1.0f, valid ? 1.0f : 0.2f, valid ? 1.0f : 0.2f, 1.f));
-        ImGui::InputText("##CALLBACK_SEEK",
-                         buf6,
-                         64,
-                         ImGuiInputTextFlags_CallbackCharFilter,
-                         TextFilters::FilterTime);
-        valid = std::regex_match(buf6, RegExTime);
-        if (ImGui::IsItemDeactivatedAfterEdit()) {
-            if (valid) {
-                ms = 0;
-                sec = 0.f;
-                // user confirmed the entry and the input is valid
-                // split the "HH:MM:SS.ms" string in HH MM SS.ms
-                std::string time(buf6);
-                std::size_t found = time.find_last_of(':');
-                // read the right part SS.ms as a value
-                if (std::string::npos != found && BaseToolkit::is_a_value(time.substr(found + 1), &sec)) {
-                    ms = (glm::uint64)(sec * 1000.f);
-                    // read right part MM as a number
-                    time = time.substr(0, found);
-                    found = time.find_last_of(':');
-                    int min = 0;
-                    if (std::string::npos != found && BaseToolkit::is_a_number(time.substr(found + 1), &min)) {
-                        ms += 60000 * (glm::uint64) min;
-                        // read right part HH as a number
-                        time = time.substr(0, found);
-                        int hour = 0;
-                        if (std::string::npos != found && BaseToolkit::is_a_number(time, &hour)) {
-                            ms += 3600000 * (glm::uint64) hour;
-                        }
-                    }
-                }
-                // set time in mili seconds
-                edited->setValue( GST_MSECOND * ms );
-            }
-            // force to test validity next frame
-            valid = false;
+
+        guint64 duration = GST_SECOND * 1000;
+        if (Source * const* v = std::get_if<Source *>(&target)) {
+            MediaSource *ms = dynamic_cast<MediaSource*>(*v);
+            if (ms) 
+                duration = ms->mediaplayer()->timeline()->duration();
         }
-        ImGui::PopStyleColor();
+
+        static bool valid = false;
+        guint64 target_time = edited->value();
+        if ( ImGuiToolkit::InputTime("##CALLBACK_SEEK", &target_time, duration, &valid) ){
+            if (valid)
+                edited->setValue( target_time );
+        }
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
         ImGuiToolkit::Indication("Target time (HH:MM:SS.MS) to set where to jump to in a video source.", 15, 7);

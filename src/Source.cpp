@@ -406,6 +406,15 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
 
 Source::~Source()
 {
+    // clear and delete callbacks
+    access_callbacks_.lock();
+    for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )  {
+        SourceCallback *callback = *iter;
+        iter = update_callbacks_.erase(iter);
+        delete callback;
+    }
+    access_callbacks_.unlock();
+
     // inform links that they lost their target
     while ( !links_.empty() )
         links_.front()->disconnect();
@@ -431,15 +440,6 @@ Source::~Source()
     overlays_.clear();
     frames_.clear();
     handles_.clear();
-
-    // clear and delete callbacks
-    access_callbacks_.lock();
-    for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); )  {
-        SourceCallback *callback = *iter;
-        iter = update_callbacks_.erase(iter);
-        delete callback;
-    }
-    access_callbacks_.unlock();
 }
 
 void Source::setName (const std::string &name)
