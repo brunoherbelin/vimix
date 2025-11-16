@@ -21,26 +21,27 @@ uniform vec3  brush;
 uniform int   option;
 uniform int   effect;
 
-float sdBox( in vec2 p, in float b)
+float sdBox( in vec2 v1, in vec2 v2, float r )
 {
-    vec2 q = abs(p) - vec2(b);
+    vec2 ba = v2 - v1;
+    vec2 pa = -v1;
+    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+    vec2 q = abs(pa -h*ba) - vec2(r);
     float d = min( max(q.x, q.y), 0.0) + length(max(q,0.0));
-    return 1.0 - abs(d) * step(d, 0.0);
+    return 1.0 - abs( mix( 0.5, 1.0, d) ) * step(d, 0.0);
 }
 
-float sdCircle( in vec2 p, in float b)
+float sdSegment( in vec2 v1, in vec2 v2, float r )
 {
-    return ( length( p ) /  b );
+    vec2 ba = v2 - v1;
+    vec2 pa = -v1;
+    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+    return length(pa-h*ba) / r;
 }
 
-float sdElipse( in vec2 p, in float b)
-{
-    return ( length( p ) /  b );
-}
-
-const mat3 KERNEL = mat3( 0.0625, 0.125, 0.0625,
-                          0.125, 0.25, 0.125,
-                          0.0625, 0.125, 0.0625);
+const mat3 KERNEL = mat3( 0.0555555, 0.111111, 0.0555555,
+                          0.111111,  0.333334, 0.111111,
+                          0.0555555, 0.111111, 0.0555555); 
 
 vec3 gaussian()
 {
@@ -71,14 +72,15 @@ void main()
         // fragment coordinates
         vec2 uv =  -1.0 + 2.0 * gl_FragCoord.xy / iResolution.xy;
         // adjust coordinates to match scaling area
-        uv.x *= cursor.z ;
-        uv.y *= cursor.w ;
+        uv.x *= size.x ;
+        uv.y *= size.y ;
         // cursor coordinates
-        vec2 cursor = vec2(cursor.x, - cursor.y);
+        vec2 cur = vec2(cursor.x, - cursor.y);
+        vec2 cur_prev = vec2(cursor.z, - cursor.w);
         // use distance function relative to length brush.x (size), depending on brush.z (shape):
         // - brush.z = 0 : circle shape
         // - brush.z = 1 : square shape
-        float d = (1.0 -brush.z) * sdCircle(cursor-uv, brush.x) + brush.z * sdBox(uv-cursor, brush.x);
+        float d = (1.0 -brush.z) * sdSegment(cur_prev - uv, cur - uv, brush.x) + brush.z * sdBox(cur_prev - uv, cur - uv, brush.x);
 
         // modify only the pixels inside the brush
         if( d < 1.0 )

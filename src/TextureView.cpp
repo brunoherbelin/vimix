@@ -19,6 +19,7 @@
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -450,6 +451,8 @@ std::pair<Node *, glm::vec2> TextureView::pick(glm::vec2 P)
                 pick = { mask_cursor_circle_, P };
                 // adapt grid to prepare grab action
                 adaptGridToSource(current);
+                // reset previous brush position
+                previous_scene_brush_pos = glm::zero<glm::vec3>();
                 return pick;
             }
             // special case for cropping the mask shape
@@ -815,8 +818,8 @@ void TextureView::draw()
                         ImGuiToolkit::ToolTip("Size");
                     if (ImGui::BeginPopup("brush_size_popup", ImGuiWindowFlags_NoMove))
                     {
-                        int pixel_size_min = int(0.05 * edit_source_->frame()->height() );
-                        int pixel_size_max = int(2.0 * edit_source_->frame()->height() );
+                        int pixel_size_min = int(BRUSH_MIN_SIZE * edit_source_->frame()->height() );
+                        int pixel_size_max = int(BRUSH_MAX_SIZE * edit_source_->frame()->height() );
                         int pixel_size = int(Settings::application.brush.x * edit_source_->frame()->height() );
                         show_cursor_forced_ = true;
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
@@ -1106,16 +1109,26 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
             // set brush coordinates (used in mouse over)
             scene_brush_pos = scene_to;
 
+            // no previous brush position : restart at same coordinates
+            if ( glm::length( previous_scene_brush_pos ) < EPSILON) 
+                previous_scene_brush_pos = scene_brush_pos;
+
             if ( pick.first == mask_cursor_circle_ ) {
                 // snap prush coordinates if grid is active
                 if (grid->active())
                     scene_brush_pos = grid->snap(scene_brush_pos);
                 // inform shader of a cursor action : coordinates and crop scaling
+                edit_source_->maskShader()->size = edit_source_->mixingsurface_->scale_;
+                
+                // inform shader of a cursor action : coordinates and crop scaling
                 edit_source_->maskShader()->cursor = glm::vec4(scene_brush_pos.x - shift_crop_.x,
                                                                scene_brush_pos.y - shift_crop_.y,
-                                                               edit_source_->mixingsurface_->scale_.x,
-                                                               edit_source_->mixingsurface_->scale_.y);
+                                                               previous_scene_brush_pos.x - shift_crop_.x,
+                                                               previous_scene_brush_pos.y - shift_crop_.y);
                 edit_source_->touch(Source::SourceUpdate_Mask);
+
+                previous_scene_brush_pos = scene_brush_pos;
+
                 // action label
                 info << MaskShader::mask_names[MaskShader::PAINT] << " changed";
                 // cursor indication - no info, just cursor

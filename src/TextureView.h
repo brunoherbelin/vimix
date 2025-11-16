@@ -72,6 +72,7 @@ private:
 
     void adaptGridToSource(Source *s = nullptr, Node *picked = nullptr);
     glm::vec3 scene_brush_pos;
+    glm::vec3 previous_scene_brush_pos;
     TranslationGrid *translation_grid_;
     RotationGrid *rotation_grid_;
 };
