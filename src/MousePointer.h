@@ -12,6 +12,7 @@
 #define ICON_POINTER_LINEAR 14, 9
 #define ICON_POINTER_GRID   15, 9
 #define ICON_POINTER_WIGGLY 16, 9
+#define ICON_POINTER_BROWNIAN 11, 9
 #define ICON_POINTER_METRONOME 6, 13
 
 ///
@@ -33,6 +34,7 @@ public:
         POINTER_LINEAR,
         POINTER_SPRING,
         POINTER_WIGGLY,
+        POINTER_BROWNIAN,
         POINTER_METRONOME,
         POINTER_INVALID
     } Mode;
@@ -104,7 +106,21 @@ class PointerWiggly : public Pointer
 {
     float radius_;
 public:
-    PointerWiggly() {}
+    PointerWiggly() : radius_(0.0f) {}
+    void update(const glm::vec2 &pos, float) override;
+    void draw() override;
+};
+
+///
+/// \brief The PointerBrownian moves with a Brownian movement
+/// Strength modulates the radius of the movement
+///
+class PointerBrownian : public Pointer
+{
+    float radius_;
+    glm::vec2 brownian_offset_;
+public:
+    PointerBrownian() : brownian_offset_(0.0f, 0.0f) {}
     void update(const glm::vec2 &pos, float) override;
     void draw() override;
 };
