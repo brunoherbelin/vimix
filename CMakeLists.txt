@@ -103,6 +103,30 @@ if(UNIX)
             ${X11_INCLUDE_DIR}
         )
 
+        # XInput2 for tablet pressure support (optional)
+        find_package(X11 COMPONENTS Xi)
+        if(X11_Xi_FOUND)
+            add_definitions(-DHAVE_X11TABLETINPUT)
+            macro_log_feature(X11_Xi_FOUND "XInput2" "X11 Input extension for tablet support" "https://www.x.org/wiki/" FALSE)
+        else()
+       
+            # alternatively libinput and libudev for tablet pressure support
+            if (PKG_CONFIG_FOUND)
+                pkg_check_modules(LIBINPUT libinput>=1.19)
+                pkg_check_modules(LIBUDEV libudev)
+            endif()
+
+            if(LIBINPUT_FOUND AND LIBUDEV_FOUND)
+                include_directories(${LIBINPUT_INCLUDE_DIRS} ${LIBUDEV_INCLUDE_DIRS})
+                link_directories(${LIBINPUT_LIBRARY_DIRS} ${LIBUDEV_LIBRARY_DIRS})
+                add_definitions(-DHAVE_LIBINPUT)
+                macro_log_feature(LIBINPUT_FOUND "libinput" "Input device library for tablet support" "https://wayland.freedesktop.org/libinput" FALSE)
+                macro_log_feature(LIBUDEV_FOUND "libudev" "Device management library" "https://www.freedesktop.org/software/systemd/man/libudev.html" FALSE)
+            else()
+                message(STATUS "XInput2 (Xi) or libinput or libudev not found - tablet pressure support will be disabled")
+            endif()
+        endif()
+
     endif()
     add_definitions(-DUNIX)
 elseif(WIN32)

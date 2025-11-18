@@ -1,15 +1,17 @@
 {
     "app-id": "io.github.brunoherbelin.Vimix",
-    "runtime": "org.gnome.Platform",
-    "runtime-version": "49",
-    "sdk": "org.gnome.Sdk",
+    "runtime": "org.freedesktop.Platform",
+    "runtime-version": "25.08",
+    "sdk": "org.freedesktop.Sdk",
     "command": "launch_vimix.sh",
     "rename-desktop-file": "vimix.desktop",
     "rename-icon": "vimix",
     "finish-args": [
+        "--socket=x11",
         "--socket=wayland",
         "--socket=fallback-x11",
         "--socket=pulseaudio",
+        "--socket=session-bus",
         "--share=ipc",
         "--share=network",
         "--device=dri",
@@ -50,35 +52,6 @@
             ]
         },
         {
-            "name": "x264",
-            "config-opts": [
-                "--enable-shared"
-            ],
-            "sources": [
-            {
-                "type": "git",
-                "commit": "b35605ace3ddf7c1a5d67a2eb553f034aef41d55",
-                "url": "https://code.videolan.org/videolan/x264.git"
-            }
-            ]
-        },
-        {
-            "name": "x265",
-            "buildsystem": "cmake-ninja",
-            "subdir": "source",
-            "config-opts": [
-                "-DCMAKE_BUILD_TYPE=Release",
-                "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
-            ],
-            "sources": [
-            {
-                "type": "git",
-                "commit": "b858f483959b805895f77e700d81544be84e4c6b",
-                "url": "https://bitbucket.org/multicoreware/x265_git.git"
-            }
-            ]
-        },
-        {
             "name": "srt",
             "buildsystem": "cmake-ninja",
             "config-opts": [
@@ -108,45 +81,6 @@
                 "commit": "0dbbac5258c518e596a64fedcbb1198403dcc981",
                 "url": "https://github.com/dyne/frei0r.git"
             }
-            ]
-        },
-        {
-            "name": "gstreamer",
-            "buildsystem": "meson",
-            "builddir": true,
-            "config-opts": [
-               "-Ddoc=disabled",
-               "-Dpython=disabled",
-               "-Dges=disabled",
-               "-Drs=disabled",
-               "-Dgst-examples=disabled",
-               "-Drtsp_server=disabled",
-               "-Ddevtools=disabled",
-               "-Dqt5=disabled",
-               "-Dlibav=enabled",
-               "-Dbase=enabled",
-               "-Dgood=enabled",
-               "-Dgst-plugins-good:v4l2=enabled",
-               "-Dgpl=enabled",
-               "-Dbad=enabled",
-               "-Dgst-plugins-bad:x265=enabled",
-               "-Dgst-plugins-bad:srt=enabled",
-               "-Dgst-plugins-bad:shm=enabled",
-               "-Dugly=enabled",
-               "-Dgst-plugins-ugly:x264=enabled",
-               "-Dvaapi=enabled"
-            ],
-            "build-options": {
-                "build-args": [ "--share=network" ]
-            },
-            "sources": [
-              {
-                "type": "git",
-                "tag": "1.26.8",
-                "commit": "16d77e12ad213ef24e76a8cc34d347b8221c9975",
-                "url": "https://gitlab.freedesktop.org/gstreamer/gstreamer.git",
-                "disable-submodules": false
-              }
             ]
         },
         {

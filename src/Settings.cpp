@@ -247,6 +247,7 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     // Brush
     XMLElement *BrushNode = xmlDoc.NewElement( "Brush" );
     BrushNode->InsertEndChild( XMLElementFromGLM(&xmlDoc, application.brush) );
+    BrushNode->SetAttribute("brush_pressure_mode", application.brush_pressure_mode);
     pRoot->InsertEndChild(BrushNode);
 
     // Pointer
@@ -700,6 +701,7 @@ void Settings::Load(const std::string &filename)
         XMLElement * brushnode = pRoot->FirstChildElement("Brush");
         if (brushnode != nullptr) {
             tinyxml2::XMLElementToGLM( brushnode->FirstChildElement("vec3"), application.brush);
+            brushnode->QueryIntAttribute("brush_pressure_mode", &application.brush_pressure_mode);
         }
 
         // Pointer

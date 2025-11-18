@@ -69,6 +69,7 @@
 #include "Primitives.h"
 
 #include "RenderingManager.h"
+#include "TabletInput.h"
 
 // GDBus for screensaver inhibition (works on both X11 and Wayland)
 #ifdef GLFW_EXPOSE_NATIVE_GLX
@@ -438,15 +439,18 @@ Rendering::Rendering()
 bool Rendering::init()
 {
 #if GLFW_VERSION_MAJOR > 2 && GLFW_VERSION_MINOR > 3
-    // Forcing X11 on Gnome makes the server use xWayland which has proper Server Side Decorations as opposed to Wayland.
-    if (strcmp(getenv("XDG_CURRENT_DESKTOP"), "GNOME") == 0 || 
-        strcmp(getenv("XDG_CURRENT_DESKTOP"), "Unity") == 0 ){
-        g_printerr("Forcing X11 on GNOME desktop\n");
-        glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
-    }
-    else {
-        g_printerr("Detected %s desktop\n", getenv("XDG_CURRENT_DESKTOP"));
-        glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
+    const char* desktop = getenv("XDG_CURRENT_DESKTOP");
+    if (desktop) {
+        // Forcing X11 on Gnome makes the server use xWayland which has proper Server Side Decorations as opposed to Wayland.
+        if (strstr(desktop, "GNOME") != nullptr || 
+            strstr(desktop, "Unity") != nullptr ){
+            g_printerr("Forcing X11 / xWayland on %s desktop\n", desktop);
+            glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+        }
+        else {
+            g_printerr("Detected %s desktop\n", desktop);
+            glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
+        }
     }
 #endif
     //
@@ -567,6 +571,9 @@ bool Rendering::init()
 #endif
 #endif
 
+    // Initialize tablet input for pressure support
+    TabletInput::instance().init();
+
     return true;
 }
 
@@ -619,6 +626,11 @@ void Rendering::draw()
     // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     glfwPollEvents();
+
+    // Poll tablet input for pressure support
+#ifndef WIN32
+    TabletInput::instance().pollEvents();
+#endif
 
     // change windows fullscreen mode if requested
     main_.changeFullscreen_();
@@ -675,6 +687,11 @@ void Rendering::draw()
 
 void Rendering::terminate()
 {
+    // Terminate tablet input
+#ifndef WIN32
+    TabletInput::instance().terminate();
+#endif
+
     // terminate all windows
     for (auto it = outputs_.begin(); it != outputs_.end(); ++it)
         it->terminate();

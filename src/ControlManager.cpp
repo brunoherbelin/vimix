@@ -970,6 +970,13 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             target->setImageProcessingEnabled(on > 0.5f);
         }
+        else if ( attribute.compare(OSC_SOURCE_FLAG) == 0) {
+            float f = -1.f;
+            if (!arguments.Eos()) {
+                arguments >> f >> osc::EndMessage;
+            }
+            target->call( new Flag( f ));
+        }
         /// e.g. '/vimix/current/seek f 0.25' ; seek to 25% of duration
         /// e.g. '/vimix/current/seek iiii 0 0 25 500' ; seek to time
         else if ( attribute.compare(OSC_SOURCE_SEEK) == 0) {

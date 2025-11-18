@@ -17,7 +17,7 @@ Publishing new a release
   https://github.com/brunoherbelin/vimix/tree/master/flatpak
 - Test the snap for Beta
   $ snap remove vimix
-  $ snapcraft (from vimix base dir)
+  $ snapcraft pack (from vimix base dir)
   $ snap install ./vimix_0.X.Y_amd64.snap --devmode
   $ snap connections vimix
 

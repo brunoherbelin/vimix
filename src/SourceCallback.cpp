@@ -72,6 +72,9 @@ SourceCallback *SourceCallback::create(CallbackType type)
     case SourceCallback::CALLBACK_SEEK:
         loadedcallback = new Seek;
         break;
+    case SourceCallback::CALLBACK_FLAG:
+        loadedcallback = new Flag;
+        break;
     case SourceCallback::CALLBACK_REPLAY:
         loadedcallback = new RePlay;
         break;
@@ -713,6 +716,73 @@ SourceCallback *Seek::reverse(Source *s) const
 }
 
 void Seek::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
+
+Flag::Flag(int target)
+    : SourceCallback()
+    , flag_index_(target)
+{}
+
+void Flag::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+
+    // access media player if target source is a media source
+    MediaSource *ms = dynamic_cast<MediaSource *>(s);
+    if (ms != nullptr) {
+
+        // can operate on flags if there are some
+        int num = ms->mediaplayer()->timeline()->numFlags();
+        if (num > 1) {
+
+            // default flag index is -1 to mean next flag
+            if (flag_index_ < 0) {
+                GstClockTime _time = ms->mediaplayer()->position();
+
+                if( ms->mediaplayer()->playSpeed() < 0 ) {
+                    // Go to previous flag when playing backward
+                    TimeInterval target_flag = ms->mediaplayer()->timeline()->getPreviousFlag( _time );
+                    bool has_prev = target_flag.is_valid() && 
+                        ( ms->mediaplayer()->loop() == MediaPlayer::LOOP_REWIND || (target_flag.end < _time) );
+                    if( has_prev) 
+                        ms->mediaplayer()->go_to_flag( target_flag );
+                }
+                else {
+                    // go to next flag when playing forward
+                    TimeInterval target_flag = ms->mediaplayer()->timeline()->getNextFlag( _time );
+                    bool has_next = target_flag.is_valid() && 
+                         ( ms->mediaplayer()->loop() == MediaPlayer::LOOP_REWIND || (target_flag.begin > _time) );
+                    if( has_next )
+                        ms->mediaplayer()->go_to_flag( target_flag );
+                }
+            }
+            else if (flag_index_ < num) {
+                int index = 0;
+                const TimeIntervalSet flags = ms->mediaplayer()->timeline()->flags();
+                for (const auto &flag_Interval : flags) {
+                    if ( index == flag_index_) {
+
+                        ms->mediaplayer()->go_to_flag( flag_Interval );
+                        break;
+                    }
+                    ++index;
+                }
+            }
+        }
+    }
+
+    status_ = FINISHED;
+}
+
+SourceCallback *Flag::clone() const
+{
+    return new Flag(flag_index_);
+}
+
+void Flag::accept(Visitor& v)
 {
     SourceCallback::accept(v);
     v.visit(*this);

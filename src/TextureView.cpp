@@ -17,8 +17,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "IconsFontAwesome5.h"
 #include <glad/glad.h>
+#include <glm/common.hpp>
+#include <glm/ext/vector_float2.hpp>
 #include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -42,6 +46,14 @@
 #include "ActionManager.h"
 #include "DialogToolkit.h"
 #include "MousePointer.h"
+#include "TabletInput.h"
+
+enum TabletInputFlags_
+{
+    TabletInput_none            = 0,
+    TabletInput_brush_size      = 1 << 1,
+    TabletInput_brush_pressure  = 1 << 2
+};
 
 #include "TextureView.h"
 
@@ -226,7 +238,8 @@ TextureView::TextureView() : View(TEXTURE), edit_source_(nullptr), need_edit_upd
 
     stored_mask_size_ = glm::vec3(0.f);
     show_cursor_forced_ = false;
-    scene_brush_pos = glm::vec3(0.f);
+    scene_brush_pos = glm::vec3(100.f);
+    previous_scene_brush_pos = glm::vec3(0.f);
 
     // replace grid with appropriate one
     translation_grid_ = new TranslationGrid(scene.root());
@@ -450,6 +463,8 @@ std::pair<Node *, glm::vec2> TextureView::pick(glm::vec2 P)
                 pick = { mask_cursor_circle_, P };
                 // adapt grid to prepare grab action
                 adaptGridToSource(current);
+                // reset previous brush position
+                previous_scene_brush_pos = glm::zero<glm::vec3>();
                 return pick;
             }
             // special case for cropping the mask shape
@@ -792,7 +807,7 @@ void TextureView::draw()
                 if (mask_cursor_paint_ > 0) {
 
                     ImGui::SameLine(0, 50);
-                    if (ImGui::Button(ICON_FA_PEN ICON_FA_SORT_DOWN ))
+                    if (ImGui::Button(ICON_FA_PEN_NIB ICON_FA_SORT_DOWN ))
                         ImGui::OpenPopup("brush_shape_popup");
                     if (ImGui::IsItemHovered())
                         ImGuiToolkit::ToolTip("Shape");
@@ -815,11 +830,22 @@ void TextureView::draw()
                         ImGuiToolkit::ToolTip("Size");
                     if (ImGui::BeginPopup("brush_size_popup", ImGuiWindowFlags_NoMove))
                     {
-                        int pixel_size_min = int(0.05 * edit_source_->frame()->height() );
-                        int pixel_size_max = int(2.0 * edit_source_->frame()->height() );
+                        int pixel_size_min = int(BRUSH_MIN_SIZE * edit_source_->frame()->height() );
+                        int pixel_size_max = int(BRUSH_MAX_SIZE * edit_source_->frame()->height() );
                         int pixel_size = int(Settings::application.brush.x * edit_source_->frame()->height() );
                         show_cursor_forced_ = true;
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                        // toggle to enable tablet input on brush size
+                        if(TabletInput::instance().isEnabled() && TabletInput::instance().hasPressure()) {
+                            static bool enable_tablet_input = false;
+                            enable_tablet_input = Settings::application.brush_pressure_mode & TabletInput_brush_size;
+                            ImGuiToolkit::ButtonIconToggle(13, 0, &enable_tablet_input, "Tablet pressure sensitive");
+                            if (enable_tablet_input)
+                                Settings::application.brush_pressure_mode |= TabletInput_brush_size;
+                            else 
+                                Settings::application.brush_pressure_mode &= ~TabletInput_brush_size;
+                        }
+                        // max brush size
                         ImGuiToolkit::Indication("Large  ", 16, 1);
                         if (ImGui::VSliderInt("##BrushSize", ImVec2(30,260), &pixel_size, pixel_size_min, pixel_size_max, "") ){
                             Settings::application.brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
@@ -846,6 +872,17 @@ void TextureView::draw()
                     if (ImGui::BeginPopup("brush_pressure_popup", ImGuiWindowFlags_NoMove))
                     {
                         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                        // toggle to enable tablet input on brush pressure
+                        if(TabletInput::instance().isEnabled() && TabletInput::instance().hasPressure()) {
+                            static bool enable_tablet_input = false;
+                            enable_tablet_input = Settings::application.brush_pressure_mode & TabletInput_brush_pressure;
+                            ImGuiToolkit::ButtonIconToggle(13, 0, &enable_tablet_input, "Tablet pressure sensitive");
+                            if (enable_tablet_input)
+                                Settings::application.brush_pressure_mode |= TabletInput_brush_pressure;
+                            else 
+                                Settings::application.brush_pressure_mode &= ~TabletInput_brush_pressure;
+                        }
+                        // max brush pressure
                         ImGuiToolkit::Indication("Light  ", ICON_FA_FEATHER_ALT);
                         ImGui::VSliderFloat("##BrushPressure", ImVec2(30,260), &Settings::application.brush.y, BRUSH_MAX_PRESS, BRUSH_MIN_PRESS, "", 0.3f);
                         if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
@@ -889,7 +926,7 @@ void TextureView::draw()
                         }
                         if (e>0) {
                             edit_source_->maskShader()->effect = e;
-                            edit_source_->maskShader()->cursor = glm::vec4(100.0, 100.0, 0.f, 0.f);
+                            edit_source_->maskShader()->cursor = glm::vec4(100.0, 100.0,100.f, 100.f);
                             edit_source_->touch(Source::SourceUpdate_Mask);
                             Action::manager().store(oss.str());
                         }
@@ -1106,16 +1143,38 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
             // set brush coordinates (used in mouse over)
             scene_brush_pos = scene_to;
 
+            // no previous brush position : restart at same coordinates
+            if ( glm::length( previous_scene_brush_pos ) < EPSILON) 
+                previous_scene_brush_pos = scene_brush_pos;
+
             if ( pick.first == mask_cursor_circle_ ) {
                 // snap prush coordinates if grid is active
                 if (grid->active())
                     scene_brush_pos = grid->snap(scene_brush_pos);
                 // inform shader of a cursor action : coordinates and crop scaling
+                edit_source_->maskShader()->size = edit_source_->mixingsurface_->scale_;
+
+                // Apply tablet pressure to brush if available
+                if (TabletInput::instance().hasPressure() && TabletInput::instance().isPressed()) {
+                    float tablet_pressure = TabletInput::instance().getPressure();
+                    // apply pressure depending on mode    
+                    // scale size of brush
+                    if (Settings::application.brush_pressure_mode & TabletInput_brush_size)
+                        edit_source_->maskShader()->brush.x = CLAMP( Settings::application.brush.x * tablet_pressure, BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
+                    // transparency pressure
+                    if (Settings::application.brush_pressure_mode & TabletInput_brush_pressure)
+                        edit_source_->maskShader()->brush.y = CLAMP( Settings::application.brush.x * tablet_pressure, BRUSH_MIN_PRESS, BRUSH_MAX_PRESS);
+                }
+
+                // inform shader of a cursor action : coordinates and crop scaling
                 edit_source_->maskShader()->cursor = glm::vec4(scene_brush_pos.x - shift_crop_.x,
                                                                scene_brush_pos.y - shift_crop_.y,
-                                                               edit_source_->mixingsurface_->scale_.x,
-                                                               edit_source_->mixingsurface_->scale_.y);
+                                                               previous_scene_brush_pos.x - shift_crop_.x,
+                                                               previous_scene_brush_pos.y - shift_crop_.y);
                 edit_source_->touch(Source::SourceUpdate_Mask);
+
+                previous_scene_brush_pos = scene_brush_pos;
+
                 // action label
                 info << MaskShader::mask_names[MaskShader::PAINT] << " changed";
                 // cursor indication - no info, just cursor
@@ -1547,7 +1606,8 @@ void TextureView::terminate(bool force)
     // special case for texture paint: store image on mouse release (end of action PAINT)
     if ( edit_source_ != nullptr && current_action_.find(MaskShader::mask_names[MaskShader::PAINT]) != std::string::npos ) {
         edit_source_->storeMask();
-        edit_source_->maskShader()->cursor = glm::vec4(100.0, 100.0, 0.f, 0.f);
+        edit_source_->maskShader()->cursor = glm::vec4(100.0, 100.0, 100.f, 100.f);
+        edit_source_->maskShader()->size = glm::vec2(stored_mask_size_);
     }
 
     // View default termination of action

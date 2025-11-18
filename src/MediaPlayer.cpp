@@ -1091,7 +1091,7 @@ void MediaPlayer::step(uint milisecond)
     else {
         // step event
         if (milisecond < media_.dt)
-            milisecond = media_.dt;
+            milisecond = timeline_.step() < media_.dt ? timeline_.step() : media_.dt;
         GstEvent *stepevent = gst_event_new_step (GST_FORMAT_TIME, milisecond, ABS(rate_), TRUE,  FALSE);
 
         // Metronome
@@ -1134,6 +1134,9 @@ bool MediaPlayer::go_to(GstClockTime pos)
         if (ABS_DIFF (position_, jumpPts) > 2 * timeline_.step() ) {
             ret = true;
             seek( jumpPts );
+            
+            // Revert loop status to default
+            loop_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
         }
     }
     return ret;
@@ -1614,10 +1617,14 @@ bool MediaPlayer::go_to_flag(TimeInterval flag)
             current_flag_ = flag;
 
             // change timeline status accordingly
-            if ( flag.type == (int) LoopStatus::LOOP_STATUS_BLACKOUT) 
+            if ( flag.type == (int) LoopStatus::LOOP_STATUS_BLACKOUT) {
                 loop_status_ = LoopStatus::LOOP_STATUS_BLACKOUT;
-            else if ( flag.type == (int) LoopStatus::LOOP_STATUS_STOPPED) 
-                loop_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
+                execute_play_command(false);
+            }
+            else if ( flag.type == (int) LoopStatus::LOOP_STATUS_STOPPED) {
+                loop_status_ = LoopStatus::LOOP_STATUS_STOPPED;
+                execute_play_command(false);
+            }
         }
     }
     return ret;

@@ -90,7 +90,7 @@
 #define APPEARANCE_DEFAULT_SCALE 2.f
 #define APPEARANCE_MIN_SCALE 0.4f
 #define APPEARANCE_MAX_SCALE 7.0f
-#define BRUSH_MIN_SIZE 0.05f
+#define BRUSH_MIN_SIZE 0.01f
 #define BRUSH_MAX_SIZE 2.f
 #define BRUSH_MIN_PRESS 0.005f
 #define BRUSH_MAX_PRESS 1.f
@@ -111,8 +111,8 @@
 #define IMGUI_LABEL_RECENT_FILES " Recent files"
 #define IMGUI_LABEL_RECENT_RECORDS " Recent recordings"
 #define IMGUI_RIGHT_ALIGN -3.8f * ImGui::GetTextLineHeightWithSpacing()
-#define IMGUI_SAME_LINE 8
-#define IMGUI_TOP_ALIGN 10
+#define IMGUI_SAME_LINE 8.f
+#define IMGUI_TOP_ALIGN 10.f
 #define IMGUI_COLOR_OVERLAY IM_COL32(5, 5, 5, 150)
 #define IMGUI_COLOR_LIGHT_OVERLAY IM_COL32(5, 5, 5, 50)
 #define IMGUI_COLOR_CAPTURE 1.0, 0.55, 0.05

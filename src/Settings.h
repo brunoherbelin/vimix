@@ -325,6 +325,7 @@ struct Application
 
     // settings brush texture paint
     glm::vec3 brush;
+    int brush_pressure_mode;
 
     // settings render
     RenderConfig render;
@@ -396,6 +397,7 @@ struct Application
         current_view = 1;
         current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
+        brush_pressure_mode = 0;
         num_output_windows = 1;
         windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
         windows[0].w = 1600;

@@ -441,9 +441,15 @@ GstBusSyncReply FrameGrabber::signal_handler(GstBus *, GstMessage *msg, gpointer
         // inform user
         GError *error;
         gst_message_parse_error(msg, &error, NULL);
-        Log::Warning("FrameGrabber Error %s : %s",
-                     std::to_string(reinterpret_cast<FrameGrabber *>(ptr)->id()).c_str(),
-                     error->message);
+        FrameGrabber *fg = reinterpret_cast<FrameGrabber *>(ptr);
+        if (fg) {
+            Log::Warning("FrameGrabber Error %s : %s",
+                        std::to_string(fg->id()).c_str(),
+                        error->message);
+            fg->endofstream_=true;
+        }
+        else 
+            Log::Warning("FrameGrabber Error : %s", error->message);
         g_error_free(error);
 //    } else {
 //        g_printerr("FrameGrabber msg %s \n", GST_MESSAGE_TYPE_NAME(msg));

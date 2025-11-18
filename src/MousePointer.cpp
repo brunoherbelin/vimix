@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <glm/geometric.hpp>
 #include <glm/gtc/random.hpp> // for diskRand
 
 #include "imgui.h"
@@ -24,6 +25,8 @@
 #include "Metronome.h"
 #include "View.h"
 #include "Mixer.h"
+#include "TabletInput.h"
+
 //#include "RenderingManager.h"
 #include "MousePointer.h"
 
@@ -35,6 +38,7 @@ std::vector< std::tuple<int, int, std::string, std::string> > Pointer::Modes = {
     { ICON_POINTER_LINEAR,  "Line",    "Speed" },
     { ICON_POINTER_SPRING,  "Spring",  "Mass" },
     { ICON_POINTER_WIGGLY,  "Wiggly",  "Radius" },
+    { ICON_POINTER_BROWNIAN,  "Brownian",  "Radius" },
     { ICON_POINTER_METRONOME, "Metronome", "Jump" }
 };
 
@@ -111,10 +115,14 @@ void PointerLinear::draw()
 void PointerWiggly::update(const glm::vec2 &pos, float)
 {
     current_ = pos;
-    float radius = POINTER_WIGGLY_MIN_RADIUS + (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
+    radius_ = (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
+    if (TabletInput::instance().hasPressure() && TabletInput::instance().isPressed()) {
+        radius_ *= TabletInput::instance().getPressure();
+    }
+    radius_ += POINTER_WIGGLY_MIN_RADIUS;
 
     // change pos to a random point in a close radius
-    glm::vec2 p = pos + glm::diskRand( radius );
+    glm::vec2 p = pos + glm::diskRand( radius_ );
 
     // smooth a little and apply
     const float emaexp = 2.0 / float( POINTER_WIGGLY_SMOOTHING + 1);
@@ -126,9 +134,54 @@ void PointerWiggly::draw()
     const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
     ImGui::GetBackgroundDrawList()->AddLine(IMVEC_IO(current_), IMVEC_IO(target_), color, 5.f);
 
-    const float radius = POINTER_WIGGLY_MIN_RADIUS + (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
-    ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), radius * 0.5f, color, 0, 2.f + 4.f * strength_);
+    const float max = POINTER_WIGGLY_MIN_RADIUS + (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
+    if (TabletInput::instance().hasPressure() && TabletInput::instance().isPressed())
+        ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), radius_ * 0.5f, color, 0);
+    ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), max * 0.5f, color, 0, 2.f + 4.f * strength_);
 }
+
+void PointerBrownian::update(const glm::vec2 &pos, float)
+{
+    current_ = pos;
+    radius_ = (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
+    radius_ += POINTER_WIGGLY_MIN_RADIUS;
+
+    // Brownian motion: add small random displacement in 2D
+    // Generate random step using gaussian distribution for each axis
+    glm::vec2 random_step = glm::gaussRand(glm::vec2(0.0f), glm::vec2(1.f) );
+
+    // Scale by radius and apply damping to keep motion bounded
+    float factor = 0.3f;    
+    if (TabletInput::instance().hasPressure() && TabletInput::instance().isPressed()) {
+        factor *= TabletInput::instance().getPressure();
+    }
+    float damping = 0.92f;    
+    brownian_offset_ = brownian_offset_ * damping + random_step * radius_ * factor;
+
+    // Clamp offset to stay within maximum radius
+    float offset_length = glm::length(brownian_offset_);
+    if (offset_length > radius_) {
+        brownian_offset_ = brownian_offset_ * (radius_ / offset_length);
+    }
+
+    glm::vec2 p = pos + brownian_offset_;
+
+    // smooth a little and apply
+    const float emaexp = 2.0 / float( POINTER_WIGGLY_SMOOTHING + 1);
+    target_ = emaexp * p + (1.f - emaexp) * target_;
+}
+
+void PointerBrownian::draw()
+{
+    const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
+    ImGui::GetBackgroundDrawList()->AddLine(IMVEC_IO(current_), IMVEC_IO(target_), color, 5.f);
+
+    const float max = POINTER_WIGGLY_MIN_RADIUS + (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
+    if (TabletInput::instance().hasPressure() && TabletInput::instance().isPressed())
+        ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), radius_ * 0.8f, color, 0);
+    ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), max * 0.8f, color, 0, 2.f + 4.f * strength_);
+}
+
 
 #define POINTER_METRONOME_RADIUS 36.f
 
@@ -186,13 +239,17 @@ void PointerSpring::update(const glm::vec2 &pos, float dt)
     // damping : opposite direction of force, non proportional to mass
     const float damping = 60.0;
     // mass as a percentage of min to max
-    const float mass = POINTER_SPRING_MIN_MASS + (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
+    mass_ = (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
+    if (TabletInput::instance().hasPressure() && TabletInput::instance().isPressed()) {
+        mass_ *= 1.f - TabletInput::instance().getPressure();
+    }
+    mass_ += POINTER_SPRING_MIN_MASS;
 
     // compute delta betwen initial and current position
     glm::vec2 delta = pos - target_;
     if ( glm::length(delta) > 0.0001f ) {
         // apply force on velocity : spring stiffness / mass
-        velocity_ += delta * ( (POINTER_SPRING_MAX_MASS * stiffness) / mass );
+        velocity_ += delta * ( (POINTER_SPRING_MAX_MASS * stiffness) / mass_ );
         // apply damping dynamics
         velocity_ -= damping * glm::max(dt,0.001f) * glm::normalize(delta);
         // compute new position : add velocity x time
@@ -230,8 +287,10 @@ void PointerSpring::draw()
     ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC_IO(current_), IMVEC_IO(_third), IMVEC_IO(_twothird), IMVEC_IO(_end), color, 5.f);
 
     // represent the weight with a filled circle
-    const float mass = POINTER_SPRING_MIN_MASS + (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
-    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC_IO(_end), mass, color, 0);
+    const float max = POINTER_SPRING_MIN_MASS + (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
+    if (TabletInput::instance().hasPressure())
+        ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(_end), max, color, 0);
+    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC_IO(_end), mass_, color, 0);
 }
 
 
@@ -242,6 +301,7 @@ MousePointer::MousePointer() : mode_(Pointer::POINTER_DEFAULT)
     pointer_[Pointer::POINTER_LINEAR]  = new PointerLinear;
     pointer_[Pointer::POINTER_SPRING]  = new PointerSpring;
     pointer_[Pointer::POINTER_WIGGLY]  = new PointerWiggly;
+    pointer_[Pointer::POINTER_BROWNIAN]  = new PointerBrownian;
     pointer_[Pointer::POINTER_METRONOME] = new PointerMetronome;
 }
 
@@ -252,5 +312,6 @@ MousePointer::~MousePointer()
     delete pointer_[Pointer::POINTER_LINEAR];
     delete pointer_[Pointer::POINTER_SPRING];
     delete pointer_[Pointer::POINTER_WIGGLY];
+    delete pointer_[Pointer::POINTER_BROWNIAN];
     delete pointer_[Pointer::POINTER_METRONOME];
 }

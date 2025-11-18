@@ -32,11 +32,8 @@ If not already installed, install the builder and the flathub repository:
 
 Install the runtime environments:
     
-    flatpak install org.gnome.Sdk/x86_64
-    flatpak install org.gnome.Platform
-
-
-_Select version **49** in the list of proposed versions_
+    flatpak install org.freedesktop.Sdk/x86_64/25.08
+    flatpak install org.freedesktop.Platform/25.08
 
 
 ### 2. Build vimix flatpak

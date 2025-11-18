@@ -33,6 +33,12 @@
     <binary>vimix</binary>
   </provides>
   <releases>
+    <release version="0.8.5" date="2025-11-18">
+      <description>
+      <p>Version 0.8.5</p>
+      </description>
+      <url>https://github.com/brunoherbelin/vimix/releases/tag/0.8.5</url>
+    </release>
     <release version="0.8.4" date="2025-01-04">
       <description>
       <p>Version 0.8.4</p>

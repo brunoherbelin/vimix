@@ -140,7 +140,7 @@ void MaskShader::reset()
     size = glm::vec2(1.f, 1.f);
 
     // default brush
-    cursor = glm::vec4(-10.f, -10.f, 1.f, 1.f);
+    cursor = glm::vec4(-10.f, -10.f, -10.f, -10.f);
     brush = glm::vec3(0.5f, 0.1f, 0.f);
     option = 0;
     effect = 0;

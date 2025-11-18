@@ -40,6 +40,7 @@ public:
         CALLBACK_PLAYSPEED,
         CALLBACK_PLAYFFWD,
         CALLBACK_SEEK,
+        CALLBACK_FLAG,
         CALLBACK_REPLAY,
         CALLBACK_RESETGEO,
         CALLBACK_LOCK,
@@ -292,6 +293,22 @@ public:
     SourceCallback *clone() const override;
     SourceCallback *reverse(Source *s) const override;
     CallbackType type () const override { return CALLBACK_SEEK; }
+    void accept (Visitor& v) override;
+};
+
+class Flag : public SourceCallback
+{
+    int flag_index_;
+
+public:
+    Flag (int target = -1);
+
+    int value () const { return flag_index_; }
+    void  setValue (int t) { flag_index_ = t; }
+
+    void update (Source *s, float) override;
+    SourceCallback *clone() const override;
+    CallbackType type () const override { return CALLBACK_FLAG; }
     void accept (Visitor& v) override;
 };
 

@@ -76,6 +76,7 @@ public:
     virtual void visit (class Play&) {}
     virtual void visit (class PlayFastForward&) {}
     virtual void visit (class Seek&) {}
+    virtual void visit (class Flag&) {}
 };
 
 
