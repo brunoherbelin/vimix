@@ -17,7 +17,6 @@
         "--filesystem=host",
         "--filesystem=/tmp",
         "--talk-name=org.gtk.vfs.*",
-        "--talk-name=org.freedesktop.portal.Desktop",
         "--env=FREI0R_PATH=/app/lib/frei0r-1"
     ],
     "cleanup": [
