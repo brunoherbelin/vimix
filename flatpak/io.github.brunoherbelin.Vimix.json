@@ -8,10 +8,7 @@
     "rename-icon": "vimix",
     "finish-args": [
         "--socket=x11",
-        "--socket=wayland",
-        "--socket=fallback-x11",
         "--socket=pulseaudio",
-        "--socket=session-bus",
         "--share=ipc",
         "--share=network",
         "--device=dri",
@@ -20,6 +17,7 @@
         "--filesystem=host",
         "--filesystem=/tmp",
         "--talk-name=org.gtk.vfs.*",
+        "--talk-name=org.freedesktop.portal.Desktop",
         "--env=FREI0R_PATH=/app/lib/frei0r-1"
     ],
     "cleanup": [
