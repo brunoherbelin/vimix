@@ -439,15 +439,18 @@ Rendering::Rendering()
 bool Rendering::init()
 {
 #if GLFW_VERSION_MAJOR > 2 && GLFW_VERSION_MINOR > 3
-    // Forcing X11 on Gnome makes the server use xWayland which has proper Server Side Decorations as opposed to Wayland.
-    if (strcmp(getenv("XDG_CURRENT_DESKTOP"), "GNOME") == 0 || 
-        strcmp(getenv("XDG_CURRENT_DESKTOP"), "Unity") == 0 ){
-        g_printerr("Forcing X11 on GNOME desktop\n");
-        glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
-    }
-    else {
-        g_printerr("Detected %s desktop\n", getenv("XDG_CURRENT_DESKTOP"));
-        glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
+    const char* desktop = getenv("XDG_CURRENT_DESKTOP");
+    if (desktop) {
+        // Forcing X11 on Gnome makes the server use xWayland which has proper Server Side Decorations as opposed to Wayland.
+        if (strstr(desktop, "GNOME") != nullptr || 
+            strstr(desktop, "Unity") != nullptr ){
+            g_printerr("Forcing X11 / xWayland on %s desktop\n", desktop);
+            glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+        }
+        else {
+            g_printerr("Detected %s desktop\n", desktop);
+            glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
+        }
     }
 #endif
     //
