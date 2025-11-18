@@ -164,25 +164,18 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //    fast (5)
     "video/x-raw, format=I420 ! x264enc tune=\"zerolatency\" pass=4 quantizer=22 speed-preset=2 ! video/x-h264, profile=baseline ! h264parse ! ",
     "video/x-raw, format=Y444_10LE ! x264enc tune=\"zerolatency\" pass=4 quantizer=18 speed-preset=3 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
-    // Control x265 encoder quality :
-    // NB: apparently x265 only accepts I420 format :(
-    // speed-preset
-    //    superfast (2)
-    //    veryfast (3)
-    //    faster (4)
-    //    fast (5)
-    // Tune
-    //   psnr (1)
-    //   ssim (2) DEFAULT
-    //   grain (3)
-    //   zerolatency (4)  Encoder latency is removed
-    //   fastdecode (5)
-    //   animation (6) optimize the encode quality for animation content without impacting the encode speed
-    // crf Quality-controlled variable bitrate [0 51]
-    //   default 28
-    //   24 for x265 should be visually transparent; anything lower will probably just waste file size
-    "video/x-raw, format=I420 ! x265enc tune=\"zerolatency\" speed-preset=2 option-string=\"crf=24\" ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "video/x-raw, format=I420 ! x265enc tune=\"zerolatency\" speed-preset=5 option-string=\"crf=12\" ! video/x-h265, profile=(string)main ! h265parse ! ",
+    // Control vah265enc encoder quality :
+    //   target-usage : The target usage to control and balance the encoding speed/quality
+    //                  The lower value has better quality but slower speed, the higher value has faster speed but lower quality.
+    //                  Unsigned Integer. Range: 1 - 7 Default: 4 
+    //   max-qp       : Maximum quantizer value for each frame
+    //                  Unsigned Integer. Range: 0 - 51 Default: 51 
+    //   rate-control : The desired rate control mode for the encoder
+    //                            (2): cbr              - Constant Bitrate
+    //                            (4): vbr              - Variable Bitrate
+    //                            (16): cqp              - Constant Quantizer
+    "video/x-raw, format=NV12 ! vah265enc rate-control=\"cqp\" target-usage=5 ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "video/x-raw, format=NV12 ! vah265enc rate-control=\"cqp\" max-qp=18  target-usage=2 ! video/x-h265, profile=(string)main ! h265parse ! ",
     // Apple ProRes encoding parameters
     //  pass
     //      cbr (0) – Constant Bitrate Encoding
@@ -249,8 +242,8 @@ std::vector<std::string> nvidia_profile_description {
     "video/x-raw, format=RGBA ! nvh264enc rc-mode=1 zerolatency=true ! video/x-h264, profile=(string)main ! h264parse ! ",
     "video/x-raw, format=RGBA ! nvh264enc rc-mode=1 qp-const=18 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
     // Control nvh265enc encoder
-    "video/x-raw, format=RGBA ! nvh265enc rc-mode=1 zerolatency=true ! video/x-h265, profile=(string)main-10 ! h265parse ! ",
-    "video/x-raw, format=RGBA ! nvh265enc rc-mode=1 qp-const=18 ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
+    "video/x-raw, format=RGBA ! nvh265enc rc-mode=1 zerolatency=true ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "video/x-raw, format=RGBA ! nvh265enc rc-mode=1 qp-const=18 ! video/x-h265, profile=(string)main ! h265parse ! ",
     "", "", "", ""
 };
 
