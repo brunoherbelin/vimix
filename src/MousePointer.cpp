@@ -24,6 +24,8 @@
 #include "Metronome.h"
 #include "View.h"
 #include "Mixer.h"
+#include "TabletInput.h"
+
 //#include "RenderingManager.h"
 #include "MousePointer.h"
 
@@ -111,10 +113,14 @@ void PointerLinear::draw()
 void PointerWiggly::update(const glm::vec2 &pos, float)
 {
     current_ = pos;
-    float radius = POINTER_WIGGLY_MIN_RADIUS + (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
+    radius_ = (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
+    if (TabletInput::instance().hasPressure() && TabletInput::instance().isPressed()) {
+        radius_ *= TabletInput::instance().getPressure();
+    }
+    radius_ += POINTER_WIGGLY_MIN_RADIUS;
 
     // change pos to a random point in a close radius
-    glm::vec2 p = pos + glm::diskRand( radius );
+    glm::vec2 p = pos + glm::diskRand( radius_ );
 
     // smooth a little and apply
     const float emaexp = 2.0 / float( POINTER_WIGGLY_SMOOTHING + 1);
@@ -126,8 +132,10 @@ void PointerWiggly::draw()
     const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
     ImGui::GetBackgroundDrawList()->AddLine(IMVEC_IO(current_), IMVEC_IO(target_), color, 5.f);
 
-    const float radius = POINTER_WIGGLY_MIN_RADIUS + (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
-    ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), radius * 0.5f, color, 0, 2.f + 4.f * strength_);
+    const float max = POINTER_WIGGLY_MIN_RADIUS + (POINTER_WIGGLY_MAX_RADIUS - POINTER_WIGGLY_MIN_RADIUS) * strength_;
+    if (TabletInput::instance().hasPressure() && TabletInput::instance().isPressed())
+        ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), radius_ * 0.5f, color, 0);
+    ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(current_), max * 0.5f, color, 0, 2.f + 4.f * strength_);
 }
 
 #define POINTER_METRONOME_RADIUS 36.f
@@ -186,13 +194,17 @@ void PointerSpring::update(const glm::vec2 &pos, float dt)
     // damping : opposite direction of force, non proportional to mass
     const float damping = 60.0;
     // mass as a percentage of min to max
-    const float mass = POINTER_SPRING_MIN_MASS + (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
+    mass_ = (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
+    if (TabletInput::instance().hasPressure() && TabletInput::instance().isPressed()) {
+        mass_ *= 1.f - TabletInput::instance().getPressure();
+    }
+    mass_ += POINTER_SPRING_MIN_MASS;
 
     // compute delta betwen initial and current position
     glm::vec2 delta = pos - target_;
     if ( glm::length(delta) > 0.0001f ) {
         // apply force on velocity : spring stiffness / mass
-        velocity_ += delta * ( (POINTER_SPRING_MAX_MASS * stiffness) / mass );
+        velocity_ += delta * ( (POINTER_SPRING_MAX_MASS * stiffness) / mass_ );
         // apply damping dynamics
         velocity_ -= damping * glm::max(dt,0.001f) * glm::normalize(delta);
         // compute new position : add velocity x time
@@ -230,8 +242,10 @@ void PointerSpring::draw()
     ImGui::GetBackgroundDrawList()->AddBezierCurve(IMVEC_IO(current_), IMVEC_IO(_third), IMVEC_IO(_twothird), IMVEC_IO(_end), color, 5.f);
 
     // represent the weight with a filled circle
-    const float mass = POINTER_SPRING_MIN_MASS + (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
-    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC_IO(_end), mass, color, 0);
+    const float max = POINTER_SPRING_MIN_MASS + (POINTER_SPRING_MAX_MASS - POINTER_SPRING_MIN_MASS) * strength_;
+    if (TabletInput::instance().hasPressure())
+        ImGui::GetBackgroundDrawList()->AddCircle(IMVEC_IO(_end), max, color, 0);
+    ImGui::GetBackgroundDrawList()->AddCircleFilled(IMVEC_IO(_end), mass_, color, 0);
 }
 
 

@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <glib.h>
 #ifdef LINUX
 
 #include "TabletInput.h"
@@ -213,16 +214,14 @@ void TabletInput::pollEvents()
                         // Update button state
                         if (ev.xcookie.evtype == XI_ButtonPress) {
                             data_.tip_down = true;
-                            data_.in_proximity = true;
+                            data_.in_proximity = data_.pressure > 0.005f;
                         }
                         else if (ev.xcookie.evtype == XI_ButtonRelease) {
                             data_.tip_down = false;
-                            if (data_.pressure < 0.01f) {
-                                data_.in_proximity = false;
-                            }
+                            data_.in_proximity = false;
                         }
                         else if (ev.xcookie.evtype == XI_Motion) {
-                            data_.in_proximity = true;
+                            data_.in_proximity = data_.pressure > 0.005f;
                         }
                         break;
                     }

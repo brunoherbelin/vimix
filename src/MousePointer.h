@@ -87,6 +87,7 @@ public:
 ///
 class PointerSpring : public Pointer
 {
+    float mass_;
     glm::vec2 velocity_;
 public:
     PointerSpring() {}
@@ -101,6 +102,7 @@ public:
 ///
 class PointerWiggly : public Pointer
 {
+    float radius_;
 public:
     PointerWiggly() {}
     void update(const glm::vec2 &pos, float) override;

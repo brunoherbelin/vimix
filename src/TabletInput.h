@@ -71,7 +71,7 @@ public:
 
     // Quick accessors
     float getPressure() const { return data_.pressure; }
-    bool isPressed() const { return data_.tip_down || data_.in_proximity; }
+    bool isPressed() const { return data_.tip_down && data_.in_proximity; }
     
     // status
     bool isEnabled() const { return active_; }
