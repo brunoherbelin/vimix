@@ -77,31 +77,28 @@
 guint screensaver_inhibit_cookie_ = 0;
 GDBusConnection *session_dbus_ = NULL;
 
-void inhibitScreensaver (bool on) 
+void inhibitScreensaver (bool on)
 {
     /*
      * Inhibit or un-inhibit the desktop screensaver via the
-     * org.freedesktop.ScreenSaver D-Bus API.
+     * XDG Desktop Portal org.freedesktop.portal.Inhibit API.
      *
      * When 'on' is true:
      *  - Obtain a connection to the session bus (cached in session_dbus_).
-     *  - Call the Inhibit method with two strings: the application name
-     *    ("vimix") and a human-readable reason.
-     *  - The call returns a uint 'cookie' which must be kept and later
-     *    passed to UnInhibit to release the inhibition.
+     *  - Call the Inhibit method with: window identifier (empty string for whole app),
+     *    flags (8 = inhibit idle/screensaver), and options (reason string).
+     *  - The call returns an object path handle which identifies the inhibit request.
      *
      * When 'on' is false:
-     *  - If we previously inhibited the screensaver (screensaver_inhibit_cookie_ != 0)
-     *    call UnInhibit with that cookie.
-     *  - Release the cached D-Bus connection (session_dbus_) and reset the cookie.
+     *  - The inhibition is automatically released when the handle is removed or app exits.
+     *  - We explicitly close the session bus connection to clean up.
      *
      * Notes:
+     *  - This uses the XDG Desktop Portal which works in Flatpak sandboxes.
+     *  - Requires --talk-name=org.freedesktop.portal.Desktop permission.
      *  - This function uses synchronous D-Bus calls. They may block briefly.
      *  - Errors from g_dbus_connection_call_sync are reported to the log and freed.
-     *  - The code is guarded by an #ifdef so it only compiles for platforms
-     *    where GLFW_EXPOSE_NATIVE_GLX is defined (historically used for X11/GLX),
-     *    but the org.freedesktop.ScreenSaver D-Bus interface works on both
-     *    X11 and Wayland session daemons that implement the spec.
+     *  - Works on both X11 and Wayland.
      */
     if (on ) {
         GError *error = NULL;
@@ -111,15 +108,24 @@ void inhibitScreensaver (bool on)
 
         /* Only inhibit once: do nothing if we already have a cookie. */
         if (session_dbus_ != NULL && screensaver_inhibit_cookie_ == 0) {
-            /* Call org.freedesktop.ScreenSaver.Inhibit(application_name, reason) */
+            /* Build options dictionary with reason */
+            GVariantBuilder builder;
+            g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
+            g_variant_builder_add(&builder, "{sv}", "reason",
+                                g_variant_new_string("Video mixing in progress"));
+
+            /* Call org.freedesktop.portal.Inhibit.Inhibit(window, flags, options) */
             GVariant *result = g_dbus_connection_call_sync(
                 session_dbus_,
-                "org.freedesktop.ScreenSaver",
-                "/org/freedesktop/ScreenSaver",
-                "org.freedesktop.ScreenSaver",
+                "org.freedesktop.portal.Desktop",
+                "/org/freedesktop/portal/desktop",
+                "org.freedesktop.portal.Inhibit",
                 "Inhibit",
-                g_variant_new("(ss)", "vimix", "Video mixing in progress"),
-                G_VARIANT_TYPE("(u)"),
+                g_variant_new("(su@a{sv})",
+                              "",    // window identifier (empty for whole app)
+                              8,     // flags: 8 = inhibit idle/screensaver
+                              g_variant_builder_end(&builder)),
+                G_VARIANT_TYPE("(o)"),  // returns object path handle
                 G_DBUS_CALL_FLAGS_NONE,
                 -1,
                 NULL,
@@ -127,10 +133,11 @@ void inhibitScreensaver (bool on)
             );
 
             if (result != NULL) {
-                /* The returned variant contains a single unsigned integer cookie. */
-                g_variant_get(result, "(u)", &screensaver_inhibit_cookie_);
+                /* The returned variant contains an object path handle.
+                 * We store a dummy cookie value to indicate inhibition is active. */
+                screensaver_inhibit_cookie_ = 1;
                 g_variant_unref(result);
-                Log::Info("Screensaver inhibited for vimix (cookie: %u)", screensaver_inhibit_cookie_);
+                Log::Info("Screensaver inhibited for vimix via XDG Desktop Portal");
             } else {
                 /* If the call failed, log the error and ensure cookie is zero. */
                 if (error != NULL) {
@@ -142,37 +149,14 @@ void inhibitScreensaver (bool on)
         }
     }
     else {
-        /* Un-inhibit only if we have a valid cookie recorded. */
+        /* Un-inhibit: the portal automatically releases when we close the session */
         if (screensaver_inhibit_cookie_ != 0) {
-            GError *error = NULL;
             if (session_dbus_ != NULL) {
-                /* Call org.freedesktop.ScreenSaver.UnInhibit(cookie) */
-                g_dbus_connection_call_sync(
-                    session_dbus_,
-                    "org.freedesktop.ScreenSaver",
-                    "/org/freedesktop/ScreenSaver",
-                    "org.freedesktop.ScreenSaver",
-                    "UnInhibit",
-                    g_variant_new("(u)", screensaver_inhibit_cookie_),
-                    NULL,
-                    G_DBUS_CALL_FLAGS_NONE,
-                    -1,
-                    NULL,
-                    &error
-                );
-
-                if (error != NULL) {
-                    /* Report failure to release inhibition but continue cleanup. */
-                    g_printerr("Could not un-inhibit screensaver: %s\n", error->message);
-                    g_error_free(error);
-                } else {
-                    g_printerr("Screensaver inhibition disabled\n");
-                    Log::Info("Screensaver inhibition disabled\n");
-                }
-
                 /* Close and drop our cached session bus connection. */
+                /* The portal will automatically release the inhibition. */
                 g_object_unref(session_dbus_);
                 session_dbus_ = NULL;
+                Log::Info("Screensaver inhibition disabled");
             }
             /* Reset cookie so subsequent calls can re-inhibit if needed. */
             screensaver_inhibit_cookie_ = 0;
