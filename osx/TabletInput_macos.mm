@@ -35,7 +35,7 @@ TabletInput::~TabletInput()
     terminate();
 }
 
-bool TabletInput::init(void* platform_handle)
+bool TabletInput::init()
 {
     // Create event monitor for tablet events
     NSEventMask mask = NSEventMaskTabletPoint |

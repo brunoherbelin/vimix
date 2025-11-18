@@ -120,7 +120,15 @@ IF(APPLE)
 ELSE(APPLE)
 
     # Add Linux tablet input implementation
-    list(APPEND VMIX_SRCS TabletInput_linux.cpp)
+    if(X11_Xi_FOUND)
+        # Use X11/XInput2 version (works in Flatpak and everywhere)
+        list(APPEND VMIX_SRCS TabletInput_x11.cpp)
+    else()
+        if(LIBINPUT_FOUND AND LIBUDEV_FOUND)
+            # Use X11/XInput2 version (works in Flatpak and everywhere)
+            list(APPEND VMIX_SRCS TabletInput_linux_libinput.cpp)
+        endif()
+    endif()
 
 ENDIF(APPLE)
 
@@ -164,7 +172,12 @@ ELSE(APPLE)
         X11::xcb
     )
 
-    # Add libinput and libudev for tablet support on Linux
+    # Add XInput2 library for tablet support on Linux (if available)
+    if(X11_Xi_FOUND)
+        list(APPEND PLATFORM_LIBS ${X11_Xi_LIB})
+    endif()
+
+    # Add libinput and libudev for tablet support on Linux (if available)
     if(LIBINPUT_FOUND AND LIBUDEV_FOUND)
         list(APPEND PLATFORM_LIBS ${LIBINPUT_LIBRARIES} ${LIBUDEV_LIBRARIES})
     endif()

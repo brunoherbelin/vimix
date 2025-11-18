@@ -23,9 +23,13 @@
 #include <glm/glm.hpp>
 
 // Platform-specific forward declarations
-#if defined(LINUX) && defined(HAVE_LIBINPUT)
+#ifdef LINUX
+// X11 forward declarations (for XInput2)
+typedef struct _XDisplay Display;
+#if defined(HAVE_LIBINPUT)
 struct libinput;
 struct udev;
+#endif
 #elif defined(APPLE)
 #ifdef __OBJC__
 @class NSEvent;
@@ -54,7 +58,7 @@ public:
     static TabletInput& instance();
 
     // Initialize tablet input system
-    bool init(void* platform_handle = nullptr);
+    bool init();
 
     // Poll for new tablet events (call once per frame)
     void pollEvents();
@@ -80,10 +84,21 @@ private:
     TabletData data_;
     bool active_;
 
-#if defined(LINUX) && defined(HAVE_LIBINPUT)
+#ifdef LINUX
+#if defined(HAVE_X11TABLETINPUT)
+    // X11/XInput2 members (used when libinput is not available or in Flatpak)
+    Display *display_;
+    int xi_opcode_;
+    int pressure_valuator_;
+    int tilt_x_valuator_;
+    int tilt_y_valuator_;
+#endif
+#if defined(HAVE_LIBINPUT)
+    // libinput members (used for native builds with libinput)
     struct udev *udev_;
     struct libinput *li_;
     int fd_;
+#endif
 #elif defined(APPLE)
     void* monitor_; // Event monitor handle
 #endif
