@@ -432,8 +432,14 @@ void ImGuiVisitor::visit (Source& s)
         }
         // centered image
         if (s.ready()) {
-            ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
+            ImVec2 dpos = ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space));
+            ImGui::SetCursorPos( dpos );
             ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetCursorPos( dpos );
+                ImGui::Image((void*)(uintptr_t) s.texture(), ImVec2(width, height));
+                ImGuiToolkit::ToolTip("Source original image");
+            }
         } else {
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::SetCursorPos(
