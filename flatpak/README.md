@@ -33,7 +33,7 @@ If not already installed, install the builder and the flathub repository:
 Install the runtime environments:
     
     flatpak install org.freedesktop.Sdk/x86_64/25.08
-    flatpak install org.freedesktop.Platform/25.08
+    flatpak install org.freedesktop.Platform/x86_64/25.08
 
 
 ### 2. Build vimix flatpak
