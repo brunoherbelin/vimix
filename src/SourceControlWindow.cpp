@@ -471,7 +471,8 @@ void SourceControlWindow::Render()
                 mediaplayer_active_->timeline()->clearFading();
                 mediaplayer_active_->timeline()->clearGaps();
                 mediaplayer_active_->timeline()->clearFlags();
-                mediaplayer_active_->setVideoEffect("");
+                if (!mediaplayer_active_->videoEffect().empty() && mediaplayer_active_->videoEffectAvailable())
+                    mediaplayer_active_->setVideoEffect("");
                 std::ostringstream oss;
                 oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
                 oss << ": Reset timeline";

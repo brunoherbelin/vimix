@@ -1145,6 +1145,7 @@ void SessionLoader::visit (Source& s)
 
 void SessionLoader::visit (MediaSource& s)
 {
+    bool freshload = false;
     // set uri
     XMLElement* pathNode = xmlCurrent_->FirstChildElement("uri"); // TODO change to "path" but keep backward compatibility
     if (pathNode) {
@@ -1162,6 +1163,7 @@ void SessionLoader::visit (MediaSource& s)
                     }
                 }
                 s.setPath(path);
+                freshload = true;
             }
         }
         // ensures the source is initialized even if no valid path is given
@@ -1178,7 +1180,8 @@ void SessionLoader::visit (MediaSource& s)
     s.mediaplayer()->setRate(1.0); 
     // add a callback to activate source play speed and rewind
     s.call( new PlaySpeed( r ) );
-    s.call( new RePlay( ) );
+    if (freshload)
+        s.call( new RePlay( ) );
 }
 
 void SessionLoader::visit (SessionFileSource& s)
