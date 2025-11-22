@@ -17,9 +17,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "OutputPreviewWindow.h"
+#include "RenderView.h"
+#include "RenderingManager.h"
 #define PLOT_ARRAY_SIZE 180
 #define WINDOW_TOOLBOX_ALPHA 0.35f
 #define WINDOW_TOOLBOX_DIST_TO_BORDER 10.f
+#define RECORDER_INDICATION_SIZE 30.f
 
 #include <iostream>
 #include <sstream>
@@ -1034,6 +1038,14 @@ void UserInterface::Render()
 
     //
     RenderPreview();
+
+    // render Recording indication overlay
+    if (isRecording()) {
+        ImGuiIO& io = ImGui::GetIO();
+        ImVec2 center = ImVec2(io.DisplaySize.x - RECORDER_INDICATION_SIZE * 1.5f, io.DisplaySize.y - RECORDER_INDICATION_SIZE * 1.5f);
+        int a = 150 + (int) ( 50.f * sin( (float) Runtime() / 100000000.f ));
+        ImGui::GetForegroundDrawList()->AddCircleFilled(center, RECORDER_INDICATION_SIZE, IM_COL32(255, 10, 10, a), 0);
+    }
 
     // handle keyboard input after all IMGUI widgets have potentially captured keyboard
     handleKeyboard();
