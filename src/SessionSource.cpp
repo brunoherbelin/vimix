@@ -509,5 +509,5 @@ glm::ivec2 SessionGroupSource::icon() const
 
 std::string SessionGroupSource::info() const
 {
-    return "Bundle Session";
+    return "Bundle of sources";
 }

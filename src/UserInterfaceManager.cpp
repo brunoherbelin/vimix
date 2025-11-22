@@ -1110,13 +1110,13 @@ void UserInterface::showMenuEdit()
 
     // GROUP
     ImGui::Separator();
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " Bundle all active sources", NULL, false, Mixer::manager().numSource() > 0)) {
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " Create Bundle with active sources", NULL, false, Mixer::manager().numSource() > 0)) {
         // create a new group session with only active sources
         Mixer::manager().groupAll( true );
         // switch pannel to show first source (created)
         navigator.showPannelSource(0);
     }
-    if (ImGuiToolkit::MenuItemIcon(7, 2, " Expand all bundles", NULL, false, Mixer::manager().numSource() > 0)) {
+    if (ImGuiToolkit::MenuItemIcon(7, 2, " Expand all Bundles", NULL, false, Mixer::manager().numSource() > 0)) {
         // create a new group session with all sources
         Mixer::manager().ungroupAll();
     }
@@ -3616,16 +3616,7 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
                 UserInterface::manager().showPannel(  Mixer::manager().numSource() );
             }
 
-            // bundle button
-            if ( s->failed() || s->cloned() || s->icon() == glm::ivec2(ICON_SOURCE_CLONE) )
-                ImGuiToolkit::ButtonDisabled( ICON_FA_SIGN_IN_ALT " Bundle", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0));
-            else if ( ImGui::Button( ICON_FA_SIGN_IN_ALT " Bundle", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
-                Mixer::manager().groupCurrent();
-                UserInterface::manager().showPannel(  Mixer::manager().numSource() - 1 );
-            }
-
             // replace button
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
             if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
 
                 // prepare panel for new source of same type
@@ -3648,7 +3639,8 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
             }
 
             // delete button
-            if ( ImGui::Button( ACTION_DELETE, size) ) {
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if ( ImGui::Button( ACTION_DELETE, ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
                 Mixer::manager().deleteSource(s);
                 Action::manager().store(sname + std::string(": Deleted"));
             }

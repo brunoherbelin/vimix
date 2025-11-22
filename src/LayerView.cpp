@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "SessionSource.h"
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -106,22 +107,44 @@ void LayerView::draw()
     if (ImGui::BeginPopup("LayerSourceContextMenu")) {
         // work on the current source
         Source *s = Mixer::manager().currentSource();
-        if (s != nullptr) {
-            for (auto bmode = Shader::blendingFunction.cbegin();
-                 bmode != Shader::blendingFunction.cend();
-                 ++bmode) {
-                int index = bmode - Shader::blendingFunction.cbegin();
-                if (ImGuiToolkit::MenuItemIcon(std::get<0>(*bmode),
-                                               std::get<1>(*bmode),
-                                               std::get<2>(*bmode).c_str(),
-                                               nullptr,
-                                               s->blendingShader()->blending == index)) {
-                    s->blendingShader()->blending = Shader::BlendMode(index);
-                    s->touch();
-                    Action::manager().store(s->name() + ": Blending " + std::get<2>(*bmode));
+        if (s != nullptr && !s->failed() ) {
+
+            if (ImGuiToolkit::BeginMenuIcon( 5, 6, "Blending" )) {
+                for (auto bmode = Shader::blendingFunction.cbegin();
+                    bmode != Shader::blendingFunction.cend();
+                    ++bmode) {
+                    int index = bmode - Shader::blendingFunction.cbegin();
+                    if (ImGuiToolkit::MenuItemIcon(std::get<0>(*bmode),
+                                                std::get<1>(*bmode),
+                                                std::get<2>(*bmode).c_str(),
+                                                nullptr,
+                                                s->blendingShader()->blending == index)) {
+                        s->blendingShader()->blending = Shader::BlendMode(index);
+                        s->touch();
+                        Action::manager().store(s->name() + ": Blending " + std::get<2>(*bmode));
+                    }
+                }
+                ImGui::EndMenu();
+            }
+
+            if (s->icon() == glm::ivec2(ICON_SOURCE_GROUP) )
+            {
+                if (ImGui::Selectable( ICON_FA_SIGN_IN_ALT "  Expand Bundle" )) {
+                    Mixer::manager().import( dynamic_cast<SessionSource*>(s) );
+                }
+            }
+            else {
+                if ( s->cloned() || s->icon() == glm::ivec2(ICON_SOURCE_CLONE)){
+                    ImGui::TextDisabled( ICON_FA_SIGN_IN_ALT "  Encapsulate into a Bundle" );
+                }
+                else {
+                    if (ImGui::Selectable( ICON_FA_SIGN_IN_ALT "  Encapsulate into a Bundle" )) {
+                        Mixer::manager().groupCurrent();
+                    }
                 }
             }
         }
+
         ImGui::EndPopup();
     }
 
@@ -178,16 +201,6 @@ void LayerView::draw()
         ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
 
-        // special action of Mixing view
-        if (candidate_flatten_group){
-            if (ImGui::Selectable( ICON_FA_SIGN_IN_ALT "  Bundle" )) {
-                Mixer::manager().groupSelection();
-            }
-        }
-        else {
-            ImGui::TextDisabled( ICON_FA_SIGN_IN_ALT "  Bundle" );
-        }
-
         // Blending all selection
         if (ImGuiToolkit::BeginMenuIcon( 5, 6, "Blending" )) {
             for (auto bmode = Shader::blendingFunction.cbegin();
@@ -206,6 +219,16 @@ void LayerView::draw()
                 }
             }
             ImGui::EndMenu();
+        }
+
+        // special action of Mixing view
+        if (candidate_flatten_group){
+            if (ImGui::Selectable( ICON_FA_SIGN_IN_ALT "  Encapsulate into a Bundle" )) {
+                Mixer::manager().groupSelection();
+            }
+        }
+        else {
+            ImGui::TextDisabled( ICON_FA_SIGN_IN_ALT "  Encapsulate into a Bundle" );
         }
 
         ImGui::Separator();
