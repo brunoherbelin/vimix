@@ -80,6 +80,7 @@ std::list< FilteringProgram > FilteringProgram::example_filters = {
 };
 
 std::list< FilteringProgram > FilteringProgram::example_patterns = {
+    FilteringProgram("Source",        "shaders/filters/source.glsl",         "",     { }),
     FilteringProgram("Color",         "shaders/filters/color.glsl",          "",     { }),
     FilteringProgram("Color noise",   "shaders/filters/RGBnoise.glsl",       "",     { }),
     FilteringProgram("Simplex Noise", "shaders/filters/3DSimplexNoise.glsl", "",     { }),
@@ -94,9 +95,8 @@ std::string FilteringProgram::getFilterCodeInputs()
                                            "float     iTime;                 // shader playback time (in seconds)\n"
                                            "float     iTimeDelta;            // render time (in seconds)\n"
                                            "int       iFrame;                // shader playback frame\n"
-                                           "vec3      iChannelResolution[2]; // input channels resolution (in pixels)\n"
+                                           "vec3      iChannelResolution[1]; // input channels resolution (in pixels)\n"
                                            "sampler2D iChannel0;             // input channel 0 (source).\n"
-                                           "sampler2D iChannel1;             // input channel 1 (display loopback).\n"
                                            "vec4      iDate;                 // (year, month, day, time in seconds)\n"
                                            "vec4      iMouse;                // simulate mouse input with sliders:";
     return filterHeaderHelp;

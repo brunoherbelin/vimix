@@ -719,6 +719,7 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/RGBnoise.glsl
     ./rsc/shaders/filters/3DPerlinNoise.glsl
     ./rsc/shaders/filters/3DSimplexNoise.glsl
+    ./rsc/shaders/filters/source.glsl
     ./rsc/images/logo.vmx
 )
 
