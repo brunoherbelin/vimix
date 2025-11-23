@@ -18,6 +18,7 @@
 **/
 
 
+#include <string>
 #include <vector>
 #include <iomanip>
 
@@ -28,6 +29,7 @@
 
 #include <tinyxml2.h>
 
+#include "IconsFontAwesome5.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 
@@ -60,6 +62,7 @@
 #include "MixingGroup.h"
 #include "ActionManager.h"
 #include "Mixer.h"
+#include "ControlManager.h"
 
 #include "imgui.h"
 #include "ImGuiToolkit.h"
@@ -452,9 +455,13 @@ void ImGuiVisitor::visit (Source& s)
         // inform on visibility status
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y ) );
         if (s.active()) {
-            if (s.blendingShader()->color.a > 0.f)
-                ImGuiToolkit::Indication("Visible", ICON_FA_SUN);
-            else
+            if (s.blendingShader()->color.a > 0.f) {
+                std::string indication = "Visible\nAlpha ";
+                indication += std::to_string((int)(s.blendingShader()->color.a * 100.f)) + "%";
+                if (ImGuiToolkit::IconButton( ICON_FA_SUN,  indication.c_str()) ) {
+                    UserInterface::manager().setView(View::MIXING);
+                }
+            } else
                 ImGuiToolkit::Indication("not Visible", ICON_FA_MOON);
         }
         else
@@ -472,23 +479,26 @@ void ImGuiVisitor::visit (Source& s)
         else
             ImGuiToolkit::Indication("not Linked", ICON_FA_UNLINK);
 
-        // Inform on workspace
+        // inform of input mapping
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
-        static std::map< int, std::pair<int, std::string> > workspaces_ {
-            { Source::WORKSPACE_BACKGROUND,  {10, "in Background"}},
-            { Source::WORKSPACE_CENTRAL,  {11, "in Workspace"}},
-            { Source::WORKSPACE_FOREGROUND,  {12, "in Foreground"}}
-        };
-        // in Geometry view, offer to switch current workspace to the source workspace
-        if (Settings::application.current_view == View::GEOMETRY) {
-            if (ImGuiToolkit::IconButton( workspaces_[s.workspace()].first, 16, workspaces_[s.workspace()].second.c_str())) {
-                Settings::application.current_workspace=s.workspace();
-                Mixer::manager().setCurrentSource(s.id());
+        std::list<uint> inputs = Mixer::manager().session()->inputsForSource( s.id() );
+        if (!inputs.empty())    {
+            if (ImGuiToolkit::IconButton( ICON_FA_HAND_PAPER ) ) {
+                // open input mapping window
+                Settings::application.widget.inputs = true;
+            }
+            if (ImGui::IsItemHovered()) {         
+                std::string tooltip = "Mapped to input";  
+                tooltip +=  inputs.size() > 1 ? "s:" : ":" ;
+                for(const auto& input : inputs) {
+                    tooltip += "\n - ";
+                    tooltip += Control::inputLabel(input);
+                }
+                ImGuiToolkit::ToolTip(tooltip.c_str());
             }
         }
-        // otherwise in other views, just draw in indicator
         else
-            ImGuiToolkit::Indication(workspaces_[s.workspace()].second.c_str(), workspaces_[s.workspace()].first, 16);
+            ImGuiToolkit::Indication("not Mapped to an input", ICON_FA_HAND_PAPER);
 
         // locking
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
@@ -517,7 +527,7 @@ void ImGuiVisitor::visit (Source& s)
         pos = ImGui::GetCursorPos();
 
         // menu icon for image processing
-        ImGui::SameLine(preview_width, 2 * IMGUI_SAME_LINE);
+        ImGui::SameLine(preview_width + 5, 2 * IMGUI_SAME_LINE);
         static uint counter_menu_timeout = 0;
         if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             counter_menu_timeout=0;

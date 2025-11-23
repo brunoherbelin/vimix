@@ -181,6 +181,7 @@ public:
     bool inputAssigned(uint input);
     void swapInputCallback(uint from, uint to);
     void copyInputCallback(uint from, uint to);
+    std::list<uint> inputsForSource( uint64_t id );
 
     void setInputSynchrony(uint input, Metronome::Synchronicity sync);
     std::vector<Metronome::Synchronicity> getInputSynchrony();

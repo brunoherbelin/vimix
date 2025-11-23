@@ -947,6 +947,34 @@ std::list<uint> Session::assignedInputs()
     return inputs;
 }
 
+std::list<uint> Session::inputsForSource( uint64_t sid )
+{
+    std::list<uint> inputs;
+
+    if (sid > 0 && !input_callbacks_.empty()) {
+        // test all targets of the list of input callbacks
+        for(const auto& [key, value] : input_callbacks_) {
+            if (Source * const* v = std::get_if<Source *>(&value.target_)) {
+                // v is a source
+                if (sid == (*v)->id())
+                    // v is the source we are looking for
+                    inputs.push_back(key);
+            }
+            else if ( const size_t* v = std::get_if<size_t>(&value.target_)) {
+                // v is a batch
+                SourceIdList::iterator it = std::find(batch_[*v].begin(),
+                                    batch_[*v].end(),sid);
+                if ( it != batch_[*v].end())
+                    // v contains the source we are looking for
+                    inputs.push_back(key);
+            }
+        }
+        // remove duplicates
+        inputs.unique();
+    }
+    return inputs;
+}
+
 bool Session::inputAssigned(uint input)
 {
     return input_callbacks_.find(input) != input_callbacks_.end();

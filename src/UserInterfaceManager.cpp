@@ -248,7 +248,8 @@ uint64_t UserInterface::Runtime() const
 void UserInterface::setView(View::Mode mode)
 {
     Mixer::manager().setView(mode);
-    navigator.discardPannel();
+    if ( !Settings::application.pannel_always_visible )
+        navigator.discardPannel();
 }
 
 void UserInterface::handleKeyboard()
@@ -5099,11 +5100,12 @@ void Navigator::RenderMainPannelSession()
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
         ImGuiToolkit::HelpToolTip("Previous versions of the session (latest on top). "
-                                 "Double-clic on a version to restore it.");
+                                 "Double-clic on a version to restore it.\n\n"
+                                ICON_FA_CODE_BRANCH " With Iterative saving enabled, a new version "
+                                "is kept automatically each time the session is saved.");
         // toggle button for versioning
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot, "With iterative saving enabled, a new version "
-                                                                                                              "is kept each time the session is saved.");
+        ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot, "Iterative saving");
 
         ImGui::SetCursorPos( pos_bot );
     }
@@ -5198,11 +5200,12 @@ void Navigator::RenderMainPannelSession()
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
         ImGuiToolkit::HelpToolTip("History of actions (latest on top). "
-                                 "Double-clic on an action to restore its status.");
+                                 "Double-clic on an action to restore its status.\n\n"
+                                 ICON_FA_MAP_MARKED_ALT " With Show action View enabled, navigate "
+                                 "automatically to the view showing the action on undo/redo.");
         // toggle button for shhow in view
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view, "Enable Show in view to automatically "
-                                                                                                              "navigate to the view where the action was done.");
+        ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view, "Show action View");
     }
 
     ImGui::PopStyleColor(1);

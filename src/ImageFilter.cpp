@@ -80,8 +80,8 @@ std::list< FilteringProgram > FilteringProgram::example_filters = {
 };
 
 std::list< FilteringProgram > FilteringProgram::example_patterns = {
-    FilteringProgram("Source",        "shaders/filters/source.glsl",         "",     { }),
     FilteringProgram("Color",         "shaders/filters/color.glsl",          "",     { }),
+    FilteringProgram("Source",        "shaders/filters/source.glsl",         "",     { }),
     FilteringProgram("Color noise",   "shaders/filters/RGBnoise.glsl",       "",     { }),
     FilteringProgram("Simplex Noise", "shaders/filters/3DSimplexNoise.glsl", "",     { }),
     FilteringProgram("Perlin Noise",  "shaders/filters/3DPerlinNoise.glsl",  "",     { }),
