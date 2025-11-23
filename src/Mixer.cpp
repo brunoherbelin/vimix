@@ -1301,11 +1301,13 @@ View *Mixer::view(View::Mode m)
 void Mixer::save(bool with_version)
 {
     if (!session_->filename().empty())
-        saveas(session_->filename(), with_version);
+        saveas(session_->filename(), with_version, true);
 }
 
-void Mixer::saveas(const std::string& filename, bool with_version)
+void Mixer::saveas(const std::string& filename, bool with_version, bool with_thumbail)
 {
+    if (!with_thumbail)
+        session_->resetThumbnail();
     // optional copy of views config
     session_->config(View::MIXING)->copyTransform( mixing_.scene.root() );
     session_->config(View::GEOMETRY)->copyTransform( geometry_.scene.root() );
