@@ -20,6 +20,7 @@
 #include "OutputPreviewWindow.h"
 #include "RenderView.h"
 #include "RenderingManager.h"
+#include <string>
 #define PLOT_ARRAY_SIZE 180
 #define WINDOW_TOOLBOX_ALPHA 0.35f
 #define WINDOW_TOOLBOX_DIST_TO_BORDER 10.f
@@ -3755,6 +3756,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 
         // Edit menu
         ImGui::SetCursorPosY(2.f * width_ - style.WindowPadding.x);
+        static bool request_open_shader_editor = false;
 
         // File Source creation
         if (Settings::application.source.new_type == SOURCE_FILE) {
@@ -4357,7 +4359,9 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             }
             // if shader source selected
             else if (generated_type == 3 ) {
-
+                static bool auto_open_shader_editor = true;
+                if (ImGuiToolkit::ButtonSwitch( ICON_FA_CODE " Open editor at creation", &auto_open_shader_editor) ) 
+                    request_open_shader_editor = auto_open_shader_editor;
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 if (ImGui::Combo("Ratio", &Settings::application.source.ratio,
                                  GlmToolkit::aspect_ratio_names, IM_ARRAYSIZE(GlmToolkit::aspect_ratio_names) ) )
@@ -4372,6 +4376,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 if (update_new_source) {
                     glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);
                     new_source_preview_.setSource( Mixer::manager().createSourceShader(res), "Shader source");
+                    request_open_shader_editor = auto_open_shader_editor;
                 }
             }
             else {
@@ -4605,6 +4610,11 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 s->replay();
                 // close NEW pannel
                 togglePannelNew();
+                // open shader editor if requested
+                if (request_open_shader_editor) {
+                    Settings::application.widget.shader_editor = true;
+                    request_open_shader_editor = false;
+                }
             }
         }
 
@@ -4961,6 +4971,18 @@ void Navigator::RenderMainPannelSession()
             }
         }
     }
+    else {
+        const FrameBuffer *output = Mixer::manager().session()->frame();
+        if (output)  {
+            ImVec2 pos_tmp = ImGui::GetCursorPos();
+            ImVec2 space_size = ImGui::CalcTextSize(" Resolution ", NULL);
+            space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space;
+            ImGui::SetCursorPos( pos_tmp + space_size );
+            ImGui::Text("( %d x %d )", output->width(), output->height());
+            ImGui::SetCursorPos( pos_tmp );
+        }
+    }
     //
     // VERSIONS
     //
@@ -5092,11 +5114,11 @@ void Navigator::RenderMainPannelSession()
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
         if (ImGuiToolkit::IconButton( ICON_FA_CODE_BRANCH " +", "Save & Keep version"))
             UserInterface::manager().saveOrSaveAs(true);
-        // ImGui::SameLine();
-        // if (!snapshots.empty()) {
-        //     if (ImGuiToolkit::IconButton( 12, 14, "Clear list"))
-        //         Action::manager().clearSnapshots();
-        // }
+        if (!snapshots.empty()) {
+            ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetFrameHeight()));
+            if (ImGuiToolkit::IconButton( 12, 14, "Clear list"))
+                Action::manager().clearSnapshots();
+        }
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
         ImGuiToolkit::HelpToolTip("Previous versions of the session (latest on top). "
@@ -5108,6 +5130,17 @@ void Navigator::RenderMainPannelSession()
         ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot, "Iterative saving");
 
         ImGui::SetCursorPos( pos_bot );
+    }
+    else {
+        if (!Action::manager().snapshots().empty())  {
+            ImVec2 pos_tmp = ImGui::GetCursorPos();
+            ImVec2 space_size = ImGui::CalcTextSize(" Versions ", NULL);
+            space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space;
+            ImGui::SetCursorPos( pos_tmp + space_size );
+            ImGui::Text("( %zu )", Action::manager().snapshots().size());
+            ImGui::SetCursorPos( pos_tmp );
+        }
     }
     //
     // UNDO History
