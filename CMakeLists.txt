@@ -163,6 +163,7 @@ if (PKG_CONFIG_FOUND)
         gstreamer-audio-1.0
         gstreamer-video-1.0
         gstreamer-gl-1.0
+        gstreamer-transcoder-1.0
     )
 
     include_directories(

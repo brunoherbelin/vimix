@@ -48,6 +48,7 @@ set(VMIX_SRCS
     Recorder.cpp
     Streamer.cpp
     Loopback.cpp
+    Transcoder.cpp
     Settings.cpp
     Screenshot.cpp
     Resource.cpp

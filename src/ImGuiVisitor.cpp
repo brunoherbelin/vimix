@@ -63,6 +63,7 @@
 #include "ActionManager.h"
 #include "Mixer.h"
 #include "ControlManager.h"
+#include "Transcoder.h"
 
 #include "imgui.h"
 #include "ImGuiToolkit.h"
@@ -732,6 +733,98 @@ void ImGuiVisitor::visit (MediaSource& s)
                 ImGui::TextDisabled("Hardware decoding disabled");
             }
 
+            // transcoding panel
+            static Transcoder *transcoder = nullptr;
+            static bool _transcoding = false;
+
+            if (!_transcoding) {
+                if (ImGui::Button(ICON_FA_FILM " Transcoding", ImVec2(IMGUI_RIGHT_ALIGN,0)))
+                    _transcoding = true;
+            }
+
+            if (_transcoding || transcoder != nullptr) {
+                
+                float w_height = 6.1f * ImGui::GetFrameHeightWithSpacing();
+
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_PopupBg));
+                ImGui::BeginChild("transcode_child", ImVec2(0, w_height), 
+                true, ImGuiWindowFlags_MenuBar);
+
+                if (ImGui::BeginMenuBar())
+                {
+                    if (transcoder != nullptr) {
+                        ImGuiToolkit::Icon(12,11);
+                    } else {
+                        if (ImGuiToolkit::IconButton(4,16))
+                            _transcoding = false;
+                    }
+                    ImGui::SameLine();
+                    ImGui::Text(ICON_FA_FILM " Transcoding ");
+                    ImGui::EndMenuBar();
+                }
+
+                static bool _optim_kf = true;
+                static bool _optim_still = false;
+                static bool _reduce_size = false;
+                static bool _no_audio = false;
+
+                ImGuiToolkit::ButtonSwitch( "Backward playback", &_optim_kf);
+                ImGuiToolkit::ButtonSwitch( "Still images content", &_optim_still);   
+                ImGuiToolkit::ButtonSwitch( "Remove audio", &_no_audio);   
+                ImGuiToolkit::ButtonSwitch( "Reduce size", &_reduce_size);   
+
+                if (transcoder == nullptr)
+                {   
+                    if (ImGui::Button(ICON_FA_COG " Re-encode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
+                        transcoder = new Transcoder(mp->filename());
+                        TranscoderOptions transcode_options(_optim_kf, 
+                            _optim_still ?  PsyTuning::STILL_IMAGE : PsyTuning::NONE, 
+                            _reduce_size ? 25 : -1, 
+                            _no_audio);
+                        if (!transcoder->start(transcode_options)) {
+                            Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
+                            delete transcoder;
+                            transcoder = nullptr;
+                        }
+                    }
+                    ImGui::SameLine();
+                    ImGuiToolkit::HelpToolTip("Re-encode the source video\n"
+                            "to optimize backward playback\n"
+                            "and/or reduce file size\n"
+                            "and/or remove audio track\n"
+                            "and/or optimize for still images.\n\n"
+                            "The new file will replace the one in the source "
+                            "once the transcoding is successfully completed.");
+                }
+
+                if (transcoder != nullptr) {
+                    if (transcoder->finished()) {
+
+                        if (transcoder->success()) {
+                            Log::Notify("Transcoding successful : %s", transcoder->outputFilename().c_str());
+                            // reload source with new file
+                            s.setPath( transcoder->outputFilename() );
+                            info.reset();
+                            _transcoding = false;
+                        }
+
+                        delete transcoder;
+                        transcoder = nullptr;
+                    }
+                    else {
+                        float progress = transcoder->progress();
+                        ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN,0), progress < EPSILON ? "working..." : nullptr);
+                        ImGui::SameLine();
+                        if (ImGui::Button( ICON_FA_TIMES " Cancel", ImVec2(0,0))) {
+                            transcoder->stop();     
+                        }
+                    }
+
+                }
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
+            }
+            // ImGui::PopStyleColor();
         }
         else
             ImGui::SetCursorPos(botom);
