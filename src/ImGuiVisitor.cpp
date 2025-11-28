@@ -737,7 +737,8 @@ void ImGuiVisitor::visit (MediaSource& s)
             static Transcoder *transcoder = nullptr;
             static guint64 transcode_id = 0;
             static bool _transcoding = false;
-            float w_height = (!_transcoding || (transcode_id != 0 && transcode_id != s.id())) ? 
+            bool show_content = _transcoding && (transcode_id == 0 || transcode_id == s.id());
+            float w_height = (!show_content) ? 
                      ImGui::GetFrameHeight() : (6.1f * ImGui::GetFrameHeightWithSpacing());
             
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_PopupBg));
@@ -745,7 +746,16 @@ void ImGuiVisitor::visit (MediaSource& s)
                                     true, ImGuiWindowFlags_MenuBar);
             if (ImGui::BeginMenuBar())
             {
-                if ( ImGui::Selectable( (_transcoding ? ICON_FA_CHEVRON_DOWN "  Transcoding": " " ICON_FA_CHEVRON_RIGHT "  Transcoding"), false, 
+                std::string title = "  Transcoding";
+                if (show_content)
+                    title.insert(0, ICON_FA_CHEVRON_DOWN " ");
+                else {
+                    title.insert(0, ICON_FA_CHEVRON_RIGHT " ");
+                    if (transcoder != nullptr)
+                        title += " (" + std::to_string((int)(100.0 * transcoder->progress())) + "%)";
+                }
+
+                if ( ImGui::Selectable( title.c_str(), false, 
                     (transcoder != nullptr ? ImGuiSelectableFlags_Disabled : 0)) )
                     _transcoding = !_transcoding;
                 ImGui::EndMenuBar();
@@ -810,7 +820,9 @@ void ImGuiVisitor::visit (MediaSource& s)
                         float progress = transcoder->progress();
                         ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN,0), progress < EPSILON ? "working..." : nullptr);
                         ImGui::SameLine();
-                        if (ImGui::Button( ICON_FA_TIMES " Cancel", ImVec2(0,0))) {
+                        if (ImGui::Button( ICON_FA_TIMES " Cancel", ImVec2(0,0)) ||
+                            Mixer::manager().findSource(transcode_id) == nullptr ) {
+                            // cancel transcoding by user or source removed
                             transcoder->stop();     
                         }
                     }
