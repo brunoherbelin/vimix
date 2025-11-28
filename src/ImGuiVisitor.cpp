@@ -735,9 +735,9 @@ void ImGuiVisitor::visit (MediaSource& s)
 
             // transcoding panel
             static Transcoder *transcoder = nullptr;
-            static MediaSource *transcode_source = nullptr;
+            static guint64 transcode_id = 0;
             static bool _transcoding = false;
-            float w_height = (!_transcoding || (transcode_source != nullptr && transcode_source != &s)) ? 
+            float w_height = (!_transcoding || (transcode_id != 0 && transcode_id != s.id())) ? 
                      ImGui::GetFrameHeight() : (6.1f * ImGui::GetFrameHeightWithSpacing());
             
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_PopupBg));
@@ -751,18 +751,24 @@ void ImGuiVisitor::visit (MediaSource& s)
                 ImGui::EndMenuBar();
             }
 
-            if (_transcoding || transcoder != nullptr) {
+            if (_transcoding ) {
                 
-                ImGuiToolkit::ButtonSwitch( "Backward playback", &Settings::application.transcode_options[0]);
-                ImGuiToolkit::ButtonSwitch( "Animation content", &Settings::application.transcode_options[1]);   
-                ImGuiToolkit::ButtonSwitch( "Constant Quality", &Settings::application.transcode_options[2]);   
-                ImGuiToolkit::ButtonSwitch( "Remove audio", &Settings::application.transcode_options[3]);   
+                ImGuiToolkit::ButtonSwitch( "Backward playback", &Settings::application.transcode_options[0],
+                "Optimize the video for backward playback by adding more keyframes.",transcoder == nullptr);
+                ImGuiToolkit::ButtonSwitch( "Animation content", &Settings::application.transcode_options[1],
+                "Optimize the video encoding for animation content (cartoons, "
+                "drawings, computer graphics) to preserve more details." ,transcoder == nullptr   );   
+                ImGuiToolkit::ButtonSwitch( "Constant Quality", &Settings::application.transcode_options[2],
+                "Use Constant Quality encoding to preserve more visual details "
+                "(produces larger files).",transcoder == nullptr);   
+                ImGuiToolkit::ButtonSwitch( "Remove audio", &Settings::application.transcode_options[3],
+                "Remove the audio track from the video during transcoding.",transcoder == nullptr);   
 
                 if (transcoder == nullptr)
                 {   
                     if (ImGui::Button(ICON_FA_COG " Re-encode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
-                        transcode_source = &s;
-                        transcoder = new Transcoder(mp->filename());
+                        transcode_id = s.id();
+                        transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
                         TranscoderOptions transcode_options(Settings::application.transcode_options[0], 
                             Settings::application.transcode_options[1] ?  PsyTuning::ANIMATION : PsyTuning::NONE, 
                             Settings::application.transcode_options[2] ? 19 : -1, 
@@ -771,19 +777,14 @@ void ImGuiVisitor::visit (MediaSource& s)
                             Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
                             delete transcoder;
                             transcoder = nullptr;
-                            transcode_source = nullptr;
+                            transcode_id = 0;
                         }
                     }
                     ImGui::SameLine();
                     ImGuiToolkit::HelpToolTip("Re-encode the source video in MP4 "
-                            "(H.264 video + AAC audio) using specific options "
-                            "to optimize for Backward playback (add keyframes), "
-                            "and/or optimize for Animation content, "
-                            "and/or preserve visuals with Constant Quality encoding "
-                            "(produces larger files), "
-                            "and/or Remove the audio track.\n\n "
+                            "(H.264 video @ 30fps + AAC audio) using the specified options.\n\n "
                             ICON_FA_FILM "  The new file will replace the one in the source "
-                            "once the transcoding is successfully completed. "
+                            "once the transcoding is successfully completed.\n\n"
                             "The current file remains untouched.");
                 }
 
@@ -792,14 +793,18 @@ void ImGuiVisitor::visit (MediaSource& s)
                         if (transcoder->success()) {
                             Log::Notify("Transcoding successful : %s", transcoder->outputFilename().c_str());
                             // reload source with new file
-                            transcode_source->setPath( transcoder->outputFilename() );
+                            Source * s = Mixer::manager().findSource(transcode_id);
+                            if (s != nullptr) {
+                                MediaSource * ms = static_cast<MediaSource*>(s);
+                                ms->setPath( transcoder->outputFilename() );
+                            }
                             info.reset();
                             _transcoding = false;
                         }
                         // all done in any case
                         delete transcoder;
                         transcoder = nullptr;
-                        transcode_source = nullptr;
+                        transcode_id = 0;
                     }
                     else {
                         float progress = transcoder->progress();

@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "imgui.h"
 #include <map>
 #include <algorithm>
 #include <string>
@@ -102,7 +103,7 @@ void ImGuiToolkit::ButtonDisabled(const char* label, const ImVec2 &size_arg)
     ImGui::PopStyleColor(1);
 }
 
-bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* tooltip, bool rightalign)
+bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* tooltip, bool enabled)
 {
     bool ret = false;
 
@@ -114,15 +115,16 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* too
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
 
     // layout
-    float frame_height = ImGui::GetFrameHeight();
-    float frame_width = MAX(ImGui::GetContentRegionAvail().x, 2);
     float height = ImGui::GetFrameHeight() * 0.75f;
     float width = height * 1.6f;
     float radius = height * 0.50f;
+    float alignment = 3.5f * ImGui::GetTextLineHeightWithSpacing();
+    float frame_height = ImGui::GetFrameHeight();
+    float frame_width = MAX(ImGui::GetContentRegionAvail().x - alignment + width, 20);
 
     // toggle action : operate on the whole area
     ImGui::InvisibleButton(label, ImVec2(frame_width, frame_height));
-    if (ImGui::IsItemClicked()) {
+    if (ImGui::IsItemClicked() && enabled) {
         *toggle = !*toggle;
         ret = true;
     }
@@ -139,25 +141,27 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* too
 
     // hover
     ImU32 col_bg;
-    if (ImGui::IsItemHovered()) //
+    if (!enabled)
+        col_bg = ImGui::GetColorU32(colors[ImGuiCol_TextDisabled]);
+    else if (ImGui::IsItemHovered()) 
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBgHovered], colors[ImGuiCol_TabHovered], t));
     else
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBg], colors[ImGuiCol_TabActive], t));
 
     // draw help text if present
-    if (tooltip != nullptr && ImGui::IsItemHovered())
+    if (tooltip != nullptr && ImGui::IsItemHovered() && enabled)
         ImGuiToolkit::ToolTip(tooltip);
 
-    // right alignment
-    float alignment = rightalign ? width + g.Style.FramePadding.x : 3.5f * ImGui::GetTextLineHeightWithSpacing();
 
     // draw the label right aligned
     const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
-    ImVec2 text_pos = draw_pos + ImVec2(frame_width -alignment - g.Style.ItemSpacing.x -label_size.x, 0.f);
+    ImVec2 text_pos = draw_pos + ImVec2(frame_width - width - g.Style.ItemSpacing.x -label_size.x, 0.f);
+    if (!enabled) ImGui::PushStyleColor(ImGuiCol_Text, colors[ImGuiCol_TextDisabled]);
     ImGui::RenderText(text_pos, label);
+    if (!enabled) ImGui::PopStyleColor(1);
 
     // draw switch after the text
-    ImVec2 p = draw_pos + ImVec2(frame_width -alignment, 0.f);
+    ImVec2 p = draw_pos + ImVec2(frame_width - width, 0.f);
     draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
     draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 250));
 
