@@ -512,8 +512,9 @@ void MediaPlayer::execute_open()
 #endif
 
     // all good
-    Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
-              SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(), media_.width, media_.height);
+    Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d, %d kbps)", std::to_string(id_).c_str(),
+              SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(), 
+              media_.width, media_.height, media_.bitrate / 1000);
 
     if (!singleFrame())
         Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),

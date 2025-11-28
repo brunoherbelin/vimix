@@ -170,6 +170,14 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("shm_socket_path", application.shm_socket_path.c_str());
     applicationNode->SetAttribute("shm_method", application.shm_method);
     applicationNode->SetAttribute("accept_audio", application.accept_audio);
+
+    XMLElement *transcodeNode = xmlDoc.NewElement( "Transcode" );
+    transcodeNode->SetAttribute("option_0", application.transcode_options[0]);
+    transcodeNode->SetAttribute("option_1", application.transcode_options[1]);
+    transcodeNode->SetAttribute("option_2", application.transcode_options[2]);
+    transcodeNode->SetAttribute("option_3", application.transcode_options[3]);
+    applicationNode->InsertEndChild(transcodeNode);
+
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -505,6 +513,14 @@ void Settings::Load(const std::string &filename)
             applicationNode->QueryIntAttribute("loopback_camera", &application.loopback_camera);
             applicationNode->QueryBoolAttribute("accept_audio", &application.accept_audio);
             applicationNode->QueryIntAttribute("shm_method", &application.shm_method);
+
+            XMLElement * transcodeNode = applicationNode->FirstChildElement("Transcode");
+            if (transcodeNode != nullptr) {
+                transcodeNode->QueryBoolAttribute("option_0", &application.transcode_options[0]) ;
+                transcodeNode->QueryBoolAttribute("option_1", &application.transcode_options[1]) ;
+                transcodeNode->QueryBoolAttribute("option_2", &application.transcode_options[2]) ;
+                transcodeNode->QueryBoolAttribute("option_3", &application.transcode_options[3]) ;
+            }
 
             // text attributes
             const char *tmpstr = applicationNode->Attribute("shm_socket_path");

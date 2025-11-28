@@ -317,6 +317,20 @@ std::string SystemToolkit::file_modification_time_string(const std::string& path
     return oss.str();
 }
 
+unsigned long long SystemToolkit::file_size(const std::string& path)
+{
+    if (file_exists(path)) {
+        struct stat statsfile;
+        // fill statistics of given file path
+        if( stat( path.c_str(), &statsfile) > -1 ) {
+            // return file size in bytes
+            return (unsigned long long) statsfile.st_size;
+        }
+    }
+
+    return 0;
+}
+
 
 void SystemToolkit::reorder_file_list(std::list<string> &filelist, Ordering m)
 {

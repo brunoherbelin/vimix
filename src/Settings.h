@@ -369,6 +369,9 @@ struct Application
     InputMappingConfig mapping;
     int gamepad_id;
 
+    // transcoding options
+    bool transcode_options[4];
+
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         total_runtime = 0;
         scale = 1.f;
@@ -394,6 +397,14 @@ struct Application
         pannel_session[0] = true;
         pannel_session[1] = false;
         pannel_session[2] = false;
+        pannel_settings[0] = false;
+        pannel_settings[1] = false;
+        pannel_settings[2] = false;
+        pannel_settings[3] = false;
+        transcode_options[0] = true;
+        transcode_options[1] = false;
+        transcode_options[2] = false;
+        transcode_options[3] = false;
         current_view = 1;
         current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);

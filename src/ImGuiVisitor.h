@@ -13,6 +13,7 @@ class ImGuiVisitor: public Visitor
 
 public:
     ImGuiVisitor();
+    inline void reset () { info.reset(); }
 
     // Elements of Scene
     void visit (Scene& n) override;

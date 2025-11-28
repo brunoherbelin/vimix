@@ -64,7 +64,7 @@ class Navigator
     void applyButtonSelection(int index);
 
     // side pannels
-    void RenderSourcePannel(Source *s, const ImVec2 &iconsize);
+    void RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset = false);
     void RenderMainPannel(const ImVec2 &iconsize);
     void RenderMainPannelSession();
     void RenderMainPannelPlaylist();

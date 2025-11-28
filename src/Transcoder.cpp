@@ -19,6 +19,7 @@
 
 #include "Transcoder.h"
 #include "Log.h"
+#include "SystemToolkit.h"
 
 #include <sys/stat.h>
 #include <glib.h>
@@ -62,7 +63,7 @@ std::string Transcoder::generateOutputFilename(const std::string& input, const T
 
     // Add force keyframes indicator
     if (options.force_keyframes) {
-        suffix += "_kf";
+        suffix += "_bidir";
     }
 
     // Add psy-tune indicator
@@ -163,6 +164,7 @@ bool Transcoder::start(const TranscoderOptions& options)
     guint source_audio_bitrate = 0;
     bool has_audio = false;
     GstClockTime duration = GST_CLOCK_TIME_NONE;
+    guint frame_height = 0;
 
     if (disc_info) {
         GstDiscovererResult result = gst_discoverer_info_get_result(disc_info);
@@ -189,6 +191,7 @@ bool Transcoder::start(const TranscoderOptions& options)
             if (source_video_bitrate == 0) {
                 source_video_bitrate = gst_discoverer_video_info_get_max_bitrate(vinfo);
             }
+            frame_height = gst_discoverer_video_info_get_height(vinfo);
             gst_discoverer_stream_info_list_free(video_streams);
         } else {
             Log::Warning("Transcoder: No video stream detected");
@@ -217,24 +220,24 @@ bool Transcoder::start(const TranscoderOptions& options)
 
     // If bitrate not available from metadata, calculate from file size and duration
     if (source_video_bitrate == 0 && duration != GST_CLOCK_TIME_NONE) {
-        struct stat st;
-        if (stat(input_filename_.c_str(), &st) == 0) {
-            guint64 file_size_bits = st.st_size * 8;
+        unsigned long long file_size_bytes = SystemToolkit::file_size(input_filename_);
+        if (file_size_bytes > 0) {
+            guint64 file_size_bits = file_size_bytes * 8;
             double duration_seconds = (double)duration / GST_SECOND;
             guint total_bitrate = (guint)(file_size_bits / duration_seconds);
 
             // Subtract audio bitrate to estimate video bitrate
             source_video_bitrate = total_bitrate - source_audio_bitrate;
-            Log::Info("Transcoder: Calculated video bitrate from file size: %u bps (file: %ld bytes, duration: %.2f sec)",
-                      source_video_bitrate, st.st_size, duration_seconds);
-        } 
+            Log::Info("Transcoder: Calculated video bitrate from file size: %u bps (file: %llu bytes, duration: %.2f sec)",
+                      source_video_bitrate, file_size_bytes, duration_seconds);
+        }
     }
 
     // Set target bitrates (use source bitrate or reasonable defaults)
     guint target_video_bitrate = source_video_bitrate > 0 ? source_video_bitrate : 5000000; // 5 Mbps default (in bps)
 
-    // Apply a quality factor (1.1 = 10% higher to ensure no quality loss)
-    const float quality_factor = 1.1f;
+    // Apply a quality factor (1.05 = 5% higher to ensure no quality loss)
+    const float quality_factor = 1.05f;
     target_video_bitrate = (guint)(target_video_bitrate * quality_factor / 1000); // convert to kbps
     Log::Info("Transcoder: Target video bitrate: %u kbps", target_video_bitrate);
 
@@ -260,12 +263,13 @@ bool Transcoder::start(const TranscoderOptions& options)
     }
 
     // Configure x264enc properties
-    g_object_set(x264_preset, "speed-preset", 3, NULL);  // medium
+    g_object_set(x264_preset, "speed-preset", 5, NULL);  // fast
 
     // Use CRF mode if specified, otherwise use bitrate mode
     if (options.crf >= 0 && options.crf <= 51) {
-        g_object_set(x264_preset, "pass", 4, NULL);
-        g_object_set(x264_preset, "quantizer", options.crf, NULL);
+        g_object_set(x264_preset, "pass", 5, NULL);
+        g_object_set(x264_preset, "quantizer", options.crf, NULL);        
+        g_object_set(x264_preset, "bitrate", 2 * target_video_bitrate, NULL);  // kbps
         Log::Info("Transcoder: Using CRF mode with value: %d", options.crf);
     } else {
         g_object_set(x264_preset, "pass", 0, NULL);
@@ -275,7 +279,10 @@ bool Transcoder::start(const TranscoderOptions& options)
 
     // Configure keyframes
     if (options.force_keyframes) {
-        g_object_set(x264_preset, "key-int-max", 30, NULL);
+        g_object_set(x264_preset, "key-int-max", 
+                        frame_height > 1400 ? 15 : 30, NULL);
+        Log::Info("Transcoder: Add a keyframe every %d frames", frame_height > 1400 ? 15 : 30);
+
     } else {
         g_object_set(x264_preset, "key-int-max", 250, NULL);
     }

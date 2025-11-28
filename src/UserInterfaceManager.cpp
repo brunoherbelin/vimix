@@ -3414,35 +3414,42 @@ void Navigator::Render()
             view_pannel_visible = false;
         }
 
+        static bool reset_visitor = true;
+
         // pannel menu
         if (selected_button[NAV_MENU])
         {
             RenderMainPannel(iconsize);
+            reset_visitor = true;
         }
         // pannel to manage transition
         else if (selected_button[NAV_TRANS])
         {
             RenderTransitionPannel(iconsize);
+            reset_visitor = true;
         }
         // pannel to create a source
         else if (selected_button[NAV_NEW])
         {
             RenderNewPannel(iconsize);
+            reset_visitor = true;
         }
         // pannel to configure a selected source
         else
         {
-            if ( selected_index < 0 )
+            if ( selected_index < 0 ) {
                 showPannelSource(NAV_MENU);
+            }
             // most often, render current sources
             else if ( selected_index == Mixer::manager().indexCurrentSource())
-                RenderSourcePannel(Mixer::manager().currentSource(), iconsize);
+                RenderSourcePannel(Mixer::manager().currentSource(), iconsize, reset_visitor);
             // rarely its not the current source that is selected
             else {
                 SourceList::iterator cs = Mixer::manager().session()->at( selected_index );
                 if (cs != Mixer::manager().session()->end() )
-                    RenderSourcePannel(*cs, iconsize);
+                    RenderSourcePannel(*cs, iconsize, reset_visitor);
             }
+            reset_visitor = false;
         }
     }
 
@@ -3486,7 +3493,7 @@ void Navigator::RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2
 }
 
 // Source pannel : *s was checked before
-void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
+void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset)
 {
     if (s == nullptr || Settings::application.current_view == View::TRANSITION)
         return;
@@ -3522,6 +3529,8 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize)
 
         // Source pannel
         static ImGuiVisitor v;
+        if (reset)
+            v.reset();
         s->accept(v);
 
         ///

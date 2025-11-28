@@ -65,6 +65,9 @@ namespace SystemToolkit
     unsigned long file_modification_time(const std::string& path);
     std::string file_modification_time_string(const std::string& path);
 
+    // Get file size in bytes, returns 0 if file doesn't exist or on error
+    unsigned long long file_size(const std::string& path);
+
 
     typedef enum {
         ALPHA = 0,

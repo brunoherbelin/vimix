@@ -735,81 +735,71 @@ void ImGuiVisitor::visit (MediaSource& s)
 
             // transcoding panel
             static Transcoder *transcoder = nullptr;
+            static MediaSource *transcode_source = nullptr;
             static bool _transcoding = false;
-
-            if (!_transcoding) {
-                if (ImGui::Button(ICON_FA_FILM " Transcoding", ImVec2(IMGUI_RIGHT_ALIGN,0)))
-                    _transcoding = true;
+            float w_height = (!_transcoding || (transcode_source != nullptr && transcode_source != &s)) ? 
+                     ImGui::GetFrameHeight() : (6.1f * ImGui::GetFrameHeightWithSpacing());
+            
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_PopupBg));
+            ImGui::BeginChild("transcode_child", ImVec2(0, w_height), 
+                                    true, ImGuiWindowFlags_MenuBar);
+            if (ImGui::BeginMenuBar())
+            {
+                if ( ImGui::Selectable( (_transcoding ? ICON_FA_CHEVRON_DOWN "  Transcoding": " " ICON_FA_CHEVRON_RIGHT "  Transcoding"), false, 
+                    (transcoder != nullptr ? ImGuiSelectableFlags_Disabled : 0)) )
+                    _transcoding = !_transcoding;
+                ImGui::EndMenuBar();
             }
 
             if (_transcoding || transcoder != nullptr) {
                 
-                float w_height = 6.1f * ImGui::GetFrameHeightWithSpacing();
-
-                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_PopupBg));
-                ImGui::BeginChild("transcode_child", ImVec2(0, w_height), 
-                true, ImGuiWindowFlags_MenuBar);
-
-                if (ImGui::BeginMenuBar())
-                {
-                    if (transcoder != nullptr) {
-                        ImGuiToolkit::Icon(12,11);
-                    } else {
-                        if (ImGuiToolkit::IconButton(4,16))
-                            _transcoding = false;
-                    }
-                    ImGui::SameLine();
-                    ImGui::Text(ICON_FA_FILM " Transcoding ");
-                    ImGui::EndMenuBar();
-                }
-
-                static bool _optim_kf = true;
-                static bool _optim_still = false;
-                static bool _reduce_size = false;
-                static bool _no_audio = false;
-
-                ImGuiToolkit::ButtonSwitch( "Backward playback", &_optim_kf);
-                ImGuiToolkit::ButtonSwitch( "Still images content", &_optim_still);   
-                ImGuiToolkit::ButtonSwitch( "Remove audio", &_no_audio);   
-                ImGuiToolkit::ButtonSwitch( "Reduce size", &_reduce_size);   
+                ImGuiToolkit::ButtonSwitch( "Backward playback", &Settings::application.transcode_options[0]);
+                ImGuiToolkit::ButtonSwitch( "Animation content", &Settings::application.transcode_options[1]);   
+                ImGuiToolkit::ButtonSwitch( "Constant Quality", &Settings::application.transcode_options[2]);   
+                ImGuiToolkit::ButtonSwitch( "Remove audio", &Settings::application.transcode_options[3]);   
 
                 if (transcoder == nullptr)
                 {   
                     if (ImGui::Button(ICON_FA_COG " Re-encode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
+                        transcode_source = &s;
                         transcoder = new Transcoder(mp->filename());
-                        TranscoderOptions transcode_options(_optim_kf, 
-                            _optim_still ?  PsyTuning::STILL_IMAGE : PsyTuning::NONE, 
-                            _reduce_size ? 25 : -1, 
-                            _no_audio);
+                        TranscoderOptions transcode_options(Settings::application.transcode_options[0], 
+                            Settings::application.transcode_options[1] ?  PsyTuning::ANIMATION : PsyTuning::NONE, 
+                            Settings::application.transcode_options[2] ? 19 : -1, 
+                            Settings::application.transcode_options[3]);
                         if (!transcoder->start(transcode_options)) {
                             Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
                             delete transcoder;
                             transcoder = nullptr;
+                            transcode_source = nullptr;
                         }
                     }
                     ImGui::SameLine();
-                    ImGuiToolkit::HelpToolTip("Re-encode the source video\n"
-                            "to optimize backward playback\n"
-                            "and/or reduce file size\n"
-                            "and/or remove audio track\n"
-                            "and/or optimize for still images.\n\n"
-                            "The new file will replace the one in the source "
-                            "once the transcoding is successfully completed.");
+                    ImGuiToolkit::HelpToolTip("Re-encode the source video in MP4 "
+                            "(H.264 video + AAC audio) using specific options "
+                            "to optimize for Backward playback (add keyframes), "
+                            "and/or optimize for Animation content, "
+                            "and/or preserve visuals with Constant Quality encoding "
+                            "(produces larger files), "
+                            "and/or Remove the audio track.\n\n "
+                            ICON_FA_FILM "  The new file will replace the one in the source "
+                            "once the transcoding is successfully completed. "
+                            "The current file remains untouched.");
                 }
 
                 if (transcoder != nullptr) {
                     if (transcoder->finished()) {
-
                         if (transcoder->success()) {
                             Log::Notify("Transcoding successful : %s", transcoder->outputFilename().c_str());
                             // reload source with new file
-                            s.setPath( transcoder->outputFilename() );
+                            transcode_source->setPath( transcoder->outputFilename() );
                             info.reset();
                             _transcoding = false;
                         }
-
+                        // all done in any case
                         delete transcoder;
                         transcoder = nullptr;
+                        transcode_source = nullptr;
                     }
                     else {
                         float progress = transcoder->progress();
@@ -819,12 +809,10 @@ void ImGuiVisitor::visit (MediaSource& s)
                             transcoder->stop();     
                         }
                     }
-
                 }
-                ImGui::EndChild();
-                ImGui::PopStyleColor();
             }
-            // ImGui::PopStyleColor();
+            ImGui::EndChild();
+            ImGui::PopStyleColor();
         }
         else
             ImGui::SetCursorPos(botom);
