@@ -163,6 +163,9 @@ void inhibitScreensaver (bool on)
         }
     }
 }
+#else
+void inhibitScreensaver (bool)
+{}
 #endif
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER

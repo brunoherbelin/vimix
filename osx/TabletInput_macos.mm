@@ -19,8 +19,8 @@
 
 #ifdef APPLE
 
-#include "TabletInput.h"
-#include "Log.h"
+#include "../src/TabletInput.h"
+#include "../src/Log.h"
 #import <Cocoa/Cocoa.h>
 
 TabletInput::TabletInput()
