@@ -157,7 +157,8 @@ find_package(ZLIB REQUIRED)
 # GSTREAMER
 #
 if (PKG_CONFIG_FOUND)
-    pkg_check_modules(GSTREAMER REQUIRED gstreamer-base-1.0>=1.24
+    pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0>=1.24
+        gstreamer-base-1.0
         gstreamer-pbutils-1.0
         gstreamer-app-1.0
         gstreamer-audio-1.0
@@ -207,6 +208,7 @@ else ()
     )
     set( GSTREAMER_LIBRARIES
         ${GOBJECT_LIBRARIES}
+        ${GSTREAMER_LIBRARY}
         ${GSTREAMER_BASE_LIBRARY}
         ${GSTREAMER_APP_LIBRARY}
         ${GSTREAMER_AUDIO_LIBRARY}
