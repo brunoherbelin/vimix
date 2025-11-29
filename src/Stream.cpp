@@ -25,9 +25,9 @@
 
 #include "Log.h"
 #include "Resource.h"
-#include "Visitor.h"
-#include "BaseToolkit.h"
-#include "GstToolkit.h"
+#include "Visitor/Visitor.h"
+#include "Toolkit/BaseToolkit.h"
+#include "Toolkit/GstToolkit.h"
 
 #include "Stream.h"
 

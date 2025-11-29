@@ -12,99 +12,114 @@ include( InstallRequiredSystemLibraries )
 
 set(VMIX_BINARY "vimix")
 set(VMIX_SRCS
+    # Main source files
     main.cpp
     Log.cpp
-    BaseToolkit.cpp
+    ActionManager.cpp
+    Audio.cpp
+    Connection.cpp
+    ControlManager.cpp
+    FrameBuffer.cpp
+    FrameGrabber.cpp
+    Grid.cpp
+    Interpolator.cpp
+    Loopback.cpp
+    MediaPlayer.cpp
+    Metronome.cpp
+    Mixer.cpp
+    MixingGroup.cpp
+    MousePointer.cpp
+    MultiFileRecorder.cpp
+    Overlay.cpp
+    Playlist.cpp
+    Recorder.cpp
+    RenderingManager.cpp
+    Resource.cpp
+    Screenshot.cpp
+    Selection.cpp
+    Session.cpp
+    SessionCreator.cpp
+    SessionParser.cpp
+    Settings.cpp
     Shader.cpp
     ImageShader.cpp
     ImageProcessingShader.cpp
-    UpdateCallback.cpp
-    Scene.cpp
-    Primitives.cpp
-    Mesh.cpp
-    Decorations.cpp
-    View.cpp
-    RenderView.cpp
-    GeometryView.cpp
-    MixingView.cpp
-    MixingGroup.cpp
-    LayerView.cpp
-    TextureView.cpp
-    TransitionView.cpp
-    Source.cpp
-    CloneSource.cpp
-    RenderSource.cpp
-    SourceCallback.cpp
-    SourceList.cpp
-    Session.cpp
-    Selection.cpp
-    SessionSource.cpp
-    SessionVisitor.cpp
-    Interpolator.cpp
-    SessionCreator.cpp
-    SessionParser.cpp
-    Mixer.cpp
-    FrameGrabber.cpp
-    Recorder.cpp
-    Streamer.cpp
-    Loopback.cpp
-    Transcoder.cpp
-    Settings.cpp
-    Screenshot.cpp
-    Resource.cpp
-    Timeline.cpp
-    Stream.cpp
-    MediaPlayer.cpp
-    MediaSource.cpp
-    StreamSource.cpp
-    PatternSource.cpp
-    DeviceSource.cpp
-    NetworkSource.cpp
-    MultiFileSource.cpp
-    FrameBuffer.cpp
-    FrameBufferFilter.cpp
-    ImageFilter.cpp
-    DelayFilter.cpp
-    RenderingManager.cpp
-    UserInterfaceManager.cpp
-    WorkspaceWindow.cpp
-    SourceControlWindow.cpp
-    OutputPreviewWindow.cpp
-    TimerMetronomeWindow.cpp
-    InputMappingWindow.cpp
-    ShaderEditWindow.cpp
-    PickingVisitor.cpp
-    BoundingBoxVisitor.cpp
-    DrawVisitor.cpp
-    SearchVisitor.cpp
-    ImGuiToolkit.cpp
-    ImGuiVisitor.cpp
-    InfoVisitor.cpp
-    CountVisitor.cpp
-    GstToolkit.cpp
-    GlmToolkit.cpp
-    SystemToolkit.cpp
-    DialogToolkit.cpp
-    tinyxml2Toolkit.cpp
-    NetworkToolkit.cpp
-    Connection.cpp
-    ActionManager.cpp
-    Overlay.cpp
-    Metronome.cpp
-    ControlManager.cpp
-    VideoBroadcast.cpp
     ShmdataBroadcast.cpp
-    SrtReceiverSource.cpp
-    MultiFileRecorder.cpp
-    DisplaysView.cpp
-    ScreenCaptureSource.cpp
-    MousePointer.cpp
-    Grid.cpp
-    Playlist.cpp
-    Audio.cpp
-    TextSource.cpp
-    ShaderSource.cpp
+    Stream.cpp
+    Streamer.cpp
     TabletInput.cpp
+    Timeline.cpp
+    Transcoder.cpp
+    UpdateCallback.cpp
+    UserInterfaceManager.cpp
+    VideoBroadcast.cpp
+    
+    # Filter/ folder
+    Filter/DelayFilter.cpp
+    Filter/FrameBufferFilter.cpp
+    Filter/ImageFilter.cpp
+    
+    # Scene/ folder
+    Scene/Decorations.cpp
+    Scene/Mesh.cpp
+    Scene/Primitives.cpp
+    Scene/Scene.cpp
+    
+    # Source/ folder
+    Source/CloneSource.cpp
+    Source/DeviceSource.cpp
+    Source/MediaSource.cpp
+    Source/MultiFileSource.cpp
+    Source/NetworkSource.cpp
+    Source/PatternSource.cpp
+    Source/RenderSource.cpp
+    Source/ScreenCaptureSource.cpp
+    Source/SessionSource.cpp
+    Source/ShaderSource.cpp
+    Source/Source.cpp
+    Source/SourceCallback.cpp
+    Source/SourceList.cpp
+    Source/SrtReceiverSource.cpp
+    Source/StreamSource.cpp
+    Source/TextSource.cpp
+    
+    # Toolkit/ folder
+    Toolkit/BaseToolkit.cpp
+    Toolkit/DialogToolkit.cpp
+    Toolkit/GlmToolkit.cpp
+    Toolkit/GstToolkit.cpp
+    Toolkit/ImGuiToolkit.cpp
+    Toolkit/NetworkToolkit.cpp
+    Toolkit/SystemToolkit.cpp
+    Toolkit/tinyxml2Toolkit.cpp
+    
+    # View/ folder
+    View/DisplaysView.cpp
+    View/GeometryView.cpp
+    View/LayerView.cpp
+    View/MixingView.cpp
+    View/RenderView.cpp
+    View/TextureView.cpp
+    View/TransitionView.cpp
+    View/View.cpp
+    
+    # Visitor/ folder
+    Visitor/BoundingBoxVisitor.cpp
+    Visitor/CountVisitor.cpp
+    Visitor/DrawVisitor.cpp
+    Visitor/ImGuiVisitor.cpp
+    Visitor/InfoVisitor.cpp
+    Visitor/PickingVisitor.cpp
+    Visitor/SearchVisitor.cpp
+    Visitor/SessionVisitor.cpp
+    
+    # Window/ folder
+    Window/InputMappingWindow.cpp
+    Window/OutputPreviewWindow.cpp
+    Window/ShaderEditWindow.cpp
+    Window/SourceControlWindow.cpp
+    Window/TimerMetronomeWindow.cpp
+    Window/WorkspaceWindow.cpp
 )
 
 #####
@@ -191,6 +206,9 @@ ENDIF(APPLE)
 
 set_property(TARGET ${VMIX_BINARY} PROPERTY CXX_STANDARD 17)
 set_property(TARGET ${VMIX_BINARY} PROPERTY C_STANDARD 11)
+
+# Add src directory to include path so Visitor subfolder files can include without ../
+target_include_directories(${VMIX_BINARY} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_compile_definitions(${VMIX_BINARY} PUBLIC "IMGUI_IMPL_OPENGL_LOADER_GLAD")
 

@@ -24,10 +24,10 @@
 #include <glm/gtx/rotate_vector.hpp>
 
 #include "defines.h"
-#include "Source.h"
-#include "Decorations.h"
-#include "Visitor.h"
-#include "BaseToolkit.h"
+#include "Source/Source.h"
+#include "Scene/Decorations.h"
+#include "Visitor/Visitor.h"
+#include "Toolkit/BaseToolkit.h"
 
 #include "MixingGroup.h"
 

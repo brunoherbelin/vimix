@@ -5,8 +5,8 @@
 #include <map>
 #include <tinyxml2.h>
 
-#include "Visitor.h"
-#include "SourceList.h"
+#include "Visitor/Visitor.h"
+#include "Source/SourceList.h"
 
 class Session;
 class FrameBufferImage;

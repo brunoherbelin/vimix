@@ -19,7 +19,7 @@
 
 #include "Transcoder.h"
 #include "Log.h"
-#include "SystemToolkit.h"
+#include "Toolkit/SystemToolkit.h"
 
 #include <sys/stat.h>
 #include <glib.h>

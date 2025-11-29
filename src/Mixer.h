@@ -1,12 +1,12 @@
 #ifndef MIXER_H
 #define MIXER_H
 
-#include "GeometryView.h"
-#include "MixingView.h"
-#include "LayerView.h"
-#include "TextureView.h"
-#include "TransitionView.h"
-#include "DisplaysView.h"
+#include "View/GeometryView.h"
+#include "View/MixingView.h"
+#include "View/LayerView.h"
+#include "View/TextureView.h"
+#include "View/TransitionView.h"
+#include "View/DisplaysView.h"
 #include "Session.h"
 #include "Selection.h"
 

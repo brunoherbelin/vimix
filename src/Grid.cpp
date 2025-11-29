@@ -20,8 +20,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/vector_angle.hpp>
 
-#include "Primitives.h"
-#include "DrawVisitor.h"
+#include "Scene/Primitives.h"
+#include "Visitor/DrawVisitor.h"
 
 #include "Grid.h"
 

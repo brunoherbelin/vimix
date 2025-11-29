@@ -19,7 +19,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-#include "Scene.h"
+#include "Scene/Scene.h"
 
 #include "UpdateCallback.h"
 

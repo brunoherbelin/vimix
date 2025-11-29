@@ -19,11 +19,11 @@
 
 
 #include <tinyxml2.h>
-#include "tinyxml2Toolkit.h"
+#include "Toolkit/tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
 #include "defines.h"
-#include "SystemToolkit.h"
+#include "Toolkit/SystemToolkit.h"
 #include "Settings.h"
 
 

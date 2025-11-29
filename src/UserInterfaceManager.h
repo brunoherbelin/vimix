@@ -9,13 +9,13 @@
 
 #include <string>
 
-#include "View.h"
-#include "DialogToolkit.h"
-#include "SourceControlWindow.h"
-#include "OutputPreviewWindow.h"
-#include "TimerMetronomeWindow.h"
-#include "InputMappingWindow.h"
-#include "ShaderEditWindow.h"
+#include "View/View.h"
+#include "Toolkit/DialogToolkit.h"
+#include "Window/SourceControlWindow.h"
+#include "Window/OutputPreviewWindow.h"
+#include "Window/TimerMetronomeWindow.h"
+#include "Window/InputMappingWindow.h"
+#include "Window/ShaderEditWindow.h"
 #include "Playlist.h"
 
 

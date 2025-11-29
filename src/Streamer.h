@@ -7,7 +7,7 @@
 #include "osc/OscPacketListener.h"
 #include "ip/UdpSocket.h"
 
-#include "NetworkToolkit.h"
+#include "Toolkit/NetworkToolkit.h"
 #include "FrameGrabber.h"
 
 #define STREAMING_FPS 30

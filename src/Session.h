@@ -3,8 +3,8 @@
 
 #include <mutex>
 
-#include "SourceList.h"
-#include "RenderView.h"
+#include "Source/SourceList.h"
+#include "View/RenderView.h"
 #include "Metronome.h"
 
 namespace tinyxml2 {

@@ -23,8 +23,8 @@
 using namespace std;
 
 #include "defines.h"
-#include "ImGuiToolkit.h"
-#include "DialogToolkit.h"
+#include "Toolkit/ImGuiToolkit.h"
+#include "Toolkit/DialogToolkit.h"
 #include "Log.h"
 
 

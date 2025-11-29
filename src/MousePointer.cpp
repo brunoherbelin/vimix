@@ -23,7 +23,7 @@
 #include "imgui.h"
 
 #include "Metronome.h"
-#include "View.h"
+#include "View/View.h"
 #include "Mixer.h"
 #include "TabletInput.h"
 

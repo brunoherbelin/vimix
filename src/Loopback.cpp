@@ -27,8 +27,8 @@
 #include <gst/app/gstappsrc.h>
 #include <gst/pbutils/pbutils.h>
 
-#include "GstToolkit.h"
-#include "SystemToolkit.h"
+#include "Toolkit/GstToolkit.h"
+#include "Toolkit/SystemToolkit.h"
 #include "Log.h"
 
 #include "Loopback.h"

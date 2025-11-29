@@ -3,7 +3,7 @@
 
 #include <glm/glm.hpp>
 
-#include "Scene.h"
+#include "Scene/Scene.h"
 
 class Grid
 {

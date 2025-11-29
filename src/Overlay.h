@@ -1,7 +1,7 @@
 #ifndef OVERLAY_H
 #define OVERLAY_H
 
-#include "View.h"
+#include "View/View.h"
 
 class Overlay
 {

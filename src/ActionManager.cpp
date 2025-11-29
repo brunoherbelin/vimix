@@ -22,15 +22,15 @@
 #include <regex>
 
 #include "Log.h"
-#include "View.h"
+#include "View/View.h"
 #include "Mixer.h"
-#include "tinyxml2Toolkit.h"
-#include "SessionVisitor.h"
+#include "Toolkit/tinyxml2Toolkit.h"
+#include "Visitor/SessionVisitor.h"
 #include "SessionCreator.h"
 #include "Settings.h"
-#include "BaseToolkit.h"
+#include "Toolkit/BaseToolkit.h"
 #include "Interpolator.h"
-#include "SystemToolkit.h"
+#include "Toolkit/SystemToolkit.h"
 
 #include "ActionManager.h"
 

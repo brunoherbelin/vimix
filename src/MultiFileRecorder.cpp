@@ -5,9 +5,9 @@
 #include <gst/video/video.h>
 
 #include "Log.h"
-#include "GstToolkit.h"
-#include "BaseToolkit.h"
-#include "SystemToolkit.h"
+#include "Toolkit/GstToolkit.h"
+#include "Toolkit/BaseToolkit.h"
+#include "Toolkit/SystemToolkit.h"
 #include "Settings.h"
 #include "MediaPlayer.h"
 
