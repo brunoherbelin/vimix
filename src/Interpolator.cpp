@@ -23,7 +23,7 @@
 #include "defines.h"
 #include "Source/Source.h"
 #include "ImageProcessingShader.h"
-#include "UpdateCallback.h"
+#include "Scene/UpdateCallback.h"
 
 #include "Interpolator.h"
 

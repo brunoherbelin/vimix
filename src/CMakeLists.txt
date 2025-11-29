@@ -21,7 +21,6 @@ set(VMIX_SRCS
     ControlManager.cpp
     FrameBuffer.cpp
     FrameGrabber.cpp
-    Grid.cpp
     Interpolator.cpp
     Loopback.cpp
     MediaPlayer.cpp
@@ -30,6 +29,7 @@ set(VMIX_SRCS
     MixingGroup.cpp
     MousePointer.cpp
     MultiFileRecorder.cpp
+    Navigator.cpp
     Overlay.cpp
     Playlist.cpp
     Recorder.cpp
@@ -50,7 +50,6 @@ set(VMIX_SRCS
     TabletInput.cpp
     Timeline.cpp
     Transcoder.cpp
-    UpdateCallback.cpp
     UserInterfaceManager.cpp
     VideoBroadcast.cpp
     
@@ -61,9 +60,11 @@ set(VMIX_SRCS
     
     # Scene/ folder
     Scene/Decorations.cpp
+    Scene/Grid.cpp
     Scene/Mesh.cpp
     Scene/Primitives.cpp
     Scene/Scene.cpp
+    Scene/UpdateCallback.cpp
     
     # Source/ folder
     Source/CloneSource.cpp

@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 
 #include "Scene/Scene.h"
-#include "Grid.h"
+#include "Scene/Grid.h"
 
 class Session;
 class SessionFileSource;
