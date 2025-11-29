@@ -381,7 +381,7 @@ struct Application
         proportional_grid = true;
         mouse_pointer = 1;
         mouse_pointer_lock = false;
-        mouse_pointer_strength = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
+        mouse_pointer_strength = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
         action_history_follow_view = false;
         show_tooptips = true;
         accept_connections = false;

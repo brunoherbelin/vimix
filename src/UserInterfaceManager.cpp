@@ -2515,10 +2515,6 @@ void UserInterface::RenderHelp()
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
-        ImGui::Text(ICON_FA_MOUSE_POINTER "  Snap cursor"); ImGui::NextColumn();
-        ImGui::Text ("Snapping mouse cursors modify the mouse effective position to enhace the movement: e.g. snap to grid, move on a line, or trigger on metronome. "
-                     "They are activated with the [" ALT_MOD "] key" );
-        ImGui::NextColumn();
         ImGui::Text(ICON_FA_BULLSEYE "  Mixing"); ImGui::NextColumn();
         ImGui::Text ("Adjust opacity of sources, visible in the center and transparent on the side. Sources are de-activated outside of darker circle.");
         ImGui::NextColumn();
@@ -2766,6 +2762,40 @@ void UserInterface::RenderHelp()
         ImGui::Text(ICON_FA_CLOCK " Timer"); ImGui::NextColumn();
         ImGui::Text ("React to beats of the metronome (configured in the Timer window).");
 
+        ImGui::Columns(1);
+        ImGui::PopTextWrapPos();
+    }
+        
+    if (ImGui::CollapsingHeader("Snap Cursors"))
+    {
+        ImGui::Text("Maintain the [" ALT_MOD "] key to enable mouse cursor snapping;");
+        ImGui::Columns(2, "cursorscolumn", false); // 4-ways, with border
+        ImGui::SetColumnWidth(0, width_column0);
+        ImGui::PushTextWrapPos(width_window );
+        ImGuiToolkit::Icon(ICON_POINTER_GRID); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Grid"); ImGui::NextColumn();
+        ImGui::Text ("Snap the mouse cursor to the closest grid intersection point.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_POINTER_LINEAR); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Line"); ImGui::NextColumn();
+        ImGui::Text ("Move the mouse cursor at constant speed towards the target.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_POINTER_SPRING); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Spring"); ImGui::NextColumn();
+        ImGui::Text ("Simulate spring physics with mass and damping for smooth cursor motion.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_POINTER_WIGGLY); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Wiggly"); ImGui::NextColumn();
+        ImGui::Text ("Add a circular wiggling motion to the cursor movement.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_POINTER_BROWNIAN); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Brownian"); ImGui::NextColumn();
+        ImGui::Text ("Add random Brownian motion to the cursor movement.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_POINTER_METRONOME); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGui::Text("Metronome"); ImGui::NextColumn();
+        ImGui::Text ("Jump the cursor to the target in synchrony with metronome beats.");
+        ImGui::NextColumn();
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
     }

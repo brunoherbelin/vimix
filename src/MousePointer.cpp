@@ -39,7 +39,7 @@ std::vector< std::tuple<int, int, std::string, std::string> > Pointer::Modes = {
     { ICON_POINTER_SPRING,  "Spring",  "Mass" },
     { ICON_POINTER_WIGGLY,  "Wiggly",  "Radius" },
     { ICON_POINTER_BROWNIAN,  "Brownian",  "Radius" },
-    { ICON_POINTER_METRONOME, "Metronome", "Jump" }
+    { ICON_POINTER_METRONOME, "Metronome", "Speed" }
 };
 
 void PointerGrid::initiate(const glm::vec2&)

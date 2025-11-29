@@ -1806,10 +1806,12 @@ bool Navigator::RenderMousePointerSelector(const ImVec2 &size)
 
     // Change color of icons depending on context menu status
     const ImVec4* colors = ImGui::GetStyle().Colors;
-    if (enabled)
-        ImGui::PushStyleColor( ImGuiCol_Text, ImGui::IsPopupOpen("MenuMousePointer") ? colors[ImGuiCol_DragDropTarget] : colors[ImGuiCol_Text] );
-    else
+    if (!enabled) 
         ImGui::PushStyleColor( ImGuiCol_Text, colors[ImGuiCol_TextDisabled] );
+    else if (ret || ImGui::IsPopupOpen("MenuMousePointer") )
+        ImGui::PushStyleColor( ImGuiCol_Text, colors[ImGuiCol_DragDropTarget]);
+    else        
+        ImGui::PushStyleColor( ImGuiCol_Text, colors[ImGuiCol_Text] );
 
     // Draw centered icon of Mouse pointer
     ImVec2 margin = (size - ImVec2(g.FontSize, g.FontSize)) * 0.5f;
