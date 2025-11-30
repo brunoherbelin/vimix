@@ -18,6 +18,8 @@
 **/
 
 #include <algorithm>
+#include <glib.h>
+#include <glm/ext/vector_float3.hpp>
 #include <thread>
 #include <vector>
 #include <chrono>
@@ -30,19 +32,17 @@
 #include <tinyxml2.h>
 
 #include "ImageShader.h"
-#include "Source/TextSource.h"
 #include "defines.h"
 #include "Settings.h"
 #include "Log.h"
 #include "View/View.h"
 #include "Toolkit/BaseToolkit.h"
 #include "Toolkit/SystemToolkit.h"
-#include "SessionCreator.h"
 #include "Visitor/SessionVisitor.h"
+#include "Source/TextSource.h"
 #include "Source/SessionSource.h"
 #include "Source/CloneSource.h"
 #include "Source/RenderSource.h"
-#include "MediaPlayer.h"
 #include "Source/MediaSource.h"
 #include "Source/PatternSource.h"
 #include "Source/DeviceSource.h"
@@ -54,9 +54,12 @@
 #include "Source/SrtReceiverSource.h"
 #include "Source/SourceCallback.h"
 
+#include "SessionCreator.h"
+#include "MediaPlayer.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
 #include "FrameGrabber.h"
+#include "Visitor/BoundingBoxVisitor.h"
 
 #include "Mixer.h"
 
@@ -808,8 +811,12 @@ void Mixer::group(SourceList sourcelist)
 
     // create session group where to transfer sources into
     SessionGroupSource *sessiongroup = new SessionGroupSource;
-    sessiongroup->setResolution( session_->frame()->resolution() );
 
+    // compute dimensions to cover all sources
+    GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(sourcelist, &geometry_);
+    sessiongroup->setDimensions( selection_box.scale(), selection_box.center(),
+                                 session_->frame()->resolution().y );
+                    
     // prepare for new session group name
     std::string name;
     // prepare for depth to place the group source
@@ -850,6 +857,12 @@ void Mixer::group(SourceList sourcelist)
         // set alpha to full opacity
         sessiongroup->group(View::MIXING)->translation_.x = 0.f;
         sessiongroup->group(View::MIXING)->translation_.y = 0.f;
+
+        // set geometry        
+        sessiongroup->group(View::GEOMETRY)->translation_ = sessiongroup->center();
+        sessiongroup->group(View::GEOMETRY)->scale_ = sessiongroup->scale();
+        // correct for aspect ratio done by SessionGroupSource resolution
+        sessiongroup->group(View::GEOMETRY)->scale_.x = sessiongroup->group(View::GEOMETRY)->scale_.y;
 
         // Add source to Session
         session_->addSource(sessiongroup);

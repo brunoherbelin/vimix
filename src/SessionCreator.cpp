@@ -17,6 +17,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <glib.h>
+#include <glm/fwd.hpp>
 #include <sstream>
 #include <algorithm>
 
@@ -1225,8 +1227,23 @@ void SessionLoader::visit (SessionFileSource& s)
 
 void SessionLoader::visit (SessionGroupSource& s)
 {
-    // set resolution from host session
-    s.setResolution( session_->config(View::RENDERING)->scale_ );
+    float height = 0.f;
+    xmlCurrent_->QueryFloatAttribute("height", &height);
+    if (height > 0.f) {
+        // load dimensions
+        glm::vec3 scale(1.f), center(0.f);
+        const XMLElement *scaleNode = xmlCurrent_->FirstChildElement("scale");
+        if (scaleNode)
+            tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"), scale);
+        const XMLElement *centerNode = xmlCurrent_->FirstChildElement("center");
+        if (centerNode)
+            tinyxml2::XMLElementToGLM( centerNode->FirstChildElement("vec3"), center);
+        s.setDimensions(scale, center, height);
+    }
+    else {
+        // set resolution from host session
+        s.setResolution( session_->config(View::RENDERING)->scale_ );        
+    }
 
     // get the inside session
     XMLElement* sessionGroupNode = xmlCurrent_->FirstChildElement("Session");

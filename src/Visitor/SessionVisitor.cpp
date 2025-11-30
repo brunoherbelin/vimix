@@ -722,6 +722,14 @@ void SessionVisitor::visit (SessionFileSource& s)
 void SessionVisitor::visit (SessionGroupSource& s)
 {
     xmlCurrent_->SetAttribute("type", "GroupSource");
+    xmlCurrent_->SetAttribute("height", (float) s.frame()->height());
+
+    XMLElement *center = xmlDoc_->NewElement("center");
+    center->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.center()) );
+    xmlCurrent_->InsertEndChild(center);
+    XMLElement *scale = xmlDoc_->NewElement("scale");
+    scale->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.scale()) );
+    xmlCurrent_->InsertEndChild(scale);
 
     Session *se = s.session();
     if (se) {

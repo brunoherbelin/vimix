@@ -72,6 +72,10 @@ public:
     // SessionGroup Source specific interface
     void setSession (Session *s);
     inline void setResolution (glm::vec3 v) { resolution_ = v; }
+    inline glm::vec3 resolution() const { return resolution_; }
+    void setDimensions( glm::vec3 scale, glm::vec3 center, float height);
+    inline glm::vec3 scale() const { return dimension_scale_; }
+    inline glm::vec3 center() const { return dimension_center_; }
 
     // import a source
     bool import(Source *source);
@@ -83,6 +87,7 @@ protected:
 
     void init() override;
     glm::vec3 resolution_;
+    glm::vec3 dimension_scale_, dimension_center_;
 };
 
 #endif // SESSIONSOURCE_H

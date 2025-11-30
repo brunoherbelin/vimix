@@ -19,6 +19,8 @@
 
 #include <algorithm>
 
+#include <glib.h>
+#include <glm/ext/vector_float3.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "defines.h"
@@ -424,7 +426,10 @@ std::string SessionFileSource::info() const
 }
 
 
-SessionGroupSource::SessionGroupSource(uint64_t id) : SessionSource(id), resolution_(glm::vec3(0.f))
+SessionGroupSource::SessionGroupSource(uint64_t id) : SessionSource(id), 
+                                                    resolution_(glm::vec3(0.f)), 
+                                                    dimension_scale_(glm::vec3(1.f)), 
+                                                    dimension_center_(glm::vec3(0.f))
 {
     // set symbol
     symbol_ = new Symbol(Symbol::GROUP, glm::vec3(0.75f, 0.75f, 0.01f));
@@ -479,7 +484,21 @@ void SessionGroupSource::setSession (Session *s)
             delete session_;
         session_ = s;
         resolution_ = s->frame()->resolution();
+        dimension_scale_ = glm::vec3(1.f);
+        dimension_center_ = glm::vec3(0.f);
     }
+}
+
+void SessionGroupSource::setDimensions(glm::vec3 scale, glm::vec3 center, float height)
+{
+    // compute resolution from height if given
+    if ( height > 0.f ) {
+        float H = height * scale.y;
+        resolution_ = glm::vec3( H * (scale.x / scale.y), H, 0.f );
+    } 
+
+    dimension_scale_ = scale;
+    dimension_center_ = center;
 }
 
 bool SessionGroupSource::import(Source *source)
@@ -489,8 +508,17 @@ bool SessionGroupSource::import(Source *source)
     if ( session_ )
     {
         SourceList::iterator its = session_->addSource(source);
-        if (its != session_->end())
+        if (its != session_->end()) {
             ret = true;
+            // update geometry to match scale and center of the SessionGroupSource
+            glm::vec3 scaling = dimension_scale_;
+            scaling.x = scaling.y ;
+            (*its)->group(View::RENDERING)->scale_ = source->group(View::RENDERING)->scale_ / scaling;
+            (*its)->group(View::RENDERING)->translation_ = (source->group(View::RENDERING)->translation_  - dimension_center_) / scaling ;
+            // keep geometry in GEOMETRY view in sync
+            (*its)->group(View::GEOMETRY)->scale_ = source->group(View::RENDERING)->scale_;
+            (*its)->group(View::GEOMETRY)->translation_ = source->group(View::RENDERING)->translation_;
+        }
     }
 
     return ret;
