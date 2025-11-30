@@ -130,22 +130,22 @@ void LayerView::draw()
 
             if (s->icon() == glm::ivec2(ICON_SOURCE_GROUP) )
             {
-                if (ImGuiToolkit::SelectableIcon( 7, 2, "Expand Bundle ", false )) {
+                if (ImGuiToolkit::SelectableIcon( 7, 2, "Uncover bundle ", false )) {
                     Mixer::manager().import( dynamic_cast<SessionSource*>(s) );
                 }
             }
             else {
                 if ( s->cloned() || s->icon() == glm::ivec2(ICON_SOURCE_CLONE)){
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
-                    ImGuiToolkit::SelectableIcon( 11, 2, "Encapsulate in a Bundle ", false );
+                    ImGuiToolkit::SelectableIcon( 11, 2, "Bundle source", false );
                     ImGui::PopStyleColor(); 
                     if (ImGui::IsItemHovered()) {
-                        ImGuiToolkit::ToolTip("Cannot create a bundle; clones "
-                            " and their origin source cannot be separated.");
+                        ImGuiToolkit::ToolTip("Cannot create bundle; clones "
+                            " cannot be separated from their origin source.");
                     }
                 }
                 else {
-                    if (ImGuiToolkit::SelectableIcon( 11, 2, "Encapsulate in a Bundle ", false )) {
+                    if (ImGuiToolkit::SelectableIcon( 11, 2, "Bundle source ", false )) {
                         Mixer::manager().groupCurrent();
                     }
                 }
@@ -192,18 +192,17 @@ void LayerView::draw()
 
         // special action of Mixing view
         if (candidate_flatten_group){
-            if (ImGuiToolkit::SelectableIcon( 11, 2, "Encapsulate in a Bundle ", false )) {
+            if (ImGuiToolkit::SelectableIcon( 11, 2, "Bundle selection", false )) {
                 Mixer::manager().groupSelection();
             }
         }
         else {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
-            ImGuiToolkit::SelectableIcon( 11, 2, "Encapsulate in a Bundle ", false );
+            ImGuiToolkit::SelectableIcon( 11, 2, "Bundle selection", false );
             ImGui::PopStyleColor(); 
             if (ImGui::IsItemHovered()) {
-                ImGuiToolkit::ToolTip("Cannot create a bundle; selection must be "
-                    "contiguous in layer and/or clones "
-                    " and their origin source cannot be separated.");
+                ImGuiToolkit::ToolTip("Cannot create bundle; selection must be "
+                    "contiguous in layer, clones cannot be separated from their origin source.");
             }
         }
 

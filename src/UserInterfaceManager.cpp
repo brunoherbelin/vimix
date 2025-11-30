@@ -1456,8 +1456,16 @@ void UserInterface::RenderPreview()
             // closing icon in top left corner
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
             ImGui::SetCursorScreenPos(draw_pos + ImVec2(IMGUI_SAME_LINE, IMGUI_SAME_LINE));
-            if (ImGuiToolkit::IconButton(ICON_FA_TIMES, "Close preview"))
+            if (ImGuiToolkit::IconButton(ICON_FA_TIMES))
                 show_preview = PREVIEW_NONE;
+            if (ImGui::IsItemHovered()) {
+
+                ImGui::SameLine();
+                if (show_preview == PREVIEW_SOURCE)
+                    ImGui::Text("Preview Player source");
+                else
+                    ImGui::Text("Preview Display output");  
+            }
             ImGui::PopFont();
 
             // handle mouse clic and hovering on image
@@ -2719,7 +2727,8 @@ void UserInterface::RenderHelp()
         ImGui::Text ("Clones the frames of a source into another one and optionnaly applies a filter (see below).");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Bundle"); ImGui::NextColumn();
-        ImGui::Text ("Bundles together several sources and renders them as an internal session.");
+        ImGui::Text ("Bundles together several sources and renders them as an internal session, "
+            " e.g., select multiple sources in the Layers view and choose 'Bundle selection'.");
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
