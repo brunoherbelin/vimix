@@ -986,15 +986,13 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     listofsources.append( BaseToolkit::joinned( session->getNameList(), '\n').c_str() );
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::InputTextMultiline("##sourcesingroup", (char *)listofsources.c_str(), listofsources.size(),
+    ImGui::InputTextMultiline("Sources", (char *)listofsources.c_str(), listofsources.size(),
                               ImVec2(IMGUI_RIGHT_ALIGN, CLAMP(session->size(), 2, 5) * ImGui::GetTextLineHeightWithSpacing()),
                               ImGuiInputTextFlags_ReadOnly);
     ImGui::PopStyleColor(1);
 
-    if ( ImGui::Button( ICON_FA_SIGN_OUT_ALT " Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+    if ( ImGui::Button( ICON_FA_TIMES "  Uncover", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().import( &s );
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGui::Text("Sources");
 
     ImVec2 botom = ImGui::GetCursorPos();
 

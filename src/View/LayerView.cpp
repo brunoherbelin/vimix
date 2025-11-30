@@ -18,6 +18,7 @@
 **/
 
 #include "Source/SessionSource.h"
+#include "imgui.h"
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -129,16 +130,22 @@ void LayerView::draw()
 
             if (s->icon() == glm::ivec2(ICON_SOURCE_GROUP) )
             {
-                if (ImGui::Selectable( ICON_FA_SIGN_IN_ALT "  Expand Bundle" )) {
+                if (ImGuiToolkit::SelectableIcon( 7, 2, "Expand Bundle ", false )) {
                     Mixer::manager().import( dynamic_cast<SessionSource*>(s) );
                 }
             }
             else {
                 if ( s->cloned() || s->icon() == glm::ivec2(ICON_SOURCE_CLONE)){
-                    ImGui::TextDisabled( ICON_FA_SIGN_IN_ALT "  Encapsulate into a Bundle" );
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
+                    ImGuiToolkit::SelectableIcon( 11, 2, "Encapsulate in a Bundle ", false );
+                    ImGui::PopStyleColor(); 
+                    if (ImGui::IsItemHovered()) {
+                        ImGuiToolkit::ToolTip("Cannot create a bundle; clones "
+                            " and their origin source cannot be separated.");
+                    }
                 }
                 else {
-                    if (ImGui::Selectable( ICON_FA_SIGN_IN_ALT "  Encapsulate into a Bundle" )) {
+                    if (ImGuiToolkit::SelectableIcon( 11, 2, "Encapsulate in a Bundle ", false )) {
                         Mixer::manager().groupCurrent();
                     }
                 }
@@ -152,45 +159,7 @@ void LayerView::draw()
     if (show_context_menu_ == MENU_SELECTION) {
 
         // initialize the verification of the selection
-        candidate_flatten_group = true;
-        SourceList _selected = Mixer::selection().getCopy();
-        // start loop on selection
-        SourceList::iterator  it = Mixer::selection().begin();
-        float depth_first = (*it)->depth();
-        for (; it != Mixer::selection().end(); ++it) {
-            // test if selection is contiguous in layer (i.e. not interrupted)
-            SourceList::iterator inter = Mixer::manager().session()->find(depth_first, (*it)->depth());
-            if ( inter != Mixer::manager().session()->end() && !Mixer::selection().contains(*inter)){
-                // CANNOT group: there is a source in the session that
-                // - is between two selected sources (in depth)
-                // - is not part of the selection
-                candidate_flatten_group = false;
-                break;
-            }
-            // test if the source is a clone
-            CloneSource *_cs = dynamic_cast<CloneSource *>(*it);
-            if (_cs != nullptr) {
-                uint64_t _id_cloned = (*_cs).origin()->id();
-                SourceList::const_iterator _it = std::find_if(_selected.begin(),
-                                                              _selected.end(),
-                                                              Source::hasId(_id_cloned));
-                // CANNOT group: there is a clone selected and its origin is not selected
-                if (_it == _selected.end()) {
-                    candidate_flatten_group = false;
-                    break;
-                }
-            }
-            // test if the selected source is cloned
-            if ((*it)->cloned()) {
-                SourceList _clones = (*it)->clones();
-                SourceListCompare _diff = compare(_selected, _clones);
-                // CANNOT group: there all clones are not included in selection
-                if (_diff != SOURCELIST_SECOND_IN_FIRST){
-                    candidate_flatten_group = false;
-                    break;
-                }
-            }
-        }
+        candidate_flatten_group = Mixer::manager().selectionCanBeGroupped();
 
         ImGui::OpenPopup( "LayerSelectionContextMenu" );
         show_context_menu_ = MENU_NONE;
@@ -223,12 +192,19 @@ void LayerView::draw()
 
         // special action of Mixing view
         if (candidate_flatten_group){
-            if (ImGui::Selectable( ICON_FA_SIGN_IN_ALT "  Encapsulate into a Bundle" )) {
+            if (ImGuiToolkit::SelectableIcon( 11, 2, "Encapsulate in a Bundle ", false )) {
                 Mixer::manager().groupSelection();
             }
         }
         else {
-            ImGui::TextDisabled( ICON_FA_SIGN_IN_ALT "  Encapsulate into a Bundle" );
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
+            ImGuiToolkit::SelectableIcon( 11, 2, "Encapsulate in a Bundle ", false );
+            ImGui::PopStyleColor(); 
+            if (ImGui::IsItemHovered()) {
+                ImGuiToolkit::ToolTip("Cannot create a bundle; selection must be "
+                    "contiguous in layer and/or clones "
+                    " and their origin source cannot be separated.");
+            }
         }
 
         ImGui::Separator();

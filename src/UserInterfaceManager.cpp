@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "Source/Source.h"
 #include "Window/OutputPreviewWindow.h"
 #include "View/RenderView.h"
 #include "RenderingManager.h"
@@ -69,6 +70,7 @@
 #include "Recorder.h"
 #include "Source/SourceCallback.h"
 #include "Source/ShaderSource.h"
+#include "Source/SessionSource.h"
 #include "MousePointer.h"
 #include "Playlist.h"
 
@@ -287,7 +289,7 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_H), false )) {
             // Helper
-            Settings::application.widget.help = true;
+            Settings::application.widget.help = !Settings::application.widget.help;
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_E), false )) {
             // Shader Editor
@@ -1080,21 +1082,52 @@ void UserInterface::showMenuEdit()
         Mixer::manager().view()->selectAll();
         navigator.discardPannel();
     }
+}
 
-    // GROUP
-    ImGui::Separator();
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " Create Bundle with active sources", NULL, false, Mixer::manager().numSource() > 0)) {
+void UserInterface::showMenuBundle()
+{   
+    bool is_bundle = false;
+    if (Mixer::manager().currentSource() != nullptr)
+        is_bundle = Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_GROUP);
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " Current source", NULL, false, 
+                        Mixer::manager().currentSource() != nullptr && !is_bundle)) {
+        Mixer::manager().groupCurrent();
+        // switch pannel to show first source (created)
+        navigator.showPannelSource(0);
+    }
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " Selection", NULL, false, 
+                        Mixer::manager().selectionCanBeGroupped())) {
+        Mixer::manager().groupSelection();
+        // switch pannel to show first source (created)
+        navigator.showPannelSource(0);
+    }
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " All active sources", NULL, false, 
+                        Mixer::manager().numSource() > 0)) {
         // create a new group session with only active sources
         Mixer::manager().groupAll( true );
         // switch pannel to show first source (created)
         navigator.showPannelSource(0);
     }
-    if (ImGuiToolkit::MenuItemIcon(7, 2, " Expand all Bundles", NULL, false, Mixer::manager().numSource() > 0)) {
-        // create a new group session with all sources
-        Mixer::manager().ungroupAll();
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " Everything", NULL, false, 
+                        Mixer::manager().numSource() > 0)) {
+        // create a new group session with only active sources
+        Mixer::manager().groupAll( false );
+        // switch pannel to show first source (created)
+        navigator.showPannelSource(0);
     }
-}
+    ImGui::Separator();
+    if (ImGuiToolkit::MenuItemIcon(7, 2, " Uncover bundle", NULL, false, 
+                        is_bundle)) {
+        // import sourses of bundle 
+        Mixer::manager().import( dynamic_cast<SessionSource*>(Mixer::manager().currentSource()) );
+    }
+    // if (ImGuiToolkit::MenuItemIcon(7, 2, " Uncover all", NULL, false, 
+    //                     Mixer::manager().numSource() > 0)) {
+    //     // ungroup all bundle sources
+    //     Mixer::manager().ungroupAll();
+    // }
 
+}
 void UserInterface::showMenuWindows()
 {
     if ( ImGui::MenuItem( MENU_OUTPUT, SHORTCUT_OUTPUT, &Settings::application.widget.preview) )

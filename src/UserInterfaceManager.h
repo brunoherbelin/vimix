@@ -127,6 +127,7 @@ protected:
     void showMenuFile();
     void showMenuEdit();
     void showMenuWindows();
+    void showMenuBundle();
     bool saveOrSaveAs(bool force_versioning = false);
     void selectSaveFilename();
     void selectOpenFilename();

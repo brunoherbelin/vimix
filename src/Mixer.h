@@ -72,6 +72,7 @@ public:
     // operations on selection
     void deleteSelection ();
     void groupSelection  ();
+    bool selectionCanBeGroupped () const;
     void groupCurrent    ();
     void groupAll (bool only_active = false);
     void ungroupAll ();
