@@ -18,6 +18,7 @@
 **/
 
 
+#include <cstddef>
 #include <tinyxml2.h>
 #include "Toolkit/tinyxml2Toolkit.h"
 using namespace tinyxml2;
@@ -732,7 +733,10 @@ void Settings::Load(const std::string &filename)
             {
                 glm::vec2 val;
                 tinyxml2::XMLElementToGLM( strengthNode, val);
-                application.mouse_pointer_strength[ (size_t) ceil(val.x) ] = val.y;
+                size_t i = (size_t) ceil(val.x);
+                if (i >= application.mouse_pointer_strength.size())
+                    application.mouse_pointer_strength.resize(i + 1, 0.f);
+                application.mouse_pointer_strength[ i ] = val.y;
             }
         }
 
