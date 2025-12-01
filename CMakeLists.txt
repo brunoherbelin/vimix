@@ -184,7 +184,7 @@ else ()
 
     find_package(GStreamer 1.0 COMPONENTS base REQUIRED)
 
-    find_package(GStreamerPluginsBase 1.0.0 COMPONENTS app audio video pbutils gl)
+    find_package(GStreamerPluginsBase 1.0.0 COMPONENTS app audio video pbutils gl transcoder)
     macro_log_feature(GSTREAMER_APP_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer app library"
     "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
     macro_log_feature(GSTREAMER_AUDIO_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer audio library"
@@ -194,6 +194,8 @@ else ()
     macro_log_feature(GSTREAMER_PBUTILS_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer pbutils library"
     "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
     macro_log_feature(GSTREAMER_GL_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer opengl library"
+    "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
+    macro_log_feature(GSTREAMER_TRANSCODER_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer transcoder library"
     "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
 
     include_directories(
@@ -205,6 +207,7 @@ else ()
         ${GSTREAMER_APP_INCLUDE_DIR}
         ${GSTREAMER_PBUTILS_INCLUDE_DIR}
         ${GSTREAMER_GL_INCLUDE_DIR}
+        ${GSTREAMER_TRANSCODER_INCLUDE_DIR}
     )
     set( GSTREAMER_LIBRARIES
         ${GOBJECT_LIBRARIES}
@@ -215,6 +218,7 @@ else ()
         ${GSTREAMER_VIDEO_LIBRARY}
         ${GSTREAMER_PBUTILS_LIBRARY}
         ${GSTREAMER_GL_LIBRARY}
+        ${GSTREAMER_TRANSCODER_LIBRARY}
     )
 
 endif ()
