@@ -18,9 +18,12 @@
 **/
 
 #include <algorithm>
+#include <glib.h>
+#include <limits>
 
 #include <tinyxml2.h>
 
+#include "Source/SourceList.h"
 #include "defines.h"
 #include "Toolkit/BaseToolkit.h"
 #include "Source/Source.h"
@@ -75,6 +78,11 @@ Session::Session(uint64_t id) : id_(id), active_(true), activation_threshold_(MI
     start_time_ = gst_util_get_timestamp ();
 }
 
+
+Session::InputSourceCallback::~InputSourceCallback()
+{
+    clear();
+}
 
 void Session::InputSourceCallback::clear()
 {
@@ -161,6 +169,10 @@ void Session::detachSource (Source *s)
         // inform group
         if (s->mixingGroup() != nullptr)
             s->mixingGroup()->detach(s);
+        // remove source from all batch
+        removeSourceFromBatch(s);
+        // remove source from all input callbacks
+        removeSourceFromInputCallbacks( s->id() );
     }
 }
 
@@ -725,7 +737,7 @@ void Session::addBatch(const SourceIdList &ids)
     batch_.push_back( ids );
 }
 
-void Session::addSourceToBatch(size_t i, Source *s)
+void Session::addSourceToBatch(Source *s, size_t i)
 {
     if (i < batch_.size() )
     {
@@ -734,12 +746,20 @@ void Session::addSourceToBatch(size_t i, Source *s)
     }
 }
 
-void Session::removeSourceFromBatch(size_t i, Source *s)
+void Session::removeSourceFromBatch(Source *s, size_t i)
 {
-    if (i < batch_.size() )
+    // if i is INVALID (max value), remove source from all batches
+    if (i == std::numeric_limits<size_t>::max())
     {
-        if ( std::find(batch_[i].begin(), batch_[i].end(), s->id()) != batch_[i].end() )
-            batch_[i].remove( s->id() );
+        for (auto &batch : batch_)
+        {
+            batch.remove(s->id());
+        }
+    }
+    // otherwise remove from specific batch
+    else if (i < batch_.size())
+    {
+        batch_[i].remove( s->id() );
     }
 }
 
@@ -978,6 +998,63 @@ std::list<uint> Session::inputsForSource( uint64_t sid )
 bool Session::inputAssigned(uint input)
 {
     return input_callbacks_.find(input) != input_callbacks_.end();
+}
+
+void Session::removeSourceFromInputCallbacks( uint64_t sid )
+{
+    if (sid > 0 && !input_callbacks_.empty()) {
+        // test all targets of the list of input callbacks
+        for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); )
+        {
+            if (Source * const* v = std::get_if<Source *>(&k->second.target_)) {
+                // v is a source
+                if ( sid == (*v)->id() ) {
+                    // v is the source we are looking to remove
+                    if (k->second.model_)
+                        delete k->second.model_;
+                    k->second.clear();
+                    k = input_callbacks_.erase(k);
+                }
+                else 
+                    ++k;
+            }
+            else 
+                ++k;
+        }
+    }
+}
+
+Session::MapInputSourceCallback Session::copyInputCallbackMap() const
+{
+    MapInputSourceCallback _copy;
+    if (!input_callbacks_.empty()) {
+        for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
+        {            
+            _copy.emplace( k->first, InputSourceCallback() );
+            _copy.rbegin()->second.model_ = k->second.model_->clone();
+            _copy.rbegin()->second.target_ = k->second.target_;
+        }
+    }
+
+    return _copy;
+}
+
+void Session::importInputCallbacks(Session::MapInputSourceCallback callbacks)
+{
+    for (auto k = callbacks.begin(); 
+              k != callbacks.end(); ++k)
+    {
+        if (Source * const* v = std::get_if<Source *>(&k->second.target_)) {
+            // v is a source
+            // if the source exists in this session
+            SourceList::iterator sit = std::find_if(sources_.begin(), sources_.end(), Source::hasId( (*v)->id() ));;
+            if ( sit != sources_.end()) {
+                // assign callback to this source
+                assignInputCallback( k->first, *v, k->second.model_->clone() );
+            }
+        }
+    }
+
 }
 
 void Session::setInputSynchrony(uint input, Metronome::Synchronicity sync)

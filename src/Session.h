@@ -166,11 +166,25 @@ public:
     void deleteBatch(size_t i);
     size_t numBatch() const;
     SourceList getBatch(size_t i) const;
-    void addSourceToBatch(size_t i, Source *s);
-    void removeSourceFromBatch(size_t i, Source *s);
+    void addSourceToBatch(Source *s, size_t i);
+    void removeSourceFromBatch(Source *s, size_t i = std::numeric_limits<size_t>::max());
     std::vector<SourceIdList> getAllBatch() { return batch_; }
 
     // callbacks associated to inputs
+    struct InputSourceCallback {
+        bool active_;
+        SourceCallback *model_;
+        std::map<uint64_t, std::pair< SourceCallback *, SourceCallback *> > instances_;
+        Target target_;
+        InputSourceCallback() {
+            active_ = false;
+            model_   = nullptr;
+            target_  = nullptr;
+        }
+        ~InputSourceCallback(); 
+        void clear();
+    };
+    typedef std::multimap<uint, InputSourceCallback>  MapInputSourceCallback;
     void assignInputCallback(uint input, Target target, SourceCallback *callback);
     std::list< std::pair<Target, SourceCallback*> > getSourceCallbacks(uint input);
     void deleteInputCallback (SourceCallback *callback);
@@ -182,6 +196,9 @@ public:
     void swapInputCallback(uint from, uint to);
     void copyInputCallback(uint from, uint to);
     std::list<uint> inputsForSource( uint64_t id );
+    void removeSourceFromInputCallbacks( uint64_t id );
+    MapInputSourceCallback copyInputCallbackMap() const;
+    void importInputCallbacks(MapInputSourceCallback callbacks);
 
     void setInputSynchrony(uint input, Metronome::Synchronicity sync);
     std::vector<Metronome::Synchronicity> getInputSynchrony();
@@ -224,19 +241,7 @@ protected:
     };
     Fading fading_;
 
-    struct InputSourceCallback {
-        bool active_;
-        SourceCallback *model_;
-        std::map<uint64_t, std::pair< SourceCallback *, SourceCallback *> > instances_;
-        Target target_;
-        InputSourceCallback() {
-            active_ = false;
-            model_   = nullptr;
-            target_  = nullptr;
-        }
-        void clear();
-    };
-    std::multimap<uint, InputSourceCallback> input_callbacks_;
+    MapInputSourceCallback input_callbacks_;
     std::vector<Metronome::Synchronicity> input_sync_;
 
 };

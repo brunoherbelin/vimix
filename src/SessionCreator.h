@@ -112,6 +112,7 @@ protected:
     // list of groups (lists of xml source id)
     std::list< SourceIdList > groups_sources_id_;
 
+    void loadInputCallbacks(tinyxml2::XMLElement *inputsNode);
 };
 
 struct SessionInformation {
@@ -133,7 +134,6 @@ class SessionCreator : public SessionLoader {
     void loadNotes(tinyxml2::XMLElement *notesNode);
     void loadPlayGroups(tinyxml2::XMLElement *playlistsNode);
     void loadSnapshots(tinyxml2::XMLElement *snapshotNode);
-    void loadInputCallbacks(tinyxml2::XMLElement *inputsNode);
 
 public:
     SessionCreator(uint level = 0);

@@ -167,6 +167,9 @@ void SessionCreator::load(const std::string& filename)
     // ready to read sources
     SessionLoader::load( sessionNode );
 
+    // load input callbacks (LEGACY - to be removed in future versions)
+    SessionLoader::loadInputCallbacks( xmlDoc_.FirstChildElement("InputCallbacks") );
+
     // load snapshots
     loadSnapshots( xmlDoc_.FirstChildElement("Snapshots") );
 
@@ -175,9 +178,6 @@ void SessionCreator::load(const std::string& filename)
 
     // load playlists
     loadPlayGroups( xmlDoc_.FirstChildElement("PlayGroups") );
-
-    // load input callbacks
-    loadInputCallbacks( xmlDoc_.FirstChildElement("InputCallbacks") );
 
     // thumbnail
     const XMLElement *thumbnailelement = sessionNode->FirstChildElement("Thumbnail");
@@ -228,7 +228,7 @@ void SessionCreator::loadSnapshots(XMLElement *snapshotsNode)
 }
 
 
-void SessionCreator::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
+void SessionLoader::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
 {
     if (inputsNode != nullptr && session_ != nullptr) {
 
@@ -562,6 +562,10 @@ void SessionLoader::load(XMLElement *sessionNode)
         //
         for ( auto id = loaded_xml_ids.begin(); id != loaded_xml_ids.end(); ++id)
             session_->move( session_->index( session_->find( id->second)), id->first );
+
+
+        // load input callbacks
+        loadInputCallbacks( sessionNode->FirstChildElement("InputCallbacks") );
 
     }
 }

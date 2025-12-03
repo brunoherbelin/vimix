@@ -889,6 +889,9 @@ void Mixer::group(SourceList sourcelist)
         selectgroups.push_back( intersect( *git, sourcelist));
     }
 
+    // remember input callbacks before emptying the session
+    Session::MapInputSourceCallback tmpcallbacks = session_->copyInputCallbackMap();
+
     // browse the list
     for (auto sit = sourcelist.begin(); sit != sourcelist.end(); ++sit) {
 
@@ -909,6 +912,9 @@ void Mixer::group(SourceList sourcelist)
         // recreate groups in session group
         for (auto git = selectgroups.begin(); git != selectgroups.end(); ++git)
             sessionbundle->session()->link( *git );
+
+        // restore input callbacks 
+        sessionbundle->session()->importInputCallbacks( tmpcallbacks );
 
         // set depth at given location
         sessionbundle->group(View::LAYER)->translation_.z = d;
@@ -1002,6 +1008,9 @@ void Mixer::groupAll(bool only_active)
         bundlegroups.push_back( intersect( *git, sourcelist));
     }
 
+    // remember input callbacks before emptying the session
+    Session::MapInputSourceCallback tmpcallbacks = session_->copyInputCallbackMap();
+
     // browse the list
     for (auto sit = sourcelist.begin(); sit != sourcelist.end(); ++sit) {
         // import source into bundle
@@ -1019,6 +1028,9 @@ void Mixer::groupAll(bool only_active)
         // recreate groups in session group
         for (auto git = bundlegroups.begin(); git != bundlegroups.end(); ++git)
             sessionbundle->session()->link( *git );
+
+        // restore input callbacks 
+        sessionbundle->session()->importInputCallbacks( tmpcallbacks );
 
         // set default depth in workspace for the session-group source
         sessionbundle->group(View::LAYER)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;
@@ -1058,46 +1070,6 @@ void Mixer::ungroupAll()
             import(ss);
 
     }
-}
-
-void Mixer::groupSession()
-{
-    // new session group containing current session
-    SessionGroupSource *sessiongroup = new SessionGroupSource;
-    sessiongroup->setSession(session_);
-
-    // set alpha to full opacity so that rendering is identical after swap
-    sessiongroup->group(View::MIXING)->translation_.x = 0.f;
-    sessiongroup->group(View::MIXING)->translation_.y = 0.f;
-
-    // set default depth in workspace
-    sessiongroup->group(View::LAYER)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;
-
-    // propose a name to the session group
-    sessiongroup->setName( SystemToolkit::base_filename(session_->filename()));
-
-    // create a session containing the sessiongroup
-    Session *futuresession = new Session;
-    futuresession->addSource( sessiongroup );
-
-    // set identical filename to future session
-    futuresession->setFilename( session_->filename() );
-
-    // set and swap to futuresession (will be done at next update)
-    set(futuresession);
-
-    // detatch current session_'s nodes from views
-    for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
-        detachSource(*source_iter);
-
-    // detatch session_'s mixing group
-    for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
-        (*group_iter)->attachTo(nullptr);
-
-    // prevent deletion of session_ (now embedded into session group)
-    session_ = new Session;
-
-    Log::Notify("Switched to session '%s'", sessiongroup->name().c_str());
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
@@ -1510,6 +1482,9 @@ void Mixer::merge(Session *session)
     // remember groups before emptying the session
     std::list<SourceList> allgroups = session->getMixingGroups();
 
+    // remember input callbacks before emptying the session
+    Session::MapInputSourceCallback tmpcallbacks = session->copyInputCallbackMap();
+
     // import every sources
     std::ostringstream info;
     info << session->size() << " sources imported from " << session->filename();
@@ -1527,6 +1502,9 @@ void Mixer::merge(Session *session)
     // recreate groups in current session_
     for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
         session_->link( *git, mixing_.scene.fg() );
+
+    // restore input callbacks
+    session_->importInputCallbacks( tmpcallbacks );
 
     // needs to update !
     ++View::need_deep_update_;
@@ -1581,6 +1559,9 @@ void Mixer::merge(SessionSource *source)
         // remember groups before emptying the session
         std::list<SourceList> allgroups = session->getMixingGroups();
 
+        // remember input callbacks before emptying the session
+        Session::MapInputSourceCallback tmpcallbacks = session->copyInputCallbackMap();
+        
         // import every sources
         for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
 
@@ -1614,6 +1595,9 @@ void Mixer::merge(SessionSource *source)
         // recreate groups in current session_
         for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
             session_->link( *git, mixing_.scene.fg() );
+
+        // restore input callbacks
+        session_->importInputCallbacks( tmpcallbacks );
 
         // needs to update !
         ++View::need_deep_update_;

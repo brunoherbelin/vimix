@@ -82,6 +82,11 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
     sessionNode->SetAttribute("id", session->id());
     sessionNode->SetAttribute("activationThreshold", session->activationThreshold());
 
+    // save input callbacks
+    XMLElement *inputsNode = SessionVisitor::saveInputCallbacks(&xmlDoc, session);
+    if (inputsNode)
+        sessionNode->InsertEndChild(inputsNode);
+
     // save the thumbnail
     FrameBufferImage *thumbnail = session->thumbnail();
     if (thumbnail != nullptr && thumbnail->width > 0 && thumbnail->height > 0) {
@@ -114,9 +119,6 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
 
     // 5. optional playlists
     savePlayGroups( &xmlDoc, session );
-
-    // 5. optional playlists
-    saveInputCallbacks( &xmlDoc, session );
 
     // save file to disk
     return ( XMLSaveDoc(&xmlDoc, filename) );
@@ -217,14 +219,14 @@ void SessionVisitor::savePlayGroups(tinyxml2::XMLDocument *doc, Session *session
     }
 }
 
-void SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Session *session)
+XMLElement * SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Session *session)
 {
+    XMLElement *inputsNode = nullptr;
     // invalid inputs
     if (doc != nullptr && session != nullptr)
     {
         // create node
-        XMLElement *inputsNode = doc->NewElement("InputCallbacks");
-        doc->InsertEndChild(inputsNode);
+        inputsNode = doc->NewElement("InputCallbacks");
 
         // list of inputs assigned in the session
         std::list<uint> inputs = session->assignedInputs();
@@ -263,6 +265,7 @@ void SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Session *ses
         syncNode->InsertEndChild(text);
         inputsNode->InsertEndChild(syncNode);
     }
+    return inputsNode;
 }
 
 SessionVisitor::SessionVisitor(tinyxml2::XMLDocument *doc,

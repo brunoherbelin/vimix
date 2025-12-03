@@ -19,7 +19,6 @@ class SessionVisitor : public Visitor {
     static void saveSnapshots(tinyxml2::XMLDocument *doc, Session *session);
     static void saveNotes(tinyxml2::XMLDocument *doc, Session *session);
     static void savePlayGroups(tinyxml2::XMLDocument *doc, Session *session);
-    static void saveInputCallbacks(tinyxml2::XMLDocument *doc, Session *session);
 
 public:
     SessionVisitor(tinyxml2::XMLDocument *doc = nullptr,
@@ -29,6 +28,7 @@ public:
     inline void setRoot(tinyxml2::XMLElement *root) { xmlCurrent_ = root; }
 
     static bool saveSession(const std::string& filename, Session *session);
+    static tinyxml2::XMLElement *saveInputCallbacks(tinyxml2::XMLDocument *doc, Session *session);
 
     static std::string getClipboard(const SourceList &list);
     static std::string getClipboard(Source * const s);

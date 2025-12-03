@@ -5,7 +5,7 @@
 #define APP_TITLE "Video Live Mixer"
 #define APP_SETTINGS "vimix.xml"
 #define XML_VERSION_MAJOR 0
-#define XML_VERSION_MINOR 4
+#define XML_VERSION_MINOR 5
 #define MAX_RECENT_HISTORY 20
 #define MAX_SESSION_LEVEL 3
 #define MAX_OUTPUT_WINDOW 3

@@ -125,6 +125,11 @@ void captureMixerSession(Session *se, std::string node, std::string label, tinyx
         for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
             (*iter)->accept(sv);
 
+        // save input callbacks
+        XMLElement *inputsNode = SessionVisitor::saveInputCallbacks(_doc, se);
+        if (inputsNode)
+            sessionNode->InsertEndChild(inputsNode);
+
         if (doc == nullptr)
             se->snapshots()->access_.unlock();
     }
@@ -166,6 +171,11 @@ void Action::storeSession(Session *se, std::string label)
                         &Action::manager().history_doc_);
 
     Action::manager().history_access_.unlock();
+    
+#ifdef ACTION_DEBUG
+    Log::Info("Action stored %d '%s'", Action::manager().history_step_, label.c_str());
+     //  XMLSaveDoc(&Action::manager().history_doc_, "/home/bh/history.xml");
+#endif
 }
 
 
@@ -177,11 +187,6 @@ void Action::store(const std::string &label)
 
     // threaded capturing state of current session
     std::thread(Action::storeSession, Mixer::manager().session(), label).detach();
-
-#ifdef ACTION_DEBUG
-    Log::Info("Action stored %d '%s'", history_step_, label.c_str());
-//        XMLSaveDoc(&history_doc_, "/home/bhbn/history.xml");
-#endif
 }
 
 void Action::undo()

@@ -1439,11 +1439,11 @@ void SourceControlWindow::RenderSelection(size_t i)
                     std::string label = std::string((*s)->initials()) + " - " + (*s)->name();
                     if (std::find(selection_.begin(),selection_.end(),*s) == selection_.end()) {
                         if (ImGui::MenuItem( label.c_str() , 0, false ))
-                            Mixer::manager().session()->addSourceToBatch(i, *s);
+                            Mixer::manager().session()->addSourceToBatch(*s, i);
                     }
                     else {
                         if (ImGui::MenuItem( label.c_str(), 0, true ))
-                            Mixer::manager().session()->removeSourceFromBatch(i, *s);
+                            Mixer::manager().session()->removeSourceFromBatch(*s, i);
                     }
                 }
             }

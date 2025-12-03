@@ -76,7 +76,6 @@ public:
     void groupCurrent    ();
     void groupAll (bool only_active = false);
     void ungroupAll ();
-    void groupSession ();
 
     // current source
     Source *currentSource ();

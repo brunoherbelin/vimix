@@ -1110,7 +1110,7 @@ void UserInterface::showMenuBundle()
     }
     if (ImGuiToolkit::MenuItemIcon(11, 2, " Everything", NULL, false, 
                         Mixer::manager().numSource() > 0)) {
-        // create a new group session with only active sources
+        // create a new group session the whole session
         Mixer::manager().groupAll( false );
         // switch pannel to show first source (created)
         navigator.showPannelSource(0);
