@@ -17,6 +17,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "imgui.h"
+#include <glm/ext/vector_float2.hpp>
 #include <string>
 #include <list>
 #include <mutex>
@@ -296,13 +298,16 @@ void Log::Render(bool *showWarnings)
             ImGui::TextColored(ImVec4(1.0f,0.6f,0.0f,1.0f), "%s occurred.\n\n", msg.c_str());
             ImGui::Dummy(ImVec2(width, 0));
 
-            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width);
+            float W = ImGui::GetFrameHeight();
+            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width - W);
             for (list<string>::iterator it=warnings.begin(); it != warnings.end(); ++it) {
-                ImGui::Text("%s \n", (*it).c_str());
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::TextWrapped("%s \n", (*it).c_str());
+                ImGui::Separator();
+                ImVec2 drawpos = ImGui::GetCursorPos();
+                ImGui::SetCursorPos( ImVec2(width, drawpos.y - W) );
                 if ( ImGuiToolkit::IconButton(ICON_FA_COPY, "Copy to clipboard") )
                     ImGui::SetClipboardText((*it).c_str());
-                ImGui::Separator();
+                ImGui::SetCursorPos(drawpos);
             }
             ImGui::PopTextWrapPos();
 

@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "IconsFontAwesome5.h"
 #include "Source/Source.h"
 #include "Window/OutputPreviewWindow.h"
 #include "View/RenderView.h"
@@ -2513,8 +2514,8 @@ void UserInterface::RenderHelp()
         if (ImGui::BeginMenu(IMGUI_TITLE_HELP))
         {
             // Enable/Disable Ableton Link
-            if ( ImGui::MenuItem( ICON_FA_BOOK_OPEN "  Online wiki") ) {
-                SystemToolkit::open("https://github.com/brunoherbelin/vimix/wiki");
+            if ( ImGui::MenuItem( ICON_FA_COMMENT "  Online Discussion") ) {
+                SystemToolkit::open("https://github.com/brunoherbelin/vimix/discussions");
             }
 
             // Enable/Disable tooltips
