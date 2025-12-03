@@ -195,6 +195,7 @@ private:
     std::map<std::string, std::string> translation_;
     void loadOscConfig();
     void resetOscConfig();
+    void loadGamepadMappings();
 
     bool  input_active[INPUT_MAX];
     float input_values[INPUT_MAX];

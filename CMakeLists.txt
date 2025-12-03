@@ -728,6 +728,7 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/3DSimplexNoise.glsl
     ./rsc/shaders/filters/source.glsl
     ./rsc/images/logo.vmx
+    ./rsc/gamecontrollerdb.txt
 )
 
 cmrc_add_resource_library(vmix-resources ALIAS vmix::rc NAMESPACE vmix WHENCE rsc ${VMIX_RSC_FILES})

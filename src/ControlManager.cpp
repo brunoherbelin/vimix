@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <cstddef>
 #include <thread>
 #include <mutex>
 #include <sstream>
@@ -31,7 +32,9 @@
 
 #include "Log.h"
 #include "Settings.h"
+#include "Resource.h"
 #include "Toolkit/BaseToolkit.h"
+#include "Toolkit/SystemToolkit.h"
 #include "Mixer.h"
 #include "Source/Source.h"
 #include "Source/TextSource.h"
@@ -430,6 +433,27 @@ void Control::resetOscConfig()
     translation_["/example/osc/message"] = "/vimix/info/log";
 }
 
+void Control::loadGamepadMappings()
+{
+    // Load gamepad mappings from embedded SDL GameControllerDB resource
+    // The database contains mappings for 697+ gamepads on Linux
+    std::string mappings = Resource::getText("gamecontrollerdb.txt");
+
+    if (!mappings.empty()) {
+        // glfwUpdateGamepadMappings handles the full gamecontrollerdb.txt format
+        // including comments, empty lines, and filters by platform automatically
+        if (glfwUpdateGamepadMappings(mappings.c_str()) == GLFW_TRUE) {
+            Log::Info("Control: Loaded gamepad mappings from database.");
+        } else {
+            Log::Warning("Control: Failed to load gamepad mappings from database.");
+        }
+    } else {
+        // Fallback: if resource loading fails, use a generic Xbox 360 mapping
+        // This ensures at least standard Xbox-compatible controllers work
+        Log::Warning("Control: gamecontrollerdb.txt not found, gamepad support will be limited.");
+    }
+}
+
 bool Control::init()
 {
     //
@@ -441,6 +465,11 @@ bool Control::init()
     // load OSC Translator
     //
     loadOscConfig();
+
+    //
+    // load Gamepad mappings
+    //
+    loadGamepadMappings();
 
     //
     // launch OSC listener
@@ -472,7 +501,8 @@ bool Control::init()
 
 void Control::update()
 {
-    if (glfwJoystickPresent(Settings::application.gamepad_id) == GLFW_TRUE) {
+    if (glfwJoystickPresent(Settings::application.gamepad_id) == GLFW_TRUE &&
+        glfwJoystickIsGamepad(Settings::application.gamepad_id) == GLFW_TRUE) {
         // read joystick buttons
         int num_buttons = 0;
         const unsigned char *state_buttons = glfwGetJoystickButtons(Settings::application.gamepad_id, &num_buttons);
