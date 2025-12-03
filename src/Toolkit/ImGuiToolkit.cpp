@@ -617,7 +617,7 @@ bool ImGuiToolkit::ComboIcon (const char* label, int* current_item,
     return ret;
 }
 
-bool ImGuiToolkit::SelectableIcon(int i, int j, const char* label, bool selected, const ImVec2 &size_arg)
+bool ImGuiToolkit::SelectableIcon(int i, int j, const char* label, bool selected, const ImVec2 &size_arg, ImGuiDir dir)
 {
     ImGuiContext& g = *GImGui;
     ImVec2 draw_pos = ImGui::GetCursorScreenPos() - g.Style.FramePadding * 0.5;
@@ -639,6 +639,13 @@ bool ImGuiToolkit::SelectableIcon(int i, int j, const char* label, bool selected
 
     // overlay of icon on top of first item    
     _drawIcon(draw_pos, i, j);
+
+    // draw arrow
+    if (dir != ImGuiDir_None) {
+        draw_pos += size_arg - ImVec2( g.FontSize - g.Style.ItemInnerSpacing.x, g.FontSize - g.Style.ItemInnerSpacing.y);
+        ImGui::RenderArrow(ImGui::GetCurrentWindow()->DrawList, draw_pos, 
+            ImGui::GetColorU32(ImGuiCol_Text), dir, 0.6f);
+    }
 
     ImGui::PopID();
 

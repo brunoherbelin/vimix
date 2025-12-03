@@ -82,7 +82,8 @@ public:
         SOURCE_FILE = 0,
         SOURCE_SEQUENCE,
         SOURCE_CONNECTED,
-        SOURCE_GENERATED
+        SOURCE_GENERATED,
+        SOURCE_BUNDLE
     } NewSourceType;
 
     Navigator();

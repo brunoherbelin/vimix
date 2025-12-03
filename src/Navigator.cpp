@@ -308,7 +308,6 @@ void Navigator::Render()
             // the "+" icon for action of creating new source
             if (ImGui::Selectable( source_to_replace != nullptr ? ICON_FA_PLUS_SQUARE : ICON_FA_PLUS,
                                    &selected_button[NAV_NEW], 0, iconsize)) {
-                Mixer::manager().unsetCurrentSource();
                 applyButtonSelection(NAV_NEW);
             }
             if (ImGui::IsItemHovered())
@@ -909,10 +908,29 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             clearNewPannel();
         }
         ImGui::NextColumn();
+        static int _previous_new_type = Settings::application.source.new_type;
+        if (source_to_replace == nullptr) {
+            if (ImGuiToolkit::SelectableIcon( ICON_SOURCE_GROUP, "##SOURCE_BUNDLE", selected_type[SOURCE_BUNDLE],
+                iconsize, ImGuiDir_Right)) {
+                _previous_new_type = Settings::application.source.new_type;
+                Settings::application.source.new_type = SOURCE_BUNDLE;
+                ImGui::OpenPopup("SOURCE_BUNDLE_MENU");            
+                clearNewPannel();
+            }
+        }
 
         ImGui::Columns(1);
         ImGui::PopStyleVar();
         ImGui::PopFont();
+
+        // Menu popup for SOURCE_BUNDLE
+        if (ImGui::BeginPopup("SOURCE_BUNDLE_MENU")) {
+            UserInterface::manager().showMenuBundle();
+            ImGui::EndPopup();
+        }
+        // restore previous type after closing popup
+        if (Settings::application.source.new_type == SOURCE_BUNDLE && !ImGui::IsPopupOpen("SOURCE_BUNDLE_MENU")) 
+            Settings::application.source.new_type = _previous_new_type;
 
         // Edit menu
         ImGui::SetCursorPosY(2.f * width_ - style.WindowPadding.x);
@@ -1974,15 +1992,17 @@ void Navigator::RenderMainPannelSession()
     // Preview session
     //
     Session *se = Mixer::manager().session();
-    float width = preview_width;
-    float height = se->frame()->projectionSize().y * width / ( se->frame()->projectionSize().x * se->frame()->aspectRatio());
-    if (height > preview_height - space) {
-        height = preview_height - space;
-        width = height * se->frame()->aspectRatio() * ( se->frame()->projectionSize().x / se->frame()->projectionSize().y);
+    if (se->frame()) {
+        float width = preview_width;
+        float height = se->frame()->projectionSize().y * width / ( se->frame()->projectionSize().x * se->frame()->aspectRatio());
+        if (height > preview_height - space) {
+            height = preview_height - space;
+            width = height * se->frame()->aspectRatio() * ( se->frame()->projectionSize().x / se->frame()->projectionSize().y);
+        }
+        // centered image
+        ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y) );
+        ImGui::Image((void*)(uintptr_t) se->frame()->texture(), ImVec2(width, height));
     }
-    // centered image
-    ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y) );
-    ImGui::Image((void*)(uintptr_t) se->frame()->texture(), ImVec2(width, height));
 
     // right side options for session
     if (!Mixer::manager().session()->filename().empty()) {
@@ -3423,11 +3443,11 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
             UserInterface::manager().showMenuWindows();
             ImGui::EndMenu();
         }
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + 3.f * ImGui::GetTextLineHeightWithSpacing()) );
-        if (ImGui::BeginMenu("Bundle")) {
-            UserInterface::manager().showMenuBundle();
-            ImGui::EndMenu();
-        }
+        // ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + 3.f * ImGui::GetTextLineHeightWithSpacing()) );
+        // if (ImGui::BeginMenu("Bundle")) {
+        //     UserInterface::manager().showMenuBundle();
+        //     ImGui::EndMenu();
+        // }
 
         //
         // Panel content

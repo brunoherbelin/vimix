@@ -1085,28 +1085,33 @@ void UserInterface::showMenuEdit()
 }
 
 void UserInterface::showMenuBundle()
-{   
+{       
+    ImGui::MenuItem("Create bundle with:", NULL, false, false);
+
     bool is_bundle = false;
-    if (Mixer::manager().currentSource() != nullptr)
+    bool is_clone = false;
+    if (Mixer::manager().currentSource() != nullptr){
         is_bundle = Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_GROUP);
+        is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_CLONE);
+    }
     if (ImGuiToolkit::MenuItemIcon(11, 2, " Current source", NULL, false, 
-                        Mixer::manager().currentSource() != nullptr && !is_bundle)) {
+                        Mixer::manager().currentSource() != nullptr && !is_bundle && !is_clone)) {
         Mixer::manager().groupCurrent();
         // switch pannel to show first source (created)
-        navigator.showPannelSource(0);
+        navigator.showPannelSource(Mixer::manager().indexCurrentSource());
     }
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " Selection", NULL, false, 
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " Selected sources", NULL, false, 
                         Mixer::manager().selectionCanBeGroupped())) {
         Mixer::manager().groupSelection();
         // switch pannel to show first source (created)
-        navigator.showPannelSource(0);
+        navigator.showPannelSource(Mixer::manager().indexCurrentSource());
     }
     if (ImGuiToolkit::MenuItemIcon(11, 2, " All active sources", NULL, false, 
                         Mixer::manager().numSource() > 0)) {
         // create a new group session with only active sources
         Mixer::manager().groupAll( true );
         // switch pannel to show first source (created)
-        navigator.showPannelSource(0);
+        navigator.showPannelSource(Mixer::manager().indexCurrentSource());
     }
     if (ImGuiToolkit::MenuItemIcon(11, 2, " Everything", NULL, false, 
                         Mixer::manager().numSource() > 0)) {
@@ -1116,16 +1121,16 @@ void UserInterface::showMenuBundle()
         navigator.showPannelSource(0);
     }
     ImGui::Separator();
-    if (ImGuiToolkit::MenuItemIcon(7, 2, " Uncover bundle", NULL, false, 
+    if (ImGuiToolkit::MenuItemIcon(7, 2, " Uncover selected bundle", NULL, false, 
                         is_bundle)) {
         // import sourses of bundle 
         Mixer::manager().import( dynamic_cast<SessionSource*>(Mixer::manager().currentSource()) );
     }
-    // if (ImGuiToolkit::MenuItemIcon(7, 2, " Uncover all", NULL, false, 
-    //                     Mixer::manager().numSource() > 0)) {
-    //     // ungroup all bundle sources
-    //     Mixer::manager().ungroupAll();
-    // }
+    if (ImGuiToolkit::MenuItemIcon(7, 2, " Uncover every bundles", NULL, false, 
+                        Mixer::manager().numSource() > 0)) {
+        // ungroup all bundle sources
+        Mixer::manager().ungroupAll();
+    }
 
 }
 void UserInterface::showMenuWindows()
