@@ -21,6 +21,7 @@
 #include <sstream>
 #include <regex>
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -3106,6 +3107,7 @@ void Navigator::RenderMainPannelSettings()
                 Settings::application.record.audio_device = "";
 
         }
+        ImGuiToolkit::Spacing();
     }
     //
     // Steaming preferences
@@ -3190,6 +3192,7 @@ void Navigator::RenderMainPannelSettings()
                 ImGui::Combo("SHM sink", &Settings::application.shm_method, "shmsink\0shmdatasink\0");
             }
         }
+        ImGuiToolkit::Spacing();
     }
     //
     // OSC preferences
@@ -3253,12 +3256,108 @@ void Navigator::RenderMainPannelSettings()
     }
 
     //
-    // System preferences
+    // Gamepad preferences
     //
-    Settings::application.pannel_settings[3] = ImGui::CollapsingHeader("System",
+    Settings::application.pannel_settings[3] = ImGui::CollapsingHeader("Gamepad Input",
                                                                        Settings::application.pannel_settings[3] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
 
     if (Settings::application.pannel_settings[3]){
+
+        // Gamepad Device selection
+        char text_buf[512];
+        if ( glfwJoystickPresent( Settings::application.gamepad_id ) == GLFW_TRUE &&
+                glfwJoystickIsGamepad(Settings::application.gamepad_id) == GLFW_TRUE )
+            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(Settings::application.gamepad_id));
+        else
+            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "None recognized");
+
+        ImGui::SetCursorPosX(align_x);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::BeginCombo("Device", text_buf, ImGuiComboFlags_None)) {
+            for( int g = GLFW_JOYSTICK_1; g < GLFW_JOYSTICK_LAST; ++g) {
+                if ( glfwJoystickPresent( g ) == GLFW_TRUE &&
+                        glfwJoystickIsGamepad(g) == GLFW_TRUE ) {
+                    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(g));
+                    if (ImGui::Selectable(text_buf, Settings::application.gamepad_id == g) ) {
+                        Settings::application.gamepad_id = g;
+                    }
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::Spacing();
+
+        // Custom mapping file selection
+        static DialogToolkit::OpenFileDialog gamepadmappingdialog("Select Gamepad Mapping File",
+                                                                   "Gamepad Mapping",
+                                                                   {"gamecontrollerdb.txt", "*.txt"});
+
+        ImGuiToolkit::Indication("SDL gamepad mapping database.\n\n"
+                                 "Get one from: github.com/gabomdq/SDL_GameControllerDB\n"
+                                 "Or use SDL2 Gamepad Tool to create custom mappings:\n"
+                                 "generalarcade.com/gamepadtool", ICON_FA_GAMEPAD);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+
+        // File path input for mapping file
+        ImGui::SetCursorPosX(align_x);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        char bufgpfilename[512] = "";
+        snprintf(bufgpfilename, 512, "%s", Settings::application.gamepad_mapping_filename.c_str());
+        // Change text color if file does not exist
+        if (!Settings::application.gamepad_mapping_filename.empty()) {
+            std::string expanded_path = Settings::application.gamepad_mapping_filename;
+            if (!expanded_path.empty() && expanded_path[0] == '~') 
+                expanded_path = SystemToolkit::home_path() + expanded_path.substr(1);
+            if (SystemToolkit::file_exists(expanded_path)) 
+                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_Text));
+            else 
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
+        }
+        else
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_Text));
+        // text entry for filename
+        ImGui::InputTextWithHint("##GamepadMappingPath", "~/gamecontrollerdb.txt", bufgpfilename, 512);
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            Settings::application.gamepad_mapping_filename = bufgpfilename;
+            Control::manager().loadGamepadMappings();
+        }
+        ImGui::PopStyleColor();
+        // label and reset button
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Database")){
+            Settings::application.gamepad_mapping_filename = "";
+            Control::manager().loadGamepadMappings();
+        }
+        // File dialog to browse for mapping file
+        ImGui::SetCursorPosX(align_x);
+        const float w = IMGUI_RIGHT_ALIGN - ImGui::GetFrameHeightWithSpacing();
+        if (ImGui::Button(ICON_FA_FOLDER_OPEN " Browse", ImVec2(w, 0))) {
+            gamepadmappingdialog.open();
+        }
+        ImGui::SameLine(0, 6);
+        if ( ImGuiToolkit::IconButton(15, 12, "Reload") )
+            Control::manager().loadGamepadMappings();
+        ImGui::SameLine();
+        if ( ImGuiToolkit::IconButton(ICON_FA_EXTERNAL_LINK_ALT, "Search online") )
+            SystemToolkit::open("https://github.com/mdqinc/SDL_GameControllerDB");
+
+        // Handle file dialog
+        if (gamepadmappingdialog.closed()) {
+            std::string selected_path = gamepadmappingdialog.path();
+            if (!selected_path.empty()) {
+                Settings::application.gamepad_mapping_filename = selected_path;
+                Control::manager().loadGamepadMappings();
+            }
+        }
+        ImGuiToolkit::Spacing();
+    }
+    //
+    // System preferences
+    //
+    Settings::application.pannel_settings[4] = ImGui::CollapsingHeader("System",
+                                                                       Settings::application.pannel_settings[4] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+
+    if (Settings::application.pannel_settings[4]){
         static bool need_restart = false;
         static bool vsync = (Settings::application.render.vsync > 0);
         static bool multi = (Settings::application.render.multisampling > 0);

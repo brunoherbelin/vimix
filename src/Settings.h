@@ -301,7 +301,7 @@ struct Application
     int  pannel_playlist_mode;
     bool pannel_session[3];
     bool pannel_always_visible;
-    bool pannel_settings[4];
+    bool pannel_settings[5];
 
     // connection settings
     bool accept_connections;
@@ -368,6 +368,8 @@ struct Application
     // Inputs mapping (callbacks)
     InputMappingConfig mapping;
     int gamepad_id;
+    // gamepad support
+    std::string gamepad_mapping_filename;
 
     // transcoding options
     bool transcode_options[4];

@@ -368,6 +368,12 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     mappingConfNode->SetAttribute("current", application.mapping.current);
     mappingConfNode->SetAttribute("disabled", application.mapping.disabled);
     mappingConfNode->SetAttribute("gamepad", application.gamepad_id);
+    if (!application.gamepad_mapping_filename.empty()) {
+        XMLElement *gamepadNode = xmlDoc.NewElement("gamepad_filename");
+        XMLText *text = xmlDoc.NewText( application.gamepad_mapping_filename.c_str() );
+        gamepadNode->InsertEndChild( text );
+        mappingConfNode->InsertEndChild(gamepadNode);
+    }
     pRoot->InsertEndChild(mappingConfNode);
 
     // Controller
@@ -777,6 +783,13 @@ void Settings::Load(const std::string &filename)
             mappingconfnode->QueryUnsignedAttribute("current", &application.mapping.current);
             mappingconfnode->QueryBoolAttribute("disabled", &application.mapping.disabled);
             mappingconfnode->QueryIntAttribute("gamepad", &application.gamepad_id);
+            XMLElement* gamepadNode = mappingconfnode->FirstChildElement("gamepad_filename");
+            if( gamepadNode )
+            {
+                const char *p = gamepadNode->GetText();
+                if (p)
+                    application.gamepad_mapping_filename = p;
+            }
         }
 
         // Timer Metronome

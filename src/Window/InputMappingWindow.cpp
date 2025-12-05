@@ -1289,30 +1289,6 @@ void InputMappingWindow::Render()
         ImGui::BeginChild("InputsMappingInterfacePanel", ImVec2(0, 0), false);
         float w = ImGui::GetWindowWidth() *0.25f;
 
-        // selection of device for joystick mode
-        if ( Settings::application.mapping.mode == 3 ){
-            char text_buf[512];
-            if ( glfwJoystickPresent( Settings::application.gamepad_id ) == GLFW_TRUE &&
-                 glfwJoystickIsGamepad(Settings::application.gamepad_id) == GLFW_TRUE )
-                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(Settings::application.gamepad_id));
-            else
-                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "No gamepad plugged");
-
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("Device", text_buf, ImGuiComboFlags_None)) {
-                for( int g = GLFW_JOYSTICK_1; g < GLFW_JOYSTICK_LAST; ++g) {
-                    if ( glfwJoystickPresent( g ) == GLFW_TRUE &&
-                         glfwJoystickIsGamepad(g) == GLFW_TRUE ) {
-                        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(g));
-                        if (ImGui::Selectable(text_buf, Settings::application.gamepad_id == g) ) {
-                            Settings::application.gamepad_id = g;
-                        }
-                    }
-                }
-                ImGui::EndCombo();
-            }
-        }
-
         // adding actions is possible only if there are sources in the session
         if (!Mixer::manager().session()->empty()) {
 

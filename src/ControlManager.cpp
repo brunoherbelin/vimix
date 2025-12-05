@@ -23,6 +23,7 @@
 #include <sstream>
 #include <iomanip>
 #include <regex>
+#include <fstream>
 
 #include <GLFW/glfw3.h>
 #if ((ULONG_MAX) != (UINT_MAX))
@@ -439,18 +440,66 @@ void Control::loadGamepadMappings()
     // The database contains mappings for 697+ gamepads on Linux
     std::string mappings = Resource::getText("gamecontrollerdb.txt");
 
+    // Check if user has specified a custom mapping file
+    if (!Settings::application.gamepad_mapping_filename.empty()) {
+        // Check if the path is valid and file exists
+        std::string custom_path = Settings::application.gamepad_mapping_filename;
+
+        // Handle relative paths: expand ~ to home directory
+        if (!custom_path.empty() && custom_path[0] == '~') {
+            custom_path = SystemToolkit::home_path() + custom_path.substr(1);
+        }
+
+        if (SystemToolkit::file_exists(custom_path)) {
+            // Read the file content
+            std::ifstream file(custom_path);
+            if (file.is_open()) {
+                std::string custom_mappings;
+                std::string line;
+                int line_count = 0;
+
+                // Read entire file
+                while (std::getline(file, line)) {
+                    custom_mappings += line + "\n";
+                    line_count++;
+                }
+                file.close();
+
+                // Validate content: should have at least one line
+                if (!custom_mappings.empty() && line_count > 0) {
+                    // Replace embedded mappings with custom file content
+                    mappings = custom_mappings;
+                    Log::Info("Control: Loaded custom gamepad mapping file '%s' (%d lines).",
+                             custom_path.c_str(), line_count);
+                } else {
+                    Log::Warning("Control: Custom gamepad mapping file '%s' is empty.",
+                                custom_path.c_str());
+                }
+            } else {
+                Log::Warning("Control: Could not open custom gamepad mapping file '%s'.",
+                            custom_path.c_str());
+            }
+        } else {
+            Log::Warning("Control: Custom gamepad mapping file '%s' does not exist.",
+                        custom_path.c_str());
+        }
+    }
+
     if (!mappings.empty()) {
         // glfwUpdateGamepadMappings handles the full gamecontrollerdb.txt format
         // including comments, empty lines, and filters by platform automatically
         if (glfwUpdateGamepadMappings(mappings.c_str()) == GLFW_TRUE) {
-            Log::Info("Control: Loaded gamepad mappings from database.");
+            if (!Settings::application.gamepad_mapping_filename.empty()) {
+                Log::Info("Control: Applied gamepad mappings from custom database.");
+            } else {
+                Log::Info("Control: Applied gamepad mappings from embedded database.");
+            }
         } else {
-            Log::Warning("Control: Failed to load gamepad mappings from database.");
+            Log::Warning("Control: Failed to load gamepad mappings.");
         }
     } else {
-        // Fallback: if resource loading fails, use a generic Xbox 360 mapping
-        // This ensures at least standard Xbox-compatible controllers work
-        Log::Warning("Control: gamecontrollerdb.txt not found, gamepad support will be limited.");
+        // Fallback: if resource loading fails
+        Log::Warning("Control: No gamepad mappings available, gamepad support will be limited.");
     }
 }
 
