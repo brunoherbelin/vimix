@@ -728,8 +728,61 @@ set(VMIX_RSC_FILES
     ./rsc/shaders/filters/3DSimplexNoise.glsl
     ./rsc/shaders/filters/source.glsl
     ./rsc/images/logo.vmx
-    ./rsc/gamecontrollerdb.txt
 )
+
+#####
+##### Sync gamecontrollerdb.txt from git submodule if different
+#####
+set(SUBMODULE_DB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ext/mdqinc/gamecontrollerdb.txt")
+set(RSC_DB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/rsc/gamecontrollerdb.txt")
+
+# Check if submodule file exists
+if(EXISTS "${SUBMODULE_DB_PATH}")
+    # Compare the files to see if they differ
+    set(FILES_DIFFER FALSE)
+
+    if(NOT EXISTS "${RSC_DB_PATH}")
+        # rsc file doesn't exist, copy it
+        set(FILES_DIFFER TRUE)
+    else()
+        # Both files exist, compare them
+        file(MD5 "${SUBMODULE_DB_PATH}" SUBMODULE_MD5)
+        file(MD5 "${RSC_DB_PATH}" RSC_MD5)
+
+        if(NOT "${SUBMODULE_MD5}" STREQUAL "${RSC_MD5}")
+            set(FILES_DIFFER TRUE)
+        else()
+            message(STATUS "gamecontrollerdb.txt is up-to-date with submodule")
+        endif()
+    endif()
+
+    # Copy if different
+    if(FILES_DIFFER)
+        file(COPY "${SUBMODULE_DB_PATH}" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/rsc/")
+        message(STATUS "Updated rsc/gamecontrollerdb.txt from ext/mdqinc submodule")
+
+        # Show version info if available
+        if(GIT_EXECUTABLE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/mdqinc/.git")
+            execute_process(
+                COMMAND ${GIT_EXECUTABLE} -C "${CMAKE_CURRENT_SOURCE_DIR}/ext/mdqinc" log -1 --format="%h %s"
+                OUTPUT_VARIABLE SUBMODULE_COMMIT
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+            message(STATUS "  Submodule commit: ${SUBMODULE_COMMIT}")
+        endif()
+    endif()
+else()
+    # Submodule not initialized
+    if(EXISTS "${RSC_DB_PATH}")
+        message(STATUS "Using existing rsc/gamecontrollerdb.txt (submodule not initialized)")
+    else()
+        message(WARNING "gamecontrollerdb.txt not found!")
+        message(WARNING "  Please run: git submodule update --init ext/mdqinc")
+    endif()
+endif()
+
+# Add gamecontrollerdb.txt to resources
+list(APPEND VMIX_RSC_FILES ./rsc/gamecontrollerdb.txt)
 
 cmrc_add_resource_library(vmix-resources ALIAS vmix::rc NAMESPACE vmix WHENCE rsc ${VMIX_RSC_FILES})
 

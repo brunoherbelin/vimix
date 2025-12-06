@@ -22,3 +22,6 @@
 [submodule "ext/tfd"]
 	path = ext/tfd
 	url = https://git.code.sf.net/p/tinyfiledialogs/code
+[submodule "ext/mdqinc"]
+	path = ext/mdqinc
+	url = https://github.com/mdqinc/SDL_GameControllerDB.git
