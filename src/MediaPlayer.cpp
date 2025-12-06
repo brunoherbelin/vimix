@@ -325,28 +325,6 @@ void MediaPlayer::reopen()
     }
 }
 
-#ifdef USE_GST_PLAYBIN
-
-// GstPlayFlags flags from playbin. It is the policy of GStreamer to
-// not publicly expose element-specific enums. That's why this
-// GstPlayFlags enum has been copied here.
-// https://gstreamer.freedesktop.org/documentation/playback/playsink.html?gi-language=c#GstPlayFlags
-typedef enum {
-    GST_PLAY_FLAG_VIDEO         = 0x00000001,
-    GST_PLAY_FLAG_AUDIO         = 0x00000002,
-    GST_PLAY_FLAG_TEXT          = 0x00000004,
-    GST_PLAY_FLAG_VIS           = 0x00000008,
-    GST_PLAY_FLAG_SOFT_VOLUME   = 0x00000010,
-    GST_PLAY_FLAG_NATIVE_AUDIO  = 0x00000020,
-    GST_PLAY_FLAG_NATIVE_VIDEO  = 0x00000040,
-    GST_PLAY_FLAG_DOWNLOAD      = 0x00000080,
-    GST_PLAY_FLAG_BUFFERING     = 0x00000100,
-    GST_PLAY_FLAG_DEINTERLACE   = 0x00000200,
-    GST_PLAY_FLAG_SW_COLOR      = 0x00000400,
-    GST_PLAY_FLAG_FORCE_FILTER  = 0x00000800,
-    GST_PLAY_FLAG_SW_DECODER    = 0x00001000
-} GstPlayFlags;
-
 
 GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
 {
@@ -368,6 +346,28 @@ GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer 
     gst_message_unref (msg);
     return GST_BUS_DROP;
 }
+
+#ifdef USE_GST_PLAYBIN
+
+// GstPlayFlags flags from playbin. It is the policy of GStreamer to
+// not publicly expose element-specific enums. That's why this
+// GstPlayFlags enum has been copied here.
+// https://gstreamer.freedesktop.org/documentation/playback/playsink.html?gi-language=c#GstPlayFlags
+typedef enum {
+    GST_PLAY_FLAG_VIDEO         = 0x00000001,
+    GST_PLAY_FLAG_AUDIO         = 0x00000002,
+    GST_PLAY_FLAG_TEXT          = 0x00000004,
+    GST_PLAY_FLAG_VIS           = 0x00000008,
+    GST_PLAY_FLAG_SOFT_VOLUME   = 0x00000010,
+    GST_PLAY_FLAG_NATIVE_AUDIO  = 0x00000020,
+    GST_PLAY_FLAG_NATIVE_VIDEO  = 0x00000040,
+    GST_PLAY_FLAG_DOWNLOAD      = 0x00000080,
+    GST_PLAY_FLAG_BUFFERING     = 0x00000100,
+    GST_PLAY_FLAG_DEINTERLACE   = 0x00000200,
+    GST_PLAY_FLAG_SW_COLOR      = 0x00000400,
+    GST_PLAY_FLAG_FORCE_FILTER  = 0x00000800,
+    GST_PLAY_FLAG_SW_DECODER    = 0x00001000
+} GstPlayFlags;
 
 //
 // Setup a media player using gstreamer playbin
@@ -442,15 +442,13 @@ void MediaPlayer::execute_open()
     gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
 
     // instruct sink to use the required caps
-    std::string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(media_.width) +
-            ",height=" + std::to_string(media_.height);
-    GstCaps *caps = gst_caps_from_string(capstring.c_str());
-    if (!gst_video_info_from_caps (&v_frame_video_info_, caps)) {
-        Log::Warning("MediaPlayer %s Could not configure video frame info", std::to_string(id_).c_str());
-        failed_ = true;
-        return;
-    }
+    GstCaps *caps  = gst_caps_new_simple ("video/x-raw",
+                                          "format", G_TYPE_STRING, "RGBA",
+                                          "width",  G_TYPE_INT, media_.width,
+                                          "height", G_TYPE_INT, media_.height,
+                                          NULL);
     gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
+    gst_caps_unref (caps);
 
     // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
     gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 5);
@@ -478,9 +476,6 @@ void MediaPlayer::execute_open()
 
     // set playbin sink
     g_object_set ( G_OBJECT (pipeline_), "video-sink", sink, NULL);
-
-    // done with ref to caps
-    gst_caps_unref (caps);
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
     // capture bus signals to force a unique opengl context for all GST elements
@@ -635,11 +630,6 @@ void MediaPlayer::execute_open()
     std::string capstring = "video/x-raw,format=RGBA,width="+ std::to_string(media_.width) +
             ",height=" + std::to_string(media_.height);
     GstCaps *caps = gst_caps_from_string(capstring.c_str());
-    if (!gst_video_info_from_caps (&v_frame_video_info_, caps)) {
-        Log::Warning("MediaPlayer %s Could not configure video frame info", std::to_string(id_).c_str());
-        failed_ = true;
-        return;
-    }
     gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
 
     // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
@@ -1188,7 +1178,7 @@ void MediaPlayer::init_texture(guint index)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     // use Pixel Buffer Objects only for performance needs of videos
-    if ( !singleFrame() ) {
+    if ( !isImage() ) {
         // set pbo image size
         pbo_size_ = media_.height * media_.width * 4;
 
@@ -1219,7 +1209,7 @@ void MediaPlayer::fill_texture(guint index)
         // (this also fills the texture with frame at index)
         init_texture(index);
     }
-    else {
+    else if (!isImage()) {
         // Use GST mapping to access pointer to RGBA data
         GstMapInfo map;
         gst_buffer_map(frame_[index].buffer, &map, GST_MAP_READ);

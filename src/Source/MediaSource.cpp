@@ -225,11 +225,11 @@ void MediaSource::render()
         setAudioVolumeFactor(Source::VOLUME_OPACITY, __f);
         if (mediaplayer_->timelineFadingMode() != MediaPlayer::FADING_ALPHA) {
             // color fading
-            texturesurface_->shader()->color = glm::vec4( glm::vec3(mediaplayer_->currentTimelineFading()), 1.f);
+            texturesurface_->shader()->color = glm::vec4( glm::vec3(__f), 1.f);
         }
         else {
             // alpha fading
-            texturesurface_->shader()->color = glm::vec4( glm::vec3(1.f), mediaplayer_->currentTimelineFading());
+            texturesurface_->shader()->color = glm::vec4( glm::vec3(1.f), __f);
         }
         texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
         renderbuffer_->end();

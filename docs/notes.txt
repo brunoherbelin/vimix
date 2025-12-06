@@ -79,9 +79,13 @@ Testing performance
 Linux perf command
 - Allow perf on your system
 sudo sysctl -w kernel.perf_event_paranoid=-1
+
 - Launch command to record
 perf record ./vimix
 perf record --pid=XXXXX
+e.g.;
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia   perf record --call-graph dwarf ./build/src/vimix
+
 - Analyse using https://github.com/KDAB/hotspot
 
 
