@@ -460,6 +460,8 @@ void Control::loadGamepadMappings()
 
                 // Read entire file
                 while (std::getline(file, line)) {
+                    if (line.empty())
+                        continue;
                     custom_mappings += line + "\n";
                     line_count++;
                 }
