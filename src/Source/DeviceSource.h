@@ -3,8 +3,7 @@
 
 #include <string>
 #include <vector>
-#include <set>
-#include <map>
+#include <atomic>
 
 #include "Toolkit/GstToolkit.h"
 #include "StreamSource.h"
@@ -98,7 +97,7 @@ private:
 
     GstDeviceMonitor *monitor_;
     std::condition_variable monitor_initialization_;
-    bool monitor_initialized_;
+    std::atomic<bool> monitor_initialized_;
 
 };
 

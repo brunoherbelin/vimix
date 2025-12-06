@@ -192,8 +192,6 @@ void ScreenCapture::launchMonitoring(ScreenCapture *sc)
 
     // Get the list of windows in X11
     std::map<unsigned long,std::string> windowlist = getListX11Windows();
-    // Add the window id=0 for screen capture entire screen
-    windowlist[0] = SCREEN_CAPTURE_NAME;
 
     // Go through the current list of window handles
     sc->access_.lock();

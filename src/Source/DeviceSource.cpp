@@ -72,6 +72,7 @@ std::string pipelineForDevice(GstDevice *device, uint index)
             pipe << " device=" << path;
 #endif
         }
+        gst_structure_free(stru);
     }
 
     return pipe.str();
@@ -177,6 +178,7 @@ void Device::add(GstDevice *device)
 #ifdef DEVICE_DEBUG
                 GstStructure *stru = gst_device_get_properties(device);
                 g_print("\n%s: %s\n", device_name, gst_structure_to_string(stru) );
+                gst_structure_free(stru);
 #endif
                 handles_.push_back(dev);
                 Log::Info("Device '%s' is plugged-in.", device_name);
@@ -263,7 +265,7 @@ void Device::launchMonitoring(Device *d)
     g_list_free(devices);
 
     // monitor is initialized
-    d->monitor_initialized_ = true;
+    d->monitor_initialized_.store(true);
     d->monitor_initialization_.notify_all();
 
     // create a local g_main_context to launch monitoring in this thread
@@ -291,7 +293,7 @@ void Device::launchMonitoring(Device *d)
 
 bool Device::initialized()
 {
-    return Device::manager().monitor_initialized_;
+    return Device::manager().monitor_initialized_.load();
 }
 
 void Device::reload()
@@ -305,6 +307,9 @@ void Device::reload()
 
 int Device::numDevices()
 {
+    if (!initialized())
+        return 0;
+    
     access_.lock();
     int ret = handles_.size();
     access_.unlock();
@@ -407,6 +412,9 @@ DeviceSource::~DeviceSource()
 
 void DeviceSource::unsetDevice()
 {
+    // lock before accessing handles_
+    Device::manager().access_.lock();
+
     // unregister this device source from a Device handler
     auto h = std::find_if(Device::manager().handles_.begin(), Device::manager().handles_.end(), hasConnectedSource(this));
     if (h != Device::manager().handles_.end())
@@ -424,6 +432,9 @@ void DeviceSource::unsetDevice()
         // and we should avoid to delete the stream in the ~StreamSource destructor
             stream_ = nullptr;
     }
+
+    // unlock before changing device name
+    Device::manager().access_.unlock();
 
     device_ = "";
 }
@@ -460,6 +471,9 @@ void DeviceSource::setDevice(const std::string &devicename)
 
     // set new device name
     device_ = devicename;
+
+    // lock before accessing handles_
+    Device::manager().access_.lock();
 
     // check existence of a device handle with that name
     auto h = std::find_if(Device::manager().handles_.begin(), Device::manager().handles_.end(), hasDeviceName(device_));
@@ -531,6 +545,9 @@ void DeviceSource::setDevice(const std::string &devicename)
         unplugged_ = true;
         Log::Warning("No device named '%s'", device_.c_str());
     }
+
+    // unlock after accessing handles_
+    Device::manager().access_.unlock();
 }
 
 void DeviceSource::setActive (bool on)
@@ -544,6 +561,9 @@ void DeviceSource::setActive (bool on)
         // change status of stream (only if status changed)
         if (active_ != was_active) {
 
+            // lock before accessing handles_
+            Device::manager().access_.lock();
+
             // activate a source if any of the handled device source is active
             auto h = std::find_if(Device::manager().handles_.begin(), Device::manager().handles_.end(), hasConnectedSource(this));
             if (h != Device::manager().handles_.end()) {
@@ -554,6 +574,9 @@ void DeviceSource::setActive (bool on)
                 }
                 stream_->enable(streamactive);
             }
+
+            // unlock after accessing handles_
+            Device::manager().access_.unlock();
         }
     }
 

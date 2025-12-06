@@ -1603,20 +1603,11 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     new_source_preview_.setSource( Mixer::manager().createSourceRender(), "Display Loopback");
                 }
 
-                // 2. Screen capture (open selector if more than one window)
-                if (ScreenCapture::manager().numWindow() > 0) {
-                    std::string namewin = ScreenCapture::manager().name(0);
-                    if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_DEVICE_SCREEN, namewin.c_str(), false) ) {
-                        custom_connected = false;
-                        if (ScreenCapture::manager().numWindow() > 1) {
-                            new_source_preview_.setSource();
-                            custom_screencapture = true;
-                        }
-                        else {
-                            new_source_preview_.setSource( Mixer::manager().createSourceScreen(namewin), namewin);
-                            custom_screencapture = false;
-                        }
-                    }
+                // 2. Screen capture (open selector)
+                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_DEVICE_SCREEN, "Screen capture", false) ) {
+                    custom_connected = false;
+                    new_source_preview_.setSource();
+                    custom_screencapture = true;
                 }
 
                 // 3. Network connected SRT
