@@ -30,8 +30,6 @@
 #include "Toolkit/ImGuiToolkit.h"
 #include "imgui_internal.h"
 
-#include <GLFW/glfw3.h>
-
 #include "defines.h"
 #include "Settings.h"
 #include "Source/Source.h"
@@ -812,7 +810,7 @@ void InputMappingWindow::Render()
             if ( Control::manager().inputActive(ik) ) {
                 ImVec2 pos = frame_top + keyLetterItemSize * ImVec2(
                     static_cast<float>(i % 5),
-                    static_cast<float>(i) / 5.0f
+                    floor(i / 5)
                 );
                 draw_list->AddRectFilled(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Border), 6.f);
                 // set current
@@ -853,7 +851,7 @@ void InputMappingWindow::Render()
             // Draw frame
             ImVec2 pos = frame_top + keyLetterItemSize * ImVec2(
                 static_cast<float>(i % 5),
-                static_cast<float>(i) / 5.0f
+                floor(i / 5)
             );
             if (ik == current_input_)
                 draw_list->AddRect(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
@@ -895,7 +893,7 @@ void InputMappingWindow::Render()
             ImVec2 itemsize = p == 12 ? keyNumpadItemSize + ImVec2(keyNumpadItemSize.x+ g.Style.ItemSpacing.x, 0.f) : keyNumpadItemSize;
             // draw overlay on active keys
             if ( Control::manager().inputActive(ik) ) {
-                ImVec2 pos = frame_top + itemsize * ImVec2( static_cast<float>(p % 4), static_cast<float>(p) / 4.0f );
+                ImVec2 pos = frame_top + itemsize * ImVec2( static_cast<float>(p % 4), floor(p / 4) );
                 pos += p > 12 ? ImVec2(keyNumpadIconSize.x+ g.Style.ItemSpacing.x, 0.f) : ImVec2(0,0);
                 draw_list->AddRectFilled(pos, pos + iconsize, ImGui::GetColorU32(ImGuiCol_Border), 6.f);
                 // set current
@@ -934,7 +932,7 @@ void InputMappingWindow::Render()
             // Draw frame
             ImVec2 pos = frame_top + itemsize * ImVec2(
                 static_cast<float>(p % 4),
-                static_cast<float>(p) / 4.0f
+                floor(p / 4)
             );
             pos += p > 12 ? ImVec2(keyNumpadIconSize.x + g.Style.ItemSpacing.x, 0.f) : ImVec2(0,0);
             if (ik == current_input_)
@@ -970,7 +968,7 @@ void InputMappingWindow::Render()
 
         for (size_t t = 0; t < INPUT_MULTITOUCH_COUNT; ++t){
             uint it = INPUT_MULTITOUCH_FIRST + t;
-            ImVec2 pos = frame_top + keyNumpadItemSize * ImVec2( static_cast<float>(t % 4), static_cast<float>(t) / 4.0f );
+            ImVec2 pos = frame_top + keyNumpadItemSize * ImVec2( static_cast<float>(t % 4), floor(t / 4) );
 
             // draw overlay on active keys
             if ( Control::manager().inputActive(it) ) {
@@ -1071,7 +1069,7 @@ void InputMappingWindow::Render()
             if ( Control::manager().inputActive(ig) ) {
                 ImVec2 pos = frame_top + keyLetterItemSize * ImVec2(
                     static_cast<float>(b % 5),
-                    static_cast<float>(b) / 5.0f
+                    floor(b / 5)
                 );
                 draw_list->AddRectFilled(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Border), 6.f);
                 // set current
@@ -1109,7 +1107,7 @@ void InputMappingWindow::Render()
             // Draw frame
             ImVec2 pos = frame_top + keyLetterItemSize * ImVec2(
                 static_cast<float>(b % 5),
-                static_cast<float>(b) / 5.0f
+                floor(b / 5)
             );
             if (ig == current_input_)
                 draw_list->AddRect(pos, pos + keyLetterIconSize, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
