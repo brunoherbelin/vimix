@@ -794,10 +794,6 @@ void Mixer::groupSelection()
 
 bool Mixer::selectionCanBeGroupped () const
 {
-    // obvious cancel
-    if (selection().empty())
-        return false;
-
     // check that there is at least 2 sources to group
     if (selection().size() < 2)
         return false;

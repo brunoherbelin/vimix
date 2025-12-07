@@ -257,7 +257,7 @@
 #define MENU_PLAY_PAUSE       ICON_FA_PLAY "  Play | Pause"
 #define SHORTCUT_PLAY_PAUSE   "Space"
 #define MENU_PLAY_BEGIN       ICON_FA_FAST_BACKWARD "  Go to Beginning"
-#define SHORTCUT_PLAY_BEGIN   CTRL_MOD "B"
+#define SHORTCUT_BUNDLE       CTRL_MOD "B"
 
 #define LABEL_PLAYER_SELECTION ICON_FA_USER_CIRCLE "  User selection"
 #define LABEL_PLAYER_BATCH    ICON_FA_CHECK_CIRCLE "  Batch #"

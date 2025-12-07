@@ -273,8 +273,24 @@ void UserInterface::handleKeyboard()
             Mixer::manager().close();
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_B), false )) {
-            // restart media player
-            sourcecontrol.Replay();
+            // Create bundle
+            if (Mixer::manager().selectionCanBeGroupped()) {
+                Mixer::manager().groupSelection();
+                // switch pannel to show first source (created)
+                navigator.showPannelSource(Mixer::manager().indexCurrentSource());
+            } 
+            else {
+                bool can_bundle = false;
+                if (Mixer::manager().currentSource() != nullptr){
+                    can_bundle = !(Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_GROUP)) &&
+                    !(Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_CLONE));
+                }
+                if (can_bundle) {
+                    Mixer::manager().groupCurrent();
+                    // switch pannel to show first source (created)
+                    navigator.showPannelSource(Mixer::manager().indexCurrentSource());
+                }
+            }
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_L), false )) {
             // Logs
@@ -1087,26 +1103,62 @@ void UserInterface::showMenuEdit()
 
 void UserInterface::showMenuBundle()
 {       
+    ImVec4 disabled_color = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
     ImGui::MenuItem("Create bundle with:", NULL, false, false);
 
+    // 
+    // Menu Bundle current source
+    // 
     bool is_bundle = false;
     bool is_clone = false;
-    if (Mixer::manager().currentSource() != nullptr){
+    bool has_current = Mixer::manager().currentSource() != nullptr;
+    if (has_current){
         is_bundle = Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_GROUP);
         is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_CLONE);
     }
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " Current source", NULL, false, 
-                        Mixer::manager().currentSource() != nullptr && !is_bundle && !is_clone)) {
+    // cannot be bundled if no current source, or if current source is a bundle or a clone
+    if (has_current && (is_bundle || is_clone) )
+        // disabled menu is tinted in red to show there is a problem
+        disabled_color.x = 0.7f;
+    ImGui::PushStyleColor(ImGuiCol_TextDisabled, disabled_color);
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " Current source", SHORTCUT_BUNDLE, false, 
+                        has_current && !is_bundle && !is_clone)) {
         Mixer::manager().groupCurrent();
         // switch pannel to show first source (created)
         navigator.showPannelSource(Mixer::manager().indexCurrentSource());
     }
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " Selected sources", NULL, false, 
-                        Mixer::manager().selectionCanBeGroupped())) {
+    // disabled menu explains the problem with tooltip
+    if (has_current && (is_bundle || is_clone) && ImGui::IsItemHovered()) {
+        ImGuiToolkit::ToolTip("Clones cannot be separated from their origin source in a bundle.");
+    }
+    ImGui::PopStyleColor();
+
+    // 
+    // Menu Bundle selected sources
+    // 
+    bool has_selection = Mixer::manager().selection().size() > 1;
+    bool cangroup_selection = Mixer::manager().selectionCanBeGroupped();
+    disabled_color = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
+    // cannot be bundled if selection is too small or if selection cannot be grouped
+    if (has_selection && !cangroup_selection)
+        // disabled menu is tinted in red to show there is a problem
+        disabled_color.x = 0.7f;
+    ImGui::PushStyleColor(ImGuiCol_TextDisabled, disabled_color);
+    if (ImGuiToolkit::MenuItemIcon(11, 2, " Selected sources", SHORTCUT_BUNDLE, false, 
+                        cangroup_selection)) {
         Mixer::manager().groupSelection();
         // switch pannel to show first source (created)
         navigator.showPannelSource(Mixer::manager().indexCurrentSource());
     }
+    // disabled menu explains the problem with tooltip
+    if (has_selection && !cangroup_selection && ImGui::IsItemHovered()) {
+        ImGuiToolkit::ToolTip("Selection must be contiguous in layer & clones cannot be separated from their origin source.");
+    }
+    ImGui::PopStyleColor();
+
+    // 
+    // Menu Bundle all active sources
+    // 
     if (ImGuiToolkit::MenuItemIcon(11, 2, " All active sources", NULL, false, 
                         Mixer::manager().numSource() > 0)) {
         // create a new group session with only active sources
@@ -1114,6 +1166,9 @@ void UserInterface::showMenuBundle()
         // switch pannel to show first source (created)
         navigator.showPannelSource(Mixer::manager().indexCurrentSource());
     }
+    // 
+    // Menu Bundle all sources
+    // 
     if (ImGuiToolkit::MenuItemIcon(11, 2, " Everything", NULL, false, 
                         Mixer::manager().numSource() > 0)) {
         // create a new group session the whole session
@@ -1121,6 +1176,9 @@ void UserInterface::showMenuBundle()
         // switch pannel to show first source (created)
         navigator.showPannelSource(0);
     }
+    // 
+    // Menu to unbundle selected bundle sources
+    // 
     ImGui::Separator();
     if (ImGuiToolkit::MenuItemIcon(7, 2, " Uncover selected bundle", NULL, false, 
                         is_bundle)) {
@@ -2926,6 +2984,8 @@ void UserInterface::RenderHelp()
         ImGui::Text(MENU_PASTE); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_SELECTALL); ImGui::NextColumn();
         ImGui::Text(MENU_SELECTALL " sources"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_BUNDLE); ImGui::NextColumn();
+        ImGui::Text("Create bundle with current source or selection"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_CAPTURE_DISPLAY); ImGui::NextColumn();
         ImGui::Text(MENU_CAPTUREFRAME " display"); ImGui::NextColumn();
@@ -2940,8 +3000,6 @@ void UserInterface::RenderHelp()
         ImGui::Text(MENU_CAPTUREFRAME " Player"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_PLAY_PAUSE); ImGui::NextColumn();
         ImGui::Text(MENU_PLAY_PAUSE " selected videos"); ImGui::NextColumn();
-        ImGui::Text(SHORTCUT_PLAY_BEGIN); ImGui::NextColumn();
-        ImGui::Text(MENU_PLAY_BEGIN " selected videos"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_UP " " ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
         ImGui::Text("Move the selection in the canvas"); ImGui::NextColumn();
         ImGui::Separator();
