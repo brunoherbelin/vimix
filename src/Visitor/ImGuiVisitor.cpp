@@ -438,11 +438,17 @@ void ImGuiVisitor::visit (Source& s)
         if (s.ready()) {
             ImVec2 dpos = ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space));
             ImGui::SetCursorPos( dpos );
-            ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetCursorPos( dpos );
+            // get mouse over before drawing
+            ImVec2 up_left = ImGui::GetCursorScreenPos();
+            ImVec2 down_right = ImVec2( up_left.x + width, up_left.y + height );
+            // on mouse over show source original image
+            if (ImGui::IsMouseHoveringRect( up_left, down_right )) {
                 ImGui::Image((void*)(uintptr_t) s.texture(), ImVec2(width, height));
                 ImGuiToolkit::ToolTip("Source original image");
+            }
+            // draw source processed frame by default
+            else {
+                ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
             }
         } else {
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
