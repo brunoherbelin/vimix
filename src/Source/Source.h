@@ -223,7 +223,7 @@ public:
 
     // get properties
     float depth () const;
-    float alpha () const;
+    float alpha (bool allow_negative = false) const;
     bool visible() const;
     virtual bool texturePostProcessed () const;
 

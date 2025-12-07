@@ -1569,7 +1569,7 @@ void Mixer::merge(SessionSource *source)
             renameSource(s);
 
             // scale alpha
-            s->call( new SetAlpha(s->alpha() * source->alpha()));
+            s->call( new SetAlpha(s->alpha(true) * source->alpha()));
 
             // set depth (proportional to depth of s, adjusted by needed space)
             s->call( new SetDepth( target_depth + ( (s->depth()-start_depth)/ need_depth) ) );

@@ -721,9 +721,18 @@ float Source::depth() const
 }
 
 
-float Source::alpha() const
+float Source::alpha(bool allow_negative) const
 {
-    return blendingShader()->color.a;
+    float a = blendingShader()->color.a;
+
+    if (allow_negative) {
+        // return negative alpha from mixing coordinates to match Alpha() source callback behavior
+        float dist = glm::length( glm::vec2(group(View::MIXING)->translation_) );
+        if (dist > 1.f)
+            a = -1.f * (dist -1.f);
+    }
+        
+    return a;
 }
 
 
