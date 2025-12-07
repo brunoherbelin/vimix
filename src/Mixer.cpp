@@ -918,7 +918,6 @@ void Mixer::group(SourceList sourcelist)
 
         // set depth at given location
         sessionbundle->group(View::LAYER)->translation_.z = d;
-        sessionbundle->group(View::RENDERING)->translation_.z = d;
 
         // set alpha to full opacity
         sessionbundle->group(View::MIXING)->translation_.x = 0.f;
@@ -929,6 +928,11 @@ void Mixer::group(SourceList sourcelist)
         sessionbundle->group(View::GEOMETRY)->scale_ = sessionbundle->scale();
         // correct for aspect ratio done by SessionGroupSource resolution
         sessionbundle->group(View::GEOMETRY)->scale_.x = sessionbundle->group(View::GEOMETRY)->scale_.y;
+
+        // set rendering preemptively from update() of sessionbundle
+        sessionbundle->group(View::RENDERING)->translation_ = sessionbundle->group(View::GEOMETRY)->translation_;
+        sessionbundle->group(View::RENDERING)->translation_.z = sessionbundle->group(View::LAYER)->translation_.z;
+        sessionbundle->group(View::RENDERING)->scale_ = sessionbundle->group(View::GEOMETRY)->scale_;
 
         // Add source to Session (do not change View)
         session_->addSource(sessionbundle);
@@ -1034,7 +1038,6 @@ void Mixer::groupAll(bool only_active)
 
         // set default depth in workspace for the session-group source
         sessionbundle->group(View::LAYER)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;
-        sessionbundle->group(View::RENDERING)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;
 
         // set alpha to full opacity so that rendering is identical after swap
         sessionbundle->group(View::MIXING)->translation_.x = 0.f;
@@ -1046,6 +1049,11 @@ void Mixer::groupAll(bool only_active)
         // correct for aspect ratio done by SessionGroupSource resolution
         sessionbundle->group(View::GEOMETRY)->scale_.x = sessionbundle->group(View::GEOMETRY)->scale_.y;
         
+        // set rendering preemptively from update() of sessionbundle
+        sessionbundle->group(View::RENDERING)->translation_ = sessionbundle->group(View::GEOMETRY)->translation_;
+        sessionbundle->group(View::RENDERING)->translation_.z = sessionbundle->group(View::LAYER)->translation_.z;
+        sessionbundle->group(View::RENDERING)->scale_ = sessionbundle->group(View::GEOMETRY)->scale_;
+
         // name the session-group source (avoid name duplicates)
         renameSource(sessionbundle, SystemToolkit::base_filename(session_->filename()));
 
