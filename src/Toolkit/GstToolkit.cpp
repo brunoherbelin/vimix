@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
-//#define GST_DEVICE_DEBUG
+#define GST_DEVICE_DEBUG
 
 #include <sstream>
 #include <iomanip>
@@ -448,7 +448,7 @@ GstToolkit::PipelineConfigSet GstToolkit::getPipelineConfigs(const std::string &
                             gst_structure_get_int (decice_cap_struct, "height", &config.height);
 
                         // add this config if valid
-                        if (config.width > 0 && config.height > 0 && config.format.size() > 0)
+                        if (config.width > 0 && config.height > 0 && config.fps_numerator > 0 && config.fps_denominator > 0)
                             configs.insert(config);
                     }
 
