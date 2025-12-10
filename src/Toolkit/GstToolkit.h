@@ -55,7 +55,8 @@ struct PipelineConfig {
         int b_formatscore = b.format.find("R") != std::string::npos ? 2 : 1;
         float fps = static_cast<float>(this->fps_numerator) / static_cast<float>(this->fps_denominator);
         float b_fps = static_cast<float>(b.fps_numerator) / static_cast<float>(b.fps_denominator);
-        return ( fps * static_cast<float>(this->width * formatscore) < b_fps * static_cast<float>(b.width * b_formatscore));
+        return ( fps * static_cast<float>(this->width * this->height * formatscore) 
+                    < b_fps * static_cast<float>(b.width * b.height * b_formatscore));
     }
 };
 
