@@ -118,7 +118,8 @@ SourceCallback *SourceCallback::create(CallbackType type)
     return loadedcallback;
 }
 
-SourceCallback::SourceCallback(): status_(PENDING), delay_(0.f), elapsed_(0.f)
+SourceCallback::SourceCallback(bool revert): status_(PENDING), delay_(0.f), 
+                                            elapsed_(0.f), bidirectional_(revert)
 {
 }
 
@@ -143,8 +144,8 @@ void SourceCallback::update (Source *s, float dt)
 }
 
 
-ValueSourceCallback::ValueSourceCallback(float target, float ms, bool revert) : SourceCallback(),
-    duration_(ms), start_(0.f), target_(target), bidirectional_(revert)
+ValueSourceCallback::ValueSourceCallback(float target, float ms, bool revert) : SourceCallback(revert),
+    duration_(ms), start_(0.f), target_(target)
 {
 }
 
@@ -246,8 +247,8 @@ SourceCallback *ResetGeometry::clone() const
 }
 
 
-SetAlpha::SetAlpha(float alpha, float ms, bool revert) : SourceCallback(),
-    duration_(ms), alpha_(alpha), bidirectional_(revert)
+SetAlpha::SetAlpha(float alpha, float ms, bool revert) : SourceCallback(revert),
+    duration_(ms), alpha_(alpha)
 {
     alpha_  = glm::clamp(alpha_, -3.f, 1.f);
     start_  = glm::vec2();
@@ -433,8 +434,8 @@ void Loom::accept(Visitor& v)
 }
 
 
-SetDepth::SetDepth(float target, float ms, bool revert) : SourceCallback(),
-    duration_(ms), start_(0.f), target_(target), bidirectional_(revert)
+SetDepth::SetDepth(float target, float ms, bool revert) : SourceCallback(revert),
+    duration_(ms), start_(0.f), target_(target)
 {
     target_ = glm::clamp(target_, MIN_DEPTH, MAX_DEPTH);
 }
@@ -497,8 +498,8 @@ void SetDepth::accept(Visitor& v)
     v.visit(*this);
 }
 
-Play::Play(bool on, Session *parentsession, bool revert) : SourceCallback(),
-    session_(parentsession), play_(on), bidirectional_(revert)
+Play::Play(bool on, Session *parentsession, bool revert) : SourceCallback(revert),
+    session_(parentsession), play_(on)
 {
 }
 
@@ -645,26 +646,23 @@ void PlayFastForward::accept(Visitor& v)
 }
 
 Seek::Seek(glm::uint64 target, bool revert)
-    : SourceCallback()
+    : SourceCallback(revert)
     , target_percent_(0.f)
     , target_time_(target)
-    , bidirectional_(revert)
 {}
 
 Seek::Seek(float t)
-    : SourceCallback()
+    : SourceCallback(false)
     , target_percent_(t)
     , target_time_(0)
-    , bidirectional_(false)
 {
     target_percent_ = glm::clamp(target_percent_, 0.f, 1.f);
 }
 
 Seek::Seek(int hh, int mm, int ss, int ms)
-    : SourceCallback()
+    : SourceCallback(false)
     , target_percent_(0.f)
     , target_time_(0)
-    , bidirectional_(false)
 {
     if (ms > 0)
         target_time_ += GST_MSECOND * ms;
@@ -788,8 +786,8 @@ void Flag::accept(Visitor& v)
     v.visit(*this);
 }
 
-SetGeometry::SetGeometry(const Group *g, float ms, bool revert) : SourceCallback(),
-    duration_(ms), bidirectional_(revert)
+SetGeometry::SetGeometry(const Group *g, float ms, bool revert) : SourceCallback(revert),
+    duration_(ms)
 {
     setTarget(g);
 }
@@ -1137,8 +1135,8 @@ void SetPosterize::writeValue(Source *s, float val)
 }
 
 
-SetGamma::SetGamma(glm::vec4 g, float ms, bool revert) : SourceCallback(),
-    duration_(ms), start_(glm::vec4()), target_(g), bidirectional_(revert)
+SetGamma::SetGamma(glm::vec4 g, float ms, bool revert) : SourceCallback( revert),
+    duration_(ms), start_(glm::vec4()), target_(g)
 {
     start_ = glm::clamp(start_, glm::vec4(0.f), glm::vec4(10.f));
 }

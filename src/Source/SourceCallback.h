@@ -57,7 +57,7 @@ public:
 
     static SourceCallback *create(CallbackType type);
 
-    SourceCallback();
+    SourceCallback(bool revert = false);
     virtual ~SourceCallback() {}
 
     virtual void update (Source *, float);
@@ -71,6 +71,8 @@ public:
     inline void finish () { status_ = FINISHED; }
     inline bool finished () const { return status_ > ACTIVE; }
     inline void delay (float milisec) { delay_ = milisec;}
+    inline bool bidirectional () const { return bidirectional_;}
+    inline void setBidirectional (bool on) { bidirectional_ = on; }
 
 protected:
 
@@ -84,6 +86,7 @@ protected:
     state status_;
     float delay_;
     float elapsed_;
+    bool bidirectional_;
 };
 
 /**
@@ -100,7 +103,6 @@ protected:
     float duration_;
     float start_;
     float target_;
-    bool  bidirectional_;
 
     virtual float readValue(Source *s) const = 0;
     virtual void  writeValue(Source *s, float val) = 0;
@@ -112,8 +114,6 @@ public:
     void  setValue (float v) { target_ = v; }
     float duration () const { return duration_;}
     void  setDuration (float ms) { duration_ = ms; }
-    bool  bidirectional () const { return bidirectional_;}
-    void  setBidirectional (bool on) { bidirectional_ = on; }
 
     void update (Source *s, float) override;
     void multiply (float factor) override;
@@ -129,7 +129,6 @@ class SetAlpha : public SourceCallback
     float alpha_;
     glm::vec2 start_;
     glm::vec2 target_;
-    bool bidirectional_;
 
 public:
     SetAlpha (float alpha = 0.f, float ms = 0.f, bool revert = false);
@@ -138,8 +137,6 @@ public:
     void  setValue (float a) { alpha_ = a; }
     float duration () const { return duration_; }
     void  setDuration (float ms) { duration_ = ms; }
-    bool  bidirectional () const { return bidirectional_; }
-    void  setBidirectional (bool on) { bidirectional_ = on; }
 
     void update (Source *s, float) override;
     void multiply (float factor) override;
@@ -190,7 +187,6 @@ class SetDepth : public SourceCallback
     float duration_;
     float start_;
     float target_;
-    bool bidirectional_;
 
 public:
     SetDepth (float depth = 0.f, float ms = 0.f, bool revert = false);
@@ -199,8 +195,6 @@ public:
     void  setValue (float d) { target_ = d; }
     float duration () const { return duration_;}
     void  setDuration (float ms) { duration_ = ms; }
-    bool  bidirectional () const { return bidirectional_;}
-    void  setBidirectional (bool on) { bidirectional_ = on; }
 
     void update (Source *s, float dt) override;
     void multiply (float factor) override;
@@ -214,15 +208,12 @@ class Play : public SourceCallback
 {
     class Session *session_;
     bool play_;
-    bool bidirectional_;
 
 public:
     Play (bool on = true, Session *parentsession = nullptr, bool revert = false);
 
     bool value () const { return play_;}
     void setValue (bool on) { play_ = on; }
-    bool  bidirectional () const { return bidirectional_;}
-    void  setBidirectional (bool on) { bidirectional_ = on; }
 
     void update (Source *s, float dt) override;
     SourceCallback *clone() const override;
@@ -275,7 +266,6 @@ class Seek : public SourceCallback
 {
     float target_percent_;
     glm::uint64 target_time_;
-    bool bidirectional_;
 
 public:
     Seek (glm::uint64 target = 0, bool revert = false);
@@ -284,8 +274,6 @@ public:
 
     glm::uint64 value () const { return target_time_; }
     void  setValue (glm::uint64 t) { target_time_ = t; }
-    bool  bidirectional () const { return bidirectional_; }
-    void  setBidirectional (bool on) { bidirectional_ = on; }
 
     void update (Source *s, float) override;
     SourceCallback *clone() const override;
@@ -324,7 +312,6 @@ class SetGeometry : public SourceCallback
     float duration_;
     Group start_;
     Group target_;
-    bool bidirectional_;
 
 public:
     SetGeometry (const Group *g = nullptr, float ms = 0.f, bool revert = false);
@@ -333,8 +320,6 @@ public:
     void  setTarget (const Group *g);
     float duration () const { return duration_;}
     void  setDuration (float ms) { duration_ = ms; }
-    bool  bidirectional () const { return bidirectional_;}
-    void  setBidirectional (bool on) { bidirectional_ = on; }
 
     void update (Source *s, float dt) override;
     void multiply (float factor) override;
@@ -472,7 +457,6 @@ class SetGamma : public SourceCallback
     float duration_;
     glm::vec4 start_;
     glm::vec4 target_;
-    bool bidirectional_;
 
 public:
     SetGamma (glm::vec4 g = glm::vec4(), float ms = 0.f, bool revert = false);
@@ -481,8 +465,6 @@ public:
     void  setValue (glm::vec4 g) { target_ = g; }
     float duration () const { return duration_; }
     void  setDuration (float ms) { duration_ = ms; }
-    bool  bidirectional () const { return bidirectional_; }
-    void  setBidirectional (bool on) { bidirectional_ = on; }
 
     void update (Source *s, float) override;
     void multiply (float factor) override;
