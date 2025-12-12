@@ -332,12 +332,10 @@ bool ImGuiToolkit::IconButton(int i, int j, const char *tooltip, const char* sho
     if (tooltip != nullptr && hovered)
         ImGuiToolkit::ToolTip(tooltip, shortcut);
 
-    ImGui::SetCursorScreenPos(draw_pos);
-
     // draw icon with hovered color
     const ImVec4* colors = ImGui::GetStyle().Colors;
     ImGui::PushStyleColor( ImGuiCol_Text, hovered ? colors[ImGuiCol_NavHighlight] : colors[ImGuiCol_Text] );
-    Icon(i, j, !pressed);
+    _drawIcon(draw_pos, i, j, !pressed, window);
     ImGui::PopStyleColor();
 
     ImGui::PopID();
