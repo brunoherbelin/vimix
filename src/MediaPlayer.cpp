@@ -152,7 +152,8 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
         }
         else {
             // disable GPU decoding plugins to avoid conflicts during discovery
-            GstToolkit::enable_gpu_decoding_plugins(false);
+            // GstToolkit::enable_gpu_decoding_plugins(false);
+            //// TODO : implement this properly as this disables GPU decoding globally
 
             GstDiscovererInfo *info = NULL;
             info = gst_discoverer_discover_uri (discoverer, uri.c_str(), &err);
@@ -261,7 +262,7 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
             g_object_unref( discoverer );
 
             // restore GPU decoding plugins state
-            GstToolkit::enable_gpu_decoding_plugins(Settings::application.render.gpu_decoding);
+            // GstToolkit::enable_gpu_decoding_plugins(Settings::application.render.gpu_decoding);
 
         }
 
