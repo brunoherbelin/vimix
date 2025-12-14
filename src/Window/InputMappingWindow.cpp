@@ -182,7 +182,7 @@ void testButton(SourceCallback *callback, const Target &target,
     const std::string& tooltip, int i, int j)
 {
     if (ImGui::IsItemHovered())
-            ImGui::SetTooltip(tooltip.c_str());
+            ImGui::SetTooltip("%s", tooltip.c_str());
         
     // Define the triplet type
     using SourceCallbackTriplet = std::tuple<Source*, SourceCallback*, SourceCallback*>;
