@@ -38,11 +38,11 @@
 #include "osc/OscOutboundPacketStream.h"
 
 #include "Settings.h"
-#include "GstToolkit.h"
-#include "SystemToolkit.h"
+#include "Toolkit/GstToolkit.h"
+#include "Toolkit/SystemToolkit.h"
 #include "Log.h"
 #include "Connection.h"
-#include "NetworkToolkit.h"
+#include "Toolkit/NetworkToolkit.h"
 
 #include "Streamer.h"
 

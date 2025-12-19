@@ -18,8 +18,8 @@
 **/
 
 
-#include "SystemToolkit.h"
-#include "tinyxml2Toolkit.h"
+#include "Toolkit/SystemToolkit.h"
+#include "Toolkit/tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
 #include "SessionParser.h"

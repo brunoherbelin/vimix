@@ -2,7 +2,7 @@
 #define SELECTION_H
 
 #include <string>
-#include "SourceList.h"
+#include "Source/SourceList.h"
 
 class Selection
 {

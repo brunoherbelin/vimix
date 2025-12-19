@@ -3,8 +3,8 @@
 
 #include <map>
 
-#include "View.h"
-#include "SourceList.h"
+#include "View/View.h"
+#include "Source/SourceList.h"
 
 class LineLoop;
 class Symbol;

@@ -18,12 +18,13 @@
 **/
 
 
+#include <cstddef>
 #include <tinyxml2.h>
-#include "tinyxml2Toolkit.h"
+#include "Toolkit/tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
 #include "defines.h"
-#include "SystemToolkit.h"
+#include "Toolkit/SystemToolkit.h"
 #include "Settings.h"
 
 
@@ -170,6 +171,14 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("shm_socket_path", application.shm_socket_path.c_str());
     applicationNode->SetAttribute("shm_method", application.shm_method);
     applicationNode->SetAttribute("accept_audio", application.accept_audio);
+
+    XMLElement *transcodeNode = xmlDoc.NewElement( "Transcode" );
+    transcodeNode->SetAttribute("option_0", application.transcode_options[0]);
+    transcodeNode->SetAttribute("option_1", application.transcode_options[1]);
+    transcodeNode->SetAttribute("option_2", application.transcode_options[2]);
+    transcodeNode->SetAttribute("option_3", application.transcode_options[3]);
+    applicationNode->InsertEndChild(transcodeNode);
+
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -359,6 +368,12 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     mappingConfNode->SetAttribute("current", application.mapping.current);
     mappingConfNode->SetAttribute("disabled", application.mapping.disabled);
     mappingConfNode->SetAttribute("gamepad", application.gamepad_id);
+    if (!application.gamepad_mapping_filename.empty()) {
+        XMLElement *gamepadNode = xmlDoc.NewElement("gamepad_filename");
+        XMLText *text = xmlDoc.NewText( application.gamepad_mapping_filename.c_str() );
+        gamepadNode->InsertEndChild( text );
+        mappingConfNode->InsertEndChild(gamepadNode);
+    }
     pRoot->InsertEndChild(mappingConfNode);
 
     // Controller
@@ -505,6 +520,14 @@ void Settings::Load(const std::string &filename)
             applicationNode->QueryIntAttribute("loopback_camera", &application.loopback_camera);
             applicationNode->QueryBoolAttribute("accept_audio", &application.accept_audio);
             applicationNode->QueryIntAttribute("shm_method", &application.shm_method);
+
+            XMLElement * transcodeNode = applicationNode->FirstChildElement("Transcode");
+            if (transcodeNode != nullptr) {
+                transcodeNode->QueryBoolAttribute("option_0", &application.transcode_options[0]) ;
+                transcodeNode->QueryBoolAttribute("option_1", &application.transcode_options[1]) ;
+                transcodeNode->QueryBoolAttribute("option_2", &application.transcode_options[2]) ;
+                transcodeNode->QueryBoolAttribute("option_3", &application.transcode_options[3]) ;
+            }
 
             // text attributes
             const char *tmpstr = applicationNode->Attribute("shm_socket_path");
@@ -716,7 +739,10 @@ void Settings::Load(const std::string &filename)
             {
                 glm::vec2 val;
                 tinyxml2::XMLElementToGLM( strengthNode, val);
-                application.mouse_pointer_strength[ (size_t) ceil(val.x) ] = val.y;
+                size_t i = (size_t) ceil(val.x);
+                if (i >= application.mouse_pointer_strength.size())
+                    application.mouse_pointer_strength.resize(i + 1, 0.f);
+                application.mouse_pointer_strength[ i ] = val.y;
             }
         }
 
@@ -757,6 +783,13 @@ void Settings::Load(const std::string &filename)
             mappingconfnode->QueryUnsignedAttribute("current", &application.mapping.current);
             mappingconfnode->QueryBoolAttribute("disabled", &application.mapping.disabled);
             mappingconfnode->QueryIntAttribute("gamepad", &application.gamepad_id);
+            XMLElement* gamepadNode = mappingconfnode->FirstChildElement("gamepad_filename");
+            if( gamepadNode )
+            {
+                const char *p = gamepadNode->GetText();
+                if (p)
+                    application.gamepad_mapping_filename = p;
+            }
         }
 
         // Timer Metronome

@@ -17,38 +17,39 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <glib.h>
+#include <glm/fwd.hpp>
 #include <sstream>
 #include <algorithm>
 
 #include "Log.h"
 #include "defines.h"
-#include "Scene.h"
-#include "Source.h"
-#include "SourceCallback.h"
-#include "CloneSource.h"
-#include "FrameBufferFilter.h"
-#include "DelayFilter.h"
-#include "ImageFilter.h"
-#include "MediaSource.h"
-#include "SessionSource.h"
-#include "StreamSource.h"
-#include "PatternSource.h"
-#include "DeviceSource.h"
-#include "ScreenCaptureSource.h"
-#include "NetworkSource.h"
-#include "SrtReceiverSource.h"
-#include "MultiFileSource.h"
-#include "TextSource.h"
-#include "RenderSource.h"
+#include "Source/Source.h"
+#include "Source/SourceCallback.h"
+#include "Source/CloneSource.h"
+#include "Filter/FrameBufferFilter.h"
+#include "Filter/DelayFilter.h"
+#include "Filter/ImageFilter.h"
+#include "Source/MediaSource.h"
+#include "Source/SessionSource.h"
+#include "Source/StreamSource.h"
+#include "Source/PatternSource.h"
+#include "Source/DeviceSource.h"
+#include "Source/ScreenCaptureSource.h"
+#include "Source/NetworkSource.h"
+#include "Source/SrtReceiverSource.h"
+#include "Source/MultiFileSource.h"
+#include "Source/TextSource.h"
+#include "Source/RenderSource.h"
 #include "Session.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
 #include "MediaPlayer.h"
-#include "SystemToolkit.h"
-#include "SessionVisitor.h"
-#include "ShaderSource.h"
+#include "Toolkit/SystemToolkit.h"
+#include "Visitor/SessionVisitor.h"
+#include "Source/ShaderSource.h"
 
-#include "tinyxml2Toolkit.h"
+#include "Toolkit/tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
 #include "SessionCreator.h"
@@ -166,6 +167,9 @@ void SessionCreator::load(const std::string& filename)
     // ready to read sources
     SessionLoader::load( sessionNode );
 
+    // load input callbacks (LEGACY - to be removed in future versions)
+    SessionLoader::loadInputCallbacks( xmlDoc_.FirstChildElement("InputCallbacks") );
+
     // load snapshots
     loadSnapshots( xmlDoc_.FirstChildElement("Snapshots") );
 
@@ -174,9 +178,6 @@ void SessionCreator::load(const std::string& filename)
 
     // load playlists
     loadPlayGroups( xmlDoc_.FirstChildElement("PlayGroups") );
-
-    // load input callbacks
-    loadInputCallbacks( xmlDoc_.FirstChildElement("InputCallbacks") );
 
     // thumbnail
     const XMLElement *thumbnailelement = sessionNode->FirstChildElement("Thumbnail");
@@ -227,7 +228,7 @@ void SessionCreator::loadSnapshots(XMLElement *snapshotsNode)
 }
 
 
-void SessionCreator::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
+void SessionLoader::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
 {
     if (inputsNode != nullptr && session_ != nullptr) {
 
@@ -561,6 +562,10 @@ void SessionLoader::load(XMLElement *sessionNode)
         //
         for ( auto id = loaded_xml_ids.begin(); id != loaded_xml_ids.end(); ++id)
             session_->move( session_->index( session_->find( id->second)), id->first );
+
+
+        // load input callbacks
+        loadInputCallbacks( sessionNode->FirstChildElement("InputCallbacks") );
 
     }
 }
@@ -1226,8 +1231,23 @@ void SessionLoader::visit (SessionFileSource& s)
 
 void SessionLoader::visit (SessionGroupSource& s)
 {
-    // set resolution from host session
-    s.setResolution( session_->config(View::RENDERING)->scale_ );
+    float height = 0.f;
+    xmlCurrent_->QueryFloatAttribute("height", &height);
+    if (height > 0.f) {
+        // load dimensions
+        glm::vec3 scale(1.f), center(0.f);
+        const XMLElement *scaleNode = xmlCurrent_->FirstChildElement("scale");
+        if (scaleNode)
+            tinyxml2::XMLElementToGLM( scaleNode->FirstChildElement("vec3"), scale);
+        const XMLElement *centerNode = xmlCurrent_->FirstChildElement("center");
+        if (centerNode)
+            tinyxml2::XMLElementToGLM( centerNode->FirstChildElement("vec3"), center);
+        s.setDimensions(scale, center, height);
+    }
+    else {
+        // set resolution from host session
+        s.setResolution( session_->config(View::RENDERING)->scale_ );        
+    }
 
     // get the inside session
     XMLElement* sessionGroupNode = xmlCurrent_->FirstChildElement("Session");

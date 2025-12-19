@@ -2,7 +2,7 @@
 #define VIDEOBROADCAST_H
 
 #include "FrameGrabber.h"
-#include "StreamSource.h"
+#include "Source/StreamSource.h"
 
 #define BROADCAST_DEFAULT_PORT 7070
 #define BROADCAST_FPS 30

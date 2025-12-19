@@ -141,6 +141,7 @@ public:
     void update();
     void terminate();
 
+    void loadGamepadMappings();
 
     bool  inputActive (uint id);
     float inputValue  (uint id);

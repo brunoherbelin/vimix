@@ -1,8 +1,8 @@
 #ifndef INTERPOLATOR_H
 #define INTERPOLATOR_H
 
-#include "Source.h"
-#include "SourceList.h"
+#include "Source/Source.h"
+#include "Source/SourceList.h"
 
 class SourceInterpolator
 {

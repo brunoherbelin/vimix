@@ -18,6 +18,8 @@
 **/
 
 #include <algorithm>
+#include <glib.h>
+#include <glm/ext/vector_float3.hpp>
 #include <thread>
 #include <vector>
 #include <chrono>
@@ -30,33 +32,34 @@
 #include <tinyxml2.h>
 
 #include "ImageShader.h"
-#include "TextSource.h"
 #include "defines.h"
 #include "Settings.h"
 #include "Log.h"
-#include "View.h"
-#include "BaseToolkit.h"
-#include "SystemToolkit.h"
-#include "SessionCreator.h"
-#include "SessionVisitor.h"
-#include "SessionSource.h"
-#include "CloneSource.h"
-#include "RenderSource.h"
-#include "MediaPlayer.h"
-#include "MediaSource.h"
-#include "PatternSource.h"
-#include "DeviceSource.h"
-#include "ScreenCaptureSource.h"
-#include "MultiFileSource.h"
-#include "StreamSource.h"
-#include "NetworkSource.h"
-#include "ShaderSource.h"
-#include "SrtReceiverSource.h"
-#include "SourceCallback.h"
+#include "View/View.h"
+#include "Toolkit/BaseToolkit.h"
+#include "Toolkit/SystemToolkit.h"
+#include "Visitor/SessionVisitor.h"
+#include "Source/TextSource.h"
+#include "Source/SessionSource.h"
+#include "Source/CloneSource.h"
+#include "Source/RenderSource.h"
+#include "Source/MediaSource.h"
+#include "Source/PatternSource.h"
+#include "Source/DeviceSource.h"
+#include "Source/ScreenCaptureSource.h"
+#include "Source/MultiFileSource.h"
+#include "Source/StreamSource.h"
+#include "Source/NetworkSource.h"
+#include "Source/ShaderSource.h"
+#include "Source/SrtReceiverSource.h"
+#include "Source/SourceCallback.h"
 
+#include "SessionCreator.h"
+#include "MediaPlayer.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
 #include "FrameGrabber.h"
+#include "Visitor/BoundingBoxVisitor.h"
 
 #include "Mixer.h"
 
@@ -788,6 +791,57 @@ void Mixer::groupSelection()
     group(selection().getCopy());
 }
 
+
+bool Mixer::selectionCanBeGroupped () const
+{
+    // check that there is at least 2 sources to group
+    if (selection().size() < 2)
+        return false;
+
+    // initialize the verification of the selection
+    bool ret = true;
+    SourceList _selected = selection().getCopy();
+    // start loop on selection
+    SourceList::iterator  it = selection().begin();
+    float depth_first = (*it)->depth();
+    for (; it != selection().end(); ++it) {
+        // test if selection is contiguous in layer (i.e. not interrupted)
+        SourceList::iterator inter = manager().session()->find(depth_first, (*it)->depth());
+        if ( inter != manager().session()->end() && !selection().contains(*inter)){
+            // CANNOT group: there is a source in the session that
+            // - is between two selected sources (in depth)
+            // - is not part of the selection
+            ret = false;
+            break;
+        }
+        // test if the source is a clone
+        CloneSource *_cs = dynamic_cast<CloneSource *>(*it);
+        if (_cs != nullptr) {
+            uint64_t _id_cloned = (*_cs).origin()->id();
+            SourceList::const_iterator _it = std::find_if(_selected.begin(),
+                                                            _selected.end(),
+                                                            Source::hasId(_id_cloned));
+            // CANNOT group: there is a clone selected and its origin is not selected
+            if (_it == _selected.end()) {
+                ret = false;
+                break;
+            }
+        }
+        // test if the selected source is cloned
+        if ((*it)->cloned()) {
+            SourceList _clones = (*it)->clones();
+            SourceListCompare _diff = compare(_selected, _clones);
+            // CANNOT group: there all clones are not included in selection
+            if (_diff != SOURCELIST_SECOND_IN_FIRST){
+                ret = false;
+                break;
+            }
+        }
+    }        
+
+    return ret;
+}
+
 void Mixer::groupCurrent()
 {
     if ( current_source_ != session_->end() ) {
@@ -807,10 +861,19 @@ void Mixer::group(SourceList sourcelist)
         return;
 
     // create session group where to transfer sources into
-    SessionGroupSource *sessiongroup = new SessionGroupSource;
-    sessiongroup->setResolution( session_->frame()->resolution() );
+    SessionGroupSource *sessionbundle = new SessionGroupSource;
 
-    // prepare for new session group name
+    // compute dimensions to cover all sources
+    SourceList visiblelist;
+    for (auto sit = sourcelist.begin(); sit != sourcelist.end(); ++sit) {
+        if ( (*sit)->active() && (*sit)->visible() )
+            visiblelist.push_back( *sit );
+    }
+    GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(visiblelist, &geometry_);
+    sessionbundle->setDimensions( selection_box.scale(), selection_box.center(),
+                                 session_->frame()->resolution().y );
+                    
+    // prepare for new session bundle name
     std::string name;
     // prepare for depth to place the group source
     float d = sourcelist.front()->depth();
@@ -822,11 +885,14 @@ void Mixer::group(SourceList sourcelist)
         selectgroups.push_back( intersect( *git, sourcelist));
     }
 
+    // remember input callbacks before emptying the session
+    Session::MapInputSourceCallback tmpcallbacks = session_->copyInputCallbackMap();
+
     // browse the list
     for (auto sit = sourcelist.begin(); sit != sourcelist.end(); ++sit) {
 
         // import source into group
-        if ( sessiongroup->import(*sit) ) {
+        if ( sessionbundle->import(*sit) ) {
             // find lower depth in list
             d = MIN( (*sit)->depth(), d);
             // generate name from intials of all sources
@@ -838,48 +904,61 @@ void Mixer::group(SourceList sourcelist)
         }
     }
 
-    if (sessiongroup->session()->size() > 0) {
+    if (sessionbundle->session()->size() > 0) {
         // recreate groups in session group
         for (auto git = selectgroups.begin(); git != selectgroups.end(); ++git)
-            sessiongroup->session()->link( *git );
+            sessionbundle->session()->link( *git );
+
+        // restore input callbacks 
+        sessionbundle->session()->importInputCallbacks( tmpcallbacks );
 
         // set depth at given location
-        sessiongroup->group(View::LAYER)->translation_.z = d;
-        sessiongroup->group(View::RENDERING)->translation_.z = d;
+        sessionbundle->group(View::LAYER)->translation_.z = d;
 
         // set alpha to full opacity
-        sessiongroup->group(View::MIXING)->translation_.x = 0.f;
-        sessiongroup->group(View::MIXING)->translation_.y = 0.f;
+        sessionbundle->group(View::MIXING)->translation_.x = 0.f;
+        sessionbundle->group(View::MIXING)->translation_.y = 0.f;
 
-        // Add source to Session
-        session_->addSource(sessiongroup);
+        // set geometry        
+        sessionbundle->group(View::GEOMETRY)->translation_ = sessionbundle->center();
+        sessionbundle->group(View::GEOMETRY)->scale_ = sessionbundle->scale();
+        // correct for aspect ratio done by SessionGroupSource resolution
+        sessionbundle->group(View::GEOMETRY)->scale_.x = sessionbundle->group(View::GEOMETRY)->scale_.y;
+
+        // set rendering preemptively from update() of sessionbundle
+        sessionbundle->group(View::RENDERING)->translation_ = sessionbundle->group(View::GEOMETRY)->translation_;
+        sessionbundle->group(View::RENDERING)->translation_.z = sessionbundle->group(View::LAYER)->translation_.z;
+        sessionbundle->group(View::RENDERING)->scale_ = sessionbundle->group(View::GEOMETRY)->scale_;
+
+        // Add source to Session (do not change View)
+        session_->addSource(sessionbundle);
 
         // set name (avoid name duplicates)
-        renameSource(sessiongroup, name);
+        renameSource(sessionbundle, name);
 
         // Attach source to Mixer
-        attachSource(sessiongroup);
+        attachSource(sessionbundle);
 
         // needs to update !
         ++View::need_deep_update_;
 
         // avoid display issues
         current_view_->update(0.f);
-
+            
         // store in action manager
         std::ostringstream info;
-        info << sessiongroup->name() << ": inserted (" << sessiongroup->session()->size() << " sources group)";
+        info << sessionbundle->name() << ": inserted (" << sessionbundle->session()->size() << " sources group)";
         Action::manager().store(info.str());
 
-        Log::Notify("Added %s source '%s' (group of %d sources)", sessiongroup->info().c_str(), sessiongroup->name().c_str(), sessiongroup->session()->size());
+        Log::Notify("Added %s source '%s' (group of %d sources)", sessionbundle->info().c_str(), sessionbundle->name().c_str(), sessionbundle->session()->size());
 
         // give the hand to the user
-        Mixer::manager().setCurrentSource(sessiongroup);
+        Mixer::manager().setCurrentSource(sessionbundle);
 
     }
     else {
-        delete sessiongroup;
-        Log::Info("Failed to group selection");
+        delete sessionbundle;
+        Log::Info("Failed to bundle selection");
     }
 
 }
@@ -890,68 +969,98 @@ void Mixer::groupAll(bool only_active)
     if (session_->empty())
         return;
 
-    // create session group where to transfer sources into
-    SessionGroupSource *sessiongroup = new SessionGroupSource;
-    sessiongroup->setResolution( session_->frame()->resolution() );
-
-    // remember groups before emptying the session
-    std::list<SourceList> allgroups = session_->getMixingGroups();
+    // list all sources, depending on active flag
+    SourceList sourcelist;
 
     // loop over sources from the current mixer session
-    for(auto it = session_->begin(); it != session_->end(); ) {
-
+    for(auto it = session_->begin(); it != session_->end(); ++it) {
         // if request for only active, take only active source
-        // and if could import the source in the new session group
-        if ( ( !only_active || (*it)->active() ) && sessiongroup->import( *it ) ) {
-            // detatch the source from mixer
-            detachSource( *it );
-            // take out source from session and go to next (does not delete the source)
-            it = session_->removeSource( *it );
+        if ( !only_active || (*it)->active()  ) 
+            // add to list
+            sourcelist.push_back( *it );
+    }
+    // if a clone was left orphan in the mixer current session, take in in the bundle
+    for(auto it = session_->begin(); it != session_->end(); ++it) {
+        CloneSource *cs = dynamic_cast<CloneSource*>(*it);
+        if ( cs != nullptr && 
+            std::find(sourcelist.begin(), sourcelist.end(), cs->origin()) == sourcelist.end() ) 
+            sourcelist.push_back( *it );
+    }
+
+    // create session group where to transfer sources into
+    SessionGroupSource *sessionbundle = new SessionGroupSource;
+
+    // compute dimensions to cover all visible sources
+    SourceList visiblelist;
+    for (auto sit = sourcelist.begin(); sit != sourcelist.end(); ++sit) {
+        if ( (*sit)->active() && (*sit)->visible() )
+            visiblelist.push_back( *sit );
+    }
+    GlmToolkit::AxisAlignedBoundingBox bounding_box = BoundingBoxVisitor::AABB(
+                                                    visiblelist, &geometry_);
+    sessionbundle->setDimensions( bounding_box.scale(), bounding_box.center(),
+                                session_->frame()->resolution().y );
+                        
+    // remember groups before emptying the session
+    std::list<SourceList> allgroups = session_->getMixingGroups();
+    std::list<SourceList> bundlegroups;
+    for (auto git = allgroups.begin(); git != allgroups.end(); ++git){
+        bundlegroups.push_back( intersect( *git, sourcelist));
+    }
+
+    // remember input callbacks before emptying the session
+    Session::MapInputSourceCallback tmpcallbacks = session_->copyInputCallbackMap();
+
+    // browse the list
+    for (auto sit = sourcelist.begin(); sit != sourcelist.end(); ++sit) {
+        // import source into bundle
+        if ( sessionbundle->import(*sit) ) {
+            // detach & remove element from list
+            detachSource (*sit);
+            // remove source from session
+            session_->removeSource(*sit);
         }
-        // otherwise just iterate (leave source in mixer)
-        else
-            ++it;
     }
 
     // successful creation of a session group
-    if (sessiongroup->session()->size() > 0) {
-
-        // if a clone was left orphan in the mixer current session, take in in the group
-        for(auto it = session_->begin(); it != session_->end(); ) {
-            CloneSource *cs = dynamic_cast<CloneSource*>(*it);
-            if ( cs != nullptr && session_->find( cs->origin() ) == session_->end() && sessiongroup->import( *it ) ) {
-                // detatch the source from mixer
-                detachSource( *it );
-                // take out source from session and go to next (does not delete the source)
-                it = session_->removeSource( *it );
-            }
-            // otherwise just iterate (leave source in mixer)
-            else
-                ++it;
-        }
+    if (sessionbundle->session()->size() > 0) {
 
         // recreate groups in session group
-        for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
-            sessiongroup->session()->link( *git );
+        for (auto git = bundlegroups.begin(); git != bundlegroups.end(); ++git)
+            sessionbundle->session()->link( *git );
+
+        // restore input callbacks 
+        sessionbundle->session()->importInputCallbacks( tmpcallbacks );
 
         // set default depth in workspace for the session-group source
-        sessiongroup->group(View::LAYER)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;
+        sessionbundle->group(View::LAYER)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;
 
         // set alpha to full opacity so that rendering is identical after swap
-        sessiongroup->group(View::MIXING)->translation_.x = 0.f;
-        sessiongroup->group(View::MIXING)->translation_.y = 0.f;
+        sessionbundle->group(View::MIXING)->translation_.x = 0.f;
+        sessionbundle->group(View::MIXING)->translation_.y = 0.f;
+
+        // set geometry        
+        sessionbundle->group(View::GEOMETRY)->translation_ = sessionbundle->center();
+        sessionbundle->group(View::GEOMETRY)->scale_ = sessionbundle->scale();
+        // correct for aspect ratio done by SessionGroupSource resolution
+        sessionbundle->group(View::GEOMETRY)->scale_.x = sessionbundle->group(View::GEOMETRY)->scale_.y;
+        
+        // set rendering preemptively from update() of sessionbundle
+        sessionbundle->group(View::RENDERING)->translation_ = sessionbundle->group(View::GEOMETRY)->translation_;
+        sessionbundle->group(View::RENDERING)->translation_.z = sessionbundle->group(View::LAYER)->translation_.z;
+        sessionbundle->group(View::RENDERING)->scale_ = sessionbundle->group(View::GEOMETRY)->scale_;
 
         // name the session-group source (avoid name duplicates)
-        renameSource(sessiongroup, SystemToolkit::base_filename(session_->filename()));
+        renameSource(sessionbundle, SystemToolkit::base_filename(session_->filename()));
 
         // Add the session-group source in the mixer
-        // NB: sessiongroup will be updated and inserted to Mixing view on next frame
-        addSource(sessiongroup);
+        // NB: sessionbundle will be updated and inserted to Mixing view on next frame
+        addSource(sessionbundle);
 
     }
     else {
-        delete sessiongroup;
-        Log::Info("Failed to group all sources");
+        delete sessionbundle;
+        Log::Info("Failed to bundle all sources");
     }
 }
 
@@ -965,46 +1074,6 @@ void Mixer::ungroupAll()
             import(ss);
 
     }
-}
-
-void Mixer::groupSession()
-{
-    // new session group containing current session
-    SessionGroupSource *sessiongroup = new SessionGroupSource;
-    sessiongroup->setSession(session_);
-
-    // set alpha to full opacity so that rendering is identical after swap
-    sessiongroup->group(View::MIXING)->translation_.x = 0.f;
-    sessiongroup->group(View::MIXING)->translation_.y = 0.f;
-
-    // set default depth in workspace
-    sessiongroup->group(View::LAYER)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;
-
-    // propose a name to the session group
-    sessiongroup->setName( SystemToolkit::base_filename(session_->filename()));
-
-    // create a session containing the sessiongroup
-    Session *futuresession = new Session;
-    futuresession->addSource( sessiongroup );
-
-    // set identical filename to future session
-    futuresession->setFilename( session_->filename() );
-
-    // set and swap to futuresession (will be done at next update)
-    set(futuresession);
-
-    // detatch current session_'s nodes from views
-    for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
-        detachSource(*source_iter);
-
-    // detatch session_'s mixing group
-    for (auto group_iter = session_->beginMixingGroup(); group_iter != session_->endMixingGroup(); group_iter++)
-        (*group_iter)->attachTo(nullptr);
-
-    // prevent deletion of session_ (now embedded into session group)
-    session_ = new Session;
-
-    Log::Notify("Switched to session '%s'", sessiongroup->name().c_str());
 }
 
 void Mixer::renameSource(Source *s, const std::string &newname)
@@ -1301,11 +1370,13 @@ View *Mixer::view(View::Mode m)
 void Mixer::save(bool with_version)
 {
     if (!session_->filename().empty())
-        saveas(session_->filename(), with_version);
+        saveas(session_->filename(), with_version, true);
 }
 
-void Mixer::saveas(const std::string& filename, bool with_version)
+void Mixer::saveas(const std::string& filename, bool with_version, bool with_thumbail)
 {
+    if (!with_thumbail)
+        session_->resetThumbnail();
     // optional copy of views config
     session_->config(View::MIXING)->copyTransform( mixing_.scene.root() );
     session_->config(View::GEOMETRY)->copyTransform( geometry_.scene.root() );
@@ -1415,6 +1486,9 @@ void Mixer::merge(Session *session)
     // remember groups before emptying the session
     std::list<SourceList> allgroups = session->getMixingGroups();
 
+    // remember input callbacks before emptying the session
+    Session::MapInputSourceCallback tmpcallbacks = session->copyInputCallbackMap();
+
     // import every sources
     std::ostringstream info;
     info << session->size() << " sources imported from " << session->filename();
@@ -1432,6 +1506,9 @@ void Mixer::merge(Session *session)
     // recreate groups in current session_
     for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
         session_->link( *git, mixing_.scene.fg() );
+
+    // restore input callbacks
+    session_->importInputCallbacks( tmpcallbacks );
 
     // needs to update !
     ++View::need_deep_update_;
@@ -1486,6 +1563,9 @@ void Mixer::merge(SessionSource *source)
         // remember groups before emptying the session
         std::list<SourceList> allgroups = session->getMixingGroups();
 
+        // remember input callbacks before emptying the session
+        Session::MapInputSourceCallback tmpcallbacks = session->copyInputCallbackMap();
+        
         // import every sources
         for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
 
@@ -1493,7 +1573,7 @@ void Mixer::merge(SessionSource *source)
             renameSource(s);
 
             // scale alpha
-            s->call( new SetAlpha(s->alpha() * source->alpha()));
+            s->call( new SetAlpha(s->alpha(true) * source->alpha()));
 
             // set depth (proportional to depth of s, adjusted by needed space)
             s->call( new SetDepth( target_depth + ( (s->depth()-start_depth)/ need_depth) ) );
@@ -1519,6 +1599,9 @@ void Mixer::merge(SessionSource *source)
         // recreate groups in current session_
         for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
             session_->link( *git, mixing_.scene.fg() );
+
+        // restore input callbacks
+        session_->importInputCallbacks( tmpcallbacks );
 
         // needs to update !
         ++View::need_deep_update_;

@@ -22,7 +22,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "defines.h"
-#include "Visitor.h"
+#include "Visitor/Visitor.h"
 #include "Resource.h"
 #include "IconsFontAwesome5.h"
 

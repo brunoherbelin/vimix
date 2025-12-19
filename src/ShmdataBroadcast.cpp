@@ -29,8 +29,8 @@
 #include <gst/pbutils/pbutils.h>
 
 #include "Log.h"
-#include "GstToolkit.h"
-#include "SystemToolkit.h"
+#include "Toolkit/GstToolkit.h"
+#include "Toolkit/SystemToolkit.h"
 
 #include "ShmdataBroadcast.h"
 

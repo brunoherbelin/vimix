@@ -1,12 +1,12 @@
 #ifndef MIXER_H
 #define MIXER_H
 
-#include "GeometryView.h"
-#include "MixingView.h"
-#include "LayerView.h"
-#include "TextureView.h"
-#include "TransitionView.h"
-#include "DisplaysView.h"
+#include "View/GeometryView.h"
+#include "View/MixingView.h"
+#include "View/LayerView.h"
+#include "View/TextureView.h"
+#include "View/TransitionView.h"
+#include "View/DisplaysView.h"
 #include "Session.h"
 #include "Selection.h"
 
@@ -72,10 +72,10 @@ public:
     // operations on selection
     void deleteSelection ();
     void groupSelection  ();
+    bool selectionCanBeGroupped () const;
     void groupCurrent    ();
     void groupAll (bool only_active = false);
     void ungroupAll ();
-    void groupSession ();
 
     // current source
     Source *currentSource ();
@@ -112,7 +112,7 @@ public:
     inline Session * session () const { return session_; }
     void clear  ();
     void save   (bool with_version = false);
-    void saveas (const std::string& filename, bool with_version = false);
+    void saveas (const std::string& filename, bool with_version = false, bool with_thumbail = false);
     void load   (const std::string& filename);
     void import (const std::string& filename);
     void import (SessionSource *source);

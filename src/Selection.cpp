@@ -19,8 +19,8 @@
 
 #include <algorithm>
 
-#include "SessionVisitor.h"
-#include "Source.h"
+#include "Visitor/SessionVisitor.h"
+#include "Source/Source.h"
 
 #include "Selection.h"
 

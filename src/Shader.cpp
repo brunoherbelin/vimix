@@ -27,8 +27,8 @@
 
 #include "Resource.h"
 #include "Log.h"
-#include "Visitor.h"
-#include "BaseToolkit.h"
+#include "Visitor/Visitor.h"
+#include "Toolkit/BaseToolkit.h"
 #include "RenderingManager.h"
 
 #include "Shader.h"

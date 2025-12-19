@@ -28,8 +28,8 @@
 #include <gst/pbutils/pbutils.h>
 
 #include "Log.h"
-#include "GstToolkit.h"
-#include "NetworkToolkit.h"
+#include "Toolkit/GstToolkit.h"
+#include "Toolkit/NetworkToolkit.h"
 #include "Settings.h"
 
 #include "VideoBroadcast.h"

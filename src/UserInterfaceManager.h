@@ -9,113 +9,19 @@
 
 #include <string>
 
-#include "View.h"
-#include "DialogToolkit.h"
-#include "SourceControlWindow.h"
-#include "OutputPreviewWindow.h"
-#include "TimerMetronomeWindow.h"
-#include "InputMappingWindow.h"
-#include "ShaderEditWindow.h"
+#include "View/View.h"
+#include "Toolkit/DialogToolkit.h"
+#include "Window/SourceControlWindow.h"
+#include "Window/OutputPreviewWindow.h"
+#include "Window/TimerMetronomeWindow.h"
+#include "Window/InputMappingWindow.h"
+#include "Window/ShaderEditWindow.h"
 #include "Playlist.h"
+#include "Navigator.h"
 
 
 struct ImVec2;
 void DrawInspector(uint texture, ImVec2 texturesize, ImVec2 cropsize, ImVec2 origin);
-
-class SourcePreview
-{
-    Source *source_;
-    std::string label_;
-    bool reset_;
-
-public:
-    SourcePreview();
-
-    void setSource(Source *s = nullptr, const std::string &label = "");
-    Source *getSource();
-
-    void Render(float width);
-    bool ready() const;
-    inline bool filled() const { return source_ != nullptr; }
-};
-
-
-class Navigator
-{
-    // geometry left bar & pannel
-    float width_;
-    float height_;
-    float pannel_width_;
-    float padding_width_;
-
-    // behavior pannel
-    bool pannel_visible_;
-    int  pannel_main_mode_;
-    float pannel_alpha_;
-    bool view_pannel_visible;
-    bool selected_button[NAV_COUNT];
-    int  selected_index;
-    int  pattern_type;
-    int  generated_type;
-    bool custom_connected;
-    bool custom_screencapture;
-    void clearButtonSelection();
-    void clearNewPannel();
-    void applyButtonSelection(int index);
-
-    // side pannels
-    void RenderSourcePannel(Source *s, const ImVec2 &iconsize);
-    void RenderMainPannel(const ImVec2 &iconsize);
-    void RenderMainPannelSession();
-    void RenderMainPannelPlaylist();
-    void RenderMainPannelSettings();
-    void RenderTransitionPannel(const ImVec2 &iconsize);
-    void RenderNewPannel(const ImVec2 &iconsize);
-    void RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2 &size);
-    bool RenderMousePointerSelector(const ImVec2 &size);
-
-public:
-
-    typedef enum {
-        SOURCE_FILE = 0,
-        SOURCE_SEQUENCE,
-        SOURCE_CONNECTED,
-        SOURCE_GENERATED
-    } NewSourceType;
-
-    Navigator();
-    void Render();
-
-    bool pannelVisible();
-    void discardPannel();
-    void showPannelSource(int index);
-    int  selectedPannelSource();
-    void togglePannelMenu();
-    void togglePannelNew();
-    void showConfig();
-    void togglePannelAutoHide();
-
-    typedef enum {
-        MEDIA_RECENT = 0,
-        MEDIA_RECORDING,
-        MEDIA_FOLDER
-    } MediaCreateMode;
-    void setNewMedia(MediaCreateMode mode, std::string path = std::string());
-
-
-private:
-    // for new source panel
-    SourcePreview new_source_preview_;
-    std::list<std::string> sourceSequenceFiles;
-    std::list<std::string> sourceMediaFiles;
-    std::string sourceMediaFileCurrent;
-    MediaCreateMode new_media_mode;
-    bool new_media_mode_changed;
-    Source *source_to_replace;
-
-    static std::vector< std::pair<int, int> > icons_ordering_files;
-    static std::vector< std::string > tooltips_ordering_files;
-};
 
 class ToolBox
 {
@@ -168,6 +74,7 @@ public:
     inline bool ctrlModifier() const { return ctrl_modifier_active; }
     inline bool altModifier() const  { return alt_modifier_active; }
     inline bool shiftModifier() const  { return shift_modifier_active; }
+    inline bool isRecording() const { return outputcontrol.isRecording(); }
 
     void showPannel(int id = -1);
     void setSourceInPanel(int index);
@@ -220,6 +127,7 @@ protected:
     void showMenuFile();
     void showMenuEdit();
     void showMenuWindows();
+    void showMenuBundle();
     bool saveOrSaveAs(bool force_versioning = false);
     void selectSaveFilename();
     void selectOpenFilename();

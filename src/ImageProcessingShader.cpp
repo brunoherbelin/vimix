@@ -17,7 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include "Visitor.h"
+#include "Visitor/Visitor.h"
 #include "ImageProcessingShader.h"
 
 ShadingProgram imageProcessingShadingProgram("shaders/image.vs", "shaders/imageprocessing.fs");

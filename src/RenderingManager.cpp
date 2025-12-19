@@ -62,11 +62,11 @@
 #include "Settings.h"
 #include "ImageShader.h"
 #include "Mixer.h"
-#include "SystemToolkit.h"
-#include "GstToolkit.h"
+#include "Toolkit/SystemToolkit.h"
+#include "Toolkit/GstToolkit.h"
 #include "UserInterfaceManager.h"
 #include "ControlManager.h"
-#include "Primitives.h"
+#include "Scene/Primitives.h"
 
 #include "RenderingManager.h"
 #include "TabletInput.h"
@@ -163,6 +163,9 @@ void inhibitScreensaver (bool on)
         }
     }
 }
+#else
+void inhibitScreensaver (bool)
+{}
 #endif
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
