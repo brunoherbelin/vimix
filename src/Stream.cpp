@@ -55,7 +55,6 @@ Stream::Stream()
     single_frame_ = false;
     live_ = false;
     failed_ = false;
-    rewind_on_disable_ = false;
     decoder_name_ = "";
 
     // start index in frame_ stack
@@ -476,12 +475,6 @@ void Stream::enable(bool on)
         return;
 
     if ( enabled_ != on ) {
-
-        // option to automatically rewind each time the player is disabled
-        if (!on && rewind_on_disable_) {
-            rewind();
-            desired_state_ = GST_STATE_PLAYING;
-        }
 
         enabled_ = on;
 

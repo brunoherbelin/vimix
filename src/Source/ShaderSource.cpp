@@ -116,9 +116,16 @@ void ShaderSource::setActive (bool on)
     // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
-    // enable / disable filtering
-    if ( active_ != was_active )
+    // change status of filtering only if status changed
+    if ( filter_ && active_ != was_active ) {
+        // option to automatically replay when the source is disabled
+        if (!active_ && replay_on_disable_) {
+            filter_->reset();
+            render();
+        }
+            
         filter_->setEnabled( active_ );
+    }
 
 }
 

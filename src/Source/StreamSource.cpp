@@ -151,12 +151,15 @@ void StreamSource::setActive (bool on)
     // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
-    if ( stream_ ) {
-        // change status of stream (only if status changed)
-        if (active_ != was_active)
-            stream_->enable(active_);
-
+    // change status of stream only if status changed
+    if ( stream_ && active_ != was_active) {
+        // option to automatically replay when the source is disabled
+        if (!active_ && replay_on_disable_)
+            stream_->rewind();
+        
+        stream_->enable(active_);
     }
+
 }
 
 

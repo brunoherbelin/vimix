@@ -131,10 +131,18 @@ uint SessionSource::texture() const
 
 void SessionSource::setActive (bool on)
 {    
+    bool was_active = active_;
+
     Source::setActive(on);
 
-    // change status of session (recursive change of internal sources)
-    if (session_) {
+    // change status of session if status changed (recursive change of internal sources)
+    if (session_ && active_ != was_active ) {
+        // option to automatically replay when the source is disabled
+        if (!active_ && replay_on_disable_) {
+            replay();
+            session_->update(0.f); 
+        }
+
         session_->setActive(active_);
     }
 }

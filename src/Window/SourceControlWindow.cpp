@@ -2014,34 +2014,30 @@ void SourceControlWindow::RenderSingleSource(Source *s)
         ///  Offer context menu if it is a Stream source
         ///
         else if ( s->active() && s->playable() ) {
-            StreamSource *ss = dynamic_cast<StreamSource *>(s);
-            if ( ss != nullptr ) {
 
-                static uint counter_menu_timeout = 0;
+            static uint counter_menu_timeout = 0;
 
-                ImGui::SameLine();
-                ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.4f);
-                if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+            ImGui::SameLine();
+            ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.4f);
+            if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+                counter_menu_timeout=0;
+                ImGui::OpenPopup( "MenuStreamOptions" );
+            }
+
+            if (ImGui::BeginPopup( "MenuStreamOptions" ))
+            {
+                if (ImGui::MenuItem(ICON_FA_REDO_ALT "  Reload"))
+                    s->reload();
+                // NB: ss is playable (tested above), and thus ss->stream() is not null
+                bool option = s->replayOnDeactivate();
+                if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on reactivation", NULL, &option ))
+                    s->setReplayOnDeactivate(option);
+                if (ImGui::IsWindowHovered())
                     counter_menu_timeout=0;
-                    ImGui::OpenPopup( "MenuStreamOptions" );
-                }
+                else if (++counter_menu_timeout > 10)
+                    ImGui::CloseCurrentPopup();
 
-                if (ImGui::BeginPopup( "MenuStreamOptions" ))
-                {
-                    if (ImGui::MenuItem(ICON_FA_REDO_ALT "  Reload"))
-                        ss->reload();
-                    // NB: ss is playable (tested above), and thus ss->stream() is not null
-                    bool option = ss->stream()->rewindOnDisabled();
-                    if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on reactivation", NULL, &option ))
-                        ss->stream()->setRewindOnDisabled(option);
-
-                    if (ImGui::IsWindowHovered())
-                        counter_menu_timeout=0;
-                    else if (++counter_menu_timeout > 10)
-                        ImGui::CloseCurrentPopup();
-
-                    ImGui::EndPopup();
-                }
+                ImGui::EndPopup();
             }
         }
     }
@@ -2456,9 +2452,9 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
             mediaplayer_active_->reopen();
 
-        bool option = mediaplayer_active_->rewindOnDisabled();
+        bool option = ms->replayOnDeactivate();
         if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on reactivation", NULL, &option )) {
-            mediaplayer_active_->setRewindOnDisabled(option);
+            ms->setReplayOnDeactivate(option);
         }
 
         if (ImGui::IsWindowHovered())

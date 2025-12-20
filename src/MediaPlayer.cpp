@@ -68,7 +68,6 @@ MediaPlayer::MediaPlayer()
     metro_sync_ = Metronome::SYNC_NONE;
     force_update_ = false;
     seeking_ = false;
-    rewind_on_disable_ = false;
     force_software_decoding_ = false;
     rate_ = 1.0;
     rate_change_ = RATE_CHANGE_NONE;
@@ -869,12 +868,6 @@ void MediaPlayer::enable(bool on)
         return;
 
     if ( enabled_ != on ) {
-
-        // option to automatically rewind each time the player is disabled
-        if (!on && rewind_on_disable_) {
-            rewind(true);
-            desired_state_ = GST_STATE_PLAYING;
-        }
 
         // apply change
         enabled_ = on;

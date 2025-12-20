@@ -141,9 +141,14 @@ void MediaSource::setActive (bool on)
     // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
-    // change status of media player (only if status changed)
-    if ( active_ != was_active )
+    // change status of media player only if status changed
+    if ( active_ != was_active ) {
+        // option to automatically rewind each time the source is disabled
+        if (!on && replay_on_disable_) 
+            mediaplayer_->rewind(true);
+
         mediaplayer_->enable(active_);
+    }
 
 }
 
@@ -165,7 +170,7 @@ bool MediaSource::playable () const
 
 void MediaSource::replay ()
 {
-    mediaplayer_->rewind();
+    mediaplayer_->rewind(true);
 }
 
 void MediaSource::reload ()

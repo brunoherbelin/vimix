@@ -169,6 +169,8 @@ public:
     inline  bool active () const { return active_; }
     virtual void setActive (bool on);
     void setActive (float threshold);
+    inline void setReplayOnDeactivate(bool on) { replay_on_disable_ = on; }
+    inline bool replayOnDeactivate() const { return replay_on_disable_; }
 
     // lock mode
     inline  bool locked () const { return locked_; }
@@ -376,6 +378,7 @@ protected:
     UpdateFlags   need_update_;
     float dt_;
     Workspace  workspace_;
+    bool replay_on_disable_;
 
     // callbacks
     std::list<SourceCallback *> update_callbacks_;

@@ -277,12 +277,6 @@ public:
     void setSoftwareDecodingForced(bool on);
     bool softwareDecodingForced();
     /**
-     * Option to automatically rewind each time the player is disabled
-     * (i.e. when enable(false) is called )
-     * */
-    inline void setRewindOnDisabled(bool on) { rewind_on_disable_ = on; }
-    inline bool rewindOnDisabled() const { return rewind_on_disable_; }
-    /**
      * Option to synchronize with metronome
      * */
     inline void setSyncToMetronome(Metronome::Synchronicity s) { metro_sync_ = s; }
@@ -349,7 +343,6 @@ private:
     bool pending_;
     bool seeking_;
     bool enabled_;
-    bool rewind_on_disable_;
     bool force_software_decoding_;
     std::string decoder_name_;
     bool video_filter_available_;

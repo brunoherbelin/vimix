@@ -117,7 +117,8 @@ SourceCore& SourceCore::operator= (SourceCore const& other)
 
 
 Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(nullptr),
-    active_(true), locked_(false), need_update_(SourceUpdate_None), dt_(16.f), workspace_(WORKSPACE_CENTRAL)
+    active_(true), locked_(false), need_update_(SourceUpdate_None), dt_(16.f), 
+    workspace_(WORKSPACE_CENTRAL), replay_on_disable_(false)
 {
     // create unique id
     if (id_ == 0)

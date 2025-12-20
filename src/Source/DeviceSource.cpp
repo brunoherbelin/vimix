@@ -572,6 +572,11 @@ void DeviceSource::setActive (bool on)
                     if ( (*sit)->active_)
                         streamactive = true;
                 }
+
+                // option to automatically replay when the source is disabled
+                if (streamactive && replay_on_disable_)
+                    stream_->rewind();
+
                 stream_->enable(streamactive);
             }
 
