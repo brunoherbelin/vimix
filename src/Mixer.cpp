@@ -77,6 +77,7 @@ Mixer::Mixer() : session_(new Session), back_session_(nullptr), sessionSwapReque
     // unsused initial empty session
     current_source_ = session_->end();
     current_source_index_ = -1;
+    previous_current_source_index_ = -1;
 
     // initialize with a new empty session
     set( new Session );
@@ -1268,6 +1269,8 @@ void Mixer::unsetCurrentSource()
             selection().remove( *current_source_ );
         }
 
+        // remember previous current source index
+        previous_current_source_index_ = current_source_index_;
         // deselect current source
         current_source_ = session_->end();
         current_source_index_ = -1;
@@ -1290,6 +1293,19 @@ Source *Mixer::currentSource()
         return (*current_source_);
     else
         return nullptr;
+}
+
+Source *Mixer::previousCurrentSource()
+{
+    if ( previous_current_source_index_<0 )
+        return nullptr;
+    auto previous_source = session_->at(previous_current_source_index_);
+    if ( previous_source != session_->end() )
+        return (*previous_source);
+    else {
+        previous_current_source_index_ = -1;
+        return nullptr;
+    }
 }
 
 // management of view
