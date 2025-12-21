@@ -39,8 +39,6 @@
 #define MEDIA_PLAYER_DEBUG
 #endif
 
-#define DISCOVER_TIMOUT 15
-
 #if GST_VERSION_MAJOR > 0 && GST_VERSION_MINOR > 18
 #define USE_GST_PLAYBIN
 #endif

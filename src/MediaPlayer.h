@@ -18,7 +18,8 @@ class Visitor;
 
 #define MAX_PLAY_SPEED 20.0
 #define MIN_PLAY_SPEED 0.1
-#define N_VFRAME 15
+#define N_VFRAME 10
+#define DISCOVER_TIMOUT 15
 
 struct MediaInfo {
 
