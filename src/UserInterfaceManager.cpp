@@ -1129,7 +1129,7 @@ void UserInterface::showMenuBundle()
     }
     // disabled menu explains the problem with tooltip
     if (has_current && (is_bundle || is_clone) && ImGui::IsItemHovered()) {
-        ImGuiToolkit::ToolTip("Clones cannot be separated from their origin source in a bundle.");
+        ImGuiToolkit::ToolTip("Bundles, clones or cloned source cannot be bundled.");
     }
     ImGui::PopStyleColor();
 

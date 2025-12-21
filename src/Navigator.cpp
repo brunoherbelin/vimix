@@ -3372,7 +3372,10 @@ void Navigator::RenderMainPannelSettings()
         change |= ImGuiToolkit::ButtonSwitch( "Audio (experimental)", &audio);
 
 #ifndef NDEBUG
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
         change |= ImGuiToolkit::ButtonSwitch( "Gst-GLMemory texturing", &glmemory);
+#endif
         change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Multisample antialiasing", &multi);
 #endif
@@ -3536,11 +3539,6 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
             UserInterface::manager().showMenuWindows();
             ImGui::EndMenu();
         }
-        // ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + 3.f * ImGui::GetTextLineHeightWithSpacing()) );
-        // if (ImGui::BeginMenu("Bundle")) {
-        //     UserInterface::manager().showMenuBundle();
-        //     ImGui::EndMenu();
-        // }
 
         //
         // Panel content
