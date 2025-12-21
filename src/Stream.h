@@ -228,6 +228,7 @@ protected:
     guint pbo_[2];
     guint pbo_index_, pbo_next_index_;
     guint pbo_size_;
+    bool need_pbo_refresh_;
 
     // gst pipeline control
     virtual void execute_open();

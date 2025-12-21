@@ -66,6 +66,7 @@ Stream::Stream()
     pbo_size_ = 0;
     pbo_index_ = 0;
     pbo_next_index_ = 0;
+    need_pbo_refresh_ = false;
 
     // OpenGL texture
     textureindex_ = 0;
@@ -542,8 +543,11 @@ void Stream::play(bool on)
 #endif
 
     // activate live-source
-    if (live_)
+    if (live_) {
         gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
+        // Flag that we need to double-fill the texture to refresh both PBOs
+        need_pbo_refresh_ = true;
+    }
 
 }
 
@@ -767,8 +771,11 @@ void Stream::update()
             fill_texture(read_index);
 
             // double update for pre-roll frame and dual PBO (ensure frame is displayed now)
-            if (frame_[read_index].status == PREROLL && pbo_size_ > 0)
+            // also double-fill if we need to refresh PBOs after resuming a live source
+            if (pbo_size_ > 0 && (frame_[read_index].status == PREROLL || need_pbo_refresh_)) {
                 fill_texture(read_index);
+                need_pbo_refresh_ = false;  // clear the flag after refresh
+            }
 
             // free frame
             frame_[read_index].is_new = false;
