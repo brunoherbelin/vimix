@@ -496,14 +496,10 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
             // if initialization succeeded
             if (initialized_) {
 
-#ifdef IGNORE_GST_BUS_MESSAGE
-                //        avoid filling up bus with messages
-                gst_bus_set_flushing(gst_element_get_bus(pipeline_), true);
-#else
                 // set message handler for the pipeline's bus
                 gst_bus_set_sync_handler(gst_element_get_bus(pipeline_),
                                          FrameGrabber::signal_handler, this, NULL);
-#endif
+
                 // attach EOS detector
                 GstPad *pad = gst_element_get_static_pad (gst_bin_get_by_name (GST_BIN (pipeline_), "sink"), "sink");
                 gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, FrameGrabber::callback_event_probe, this, NULL);

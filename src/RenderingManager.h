@@ -170,8 +170,9 @@ public:
     static bool shouldHaveEnoughMemory(glm::vec3 resolution, int flags);
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-    // for opengl pipeline in gstreamer
-    static void LinkPipeline( GstPipeline *pipeline );
+    // for opengl pipeline in gstreamer    
+    GstGLContext *global_gl_context;
+    GstGLDisplay *global_display;
 #endif
 
 protected:
@@ -202,6 +203,8 @@ private:
 
     Screenshot screenshot_;
     bool request_screenshot_;
+
+
 };
 
 

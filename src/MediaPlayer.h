@@ -18,7 +18,7 @@ class Visitor;
 
 #define MAX_PLAY_SPEED 20.0
 #define MIN_PLAY_SPEED 0.1
-#define N_VFRAME 5
+#define N_VFRAME 15
 
 struct MediaInfo {
 
@@ -402,6 +402,11 @@ private:
     guint pbo_[2];
     guint pbo_index_, pbo_next_index_;
     guint pbo_size_;
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    // for GLMemory optimization
+    bool use_gl_memory_;
+#endif
 
     // gst pipeline control
     void execute_open();

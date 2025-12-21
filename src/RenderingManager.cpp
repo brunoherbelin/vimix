@@ -51,6 +51,10 @@
 #include <gst/gl/x11/gstgldisplay_x11.h>
 #endif
 
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+#include <GLFW/glfw3native.h>
+#endif
+
 // standalone image loader
 #include <stb_image.h>
 
@@ -166,59 +170,6 @@ void inhibitScreensaver (bool on)
 #else
 void inhibitScreensaver (bool)
 {}
-#endif
-
-#ifdef USE_GST_OPENGL_SYNC_HANDLER
-
-GLFW_EXPOSE_NATIVE_X11
-#include <GLFW/glfw3native.h>
-
-//
-// Discarded because not working under OSX - kept in case it would become useful
-//
-// Linking pipeline to the rendering instance ensures the opengl contexts
-// created by gstreamer inside plugins (e.g. glsinkbin) is the same
-//
-static GstGLContext *global_gl_context = NULL;
-static GstGLDisplay *global_display = NULL;
-
-static GstBusSyncReply bus_sync_handler( GstBus *, GstMessage * msg, gpointer )
-{
-    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_NEED_CONTEXT) {
-        const gchar* contextType;
-        gst_message_parse_context_type(msg, &contextType);
-
-        if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
-            GstContext *displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
-            gst_context_set_gl_display(displayContext, global_display);
-            gst_element_set_context(GST_ELEMENT(msg->src), displayContext);
-            gst_context_unref (displayContext);
-
-            g_info ("Managed %s\n", contextType);
-        }
-        if (!g_strcmp0(contextType, "gst.gl.app_context")) {
-            GstContext *appContext = gst_context_new("gst.gl.app_context", TRUE);
-            GstStructure* structure = gst_context_writable_structure(appContext);
-            gst_structure_set(structure, "context", GST_TYPE_GL_CONTEXT, global_gl_context, nullptr);
-            gst_element_set_context(GST_ELEMENT(msg->src), appContext);
-            gst_context_unref (appContext);
-
-            g_info ("Managed %s\n", contextType);
-        }
-    }
-
-    gst_message_unref (msg);
-
-    return GST_BUS_DROP;
-}
-
-void Rendering::LinkPipeline( GstPipeline *pipeline )
-{
-    // capture bus signals to force a unique opengl context for all GST elements
-    GstBus* m_bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
-    gst_bus_set_sync_handler (m_bus, (GstBusSyncHandler) bus_sync_handler, pipeline, NULL);
-    gst_object_unref (m_bus);
-}
 #endif
 
 

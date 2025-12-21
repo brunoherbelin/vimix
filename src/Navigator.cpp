@@ -3353,6 +3353,7 @@ void Navigator::RenderMainPannelSettings()
         static bool vsync = (Settings::application.render.vsync > 0);
         static bool multi = (Settings::application.render.multisampling > 0);
         static bool gpu = Settings::application.render.gpu_decoding;
+        static bool glmemory = Settings::application.render.gst_glmemory_texturing;
         static bool audio = Settings::application.accept_audio;
         bool change = false;
         // hardware support deserves more explanation
@@ -3371,13 +3372,14 @@ void Navigator::RenderMainPannelSettings()
         change |= ImGuiToolkit::ButtonSwitch( "Audio (experimental)", &audio);
 
 #ifndef NDEBUG
+        change |= ImGuiToolkit::ButtonSwitch( "Gst-GLMemory texturing", &glmemory);
         change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Multisample antialiasing", &multi);
 #endif
         if (change) {
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
                     multi != (Settings::application.render.multisampling > 0) ||
-                    gpu != Settings::application.render.gpu_decoding ||
+                    glmemory != Settings::application.render.gst_glmemory_texturing ||
                     audio != Settings::application.accept_audio );
         }
 
@@ -3386,6 +3388,7 @@ void Navigator::RenderMainPannelSettings()
             if (ImGui::Button( ICON_FA_POWER_OFF "  Quit & restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
                 Settings::application.render.vsync = vsync ? 1 : 0;
                 Settings::application.render.multisampling = multi ? 3 : 0;
+                Settings::application.render.gst_glmemory_texturing = glmemory;
                 Settings::application.render.gpu_decoding = gpu;
                 Settings::application.accept_audio = audio;
                 if (UserInterface::manager().TryClose())

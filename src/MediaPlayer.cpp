@@ -46,6 +46,7 @@
 #endif
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
+#include <gst/gl/gl.h>
 #include "RenderingManager.h"
 #endif
 
@@ -88,6 +89,11 @@ MediaPlayer::MediaPlayer()
     pbo_size_ = 0;
     pbo_index_ = 0;
     pbo_next_index_ = 0;
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    // try to use GLMemory for zero-copy GPU textures
+    use_gl_memory_ = Settings::application.render.gst_glmemory_texturing;
+#endif
 
     // OpenGL texture
     textureindex_ = 0;
@@ -341,6 +347,27 @@ GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer 
                          error->message);
         g_error_free(error);
     }
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    // setup OpenGL contexts for GStreamer elements from global Rendering opengl 
+    else if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_NEED_CONTEXT) {
+        const gchar* contextType;
+        gst_message_parse_context_type(msg, &contextType);
+
+        if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE) && Rendering::manager().global_display) {
+            GstContext *displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+            gst_context_set_gl_display(displayContext, Rendering::manager().global_display);
+            gst_element_set_context(GST_ELEMENT(msg->src), displayContext);
+            gst_context_unref (displayContext);
+        }
+        if (!g_strcmp0(contextType, "gst.gl.app_context") && Rendering::manager().global_gl_context) {
+            GstContext *appContext = gst_context_new("gst.gl.app_context", TRUE);
+            GstStructure* structure = gst_context_writable_structure(appContext);
+            gst_structure_set(structure, "context", GST_TYPE_GL_CONTEXT, Rendering::manager().global_gl_context, nullptr);
+            gst_element_set_context(GST_ELEMENT(msg->src), appContext);
+            gst_context_unref (appContext);
+        }
+    }
+#endif
 
     // drop all messages to avoid filling up the stack
     gst_message_unref (msg);
@@ -441,18 +468,53 @@ void MediaPlayer::execute_open()
     // instruct the sink to send samples synched in time
     gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
 
-    // instruct sink to use the required caps
-    GstCaps *caps  = gst_caps_new_simple ("video/x-raw",
-                                          "format", G_TYPE_STRING, "RGBA",
-                                          "width",  G_TYPE_INT, media_.width,
-                                          "height", G_TYPE_INT, media_.height,
-                                          NULL);
+    // Configure appsink caps
+    // When using glsinkbin, appsink must accept GLMemory caps
+    GstCaps *caps = nullptr;
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    if (media_.isimage)
+        use_gl_memory_ = false; // disable GLMemory for images to avoid issues with some plugins
+
+    if (use_gl_memory_) {
+        // Create caps that accept BOTH GLMemory and system memory
+        // This allows glsinkbin to link properly
+        caps = gst_caps_new_simple("video/x-raw",
+                                   "format", G_TYPE_STRING, "RGBA",
+                                   NULL);
+
+        // Add GLMemory variant
+        GstCaps *gl_caps = gst_caps_new_simple("video/x-raw",
+                                               "format", G_TYPE_STRING, "RGBA",
+                                               NULL);
+        GstCapsFeatures *gl_features = gst_caps_features_new("memory:GLMemory", NULL);
+        gst_caps_set_features(gl_caps, 0, gl_features);
+
+        // Append GLMemory caps as preferred option
+        gst_caps_append(gl_caps, caps);
+        caps = gl_caps;
+    }
+    else
+#endif
+    {
+        // Standard CPU caps with dimensions
+        caps = gst_caps_new_simple("video/x-raw",
+                                   "format", G_TYPE_STRING, "RGBA",
+                                   "width",  G_TYPE_INT, media_.width,
+                                   "height", G_TYPE_INT, media_.height,
+                                   NULL);
+    }
+
     gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
     gst_caps_unref (caps);
 
     // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
     gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 5);
     gst_app_sink_set_drop (GST_APP_SINK(sink), true);
+
+    // set message handler for the pipeline's bus
+    bus_ = gst_element_get_bus(pipeline_);
+    gst_bus_set_sync_handler(bus_, MediaPlayer::signal_handler, this, NULL);
 
     // set the callbacks
     GstAppSinkCallbacks callbacks;
@@ -474,13 +536,29 @@ void MediaPlayer::execute_open()
     gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
     gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
 
-    // set playbin sink
-    g_object_set ( G_OBJECT (pipeline_), "video-sink", sink, NULL);
+    // Wrap appsink with glsinkbin for automatic GLMemory handling
+    GstElement *video_sink = sink;  // Default to appsink
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-    // capture bus signals to force a unique opengl context for all GST elements
-    Rendering::LinkPipeline(GST_PIPELINE (pipeline_));
+    if (use_gl_memory_) {
+        // Try to create glsinkbin to automatically handle GL upload and conversion
+        GstElement *glsinkbin = gst_element_factory_make("glsinkbin", "glsink");
+
+        if (glsinkbin) {
+            // glsinkbin wraps our appsink and automatically inserts:
+            // - glupload (for GLMemory)
+            // - glcolorconvert (for NV12/I420 -> RGBA conversion in shaders)
+            g_object_set(G_OBJECT(glsinkbin), "sink", sink, NULL);
+            video_sink = glsinkbin;
+        } 
+        else {
+            use_gl_memory_ = false;
+        }
+    }
 #endif
+
+    // set playbin sink (either glsinkbin wrapper or direct appsink)
+    g_object_set ( G_OBJECT (pipeline_), "video-sink", video_sink, NULL);
 
     // set to desired state (PLAY or PAUSE)
     GstStateChangeReturn ret = gst_element_set_state (GST_ELEMENT(pipeline_), desired_state_);
@@ -496,15 +574,6 @@ void MediaPlayer::execute_open()
         if ( gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &d) )
             timeline_.setEnd(d);
     }
-
-    bus_ = gst_element_get_bus(pipeline_);
-#ifdef IGNORE_GST_BUS_MESSAGE
-    // avoid filling up bus with messages
-    gst_bus_set_flushing(bus_, true);
-#else
-    // set message handler for the pipeline's bus
-    gst_bus_set_sync_handler(bus_, MediaPlayer::signal_handler, this, NULL);
-#endif
 
     // all good
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d, %d kbps)", std::to_string(id_).c_str(),
@@ -660,11 +729,6 @@ void MediaPlayer::execute_open()
     gst_object_unref (sink);
     gst_caps_unref (caps);
 
-#ifdef USE_GST_OPENGL_SYNC_HANDLER
-    // capture bus signals to force a unique opengl context for all GST elements
-    Rendering::LinkPipeline(GST_PIPELINE (pipeline_));
-#endif
-
     // set to desired state (PLAY or PAUSE)
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
     if (ret == GST_STATE_CHANGE_FAILURE) {
@@ -681,13 +745,8 @@ void MediaPlayer::execute_open()
     }
 
     bus_ = gst_element_get_bus(pipeline_);
-#ifdef IGNORE_GST_BUS_MESSAGE
-    // avoid filling up bus with messages
-    gst_bus_set_flushing(bus_, true);
-#else
     // set message handler for the pipeline's bus
     gst_bus_set_sync_handler(bus_, MediaPlayer::signal_handler, this, NULL);
-#endif
 
     // all good
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d)", std::to_string(id_).c_str(),
@@ -753,15 +812,14 @@ void MediaPlayer::pipeline_terminate( GstElement *p, GstBus *b )
     if (ret == GST_STATE_CHANGE_ASYNC)
         gst_element_get_state(p, NULL, NULL, 1000000);
 
-#ifndef IGNORE_GST_BUS_MESSAGE
-    // empty pipeline bus (if used)
+    // empty pipeline bus 
     GstMessage *msg = NULL;
     do {
         if (msg)
             gst_message_unref (msg);
         msg = gst_bus_timed_pop_filtered(b, 1000000, GST_MESSAGE_ANY);
     } while (msg != NULL);
-#endif
+
     // unref bus
     gst_object_unref( GST_OBJECT(b) );
 
@@ -1159,11 +1217,49 @@ void MediaPlayer::init_texture(guint index)
 
     // fill texture frame with frame at given index
     if (frame_[index].buffer) {
-        GstMapInfo map;
-        gst_buffer_map(frame_[index].buffer, &map, GST_MAP_READ);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height,
-                        GL_RGBA, GL_UNSIGNED_BYTE, map.data);
-        gst_buffer_unmap (frame_[index].buffer, &map);
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+        // Try GLMemory fast path first
+        bool gl_memory_used = false;
+        if ( use_gl_memory_ ) {
+            GstMemory *mem = gst_buffer_peek_memory(frame_[index].buffer, 0);
+
+            if (mem && gst_is_gl_memory(mem)) {
+                GstGLMemory *gl_mem = (GstGLMemory*) mem;
+                guint gst_tex_id = gst_gl_memory_get_texture_id(gl_mem);
+
+                if (gst_tex_id > 0) {
+                    // Copy from GStreamer GL texture to our texture using FBO
+                    GLuint fbo;
+                    glGenFramebuffers(1, &fbo);
+                    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+                    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                          GL_TEXTURE_2D, gst_tex_id, 0);
+
+                    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0,
+                                       media_.width, media_.height);
+
+                    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                    glDeleteFramebuffers(1, &fbo);
+
+                    gl_memory_used = true;
+                }
+            } else {
+                // Not GLMemory - disable optimization
+                use_gl_memory_ = false;
+            }
+        }
+
+        // Fallback to CPU path if GLMemory not available
+        if (!gl_memory_used)
+#endif
+        {
+            GstMapInfo map;
+            gst_buffer_map(frame_[index].buffer, &map, GST_MAP_READ);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, media_.width, media_.height,
+                            GL_RGBA, GL_UNSIGNED_BYTE, map.data);
+            gst_buffer_unmap (frame_[index].buffer, &map);
+        }
     }
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -1171,24 +1267,34 @@ void MediaPlayer::init_texture(guint index)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+    // initialize decoderName once (forced update)
+    decoder_name_ = "";
+
     // use Pixel Buffer Objects only for performance needs of videos
     if ( !isImage() ) {
-        // set pbo image size
-        pbo_size_ = media_.height * media_.width * 4;
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+        if (use_gl_memory_)
+            Log::Info("MediaPlayer %s Uses %s decoding and OpenGL GLMemory texturing (zero-copy).", std::to_string(id_).c_str(), decoderName().c_str());
+        else
+#endif 
+        {
+            // set pbo image size
+            pbo_size_ = media_.height * media_.width * 4;
 
-        // create pixel buffer objects,
-        if (pbo_[0])
-            glDeleteBuffers(2, pbo_);
-        glGenBuffers(2, pbo_);
+            // create pixel buffer objects,
+            if (pbo_[0])
+                glDeleteBuffers(2, pbo_);
+            glGenBuffers(2, pbo_);
 
-        // should be good to go
-        pbo_index_ = 0;
-        pbo_next_index_ = 1;
+            // should be good to go
+            pbo_index_ = 0;
+            pbo_next_index_ = 1;
 
-        // initialize decoderName once (forced update)
-        decoder_name_ = "";
-        Log::Info("MediaPlayer %s Uses %s decoding and OpenGL PBO texturing.", std::to_string(id_).c_str(), decoderName().c_str());
+            Log::Info("MediaPlayer %s Uses %s decoding and OpenGL PBO texturing.", std::to_string(id_).c_str(), decoderName().c_str());
+        }
     }
+    else
+        Log::Info("MediaPlayer %s Uses %s decoding and standard OpenGL texturing.", std::to_string(id_).c_str(), decoderName().c_str());
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -1204,6 +1310,49 @@ void MediaPlayer::fill_texture(guint index)
         init_texture(index);
     }
     else if (!isImage()) {
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+        // Try GLMemory fast path first (zero-copy GPU texture)
+        if (use_gl_memory_ && frame_[index].buffer) {
+            GstMemory *mem = gst_buffer_peek_memory(frame_[index].buffer, 0);
+
+            if (mem && gst_is_gl_memory(mem)) {
+                // FAST PATH: Direct GL texture extraction from GStreamer
+                GstGLMemory *gl_mem = (GstGLMemory*) mem;
+                guint gst_tex_id = gst_gl_memory_get_texture_id(gl_mem);
+
+                if (gst_tex_id > 0) {
+                    // Use FBO to copy from GStreamer's texture to our texture
+                    // This ensures we maintain ownership and texture lifecycle
+                    GLuint fbo;
+                    glGenFramebuffers(1, &fbo);
+                    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+                    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                          GL_TEXTURE_2D, gst_tex_id, 0);
+
+                    glBindTexture(GL_TEXTURE_2D, textureindex_);
+                    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0,
+                                       media_.width, media_.height);
+
+                    glBindTexture(GL_TEXTURE_2D, 0);
+                    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                    glDeleteFramebuffers(1, &fbo);
+
+                    // Success - no need for CPU path
+                    return;
+                }
+            }
+            else {
+                // First buffer is not GLMemory - disable GLMemory optimization for this source
+                // This happens with images, some network streams, or when glupload fails
+                use_gl_memory_ = false;
+                Log::Info("MediaPlayer %s GLMemory not available, falling back to CPU transfer.",
+                         std::to_string(id_).c_str());
+            }
+        }
+#endif
+
+        // FALLBACK: CPU path (standard PBO or direct upload)
         // Use GST mapping to access pointer to RGBA data
         GstMapInfo map;
         gst_buffer_map(frame_[index].buffer, &map, GST_MAP_READ);
@@ -1413,11 +1562,9 @@ void MediaPlayer::update()
     if (need_loop && desired_state_ == GST_STATE_PLAYING)  // avoid repeated call
         execute_loop_command();
 
-#ifndef IGNORE_GST_BUS_MESSAGE
     GstMessage *msg = gst_bus_pop_filtered(bus_, GST_MESSAGE_ANY);
     if (msg != NULL)
         gst_message_unref(msg);
-#endif
 
     force_update_ = false;
 }
@@ -1731,6 +1878,21 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
         // send frames to media player only if ready
         MediaPlayer *m = static_cast<MediaPlayer *>(p);
         if (m && m->opened_) {
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+            // Debug: Log negotiated caps on first frame to verify GLMemory
+            if (m->use_gl_memory_) {
+                GstCaps *caps = gst_sample_get_caps(sample);
+                if (caps) {
+                    // Check if GLMemory was actually negotiated
+                    GstCapsFeatures *features = gst_caps_get_features(caps, 0);
+                    if (!features || !gst_caps_features_contains(features, "memory:GLMemory")) {
+                        m->use_gl_memory_ = false;
+                    }
+                }
+            }
+#endif
+
             // fill frame from buffer
             if ( !m->fill_frame(buf, MediaPlayer::PREROLL) )
                 ret = GST_FLOW_ERROR;

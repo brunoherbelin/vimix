@@ -333,13 +333,9 @@ void Stream::execute_open()
     gst_base_sink_set_sync (GST_BASE_SINK(sink), !live_);
 
     bus_ = gst_element_get_bus(pipeline_);
-#ifdef IGNORE_GST_BUS_MESSAGE
-    // avoid filling up bus with messages
-    gst_bus_set_flushing(bus_, true);
-#else
+
     // set message handler for the pipeline's bus
     gst_bus_set_sync_handler(bus_, stream_signal_handler, this, NULL);
-#endif
 
     // all good
     Log::Info("Stream %s Opened '%s' (%d x %d)", std::to_string(id_).c_str(), description.c_str(), width_, height_);
@@ -392,7 +388,6 @@ void Stream::pipeline_terminate( GstElement *p, GstBus *b )
     if (ret == GST_STATE_CHANGE_ASYNC)
         gst_element_get_state (p, NULL, NULL, 1000000);
 
-#ifndef IGNORE_GST_BUS_MESSAGE
     // empty pipeline bus (if used)
     GstMessage *msg = NULL;
     do {
@@ -400,7 +395,7 @@ void Stream::pipeline_terminate( GstElement *p, GstBus *b )
             gst_message_unref (msg);
         msg = gst_bus_timed_pop_filtered(b, 1000000, GST_MESSAGE_ANY);
     } while (msg != NULL);
-#endif
+
     // unref bus
     gst_object_unref( GST_OBJECT(b) );
 
@@ -796,11 +791,9 @@ void Stream::update()
         play(false);
     }
 
-#ifndef IGNORE_GST_BUS_MESSAGE
     GstMessage *msg = gst_bus_pop_filtered(bus_, GST_MESSAGE_ANY);
     if (msg != NULL)
         gst_message_unref(msg);
-#endif
 }
 
 double Stream::updateFrameRate() const
