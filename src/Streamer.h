@@ -2,6 +2,7 @@
 #define STREAMER_H
 
 #include <mutex>
+#include <list>
 
 #include "osc/OscReceivedElements.h"
 #include "osc/OscPacketListener.h"

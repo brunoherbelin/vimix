@@ -21,6 +21,7 @@ set(VMIX_SRCS
     ControlManager.cpp
     FrameBuffer.cpp
     FrameGrabber.cpp
+    FrameGrabbing.cpp
     Interpolator.cpp
     Loopback.cpp
     MediaPlayer.cpp
@@ -135,6 +136,11 @@ IF(APPLE)
     set_source_files_properties(${CMAKE_SOURCE_DIR}/osx/TabletInput_macos.mm PROPERTIES COMPILE_FLAGS "-x objective-c++")
 
 ELSE(APPLE)
+
+    if (USE_GST_OPENGL_SYNC_HANDLER)
+        # Add GPU video recorder implementation
+        list(APPEND VMIX_SRCS GPUVideoRecorder.cpp)
+    endif()
 
     # Add Linux tablet input implementation
     if(X11_Xi_FOUND)

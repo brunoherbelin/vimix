@@ -33,6 +33,7 @@
 #include "Metronome.h"
 #include "Audio.h"
 #include "VideoBroadcast.h"
+#include "FrameGrabbing.h"
 
 #if defined(APPLE)
 extern "C"{

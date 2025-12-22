@@ -53,7 +53,6 @@
 #include "RenderingManager.h"
 #include "Connection.h"
 #include "ControlManager.h"
-#include "FrameGrabber.h"
 #include "Recorder.h"
 #include "MultiFileRecorder.h"
 #include "Audio.h"

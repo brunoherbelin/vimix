@@ -58,7 +58,7 @@
 #include "MediaPlayer.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
-#include "FrameGrabber.h"
+#include "FrameGrabbing.h"
 #include "Visitor/BoundingBoxVisitor.h"
 
 #include "Mixer.h"

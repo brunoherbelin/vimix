@@ -26,7 +26,6 @@
 #include "defines.h"
 #include "Log.h"
 #include "Toolkit/SystemToolkit.h"
-#include "Toolkit/NetworkToolkit.h"
 #include "Settings.h"
 #include "Mixer.h"
 #include "Recorder.h"
@@ -35,6 +34,8 @@
 #include "Loopback.h"
 #include "VideoBroadcast.h"
 #include "ShmdataBroadcast.h"
+#include "FrameGrabbing.h"
+#include "GPUVideoRecorder.h"
 
 #include "UserInterfaceManager.h"
 #include "OutputPreviewWindow.h"
@@ -80,7 +81,7 @@ void OutputPreviewWindow::Update()
 
     // management of video_recorders
     if ( !_video_recorders.empty() ) {
-        // check that file dialog thread finished
+        // check that delayed trigger finished
         if (_video_recorders.back().wait_for(std::chrono::milliseconds(4)) == std::future_status::ready ) {
             video_recorder_ = _video_recorders.back().get();
             FrameGrabbing::manager().add(video_recorder_);
@@ -241,7 +242,7 @@ void OutputPreviewWindow::Render()
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
                 if ( ImGui::MenuItem( MENU_CAPTUREFRAME, SHORTCUT_CAPTURE_DISPLAY) ) {
-                    FrameGrabbing::manager().add(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
+                    Broadcast::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
                 }
                 ImGui::PopStyleColor(1);
 

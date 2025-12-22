@@ -134,7 +134,7 @@ void PNGRecorder::addFrame(GstBuffer *buffer, GstCaps *caps)
 
 const char* VideoRecorder::profile_name[VideoRecorder::DEFAULT] = {
     "H264 (Realtime)",
-    "H264 (High 4:4:4)",
+    "H264 (HQ)",
     "H265 (Realtime)",
     "H265 (HQ)",
     "ProRes (Standard)",

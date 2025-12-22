@@ -47,6 +47,7 @@
 #include "UserInterfaceManager.h"
 #include "Streamer.h"
 #include "VideoBroadcast.h"
+#include "FrameGrabbing.h"
 
 #include "ControlManager.h"
 

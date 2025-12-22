@@ -74,6 +74,7 @@
 #include "Source/SessionSource.h"
 #include "MousePointer.h"
 #include "Playlist.h"
+#include "FrameGrabbing.h"
 
 #include "UserInterfaceManager.h"
 
@@ -410,7 +411,7 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
             sourcecontrol.Capture();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11, false ))
-            FrameGrabbing::manager().add(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
+            Broadcast::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12, false )) {
             Settings::application.render.disabled = !Settings::application.render.disabled;
         }

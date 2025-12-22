@@ -43,6 +43,7 @@
 #include "Log.h"
 #include "Connection.h"
 #include "Toolkit/NetworkToolkit.h"
+#include "FrameGrabbing.h"
 
 #include "Streamer.h"
 
