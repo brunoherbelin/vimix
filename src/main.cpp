@@ -254,7 +254,7 @@ int main(int argc, char *argv[])
     /// Broadcast launch
     ///
     if (broadcastRequested > 0)
-        Broadcast::manager().start( new VideoBroadcast(broadcastRequested));
+        Outputs::manager().start( new VideoBroadcast(broadcastRequested));
 
     ///
     /// Main LOOP

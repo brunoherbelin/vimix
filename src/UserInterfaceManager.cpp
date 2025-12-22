@@ -411,7 +411,7 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
             sourcecontrol.Capture();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11, false ))
-            Broadcast::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
+            Outputs::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12, false )) {
             Settings::application.render.disabled = !Settings::application.render.disabled;
         }

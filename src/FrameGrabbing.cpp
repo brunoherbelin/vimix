@@ -309,13 +309,13 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
 }
 
 
-void Broadcast::start(FrameGrabber *ptr)
+void Outputs::start(FrameGrabber *ptr)
 {
     stop( ptr->type() );
     FrameGrabbing::manager().add(ptr);
 }
 
-bool Broadcast::busy(FrameGrabber::Type T)
+bool Outputs::busy(FrameGrabber::Type T)
 {
     FrameGrabber *ptr = FrameGrabbing::manager().get( T );
     if (ptr != nullptr)
@@ -324,7 +324,7 @@ bool Broadcast::busy(FrameGrabber::Type T)
     return false;
 }
 
-std::string Broadcast::info(FrameGrabber::Type T, bool extended)
+std::string Outputs::info(FrameGrabber::Type T, bool extended)
 {
     FrameGrabber *ptr = FrameGrabbing::manager().get( T );
     if (ptr != nullptr)
@@ -333,12 +333,12 @@ std::string Broadcast::info(FrameGrabber::Type T, bool extended)
     return "Disabled";
 }
 
-bool Broadcast::enabled(FrameGrabber::Type T)
+bool Outputs::enabled(FrameGrabber::Type T)
 {
     return ( FrameGrabbing::manager().get( T ) != nullptr);
 }
 
-void Broadcast::stop(FrameGrabber::Type T)
+void Outputs::stop(FrameGrabber::Type T)
 {
     FrameGrabber *prev = FrameGrabbing::manager().get( T );
     if (prev != nullptr)

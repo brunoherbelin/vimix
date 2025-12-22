@@ -71,27 +71,28 @@ private:
 };
 
 /**
- * @brief The Broadcast class gives a global access to launch and stop FrameGrabbers
+ * @brief The Outputs class gives global access to launch and stop output FrameGrabbers
  *
+ * Manages all output destinations (recordings, broadcasts, loopback, shared memory, etc.)
  * FrameGrabbers can terminate (normal behavior or failure) and the FrameGrabber
  * is deleted automatically; pointer is then invalid and cannot be accessed. To avoid this,
- * the Broadcast::manager() gives access to FrameGrabbers by type (single instance).
+ * the Outputs::manager() gives access to FrameGrabbers by type (single instance).
  *
- * Singleton mechanism also allows starting a unique instance of each FrameGrabber::Type
+ * Singleton mechanism ensures only one active instance of each FrameGrabber::Type
  */
-class Broadcast
+class Outputs
 {
     // Private Constructor
-    Broadcast() {};
-    Broadcast(Broadcast const& copy) = delete;
-    Broadcast& operator=(Broadcast const& copy) = delete;
+    Outputs() {};
+    Outputs(Outputs const& copy) = delete;
+    Outputs& operator=(Outputs const& copy) = delete;
 
 public:
 
-    static Broadcast& manager ()
+    static Outputs& manager ()
     {
         // The only instance
-        static Broadcast _instance;
+        static Outputs _instance;
         return _instance;
     }
 
