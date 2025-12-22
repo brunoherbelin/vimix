@@ -153,12 +153,6 @@ std::string ShmdataBroadcast::init(GstCaps *caps)
         return std::string("Shared Memory Broadcast : Failed to configure frame grabber ") + shm_sink_[method_];
     }
 
-    // start
-    GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
-    if (ret == GST_STATE_CHANGE_FAILURE) {
-        return std::string("Shared Memory Broadcast : Failed to start frame grabber.");
-    }
-
     // all good
     initialized_ = true;
 

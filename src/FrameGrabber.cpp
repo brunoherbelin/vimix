@@ -26,6 +26,11 @@
 #include <gst/gstformat.h>
 #include <gst/video/video.h>
 
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+#include <gst/gl/gl.h>
+#include "RenderingManager.h"
+#endif
+
 #include "Log.h"
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/BaseToolkit.h"
@@ -50,6 +55,7 @@ FrameGrabbing::~FrameGrabbing()
     // cleanup
     if (caps_)
         gst_caps_unref (caps_);
+
 //    if (pbo_[0] > 0) // automatically deleted at shutdown
 //        glDeleteBuffers(2, pbo_);
 }
@@ -436,6 +442,29 @@ void FrameGrabber::callback_enough_data (GstAppSrc *, gpointer p)
 
 GstBusSyncReply FrameGrabber::signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
 {
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    // Handle GL context requests from glcolorconvert
+    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_NEED_CONTEXT) {
+        const gchar *contextType;
+        gst_message_parse_context_type(msg, &contextType);
+
+        if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE) && Rendering::manager().global_display) {
+            GstContext *displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+            gst_context_set_gl_display(displayContext, Rendering::manager().global_display);
+            gst_element_set_context(GST_ELEMENT(msg->src), displayContext);
+            gst_context_unref (displayContext);
+        }
+        if (!g_strcmp0(contextType, "gst.gl.app_context") && Rendering::manager().global_gl_context) {
+            GstContext *appContext = gst_context_new("gst.gl.app_context", TRUE);
+            GstStructure* structure = gst_context_writable_structure(appContext);
+            gst_structure_set(structure, "context", GST_TYPE_GL_CONTEXT,
+                            Rendering::manager().global_gl_context, nullptr);
+            gst_element_set_context(GST_ELEMENT(msg->src), appContext);
+            gst_context_unref(appContext);
+        }
+    }
+#endif
+
     // only handle error messages
     if (ptr != nullptr && GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
         // inform user
@@ -448,7 +477,7 @@ GstBusSyncReply FrameGrabber::signal_handler(GstBus *, GstMessage *msg, gpointer
                         error->message);
             fg->endofstream_=true;
         }
-        else 
+        else
             Log::Warning("FrameGrabber Error : %s", error->message);
         g_error_free(error);
 //    } else {
@@ -504,10 +533,21 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
                 GstPad *pad = gst_element_get_static_pad (gst_bin_get_by_name (GST_BIN (pipeline_), "sink"), "sink");
                 gst_pad_add_probe (pad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, FrameGrabber::callback_event_probe, this, NULL);
                 gst_object_unref (pad);
+
                 // start recording
-                active_ = true;
-                // inform
-                Log::Info("%s", msg.c_str());
+                GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
+                if (ret == GST_STATE_CHANGE_FAILURE) {
+                    // end frame grabber
+                    finished_ = true;
+                    // inform
+                    Log::Warning("Video Recording : Failed to start frame grabber.");
+                }
+                else {
+                    // start recording
+                    active_ = true;
+                    // inform
+                    Log::Info("%s", msg.c_str());
+                }
             }
             // else show warning
             else {

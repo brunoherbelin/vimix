@@ -3382,6 +3382,7 @@ void Navigator::RenderMainPannelSettings()
         if (change) {
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
                     multi != (Settings::application.render.multisampling > 0) ||
+                    gpu != Settings::application.render.gpu_decoding ||
                     glmemory != Settings::application.render.gst_glmemory_texturing ||
                     audio != Settings::application.accept_audio );
         }
