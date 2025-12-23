@@ -63,6 +63,7 @@
 #include "SessionCreator.h"
 #include "Window/WorkspaceWindow.h"
 #include "UserInterfaceManager.h"
+#include "FrameGrabbing.h"
 
 #include "Navigator.h"
 
@@ -2081,7 +2082,8 @@ void Navigator::RenderMainPannelSession()
             glm::ivec2 custom = glm::ivec2(output->resolution());
             if (preset.x > -1) {
                 // cannot change resolution when recording
-                if ( UserInterface::manager().outputcontrol.isRecording() ) {
+                if ( Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO ) ||
+                     Outputs::manager().enabled( FrameGrabber::GRABBER_GPU ) ) {
                     // show static info (same size than combo)
                     static char dummy_str[512];
                     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
@@ -2976,7 +2978,7 @@ void Navigator::RenderMainPannelSettings()
 
     if (Settings::application.pannel_settings[0]){
 
-        // select CODEC and FPS
+        // select Encoder codec
         ImGui::SetCursorPosX(align_x);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("##Codec",
@@ -2987,6 +2989,7 @@ void Navigator::RenderMainPannelSettings()
         if (ImGuiToolkit::TextButton("Codec"))
             Settings::application.record.profile = 0;
 
+        // select FPS
         ImGui::SetCursorPosX(align_x);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("##Framerate",

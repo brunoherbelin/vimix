@@ -3,11 +3,12 @@
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
 
-#include <atomic>
 #include <string>
 #include <gst/gst.h>
 #include <gst/gl/gl.h>
 #include <gst/app/gstappsrc.h>
+
+#include "FrameGrabber.h"
 
 /**
  * @brief The GPUVideoRecorder class provides a full-GPU video recording pipeline
@@ -28,11 +29,10 @@
  * - Hardware encoder available (nvenc or vaapi)
  *
  * SPECIFICITIES:
- * - Does NOT inherit from FrameGrabber (different threading model)
  * - All GL operations execute in GStreamer's thread
  * - Uses appsrc with GLMemory caps directly
  */
-class GPUVideoRecorder
+class GPUVideoRecorder : public FrameGrabber
 {
 public:
 
@@ -56,6 +56,8 @@ public:
     GPUVideoRecorder(const std::string &basename = std::string());
     virtual ~GPUVideoRecorder();
 
+    static bool isAvailable();
+    FrameGrabber::Type type () const override { return FrameGrabber::GRABBER_GPU; }
 
     /**
      * Add a frame from vimix's OpenGL texture
@@ -64,12 +66,13 @@ public:
      *
      * @param texture_id OpenGL texture ID from vimix's FrameBuffer
      */
-    void addFrame(guint texture_id, GstCaps *caps);
+    void addFrame(guint texture_id, GstCaps *caps) override;
+    void addFrame(GstBuffer *buffer, GstCaps *caps) override {}
 
     /**
      * Stop recording and finalize file
      */
-    void stop();
+    void stop() override;
 
     /**
      * Check if recording is initialized
@@ -84,12 +87,12 @@ public:
     /**
      * Check if recording has finished
      */
-    bool finished() const { return finished_; }
+    bool finished() const override { return finished_; }
 
     /**
      * Get current recording duration in milliseconds
      */
-    uint64_t duration() const;
+    uint64_t duration() const override;
 
     /**
      * Get total frame count
@@ -104,7 +107,9 @@ public:
     /**
      * Get status information
      */
-    std::string info() const;
+    std::string info(bool extended = false) const override;
+
+    void terminate() override;
 
 protected:
 
@@ -115,33 +120,16 @@ protected:
      * @param fps Target framerate
      * @return True on success, false on failure
      */
-    bool init(GstCaps *caps);
+    std::string init(GstCaps *caps) override;
 
 private:
     // GStreamer pipeline elements
-    GstElement *pipeline_;
-    GstAppSrc *src_;
-    GstCaps *caps_;
     GstGLContext *gl_context_;
     GstGLDisplay *gl_display_;
-
-    // Timing
-    GstClock *timer_;
-    GstClockTime timer_start_;
-    GstClockTime timestamp_;
-    GstClockTime frame_duration_;
-    guint64 frame_count_;
-
-    // Recording state
-    std::atomic<bool> initialized_;
-    std::atomic<bool> active_;
-    std::atomic<bool> finished_;
-    std::atomic<bool> accept_buffer_;
 
     // Configuration
     gint width_;
     gint height_;
-    // guint fps_;
     Profile profile_;
     std::string filename_;
     std::string basename_;
@@ -157,8 +145,8 @@ private:
     static void perform_texture_transfer(GstGLContext *context, gpointer data);
 
     // GStreamer callbacks
-    static void callback_need_data(GstAppSrc *src, guint length, gpointer user_data);
-    static void callback_enough_data(GstAppSrc *src, gpointer user_data);
+    static void clbck_need_data(GstAppSrc *src, guint length, gpointer user_data);
+    static void clbck_enough_data(GstAppSrc *src, gpointer user_data);
     static GstBusSyncReply bus_sync_handler(GstBus *bus, GstMessage *msg, gpointer user_data);
 
     // Helper to check encoder availability
@@ -167,6 +155,17 @@ private:
     // Build pipeline description
     std::string buildPipeline(Profile profile);
 };
+
+#else
+
+namespace GPUVideoRecorder
+{
+    inline bool isAvailable()
+    {
+        return false;
+    }
+}
+
 
 #endif // USE_GST_OPENGL_SYNC_HANDLER
 

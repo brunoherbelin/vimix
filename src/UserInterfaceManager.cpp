@@ -1033,7 +1033,8 @@ void UserInterface::Render()
     RenderPreview();
 
     // render Recording indication overlay
-    if (isRecording()) {
+    if (Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO ) || 
+        Outputs::manager().enabled( FrameGrabber::GRABBER_GPU ) ) {
         ImGuiIO& io = ImGui::GetIO();
         ImVec2 center = ImVec2(io.DisplaySize.x - RECORDER_INDICATION_SIZE * 1.5f, io.DisplaySize.y - RECORDER_INDICATION_SIZE * 1.5f);
         int a = 150 + (int) ( 50.f * sin( (float) Runtime() / 100000000.f ));

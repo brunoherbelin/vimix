@@ -46,6 +46,7 @@ public:
         GRABBER_BROADCAST = 4,
         GRABBER_SHM = 5,
         GRABBER_LOOPBACK = 6,
+        GRABBER_GPU = 7,
         GRABBER_INVALID
     } Type;
     virtual Type type () const { return GRABBER_GENERIC; }
@@ -61,11 +62,13 @@ public:
 
     uint buffering() const;
     guint64 frames() const;
+    guint64 frameDuration() const;
 
 protected:
 
     // only FrameGrabbing manager can add frame
     virtual void addFrame(GstBuffer *buffer, GstCaps *caps);
+    virtual void addFrame(guint texture_id, GstCaps *caps) {}
 
     // only addFrame method shall call those
     virtual std::string init(GstCaps *caps) = 0;

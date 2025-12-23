@@ -130,22 +130,25 @@ std::string FrameGrabber::info(bool extended) const
         switch ( type() )
         {
         case GRABBER_PNG :
-        typestring = "Portable Network Graphics frame grabber";
+        typestring = "Portable Network Graphics Recorder";
             break;
         case GRABBER_VIDEO :
-        typestring = "Video file frame grabber";
+        typestring = "Video file Recorder";
             break;
         case GRABBER_P2P :
-        typestring = "Peer-to-Peer stream frame grabber";
+        typestring = "Peer-to-Peer stream";
             break;
         case GRABBER_BROADCAST :
-        typestring = "SRT Broarcast frame grabber";
+        typestring = "SRT Broadcast";
             break;
         case GRABBER_SHM :
-        typestring = "Shared Memory frame grabber";
+        typestring = "Shared Memory";
             break;
         case GRABBER_LOOPBACK :
-        typestring = "Loopback frame grabber";
+        typestring = "Loopback";
+            break;
+        case GRABBER_GPU :
+        typestring = "GPU optimized file Recorder";
             break;
         default:
         typestring = "Generic frame grabber";
@@ -423,7 +426,6 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
         // terminate properly if finished
         else
         {
-            terminate();
             finished_ = true;
         }
 
@@ -441,4 +443,9 @@ uint FrameGrabber::buffering() const
 guint64 FrameGrabber::frames() const
 {
     return frame_count_;
+}
+
+guint64 FrameGrabber::frameDuration() const
+{
+    return GST_TIME_AS_MSECONDS(frame_duration_);
 }

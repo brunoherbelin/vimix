@@ -17,6 +17,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <cstdint>
+#include <glib.h>
+#include <thread>
 #include <algorithm>
 
 //  Desktop OpenGL function loader
@@ -29,20 +32,9 @@
 #include "FrameBuffer.h"
 #include "FrameGrabbing.h"
 
-#include "GPUVideoRecorder.h"
-
-#ifdef USE_GST_OPENGL_SYNC_HANDLER
-void FrameGrabbing::add(GPUVideoRecorder *rec)
-{
-    if (gpu_grabber_ == nullptr) {
-        gpu_grabber_ = rec;
-    }
-}
-
-#endif  // USE_GST_OPENGL_SYNC_HANDLER
 
 FrameGrabbing::FrameGrabbing(): pbo_index_(0), pbo_next_index_(0), size_(0),
-    width_(0), height_(0), use_alpha_(0), caps_(NULL), gpu_grabber_(nullptr)
+    width_(0), height_(0), use_alpha_(0), caps_(NULL)
 {
     pbo_[0] = 0;
     pbo_[1] = 0;
@@ -61,29 +53,23 @@ FrameGrabbing::~FrameGrabbing()
 //        glDeleteBuffers(2, pbo_);
 }
 
-void FrameGrabbing::add(FrameGrabber *rec)
+void FrameGrabbing::add(FrameGrabber *rec, uint64_t duration)
 {
-    if (rec != nullptr)
+    if (rec != nullptr) {
         grabbers_.push_back(rec);
+        grabbers_duration_[rec] = duration;
+    }
 }
 
 void FrameGrabbing::chain(FrameGrabber *rec, FrameGrabber *next_rec)
 {
     if (rec != nullptr && next_rec != nullptr)
     {
-        // add grabber if not yet
-        if ( std::find(grabbers_.begin(), grabbers_.end(), rec) == grabbers_.end() )
-            grabbers_.push_back(rec);
-
+        // add to grabbers
+        grabbers_.push_back(next_rec);
+        // chain them
         grabbers_chain_[next_rec] = rec;
     }
-}
-
-void FrameGrabbing::verify(FrameGrabber **rec)
-{
-    if ( std::find(grabbers_.begin(), grabbers_.end(), *rec) == grabbers_.end() &&
-         grabbers_chain_.find(*rec) == grabbers_chain_.end()  )
-        *rec = nullptr;
 }
 
 bool FrameGrabbing::busy() const
@@ -140,6 +126,7 @@ void FrameGrabbing::stopAll()
     std::list<FrameGrabber *>::iterator iter;
     for (iter=grabbers_.begin(); iter != grabbers_.end(); ++iter )
         (*iter)->stop();
+    grabbers_duration_.clear();
 }
 
 void FrameGrabbing::clearAll()
@@ -156,6 +143,8 @@ void FrameGrabbing::clearAll()
         else
             ++iter;
     }
+    grabbers_chain_.clear();
+    grabbers_duration_.clear();
 }
 
 
@@ -199,8 +188,21 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
                                      NULL);
     }
 
-    // fill a frame in buffer
-    if (!grabbers_.empty() && size_ > 0) {
+    if (grabbers_.empty() || size_ <= 0)
+        return;
+
+    // separate CPU and GPU grabbers
+    std::list<FrameGrabber *> cpu_grabbers_;
+    std::list<FrameGrabber *> gpu_grabbers_;
+    std::partition_copy(
+        grabbers_.begin(), grabbers_.end(),
+        std::back_inserter(gpu_grabbers_),
+        std::back_inserter(cpu_grabbers_),
+        fgType(FrameGrabber::GRABBER_GPU)
+    );
+
+    // feed CPU grabbers with frame_buffer texture index
+    if (!cpu_grabbers_.empty()) {
 
         GstBuffer *buffer = nullptr;
 
@@ -251,40 +253,29 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
         if ( buffer != nullptr && gst_buffer_get_size(buffer) > 0) {
 
             // give the frame to all recorders
-            std::list<FrameGrabber *>::iterator iter = grabbers_.begin();
-            while (iter != grabbers_.end())
+            std::list<FrameGrabber *>::iterator iter = cpu_grabbers_.begin();
+            while (iter != cpu_grabbers_.end())
             {
                 FrameGrabber *rec = *iter;
+
+                uint64_t max_duration = grabbers_duration_.count(rec) ? grabbers_duration_[rec] : 0;
+                if (max_duration > 0 && rec->duration() >= max_duration - rec->frameDuration() * 2) 
+                    rec->stop();
+                
                 rec->addFrame(buffer, caps_);
 
                 // remove finished recorders
                 if (rec->finished()) {
-                    iter = grabbers_.erase(iter);
+                    // terminate and remove from main grabbers list
+                    rec->terminate();
+                    grabbers_.remove(rec);
+                    grabbers_duration_.erase(rec);
+                    // remove from local list and iterate
+                    iter = cpu_grabbers_.erase(iter);
                     delete rec;
                 }
                 else
                     ++iter;
-            }
-
-            // manage the list of chainned recorder
-            std::map<FrameGrabber *, FrameGrabber *>::iterator chain = grabbers_chain_.begin();
-            while (chain != grabbers_chain_.end())
-            {
-                // update frame grabber of chain list
-                chain->first->addFrame(buffer, caps_);
-
-                // if the chained recorder is now active
-                if (chain->first->active_ && chain->first->accept_buffer_){
-                    // add it to main grabbers,
-                    grabbers_.push_back(chain->first);
-                    // stop the replaced grabber
-                    chain->second->stop();
-                    // loop in chain list: done with this chain
-                    chain = grabbers_chain_.erase(chain);
-                }
-                else
-                    // loop in chain list
-                    ++chain;
             }
 
             // unref / free the frame
@@ -292,27 +283,99 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
         }
     }
 
-#ifdef USE_GST_OPENGL_SYNC_HANDLER
-    // TEST OF GPU FRAME GRABBER
-    if (gpu_grabber_ != nullptr) {
+    // feed GPU grabbers with frame_buffer texture index
+    if (!gpu_grabbers_.empty()) {
 
-        gpu_grabber_->addFrame(frame_buffer->texture(), caps_);
-        
-        if (gpu_grabber_->finished()) {
-            delete gpu_grabber_;
-            gpu_grabber_ = nullptr;
+        // give the texture to all recorders
+        std::list<FrameGrabber *>::iterator iter = gpu_grabbers_.begin();
+        while (iter != gpu_grabbers_.end())
+        {
+            FrameGrabber *rec = *iter;
+
+            uint64_t max_duration = grabbers_duration_.count(rec) ? grabbers_duration_[rec] : 0;
+            if (max_duration > 0 && rec->duration() >= max_duration - rec->frameDuration()) 
+                rec->stop();
+                
+            rec->addFrame(frame_buffer->texture(), caps_);
+
+            // remove finished recorders
+            if (rec->finished()) {
+                // terminate and remove from main grabbers list
+                rec->terminate();
+                grabbers_.remove(rec);
+                grabbers_duration_.erase(rec);
+                // remove from local list and iterate
+                iter = gpu_grabbers_.erase(iter);
+                delete rec;
+            }
+            else
+                ++iter;
         }
 
     }
-#endif  // USE_GST_OPENGL_SYNC_HANDLER
+
+    // manage the list of chainned recorder
+    std::map<FrameGrabber *, FrameGrabber *>::iterator chain = grabbers_chain_.begin();
+    while (chain != grabbers_chain_.end())
+    {
+        // if the chained recorder is now active
+        if (chain->first->active_ && chain->first->accept_buffer_){
+
+            // stop the replaced grabber
+            chain->second->stop();
+
+            // manage duration : switch remaining time to new grabber
+            uint64_t max_duration = grabbers_duration_.count(chain->second) ? grabbers_duration_[chain->second] : 0;
+            grabbers_duration_[chain->first] = max_duration ? max_duration - chain->second->duration() + chain->second->frameDuration() * 2 : 0;
+            grabbers_duration_.erase(chain->second);
+
+            // loop in chain list: done with this chain
+            chain = grabbers_chain_.erase(chain);
+        }
+        else
+            // loop in chain list
+            ++chain;
+    }
 
 }
 
 
-void Outputs::start(FrameGrabber *ptr)
+void Outputs::start(FrameGrabber *ptr, 
+                    std::chrono::seconds delay,
+                    uint64_t timeout)
 {
+    // delayed start
+    if (delay > std::chrono::seconds(0)) {
+        // start after delay in a separate thread
+        std::thread([ptr, delay, timeout]() {
+            Outputs::manager().delayed[ptr->type()] = true;
+            std::this_thread::sleep_for(delay);
+            // interrupted during delayed start
+            if (Outputs::manager().delayed[ptr->type()] != false) {
+                Outputs::manager().stop( ptr->type() );
+                FrameGrabbing::manager().add(ptr, timeout);
+            }
+        }).detach();
+        return;
+    } 
+
+    // immediate start
     stop( ptr->type() );
-    FrameGrabbing::manager().add(ptr);
+    FrameGrabbing::manager().add(ptr, timeout);        
+}
+    
+void Outputs::chain(FrameGrabber *new_rec)  
+{
+    FrameGrabber *rec = FrameGrabbing::manager().get( new_rec->type() );
+    if (rec != nullptr)
+    {
+        FrameGrabbing::manager().chain(rec, new_rec);
+    }
+}
+
+bool Outputs::pending(FrameGrabber::Type T)
+{
+    return delayed[T];
 }
 
 bool Outputs::busy(FrameGrabber::Type T)
@@ -326,6 +389,9 @@ bool Outputs::busy(FrameGrabber::Type T)
 
 std::string Outputs::info(FrameGrabber::Type T, bool extended)
 {
+    if (delayed[T]) 
+        return "Recording will start shortly...";
+    
     FrameGrabber *ptr = FrameGrabbing::manager().get( T );
     if (ptr != nullptr)
         return ptr->info(extended);
@@ -340,7 +406,33 @@ bool Outputs::enabled(FrameGrabber::Type T)
 
 void Outputs::stop(FrameGrabber::Type T)
 {
-    FrameGrabber *prev = FrameGrabbing::manager().get( T );
-    if (prev != nullptr)
-        prev->stop();
+    // interrupt any delayed start for this type
+    delayed[T] = false;
+    
+    FrameGrabber *ptr = FrameGrabbing::manager().get( T );
+    if (ptr != nullptr)
+        ptr->stop();
+}
+
+bool Outputs::paused(FrameGrabber::Type T)
+{
+    FrameGrabber *ptr = FrameGrabbing::manager().get( T );
+    if (ptr != nullptr)
+        return ptr->paused();
+
+    return false;
+}
+
+void Outputs::pause(FrameGrabber::Type T)
+{
+    FrameGrabber *ptr = FrameGrabbing::manager().get( T );
+    if (ptr != nullptr)
+        ptr->setPaused(true);
+}
+
+void Outputs::unpause(FrameGrabber::Type T)
+{
+    FrameGrabber *ptr = FrameGrabbing::manager().get( T );
+    if (ptr != nullptr)
+        ptr->setPaused(false);
 }

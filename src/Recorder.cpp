@@ -523,8 +523,12 @@ void VideoRecorder::terminate()
 
 std::string VideoRecorder::info(bool extended) const
 {
-    if (extended)
-        return filename();
+    if (extended) {
+        std::string info = "Recorded ";
+        info += std::to_string(frame_count_) + " frames\n";
+        info += std::to_string(buffering_size_) + "% Buffer used\n";
+        return info;
+    }
 
     if (initialized_ && !active_ && !endofstream_)
         return "Saving file...";

@@ -17,9 +17,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <cstdint>
 #include <thread>
 
 // ImGui
+#include "FrameGrabber.h"
 #include "Toolkit/ImGuiToolkit.h"
 #include "imgui_internal.h"
 
@@ -42,10 +44,12 @@
 
 
 OutputPreviewWindow::OutputPreviewWindow() : WorkspaceWindow("OutputPreview"),
-    video_recorder_(nullptr), 
     magnifying_glass(false)
 {
-
+    recorder_type_ = FrameGrabber::GRABBER_VIDEO;
+    if (GPUVideoRecorder::isAvailable())
+        recorder_type_ = FrameGrabber::GRABBER_GPU;
+    
     recordFolderDialog = new DialogToolkit::OpenFolderDialog("Recording Location");
 }
 
@@ -79,24 +83,6 @@ void OutputPreviewWindow::Update()
 {
     WorkspaceWindow::Update();
 
-    // management of video_recorders
-    if ( !_video_recorders.empty() ) {
-        // check that delayed trigger finished
-        if (_video_recorders.back().wait_for(std::chrono::milliseconds(4)) == std::future_status::ready ) {
-            video_recorder_ = _video_recorders.back().get();
-            FrameGrabbing::manager().add(video_recorder_);
-            _video_recorders.pop_back();
-        }
-    }
-    // verify the video recorder is valid (change to nullptr if invalid)
-    FrameGrabbing::manager().verify( (FrameGrabber**) &video_recorder_);
-    if (video_recorder_ // if there is an ongoing recorder
-        && Settings::application.record.timeout < RECORD_MAX_TIMEOUT  // and if the timeout is valid
-        && video_recorder_->duration() > Settings::application.record.timeout ) // and the timeout is reached
-    {
-        video_recorder_->stop();
-    }
-
 }
 
 VideoRecorder *delayTrigger(VideoRecorder *g, std::chrono::milliseconds delay) {
@@ -106,31 +92,49 @@ VideoRecorder *delayTrigger(VideoRecorder *g, std::chrono::milliseconds delay) {
 
 void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
 {
-    if (video_recorder_) {
-        // prepare for next time user open new source panel to show the recording
-        if (Settings::application.recentRecordings.load_at_start)
-            UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING);
-        // 'save & continue'
-        if ( save_and_continue) {
-            VideoRecorder *rec = new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()));
-            FrameGrabbing::manager().chain(video_recorder_, rec);
-            video_recorder_ = rec;
-        }
-        // normal case: Ctrl+R stop recording
-        else
-            // stop recording
-            video_recorder_->stop();
+    if (Outputs::manager().enabled( recorder_type_ ) ) {
+        Outputs::manager().stop( recorder_type_ );
     }
+    else if (save_and_continue) {
+        if (recorder_type_ == FrameGrabber::GRABBER_VIDEO)
+            Outputs::manager().chain(
+                new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
+            );
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+        else if (recorder_type_ == FrameGrabber::GRABBER_GPU)
+            Outputs::manager().chain(
+                new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
+            );
+#endif
+    } 
     else {
-        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
-                                                  std::chrono::seconds(Settings::application.record.delay)) );
+        uint64_t timeout = Settings::application.record.timeout;
+        if (timeout >= RECORD_MAX_TIMEOUT)
+            timeout = 0;
+        
+        if (recorder_type_ == FrameGrabber::GRABBER_VIDEO)
+            Outputs::manager().start(
+                new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
+                std::chrono::seconds(Settings::application.record.delay), timeout
+            );
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+        else if (recorder_type_ == FrameGrabber::GRABBER_GPU)
+            Outputs::manager().start(
+                new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
+                std::chrono::seconds(Settings::application.record.delay), timeout
+            );
+#endif
     }
 }
 
 void OutputPreviewWindow::ToggleRecordPause()
 {
-    if (video_recorder_) {
-        video_recorder_->setPaused( !video_recorder_->paused() );
+    if (Outputs::manager().enabled( recorder_type_ ) )
+    {
+        if (Outputs::manager().paused( recorder_type_ ))
+            Outputs::manager().unpause( recorder_type_ );
+        else
+            Outputs::manager().pause( recorder_type_ );
     }
 }
 
@@ -247,7 +251,7 @@ void OutputPreviewWindow::Render()
                 ImGui::PopStyleColor(1);
 
                 // temporary disabled
-                if (!_video_recorders.empty()) {
+                if (Outputs::manager().pending(recorder_type_)) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     ImGui::MenuItem( MENU_RECORD, SHORTCUT_RECORD, false, false);
                     ImGui::MenuItem( MENU_RECORDPAUSE, SHORTCUT_RECORDPAUSE, false, false);
@@ -255,22 +259,22 @@ void OutputPreviewWindow::Render()
                     ImGui::PopStyleColor(1);
                 }
                 // Stop recording menu (recorder already exists)
-                else if (video_recorder_) {
+                else if (Outputs::manager().enabled(recorder_type_)) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));                    
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", SHORTCUT_RECORD) ) {
                         // prepare for next time user open new source panel to show the recording
                         if (Settings::application.recentRecordings.load_at_start)
                             UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING);
                         // stop recorder
-                        video_recorder_->stop();
+                        Outputs::manager().stop(recorder_type_);
                     }
                     // offer the Pause recording
-                    if (video_recorder_->paused()) {
+                    if (Outputs::manager().paused( recorder_type_ )) {
                         if (ImGui::MenuItem(ICON_FA_PAUSE_CIRCLE "  Resume Record", SHORTCUT_RECORDCONT))
-                            video_recorder_->setPaused(false);
+                            Outputs::manager().unpause(recorder_type_);
                     } else {
                         if (ImGui::MenuItem(MENU_RECORDPAUSE, SHORTCUT_RECORDCONT))
-                            video_recorder_->setPaused(true);
+                            Outputs::manager().pause(recorder_type_);
                     }
                     // offer the 'save & continue' recording
                     if ( ImGui::MenuItem( MENU_RECORDCONT, SHORTCUT_RECORDCONT) ) {
@@ -278,10 +282,13 @@ void OutputPreviewWindow::Render()
                         if (Settings::application.recentRecordings.load_at_start)
                             UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING);
                         // create a new recorder chainned to the current one
-                        VideoRecorder *rec = new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()));
-                        FrameGrabbing::manager().chain(video_recorder_, rec);
-                        // swap recorder
-                        video_recorder_ = rec;
+                        if (recorder_type_ == FrameGrabber::GRABBER_VIDEO)
+                            Outputs::manager().chain(new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+                        else if (recorder_type_ == FrameGrabber::GRABBER_GPU)
+                            Outputs::manager().chain(new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
+#endif
+
                     }
                     ImGui::PopStyleColor(1);
                 }
@@ -289,9 +296,21 @@ void OutputPreviewWindow::Render()
                 else {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.9f));
                     if ( ImGui::MenuItem( MENU_RECORD, SHORTCUT_RECORD) ) {
-                        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger,
-                                                                  new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
-                                                                  std::chrono::seconds(Settings::application.record.delay)) );
+                        uint64_t timeout = Settings::application.record.timeout;
+                        if (timeout >= RECORD_MAX_TIMEOUT)
+                            timeout = 0;
+                        if (recorder_type_ == FrameGrabber::GRABBER_VIDEO)
+                            Outputs::manager().start(
+                                new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
+                                std::chrono::seconds(Settings::application.record.delay), timeout
+                            );
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+                        else if (recorder_type_ == FrameGrabber::GRABBER_GPU)
+                            Outputs::manager().start(
+                                new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
+                                std::chrono::seconds(Settings::application.record.delay), timeout
+                            );
+#endif
                     }
                     ImGui::MenuItem( MENU_RECORDPAUSE, SHORTCUT_RECORDPAUSE, false, false);
                     ImGui::MenuItem( MENU_RECORDCONT, SHORTCUT_RECORDCONT, false, false);
@@ -300,12 +319,8 @@ void OutputPreviewWindow::Render()
 
                 // Options menu if not recording
                 ImGui::Separator();
-                if (video_recorder_) {
-                    std::string info = "Recorded ";
-                    info += std::to_string(video_recorder_->frames()) + " frames";
-                    ImGui::MenuItem(info.c_str(), nullptr, false, false);
-                    info = std::to_string(video_recorder_->buffering()) + "% Buffer used";
-                    ImGui::MenuItem(info.c_str(), nullptr, false, false);
+                if (Outputs::manager().enabled(recorder_type_)) {
+                    ImGui::MenuItem(Outputs::manager().info(recorder_type_, true).c_str(), nullptr, false, false);
                 }
                 else {
                     ImGui::MenuItem("Settings", nullptr, false, false);
@@ -409,9 +424,10 @@ void OutputPreviewWindow::Render()
                 ImGui::PopStyleColor(1);
 
                 // Display list of active stream
-                if (ls.size()>0 || Outputs::manager().enabled( FrameGrabber::GRABBER_BROADCAST ) || 
-                                   Outputs::manager().enabled( FrameGrabber::GRABBER_SHM ) || 
-                                   Outputs::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) {
+                if (ls.size()>0 || Outputs::manager().enabled(
+                        FrameGrabber::GRABBER_BROADCAST,
+                        FrameGrabber::GRABBER_SHM,
+                        FrameGrabber::GRABBER_LOOPBACK )) {
                     ImGui::Separator();
                     ImGui::MenuItem("Active streams:", nullptr, false, false);
 
@@ -533,14 +549,14 @@ void OutputPreviewWindow::Render()
         // icon indicators
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         // recording indicator
-        if (video_recorder_)
+        if (Outputs::manager().enabled( recorder_type_ ))
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
-            ImGui::Text(ICON_FA_CIRCLE " %s", video_recorder_->info().c_str() );
+            ImGui::Text(ICON_FA_CIRCLE " %s", Outputs::manager().info( recorder_type_ ).c_str() );
             ImGui::PopStyleColor(1);
         }
-        else if (!_video_recorders.empty())
+        else if (Outputs::manager().pending( recorder_type_ ))
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
             static double anim = 0.f;
