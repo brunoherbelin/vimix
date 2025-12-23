@@ -89,26 +89,28 @@ VideoRecorder *delayTrigger(VideoRecorder *g, std::chrono::milliseconds delay) {
 void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
 {
     if (Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU  ) ) {
-        Outputs::manager().stop( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU  );
-    }
-    else if (save_and_continue) {
+        if (save_and_continue) {
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-        if ( GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
-            Outputs::manager().chain(
-                new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
-            );
-        } else
+            if ( GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
+                Outputs::manager().chain(
+                    new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
+                );
+            } else
 #endif
-        {
-            Outputs::manager().chain(
-                new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
-            );
-        }
-    } 
+            {
+                Outputs::manager().chain(
+                    new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
+                );
+            }
+        } 
+        else  
+            Outputs::manager().stop( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU  );
+    }
     else {
         uint64_t timeout = Settings::application.record.timeout;
         if (timeout >= RECORD_MAX_TIMEOUT)
             timeout = 0;
+
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
         if ( GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
             Outputs::manager().start(
@@ -269,10 +271,10 @@ void OutputPreviewWindow::Render()
                     }
                     // offer the Pause recording
                     if (Outputs::manager().paused( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU )) {
-                        if (ImGui::MenuItem(ICON_FA_PAUSE_CIRCLE "  Resume Record", SHORTCUT_RECORDCONT))
+                        if (ImGui::MenuItem(ICON_FA_PAUSE_CIRCLE "  Resume Record", SHORTCUT_RECORDPAUSE))
                             Outputs::manager().unpause(FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU);
                     } else {
-                        if (ImGui::MenuItem(MENU_RECORDPAUSE, SHORTCUT_RECORDCONT))
+                        if (ImGui::MenuItem(MENU_RECORDPAUSE, SHORTCUT_RECORDPAUSE))
                             Outputs::manager().pause(FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU);
                     }
                     // offer the 'save & continue' recording
