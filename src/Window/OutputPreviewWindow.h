@@ -11,8 +11,6 @@ class Loopback;
 
 class OutputPreviewWindow : public WorkspaceWindow
 {
-    FrameGrabber::Type recorder_type_;
-
     // dialog to select record location
     DialogToolkit::OpenFolderDialog *recordFolderDialog;
 

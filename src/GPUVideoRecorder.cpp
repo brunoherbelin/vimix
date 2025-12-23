@@ -139,14 +139,17 @@ std::string GPUVideoRecorder::buildPipeline(Profile profile)
     return pipeline;
 }
 
-bool GPUVideoRecorder::isAvailable()
-{
-    // Check for at least one available GPU encoder
-    for (int i = 0; i < PROFILE_COUNT; ++i) {
-        if (isEncoderAvailable(static_cast<Profile>(i))) {
-            return true;
-        }
-    }
+bool GPUVideoRecorder::hasProfile(int i)
+{   
+    if (i < 0 || i > 3)
+        return false;
+
+    if (isEncoderAvailable(static_cast<Profile>(i))) 
+        return true;
+    
+    if (isEncoderAvailable(static_cast<Profile>(i + 4))) 
+        return true;
+
     return false;
 }
 

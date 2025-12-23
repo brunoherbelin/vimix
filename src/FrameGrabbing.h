@@ -297,6 +297,27 @@ public:
     bool busy(FrameGrabber::Type type);
 
     /**
+     * @brief Check if any of the given grabber types are busy
+     * @tparam Types Variadic template for multiple FrameGrabber::Type arguments
+     * @param first First FrameGrabber::Type to check
+     * @param rest Additional FrameGrabber::Type arguments (0 or more)
+     * @return true if ANY of the given types are busy, false otherwise
+     *
+     * @example
+     * @code
+     * // Check if any output is busy processing
+     * if (Outputs::manager().busy(FrameGrabber::GRABBER_VIDEO,
+     *                             FrameGrabber::GRABBER_BROADCAST)) {
+     *     // At least one is actively processing frames
+     * }
+     * @endcode
+     */
+    template<typename... Types>
+    bool busy(FrameGrabber::Type first, Types... rest) {
+        return busy(first) || busy(rest...);
+    }
+
+    /**
      * @brief Get information string about a grabber
      * @param type The FrameGrabber::Type to query
      * @param extended If true, return detailed info; if false, return brief info
@@ -305,7 +326,44 @@ public:
      * @example For GRABBER_VIDEO: "Recording: output.mp4"
      * @example For GRABBER_BROADCAST: "srt://localhost:9998"
      */
-    std::string info(FrameGrabber::Type type, bool extended = false);
+    std::string info(bool extended, FrameGrabber::Type type);
+
+    /**
+     * @brief Get concatenated information strings for multiple grabber types
+     * @tparam Types Variadic template for multiple FrameGrabber::Type arguments
+     * @param extended If true, return detailed info; if false, return brief info
+     * @param first First FrameGrabber::Type to query
+     * @param rest Additional FrameGrabber::Type arguments (0 or more)
+     * @return Concatenated string with info for all types, separated by newlines
+     *
+     * Each enabled grabber's info is on a separate line. Disabled grabbers are skipped.
+     *
+     * @example
+     * @code
+     * // Get info for all active outputs
+     * std::string all_info = Outputs::manager().info(false,
+     *     FrameGrabber::GRABBER_VIDEO,
+     *     FrameGrabber::GRABBER_BROADCAST,
+     *     FrameGrabber::GRABBER_SHM);
+     * // Returns: "Recording: file.mp4\nsrt://localhost:9998\nShared Memory"
+     * @endcode
+     */
+    template<typename... Types>
+    std::string info(bool extended, FrameGrabber::Type first, Types... rest) {
+        std::string result = info(extended, first);
+        if constexpr (sizeof...(rest) > 0) {
+            std::string rest_info = info(extended, rest...);
+            // If current result is "Disabled", replace with rest_info
+            if (result == "Disabled") {
+                result = rest_info;
+            }
+            // Otherwise, append rest_info if it's not "Disabled" or empty
+            else if (rest_info != "Disabled" && !rest_info.empty()) {
+                result += "\n" + rest_info;
+            }
+        }
+        return result;
+    }
 
     /**
      * @brief Stop a running grabber
@@ -315,6 +373,11 @@ public:
      * and finalize output (close file, disconnect stream, etc.).
      */
     void stop(FrameGrabber::Type type);
+    template<typename... Types>
+    void stop(FrameGrabber::Type first, Types... rest) {
+        stop(first);
+        stop(rest...);
+    }
 
     /**
      * @brief Check if a grabber is paused
@@ -322,6 +385,10 @@ public:
      * @return true if grabber is paused, false if running or not active
      */
     bool paused(FrameGrabber::Type type);
+    template<typename... Types>
+    bool paused(FrameGrabber::Type first, Types... rest) {
+        return paused(first) || paused(rest...);
+    }
 
     /**
      * @brief Pause a running grabber
@@ -331,6 +398,11 @@ public:
      * Useful for video recording - pause without stopping the file.
      */
     void pause(FrameGrabber::Type type);
+    template<typename... Types>
+    void pause(FrameGrabber::Type first, Types... rest) {
+        pause(first);
+        pause(rest...);
+    }
 
     /**
      * @brief Resume a paused grabber
@@ -339,6 +411,11 @@ public:
      * Continues frame capture after pause().
      */
     void unpause(FrameGrabber::Type type);
+    template<typename... Types>
+    void unpause(FrameGrabber::Type first, Types... rest) {
+        unpause(first);
+        unpause(rest...);
+    }
 };
 
 

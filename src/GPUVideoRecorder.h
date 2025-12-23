@@ -56,7 +56,7 @@ public:
     GPUVideoRecorder(const std::string &basename = std::string());
     virtual ~GPUVideoRecorder();
 
-    static bool isAvailable();
+    static bool hasProfile(int index);
     FrameGrabber::Type type () const override { return FrameGrabber::GRABBER_GPU; }
 
     /**
@@ -155,17 +155,6 @@ private:
     // Build pipeline description
     std::string buildPipeline(Profile profile);
 };
-
-#else
-
-namespace GPUVideoRecorder
-{
-    inline bool isAvailable()
-    {
-        return false;
-    }
-}
-
 
 #endif // USE_GST_OPENGL_SYNC_HANDLER
 

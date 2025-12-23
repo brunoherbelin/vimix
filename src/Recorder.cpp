@@ -526,7 +526,8 @@ std::string VideoRecorder::info(bool extended) const
     if (extended) {
         std::string info = "Recorded ";
         info += std::to_string(frame_count_) + " frames\n";
-        info += std::to_string(buffering_size_) + "% Buffer used\n";
+        info += std::to_string(buffering()) + "% Buffer used\n";
+        info += std::string(profile_name[Settings::application.record.profile]);
         return info;
     }
 

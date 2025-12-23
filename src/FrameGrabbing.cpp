@@ -387,7 +387,7 @@ bool Outputs::busy(FrameGrabber::Type T)
     return false;
 }
 
-std::string Outputs::info(FrameGrabber::Type T, bool extended)
+std::string Outputs::info(bool extended, FrameGrabber::Type T)
 {
     if (delayed[T]) 
         return "Recording will start shortly...";
