@@ -2422,7 +2422,7 @@ void ToolBox::Render()
     ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
-    if ( !ImGui::Begin(IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox,  ImGuiWindowFlags_MenuBar) )
+    if ( !ImGui::Begin(IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox,  ImGuiWindowFlags_MenuBar  | ImGuiWindowFlags_NoTitleBar) )
     {
         ImGui::End();
         return;
@@ -2431,18 +2431,18 @@ void ToolBox::Render()
     // Menu Bar
     if (ImGui::BeginMenuBar())
     {
-        if (ImGui::BeginMenu("Render"))
+        if (ImGuiToolkit::IconButton(4,16))
+            Settings::application.widget.toolbox = false;
+
+        if (ImGui::BeginMenu(IMGUI_TITLE_TOOLBOX))
         {
             if ( ImGui::MenuItem( MENU_CAPTUREGUI, SHORTCUT_CAPTURE_GUI) )
                 UserInterface::manager().StartScreenshot();
 
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Gui"))
-        {
-            ImGui::MenuItem("Sandbox", nullptr, &show_sandbox);
-            ImGui::MenuItem("Icons", nullptr, &show_icons_window);
+            ImGui::Separator();
             ImGui::MenuItem("Demo ImGui", nullptr, &show_demo_window);
+            ImGui::MenuItem("Icons", nullptr, &show_icons_window);
+            ImGui::MenuItem("Sandbox", nullptr, &show_sandbox);
 
             ImGui::EndMenu();
         }

@@ -3,7 +3,6 @@
 
 #include "Toolkit/DialogToolkit.h"
 #include "WorkspaceWindow.h"
-#include "FrameGrabber.h"
 
 class VideoRecorder;
 class ShmdataBroadcast;

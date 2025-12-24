@@ -148,7 +148,7 @@ void FrameGrabbing::clearAll()
 }
 
 
-void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
+void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
 {
     if (frame_buffer == nullptr)
         return;
@@ -293,7 +293,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer)
             FrameGrabber *rec = *iter;
 
             uint64_t max_duration = grabbers_duration_.count(rec) ? grabbers_duration_[rec] : 0;
-            if (max_duration > 0 && rec->duration() >= max_duration - rec->frameDuration()) 
+            if (max_duration > 0 && rec->duration() + rec->frameDuration() + dt_millisec >= max_duration  ) 
                 rec->stop();
                 
             rec->addFrame(frame_buffer->texture(), caps_);

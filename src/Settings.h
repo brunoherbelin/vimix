@@ -197,7 +197,7 @@ struct RenderConfig
     float fading;
     bool gpu_decoding;
     bool gpu_decoding_available;
-    bool gst_glmemory_texturing;
+    bool gst_glmemory_context;
 
     RenderConfig() {
         disabled = false;
@@ -210,7 +210,7 @@ struct RenderConfig
         fading = 0.0;
         gpu_decoding = true;
         gpu_decoding_available = false;
-        gst_glmemory_texturing = true;
+        gst_glmemory_context = true;
     }
 };
 

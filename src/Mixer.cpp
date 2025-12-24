@@ -210,7 +210,7 @@ void Mixer::update()
     session_->update(dt_);
 
     // grab frames to recorders & streamers
-    FrameGrabbing::manager().grabFrame(session_->frame());
+    FrameGrabbing::manager().grabFrame(session_->frame(), static_cast<guint64>(dt__));
 
     // manage sources which failed update
     if (session_->ready()) {

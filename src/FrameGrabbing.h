@@ -127,7 +127,7 @@ protected:
      * Called by Session after each render. Uses PBOs for efficient GPU readback.
      * Only accessible to friend class Mixer.
      */
-    void grabFrame(FrameBuffer *frame_buffer);
+    void grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec);
 
 private:
     std::list<FrameGrabber *> grabbers_;

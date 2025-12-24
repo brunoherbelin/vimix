@@ -90,7 +90,7 @@ MediaPlayer::MediaPlayer()
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
     // try to use GLMemory for zero-copy GPU textures
-    use_gl_memory_ = Settings::application.render.gst_glmemory_texturing;
+    use_gl_memory_ = Settings::application.render.gst_glmemory_context;
 #endif
 
     // OpenGL texture
