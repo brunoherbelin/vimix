@@ -13,10 +13,6 @@ The main rendering loop operates at a fixed ~62 FPS framerate with callbacks for
 
 ## 1. Main Application Loop
 
-### Location
-- **File**: `/home/bh/Claude/VimixDev/vimix/src/main.cpp`
-- **Loop**: Lines 261-262
-
 ### Loop Structure
 ```cpp
 // Main rendering loop (lines 261-262)
@@ -42,7 +38,6 @@ while ( Rendering::manager().isActive() )
 ## 2. Main Rendering Loop Implementation
 
 ### Location
-- **File**: `/home/bh/Claude/VimixDev/vimix/src/RenderingManager.cpp`
 - **Method**: `Rendering::draw()` (lines 608-673)
 
 ### Rendering Pipeline Flow
@@ -96,7 +91,6 @@ Rendering::draw()
 ## 3. Scene Update and Rendering (Mixer)
 
 ### Location
-- **File**: `/home/bh/Claude/VimixDev/vimix/src/Mixer.cpp`
 - **Methods**: `Mixer::update()` (lines 86-276), `Mixer::draw()` (lines 278-283)
 
 ### Update Phase (`prepare()` callback)
@@ -138,7 +132,7 @@ The actual rendering is delegated to the View's draw method.
 
 ### Source Architecture
 
-**Base Class**: `/home/bh/Claude/VimixDev/vimix/src/Source/Source.h`
+**Base Class**: `vimix/src/Source/Source.h`
 
 Source hierarchy:
 ```
@@ -171,7 +165,7 @@ virtual FrameBuffer *frame() const; // Get output texture
 
 ### MediaSource (Primary Video Source) Flow
 
-**File**: `/home/bh/Claude/VimixDev/vimix/src/Source/MediaSource.cpp`
+**File**: `vimix/src/Source/MediaSource.cpp`
 
 ```
 MediaSource::update(dt)
@@ -191,7 +185,7 @@ MediaSource::render()
 
 ### MediaPlayer Class
 
-**Location**: `/home/bh/Claude/VimixDev/vimix/src/MediaPlayer.h` (Lines 59-434)
+**Location**: `/vimix/src/MediaPlayer.h` (Lines 59-434)
 
 Key components:
 ```cpp
@@ -220,7 +214,7 @@ class MediaPlayer {
 
 ### Pipeline Structure
 
-**File**: `/home/bh/Claude/VimixDev/vimix/src/MediaPlayer.cpp`
+**File**: `/vimix/src/MediaPlayer.cpp`
 
 ```
 GStreamer Pipeline:
@@ -298,7 +292,7 @@ static GstFlowReturn callback_new_sample(GstAppSink *sink, gpointer data)
 
 ### Session Class
 
-**Location**: `/home/bh/Claude/VimixDev/vimix/src/Session.h`
+**Location**: `/vimix/src/Session.h`
 
 ```cpp
 class Session {
@@ -316,7 +310,7 @@ class Session {
 
 ### RenderView (Composition)
 
-**Location**: `/home/bh/Claude/VimixDev/vimix/src/View/RenderView.h`
+**Location**: `/vimix/src/View/RenderView.h`
 
 ```cpp
 class RenderView : public View {
@@ -356,7 +350,6 @@ Result: frame() returns the composed image
 ## 7. GUI Rendering (ImGui)
 
 ### Location
-- **File**: `/home/bh/Claude/VimixDev/vimix/src/UserInterfaceManager.cpp`
 - **Init**: `UserInterface::Init()` (lines 117-150)
 - **Frame Start**: `UserInterface::NewFrame()` (lines 866-871)
 - **Render**: `UserInterface::Render()` (lines 1046-1047)
