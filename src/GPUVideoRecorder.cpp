@@ -89,6 +89,8 @@ GPUVideoRecorder::~GPUVideoRecorder()
 
 bool GPUVideoRecorder::isEncoderAvailable(Profile profile)
 {
+    if (!GstToolkit::has_feature("glcolorconvert"))
+        return false;
     return GstToolkit::has_feature(profile_encoder[profile]);
 }
 
