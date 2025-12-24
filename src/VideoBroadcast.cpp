@@ -70,9 +70,11 @@ bool VideoBroadcast::available()
 
         if (!srt_sink_.empty())
         {
-            if (Settings::application.render.gpu_decoding) {
+            if (Settings::application.render.gpu_decoding &&
+                GstToolkit::has_feature("glupload") &&
+                GstToolkit::has_feature("glcolorconvert")) {
                 for (auto config = srt_encoder_alternatives_.cbegin();
-                     config != srt_encoder_alternatives_.cend() && srt_encoder_.empty(); ++config) {
+                    config != srt_encoder_alternatives_.cend() && srt_encoder_.empty(); ++config) {
                     if ( GstToolkit::has_feature(config->first) ) {
                         srt_encoder_ = config->second;
                         if (config->first != srt_encoder_alternatives_.back().first)
