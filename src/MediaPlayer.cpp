@@ -474,6 +474,11 @@ void MediaPlayer::execute_open()
     if (media_.isimage)
         use_gl_memory_ = false; // disable GLMemory for images to avoid issues with some plugins
 
+    // Try to create glsinkbin to automatically handle GL upload and conversion
+    GstElement *glsinkbin = gst_element_factory_make("glsinkbin", "glsink");
+    if (!glsinkbin) 
+        use_gl_memory_ = false;
+
     if (use_gl_memory_) {
         // Create caps that accept BOTH GLMemory and system memory
         // This allows glsinkbin to link properly
@@ -539,19 +544,11 @@ void MediaPlayer::execute_open()
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
     if (use_gl_memory_) {
-        // Try to create glsinkbin to automatically handle GL upload and conversion
-        GstElement *glsinkbin = gst_element_factory_make("glsinkbin", "glsink");
-
-        if (glsinkbin) {
-            // glsinkbin wraps our appsink and automatically inserts:
-            // - glupload (for GLMemory)
-            // - glcolorconvert (for NV12/I420 -> RGBA conversion in shaders)
-            g_object_set(G_OBJECT(glsinkbin), "sink", sink, NULL);
-            video_sink = glsinkbin;
-        } 
-        else {
-            use_gl_memory_ = false;
-        }
+        // glsinkbin wraps our appsink and automatically inserts:
+        // - glupload (for GLMemory)
+        // - glcolorconvert (for NV12/I420 -> RGBA conversion in shaders)
+        g_object_set(G_OBJECT(glsinkbin), "sink", sink, NULL);
+        video_sink = glsinkbin;
     }
 #endif
 

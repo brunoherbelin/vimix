@@ -71,20 +71,11 @@ GPUVideoRecorder::~GPUVideoRecorder()
     if (active_)
         stop();
 
-    if (src_)
-        gst_object_unref(src_);
-    if (caps_)
-        gst_caps_unref(caps_);
     if (gl_context_)
         gst_object_unref(gl_context_);
     if (gl_display_)
         gst_object_unref(gl_display_);
-    if (timer_)
-        gst_object_unref(timer_);
-    if (pipeline_) {
-        gst_element_set_state(pipeline_, GST_STATE_NULL);
-        gst_object_unref(pipeline_);
-    }
+    
 }
 
 bool GPUVideoRecorder::isEncoderAvailable(Profile profile)
