@@ -400,12 +400,18 @@ std::string VideoStreamer::init(GstCaps *caps)
              config != NetworkToolkit::stream_h264_send_pipeline.cend() && !found_harware_acceleration; ++config) {
             if ( GstToolkit::has_feature(config->first) ) {
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-                description += "glupload ! glcolorconvert ! ";
-                Log::Info("Video Streamer with glupload & GPU color conversion");
+                if ( GstToolkit::has_feature("glupload") &&
+                     GstToolkit::has_feature("glcolorconvert") ) {
+                    description += "glupload ! glcolorconvert ! ";
+                    Log::Info("Video Streamer with glupload & GPU color conversion");
+                }
+                else 
 #endif
-                description += config->second;
-                found_harware_acceleration = true;
-                Log::Info("Video Streamer using hardware accelerated encoder (%s)", config->first.c_str());
+                {
+                    description += config->second;
+                    found_harware_acceleration = true;
+                    Log::Info("Video Streamer using hardware accelerated encoder (%s)", config->first.c_str());
+                }
             }
         }
     }

@@ -334,6 +334,8 @@ std::string VideoRecorder::init(GstCaps *caps)
     // This uploads system memory to GPU and does color conversion in GPU shader
     if (Settings::application.render.gpu_decoding &&
         (int) hardware_encoder.size() > 0 &&
+        GstToolkit::has_feature("glupload") &&  
+        GstToolkit::has_feature("glcolorconvert") &&  
         GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile])) {
         // glupload: system memory → GLMemory (in GStreamer's thread)
         // glcolorconvert: GPU color conversion (RGBA → NV12 for VAAPI, passthrough for NVIDIA)
