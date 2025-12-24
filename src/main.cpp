@@ -33,6 +33,7 @@
 #include "Metronome.h"
 #include "Audio.h"
 #include "VideoBroadcast.h"
+#include "FrameGrabbing.h"
 
 #if defined(APPLE)
 extern "C"{
@@ -253,7 +254,7 @@ int main(int argc, char *argv[])
     /// Broadcast launch
     ///
     if (broadcastRequested > 0)
-        Broadcast::manager().start( new VideoBroadcast(broadcastRequested));
+        Outputs::manager().start( new VideoBroadcast(broadcastRequested));
 
     ///
     /// Main LOOP

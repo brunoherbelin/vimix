@@ -74,7 +74,6 @@ public:
     inline bool ctrlModifier() const { return ctrl_modifier_active; }
     inline bool altModifier() const  { return alt_modifier_active; }
     inline bool shiftModifier() const  { return shift_modifier_active; }
-    inline bool isRecording() const { return outputcontrol.isRecording(); }
 
     void showPannel(int id = -1);
     void setSourceInPanel(int index);

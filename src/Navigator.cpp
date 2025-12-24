@@ -53,7 +53,6 @@
 #include "RenderingManager.h"
 #include "Connection.h"
 #include "ControlManager.h"
-#include "FrameGrabber.h"
 #include "Recorder.h"
 #include "MultiFileRecorder.h"
 #include "Audio.h"
@@ -64,6 +63,7 @@
 #include "SessionCreator.h"
 #include "Window/WorkspaceWindow.h"
 #include "UserInterfaceManager.h"
+#include "FrameGrabbing.h"
 
 #include "Navigator.h"
 
@@ -2082,7 +2082,8 @@ void Navigator::RenderMainPannelSession()
             glm::ivec2 custom = glm::ivec2(output->resolution());
             if (preset.x > -1) {
                 // cannot change resolution when recording
-                if ( UserInterface::manager().outputcontrol.isRecording() ) {
+                if ( Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO ) ||
+                     Outputs::manager().enabled( FrameGrabber::GRABBER_GPU ) ) {
                     // show static info (same size than combo)
                     static char dummy_str[512];
                     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
@@ -2977,7 +2978,7 @@ void Navigator::RenderMainPannelSettings()
 
     if (Settings::application.pannel_settings[0]){
 
-        // select CODEC and FPS
+        // select Encoder codec
         ImGui::SetCursorPosX(align_x);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("##Codec",
@@ -2988,6 +2989,7 @@ void Navigator::RenderMainPannelSettings()
         if (ImGuiToolkit::TextButton("Codec"))
             Settings::application.record.profile = 0;
 
+        // select FPS
         ImGui::SetCursorPosX(align_x);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("##Framerate",
@@ -3353,6 +3355,7 @@ void Navigator::RenderMainPannelSettings()
         static bool vsync = (Settings::application.render.vsync > 0);
         static bool multi = (Settings::application.render.multisampling > 0);
         static bool gpu = Settings::application.render.gpu_decoding;
+        static bool glmemory = Settings::application.render.gst_glmemory_context;
         static bool audio = Settings::application.accept_audio;
         bool change = false;
         // hardware support deserves more explanation
@@ -3371,6 +3374,10 @@ void Navigator::RenderMainPannelSettings()
         change |= ImGuiToolkit::ButtonSwitch( "Audio (experimental)", &audio);
 
 #ifndef NDEBUG
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+        change |= ImGuiToolkit::ButtonSwitch( "Gst GLMemory context", &glmemory);
+#endif
         change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Multisample antialiasing", &multi);
 #endif
@@ -3378,6 +3385,7 @@ void Navigator::RenderMainPannelSettings()
             need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
                     multi != (Settings::application.render.multisampling > 0) ||
                     gpu != Settings::application.render.gpu_decoding ||
+                    glmemory != Settings::application.render.gst_glmemory_context ||
                     audio != Settings::application.accept_audio );
         }
 
@@ -3386,6 +3394,7 @@ void Navigator::RenderMainPannelSettings()
             if (ImGui::Button( ICON_FA_POWER_OFF "  Quit & restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
                 Settings::application.render.vsync = vsync ? 1 : 0;
                 Settings::application.render.multisampling = multi ? 3 : 0;
+                Settings::application.render.gst_glmemory_context = glmemory;
                 Settings::application.render.gpu_decoding = gpu;
                 Settings::application.accept_audio = audio;
                 if (UserInterface::manager().TryClose())
@@ -3533,11 +3542,6 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
             UserInterface::manager().showMenuWindows();
             ImGui::EndMenu();
         }
-        // ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + 3.f * ImGui::GetTextLineHeightWithSpacing()) );
-        // if (ImGui::BeginMenu("Bundle")) {
-        //     UserInterface::manager().showMenuBundle();
-        //     ImGui::EndMenu();
-        // }
 
         //
         // Panel content

@@ -10,12 +10,6 @@ class Loopback;
 
 class OutputPreviewWindow : public WorkspaceWindow
 {
-    // frame grabbers
-    VideoRecorder *video_recorder_;
-
-    // delayed trigger for recording
-    std::vector< std::future<VideoRecorder *> > _video_recorders;
-
     // dialog to select record location
     DialogToolkit::OpenFolderDialog *recordFolderDialog;
 
@@ -27,7 +21,6 @@ public:
 
     void ToggleRecord(bool save_and_continue = false);
     void ToggleRecordPause();
-    inline bool isRecording() const { return video_recorder_ != nullptr; }
 
     void ToggleVideoBroadcast();
     void ToggleSharedMemory();

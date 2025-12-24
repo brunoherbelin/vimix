@@ -43,6 +43,7 @@
 #include "Log.h"
 #include "Connection.h"
 #include "Toolkit/NetworkToolkit.h"
+#include "FrameGrabbing.h"
 
 #include "Streamer.h"
 
@@ -386,7 +387,7 @@ std::string VideoStreamer::init(GstCaps *caps)
     }
 
     // create a gstreamer pipeline
-    std::string description = "appsrc name=src ! videoconvert ! ";
+    std::string description = "appsrc name=src ! ";
 
     // prevent eroneous protocol values
     if (config_.protocol < 0 || config_.protocol >= NetworkToolkit::DEFAULT)
@@ -398,6 +399,10 @@ std::string VideoStreamer::init(GstCaps *caps)
         for (auto config = NetworkToolkit::stream_h264_send_pipeline.cbegin();
              config != NetworkToolkit::stream_h264_send_pipeline.cend() && !found_harware_acceleration; ++config) {
             if ( GstToolkit::has_feature(config->first) ) {
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+                description += "glupload ! glcolorconvert ! ";
+                Log::Info("Video Streamer with glupload & GPU color conversion");
+#endif
                 description += config->second;
                 found_harware_acceleration = true;
                 Log::Info("Video Streamer using hardware accelerated encoder (%s)", config->first.c_str());
@@ -405,8 +410,10 @@ std::string VideoStreamer::init(GstCaps *caps)
         }
     }
     // general case: use defined protocols
-    if (!found_harware_acceleration)
+    if (!found_harware_acceleration) {
+        description += "videoconvert ! ";
         description += NetworkToolkit::stream_send_pipeline[config_.protocol];
+    }
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -472,12 +479,6 @@ std::string VideoStreamer::init(GstCaps *caps)
     }
     else {
         return std::string("Video Streamer : Failed to configure frame grabber.");
-    }
-
-    // start recording
-    GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
-    if (ret == GST_STATE_CHANGE_FAILURE) {
-        return std::string("Video Streamer : Failed to start frame grabber.");
     }
 
     // all good

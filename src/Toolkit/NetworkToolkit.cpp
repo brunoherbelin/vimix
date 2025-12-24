@@ -110,9 +110,9 @@ const std::vector<std::string> NetworkToolkit::stream_receive_pipeline {
 
 const std::vector< std::pair<std::string, std::string> > NetworkToolkit::stream_h264_send_pipeline {
 //    {"vtenc_h264_hw", "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! rtph264pay aggregate-mode=1 ! udpsink name=sink"},
-    {"nvh264enc",     "video/x-raw, format=RGBA, framerate=30/1 ! queue max-size-buffers=10 ! "
+    {"nvh264enc",     "queue max-size-buffers=10 ! "
         "nvh264enc rc-mode=1 zerolatency=true ! video/x-h264, profile=(string)main ! h264parse ! rtph264pay aggregate-mode=1 ! udpsink name=sink"},
-    {"vaapih264enc",  "video/x-raw, format=NV12, framerate=30/1 ! queue max-size-buffers=10 ! "
+    {"vaapih264enc",  "queue max-size-buffers=10 ! "
         "vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=(string)main ! h264parse ! rtph264pay aggregate-mode=1 ! udpsink name=sink"}
 };
 

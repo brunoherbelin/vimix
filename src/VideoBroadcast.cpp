@@ -113,7 +113,23 @@ std::string VideoBroadcast::init(GstCaps *caps)
         return std::string("Video Broadcast : Invalid caps");
 
     // create a gstreamer pipeline
-    std::string description = "appsrc name=src ! videoconvert ! ";
+    std::string description = "appsrc name=src ! ";
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    // Use glupload + glcolorconvert for hardware encoders
+    // This uploads system memory to GPU and does color conversion in GPU shader
+    if (srt_encoder_.find("nvh264enc") != std::string::npos ||
+        srt_encoder_.find("vaapih264enc") != std::string::npos) {
+        // glupload: system memory → GLMemory (in GStreamer's thread)
+        // glcolorconvert: GPU color conversion (RGBA → NV12 for VAAPI, passthrough for NVIDIA)
+        description += "glupload ! glcolorconvert ! ";
+        Log::Info("Video Broadcast with glupload & GPU color conversion");
+    } else
+#endif
+    {
+        // CPU path: use regular videoconvert
+        description += "videoconvert ! ";
+    }
 
     // complement pipeline with encoder
     description += VideoBroadcast::srt_encoder_;
@@ -178,12 +194,6 @@ std::string VideoBroadcast::init(GstCaps *caps)
     }
     else {
         return std::string("Video Broadcast : Failed to configure frame grabber.");
-    }
-
-    // start
-    GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
-    if (ret == GST_STATE_CHANGE_FAILURE) {
-        return std::string("Video Broadcast : Failed to start frame grabber.");
     }
 
     // all good

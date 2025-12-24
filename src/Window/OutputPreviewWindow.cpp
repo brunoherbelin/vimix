@@ -17,16 +17,17 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <cstdint>
 #include <thread>
 
 // ImGui
+#include "FrameGrabber.h"
 #include "Toolkit/ImGuiToolkit.h"
 #include "imgui_internal.h"
 
 #include "defines.h"
 #include "Log.h"
 #include "Toolkit/SystemToolkit.h"
-#include "Toolkit/NetworkToolkit.h"
 #include "Settings.h"
 #include "Mixer.h"
 #include "Recorder.h"
@@ -35,16 +36,16 @@
 #include "Loopback.h"
 #include "VideoBroadcast.h"
 #include "ShmdataBroadcast.h"
+#include "FrameGrabbing.h"
+#include "GPUVideoRecorder.h"
 
 #include "UserInterfaceManager.h"
 #include "OutputPreviewWindow.h"
 
 
 OutputPreviewWindow::OutputPreviewWindow() : WorkspaceWindow("OutputPreview"),
-    video_recorder_(nullptr), 
     magnifying_glass(false)
 {
-
     recordFolderDialog = new DialogToolkit::OpenFolderDialog("Recording Location");
 }
 
@@ -78,24 +79,6 @@ void OutputPreviewWindow::Update()
 {
     WorkspaceWindow::Update();
 
-    // management of video_recorders
-    if ( !_video_recorders.empty() ) {
-        // check that file dialog thread finished
-        if (_video_recorders.back().wait_for(std::chrono::milliseconds(4)) == std::future_status::ready ) {
-            video_recorder_ = _video_recorders.back().get();
-            FrameGrabbing::manager().add(video_recorder_);
-            _video_recorders.pop_back();
-        }
-    }
-    // verify the video recorder is valid (change to nullptr if invalid)
-    FrameGrabbing::manager().verify( (FrameGrabber**) &video_recorder_);
-    if (video_recorder_ // if there is an ongoing recorder
-        && Settings::application.record.timeout < RECORD_MAX_TIMEOUT  // and if the timeout is valid
-        && video_recorder_->duration() > Settings::application.record.timeout ) // and the timeout is reached
-    {
-        video_recorder_->stop();
-    }
-
 }
 
 VideoRecorder *delayTrigger(VideoRecorder *g, std::chrono::milliseconds delay) {
@@ -105,49 +88,74 @@ VideoRecorder *delayTrigger(VideoRecorder *g, std::chrono::milliseconds delay) {
 
 void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
 {
-    if (video_recorder_) {
-        // prepare for next time user open new source panel to show the recording
-        if (Settings::application.recentRecordings.load_at_start)
-            UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING);
-        // 'save & continue'
-        if ( save_and_continue) {
-            VideoRecorder *rec = new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()));
-            FrameGrabbing::manager().chain(video_recorder_, rec);
-            video_recorder_ = rec;
-        }
-        // normal case: Ctrl+R stop recording
-        else
-            // stop recording
-            video_recorder_->stop();
+    if (Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU  ) ) {
+        if (save_and_continue) {
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+            if ( Settings::application.render.gst_glmemory_context && 
+                 GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
+                Outputs::manager().chain(
+                    new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
+                );
+            } else
+#endif
+            {
+                Outputs::manager().chain(
+                    new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
+                );
+            }
+        } 
+        else  
+            Outputs::manager().stop( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU  );
     }
     else {
-        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger, new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
-                                                  std::chrono::seconds(Settings::application.record.delay)) );
+        uint64_t timeout = Settings::application.record.timeout;
+        if (timeout >= RECORD_MAX_TIMEOUT)
+            timeout = 0;
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+        if ( Settings::application.render.gst_glmemory_context && 
+             GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
+            Outputs::manager().start(
+                new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
+                std::chrono::seconds(Settings::application.record.delay), timeout
+            );
+        } else 
+#endif
+        {
+            Outputs::manager().start(
+                new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
+                std::chrono::seconds(Settings::application.record.delay), timeout
+            );
+        }
     }
 }
 
 void OutputPreviewWindow::ToggleRecordPause()
 {
-    if (video_recorder_) {
-        video_recorder_->setPaused( !video_recorder_->paused() );
+    if (Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU ) )
+    {
+        if (Outputs::manager().paused( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU ))
+            Outputs::manager().unpause( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU );
+        else
+            Outputs::manager().pause( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU );
     }
 }
 
 void OutputPreviewWindow::ToggleVideoBroadcast()
 {
-    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_BROADCAST ) )
-        Broadcast::manager().stop( FrameGrabber::GRABBER_BROADCAST );
+    if (Outputs::manager().enabled( FrameGrabber::GRABBER_BROADCAST ) )
+        Outputs::manager().stop( FrameGrabber::GRABBER_BROADCAST );
     else {
         if (Settings::application.broadcast_port<1000)
             Settings::application.broadcast_port = BROADCAST_DEFAULT_PORT;
-        Broadcast::manager().start( new VideoBroadcast(Settings::application.broadcast_port));
+        Outputs::manager().start( new VideoBroadcast(Settings::application.broadcast_port));
     }
 }
 
 void OutputPreviewWindow::ToggleSharedMemory()
 {
-    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_SHM ) )
-        Broadcast::manager().stop( FrameGrabber::GRABBER_SHM );
+    if (Outputs::manager().enabled( FrameGrabber::GRABBER_SHM ) )
+        Outputs::manager().stop( FrameGrabber::GRABBER_SHM );
     else {
         // find a folder to put the socket for shm
         std::string _shm_socket_file = Settings::application.shm_socket_path;
@@ -156,22 +164,22 @@ void OutputPreviewWindow::ToggleSharedMemory()
         _shm_socket_file = SystemToolkit::full_filename(_shm_socket_file, ".shm_vimix" + std::to_string(Settings::application.instance_id));
 
         // create shhmdata broadcaster with method
-        Broadcast::manager().start( new ShmdataBroadcast( (ShmdataBroadcast::Method) Settings::application.shm_method, _shm_socket_file));
+        Outputs::manager().start( new ShmdataBroadcast( (ShmdataBroadcast::Method) Settings::application.shm_method, _shm_socket_file));
     }
 }
 
 bool OutputPreviewWindow::ToggleLoopbackCamera()
 {
     bool need_initialization = false;
-    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) 
-        Broadcast::manager().stop( FrameGrabber::GRABBER_LOOPBACK );
+    if (Outputs::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) 
+        Outputs::manager().stop( FrameGrabber::GRABBER_LOOPBACK );
     else {
         if (Settings::application.loopback_camera < 1)
             Settings::application.loopback_camera = LOOPBACK_DEFAULT_DEVICE;
         Settings::application.loopback_camera += Settings::application.instance_id;
 
         try {
-            Broadcast::manager().start( new Loopback(Settings::application.loopback_camera) );
+            Outputs::manager().start( new Loopback(Settings::application.loopback_camera) );
         }
         catch (const std::runtime_error &e) {
             need_initialization = true;
@@ -241,12 +249,12 @@ void OutputPreviewWindow::Render()
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
                 if ( ImGui::MenuItem( MENU_CAPTUREFRAME, SHORTCUT_CAPTURE_DISPLAY) ) {
-                    FrameGrabbing::manager().add(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
+                    Outputs::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
                 }
                 ImGui::PopStyleColor(1);
 
                 // temporary disabled
-                if (!_video_recorders.empty()) {
+                if (Outputs::manager().pending(FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU)) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     ImGui::MenuItem( MENU_RECORD, SHORTCUT_RECORD, false, false);
                     ImGui::MenuItem( MENU_RECORDPAUSE, SHORTCUT_RECORDPAUSE, false, false);
@@ -254,22 +262,22 @@ void OutputPreviewWindow::Render()
                     ImGui::PopStyleColor(1);
                 }
                 // Stop recording menu (recorder already exists)
-                else if (video_recorder_) {
+                else if (Outputs::manager().enabled(FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU)) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));                    
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", SHORTCUT_RECORD) ) {
                         // prepare for next time user open new source panel to show the recording
                         if (Settings::application.recentRecordings.load_at_start)
                             UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING);
                         // stop recorder
-                        video_recorder_->stop();
+                        Outputs::manager().stop(FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU);
                     }
                     // offer the Pause recording
-                    if (video_recorder_->paused()) {
-                        if (ImGui::MenuItem(ICON_FA_PAUSE_CIRCLE "  Resume Record", SHORTCUT_RECORDCONT))
-                            video_recorder_->setPaused(false);
+                    if (Outputs::manager().paused( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU )) {
+                        if (ImGui::MenuItem(ICON_FA_PAUSE_CIRCLE "  Resume Record", SHORTCUT_RECORDPAUSE))
+                            Outputs::manager().unpause(FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU);
                     } else {
-                        if (ImGui::MenuItem(MENU_RECORDPAUSE, SHORTCUT_RECORDCONT))
-                            video_recorder_->setPaused(true);
+                        if (ImGui::MenuItem(MENU_RECORDPAUSE, SHORTCUT_RECORDPAUSE))
+                            Outputs::manager().pause(FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU);
                     }
                     // offer the 'save & continue' recording
                     if ( ImGui::MenuItem( MENU_RECORDCONT, SHORTCUT_RECORDCONT) ) {
@@ -277,10 +285,7 @@ void OutputPreviewWindow::Render()
                         if (Settings::application.recentRecordings.load_at_start)
                             UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING);
                         // create a new recorder chainned to the current one
-                        VideoRecorder *rec = new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()));
-                        FrameGrabbing::manager().chain(video_recorder_, rec);
-                        // swap recorder
-                        video_recorder_ = rec;
+                        ToggleRecord(true);
                     }
                     ImGui::PopStyleColor(1);
                 }
@@ -288,9 +293,7 @@ void OutputPreviewWindow::Render()
                 else {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.9f));
                     if ( ImGui::MenuItem( MENU_RECORD, SHORTCUT_RECORD) ) {
-                        _video_recorders.emplace_back( std::async(std::launch::async, delayTrigger,
-                                                                  new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
-                                                                  std::chrono::seconds(Settings::application.record.delay)) );
+                        ToggleRecord(false);
                     }
                     ImGui::MenuItem( MENU_RECORDPAUSE, SHORTCUT_RECORDPAUSE, false, false);
                     ImGui::MenuItem( MENU_RECORDCONT, SHORTCUT_RECORDCONT, false, false);
@@ -299,12 +302,8 @@ void OutputPreviewWindow::Render()
 
                 // Options menu if not recording
                 ImGui::Separator();
-                if (video_recorder_) {
-                    std::string info = "Recorded ";
-                    info += std::to_string(video_recorder_->frames()) + " frames";
-                    ImGui::MenuItem(info.c_str(), nullptr, false, false);
-                    info = std::to_string(video_recorder_->buffering()) + "% Buffer used";
-                    ImGui::MenuItem(info.c_str(), nullptr, false, false);
+                if (Outputs::manager().enabled(FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU)) {
+                    ImGui::MenuItem(Outputs::manager().info(true, FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU).c_str(), nullptr, false, false);
                 }
                 else {
                     ImGui::MenuItem("Settings", nullptr, false, false);
@@ -389,28 +388,29 @@ void OutputPreviewWindow::Render()
                 // Broadcasting menu
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.9f));
                 if (VideoBroadcast::available()) {
-                    if ( ImGui::MenuItem( ICON_FA_GLOBE "   SRT Broadcast", NULL, Broadcast::manager().enabled( FrameGrabber::GRABBER_BROADCAST ) ) )
+                    if ( ImGui::MenuItem( ICON_FA_GLOBE "   SRT Broadcast", NULL, Outputs::manager().enabled( FrameGrabber::GRABBER_BROADCAST ) ) )
                         ToggleVideoBroadcast();
                 }
 
                 // Shared Memory menu
                 if (ShmdataBroadcast::available()) {
-                    if ( ImGui::MenuItem( ICON_FA_MEMORY "  SHM Shared Memory", NULL, Broadcast::manager().enabled( FrameGrabber::GRABBER_SHM ) ) )
+                    if ( ImGui::MenuItem( ICON_FA_MEMORY "  SHM Shared Memory", NULL, Outputs::manager().enabled( FrameGrabber::GRABBER_SHM ) ) )
                         ToggleSharedMemory();
                 }
 
                 // Loopback camera menu
                 if (Loopback::available()) {
-                    if ( ImGui::MenuItem( ICON_FA_VIDEO "  Loopback Camera", NULL, Broadcast::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) )
+                    if ( ImGui::MenuItem( ICON_FA_VIDEO "  Loopback Camera", NULL, Outputs::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) )
                         openInitializeSystemLoopback = ToggleLoopbackCamera();
                 }
 
                 ImGui::PopStyleColor(1);
 
                 // Display list of active stream
-                if (ls.size()>0 || Broadcast::manager().enabled( FrameGrabber::GRABBER_BROADCAST ) || 
-                                   Broadcast::manager().enabled( FrameGrabber::GRABBER_SHM ) || 
-                                   Broadcast::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) {
+                if (ls.size()>0 || Outputs::manager().enabled(
+                        FrameGrabber::GRABBER_BROADCAST,
+                        FrameGrabber::GRABBER_SHM,
+                        FrameGrabber::GRABBER_LOOPBACK )) {
                     ImGui::Separator();
                     ImGui::MenuItem("Active streams:", nullptr, false, false);
 
@@ -419,36 +419,36 @@ void OutputPreviewWindow::Render()
                         ImGui::Text(" %s ", (*it).c_str() );
 
                     // SRT broadcast description
-                    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_BROADCAST )) {
-                        ImGui::Text(" %s        ", Broadcast::manager().info( FrameGrabber::GRABBER_BROADCAST ).c_str());
+                    if (Outputs::manager().enabled( FrameGrabber::GRABBER_BROADCAST )) {
+                        ImGui::Text(" %s        ", Outputs::manager().info(false, FrameGrabber::GRABBER_BROADCAST ).c_str());
                         // copy text icon to give user the srt link to connect to
                         ImVec2 draw_pos = ImGui::GetCursorPos();
                         ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
-                        std::string moreinfo = Broadcast::manager().info( FrameGrabber::GRABBER_BROADCAST , true);
+                        std::string moreinfo = Outputs::manager().info(true, FrameGrabber::GRABBER_BROADCAST);
                         if (ImGuiToolkit::IconButton( ICON_FA_COPY, moreinfo.c_str()))
                             ImGui::SetClipboardText(moreinfo.c_str());
                         ImGui::SetCursorPos(draw_pos);
                     }
 
                     // Shared memory broadcast description
-                    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_SHM )) {
-                        ImGui::Text(" %s        ", Broadcast::manager().info( FrameGrabber::GRABBER_SHM ).c_str());
+                    if (Outputs::manager().enabled( FrameGrabber::GRABBER_SHM )) {
+                        ImGui::Text(" %s        ", Outputs::manager().info(false, FrameGrabber::GRABBER_SHM ).c_str());
                         // copy text icon to give user the socket path to connect to
                         ImVec2 draw_pos = ImGui::GetCursorPos();
                         ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
-                        std::string moreinfo = Broadcast::manager().info( FrameGrabber::GRABBER_SHM , true);
+                        std::string moreinfo = Outputs::manager().info(true, FrameGrabber::GRABBER_SHM);
                         if (ImGuiToolkit::IconButton( ICON_FA_COPY, moreinfo.c_str()))
                             ImGui::SetClipboardText(moreinfo.c_str());
                         ImGui::SetCursorPos(draw_pos);
                     }
 
                     // Loopback camera description
-                    if (Broadcast::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) {
-                        ImGui::Text(" %s        ", Broadcast::manager().info( FrameGrabber::GRABBER_LOOPBACK ).c_str());
+                    if (Outputs::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) {
+                        ImGui::Text(" %s        ", Outputs::manager().info(false, FrameGrabber::GRABBER_LOOPBACK ).c_str());
                         // copy text icon to give user the device path to connect to
                         ImVec2 draw_pos = ImGui::GetCursorPos();
                         ImGui::SetCursorPos(draw_pos + ImVec2(ImGui::GetContentRegionAvailWidth() - 1.2 * ImGui::GetTextLineHeightWithSpacing(), -0.8 * ImGui::GetFrameHeight()) );
-                        std::string moreinfo = Broadcast::manager().info( FrameGrabber::GRABBER_LOOPBACK , true);
+                        std::string moreinfo = Outputs::manager().info(true, FrameGrabber::GRABBER_LOOPBACK);
                         if (ImGuiToolkit::IconButton( ICON_FA_COPY, moreinfo.c_str()))
                             ImGui::SetClipboardText(moreinfo.c_str());
                         ImGui::SetCursorPos(draw_pos);
@@ -532,14 +532,14 @@ void OutputPreviewWindow::Render()
         // icon indicators
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         // recording indicator
-        if (video_recorder_)
+        if (Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU ))
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
-            ImGui::Text(ICON_FA_CIRCLE " %s", video_recorder_->info().c_str() );
+            ImGui::Text(ICON_FA_CIRCLE " %s", Outputs::manager().info(false, FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU ).c_str() );
             ImGui::PopStyleColor(1);
         }
-        else if (!_video_recorders.empty())
+        else if (Outputs::manager().pending( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU ))
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + r));
             static double anim = 0.f;
@@ -550,10 +550,10 @@ void OutputPreviewWindow::Render()
         }
         // broadcast indicator
         float vertical = r;
-        if (Broadcast::manager().enabled( FrameGrabber::GRABBER_BROADCAST ))
+        if (Outputs::manager().enabled( FrameGrabber::GRABBER_BROADCAST ))
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
-            if (Broadcast::manager().busy( FrameGrabber::GRABBER_BROADCAST ))
+            if (Outputs::manager().busy( FrameGrabber::GRABBER_BROADCAST ))
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));
@@ -562,10 +562,10 @@ void OutputPreviewWindow::Render()
             vertical += 2.f * r;
         }
         // shmdata indicator
-        if (Broadcast::manager().enabled( FrameGrabber::GRABBER_SHM ))
+        if (Outputs::manager().enabled( FrameGrabber::GRABBER_SHM ))
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
-            if (Broadcast::manager().busy( FrameGrabber::GRABBER_SHM ))
+            if (Outputs::manager().busy( FrameGrabber::GRABBER_SHM ))
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));
@@ -574,10 +574,10 @@ void OutputPreviewWindow::Render()
             vertical += 2.f * r;
         }
         // loopback camera indicator
-        if (Broadcast::manager().enabled( FrameGrabber::GRABBER_LOOPBACK ))
+        if (Outputs::manager().enabled( FrameGrabber::GRABBER_LOOPBACK ))
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
-            if (Broadcast::manager().busy( FrameGrabber::GRABBER_LOOPBACK ))
+            if (Outputs::manager().busy( FrameGrabber::GRABBER_LOOPBACK ))
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.4f));

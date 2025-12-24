@@ -974,10 +974,6 @@ void SessionLoader::visit(MediaPlayer &n)
             mediaplayerNode->QueryBoolAttribute("software_decoding", &gpudisable);
             n.setSoftwareDecodingForced(gpudisable);
 
-            bool rewind_on_disabled = false;
-            mediaplayerNode->QueryBoolAttribute("rewind_on_disabled", &rewind_on_disabled);
-            n.setRewindOnDisabled(rewind_on_disabled);
-
             int sync_to_metronome = 0;
             mediaplayerNode->QueryIntAttribute("sync_to_metronome", &sync_to_metronome);
             n.setSyncToMetronome( (Metronome::Synchronicity) sync_to_metronome);
@@ -1076,6 +1072,9 @@ void SessionLoader::visit (Source& s)
     bool p = true;
     sourceNode->QueryBoolAttribute("play", &p);
     s.call( new Play(p, session_) );
+    bool replay = false;
+    sourceNode->QueryBoolAttribute("replay_on_deactivate", &replay);
+    s.setReplayOnDeactivate(replay);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Mixing");
     if (xmlCurrent_) s.groupNode(View::MIXING)->accept(*this);
@@ -1176,6 +1175,14 @@ void SessionLoader::visit (MediaSource& s)
             s.setPath("");
     }
 
+    // backward compatibility // TODO REMOVE IN FUTURE
+    XMLElement* mediaplayerNode = xmlCurrent_->FirstChildElement("MediaPlayer");
+    if (mediaplayerNode) {
+        bool rewind_on_disabled = s.replayOnDeactivate();
+        mediaplayerNode->QueryBoolAttribute("rewind_on_disabled", &rewind_on_disabled);
+        s.setReplayOnDeactivate(rewind_on_disabled);
+    }
+
     // set config media player
     s.mediaplayer()->accept(*this);
 
@@ -1274,17 +1281,19 @@ void SessionLoader::visit (RenderSource& s)
 
 void SessionLoader::visit(Stream &n)
 {
-    XMLElement* streamNode = xmlCurrent_->FirstChildElement("Stream");
 
-    if (streamNode) {
-        bool rewind_on_disabled = false;
-        streamNode->QueryBoolAttribute("rewind_on_disabled", &rewind_on_disabled);
-        n.setRewindOnDisabled(rewind_on_disabled);
-    }
 }
 
 void SessionLoader::visit (StreamSource& s)
 {
+    // backward compatibility // TODO REMOVE IN FUTURE
+    XMLElement* streamNode = xmlCurrent_->FirstChildElement("Stream");
+    if (streamNode) {
+        bool rewind_on_disabled = s.replayOnDeactivate();
+        streamNode->QueryBoolAttribute("rewind_on_disabled", &rewind_on_disabled);
+        s.setReplayOnDeactivate(rewind_on_disabled);
+    }    
+
     // set config stream
     if (s.stream() != nullptr)
         s.stream()->accept(*this);

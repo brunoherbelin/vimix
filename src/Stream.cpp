@@ -55,7 +55,6 @@ Stream::Stream()
     single_frame_ = false;
     live_ = false;
     failed_ = false;
-    rewind_on_disable_ = false;
     decoder_name_ = "";
 
     // start index in frame_ stack
@@ -67,6 +66,7 @@ Stream::Stream()
     pbo_size_ = 0;
     pbo_index_ = 0;
     pbo_next_index_ = 0;
+    need_pbo_refresh_ = false;
 
     // OpenGL texture
     textureindex_ = 0;
@@ -333,13 +333,9 @@ void Stream::execute_open()
     gst_base_sink_set_sync (GST_BASE_SINK(sink), !live_);
 
     bus_ = gst_element_get_bus(pipeline_);
-#ifdef IGNORE_GST_BUS_MESSAGE
-    // avoid filling up bus with messages
-    gst_bus_set_flushing(bus_, true);
-#else
+
     // set message handler for the pipeline's bus
     gst_bus_set_sync_handler(bus_, stream_signal_handler, this, NULL);
-#endif
 
     // all good
     Log::Info("Stream %s Opened '%s' (%d x %d)", std::to_string(id_).c_str(), description.c_str(), width_, height_);
@@ -392,7 +388,6 @@ void Stream::pipeline_terminate( GstElement *p, GstBus *b )
     if (ret == GST_STATE_CHANGE_ASYNC)
         gst_element_get_state (p, NULL, NULL, 1000000);
 
-#ifndef IGNORE_GST_BUS_MESSAGE
     // empty pipeline bus (if used)
     GstMessage *msg = NULL;
     do {
@@ -400,7 +395,7 @@ void Stream::pipeline_terminate( GstElement *p, GstBus *b )
             gst_message_unref (msg);
         msg = gst_bus_timed_pop_filtered(b, 1000000, GST_MESSAGE_ANY);
     } while (msg != NULL);
-#endif
+
     // unref bus
     gst_object_unref( GST_OBJECT(b) );
 
@@ -477,12 +472,6 @@ void Stream::enable(bool on)
 
     if ( enabled_ != on ) {
 
-        // option to automatically rewind each time the player is disabled
-        if (!on && rewind_on_disable_) {
-            rewind();
-            desired_state_ = GST_STATE_PLAYING;
-        }
-
         enabled_ = on;
 
         // default to pause
@@ -549,8 +538,11 @@ void Stream::play(bool on)
 #endif
 
     // activate live-source
-    if (live_)
+    if (live_) {
         gst_element_get_state (pipeline_, NULL, NULL, GST_CLOCK_TIME_NONE);
+        // Flag that we need to double-fill the texture to refresh both PBOs
+        need_pbo_refresh_ = true;
+    }
 
 }
 
@@ -774,8 +766,11 @@ void Stream::update()
             fill_texture(read_index);
 
             // double update for pre-roll frame and dual PBO (ensure frame is displayed now)
-            if (frame_[read_index].status == PREROLL && pbo_size_ > 0)
+            // also double-fill if we need to refresh PBOs after resuming a live source
+            if (pbo_size_ > 0 && (frame_[read_index].status == PREROLL || need_pbo_refresh_)) {
                 fill_texture(read_index);
+                need_pbo_refresh_ = false;  // clear the flag after refresh
+            }
 
             // free frame
             frame_[read_index].is_new = false;
@@ -796,11 +791,9 @@ void Stream::update()
         play(false);
     }
 
-#ifndef IGNORE_GST_BUS_MESSAGE
     GstMessage *msg = gst_bus_pop_filtered(bus_, GST_MESSAGE_ANY);
     if (msg != NULL)
         gst_message_unref(msg);
-#endif
 }
 
 double Stream::updateFrameRate() const

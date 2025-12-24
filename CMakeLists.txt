@@ -138,9 +138,11 @@ endif()
 ##### Preprocessor options
 #####
 
-# add_definitions(-DUSE_GST_OPENGL_SYNC_HANDLER)
+option(USE_GST_OPENGL_SYNC_HANDLER "Enable GStreamer OpenGL sync handler" ON)
+if(USE_GST_OPENGL_SYNC_HANDLER)
+    add_definitions(-DUSE_GST_OPENGL_SYNC_HANDLER)
+endif()
 # add_definitions(-DUSE_GL_BUFFER_SUBDATA)
-# add_definitions(-DIGNORE_GST_BUS_MESSAGE)
 
 #####
 ##### Dependencies

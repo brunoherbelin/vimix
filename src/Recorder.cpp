@@ -106,11 +106,6 @@ std::string PNGRecorder::init(GstCaps *caps)
         return std::string("PNG Capture : Failed to configure frame grabber.");
     }
 
-    // start pipeline
-    GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
-    if (ret == GST_STATE_CHANGE_FAILURE) {
-        return std::string("PNG Capture : Failed to start frame grabber.");
-    }
 
     // all good
     initialized_ = true;
@@ -139,7 +134,7 @@ void PNGRecorder::addFrame(GstBuffer *buffer, GstCaps *caps)
 
 const char* VideoRecorder::profile_name[VideoRecorder::DEFAULT] = {
     "H264 (Realtime)",
-    "H264 (High 4:4:4)",
+    "H264 (HQ)",
     "H265 (Realtime)",
     "H265 (HQ)",
     "ProRes (Standard)",
@@ -239,11 +234,11 @@ std::vector<std::string> nvidia_profile_description {
     //    (6): cbr-hq           - CBR, High Quality (slower)
     //    (7): vbr-hq           - VBR, High Quality (slower)
     // Control nvh264enc encoder
-    "video/x-raw, format=RGBA ! nvh264enc rc-mode=1 zerolatency=true ! video/x-h264, profile=(string)main ! h264parse ! ",
-    "video/x-raw, format=RGBA ! nvh264enc rc-mode=1 qp-const=18 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
+    "nvh264enc rc-mode=1 zerolatency=true ! video/x-h264, profile=(string)main ! h264parse ! ",
+    "nvh264enc rc-mode=1 qp-const=18 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
     // Control nvh265enc encoder
-    "video/x-raw, format=RGBA ! nvh265enc rc-mode=1 zerolatency=true ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "video/x-raw, format=RGBA ! nvh265enc rc-mode=1 qp-const=18 ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "nvh265enc rc-mode=1 zerolatency=true ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "nvh265enc rc-mode=1 qp-const=18 ! video/x-h265, profile=(string)main ! h265parse ! ",
     "", "", "", ""
 };
 
@@ -258,11 +253,11 @@ std::vector<std::string> vaapi_encoder = {
 std::vector<std::string> vaapi_profile_description {
 
     // Control vaapih264enc encoder
-    "video/x-raw, format=NV12 ! vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=(string)main ! h264parse ! ",
-    "video/x-raw, format=NV12 ! vaapih264enc rate-control=cqp init-qp=14 quality-level=4 keyframe-period=0 max-bframes=2 ! video/x-h264, profile=(string)high ! h264parse ! ",
+    "vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=(string)main ! h264parse ! ",
+    "vaapih264enc rate-control=cqp init-qp=14 quality-level=4 keyframe-period=0 max-bframes=2 ! video/x-h264, profile=(string)high ! h264parse ! ",
     // Control vaapih265enc encoder
-    "video/x-raw, format=NV12 ! vaapih265enc ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "video/x-raw, format=NV12 ! vaapih265enc rate-control=cqp init-qp=14 quality-level=4 keyframe-period=0 max-bframes=2 ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
+    "vaapih265enc ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "vaapih265enc rate-control=cqp init-qp=14 quality-level=4 keyframe-period=0 max-bframes=2 ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
     "", "", "", ""
 };
 
@@ -300,6 +295,8 @@ VideoRecorder::VideoRecorder(const std::string &basename) : FrameGrabber(), base
 {
     // first run initialization of hardware encoders in linux
 #if GST_GL_HAVE_PLATFORM_GLX
+    // Encoding in GPU is really beneficial only with gstreamer gst-gl
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
     if (hardware_encoder.size() < 1) {
         // test nvidia encoder
         if ( GstToolkit::has_feature(nvidia_encoder[0] ) )   {
@@ -313,6 +310,7 @@ VideoRecorder::VideoRecorder(const std::string &basename) : FrameGrabber(), base
             hardware_profile_description.assign(vaapi_profile_description.begin(), vaapi_profile_description.end());
         }
     }
+#endif 
 #endif
 }
 
@@ -325,11 +323,30 @@ std::string VideoRecorder::init(GstCaps *caps)
     // apply settings
     buffering_size_ = MAX( MIN_BUFFER_SIZE, buffering_preset_value[Settings::application.record.buffering_mode]);
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, MAXI(framerate_preset_value[Settings::application.record.framerate_mode], 15));
-    timestamp_on_clock_ = Settings::application.record.priority_mode < 1;    
+    timestamp_on_clock_ = Settings::application.record.priority_mode < 1;
     keyframe_count_ = framerate_preset_value[Settings::application.record.framerate_mode];
 
     // create a gstreamer pipeline
-    std::string description = "appsrc name=src ! videoconvert ! queue ! ";
+    std::string description = "appsrc name=src ! ";
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    // Use glupload + glcolorconvert for hardware encoders
+    // This uploads system memory to GPU and does color conversion in GPU shader
+    if (Settings::application.render.gpu_decoding &&
+        (int) hardware_encoder.size() > 0 &&
+        GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile])) {
+        // glupload: system memory → GLMemory (in GStreamer's thread)
+        // glcolorconvert: GPU color conversion (RGBA → NV12 for VAAPI, passthrough for NVIDIA)
+        description += "glupload ! glcolorconvert ! ";
+        Log::Info("Video Recording with glupload & GPU color conversion");
+    } else
+#endif
+    {
+        // CPU path: use regular videoconvert
+        description += "videoconvert ! ";
+    }
+
+    description += "queue ! ";
     if (Settings::application.record.profile < 0 || Settings::application.record.profile >= DEFAULT)
         Settings::application.record.profile = H264_STANDARD;
 
@@ -338,11 +355,13 @@ std::string VideoRecorder::init(GstCaps *caps)
             GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile]) ) {
 
         description += hardware_profile_description[Settings::application.record.profile];
-        Log::Info("Video Recording using hardware accelerated encoder (%s)", hardware_encoder[Settings::application.record.profile].c_str());
+        Log::Info("Video Recording with hardware accelerated encoder (%s)", description.c_str());
     }
     // revert to software encoder
-    else
+    else {
         description += profile_description[Settings::application.record.profile];
+        Log::Info("Video Recording with software encoder (%s)", description.c_str());
+    }
 
     // setup muxer and prepare filename
     if( Settings::application.record.profile == JPEG_MULTI) {
@@ -464,17 +483,10 @@ std::string VideoRecorder::init(GstCaps *caps)
     //  the video or the audio source, which cause synch problems)
     gst_pipeline_use_clock( GST_PIPELINE(pipeline_), gst_system_clock_obtain());
 
-    // start recording
-    GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
-    if (ret == GST_STATE_CHANGE_FAILURE) {
-        return std::string("Video Recording : Failed to start frame grabber.");
-    }
-
     // all good
     initialized_ = true;
 
-    return std::string("Video Recording started ") + profile_name[Settings::application.record.profile];
-
+    return std::string("Video Recording starting ") + profile_name[Settings::application.record.profile];
 }
 
 void VideoRecorder::terminate()
@@ -511,8 +523,13 @@ void VideoRecorder::terminate()
 
 std::string VideoRecorder::info(bool extended) const
 {
-    if (extended)
-        return filename();
+    if (extended) {
+        std::string info = "Recorded ";
+        info += std::to_string(frame_count_) + " frames\n";
+        info += std::to_string(buffering()) + "% Buffer used\n";
+        info += std::string(profile_name[Settings::application.record.profile]);
+        return info;
+    }
 
     if (initialized_ && !active_ && !endofstream_)
         return "Saving file...";

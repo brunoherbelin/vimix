@@ -211,6 +211,7 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     RenderNode->SetAttribute("vsync", application.render.vsync);
     RenderNode->SetAttribute("multisampling", application.render.multisampling);
     RenderNode->SetAttribute("gpu_decoding", application.render.gpu_decoding);
+    RenderNode->SetAttribute("gst_glmemory_context", application.render.gst_glmemory_context);
     RenderNode->SetAttribute("ratio", application.render.ratio);
     RenderNode->SetAttribute("res", application.render.res);
     RenderNode->SetAttribute("custom_width", application.render.custom_width);
@@ -567,6 +568,7 @@ void Settings::Load(const std::string &filename)
             rendernode->QueryIntAttribute("vsync", &application.render.vsync);
             rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
             rendernode->QueryBoolAttribute("gpu_decoding", &application.render.gpu_decoding);
+            rendernode->QueryBoolAttribute("gst_glmemory_context", &application.render.gst_glmemory_context);
             rendernode->QueryIntAttribute("ratio", &application.render.ratio);
             rendernode->QueryIntAttribute("res", &application.render.res);
             rendernode->QueryIntAttribute("custom_width", &application.render.custom_width);

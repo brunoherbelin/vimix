@@ -79,6 +79,7 @@ public:
 
     // current source
     Source *currentSource ();
+    Source *previousCurrentSource ();
     void setCurrentSource (Source *s);
     void setCurrentSource (std::string namesource);
     void setCurrentSource (Node *node);
@@ -155,6 +156,7 @@ protected:
     void setCurrentSource(SourceList::iterator it);
     SourceList::iterator current_source_;
     int current_source_index_;
+    int previous_current_source_index_;
 
     View *current_view_;
     MixingView mixing_;

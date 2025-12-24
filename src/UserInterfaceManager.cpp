@@ -74,6 +74,7 @@
 #include "Source/SessionSource.h"
 #include "MousePointer.h"
 #include "Playlist.h"
+#include "FrameGrabbing.h"
 
 #include "UserInterfaceManager.h"
 
@@ -410,7 +411,7 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
             sourcecontrol.Capture();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11, false ))
-            FrameGrabbing::manager().add(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
+            Outputs::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12, false )) {
             Settings::application.render.disabled = !Settings::application.render.disabled;
         }
@@ -1032,7 +1033,8 @@ void UserInterface::Render()
     RenderPreview();
 
     // render Recording indication overlay
-    if (isRecording()) {
+    if (Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO ) || 
+        Outputs::manager().enabled( FrameGrabber::GRABBER_GPU ) ) {
         ImGuiIO& io = ImGui::GetIO();
         ImVec2 center = ImVec2(io.DisplaySize.x - RECORDER_INDICATION_SIZE * 1.5f, io.DisplaySize.y - RECORDER_INDICATION_SIZE * 1.5f);
         int a = 150 + (int) ( 50.f * sin( (float) Runtime() / 100000000.f ));
@@ -1129,7 +1131,7 @@ void UserInterface::showMenuBundle()
     }
     // disabled menu explains the problem with tooltip
     if (has_current && (is_bundle || is_clone) && ImGui::IsItemHovered()) {
-        ImGuiToolkit::ToolTip("Clones cannot be separated from their origin source in a bundle.");
+        ImGuiToolkit::ToolTip("Bundles, clones or cloned source cannot be bundled.");
     }
     ImGui::PopStyleColor();
 
@@ -2420,7 +2422,7 @@ void ToolBox::Render()
     ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints(ImVec2(350, 300), ImVec2(FLT_MAX, FLT_MAX));
-    if ( !ImGui::Begin(IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox,  ImGuiWindowFlags_MenuBar) )
+    if ( !ImGui::Begin(IMGUI_TITLE_TOOLBOX, &Settings::application.widget.toolbox,  ImGuiWindowFlags_MenuBar  | ImGuiWindowFlags_NoTitleBar) )
     {
         ImGui::End();
         return;
@@ -2429,18 +2431,18 @@ void ToolBox::Render()
     // Menu Bar
     if (ImGui::BeginMenuBar())
     {
-        if (ImGui::BeginMenu("Render"))
+        if (ImGuiToolkit::IconButton(4,16))
+            Settings::application.widget.toolbox = false;
+
+        if (ImGui::BeginMenu(IMGUI_TITLE_TOOLBOX))
         {
             if ( ImGui::MenuItem( MENU_CAPTUREGUI, SHORTCUT_CAPTURE_GUI) )
                 UserInterface::manager().StartScreenshot();
 
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Gui"))
-        {
-            ImGui::MenuItem("Sandbox", nullptr, &show_sandbox);
-            ImGui::MenuItem("Icons", nullptr, &show_icons_window);
+            ImGui::Separator();
             ImGui::MenuItem("Demo ImGui", nullptr, &show_demo_window);
+            ImGui::MenuItem("Icons", nullptr, &show_icons_window);
+            ImGui::MenuItem("Sandbox", nullptr, &show_sandbox);
 
             ImGui::EndMenu();
         }

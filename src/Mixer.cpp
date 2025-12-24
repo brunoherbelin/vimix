@@ -58,7 +58,7 @@
 #include "MediaPlayer.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
-#include "FrameGrabber.h"
+#include "FrameGrabbing.h"
 #include "Visitor/BoundingBoxVisitor.h"
 
 #include "Mixer.h"
@@ -77,6 +77,7 @@ Mixer::Mixer() : session_(new Session), back_session_(nullptr), sessionSwapReque
     // unsused initial empty session
     current_source_ = session_->end();
     current_source_index_ = -1;
+    previous_current_source_index_ = -1;
 
     // initialize with a new empty session
     set( new Session );
@@ -209,7 +210,7 @@ void Mixer::update()
     session_->update(dt_);
 
     // grab frames to recorders & streamers
-    FrameGrabbing::manager().grabFrame(session_->frame());
+    FrameGrabbing::manager().grabFrame(session_->frame(), static_cast<guint64>(dt__));
 
     // manage sources which failed update
     if (session_->ready()) {
@@ -1268,6 +1269,8 @@ void Mixer::unsetCurrentSource()
             selection().remove( *current_source_ );
         }
 
+        // remember previous current source index
+        previous_current_source_index_ = current_source_index_;
         // deselect current source
         current_source_ = session_->end();
         current_source_index_ = -1;
@@ -1290,6 +1293,19 @@ Source *Mixer::currentSource()
         return (*current_source_);
     else
         return nullptr;
+}
+
+Source *Mixer::previousCurrentSource()
+{
+    if ( previous_current_source_index_<0 )
+        return nullptr;
+    auto previous_source = session_->at(previous_current_source_index_);
+    if ( previous_source != session_->end() )
+        return (*previous_source);
+    else {
+        previous_current_source_index_ = -1;
+        return nullptr;
+    }
 }
 
 // management of view

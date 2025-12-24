@@ -425,10 +425,6 @@ void SessionVisitor::visit(Stream &n)
     XMLElement *newelement = xmlDoc_->NewElement("Stream");
     newelement->SetAttribute("id", n.id());
 
-    if (!n.singleFrame()) {
-        newelement->SetAttribute("rewind_on_disabled", n.rewindOnDisabled());
-    }
-
     xmlCurrent_->InsertEndChild(newelement);
 }
 
@@ -447,7 +443,6 @@ void SessionVisitor::visit(MediaPlayer &n)
         newelement->SetAttribute("speed", n.playSpeed());
         newelement->SetAttribute("video_effect", n.videoEffect().c_str());
         newelement->SetAttribute("software_decoding", n.softwareDecodingForced());
-        newelement->SetAttribute("rewind_on_disabled", n.rewindOnDisabled());
         newelement->SetAttribute("sync_to_metronome", (int) n.syncToMetronome());
 
         // timeline
@@ -629,6 +624,7 @@ void SessionVisitor::visit (Source& s)
     sourceNode->SetAttribute("name", s.name().c_str() );
     sourceNode->SetAttribute("locked", s.locked() );
     sourceNode->SetAttribute("play", s.playing() );
+    sourceNode->SetAttribute("replay_on_deactivate", s.replayOnDeactivate());
 
     // insert into hierarchy
     xmlCurrent_->InsertEndChild(sourceNode);
