@@ -34,9 +34,6 @@ private:
     std::queue<FrameBuffer *> frames_;
     std::queue<double> elapsed_;
 
-    // render management
-    FrameBuffer *temp_frame_;
-
     // time management
     double now_;
     double delay_;

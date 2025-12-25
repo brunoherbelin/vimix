@@ -789,7 +789,7 @@ glm::ivec2 Rendering::getGPUMemoryInformation()
 }
 
 
-bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags)
+bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags, int num_buffers)
 {
     glm::ivec2 RAM = getGPUMemoryInformation();
 
@@ -797,7 +797,7 @@ bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags)
     GLint framebufferMemoryInKB = ( resolution.x * resolution.x *
                                     ((flags & FrameBuffer::FrameBuffer_alpha)?4:3) * ((flags & FrameBuffer::FrameBuffer_multisampling)?2:1) ) / 1024;
 
-    return ( RAM.x > framebufferMemoryInKB * 3 );
+    return ( RAM.x > framebufferMemoryInKB * (num_buffers + 1) );
 }
 
 
