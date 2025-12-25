@@ -350,10 +350,11 @@ Source * Mixer::createSourceMultifile(const std::list<std::string> &list_files, 
     return s;
 }
 
-Source * Mixer::createSourceRender()
+Source * Mixer::createSourceRender(int provenance)
 {
     // ready to create a source
     RenderSource *s = new RenderSource;
+    s->setRenderingProvenance( (RenderSource::RenderSourceProvenance)provenance );  
     s->setSession(session_);
 
     // propose a new name based on session name

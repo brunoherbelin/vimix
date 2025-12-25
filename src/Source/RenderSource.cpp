@@ -17,7 +17,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <glib.h>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/fwd.hpp>
+#include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/matrix.hpp>
+#include <gtk/gtk.h>
 
 #include "defines.h"
 #include "Log.h"
@@ -26,11 +32,12 @@
 #include "Resource.h"
 #include "Visitor/Visitor.h"
 #include "Session.h"
+#include "Visitor/DrawVisitor.h"
 
 #include "RenderSource.h"
 
 std::vector< std::tuple<int, int, std::string> > RenderSource::ProvenanceMethod = {
-    { 16, 12, "Recursive" }, { 15, 12, "Non-recursive"}
+    { 16, 12, "Recursive" }, { 17, 5, "Entire scene", }, { 17, 12, "Local scene" }
 };
 
 RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr), rendered_surface_(nullptr),
@@ -117,16 +124,45 @@ void RenderSource::update(float dt)
 
     if (session_ && session_->ready() && rendered_output_) {
         if ((active_ && !paused_) || reset_) {
-            if (provenance_ == RENDER_EXCLUSIVE || reset_ ) {
+            if (provenance_ >= RENDER_PROJECTION || reset_ ) {
                 // temporarily exclude this RenderSource from the rendering
                 groups_[View::RENDERING]->visible_ = false;
                 // simulate a rendering of the session in a framebuffer
                 glm::mat4 P = glm::scale(projection,
                                          glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
-                rendered_output_->begin();
-                // access to private RenderView in the session to call draw on the root of the scene
-                session_->render_.scene.root()->draw(glm::identity<glm::mat4>(), P);
-                rendered_output_->end();
+
+                if (provenance_ == RENDER_PROJECTION_SOURCE) {
+
+                    // temporarily set the scene root transform to the inverse of the source transform
+                    glm::vec3 rotation = this->groups_[View::RENDERING]->rotation_;
+                    glm::vec3 scale = this->groups_[View::RENDERING]->scale_;
+                    scale.z = 1.f;
+                    glm::vec3 translation =  this->groups_[View::RENDERING]->translation_;
+                    translation.z = 0.f;
+                    session_->render_.scene.root()->transform_ = glm::inverse( GlmToolkit::transform(translation, rotation, scale) );
+
+                    // add all sources below this one in the scene graph
+                    std::vector<Node *> surfaces;
+                    for (auto sit = session_->begin(); sit != session_->end(); ++sit) {
+                        if ((*sit)->group(View::RENDERING)->translation_.z < this->groups_[View::RENDERING]->translation_.z)
+                            surfaces.push_back((*sit)->group(View::RENDERING));
+                    }
+
+                    // render using visitor
+                    rendered_output_->begin();
+                    DrawVisitor draw_surfaces(surfaces, P);
+                    session_->render_.scene.accept(draw_surfaces);
+                    rendered_output_->end();
+
+                    // restore scene root transform
+                    session_->render_.scene.root()->transform_ = glm::identity<glm::mat4>();
+                }
+                else {
+                    rendered_output_->begin();
+                    // access to private RenderView in the session to call draw on the root of the scene
+                    session_->render_.scene.root()->draw(glm::identity<glm::mat4>(), P);
+                    rendered_output_->end();
+                }
                 // restore this RenderSource visibility
                 groups_[View::RENDERING]->visible_ = true;
                 // done reset

@@ -59,8 +59,7 @@ class Navigator
     int  selected_index;
     int  pattern_type;
     int  generated_type;
-    bool custom_connected;
-    bool custom_screencapture;
+    int  custom_type;
     void clearButtonSelection();
     void clearNewPannel();
     void applyButtonSelection(int index);

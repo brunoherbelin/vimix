@@ -50,6 +50,7 @@
 #include "Source/ScreenCaptureSource.h"
 #include "Source/MultiFileSource.h"
 #include "Source/SourceCallback.h"
+#include "Source/RenderSource.h"
 #include "RenderingManager.h"
 #include "Connection.h"
 #include "ControlManager.h"
@@ -119,8 +120,7 @@ void Navigator::clearNewPannel()
     new_source_preview_.setSource();
     pattern_type = -1;
     generated_type = -1;
-    custom_connected = false;
-    custom_screencapture = false;
+    custom_type = -1;
     sourceSequenceFiles.clear();
     sourceMediaFileCurrent.clear();
     new_media_mode_changed = true;
@@ -1598,23 +1598,20 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             {
                 // 1. Loopback source
                 if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_RENDER, "Display Loopback", false) ) {
-                    custom_connected = false;
-                    custom_screencapture = false;
-                    new_source_preview_.setSource( Mixer::manager().createSourceRender(), "Display Loopback");
+                    custom_type = 0;
+                    new_source_preview_.setSource();
                 }
 
                 // 2. Screen capture (open selector)
                 if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_DEVICE_SCREEN, "Screen capture", false) ) {
-                    custom_connected = false;
+                    custom_type = 1;
                     new_source_preview_.setSource();
-                    custom_screencapture = true;
                 }
 
                 // 3. Network connected SRT
                 if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_SRT, "SRT Broadcast", false) ) {
+                    custom_type = 2;
                     new_source_preview_.setSource();
-                    custom_connected = true;
-                    custom_screencapture = false;
                 }
 
                 // 4. Devices
@@ -1622,8 +1619,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 for (int d = 0; d < Device::manager().numDevices(); ++d){
                     std::string namedev = Device::manager().name(d);
                     if (ImGui::Selectable( namedev.c_str() )) {
-                        custom_connected = false;
-                        custom_screencapture = false;
+                        custom_type = -1;
                         new_source_preview_.setSource( Mixer::manager().createSourceDevice(namedev), namedev);
                     }
                 }
@@ -1632,8 +1628,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 for (int d = 1; d < Connection::manager().numHosts(); ++d){
                     std::string namehost = Connection::manager().info(d).name;
                     if (ImGui::Selectable( namehost.c_str() )) {
-                        custom_connected = false;
-                        custom_screencapture = false;
+                        custom_type = -1;
                         new_source_preview_.setSource( Mixer::manager().createSourceNetwork(namehost), namehost);
                     }
                 }
@@ -1657,7 +1652,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             }
             ImGui::Spacing();
 
-            if (custom_connected) {
+            if (custom_type==2) {
 
                 bool valid_ = false;
                 static std::string url_;
@@ -1672,7 +1667,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 ImGui::Text("SRT broadcast");
                 ImGui::SameLine();
                 ImGui::SetCursorPosX(pos.x);
-                ImGuiToolkit::HelpToolTip("Set the IP and Port for connecting with Secure Reliable Transport (SRT) protocol to a video broadcaster that is waiting for connections (listener mode).");
+                ImGuiToolkit::HelpToolTip("Set the IP and Port for connecting with Secure Reliable Transport (SRT) "
+                    "protocol to a video broadcaster that is waiting for connections (listener mode).");
 
                 // Entry field for IP
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1740,7 +1736,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 ImGui::PopStyleColor(3);
             }
 
-            if (custom_screencapture) {
+            if (custom_type==1) {
 
                 ImGui::NewLine();
                 ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN);
@@ -1758,6 +1754,41 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     }
                     ImGui::EndCombo();
                 }
+                // indication
+                ImGui::SameLine();
+                ImGui::SetCursorPosX(pos.x);
+                ImGuiToolkit::HelpToolTip("Create a source capturing the screen or other windows.\n"
+                                          "The choice is limited by constraints of the operating system.");
+            }
+
+            if (custom_type==0) {
+
+                ImGui::NewLine();
+                ImGuiToolkit::Icon(ICON_SOURCE_RENDER);
+                ImGui::SameLine();
+                ImGui::Text("Display Loopback");
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::BeginCombo("##LoopbackSelect", "Select mode", ImGuiComboFlags_HeightLarge))
+                {
+                    for (auto item = RenderSource::ProvenanceMethod.cbegin(); item != RenderSource::ProvenanceMethod.cend(); ++item) {
+                        if (ImGuiToolkit::SelectableIcon(std::get<0>(*item),
+                                                        std::get<1>(*item ),
+                                                        std::get<2>(*item).c_str(), false)) {
+                            new_source_preview_.setSource( Mixer::manager().createSourceRender(
+                                std::distance(RenderSource::ProvenanceMethod.cbegin(), item)), "Loopback");
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                // indication
+                ImGui::SameLine();
+                ImGui::SetCursorPosX(pos.x);
+                ImGuiToolkit::HelpToolTip("Create a source capturing the vimix display output (loopback).\n"
+                                          ICON_FA_CARET_RIGHT " Recursive: capture everything shown on the screen, including the loopback source itself.\n"
+                                          ICON_FA_CARET_RIGHT " Entire scene: capture everything shown on the screen, excluding the loopback source.\n"
+                                          ICON_FA_CARET_RIGHT " Local scene: capture the section of the scene behind the loopback source.");
+
             }
         }
 

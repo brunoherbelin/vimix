@@ -30,7 +30,8 @@ public:
 
     typedef enum {
         RENDER_TEXTURE = 0,
-        RENDER_EXCLUSIVE
+        RENDER_PROJECTION = 1,
+        RENDER_PROJECTION_SOURCE = 2
     } RenderSourceProvenance;
     static std::vector< std::tuple<int, int, std::string> > ProvenanceMethod;
 

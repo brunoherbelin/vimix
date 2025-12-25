@@ -51,7 +51,7 @@ public:
     Source * createSourceFile   (const std::string &path, bool disable_hw_decoding = false);
     Source * createSourceMultifile(const std::list<std::string> &list_files, uint fps);
     class CloneSource *createSourceClone(const std::string &namesource = "", bool copy_attributes = true);
-    Source * createSourceRender ();
+    Source * createSourceRender (int provenance = 0);
     Source * createSourceStream (const std::string &gstreamerpipeline);
     Source * createSourcePattern(uint pattern, glm::ivec2 res);
     Source * createSourceDevice (const std::string &namedevice);
