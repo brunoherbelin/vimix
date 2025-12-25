@@ -400,7 +400,7 @@ typedef enum {
 void MediaPlayer::execute_open()
 {
     // create playbin
-    pipeline_ = gst_element_factory_make ("playbin", std::to_string(id_).c_str());
+    pipeline_ = gst_element_factory_make ("playbin3", std::to_string(id_).c_str());
 
     // set uri of file to open
     g_object_set ( G_OBJECT (pipeline_),  "uri", uri_.c_str(),  NULL);
@@ -467,28 +467,34 @@ void MediaPlayer::execute_open()
     gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
 
     // Configure appsink caps
-    // When using glsinkbin, appsink must accept GLMemory caps
     GstCaps *caps = nullptr;
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-    if (media_.isimage)
+    if (force_software_decoding_ || media_.isimage)
         use_gl_memory_ = false; // disable GLMemory for images to avoid issues with some plugins
 
     // Try to create glsinkbin to automatically handle GL upload and conversion
     GstElement *glsinkbin = gst_element_factory_make("glsinkbin", "glsink");
-    if (!glsinkbin) 
+    if (!glsinkbin) {
         use_gl_memory_ = false;
+        Log::Info("MediaPlayer %s failed to get glsinkbin for %s decoder.", std::to_string(id_).c_str(), decoderName().c_str());
+    }
 
+    // When using glsinkbin, appsink must accept GLMemory caps
     if (use_gl_memory_) {
         // Create caps that accept BOTH GLMemory and system memory
         // This allows glsinkbin to link properly
         caps = gst_caps_new_simple("video/x-raw",
                                    "format", G_TYPE_STRING, "RGBA",
+                                   "width",  G_TYPE_INT, media_.width,
+                                   "height", G_TYPE_INT, media_.height,
                                    NULL);
 
         // Add GLMemory variant
         GstCaps *gl_caps = gst_caps_new_simple("video/x-raw",
                                                "format", G_TYPE_STRING, "RGBA",
+                                                "width",  G_TYPE_INT, media_.width,
+                                                "height", G_TYPE_INT, media_.height,
                                                NULL);
         GstCapsFeatures *gl_features = gst_caps_features_new("memory:GLMemory", NULL);
         gst_caps_set_features(gl_caps, 0, gl_features);
@@ -1242,6 +1248,7 @@ void MediaPlayer::init_texture(guint index)
             } else {
                 // Not GLMemory - disable optimization
                 use_gl_memory_ = false;
+                Log::Info("MediaPlayer %s failed to access GLMemory with %s decoder.", std::to_string(id_).c_str(), decoderName().c_str());
             }
         }
 
@@ -1883,6 +1890,8 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
                     GstCapsFeatures *features = gst_caps_get_features(caps, 0);
                     if (!features || !gst_caps_features_contains(features, "memory:GLMemory")) {
                         m->use_gl_memory_ = false;
+                        ret = GST_FLOW_ERROR;
+                        Log::Info("MediaPlayer %s failed to negotiate GLMemory caps with %s decoder.", std::to_string(m->id_).c_str(), m->decoderName().c_str());
                     }
                 }
             }
