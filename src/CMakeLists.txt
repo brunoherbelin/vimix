@@ -98,6 +98,7 @@ set(VMIX_SRCS
     # View/ folder
     View/DisplaysView.cpp
     View/GeometryView.cpp
+    View/GeometryHandleManipulation.cpp
     View/LayerView.cpp
     View/MixingView.cpp
     View/RenderView.cpp

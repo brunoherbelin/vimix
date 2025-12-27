@@ -45,7 +45,9 @@
 #include "MousePointer.h"
 
 #include "GeometryView.h"
+#include "GeometryHandleManipulation.h"
 
+// #define ENABLE_CANVAS
 
 const char* GeometryView::editor_icons[2]  = { ICON_FA_OBJECT_UNGROUP, ICON_FA_BORDER_ALL };
 const char *GeometryView::editor_names[2] = {"Edit sources", " Edit canvas"};
@@ -894,45 +896,38 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                               glm::vec3(output_surface_->scale_.x, 1.f, 10.f));
 
         if (pick.first == canvas_[canvas_current_].handles_[Handles::RESIZE]) {
-            // hide other grips
+            // Create context for handle manipulation function
+            std::ostringstream info;
+            GeometryHandleManipulation::HandleGrabContext ctx = {
+                canvas_[canvas_current_].root_,        // targetNode
+                canvas_stored_status_,                 // stored_status
+                nullptr,                               // frame (not used for canvas)
+                scene_from,                            // scene_from
+                scene_to,                              // scene_to
+                scene_to_canvas_transform,             // scene_to_target_transform
+                glm::inverse(scene_to_canvas_transform), // target_to_scene_transform
+                scene_to_corner_transform,             // scene_to_corner_transform
+                corner_to_scene_transform,             // corner_to_scene_transform
+                corner,                                // corner
+                pick,                                  // pick
+                grid,                                  // grid
+                info,                                  // info
+                ret,                                   // cursor
+                canvas_[canvas_current_].handles_,     // handles
+                overlay_crop_,                         // overlay_crop
+                overlay_scaling_,                      // overlay_scaling
+                overlay_scaling_cross_,                // overlay_scaling_cross
+                overlay_rotation_,                     // overlay_rotation
+                overlay_rotation_fix_,                 // overlay_rotation_fix
+                overlay_rotation_clock_hand_           // overlay_rotation_clock_hand
+            };
+
+            // Additional canvas-specific visibility setup
             canvas_[canvas_current_].menu_->visible_ = false;
-            canvas_[canvas_current_].handles_[Handles::RESIZE_H]->visible_ = false;
-            canvas_[canvas_current_].handles_[Handles::RESIZE_V]->visible_ = false;
             // inform on which corner should be overlayed (opposite)
             canvas_[canvas_current_].handles_[Handles::RESIZE]->overlayActiveCorner(-corner);
 
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f);
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if (grid->active())
-                handle = grid->snap(handle);
-            // Compute handleNODE_UPPER_RIGHT coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 corner_scaling = glm::vec2(handle) / glm::vec2(corner * 2.f);
-            // proportional SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier()) {
-                corner_scaling = glm::vec2(glm::compMax(corner_scaling));
-            }
-            // Apply scaling to the source
-            canvas_[canvas_current_].root_->scale_ = canvas_stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
-
-            //
-            // Adjust translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-            // Apply scaling to the source
-            canvas_[canvas_current_].root_->translation_ = glm::vec3(corner_center);
-
+            GeometryHandleManipulation::handleResize(ctx);
         }
 
         // update cursor
@@ -1096,608 +1091,75 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         const glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
 
 
+        // Create context for handle manipulation functions
+        GeometryHandleManipulation::HandleGrabContext ctx = {
+            sourceNode,                     // targetNode
+            s->stored_status_,              // stored_status
+            s->frame(),                     // frame
+            scene_from,                     // scene_from
+            scene_to,                       // scene_to
+            scene_to_source_transform,      // scene_to_target_transform
+            source_to_scene_transform,      // target_to_scene_transform
+            scene_to_corner_transform,      // scene_to_corner_transform
+            corner_to_scene_transform,      // corner_to_scene_transform
+            corner,                         // corner
+            pick,                           // pick
+            grid,                           // grid
+            info,                           // info
+            ret,                            // cursor
+            s->handles_[mode_],             // handles
+            overlay_crop_,                  // overlay_crop
+            overlay_scaling_,               // overlay_scaling
+            overlay_scaling_cross_,         // overlay_scaling_cross
+            overlay_rotation_,              // overlay_rotation
+            overlay_rotation_fix_,          // overlay_rotation_fix
+            overlay_rotation_clock_hand_    // overlay_rotation_clock_hand
+        };
+
         // picking on a Node
         if (pick.first == s->handles_[mode_][Handles::NODE_LOWER_LEFT]) {
-            // hide other grips
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-            // get stored status
-            glm::vec3 node_pos = glm::vec3(s->stored_status_->data_[0].x,
-                                           s->stored_status_->data_[0].y,
-                                           0.f);
-            // Compute target coordinates of manipulated handle into SCENE reference frame
-            node_pos = source_to_scene_transform * glm::vec4(node_pos, 1.f);
-            // apply translation of target in SCENE
-            node_pos = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from)  * glm::vec4(node_pos, 1.f);
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                node_pos = grid->snap(node_pos);
-            // Compute handle coordinates back in SOURCE reference frame
-            node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);
-            // Diagonal SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier())
-                node_pos.y = node_pos.x;
-            // apply to source Node and to handles
-            sourceNode->data_[0].x = CLAMP( node_pos.x, 0.f, 0.96f );
-            sourceNode->data_[0].y = CLAMP( node_pos.y, 0.f, 0.96f );
-            info << "Corner low-left " << std::fixed << std::setprecision(3) << sourceNode->data_[0].x;
-            info << " x "  << sourceNode->data_[0].y;
+            GeometryHandleManipulation::handleNodeLowerLeft(ctx);
         }
         else if (pick.first == s->handles_[mode_][Handles::NODE_UPPER_LEFT]) {
-            // hide other grips
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-            // get stored status
-            glm::vec3 node_pos = glm::vec3(s->stored_status_->data_[1].x,
-                                           s->stored_status_->data_[1].y,
-                                           0.f);
-            // Compute target coordinates of manipulated handle into SCENE reference frame
-            node_pos = source_to_scene_transform * glm::vec4(node_pos, 1.f);
-            // apply translation of target in SCENE
-            node_pos = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from)  * glm::vec4(node_pos, 1.f);
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                node_pos = grid->snap(node_pos);
-            // Compute handle coordinates back in SOURCE reference frame
-            node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);
-            // Diagonal SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier())
-                node_pos.y = -node_pos.x;
-            // apply to source Node and to handles
-            sourceNode->data_[1].x = CLAMP( node_pos.x, 0.f, 0.96f );
-            sourceNode->data_[1].y = CLAMP( node_pos.y, -0.96f, 0.f );
-            info << "Corner up-left " << std::fixed << std::setprecision(3) << sourceNode->data_[1].x;
-            info << " x "  << sourceNode->data_[1].y;
+            GeometryHandleManipulation::handleNodeUpperLeft(ctx);
         }
         else if ( pick.first == s->handles_[mode_][Handles::NODE_LOWER_RIGHT] ) {
-            // hide other grips
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-            // get stored status
-            glm::vec3 node_pos = glm::vec3(s->stored_status_->data_[2].x,
-                                           s->stored_status_->data_[2].y,
-                                           0.f);
-            // Compute target coordinates of manipulated handle into SCENE reference frame
-            node_pos = source_to_scene_transform * glm::vec4(node_pos, 1.f);
-            // apply translation of target in SCENE
-            node_pos = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from)  * glm::vec4(node_pos, 1.f);
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                node_pos = grid->snap(node_pos);
-            // Compute handle coordinates back in SOURCE reference frame
-            node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);            
-            // Diagonal SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier())
-                node_pos.y = -node_pos.x;
-            // apply to source Node and to handles
-            sourceNode->data_[2].x = CLAMP( node_pos.x, -0.96f, 0.f );
-            sourceNode->data_[2].y = CLAMP( node_pos.y, 0.f, 0.96f );
-            info << "Corner low-right " << std::fixed << std::setprecision(3) << sourceNode->data_[2].x;
-            info << " x "  << sourceNode->data_[2].y;
+            GeometryHandleManipulation::handleNodeLowerRight(ctx);
         }
         else if (pick.first == s->handles_[mode_][Handles::NODE_UPPER_RIGHT]) {
-            // hide other grips
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-
-            // get stored status
-            glm::vec3 node_pos = glm::vec3(s->stored_status_->data_[3].x,
-                                           s->stored_status_->data_[3].y,
-                                           0.f);
-            // Compute target coordinates of manipulated handle into SCENE reference frame
-            node_pos = source_to_scene_transform * glm::vec4(node_pos, 1.f);
-            // apply translation of target in SCENE
-            node_pos = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from)  * glm::vec4(node_pos, 1.f);
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                node_pos = grid->snap(node_pos);
-            // Compute handle coordinates back in SOURCE reference frame
-            node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);
-            // Diagonal SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier())
-                node_pos.y = node_pos.x;
-            // apply to source Node and to handles
-            sourceNode->data_[3].x = CLAMP( node_pos.x, -0.96f, 0.f );
-            sourceNode->data_[3].y = CLAMP( node_pos.y, -0.96f, 0.f );
-            info << "Corner up-right " << std::fixed << std::setprecision(3) << sourceNode->data_[3].x;
-            info << " x "  << sourceNode->data_[3].y;
+            GeometryHandleManipulation::handleNodeUpperRight(ctx);
         }
         // horizontal CROP
         else if (pick.first == s->handles_[mode_][Handles::CROP_H]) {
-            // hide all other grips
-            s->handles_[mode_][Handles::NODE_LOWER_RIGHT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_LOWER_LEFT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_UPPER_RIGHT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_UPPER_LEFT]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-
-            // prepare overlay frame showing full image size
-            glm::vec3 _c_s = glm::vec3(s->stored_status_->crop_[0]
-                                                       - s->stored_status_->crop_[1],
-                                                   s->stored_status_->crop_[2]
-                                                       - s->stored_status_->crop_[3],
-                                                   2.f)
-                                         * 0.5f;
-            overlay_crop_->scale_ = s->stored_status_->scale_ / _c_s;
-            overlay_crop_->scale_.x *= s->frame()->aspectRatio();
-            overlay_crop_->rotation_.z = s->stored_status_->rotation_.z;
-            overlay_crop_->translation_ = s->stored_status_->translation_;
-            glm::vec3 _t((s->stored_status_->crop_[1] + _c_s.x) * overlay_crop_->scale_.x,
-                         (-s->stored_status_->crop_[2] + _c_s.y) * overlay_crop_->scale_.y, 0.f);
-            _t = glm::rotate(glm::identity<glm::mat4>(),
-                             overlay_crop_->rotation_.z,
-                             glm::vec3(0.f, 0.f, 1.f))
-                 * glm::vec4(_t, 1.f);
-            overlay_crop_->translation_ += _t;
-            overlay_crop_->translation_.z = 0.f;
-            overlay_crop_->update(0);
-            overlay_crop_->visible_ = true;
-            
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-
-            // Compute coordinates coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 handle_scaling = glm::vec2(handle.x, 1.f) / glm::vec2(corner.x * 2.f, 1.f);
-
-            // Apply transform to the CROP
-            if (corner.x > 0.f) {
-                // RIGHT SIDE ; clamp between 0.1 and 1
-                sourceNode->crop_[1] = CLAMP(s->stored_status_->crop_[0]
-                                                 + (s->stored_status_->crop_[1]
-                                                    - s->stored_status_->crop_[0])
-                                                       * handle_scaling.x,
-                                             0.1f,
-                                             1.f);
-            } else {
-                // LEFT SIDE : clamp between -1 and -0.1
-                sourceNode->crop_[0] = CLAMP(s->stored_status_->crop_[1]
-                                                 - (s->stored_status_->crop_[1]
-                                                    - s->stored_status_->crop_[0])
-                                                       * handle_scaling.x,
-                                             -1.f,
-                                             -0.1f);
-            }
-
-            // get back the horizontal scaling after clamping of cropped coordinates
-            handle_scaling.x = (sourceNode->crop_[1] - sourceNode->crop_[0])
-                               / (s->stored_status_->crop_[1] - s->stored_status_->crop_[0]);
-
-            //
-            // Adjust scale and translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4(corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(handle_scaling, 1.f))
-                            * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-
-            // Apply translation to the source
-            sourceNode->translation_ = glm::vec3(corner_center);
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(handle_scaling, 1.f);
-
-            // show cursor depending on angle
-            float c = tan(sourceNode->rotation_.z);
-            ret.type = ABS(c) > 1.f ? Cursor_ResizeNS : Cursor_ResizeEW;
-            info << "Crop H " << std::fixed << std::setprecision(3) << sourceNode->crop_[0];
-            info << " x " << sourceNode->crop_[1];
+            GeometryHandleManipulation::handleCropH(ctx);
         }
         // Vertical CROP
         else if (pick.first == s->handles_[mode_][Handles::CROP_V]) {
-            // hide all other grips
-            s->handles_[mode_][Handles::NODE_LOWER_RIGHT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_LOWER_LEFT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_UPPER_RIGHT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_UPPER_LEFT]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-
-            // prepare overlay frame showing full image size
-            glm::vec3 _c_s = glm::vec3(s->stored_status_->crop_[0]
-                                           - s->stored_status_->crop_[1],
-                                       s->stored_status_->crop_[2]
-                                           - s->stored_status_->crop_[3],
-                                       2.f)
-                             * 0.5f;
-            overlay_crop_->scale_ = s->stored_status_->scale_ / _c_s;
-            overlay_crop_->scale_.x *= s->frame()->aspectRatio();
-            overlay_crop_->rotation_.z = s->stored_status_->rotation_.z;
-            overlay_crop_->translation_ = s->stored_status_->translation_;
-            glm::vec3 _t((s->stored_status_->crop_[1] + _c_s.x) * overlay_crop_->scale_.x,
-                         (-s->stored_status_->crop_[2] + _c_s.y) * overlay_crop_->scale_.y, 0.f);
-            _t = glm::rotate(glm::identity<glm::mat4>(),
-                             overlay_crop_->rotation_.z,
-                             glm::vec3(0.f, 0.f, 1.f))
-                 * glm::vec4(_t, 1.f);
-            overlay_crop_->translation_ += _t;
-            overlay_crop_->translation_.z = 0.f;
-            overlay_crop_->update(0);
-            overlay_crop_->visible_ = true;
-
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-
-            // Compute coordinates coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 handle_scaling = glm::vec2(1.f, handle.y) / glm::vec2(1.f, corner.y * 2.f);
-
-            // Apply transform to the CROP
-            if (corner.y > 0.f) {
-                // TOP SIDE ; clamp between 0.1 and 1
-                sourceNode->crop_[2] = CLAMP(s->stored_status_->crop_[3]
-                                                 + (s->stored_status_->crop_[2]
-                                                    - s->stored_status_->crop_[3])
-                                                       * handle_scaling.y,
-                                             0.1f,
-                                             1.f);
-            } else {
-                // BOTTON SIDE : clamp between -1 and -0.1
-                sourceNode->crop_[3] = CLAMP(s->stored_status_->crop_[2]
-                                                 - (s->stored_status_->crop_[2]
-                                                    - s->stored_status_->crop_[3])
-                                                       * handle_scaling.y,
-                                             -1.f,
-                                             -0.1f);
-            }
-
-            // get back the horizontal scaling after clamping of cropped coordinates
-            handle_scaling.y = (sourceNode->crop_[2] - sourceNode->crop_[3])
-                               / (s->stored_status_->crop_[2] - s->stored_status_->crop_[3]);
-
-            //
-            // Adjust scale and translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4(corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(handle_scaling, 1.f))
-                            * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-
-            // Apply translation to the source
-            sourceNode->translation_ = glm::vec3(corner_center);
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(handle_scaling, 1.f);
-
-            // show cursor depending on angle
-            float c = tan(sourceNode->rotation_.z);
-            ret.type = ABS(c) > 1.f ? Cursor_ResizeEW : Cursor_ResizeNS;
-            info << "Crop V " << std::fixed << std::setprecision(3) << sourceNode->crop_[2];
-            info << " x "  << sourceNode->crop_[3];
+            GeometryHandleManipulation::handleCropV(ctx);
         }
         // pick the corner rounding handle
         else if (pick.first == s->handles_[mode_][Handles::ROUNDING]) {
-            // hide other grips
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-            // get stored status
-            glm::vec3 node_pos = glm::vec3( -s->stored_status_->data_[0].w, 0.f, 0.f);
-            // Compute target coordinates of manipulated handle into SCENE reference frame
-            node_pos = source_to_scene_transform * glm::vec4(node_pos, 1.f);
-            // apply translation of target in SCENE
-            node_pos = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * glm::vec4(node_pos, 1.f);
-            // Compute handle coordinates back in SOURCE reference frame
-            node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);
-
-            // apply to source Node and to handles
-            sourceNode->data_[0].w = - CLAMP( node_pos.x, -1.f, 0.f );
-            info << "Corner round " << std::fixed << std::setprecision(3) << sourceNode->data_[0].w;
+            GeometryHandleManipulation::handleRounding(ctx);
         }
         // picking on the resizing handles in the corners RESIZE CORNER
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE] ) {
-            // hide  other grips
-            s->handles_[mode_][Handles::SCALE]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_SHAPE]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            // inform on which corner should be overlayed (opposite)
-            s->handles_[mode_][Handles::RESIZE]->overlayActiveCorner(-corner);
-
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-            // Compute handleNODE_UPPER_RIGHT coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 corner_scaling = glm::vec2(handle) / glm::vec2(corner * 2.f);
-
-            // proportional SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier()) {
-                corner_scaling = glm::vec2(glm::compMax(corner_scaling));
-            }
-
-            // Apply scaling to the source
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
-
-            //
-            // Adjust translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-            // Apply scaling to the source
-            sourceNode->translation_ = glm::vec3(corner_center);
-
-            // show cursor depending on diagonal (corner picked)
-            glm::mat4 T = glm::rotate(glm::identity<glm::mat4>(), s->stored_status_->rotation_.z, glm::vec3(0.f, 0.f, 1.f));
-            T = glm::scale(T, s->stored_status_->scale_);
-            corner = T * glm::vec4( corner, 0.f, 0.f );
-            ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-            info << " x "  << sourceNode->scale_.y;
+            GeometryHandleManipulation::handleResize(ctx);
         }
         // picking on the BORDER RESIZING handles left or right
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE_H] ) {
-
-            // hide all other grips
-            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
-            s->handles_[mode_][Handles::SCALE]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_SHAPE]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            // inform on which corner should be overlayed (opposite)
-            s->handles_[mode_][Handles::RESIZE_H]->overlayActiveCorner(-corner);
-
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-            // Compute coordinates coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 corner_scaling =  glm::vec2(handle.x, 1.f) / glm::vec2(corner.x * 2.f, 1.f);
-
-            // Apply scaling to the source
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
-
-            // SHIFT: restore previous aspect ratio
-            if (UserInterface::manager().shiftModifier()) {
-                float ar = s->stored_status_->scale_.y / s->stored_status_->scale_.x;
-                sourceNode->scale_.y = ar * sourceNode->scale_.x;
-            }
-
-            //
-            // Adjust translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-            // Apply scaling to the source
-            sourceNode->translation_ = glm::vec3(corner_center);
-
-            // show cursor depending on angle
-            float c = tan(sourceNode->rotation_.z);
-            ret.type = ABS(c) > 1.f ? Cursor_ResizeNS : Cursor_ResizeEW;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-            info << " x "  << sourceNode->scale_.y;
+            GeometryHandleManipulation::handleResizeH(ctx);
         }
         // picking on the BORDER RESIZING handles top or bottom
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE_V] ) {
-
-            // hide all other grips
-            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
-            s->handles_[mode_][Handles::SCALE]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
-            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_SHAPE]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            // inform on which corner should be overlayed (opposite)
-            s->handles_[mode_][Handles::RESIZE_V]->overlayActiveCorner(-corner);
-
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-            // Compute coordinates coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 corner_scaling =  glm::vec2(1.f, handle.y) / glm::vec2(1.f, corner.y * 2.f);
-
-            // Apply scaling to the source
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
-
-            // SHIFT: restore previous aspect ratio
-            if (UserInterface::manager().shiftModifier()) {
-                float ar = s->stored_status_->scale_.x / s->stored_status_->scale_.y;
-                sourceNode->scale_.x = ar * sourceNode->scale_.y;
-            }
-
-            //
-            // Adjust translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-            // Apply scaling to the source
-            sourceNode->translation_ = glm::vec3(corner_center);
-
-            // show cursor depending on angle
-            float c = tan(sourceNode->rotation_.z);
-            ret.type = ABS(c) > 1.f ? Cursor_ResizeEW : Cursor_ResizeNS;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-            info << " x "  << sourceNode->scale_.y;
+            GeometryHandleManipulation::handleResizeV(ctx);
         }
         // picking on the CENTRER SCALING handle
         else if ( pick.first == s->handles_[mode_][Handles::SCALE] ) {
-
-            // hide all other grips
-            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_SHAPE]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            // prepare overlay
-            overlay_scaling_cross_->visible_ = false;
-            overlay_scaling_grid_->visible_ = false;
-            overlay_scaling_->visible_ = true;
-            overlay_scaling_->translation_.x = s->stored_status_->translation_.x;
-            overlay_scaling_->translation_.y = s->stored_status_->translation_.y;
-            overlay_scaling_->rotation_.z = s->stored_status_->rotation_.z;
-            overlay_scaling_->update(0);
-
-            //
-            // Manipulate the scaling handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec3 handle = glm::vec3( glm::round(pick.second), 0.f);
-            // Compute handle coordinates into SCENE reference frame
-            handle = source_to_scene_transform * glm::vec4( handle, 1.f );
-            // move the handle we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * glm::vec4( handle, 1.f );
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-            // Compute handle coordinates back in SOURCE reference frame
-            handle = scene_to_source_transform * glm::vec4( handle,  1.f );
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 handle_scaling = glm::vec2(handle) / glm::round(pick.second);
-
-            // proportional SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier()) {
-                handle_scaling = glm::vec2(glm::compMax(handle_scaling));
-                overlay_scaling_cross_->visible_ = true;
-                overlay_scaling_cross_->copyTransform(overlay_scaling_);
-            }
-            // Apply scaling to the source
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(handle_scaling, 1.f);
-
-            // show cursor depending on diagonal
-            corner = glm::sign(sourceNode->scale_);
-            ret.type = (corner.x * corner.y) > 0.f ? Cursor_ResizeNWSE : Cursor_ResizeNESW;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-            info << " x "  << sourceNode->scale_.y;
+            GeometryHandleManipulation::handleScale(ctx);
         }
         // picking on the rotating handle
         else if ( pick.first == s->handles_[mode_][Handles::ROTATE] ) {
-
-            // hide all other grips
-            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
-            s->handles_[mode_][Handles::SCALE]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_SHAPE]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            // ROTATION on CENTER
-            overlay_rotation_->visible_ = true;
-            overlay_rotation_->translation_.x = s->stored_status_->translation_.x;
-            overlay_rotation_->translation_.y = s->stored_status_->translation_.y;
-            overlay_rotation_->update(0);
-            overlay_rotation_fix_->visible_ = false;
-            overlay_rotation_fix_->copyTransform(overlay_rotation_);
-            overlay_rotation_clock_->visible_ = false;
-            overlay_rotation_clock_hand_->visible_ = true;
-            overlay_rotation_clock_hand_->translation_.x = s->stored_status_->translation_.x;
-            overlay_rotation_clock_hand_->translation_.y = s->stored_status_->translation_.y;
-
-            // prepare variables
-            const float diagonal = glm::length( glm::vec2(s->frame()->aspectRatio() * s->stored_status_->scale_.x, s->stored_status_->scale_.y));
-            glm::vec2 handle_polar = glm::vec2(diagonal, 0.f);
-
-            // rotation center to center of source (disregarding scale)
-            glm::mat4 M = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
-            glm::vec3 source_from = glm::inverse(M) * glm::vec4( scene_from,  1.f );
-            glm::vec3 source_to   = glm::inverse(M) * glm::vec4( scene_to,  1.f );
-
-            // compute rotation angle on Z axis
-            float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
-            handle_polar.y = s->stored_status_->rotation_.z + angle;
-            info << "Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << UNICODE_DEGREE;
-
-            // compute scaling of diagonal to reach new coordinates
-            handle_polar.x *= glm::length( glm::vec2(source_to) ) / glm::length( glm::vec2(source_from) );
-
-            // snap polar coordiantes (diagonal lenght, angle)
-            if ( grid->active() ) {
-                handle_polar = glm::round( handle_polar / grid->step() ) * grid->step();
-                // prevent null size
-                handle_polar.x = glm::max( grid->step().x,  handle_polar.x );
-            }
-
-            // Cancel scaling diagonal with SHIFT
-            if (UserInterface::manager().shiftModifier()) {
-                handle_polar.x = diagonal;
-                overlay_rotation_fix_->visible_ = true;
-            } else {
-                info << std::endl << "   Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-                info << " x "  << sourceNode->scale_.y ;
-            }
-
-            // apply after snap
-            sourceNode->rotation_ = glm::vec3(0.f, 0.f, handle_polar.y);
-            handle_polar.x /= diagonal ;
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(handle_polar.x, handle_polar.x, 1.f);
-
-            // update overlay
-            overlay_rotation_clock_hand_->rotation_.z = sourceNode->rotation_.z;
-            overlay_rotation_clock_hand_->update(0);
-
-            // show cursor for rotation
-            ret.type = Cursor_Hand;
+            GeometryHandleManipulation::handleRotate(ctx);
         }
         // picking anywhere but on a handle: user wants to move the source
         else {
