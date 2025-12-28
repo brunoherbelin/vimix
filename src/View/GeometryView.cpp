@@ -17,6 +17,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+
+#include "View/View.h"
+#include <algorithm>
+#include <cstddef>
+#include <glib.h>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -43,21 +48,18 @@
 #include "Visitor/BoundingBoxVisitor.h"
 #include "ActionManager.h"
 #include "MousePointer.h"
+#include "Scene/Scene.h"
+#include "Source/SourceList.h"
+#include "Canvas.h"
 
 #include "GeometryView.h"
 #include "GeometryHandleManipulation.h"
 
-// #define ENABLE_CANVAS
+#define ENABLE_CANVAS
 
 const char* GeometryView::editor_icons[2]  = { ICON_FA_OBJECT_UNGROUP, ICON_FA_BORDER_ALL };
 const char *GeometryView::editor_names[2] = {"Edit sources", " Edit canvas"};
 
-
-void Canvas::setCurrent(bool on)
-{
-    root_->visible_ = true;
-    frames_->setActive( on ? 1 : 0);
-}
 
 GeometryView::GeometryView() : View(GEOMETRY)
 {
@@ -74,52 +76,6 @@ GeometryView::GeometryView() : View(GEOMETRY)
     output_surface_ = new Surface;
     output_surface_->visible_ = false;
     scene.fg()->attach(output_surface_);
-
-    // Geometry surfaces
-    canvas_ = std::vector<Canvas>(MAX_OUTPUT_CANVAS);
-    for (auto &c : canvas_) {
-        // root node
-        c.root_ = new Group;
-        scene.fg()->attach(c.root_);
-        c.root_->visible_ = false;
-
-        // attach all modes of frame to the switch node
-        c.frames_ = new Switch;
-        c.root_->attach(c.frames_);
-
-        // frames_[0] : not current
-        Frame *frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
-        frame->color = glm::vec4(COLOR_FRAME, 0.95f);
-        c.frames_->attach(frame);
-
-        // frames_[1] : current
-        c.overlays_ = new Group;
-        c.frames_->attach(c.overlays_);
-
-        frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::GLOW); // current
-        frame->color = glm::vec4(COLOR_FRAME, 1.f);
-        c.overlays_->attach(frame);
-
-        c.menu_ = new Handles(Handles::MENU);
-        c.menu_->color = glm::vec4(COLOR_FRAME, 1.f);
-        c.overlays_->attach(c.menu_);
-
-        c.handles_[Handles::RESIZE] = new Handles(Handles::RESIZE);
-        c.handles_[Handles::RESIZE]->color = glm::vec4(COLOR_FRAME, 1.f);
-        c.overlays_->attach(c.handles_[Handles::RESIZE]);
-        c.handles_[Handles::RESIZE_H] = new Handles(Handles::RESIZE_H);
-        c.handles_[Handles::RESIZE_H]->color = glm::vec4(COLOR_FRAME, 1.f);
-        c.overlays_->attach(c.handles_[Handles::RESIZE_H]);
-        c.handles_[Handles::RESIZE_V] = new Handles(Handles::RESIZE_V);
-        c.handles_[Handles::RESIZE_V]->color = glm::vec4(COLOR_FRAME, 1.f);
-        c.overlays_->attach(c.handles_[Handles::RESIZE_V]);
-    }
-
-    // first surface is always visible
-    canvas_current_ = 0;
-    canvas_[canvas_current_].setCurrent(false);
-    canvas_stored_status_ = new Group;
-
 
     // User interface foreground
     //
@@ -205,6 +161,9 @@ GeometryView::GeometryView() : View(GEOMETRY)
     rotation_grid_->root()->visible_ = false;
     if (grid) delete grid;
     grid = translation_grid_;
+
+    // attach canvases to workspace
+    scene.ws()->attach(Canvas::manager().canvasScene());
 }
 
 void GeometryView::update(float dt)
@@ -276,6 +235,15 @@ int  GeometryView::size ()
 
 void GeometryView::draw()
 {
+    // Drawing of Geometry view is different as it renders
+    // only sources in the current workspace
+    std::vector<Node *> source_surfaces;
+    std::vector<Node *> source_overlays;
+    std::vector<Node *> canvas_surfaces;
+    std::vector<Node *> canvas_overlays;
+    uint workspaces_counts_[Source::WORKSPACE_ANY+1] = {0};
+    uint hidden_count_ = 0;
+
     // work on the current source
     Source *s = Mixer::manager().currentSource();
 
@@ -284,50 +252,62 @@ void GeometryView::draw()
     if (s != nullptr &&  Mixer::selection().size() > 1)
         s->setMode(Source::SELECTED);
 
-    // Drawing of Geometry view is different as it renders
-    // only sources in the current workspace
-    std::vector<Node *> surfaces;
-    std::vector<Node *> overlays;
-    uint workspaces_counts_[Source::WORKSPACE_ANY+1] = {0};
-    uint hidden_count_ = 0;
-
-    // fills list of sources only in SOURCE EDIT MODE
-    if (editor_mode_ == EDIT_SOURCES) {
-        for (auto source_iter = Mixer::manager().session()->begin();
-             source_iter != Mixer::manager().session()->end(); ++source_iter) {
-            // count if it is visible
-            if (Settings::application.views[mode_].ignore_mix || (*source_iter)->visible()) {
-                // if it is in the current workspace
-                if (Settings::application.current_workspace == Source::WORKSPACE_ANY
-                    || (*source_iter)->workspace() == Settings::application.current_workspace) {
-                    // will draw its surface
-                    surfaces.push_back((*source_iter)->groups_[mode_]);
-                    // will draw its frame and locker icon
-                    overlays.push_back((*source_iter)->frames_[mode_]);
-                    overlays.push_back((*source_iter)->locker_);
+    for (auto source_iter = Mixer::manager().session()->begin();
+            source_iter != Mixer::manager().session()->end(); ++source_iter) {
+        // count if it is visible
+        if (Settings::application.views[mode_].ignore_mix || (*source_iter)->visible()) {
+            // if it is in the current workspace
+            if (Settings::application.current_workspace == Source::WORKSPACE_ANY
+                || (*source_iter)->workspace() == Settings::application.current_workspace) {
+                // will draw its surface
+                source_surfaces.push_back((*source_iter)->groups_[mode_]);
+                // will draw its frame and locker icon
+                if (editor_mode_ == EDIT_SOURCES) {
+                    source_overlays.push_back((*source_iter)->frames_[mode_]);
+                    source_overlays.push_back((*source_iter)->locker_);
                 }
-                // count number of sources per workspace
-                workspaces_counts_[(*source_iter)->workspace()]++;
-                workspaces_counts_[Source::WORKSPACE_ANY]++;
             }
-            hidden_count_ += (*source_iter)->visible() ? 0 : 1;
+            // count number of sources per workspace
+            workspaces_counts_[(*source_iter)->workspace()]++;
+            workspaces_counts_[Source::WORKSPACE_ANY]++;
         }
+        hidden_count_ += (*source_iter)->visible() ? 0 : 1;
     }
 
+    // draw all canvases 
+    for (auto canvas_iter = Canvas::manager().canvasBegin();
+            canvas_iter != Canvas::manager().canvasEnd(); ++canvas_iter) {
+        
+        // will draw its surface
+        canvas_surfaces.push_back((*canvas_iter)->groups_[GEOMETRY]);
+        // canvas_surfaces.push_back((*canvas_iter)->groups_[RENDERING]);
+
+        // will draw its frame
+        canvas_overlays.push_back((*canvas_iter)->frames_[GEOMETRY]);
+    }
+    
     // 0. prepare projection for draw visitors
     glm::mat4 projection = Rendering::manager().Projection();
 
     // 1. Draw surface of sources in the current workspace
-    DrawVisitor draw_surfaces(surfaces, projection);
-    scene.accept(draw_surfaces);
+    DrawVisitor draw_sources(source_surfaces, projection);
+    scene.accept(draw_sources);
 
-    // 2. Draw scene rendering on top (which includes rendering of all visible sources)
-    DrawVisitor draw_rendering(output_surface_, projection, true);
-    scene.accept(draw_rendering);
 
-    if (!overlays.empty())  {
+    // // 2. Draw scene rendering on top (which includes rendering of all visible sources)
+    // DrawVisitor draw_rendering(output_surface_, projection, true);
+    // scene.accept(draw_rendering);
+
+    // Draw canvases on top of sources // foreground ?
+    DrawVisitor draw_canvases(canvas_surfaces, projection, true);
+    scene.accept(draw_canvases);
+
+    // g_printerr("%ld Canvases, %ld surfaces\n", 
+    //     Mixer::manager().session()->render_.numCanvases(), canvas_surfaces.size());
+
+    if (!source_overlays.empty())  {
         // 3. Draw frames and icons of sources in the current workspace
-        DrawVisitor draw_overlays(overlays, projection);
+        DrawVisitor draw_overlays(source_overlays, projection);
         scene.accept(draw_overlays);
 
         // 4. Draw control overlays of current source on top (if selected)
@@ -392,10 +372,11 @@ void GeometryView::draw()
                     // cancel selection of sources
                     if (m != GeometryView::EDIT_SOURCES){
                         Mixer::selection().clear();
-                        canvas_[canvas_current_].setCurrent(true);
+
                     }
                     else {
-                        canvas_[canvas_current_].setCurrent(false);
+                        
+
                     }
                 }
             }
@@ -407,24 +388,25 @@ void GeometryView::draw()
         // SURFACES EDIT OPTIONS
         if (editor_mode_ == EDIT_CANVAS) {
 
+            Settings::application.num_output_canvases = Canvas::manager().numCanvases();
             // add / remove surfaces
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (Settings::application.num_output_surfaces > 1) {
+            if (Settings::application.num_output_canvases > 1) {
                 if (ImGuiToolkit::IconButton(19, 4, "Less canvas")) {
-                    Settings::application.num_output_surfaces--;
+                    Canvas::manager().removeCanvas();
                 }
             }
             else
                 ImGuiToolkit::Icon(19, 4, false);
 
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (Settings::application.num_output_surfaces < MAX_OUTPUT_CANVAS) {
+            if (Settings::application.num_output_canvases < MAX_OUTPUT_CANVAS) {
                 if (ImGuiToolkit::IconButton(18, 4, "More canvas")) {
-                    Settings::application.num_output_surfaces++;
+                    Canvas::manager().addCanvas();
                 }
-            } else
+            } 
+            else
                 ImGuiToolkit::Icon(18, 4, false);
-
 
         }
         // SOURCES EDIT OPTIONS
@@ -821,20 +803,70 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
         }
         // CANVAS EDIT
         else {
-            // picking node
-            pick = pv.back();
+            // canvas are not sources; cancel normal source picking
+            pick = { nullptr, glm::vec2(0.f) };
 
-            if (pick.first == canvas_[canvas_current_].menu_) {
-                // TODO context menu canvas
-                g_printerr("Canvas MENU\n");
+            // keep current source active if it is clicked
+            Source *picked_canvas = current_canvas_;
+            if (picked_canvas != nullptr) {
+                auto itp = pv.rbegin();
+                for (; itp != pv.rend(); ++itp){
+                    // test if source contains this node
+                    Source::hasNode is_in_source((*itp).first );
+                    if ( is_in_source( picked_canvas ) ){
+                        // a node in the current source was clicked !
+                        pick = *itp;
+                        // // adapt grid to prepare grab action
+                        // adaptGridToSource(current, pick.first);
+                        break;
+                    }
+                }
+                // not found: the current source was not clicked
+                // OR the selection contains multiple sources and actions on single source are disabled
+                if (itp == pv.rend() ) {
+                    picked_canvas->setMode(Source::VISIBLE);
+                    picked_canvas = nullptr;
+                }
+                // picking on the menu handle: show context menu
+                else if ( pick.first == picked_canvas->handles_[mode_][Handles::MENU] ) {
+                    // openContextMenu(MENU_CANVAS); // TODO context menu canvas
+                    g_printerr("Canvas MENU\n");
+                }
             }
-            // else {
+            // the clicked canvas might have changed
+            if (picked_canvas == nullptr) {
 
-            //     g_printerr("Pick x %f  y %f\n", pick.second.x, pick.second.y);
-            // }
+                // default to no canvas picked
+                if(current_canvas_ != nullptr){
+                    current_canvas_->setMode(Source::VISIBLE);
+                    current_canvas_ = nullptr;
+                }
+
+                // loop over all canvases picked
+                for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
+                    // get if a canvas was picked
+
+                    SourceList::iterator sit = std::find_if(Canvas::manager().canvasBegin(), 
+                    Canvas::manager().canvasEnd(), Source::hasNode( (*itp).first ));
+
+                    // accept picked canvas
+                    if ( sit!=Canvas::manager().canvasEnd() )
+                    {
+                        current_canvas_ = *sit;
+                        current_canvas_->setMode(Source::CURRENT);
+                        break;
+                    }
+                }
+
+            }
 
         }
 
+    }
+    else if(current_canvas_ != nullptr){
+        // no canvas picked
+        current_canvas_->setMode(Source::VISIBLE);
+        current_canvas_ = nullptr;
     }
 
     return pick;
@@ -876,63 +908,31 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
-    if (editor_mode_ == EDIT_CANVAS && pick.first) {
-        const glm::mat4 scene_to_canvas_transform = glm::inverse(canvas_stored_status_->transform_);
+    // if (editor_mode_ == EDIT_CANVAS && pick.first) {
+        // const glm::mat4 scene_to_canvas_transform = glm::inverse(canvas_stored_status_->transform_);
         // const glm::mat4 canvas_to_scene_transform = scene_to_canvas_transform;
 
-        // which corner was picked ?
-        glm::vec2 corner = glm::round(pick.second);
+        // // which corner was picked ?
+        // glm::vec2 corner = glm::round(pick.second);
 
-        // keep transform from source center to opposite corner
-        const glm::mat4 canvas_to_corner_transform = glm::translate(glm::identity<glm::mat4>(),
-                                                                    glm::vec3(corner, 0.f));
-        // transformation from scene to corner:
-        const glm::mat4 scene_to_corner_transform = canvas_to_corner_transform
-                                                    * scene_to_canvas_transform;
-        const glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
+        // // keep transform from source center to opposite corner
+        // const glm::mat4 canvas_to_corner_transform = glm::translate(glm::identity<glm::mat4>(),
+        //                                                             glm::vec3(corner, 0.f));
+        // // transformation from scene to corner:
+        // const glm::mat4 scene_to_corner_transform = canvas_to_corner_transform
+        //                                             * scene_to_canvas_transform;
+        // const glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
 
-        // clamp coordinates of target cursor position to remain inside output surface
-        scene_to = glm::clamp(scene_to, glm::vec3(-output_surface_->scale_.x, -1.f, -10.f),
-                              glm::vec3(output_surface_->scale_.x, 1.f, 10.f));
+        // // clamp coordinates of target cursor position to remain inside output surface
+        // scene_to = glm::clamp(scene_to, glm::vec3(-output_surface_->scale_.x, -1.f, -10.f),
+        //                       glm::vec3(output_surface_->scale_.x, 1.f, 10.f));
 
-        if (pick.first == canvas_[canvas_current_].handles_[Handles::RESIZE]) {
-            // Create context for handle manipulation function
-            std::ostringstream info;
-            GeometryHandleManipulation::HandleGrabContext ctx = {
-                canvas_[canvas_current_].root_,        // targetNode
-                canvas_stored_status_,                 // stored_status
-                nullptr,                               // frame (not used for canvas)
-                scene_from,                            // scene_from
-                scene_to,                              // scene_to
-                scene_to_canvas_transform,             // scene_to_target_transform
-                glm::inverse(scene_to_canvas_transform), // target_to_scene_transform
-                scene_to_corner_transform,             // scene_to_corner_transform
-                corner_to_scene_transform,             // corner_to_scene_transform
-                corner,                                // corner
-                pick,                                  // pick
-                grid,                                  // grid
-                info,                                  // info
-                ret,                                   // cursor
-                canvas_[canvas_current_].handles_,     // handles
-                overlay_crop_,                         // overlay_crop
-                overlay_scaling_,                      // overlay_scaling
-                overlay_scaling_cross_,                // overlay_scaling_cross
-                overlay_rotation_,                     // overlay_rotation
-                overlay_rotation_fix_,                 // overlay_rotation_fix
-                overlay_rotation_clock_hand_           // overlay_rotation_clock_hand
-            };
 
-            // Additional canvas-specific visibility setup
-            canvas_[canvas_current_].menu_->visible_ = false;
-            // inform on which corner should be overlayed (opposite)
-            canvas_[canvas_current_].handles_[Handles::RESIZE]->overlayActiveCorner(-corner);
+                              
 
-            GeometryHandleManipulation::handleResize(ctx);
-        }
-
-        // update cursor
-        return ret;
-    }
+    //     // update cursor
+    //     return ret;
+    // }
 
     // No source is given
     if (!s) {
@@ -1059,10 +1059,17 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 ret.type = Cursor_Hand;
             }
 
+            // done with selection manipulation
+            return ret;
         }
 
-        // update cursor
-        return ret;
+        // TODO Canvas ?
+        if (current_canvas_ != nullptr) {
+            // g_print("Grab canvas\n");
+            s = current_canvas_;
+        }
+        else 
+            return ret;
     }
 
     Group *sourceNode = s->group(mode_); // groups_[View::GEOMETRY]
@@ -1234,9 +1241,8 @@ void GeometryView::initiate()
         View::initiate();
     else if (!current_action_ongoing_ ) {
         // store status current canvas
-        canvas_stored_status_->copyTransform(canvas_[canvas_current_].root_);
-        canvas_stored_status_->update(0.f);
 
+        
         // initiated
         current_action_ = "";
         current_action_ongoing_ = true;
@@ -1280,13 +1286,13 @@ void GeometryView::terminate(bool force)
     overlay_selection_active_ = false;
 
     // restore all handles canvas
-    for (auto &c : canvas_) {
-        c.menu_->visible_ = true;
-        c.handles_[Handles::RESIZE]->visible_ = true;
-        c.handles_[Handles::RESIZE]->overlayActiveCorner( glm::vec2(0.f, 0.f) );
-        c.handles_[Handles::RESIZE_H]->visible_ = true;
-        c.handles_[Handles::RESIZE_V]->visible_ = true;
-    }
+    // for (auto &c : canvas_) {
+    //     c.menu_->visible_ = true;
+    //     c.handles_[Handles::RESIZE]->visible_ = true;
+    //     c.handles_[Handles::RESIZE]->overlayActiveCorner( glm::vec2(0.f, 0.f) );
+    //     c.handles_[Handles::RESIZE_H]->visible_ = true;
+    //     c.handles_[Handles::RESIZE_V]->visible_ = true;
+    // }
 
 
     // reset grid

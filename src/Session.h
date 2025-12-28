@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include "Source/SourceList.h"
+#include "View/GeometryView.h"
 #include "View/RenderView.h"
 #include "Metronome.h"
 
@@ -39,6 +40,7 @@ struct SessionSnapshots {
 class Session
 {
     friend class RenderSource;
+    friend class GeometryView;
 
 public:
     Session(uint64_t id = 0);

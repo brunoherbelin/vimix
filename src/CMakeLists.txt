@@ -17,6 +17,7 @@ set(VMIX_SRCS
     Log.cpp
     ActionManager.cpp
     Audio.cpp
+    Canvas.cpp
     Connection.cpp
     ControlManager.cpp
     FrameBuffer.cpp
@@ -84,6 +85,7 @@ set(VMIX_SRCS
     Source/SrtReceiverSource.cpp
     Source/StreamSource.cpp
     Source/TextSource.cpp
+    Source/CanvasSource.cpp
     
     # Toolkit/ folder
     Toolkit/BaseToolkit.cpp

@@ -1,31 +1,9 @@
 #ifndef GEOMETRYVIEW_H
 #define GEOMETRYVIEW_H
 
+#include "Source/CanvasSource.h"
 #include "View.h"
 
-struct Canvas
-{
-    bool current_;
-    Group *root_;
-    Switch *frames_;
-    Group *overlays_;
-    Handles *handles_[3];
-    Handles *menu_;
-
-    Canvas()
-    {
-        current_ = false;
-        root_ = nullptr;
-        frames_ = nullptr;
-        overlays_ = nullptr;
-        menu_ = nullptr;
-        handles_[0] = nullptr;
-        handles_[1] = nullptr;
-        handles_[2] = nullptr;
-    }
-
-    void setCurrent(bool on);
-};
 
 class GeometryView : public View
 {
@@ -62,7 +40,7 @@ private:
     Node *overlay_scaling_grid_;
     Node *overlay_crop_;
 
-    std::vector<Canvas> canvas_;
+    Source *current_canvas_;
     uint canvas_current_;
     Group *canvas_stored_status_;
 

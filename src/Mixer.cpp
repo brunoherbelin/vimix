@@ -54,6 +54,7 @@
 #include "Source/SrtReceiverSource.h"
 #include "Source/SourceCallback.h"
 
+#include "Canvas.h"
 #include "SessionCreator.h"
 #include "MediaPlayer.h"
 #include "ActionManager.h"
@@ -208,6 +209,9 @@ void Mixer::update()
 
     // update session and associated sources
     session_->update(dt_);
+
+    // update canvases
+    Canvas::manager().update();
 
     // grab frames to recorders & streamers
     FrameGrabbing::manager().grabFrame(session_->frame(), static_cast<guint64>(dt__));
@@ -556,7 +560,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
         renameSource(s);
 
         // Add source to Session (ignored if source already in)
-        SourceList::iterator sit = session_->addSource(s);
+        SourceList::iterator sit = session_->addSource(s); // TODO; check if needed as attached in attachSource
 
         // set a default depth to the new source
         layer_.setDepth(s);
@@ -1674,6 +1678,9 @@ void Mixer::swap()
 
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
+    
+    // adjust canvas to rewly updated framebuffer
+    Canvas::manager().setFrameBuffer(session_->frame());
 
     // no current source
     current_source_ = session_->end();
@@ -1765,7 +1772,13 @@ void Mixer::set(Session *s)
 void Mixer::setResolution(glm::vec3 res)
 {
     if (session_) {
+
+        // set session resolution
         session_->setResolution(res);
+
+        // adjust canvas to rewly updated framebuffer
+        Canvas::manager().setFrameBuffer(session_->frame());
+
         ++View::need_deep_update_;
         std::ostringstream info;
         info << "Session resolution changed to " << res.x << "x" << res.y;

@@ -128,11 +128,11 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     // Surfaces
     {
         XMLElement *surfacesNode = xmlDoc.NewElement( "OutputSurfaces" );
-        surfacesNode->SetAttribute("num_output_surfaces", application.num_output_surfaces);
+        surfacesNode->SetAttribute("num_output_surfaces", application.num_output_canvases);
 
-        for (int i = 0; i < (int) application.surfaces.size(); ++i)
+        for (int i = 0; i < (int) application.canvases.size(); ++i)
         {
-            const Settings::CanvasConfig& w = application.surfaces[i];
+            const Settings::CanvasConfig& w = application.canvases[i];
 
             XMLElement *surface = xmlDoc.NewElement( "Surface" );
             surface->SetAttribute("id", i);
@@ -704,7 +704,7 @@ void Settings::Load(const std::string &filename)
         {
             XMLElement *pElement = pRoot->FirstChildElement("OutputSurfaces");
             if (pElement) {
-                pElement->QueryIntAttribute("num_output_surfaces", &application.num_output_surfaces);
+                pElement->QueryIntAttribute("num_output_surfaces", &application.num_output_canvases);
 
                 XMLElement *surfaceNode = pElement->FirstChildElement("Surface");
                 for (; surfaceNode; surfaceNode = surfaceNode->NextSiblingElement()) {
@@ -717,7 +717,7 @@ void Settings::Load(const std::string &filename)
                     int i = 0;
                     surfaceNode->QueryIntAttribute("id", &i);
 
-                    application.surfaces[i] = w;
+                    application.canvases[i] = w;
                 }
             }
         }
