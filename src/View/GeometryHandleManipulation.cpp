@@ -206,13 +206,13 @@ void handleCropH(HandleGrabContext& ctx)
 
     // Apply transform to the CROP
     if (ctx.corner.x > 0.f) {
-        ctx.targetNode->crop_[1] = CLAMP(ctx.stored_status->crop_[0]
-                                         + (ctx.stored_status->crop_[1] - ctx.stored_status->crop_[0]) * handle_scaling.x,
-                                         0.1f, 1.f);
+        float val = ctx.stored_status->crop_[0]
+                    + (ctx.stored_status->crop_[1] - ctx.stored_status->crop_[0]) * handle_scaling.x;
+        ctx.targetNode->crop_[1] = CLAMP(val, MAX(-1.f, ctx.stored_status->crop_[0] + 0.1f), 1.f);
     } else {
-        ctx.targetNode->crop_[0] = CLAMP(ctx.stored_status->crop_[1]
-                                         - (ctx.stored_status->crop_[1] - ctx.stored_status->crop_[0]) * handle_scaling.x,
-                                         -1.f, -0.1f);
+        float val = ctx.stored_status->crop_[1]
+                    - (ctx.stored_status->crop_[1] - ctx.stored_status->crop_[0]) * handle_scaling.x;
+        ctx.targetNode->crop_[0] = CLAMP(val, -1.f, MIN(1.f, ctx.stored_status->crop_[1] - 0.1f));
     }
 
     handle_scaling.x = (ctx.targetNode->crop_[1] - ctx.targetNode->crop_[0])
@@ -274,13 +274,14 @@ void handleCropV(HandleGrabContext& ctx)
 
     // Apply transform to the CROP
     if (ctx.corner.y > 0.f) {
-        ctx.targetNode->crop_[2] = CLAMP(ctx.stored_status->crop_[3]
-                                         + (ctx.stored_status->crop_[2] - ctx.stored_status->crop_[3]) * handle_scaling.y,
-                                         0.1f, 1.f);
+        float val = ctx.stored_status->crop_[3]
+                    + (ctx.stored_status->crop_[2] - ctx.stored_status->crop_[3]) * handle_scaling.y;
+        ctx.targetNode->crop_[2] = CLAMP(val, MAX(-1.f, ctx.stored_status->crop_[3] + 0.1f), 1.f);
     } else {
-        ctx.targetNode->crop_[3] = CLAMP(ctx.stored_status->crop_[2]
-                                         - (ctx.stored_status->crop_[2] - ctx.stored_status->crop_[3]) * handle_scaling.y,
-                                         -1.f, -0.1f);
+        float val = ctx.stored_status->crop_[2]
+                    - (ctx.stored_status->crop_[2] - ctx.stored_status->crop_[3]) * handle_scaling.y;
+
+        ctx.targetNode->crop_[3] = CLAMP(val, -1.f,  MIN(1.f, ctx.stored_status->crop_[2] - 0.1f) );    
     }
 
     handle_scaling.y = (ctx.targetNode->crop_[2] - ctx.targetNode->crop_[3])

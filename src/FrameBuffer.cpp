@@ -416,7 +416,7 @@ glm::vec2 FrameBuffer::projectionSize() const
 
 void FrameBuffer::setProjectionArea(glm::vec4 c)
 {
-    projection_area_ = glm::clamp(c, glm::vec4(-1.f, 0.1f, 0.1f, -1.f), glm::vec4(-0.1f, 1.f, 1.f, -0.1f));
+    projection_area_ = glm::clamp(c, glm::vec4(-1.f, -1.f, -1.f, -1.f), glm::vec4(1.f, 1.f, 1.f, 1.f));
     projection_ = glm::ortho(projection_area_[0],
                              projection_area_[1],
                              projection_area_[2],
