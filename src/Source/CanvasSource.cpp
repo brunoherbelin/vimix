@@ -40,7 +40,7 @@ CanvasSource::CanvasSource(uint64_t id) : Source(id),
     rendered_output_(nullptr), rendered_surface_(nullptr), paused_(false), reset_(true)
 {
     // set symbol
-    symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_ = new Symbol(Symbol::SCREEN, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
 
     // default visible 
@@ -106,6 +106,8 @@ void CanvasSource::init()
         flag &= ~FrameBuffer::FrameBuffer_multisampling;
 
         // create the frame buffer displayed by the source (all modes)
+        if (rendered_output_ != nullptr)
+            delete rendered_output_;
         rendered_output_ = new FrameBuffer( fb->resolution(), flag );
 
         // needs a first initialization (to get texture)
@@ -136,7 +138,7 @@ void CanvasSource::update(float dt)
 
     if (Canvas::manager().canvas_surface_ 
         && Canvas::manager().canvas_surface_->frameBuffer() 
-        && rendered_output_) {
+        && rendered_output_ && renderbuffer_) {
     
         if ((active_ && !paused_) || reset_) {
             

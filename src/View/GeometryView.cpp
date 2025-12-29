@@ -257,8 +257,7 @@ void GeometryView::draw()
             if (Settings::application.current_workspace == Source::WORKSPACE_ANY
                 || (*source_iter)->workspace() == Settings::application.current_workspace) {
                 // will draw its surface
-                // source_surfaces.push_back((*source_iter)->groups_[mode_]);
-                source_surfaces.push_back((*source_iter)->rendersurface_);
+                source_surfaces.push_back((*source_iter)->groups_[mode_]);
                 // will draw its frame and locker icon
                 if (editor_mode_ == EDIT_SOURCES) {
                     source_overlays.push_back((*source_iter)->frames_[mode_]);
@@ -277,8 +276,7 @@ void GeometryView::draw()
             canvas_iter != Canvas::manager().canvasEnd(); ++canvas_iter) {
         
         // will draw its surface
-        canvas_surfaces.push_back((*canvas_iter)->rendersurface_);
-        // canvas_surfaces.push_back((*canvas_iter)->groups_[RENDERING]);
+        canvas_surfaces.push_back((*canvas_iter)->groups_[RENDERING]);
 
         // will draw its frame
         canvas_overlays.push_back((*canvas_iter)->frames_[GEOMETRY]);

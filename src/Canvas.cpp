@@ -111,7 +111,6 @@ void Canvas::addCanvas()
     // attach to geometry view scene 
     canvas_scene_->attach( canvas->groups_[View::GEOMETRY] );
     canvas_scene_->attach( canvas->frames_[View::GEOMETRY] );
-    
 }
 
 void Canvas::removeCanvas()
