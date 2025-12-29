@@ -25,6 +25,8 @@
 #include <glm/matrix.hpp>
 #include <gtk/gtk.h>
 
+#include <glm/gtx/string_cast.hpp>
+
 #include "defines.h"
 #include "Log.h"
 #include "FrameBuffer.h"
@@ -124,29 +126,37 @@ void RenderSource::update(float dt)
 
     if (session_ && session_->ready() && rendered_output_) {
         if ((active_ && !paused_) || reset_) {
+
+            // simulate a rendering of the session in a framebuffer
             if (provenance_ >= RENDER_PROJECTION || reset_ ) {
                 // temporarily exclude this RenderSource from the rendering
                 groups_[View::RENDERING]->visible_ = false;
-                // simulate a rendering of the session in a framebuffer
-                glm::mat4 P = glm::scale(projection,
-                                         glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
 
                 if (provenance_ == RENDER_PROJECTION_SOURCE) {
 
                     // temporarily set the scene root transform to the inverse of the source transform
-                    glm::vec3 rotation = this->groups_[View::RENDERING]->rotation_;
-                    glm::vec3 scale = this->groups_[View::RENDERING]->scale_;
+                    glm::vec3 rotation = groups_[View::RENDERING]->rotation_;
+                    glm::vec3 scale = groups_[View::RENDERING]->scale_ ;
                     scale.z = 1.f;
-                    glm::vec3 translation =  this->groups_[View::RENDERING]->translation_;
+                    glm::vec3 translation =  groups_[View::RENDERING]->translation_;
                     translation.z = 0.f;
                     session_->render_.scene.root()->transform_ = glm::inverse( GlmToolkit::transform(translation, rotation, scale) );
 
                     // add all sources below this one in the scene graph
                     std::vector<Node *> surfaces;
                     for (auto sit = session_->begin(); sit != session_->end(); ++sit) {
-                        if ((*sit)->group(View::RENDERING)->translation_.z < this->groups_[View::RENDERING]->translation_.z)
+                        if ((*sit)->group(View::RENDERING)->translation_.z < groups_[View::RENDERING]->translation_.z)
                             surfaces.push_back((*sit)->group(View::RENDERING));
                     }
+
+                    // change projection to account for CROP (inverse transform)
+                    glm::vec3 _c_s = glm::vec3(groups_[View::GEOMETRY]->crop_[0] - groups_[View::GEOMETRY]->crop_[1],
+                            groups_[View::GEOMETRY]->crop_[2] - groups_[View::GEOMETRY]->crop_[3],
+                            2.f) * 0.5f ;
+                    glm::vec3 _t((_c_s.x + groups_[View::GEOMETRY]->crop_[1]),
+                                 (_c_s.y + groups_[View::GEOMETRY]->crop_[3]), 0.f);
+                    
+                    glm::mat4 P = glm::scale(glm::translate(projection, _t), _c_s * glm::vec3(-1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
 
                     // render using visitor
                     rendered_output_->begin();
@@ -158,6 +168,8 @@ void RenderSource::update(float dt)
                     session_->render_.scene.root()->transform_ = glm::identity<glm::mat4>();
                 }
                 else {
+                    glm::mat4 P = glm::scale(projection,
+                                         glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
                     rendered_output_->begin();
                     // access to private RenderView in the session to call draw on the root of the scene
                     session_->render_.scene.root()->draw(glm::identity<glm::mat4>(), P);

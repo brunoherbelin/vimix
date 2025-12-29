@@ -96,7 +96,7 @@ void CanvasSource::init()
         && Canvas::manager().canvas_surface_->frameBuffer()->texture() != Resource::getTextureBlack()) {
 
         // attach canvas surface to rendering scene (drawn by this source in update)
-        canvas_rendering_scene_.ws()->detach(Canvas::manager().canvas_surface_);
+        canvas_rendering_scene_.ws()->detach(Canvas::manager().canvas_surface_); // avoid double attach
         canvas_rendering_scene_.ws()->attach(Canvas::manager().canvas_surface_);
         canvas_rendering_scene_.update(0.f);
 
@@ -140,16 +140,22 @@ void CanvasSource::update(float dt)
     
         if ((active_ && !paused_) || reset_) {
             
-            glm::mat4 P  = glm::scale( projection, 
-                glm::vec3(1.f / Canvas::manager().canvas_surface_->frameBuffer()->aspectRatio(), 1.f, 1.f));
-
-
             //  the scene root transform to the inverse of the source transform
             glm::vec3 rotation = this->groups_[View::RENDERING]->rotation_;
             glm::vec3 scale = this->groups_[View::RENDERING]->scale_;
             scale.z = 1.f;
             glm::vec3 translation =  this->groups_[View::RENDERING]->translation_;
             translation.z = 0.f;
+
+            // change projection to account for CROP (inverse transform)
+            glm::vec3 _c_s = glm::vec3(groups_[View::GEOMETRY]->crop_[0] - groups_[View::GEOMETRY]->crop_[1],
+                    groups_[View::GEOMETRY]->crop_[2] - groups_[View::GEOMETRY]->crop_[3],
+                    2.f) * 0.5f ;
+            glm::vec3 _t((_c_s.x + groups_[View::GEOMETRY]->crop_[1]),
+                            (_c_s.y + groups_[View::GEOMETRY]->crop_[3]), 0.f);
+            
+            glm::mat4 P = glm::scale(glm::translate(projection, _t), _c_s * 
+                glm::vec3(-1.f / Canvas::manager().canvas_surface_->frameBuffer()->aspectRatio(), 1.f, 1.f));
 
             rendered_output_->begin();
             // access to private RenderView in the session to call draw on the root of the scene
