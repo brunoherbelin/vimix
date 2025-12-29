@@ -1,6 +1,7 @@
 #ifndef CANVAS_H
 #define CANVAS_H
 
+#include <string>
 #include "Source/SourceList.h"
 
 class Group;
@@ -48,6 +49,10 @@ public:
     // for iteration over canvases
     SourceList::iterator canvasBegin ();
     SourceList::iterator canvasEnd ();
+
+    // configuration
+    void load(const std::string &filename = std::string());
+    void save(const std::string &filename = std::string());
 
 protected:
 

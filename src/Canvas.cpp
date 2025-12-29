@@ -17,6 +17,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <tinyxml2.h>
+using namespace tinyxml2;
+
+#include "defines.h"
+#include "Toolkit/tinyxml2Toolkit.h"
+#include "Toolkit/SystemToolkit.h"
+#include "Visitor/SessionVisitor.h"
+#include "SessionCreator.h"
 #include "Source/CanvasSource.h"    
 #include "Scene/Primitives.h"
 #include "FrameBuffer.h"
@@ -34,10 +42,15 @@ void Canvas::init()
     // create first canvas
     addCanvas();
 
+    // load configuration
+    load();
 }
 
 void Canvas::terminate()
 {
+    // save
+    save();
+
     // delete all canvases
     while ( canvases_.size() > 0 ) {        
         Source *tmp = canvases_.back();
@@ -103,6 +116,7 @@ void Canvas::addCanvas()
 
 void Canvas::removeCanvas()
 {
+    // minumum one canvas
     if ( canvases_.size() > 1 ) {
 
         // get last canvas
@@ -128,4 +142,95 @@ SourceList::iterator Canvas::canvasBegin ()
 SourceList::iterator Canvas::canvasEnd ()
 {
     return canvases_.end();
+}
+
+
+
+void Canvas::load(const std::string &filename)
+{
+    std::string settingsFilename = filename;
+
+    if (settingsFilename.empty()) {
+        // save default configuration
+        settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_CANVAS);
+    }
+
+    // try to load settings file
+    XMLDocument xmlDoc;
+    XMLError eResult = xmlDoc.LoadFile( filename.empty() ?
+                                           settingsFilename.c_str() : filename.c_str());
+
+	// do not warn if non existing file
+    if (eResult == XML_ERROR_FILE_NOT_FOUND)
+        return;
+    // warn and return on other error
+    else if (XMLResultError(eResult))
+        return;
+
+    // first element should be the application name
+    XMLElement *pRoot = xmlDoc.FirstChildElement(APP_NAME);
+    if (pRoot == nullptr)
+        return;
+
+    // first child should be canvases
+    XMLElement * canvasesNode = pRoot->FirstChildElement("Canvases");
+    if (canvasesNode == nullptr)
+        return;
+    
+    // use a session loader visitor to load canvases as sources
+    SessionLoader loader;
+
+    SourceList::iterator canvas_it = canvases_.begin();
+    XMLElement* sourceNode = canvasesNode->FirstChildElement("Source");
+    for(int i = 0 ; sourceNode ; sourceNode = sourceNode->NextSiblingElement("Source"))
+    {
+        // create a new canvas if needed
+        if ( canvas_it == canvases_.end() ) {
+            addCanvas();
+            canvas_it = --canvases_.end();
+        }
+
+        loader.setCurrentXML( sourceNode );
+        (*canvas_it)->accept( loader );
+        ++canvas_it;
+    }
+    // delete extra canvases if any
+    while ( canvas_it != canvases_.end() ) {
+        removeCanvas();
+        canvas_it = --canvases_.end();  
+    }
+}
+
+void Canvas::save(const std::string &filename)
+{
+    std::string settingsFilename = filename;
+
+    if (settingsFilename.empty()) {
+        // save default configuration
+        settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_CANVAS);
+    }
+    
+    // save to file
+    // creation of XML doc
+    setlocale(LC_ALL, "C");
+    XMLDocument xmlDoc;
+    XMLDeclaration *pDec = xmlDoc.NewDeclaration();
+    xmlDoc.InsertFirstChild(pDec);
+
+    // first element is application name
+    XMLElement *pRoot = xmlDoc.NewElement(APP_NAME);
+    xmlDoc.InsertEndChild(pRoot);
+
+    // list of canvases
+    XMLElement *canvasesNode = xmlDoc.NewElement("Canvases");
+    pRoot->InsertEndChild(canvasesNode);
+    SessionVisitor sv(&xmlDoc, canvasesNode);
+    for (auto iter = canvasBegin(); iter != canvasEnd(); ++iter, sv.setRoot(canvasesNode) )
+        // source visitor
+        (*iter)->accept(sv);
+
+    // save canvases config
+    XMLError eResult = xmlDoc.SaveFile( settingsFilename.c_str());
+    XMLResultError(eResult);
+    
 }

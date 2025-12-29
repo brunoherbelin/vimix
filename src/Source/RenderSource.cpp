@@ -25,8 +25,6 @@
 #include <glm/matrix.hpp>
 #include <gtk/gtk.h>
 
-#include <glm/gtx/string_cast.hpp>
-
 #include "defines.h"
 #include "Log.h"
 #include "FrameBuffer.h"

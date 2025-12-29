@@ -9,7 +9,8 @@
 #define MAX_RECENT_HISTORY 20
 #define MAX_SESSION_LEVEL 3
 #define MAX_OUTPUT_WINDOW 3
-#define MAX_OUTPUT_CANVAS 8
+#define MAX_OUTPUT_CANVAS 12
+#define APP_CANVAS "vimix_canvas.xml"
 
 #define VIMIX_GL_VERSION "opengl3"
 #define VIMIX_GLSL_VERSION "#version 150"

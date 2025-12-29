@@ -22,6 +22,7 @@ public:
     void load(tinyxml2::XMLElement *sessionNode);
     std::map< uint64_t, Source* > getSources() const;
     std::list< SourceList > getMixingGroups() const;
+    void setCurrentXML(tinyxml2::XMLElement *xml) { xmlCurrent_ = xml; }
 
     typedef enum {
         CLONE,
