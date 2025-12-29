@@ -19,15 +19,42 @@
 
 #include "Source/CanvasSource.h"    
 #include "Scene/Primitives.h"
-#include "View/GeometryView.h"
+#include "FrameBuffer.h"
 
 #include "Canvas.h"
 
 Canvas::Canvas() : canvas_surface_(nullptr)
 {
     canvas_scene_ = new Group;
+}
+
+
+void Canvas::init()
+{
     // create first canvas
     addCanvas();
+
+}
+
+void Canvas::terminate()
+{
+    // delete all canvases
+    while ( canvases_.size() > 0 ) {        
+        Source *tmp = canvases_.back();
+        canvas_scene_->detach( tmp->groups_[View::GEOMETRY] );
+        canvas_scene_->detach( tmp->frames_[View::GEOMETRY] );
+        canvases_.pop_back();
+        delete tmp;
+    }
+
+    // delete canvas surface
+    if ( canvas_surface_ != nullptr) {
+        delete canvas_surface_;
+        canvas_surface_ = nullptr;
+    }
+
+    // delete canvas scene
+    delete canvas_scene_;
 }
 
 void Canvas::setFrameBuffer(FrameBuffer *fb)
@@ -39,6 +66,11 @@ void Canvas::setFrameBuffer(FrameBuffer *fb)
     // update canvas surface framebuffer
     canvas_surface_->setFrameBuffer(fb);
     canvas_surface_->scale_.x = fb->aspectRatio();
+
+    // reset all canvases
+    for (auto cit = canvasBegin(); cit != canvasEnd(); ++cit) {
+        (*cit)->reload();
+    }
 }
 
 void Canvas::update()
@@ -73,11 +105,18 @@ void Canvas::removeCanvas()
 {
     if ( canvases_.size() > 1 ) {
 
-        canvas_scene_->detach( canvases_.back()->groups_[View::GEOMETRY] );
-        canvas_scene_->detach( canvases_.back()->frames_[View::GEOMETRY] );
+        // get last canvas
+        Source *tmp = canvases_.back();
 
-        // remove last canvas
+        // detach from scene
+        canvas_scene_->detach( tmp->groups_[View::GEOMETRY] );
+        canvas_scene_->detach( tmp->frames_[View::GEOMETRY] );
+
+        // remove last canvas from list
         canvases_.pop_back();
+
+        // delete it
+        delete tmp;
     }
 }
 

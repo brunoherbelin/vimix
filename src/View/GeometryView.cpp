@@ -162,8 +162,6 @@ GeometryView::GeometryView() : View(GEOMETRY)
     if (grid) delete grid;
     grid = translation_grid_;
 
-    // attach canvases to workspace
-    scene.ws()->attach(Canvas::manager().canvasScene());
 }
 
 void GeometryView::update(float dt)

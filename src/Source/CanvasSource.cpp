@@ -56,6 +56,10 @@ CanvasSource::CanvasSource(uint64_t id) : Source(id),
 
 CanvasSource::~CanvasSource()
 {
+    // detatch from canvas rendering scene
+    // so that it is not deleted each time a Canvas is deleted
+    canvas_rendering_scene_.ws()->detach(Canvas::manager().canvas_surface_);
+
     if (rendered_output_ != nullptr)
         delete rendered_output_;
 }
@@ -91,6 +95,8 @@ void CanvasSource::init()
         && Canvas::manager().canvas_surface_->frameBuffer() 
         && Canvas::manager().canvas_surface_->frameBuffer()->texture() != Resource::getTextureBlack()) {
 
+        // attach canvas surface to rendering scene (drawn by this source in update)
+        canvas_rendering_scene_.ws()->detach(Canvas::manager().canvas_surface_);
         canvas_rendering_scene_.ws()->attach(Canvas::manager().canvas_surface_);
         canvas_rendering_scene_.update(0.f);
 
@@ -134,13 +140,6 @@ void CanvasSource::update(float dt)
     
         if ((active_ && !paused_) || reset_) {
             
-// g_printerr("CanvasSource::update %s\n", name().c_str());
-// g_print("alpha %f ", alpha());
-// g_print("depth %f ", depth());
-// g_print("size %f %f ", groups_[View::RENDERING]->scale_.x, groups_[View::RENDERING]->scale_.y);
-// g_print("pos %f %f ", groups_[View::RENDERING]->translation_.x, groups_[View::RENDERING]->translation_.y);
-// g_print("playing %d \n", playing());
-
             glm::mat4 P  = glm::scale( projection, 
                 glm::vec3(1.f / Canvas::manager().canvas_surface_->frameBuffer()->aspectRatio(), 1.f, 1.f));
 

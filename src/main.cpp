@@ -24,6 +24,7 @@
 #include <gst/gst.h>
 
 // vmix
+#include "Canvas.h"
 #include "Settings.h"
 #include "Mixer.h"
 #include "RenderingManager.h"
@@ -247,6 +248,9 @@ int main(int argc, char *argv[])
     Rendering::manager().draw();
     Rendering::manager().show(!headlessRequested);
 
+    // Initialize Canvas (reads config)
+    Canvas::manager().init();
+
     // try to load file given in argument
     Mixer::manager().load(_openfile);
 
@@ -268,9 +272,10 @@ int main(int argc, char *argv[])
     UserInterface::manager().Terminate();
 
     ///
-    /// MIXER TERMINATE
+    /// MIXER & CANVAS TERMINATE
     ///
-    Mixer::manager().clear();
+    Mixer::manager().terminate();
+    Canvas::manager().terminate();
 
     ///
     /// RENDERING TERMINATE

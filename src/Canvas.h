@@ -1,10 +1,10 @@
 #ifndef CANVAS_H
 #define CANVAS_H
 
-#include "View/View.h"
-#include "FrameBuffer.h"
 #include "Source/SourceList.h"
 
+class Group;
+class FrameBuffer;
 class FrameBufferSurface;
 
 class Canvas
@@ -25,22 +25,39 @@ public:
         return _instance;
     }
 
+    void init();
+    void terminate();
+
+    // Framebuffer is shared between all canvases
+    // Framebuffer is passed to Canvas manager by Mixer 
+    // each time the session framebuffer is changed
     void setFrameBuffer(FrameBuffer *fb);
+
+    // canvases are updated each frame in Mixer 
     void update();
 
-    void addCanvas();
-    void removeCanvas();
-
+    // get scene containing all canvases
+    // to be attached to GeometryView and DisplayView scenes
     Group *canvasScene() const { return canvas_scene_; }
     
+    // to manage canvases
+    void addCanvas();
+    void removeCanvas();
+    size_t numCanvases () const { return canvases_.size(); }
+
+    // for iteration over canvases
     SourceList::iterator canvasBegin ();
     SourceList::iterator canvasEnd ();
-    size_t numCanvases () const { return canvases_.size(); }
 
 protected:
 
+    // list of CanvasSource elements
     SourceList canvases_;
+
+    // queried by GeometryView and DisplayView
     Group *canvas_scene_;
+
+    // accessed by CanvasSource
     FrameBufferSurface *canvas_surface_;
 
 };
