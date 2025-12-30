@@ -129,7 +129,8 @@ protected:
     typedef enum {
         MENU_NONE = 0,
         MENU_SOURCE = 1,
-        MENU_SELECTION = 2
+        MENU_SELECTION = 2,
+        MENU_CANVAS = 3
     } ContextMenu;
     ContextMenu show_context_menu_;
     inline void openContextMenu (ContextMenu m) { show_context_menu_ = m; }

@@ -18,6 +18,7 @@
 **/
 
 
+#include "IconsFontAwesome5.h"
 #include "View/View.h"
 #include <algorithm>
 #include <cstddef>
@@ -329,8 +330,6 @@ void GeometryView::draw()
         };
         DrawVisitor dv(canvas_handles, projection);
         scene.accept(dv);
-        // Always restore current source after draw
-        setCurrentCanvas(current_canvas_);
     }
 
     // 8. Finally, draw overlays of view
@@ -617,6 +616,44 @@ void GeometryView::draw()
         ImGui::PopStyleColor(2);
         ImGui::EndPopup();
     }
+    // display popup menu canvas
+    if (show_context_menu_ == MENU_CANVAS) {
+        ImGui::OpenPopup( "GeometryCanvasContextMenu" );
+        show_context_menu_ = MENU_NONE;
+    }
+    if (ImGui::BeginPopup("GeometryCanvasContextMenu")) {
+        if (current_canvas_ != nullptr) {
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_FRAME, 0.5f));
+            // ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 1.f));
+            if (ImGui::MenuItem(ICON_FA_EXPAND "  Fit to output")) {
+                current_canvas_->group(mode_)->translation_ = glm::vec3(0.f, 0.f, 0.f);
+                current_canvas_->group(mode_)->scale_ = glm::vec3(1.f, 1.f, 1.f);
+                current_canvas_->group(mode_)->crop_ = glm::vec4(-1.f, 1.f, 1.f, -1.f);
+                current_canvas_->touch();;
+            }
+            for (auto sit = Canvas::manager().canvasBegin();
+                 sit != Canvas::manager().canvasEnd(); ++sit) {
+                if (*sit != current_canvas_) {
+                    if (ImGui::MenuItem(std::string(ICON_FA_EXCHANGE_ALT "  Swap with " + (*sit)->name()).c_str())) {
+                        // swap parameters
+                        glm::vec3 t = current_canvas_->group(mode_)->translation_;
+                        glm::vec3 s = current_canvas_->group(mode_)->scale_;
+                        glm::vec4 c = current_canvas_->group(mode_)->crop_;
+                        current_canvas_->group(mode_)->translation_ = (*sit)->group(mode_)->translation_;
+                        current_canvas_->group(mode_)->scale_ = (*sit)->group(mode_)->scale_;
+                        current_canvas_->group(mode_)->crop_ = (*sit)->group(mode_)->crop_;
+                        (*sit)->group(mode_)->translation_ = t;
+                        (*sit)->group(mode_)->scale_ = s;
+                        (*sit)->group(mode_)->crop_ = c;
+                        current_canvas_->touch();
+                        (*sit)->touch();
+                    }
+                }
+            }   
+            ImGui::PopStyleColor(1);
+        }
+        ImGui::EndPopup();
+    }
 }
 
 void GeometryView::adaptGridToSource(Source *s, Node *picked)
@@ -826,6 +863,9 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
             // canvas are not sources; cancel normal source picking
             pick = { nullptr, glm::vec2(0.f) };
 
+            // remember picked sources to cycle through them
+            static SourceListUnique picked_sources;
+
             // keep current canvas active if it is clicked
             Source *picked_canvas = current_canvas_;
             if (picked_canvas != nullptr) {
@@ -842,13 +882,36 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                 }
                 // not found: the current canvas was not clicked
                 if (itp == pv.rend() ) {
-                    picked_canvas->setMode(Source::VISIBLE);
+                    picked_sources.clear();
                     picked_canvas = nullptr;
                 }
-                // picking on the menu handle: show context menu
+                // picking on the menu handle: show context menu & reset picked sources
                 else if ( pick.first == picked_canvas->handles_[mode_][Handles::MENU] ) {
-                    // openContextMenu(MENU_CANVAS); // TODO context menu canvas
-                    g_printerr("Canvas MENU\n");
+                    openContextMenu(MENU_CANVAS); 
+                    picked_sources.clear();
+                }
+                // picking on the manipulation handle: reset picked sources
+                else if ( pick.first == picked_canvas->handles_[mode_][Handles::CROP_H] ||
+                          pick.first == picked_canvas->handles_[mode_][Handles::CROP_V] ) 
+                {
+                    picked_sources.clear();
+                }
+                // second clic not on a handle, maybe select another canvas below
+                else {
+                    if (picked_sources.empty()) {
+                        // loop over all nodes picked to fill the list of sources clicked
+                        for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp) {
+                            SourceList::iterator sit = std::find_if(Canvas::manager().canvasBegin(), 
+                                Canvas::manager().canvasEnd(), Source::hasNode( (*itp).first ));
+                            if ( sit != Canvas::manager().canvasEnd() ) {
+                                picked_sources.insert( *sit );
+                            }
+                        }
+                    }
+                    if (!picked_sources.empty()){
+                        setCurrentCanvas( *picked_sources.begin() );
+                        picked_sources.erase(picked_sources.begin());
+                    }
                 }
             }
             // the clicked canvas might have changed

@@ -1,7 +1,6 @@
 #ifndef GEOMETRYVIEW_H
 #define GEOMETRYVIEW_H
 
-#include "Source/CanvasSource.h"
 #include "View.h"
 
 
