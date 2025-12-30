@@ -168,7 +168,7 @@ void LayerView::draw()
 
         // colored context menu
         ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.8f));
 
         // Blending all selection
         if (ImGuiToolkit::BeginMenuIcon( 5, 6, "Blending" )) {

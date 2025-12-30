@@ -541,7 +541,7 @@ void GeometryView::draw()
 
         // colored context menu
         ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.8f));
 
         // batch manipulation of sources in Geometry view
         if (ImGui::Selectable( ICON_FA_EXPAND "  Fit all" )){
@@ -623,8 +623,10 @@ void GeometryView::draw()
     }
     if (ImGui::BeginPopup("GeometryCanvasContextMenu")) {
         if (current_canvas_ != nullptr) {
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_FRAME, 0.5f));
-            // ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 1.f));
+            
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.8f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 1.f));
+
             if (ImGui::MenuItem(ICON_FA_EXPAND "  Fit to output")) {
                 current_canvas_->group(mode_)->translation_ = glm::vec3(0.f, 0.f, 0.f);
                 current_canvas_->group(mode_)->scale_ = glm::vec3(1.f, 1.f, 1.f);
@@ -650,7 +652,7 @@ void GeometryView::draw()
                     }
                 }
             }   
-            ImGui::PopStyleColor(1);
+            ImGui::PopStyleColor(2);
         }
         ImGui::EndPopup();
     }
