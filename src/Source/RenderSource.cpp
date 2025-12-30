@@ -40,7 +40,7 @@ std::vector< std::tuple<int, int, std::string> > RenderSource::ProvenanceMethod 
     { 16, 12, "Recursive" }, { 17, 5, "Entire scene", }, { 17, 12, "Local scene" }
 };
 
-RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr), rendered_surface_(nullptr),
+RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr),
     paused_(false), reset_(true), provenance_(RENDER_TEXTURE)
 {
     // set symbol
@@ -85,15 +85,13 @@ void RenderSource::init()
 
         FrameBuffer *fb = session_->frame();
 
-        // get the texture index from framebuffer of view for RENDER_TEXTURE mode
-//        rendered_surface_ = new Surface;
-//        rendered_surface_->setTextureIndex( fb->texture() );
-
         // use same flags than session frame, without multisampling
         FrameBuffer::FrameBufferFlags flag = fb->flags();
         flag &= ~FrameBuffer::FrameBuffer_multisampling;
 
         // create the frame buffer displayed by the source (all modes)
+        if (rendered_output_ != nullptr)
+            delete rendered_output_;
         rendered_output_ = new FrameBuffer( fb->resolution(), flag );
 
         // needs a first initialization (to get texture)

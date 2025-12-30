@@ -29,7 +29,6 @@ public:
     void init();
     void terminate();
 
-    // Framebuffer is shared between all canvases
     // Framebuffer is passed to Canvas manager by Mixer 
     // each time the session framebuffer is changed
     void setFrameBuffer(FrameBuffer *fb);
@@ -63,6 +62,7 @@ protected:
     Group *canvas_scene_;
 
     // accessed by CanvasSource
+    // canvas_surface_ is shared between all canvases
     FrameBufferSurface *canvas_surface_;
 
 };

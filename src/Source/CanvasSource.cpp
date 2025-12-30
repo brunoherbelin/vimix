@@ -143,10 +143,10 @@ void CanvasSource::update(float dt)
         if ((active_ && !paused_) || reset_) {
             
             //  the scene root transform to the inverse of the source transform
-            glm::vec3 rotation = this->groups_[View::RENDERING]->rotation_;
-            glm::vec3 scale = this->groups_[View::RENDERING]->scale_;
+            glm::vec3 rotation = this->groups_[View::GEOMETRY]->rotation_;
+            glm::vec3 scale = this->groups_[View::GEOMETRY]->scale_;
             scale.z = 1.f;
-            glm::vec3 translation =  this->groups_[View::RENDERING]->translation_;
+            glm::vec3 translation =  this->groups_[View::GEOMETRY]->translation_;
             translation.z = 0.f;
 
             // change projection to account for CROP (inverse transform)
@@ -202,11 +202,5 @@ glm::vec3 CanvasSource::resolution() const
         return Canvas::manager().canvas_surface_->frameBuffer()->resolution();
     else
         return glm::vec3(0.f);
-}
-
-void CanvasSource::accept(Visitor& v)
-{
-    Source::accept(v);
-    v.visit(*this);
 }
 

@@ -20,7 +20,6 @@ public:
     bool playable () const  override { return true; }
     Failure failed () const override;
     uint texture() const override;
-    void accept (Visitor& v) override;
 
     glm::vec3 resolution() const;
 

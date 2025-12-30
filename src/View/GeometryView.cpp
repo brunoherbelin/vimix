@@ -274,10 +274,9 @@ void GeometryView::draw()
     // draw all canvases 
     for (auto canvas_iter = Canvas::manager().canvasBegin();
             canvas_iter != Canvas::manager().canvasEnd(); ++canvas_iter) {
-        
         // will draw its surface
-        canvas_surfaces.push_back((*canvas_iter)->groups_[RENDERING]);
-
+        // canvas_surfaces.push_back((*canvas_iter)->groups_[GEOMETRY]);
+        canvas_surfaces.push_back((*canvas_iter)->rendersurface_);
         // will draw its frame
         canvas_overlays.push_back((*canvas_iter)->frames_[GEOMETRY]);
     }
@@ -294,7 +293,7 @@ void GeometryView::draw()
     scene.accept(draw_sources);
 
     // 3. Draw canvases on top of sources // foreground ?
-    DrawVisitor draw_canvases(canvas_surfaces, projection, true);
+    DrawVisitor draw_canvases(canvas_surfaces, projection);
     scene.accept(draw_canvases);
 
     if (!source_overlays.empty())  {
@@ -329,8 +328,7 @@ void GeometryView::draw()
         DrawVisitor dv(canvas_handles, projection);
         scene.accept(dv);
         // Always restore current source after draw
-        current_canvas_->manipulator_->setActive(1);
-        current_canvas_->setMode(Source::CURRENT);
+        setCurrentCanvas(current_canvas_);
     }
 
     // 8. Finally, draw overlays of view
@@ -410,7 +408,7 @@ void GeometryView::draw()
                     // remove last canvas
                     Canvas::manager().removeCanvas();
                     // set another canvas as current
-                    current_canvas_ = *(--Canvas::manager().canvasEnd());
+                    setCurrentCanvas(*(--Canvas::manager().canvasEnd()));
                 }
             }
             else
@@ -422,7 +420,7 @@ void GeometryView::draw()
                     // create new canvas
                     Canvas::manager().addCanvas();
                     // set newly created canvas as current
-                    current_canvas_ = *(--Canvas::manager().canvasEnd());
+                    setCurrentCanvas(*(--Canvas::manager().canvasEnd()));
                 }
             } 
             else
@@ -826,23 +824,21 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
             // canvas are not sources; cancel normal source picking
             pick = { nullptr, glm::vec2(0.f) };
 
-            // keep current source active if it is clicked
+            // keep current canvas active if it is clicked
             Source *picked_canvas = current_canvas_;
             if (picked_canvas != nullptr) {
+                // find if the current canvas was picked
                 auto itp = pv.rbegin();
                 for (; itp != pv.rend(); ++itp){
-                    // test if source contains this node
+                    // test if canvas contains this node
                     Source::hasNode is_in_source((*itp).first );
                     if ( is_in_source( picked_canvas ) ){
-                        // a node in the current source was clicked !
+                        // a node in the current canvas was clicked !
                         pick = *itp;
-                        // // adapt grid to prepare grab action
-                        // adaptGridToSource(current, pick.first);
                         break;
                     }
                 }
-                // not found: the current source was not clicked
-                // OR the selection contains multiple sources and actions on single source are disabled
+                // not found: the current canvas was not clicked
                 if (itp == pv.rend() ) {
                     picked_canvas->setMode(Source::VISIBLE);
                     picked_canvas = nullptr;
@@ -857,36 +853,30 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
             if (picked_canvas == nullptr) {
 
                 // default to no canvas picked
-                if(current_canvas_ != nullptr){
-                    current_canvas_->setMode(Source::VISIBLE);
-                    current_canvas_ = nullptr;
-                }
+                if(current_canvas_ != nullptr)
+                    setCurrentCanvas(nullptr);
 
-                // loop over all canvases picked
+                // loop over all nodes picked
                 for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
-                    // get if a canvas was picked
 
+                    // loop over all canvases to get if one was picked
                     SourceList::iterator sit = std::find_if(Canvas::manager().canvasBegin(), 
-                    Canvas::manager().canvasEnd(), Source::hasNode( (*itp).first ));
+                        Canvas::manager().canvasEnd(), Source::hasNode( (*itp).first ));
 
                     // accept picked canvas
-                    if ( sit!=Canvas::manager().canvasEnd() )
-                    {
-                        current_canvas_ = *sit;
-                        current_canvas_->setMode(Source::CURRENT);
+                    if ( sit != Canvas::manager().canvasEnd() ) {
+                        setCurrentCanvas(*sit);
                         break;
                     }
                 }
-
             }
-
         }
 
     }
-    else if(current_canvas_ != nullptr){
-        // no canvas picked
-        current_canvas_->setMode(Source::VISIBLE);
-        current_canvas_ = nullptr;
+    // nothing picked
+    else if( editor_mode_ == EDIT_CANVAS ) {
+        // cancel current canvas if clicked outside
+        setCurrentCanvas(nullptr);
     }
 
     return pick;
@@ -1508,3 +1498,28 @@ void GeometryView::updateSelectionOverlay(glm::vec4 color)
     }
 }
 
+
+void GeometryView::setCurrentCanvas(Source *c)
+{
+    if (c == nullptr) {
+        if (current_canvas_ != nullptr) {
+            current_canvas_->setMode(Source::VISIBLE);
+            current_canvas_ = nullptr;
+        }
+        return;
+    }
+
+    current_canvas_ = c;
+    current_canvas_->setMode(Source::CURRENT);
+
+    current_canvas_->manipulator_->setActive(1);
+    current_canvas_->handles_[mode_][Handles::NODE_LOWER_RIGHT]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::NODE_LOWER_LEFT]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::NODE_UPPER_RIGHT]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::NODE_UPPER_LEFT]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::ROUNDING]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::CROP_V]->visible_ = true;
+    current_canvas_->handles_[mode_][Handles::CROP_V]->visible_ = true;
+    current_canvas_->handles_[mode_][Handles::MENU]->visible_ = true;
+}

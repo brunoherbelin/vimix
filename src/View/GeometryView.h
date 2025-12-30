@@ -26,6 +26,9 @@ public:
     void arrow (glm::vec2) override;
     Cursor over (glm::vec2) override;
 
+    void setCurrentCanvas(Source *c = nullptr);
+    Source *currentCanvas() const { return current_canvas_; }
+
 private:
     Surface *output_surface_;
     Node *overlay_position_;

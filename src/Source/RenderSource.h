@@ -48,7 +48,6 @@ protected:
     uint64_t runtime_;
 
     FrameBuffer *rendered_output_;
-    Surface *rendered_surface_;
 
     // control
     bool paused_;

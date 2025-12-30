@@ -39,7 +39,7 @@ Canvas::Canvas() : canvas_surface_(nullptr)
 
 void Canvas::init()
 {
-    // create first canvas
+    // minimum of one canvas
     addCanvas();
 
     // load configuration
@@ -48,7 +48,7 @@ void Canvas::init()
 
 void Canvas::terminate()
 {
-    // save
+    // save configuration
     save();
 
     // delete all canvases
@@ -147,17 +147,14 @@ SourceList::iterator Canvas::canvasEnd ()
 
 void Canvas::load(const std::string &filename)
 {
+    // read settings file of default configuration
     std::string settingsFilename = filename;
-
-    if (settingsFilename.empty()) {
-        // save default configuration
+    if (settingsFilename.empty()) 
         settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_CANVAS);
-    }
 
     // try to load settings file
     XMLDocument xmlDoc;
-    XMLError eResult = xmlDoc.LoadFile( filename.empty() ?
-                                           settingsFilename.c_str() : filename.c_str());
+    XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
 
 	// do not warn if non existing file
     if (eResult == XML_ERROR_FILE_NOT_FOUND)
@@ -189,6 +186,7 @@ void Canvas::load(const std::string &filename)
             canvas_it = --canvases_.end();
         }
 
+        // session loader loads source configuration
         loader.setCurrentXML( sourceNode );
         (*canvas_it)->accept( loader );
         ++canvas_it;
@@ -202,14 +200,11 @@ void Canvas::load(const std::string &filename)
 
 void Canvas::save(const std::string &filename)
 {
+    // save settings file or default configuration
     std::string settingsFilename = filename;
-
-    if (settingsFilename.empty()) {
-        // save default configuration
+    if (settingsFilename.empty()) 
         settingsFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), APP_CANVAS);
-    }
     
-    // save to file
     // creation of XML doc
     setlocale(LC_ALL, "C");
     XMLDocument xmlDoc;
@@ -221,11 +216,12 @@ void Canvas::save(const std::string &filename)
     xmlDoc.InsertEndChild(pRoot);
 
     // list of canvases
+    // TODO : muliple list of Canvases as set of configurations ?
     XMLElement *canvasesNode = xmlDoc.NewElement("Canvases");
     pRoot->InsertEndChild(canvasesNode);
     SessionVisitor sv(&xmlDoc, canvasesNode);
     for (auto iter = canvasBegin(); iter != canvasEnd(); ++iter, sv.setRoot(canvasesNode) )
-        // source visitor
+        // session visitor saves source configuration
         (*iter)->accept(sv);
 
     // save canvases config
