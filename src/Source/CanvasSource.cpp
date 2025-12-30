@@ -41,12 +41,25 @@ CanvasSource::CanvasSource(uint64_t id) : Source(id),
 {
     // set symbol
     symbol_ = new Symbol(Symbol::SCREEN, glm::vec3(0.75f, 0.75f, 0.01f));
-    symbol_->scale_.y = 1.5f;
+    symbol_->scale_.y = 1.0f;
 
     // default visible 
     groups_[View::MIXING]->translation_ = glm::vec3( 0.f );
     groups_[View::LAYER]->translation_.z = 1.f;
     groups_[View::RENDERING]->visible_ = true;
+
+    label = new Group;
+    label_0_ = new Character(4);
+    label_0_->setChar('C');
+    label_0_->translation_ = glm::vec3(-0.015f, 0.f, 0.f);
+    label_0_->scale_.y = 0.05f;
+    label->attach(label_0_);
+    label_1_ = new Character(4);
+    label_1_->setChar('A');
+    label_1_->translation_ = glm::vec3(0.015f, 0.f, 0.f);
+    label_1_->scale_.y = 0.05f;
+    label->attach(label_1_);
+    overlays_[View::GEOMETRY]->attach(label);
 
     // colorize all frames and handles in GEOMETRY view
     ColorVisitor color(glm::vec4(COLOR_FRAME, 0.95f));
@@ -163,6 +176,12 @@ void CanvasSource::update(float dt)
             // access to private RenderView in the session to call draw on the root of the scene
             canvas_rendering_scene_.root()->draw(glm::inverse( GlmToolkit::transform(translation, rotation, scale) ), P);
             rendered_output_->end();
+
+            // resize labels according to scale
+            label_0_->scale_.y = 0.05f / scale.y;
+            label_1_->scale_.y = 0.05f / scale.y;
+            label_0_->translation_.x = -0.015f / scale.x;
+            label_1_->translation_.x = 0.015f / scale.x;
 
             // done reset
             reset_ = false;

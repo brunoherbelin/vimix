@@ -49,6 +49,7 @@
 #include "ActionManager.h"
 #include "MousePointer.h"
 #include "Scene/Scene.h"
+#include "Source/CanvasSource.h"
 #include "Source/SourceList.h"
 #include "Canvas.h"
 
@@ -323,7 +324,8 @@ void GeometryView::draw()
         std::vector<Node *> canvas_handles = {
             current_canvas_->handles_[mode_][Handles::CROP_H],
             current_canvas_->handles_[mode_][Handles::CROP_V],
-            current_canvas_->handles_[mode_][Handles::MENU]
+            current_canvas_->handles_[mode_][Handles::MENU], 
+            dynamic_cast<CanvasSource *>(current_canvas_)->label
         };
         DrawVisitor dv(canvas_handles, projection);
         scene.accept(dv);
@@ -992,9 +994,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         return ret;
     }
 
-    // editor_mode_ == EDIT_CANVAS
-    // if no source is given...
-    if (!s) {
+    // if no source is given when editing sources...
+    if (!s && editor_mode_ == EDIT_SOURCES) {
 
         // ..possibly grabing the selection overlay handles
         if (overlay_selection_ && overlay_selection_active_ ) {
@@ -1122,6 +1123,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         return ret;
     }
 
+    // normal source grab 
     Group *sourceNode = s->group(mode_); // groups_[View::GEOMETRY]
 
     // make sure matrix transform of stored status is updated
@@ -1302,7 +1304,14 @@ void GeometryView::initiate()
 
 void GeometryView::terminate(bool force)
 {
-    View::terminate(force);
+    if (editor_mode_ == EDIT_SOURCES)
+        View::terminate(force);
+    else if (current_action_ongoing_) {
+        // TODO Implement Undo/Redo for canvas manipulations
+        // terminated
+        current_action_ = "";
+        current_action_ongoing_ = false;
+    }
 
     // hide all view overlays
     overlay_position_->visible_       = false;

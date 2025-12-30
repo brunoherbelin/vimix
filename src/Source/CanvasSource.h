@@ -23,6 +23,9 @@ public:
 
     glm::vec3 resolution() const;
 
+    Group *label;
+    Character  *label_0_, *label_1_;
+
 protected:
 
     void init() override;

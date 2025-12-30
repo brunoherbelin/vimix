@@ -27,6 +27,7 @@ using namespace tinyxml2;
 #include "SessionCreator.h"
 #include "Source/CanvasSource.h"    
 #include "Scene/Primitives.h"
+#include "Scene/Decorations.h"
 #include "FrameBuffer.h"
 
 #include "Canvas.h"
@@ -101,6 +102,13 @@ void Canvas::addCanvas()
     // create a new canvas source
     CanvasSource *canvas = new CanvasSource;
     canvas->setName( "Canvas " + std::to_string( canvases_.size() + 1) );
+
+    // set Canvas label characters
+    std::string label_number = std::to_string( canvases_.size() + 1); 
+    char c0 = label_number.size() >= 1 ? label_number[label_number.size() - 1] : '0';
+    char c1 = label_number.size() >= 2 ? label_number[label_number.size() - 2] : '0';
+    canvas->label_0_->setChar(c1);
+    canvas->label_1_->setChar(c0);
 
     // add to list of canvases
     canvases_.push_back( canvas );
