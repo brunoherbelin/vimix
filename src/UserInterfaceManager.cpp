@@ -313,8 +313,8 @@ void UserInterface::handleKeyboard()
             // Shader Editor
             shadercontrol.setVisible(!Settings::application.widget.shader_editor);
         }
-        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_D), false )) {
-            // Display output
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_M), false )) {
+            // Mix output
             outputcontrol.setVisible(!Settings::application.widget.preview);
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_P), false )) {
@@ -1530,7 +1530,7 @@ void UserInterface::RenderPreview()
                 if (show_preview == PREVIEW_SOURCE)
                     ImGui::Text("Preview Player source");
                 else
-                    ImGui::Text("Preview Display output");  
+                    ImGui::Text("Preview Mix output");  
             }
             ImGui::PopFont();
 
@@ -2626,7 +2626,7 @@ void UserInterface::RenderHelp()
         ImGui::Text ("Adjust opacity of sources, visible in the center and transparent on the side. Sources are de-activated outside of darker circle.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_OBJECT_UNGROUP "  Geometry"); ImGui::NextColumn();
-        ImGui::Text ("Move, scale, rotate or crop sources to place them in the output frame.");
+        ImGui::Text ("Move, scale, rotate or crop sources to place them in the mix. Setup canvases that are used for display.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_WORKSPACE); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Layers"); ImGui::NextColumn();
         ImGui::Text ("Organize the rendering order of sources in depth, from background to foreground.");
@@ -2635,7 +2635,7 @@ void UserInterface::RenderHelp()
         ImGui::Text ("Apply masks or freely paint the texture on the source surface. Repeat or crop the graphics.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_TV "  Displays"); ImGui::NextColumn();
-        ImGui::Text ("Manage and place output windows in computer's displays (e.g. fullscreen mode, white balance adjustment).");
+        ImGui::Text ("Manage and place canvases in the output windows and computer's displays (e.g. fullscreen mode, white balance adjustment).");
         ImGui::NextColumn();
 
         ImGui::Columns(1);
@@ -2649,7 +2649,7 @@ void UserInterface::RenderHelp()
         ImGui::PushTextWrapPos(width_window );
 
         ImGui::Text(IMGUI_TITLE_PREVIEW); ImGui::NextColumn();
-        ImGui::Text ("Preview the output displayed in the rendering window(s). Control video recording and streaming.");
+        ImGui::Text ("Preview the output of the mix (frame buffer). Control video recording and streaming.");
         ImGui::NextColumn();
         ImGui::Text(IMGUI_TITLE_MEDIAPLAYER); ImGui::NextColumn();
         ImGui::Text ("Play, pause, rewind videos or dynamic sources. Control play duration, speed and synchronize multiple videos.");

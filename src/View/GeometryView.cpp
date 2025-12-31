@@ -437,7 +437,7 @@ void GeometryView::draw()
 
             // layout selection
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGui::Button(ICON_FA_GRIP_VERTICAL " " ICON_FA_SORT_DOWN ))
+            if (ImGui::Button(ICON_FA_TH_LARGE " " ICON_FA_SORT_DOWN ))
                 ImGui::OpenPopup("combinations_popup");
             if (ImGui::IsItemHovered())
                 ImGuiToolkit::ToolTip("Layout");

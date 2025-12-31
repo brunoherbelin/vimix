@@ -159,7 +159,7 @@
 #define IMGUI_TITLE_HELP ICON_FA_LIFE_RING "  Help"
 #define IMGUI_TITLE_TOOLBOX ICON_FA_HAMSA "  Guru Toolbox"
 #define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Shader Editor"
-#define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Display"
+#define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Mix"
 
 #ifdef APPLE
 #define CTRL_MOD "Cmd+"
@@ -230,9 +230,9 @@
 #define MENU_PLAYER           ICON_FA_PLAY_CIRCLE "  Player "
 #define TOOLTIP_PLAYER        "Player "
 #define SHORTCUT_PLAYER       CTRL_MOD "P"
-#define MENU_OUTPUT           ICON_FA_DESKTOP " Display "
-#define TOOLTIP_OUTPUT        "Display "
-#define SHORTCUT_OUTPUT       CTRL_MOD "D"
+#define MENU_OUTPUT           ICON_FA_DESKTOP "  Mix "
+#define TOOLTIP_OUTPUT        "Mix "
+#define SHORTCUT_OUTPUT       CTRL_MOD "M"
 #define MENU_TIMER            ICON_FA_CLOCK "  Timer "
 #define TOOLTIP_TIMER         "Timer "
 #define SHORTCUT_TIMER        CTRL_MOD "T"
