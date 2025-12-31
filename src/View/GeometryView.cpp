@@ -36,6 +36,7 @@
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtx/component_wise.hpp>
 
+#include "Toolkit/BaseToolkit.h"
 #include "Toolkit/ImGuiToolkit.h"
 
 #include "Mixer.h"
@@ -142,12 +143,19 @@ GeometryView::GeometryView() : View(GEOMETRY)
     overlay_scaling_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
     scene.fg()->attach(overlay_scaling_);
     overlay_scaling_->visible_ = false;
-
+    // frame to show the full image size for CROP
     Frame *border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     border->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.2f );
     overlay_crop_ = border;
     scene.fg()->attach(overlay_crop_);
     overlay_crop_->visible_ = false;
+
+    // same to show the full image size for CROP CANVAS
+    border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    border->color = glm::vec4( COLOR_FRAME_LIGHT, 0.3f );
+    canvas_overlay_crop_ = border;
+    scene.fg()->attach(canvas_overlay_crop_);
+    canvas_overlay_crop_->visible_ = false;
 
     // will be init later
     overlay_selection_scale_ = nullptr;
@@ -399,10 +407,9 @@ void GeometryView::draw()
             ImGui::EndPopup();
         }
 
-        // SURFACES EDIT OPTIONS
+        // CANVAS EDIT OPTIONS
         if (editor_mode_ == EDIT_CANVAS) {
-
-            // add / remove surfaces
+            // - Remove canvas
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (Canvas::manager().numCanvases() > 1) {
                 if (ImGuiToolkit::IconButton(19, 4, "Less canvas")) {
@@ -415,6 +422,7 @@ void GeometryView::draw()
             else
                 ImGuiToolkit::Icon(19, 4, false);
 
+            // + Add more canvas
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (Canvas::manager().numCanvases() < MAX_OUTPUT_CANVAS) {
                 if (ImGuiToolkit::IconButton(18, 4, "More canvas")) {
@@ -426,6 +434,38 @@ void GeometryView::draw()
             } 
             else
                 ImGuiToolkit::Icon(18, 4, false);
+
+            // layout selection
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGui::Button(ICON_FA_GRIP_VERTICAL " " ICON_FA_SORT_DOWN ))
+                ImGui::OpenPopup("combinations_popup");
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Layout");
+            if (ImGui::BeginPopup("combinations_popup", ImGuiWindowFlags_NoMove))  {
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                if (Canvas::manager().numCanvases() == 1) {
+                    if (ImGui::Selectable("Fit whole output")) 
+                        Canvas::manager().setLayout(1, 0);
+                }
+                else {
+                    // get grid combinations for current number of canvases
+                    int N = Canvas::manager().numCanvases();
+                    std::vector<std::pair<int, int>> combinations = BaseToolkit::getGridCombinations(N);
+                    std::vector<std::string> descriptions = BaseToolkit::getGridCombinationDescriptions(N);
+                    for (size_t i = 0; i < descriptions.size(); ++i) {
+                        std::ostringstream oss;
+                        oss << descriptions[i];
+                        if (ImGui::Selectable(oss.str().c_str())) {
+                            // // set combination
+                            Canvas::manager().setLayout(combinations[i].first, 
+                                combinations[i].second);
+                        }
+                    }
+                }
+                // TODO : add load and save canvas layout ?
+                ImGui::PopFont();
+                ImGui::EndPopup();
+            }
 
         }
         // SOURCES EDIT OPTIONS
@@ -1031,7 +1071,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 info,                           // info
                 ret,                            // cursor
                 current_canvas_->handles_[mode_],             // handles
-                overlay_crop_,                  // overlay_crop
+                canvas_overlay_crop_,                  // overlay_crop
                 overlay_scaling_,               // overlay_scaling
                 overlay_scaling_cross_,         // overlay_scaling_cross
                 overlay_rotation_,              // overlay_rotation
@@ -1411,6 +1451,7 @@ void GeometryView::terminate(bool force)
     overlay_selection_active_ = false;
 
     // restore all handles canvas
+    canvas_overlay_crop_->visible_   = false;
     for (auto sit = Canvas::manager().canvasBegin();
          sit != Canvas::manager().canvasEnd(); ++sit){
         (*sit)->handles_[mode_][Handles::MENU]->visible_ = true;

@@ -27,8 +27,8 @@
 #include <algorithm>
 #include <climits>
 #include <map>
+#include <cmath>
 
-#include <locale>
 #include <unicode/ustream.h>
 #include <unicode/translit.h>
 
@@ -352,4 +352,78 @@ std::string BaseToolkit::common_numbered_pattern(const std::list<std::string> &a
     pattern += "%0" + std::to_string(n) + "d";
     pattern += suffix;
     return pattern;
+}
+
+/**
+ * Returns all possible grid combinations for organizing N elements
+ * Each pair represents (rows, columns) such that rows * columns = N
+ *
+ * @param N The number of elements to organize
+ * @return A vector of pairs <i, j> where i * j = N
+ *
+ * Example: For N=4, returns: {(1,4), (2,2), (4,1)}
+ * Example: For N=6, returns: {(1,6), (2,3), (3,2), (6,1)}
+ */
+std::vector<std::pair<int, int>> BaseToolkit::getGridCombinations(int N) {
+    std::vector<std::pair<int, int>> combinations;
+
+    if (N <= 0) {
+        return combinations;
+    }
+
+    // Find all divisor pairs
+    int sqrtN = static_cast<int>(std::sqrt(N));
+
+    for (int i = 1; i <= sqrtN; ++i) {
+        if (N % i == 0) {
+            int j = N / i;
+            combinations.push_back({i, j});
+
+            // Add the reverse pair if it's different (i.e., not a perfect square)
+            if (i != j) {
+                combinations.push_back({j, i});
+            }
+        }
+    }
+
+    return combinations;
+}
+
+/**
+ * Returns descriptive strings for all possible grid combinations
+ * Format: "X columns" for single row, "Y rows" for single column,
+ *         "X x Y grid" for multi-row/column grids
+ *
+ * @param N The number of elements to organize
+ * @return A vector of strings describing each grid combination
+ *
+ * Example: For N=4, returns: {"4 columns", "2 x 2 grid", "4 rows"}
+ * Example: For N=6, returns: {"6 columns", "2 x 3 grid", "3 x 2 grid", "6 rows"}
+ */
+std::vector<std::string> BaseToolkit::getGridCombinationDescriptions(int N) {
+    std::vector<std::string> descriptions;
+
+    if (N <= 0) {
+        return descriptions;
+    }
+
+    auto combinations = getGridCombinations(N);
+
+    for (const auto& combo : combinations) {
+        int rows = combo.first;
+        int cols = combo.second;
+
+        if (rows == 1) {
+            // Single row: describe as columns
+            descriptions.push_back(std::to_string(cols) + " columns");
+        } else if (cols == 1) {
+            // Single column: describe as rows
+            descriptions.push_back(std::to_string(rows) + " rows");
+        } else {
+            // Multi-row and multi-column: describe as grid
+            descriptions.push_back(std::to_string(rows) + " x " + std::to_string(cols) + " grid");
+        }
+    }
+
+    return descriptions;
 }

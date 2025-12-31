@@ -75,6 +75,8 @@ CanvasSource::~CanvasSource()
 
     if (rendered_output_ != nullptr)
         delete rendered_output_;
+
+    Log::Info("Canvas '%s' deleted.", name().c_str());
 }
 
 Source::Failure CanvasSource::failed() const

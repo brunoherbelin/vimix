@@ -52,6 +52,7 @@ public:
     // configuration
     void load(const std::string &filename = std::string());
     void save(const std::string &filename = std::string());
+    void setLayout(int rows, int columns);
 
 protected:
 

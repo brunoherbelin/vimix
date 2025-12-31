@@ -20,12 +20,15 @@
 #include <tinyxml2.h>
 using namespace tinyxml2;
 
+#include <sstream>
+#include <iomanip>
+
 #include "defines.h"
 #include "Toolkit/tinyxml2Toolkit.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Visitor/SessionVisitor.h"
 #include "SessionCreator.h"
-#include "Source/CanvasSource.h"    
+#include "Source/CanvasSource.h"
 #include "Scene/Primitives.h"
 #include "Scene/Decorations.h"
 #include "FrameBuffer.h"
@@ -77,11 +80,19 @@ void Canvas::setFrameBuffer(FrameBuffer *fb)
     if ( canvas_surface_ == nullptr) 
         canvas_surface_ = new FrameBufferSurface(fb);
     
+    // detect change of aspect ratio
+    if ( canvas_surface_->scale_.x != fb->aspectRatio() ) {
+        // adjust all canvases x translation coordinate to new aspect ratio
+        for (auto cit = canvasBegin(); cit != canvasEnd(); ++cit) {
+            (*cit)->group(View::GEOMETRY)->translation_.x *= fb->aspectRatio() / canvas_surface_->scale_.x;
+        }
+    }
+
     // update canvas surface framebuffer
     canvas_surface_->setFrameBuffer(fb);
     canvas_surface_->scale_.x = fb->aspectRatio();
 
-    // reset all canvases
+    // reset all canvases with new canvas surface 
     for (auto cit = canvasBegin(); cit != canvasEnd(); ++cit) {
         (*cit)->reload();
     }
@@ -101,14 +112,14 @@ void Canvas::addCanvas()
 {
     // create a new canvas source
     CanvasSource *canvas = new CanvasSource;
-    canvas->setName( "Canvas " + std::to_string( canvases_.size() + 1) );
 
-    // set Canvas label characters
-    std::string label_number = std::to_string( canvases_.size() + 1); 
-    char c0 = label_number.size() >= 1 ? label_number[label_number.size() - 1] : '0';
-    char c1 = label_number.size() >= 2 ? label_number[label_number.size() - 2] : '0';
-    canvas->label_0_->setChar(c1);
-    canvas->label_1_->setChar(c0);
+    // set Canvas name and label characters with 2-digit format
+    std::ostringstream oss;
+    oss << std::setfill('0') << std::setw(2) << (canvases_.size() + 1);
+    std::string label_number = oss.str();
+    canvas->setName( "Canvas" + label_number );
+    canvas->label_0_->setChar(label_number[label_number.size() - 2]);
+    canvas->label_1_->setChar(label_number[label_number.size() - 1]);
 
     // add to list of canvases
     canvases_.push_back( canvas );
@@ -152,6 +163,63 @@ SourceList::iterator Canvas::canvasEnd ()
 }
 
 
+void Canvas::setLayout(int rows, int columns)
+{
+    // Implementation for setting layout.
+    // Total display area is [-1, 1] in both x and y directions.
+    // Center of display is at (0,0).
+    // Each canvas will crop the display area in a grid defined by (columns x rows).
+    // example: 2 columns and 1 row: 
+    // canvas 1: crop = (-1, 0, 1, -1), scale = (0.5, 1, 1), translation = (-0.5, 0, 0) 
+    // canvas 2: crop = (0, 1, 1, -1), scale = (0.5, 1, 1), translation = (0.5, 0, 0)
+    // NB : the x axis is then multiplied by the aspect ratio of the framebuffer in CanvasSource::render(), 
+    // which can be accessed with 'canvas_surface_->scale_.x` (filled when setting framebuffer)
+
+
+    if (canvases_.size() == 0)
+        return;
+    else if (canvases_.size() == 1) {
+        (*canvases_.begin())->group(View::GEOMETRY)->translation_ = glm::vec3(0.f, 0.f, 0.f);
+        (*canvases_.begin())->group(View::GEOMETRY)->scale_ = glm::vec3(1.f, 1.f, 1.f);
+        (*canvases_.begin())->group(View::GEOMETRY)->crop_ = glm::vec4(-1.f, 1.f, 1.f, -1.f);
+    }
+    // general case (more than one canvas); follow columns and rows
+    else {
+        // Calculate width and height of each cell in normalized coordinates
+        float cellWidth = 2.0f / columns;   // Total width is 2.0 (from -1 to 1)
+        float cellHeight = 2.0f / rows;     // Total height is 2.0 (from -1 to 1)
+
+        // Scale for each canvas (half the cell size since scale is from center)
+        float scaleX = cellWidth / 2.0f;
+        float scaleY = cellHeight / 2.0f;
+
+        int canvasIndex = 0;
+        for (auto cit = canvasBegin(); cit != canvasEnd() && canvasIndex < columns * rows; ++cit, ++canvasIndex) {
+            // Calculate row and column for this canvas
+            int row = canvasIndex / columns;
+            int col = canvasIndex % columns;
+
+            // Calculate crop area for this cell
+            float left = -1.0f + col * cellWidth;
+            float right = left + cellWidth;
+            float top = 1.0f - row * cellHeight;
+            float bottom = top - cellHeight;
+
+            // Calculate translation (center position of the cell)
+            float transX = left + scaleX;
+            float transY = top - scaleY;
+
+            // Apply transformation to canvas
+            (*cit)->group(View::GEOMETRY)->crop_ = glm::vec4(left, right, top, bottom);
+            (*cit)->group(View::GEOMETRY)->scale_ = glm::vec3(scaleX, scaleY, 1.f);
+            (*cit)->group(View::GEOMETRY)->translation_ = glm::vec3(transX * canvas_surface_->scale_.x, transY, 0.f);
+
+            // make sure the canvas is updated
+            (*cit)->touch();
+        }
+    }
+
+}
 
 void Canvas::load(const std::string &filename)
 {

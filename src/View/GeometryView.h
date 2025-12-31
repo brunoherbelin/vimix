@@ -45,6 +45,7 @@ private:
     Source *current_canvas_;
     uint canvas_current_;
     Group *canvas_stored_status_;
+    Node *canvas_overlay_crop_;
 
     enum GeometryModes {
         EDIT_SOURCES = 0,

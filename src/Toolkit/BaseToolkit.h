@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <list>
 #include <string>
+#include <vector>
 
 namespace BaseToolkit
 {
@@ -50,6 +51,10 @@ std::string common_pattern(const std::list<std::string> &allStrings);
 
 // form a pattern "prefix%03dsuffix" (e.g. numbered file list)
 std::string common_numbered_pattern(const std::list<std::string> &allStrings, int *min, int *max);
+
+// get all possible grid combinations for N elements
+std::vector<std::pair<int, int>> getGridCombinations(int N);
+std::vector<std::string> getGridCombinationDescriptions(int N);
 
 }
 
