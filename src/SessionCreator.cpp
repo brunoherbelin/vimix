@@ -1104,12 +1104,12 @@ void SessionLoader::visit (Source& s)
         // set id of source used as mask (if exists)
         uint64_t id__ = 0;
         xmlCurrent_->QueryUnsigned64Attribute("source", &id__);
-        if (id__ > 0) {
+        if (id__ > 0) 
             s.maskSource()->connect(id__, session_);
-            s.touch(Source::SourceUpdate_Mask);
-        }
         // set the mask from jpeg (if exists)
         s.setMask( SessionLoader::XMLToImage(xmlCurrent_) );
+        // update mask
+        s.touch(Source::SourceUpdate_Mask);
     }
 
     xmlCurrent_ = sourceNode->FirstChildElement("ImageProcessing");
