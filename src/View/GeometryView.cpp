@@ -384,22 +384,26 @@ void GeometryView::draw()
             for (int m = GeometryView::EDIT_SOURCES; m <= GeometryView::EDIT_CANVAS; ++m) {
                 if (ImGui::Selectable(
                         std::string(std::string(editor_icons[m]) + " " + editor_names[m]).c_str())) {
-                    // change edit mode
-                    editor_mode_ = m;
-                    // cancel selection of sources
-                    if (m == GeometryView::EDIT_CANVAS){
-                        // clear selection
-                        Mixer::selection().clear();
-                        // select first canvas as current if not already one selected
-                        if (current_canvas_ == nullptr) 
-                            current_canvas_ = *Canvas::manager().canvasBegin();
-                        // restore mode for current canvas
-                        current_canvas_->setMode(Source::CURRENT);
-                    }
-                    else {
-                        // temporarily disable current mode of canvas
-                        if (current_canvas_ != nullptr) 
-                            current_canvas_->setMode(Source::VISIBLE);
+                    if (m != editor_mode_) {
+                        // Switch mode
+                        editor_mode_ = m;
+                        // actions to do when changing mode
+                        if (editor_mode_ == GeometryView::EDIT_CANVAS){
+                            // clear selection (disabled for canvases)
+                            Mixer::selection().clear();
+                            // select first canvas as current if not already one selected
+                            if (current_canvas_ == nullptr) 
+                                current_canvas_ = *Canvas::manager().canvasBegin();
+                            // restore mode for current canvas
+                            current_canvas_->setMode(Source::CURRENT);
+                        }
+                        else {
+                            // temporarily disable current mode of canvas
+                            if (current_canvas_ != nullptr) 
+                                current_canvas_->setMode(Source::VISIBLE);
+                            // save status on exit
+                            Canvas::manager().save();
+                        }
                     }
                 }
             }
@@ -467,6 +471,18 @@ void GeometryView::draw()
                 ImGui::EndPopup();
             }
 
+            // cancel current canvas edition
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGui::Button(ICON_FA_TIMES )) {
+                // restore saved status
+                Canvas::manager().load();
+                // clear current canvas
+                setCurrentCanvas(nullptr);
+                // switch back to source edition
+                editor_mode_ = EDIT_SOURCES;
+            }
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Cancel");
         }
         // SOURCES EDIT OPTIONS
         else {
