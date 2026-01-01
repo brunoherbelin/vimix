@@ -169,8 +169,6 @@ void Canvas::setLayout(int rows, int columns)
     // canvas 1: crop = (-1, 0, 1, -1), scale = (0.5, 1, 1), translation = (-0.5, 0, 0) 
     // canvas 2: crop = (0, 1, 1, -1), scale = (0.5, 1, 1), translation = (0.5, 0, 0)
     // NB : the x axis is then multiplied by the aspect ratio of the framebuffer in CanvasSource::render(), 
-    // which can be accessed with 'canvas_surface_->scale_.x` (filled when setting framebuffer)
-
 
     if (canvases_.size() == 0)
         return;
@@ -250,6 +248,12 @@ void Canvas::load(const std::string &filename)
 
     SourceList::iterator canvas_it = canvases_.begin();
     XMLElement* sourceNode = canvasesNode->FirstChildElement("Source");
+
+    // no canvases found
+    if (sourceNode == nullptr)
+        return;
+
+    // iterate over XML source nodes
     for(int i = 0 ; sourceNode ; sourceNode = sourceNode->NextSiblingElement("Source"))
     {
         // create a new canvas if needed
