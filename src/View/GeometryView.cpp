@@ -20,6 +20,7 @@
 
 #include "IconsFontAwesome5.h"
 #include "View/View.h"
+#include "imgui.h"
 #include <algorithm>
 #include <cstddef>
 #include <glib.h>
@@ -413,34 +414,48 @@ void GeometryView::draw()
 
         // CANVAS EDIT OPTIONS
         if (editor_mode_ == EDIT_CANVAS) {
+
+            const float padding = ImGui::GetStyle().FramePadding.x ;
+            const float spacing = ImGui::GetStyle().FrameRounding ;
+
             // - Remove canvas
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (Canvas::manager().size() > 1) {
-                if (ImGuiToolkit::IconButton(19, 4, "Less canvas")) {
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGui::Button(ICON_FA_MINUS )) {
                     // remove last canvas
                     Canvas::manager().remove();
                     // set another canvas as current
                     setCurrentCanvas(*(--Canvas::manager().end()));
                 }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Remove canvas");
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
             }
-            else
-                ImGuiToolkit::Icon(19, 4, false);
+            else{
+                ImGui::SameLine(0, IMGUI_SAME_LINE + padding);
+                ImGui::TextDisabled(ICON_FA_MINUS);
+                ImGui::SameLine(0, IMGUI_SAME_LINE + padding);
+            }
 
             // + Add more canvas
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (Canvas::manager().size() < MAX_OUTPUT_CANVAS) {
-                if (ImGuiToolkit::IconButton(18, 4, "More canvas")) {
+                if (ImGui::Button(ICON_FA_PLUS )) {
                     // create new canvas
                     Canvas::manager().add();
                     // set newly created canvas as current
                     setCurrentCanvas(*(--Canvas::manager().end()));
                 }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Add canvas");
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
             } 
-            else
-                ImGuiToolkit::Icon(18, 4, false);
+            else {
+                ImGui::SameLine(0, IMGUI_SAME_LINE + padding);
+                ImGui::TextDisabled(ICON_FA_PLUS);
+                ImGui::SameLine(0, IMGUI_SAME_LINE + padding);
+            }
 
             // layout selection
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (ImGui::Button(ICON_FA_TH ICON_FA_SORT_DOWN ))
                 ImGui::OpenPopup("combinations_popup");
             if (ImGui::IsItemHovered())
@@ -473,7 +488,7 @@ void GeometryView::draw()
 
             // cancel current canvas edition
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGui::Button(ICON_FA_TIMES )) {
+            if (ImGui::Button(ICON_FA_TIMES_CIRCLE )) {
                 // restore saved status
                 Canvas::manager().load();
                 // clear current canvas
@@ -578,13 +593,35 @@ void GeometryView::draw()
                 s->touch();
                 Action::manager().store(s->name() + std::string(": Restore aspect ratio"));
             }
-            if (ImGui::MenuItem( ICON_FA_EXPAND "  Fit to output" )){
-                s->group(mode_)->scale_ = glm::vec3(output_surface_->scale_.x/ s->frame()->aspectRatio(), 1.f, 1.f);
-                s->group(mode_)->rotation_.z = 0;
-                s->group(mode_)->translation_ = glm::vec3(0.f);
-                s->touch();
-                Action::manager().store(s->name() + std::string(": Fit to output"));
+
+            if (ImGui::BeginMenu(ICON_FA_EXPAND "  Fit to...")) {
+
+                if (ImGui::MenuItem(  "Mix output" )){
+                    s->group(mode_)->scale_ = glm::vec3(output_surface_->scale_.x/ s->frame()->aspectRatio(), 1.f, 1.f);
+                    s->group(mode_)->rotation_.z = 0;
+                    s->group(mode_)->translation_ = glm::vec3(0.f);
+                    s->touch();
+                    Action::manager().store(s->name() + std::string(": Fit to Mix output"));
+                }
+
+                for (auto canvas_iter = Canvas::manager().begin();
+                        canvas_iter != Canvas::manager().end(); ++canvas_iter) {
+                    std::string label =  (*canvas_iter)->name();
+                    if (ImGui::MenuItem( label.c_str() )) {
+                        float canvas_aspect = (*canvas_iter)->frame()->aspectRatio() / s->frame()->aspectRatio();
+                        s->group(mode_)->scale_.x = (*canvas_iter)->group(mode_)->scale_.x * canvas_aspect;
+                        s->group(mode_)->scale_.y = (*canvas_iter)->group(mode_)->scale_.y;
+                        s->group(mode_)->rotation_.z = 0;
+                        s->group(mode_)->translation_.x = (*canvas_iter)->group(mode_)->translation_.x;
+                        s->group(mode_)->translation_.y = (*canvas_iter)->group(mode_)->translation_.y;
+                        s->touch();
+                        Action::manager().store(s->name() + std::string(": Fit to ") + label);
+                    }
+                }
+
+                ImGui::EndMenu();
             }
+
         }
         ImGui::EndPopup();
     }
