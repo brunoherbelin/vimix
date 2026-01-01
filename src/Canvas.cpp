@@ -44,7 +44,7 @@ Canvas::Canvas() : canvas_surface_(nullptr)
 void Canvas::init()
 {
     // minimum of one canvas
-    addCanvas();
+    add();
 
     // load configuration
     load();
@@ -83,7 +83,7 @@ void Canvas::setFrameBuffer(FrameBuffer *fb)
     // detect change of aspect ratio
     if ( canvas_surface_->scale_.x != fb->aspectRatio() ) {
         // adjust all canvases x translation coordinate to new aspect ratio
-        for (auto cit = canvasBegin(); cit != canvasEnd(); ++cit) {
+        for (auto cit = begin(); cit != end(); ++cit) {
             (*cit)->group(View::GEOMETRY)->translation_.x *= fb->aspectRatio() / canvas_surface_->scale_.x;
         }
     }
@@ -93,7 +93,7 @@ void Canvas::setFrameBuffer(FrameBuffer *fb)
     canvas_surface_->scale_.x = fb->aspectRatio();
 
     // reset all canvases with new canvas surface 
-    for (auto cit = canvasBegin(); cit != canvasEnd(); ++cit) {
+    for (auto cit = begin(); cit != end(); ++cit) {
         (*cit)->reload();
     }
 }
@@ -101,14 +101,14 @@ void Canvas::setFrameBuffer(FrameBuffer *fb)
 void Canvas::update()
 {
     // Render canvases
-    for (auto cit = canvasBegin(); cit != canvasEnd(); ++cit) {
+    for (auto cit = begin(); cit != end(); ++cit) {
         // render each canvas with their section of the background surface
         (*cit)->update(0.f);
         (*cit)->render();
     }
 }
 
-void Canvas::addCanvas()
+void Canvas::add()
 {
     // create a new canvas source
     CanvasSource *canvas = new CanvasSource;
@@ -132,7 +132,7 @@ void Canvas::addCanvas()
     canvas_scene_->attach( canvas->frames_[View::GEOMETRY] );
 }
 
-void Canvas::removeCanvas()
+void Canvas::remove()
 {
     // minumum one canvas
     if ( canvases_.size() > 1 ) {
@@ -152,17 +152,17 @@ void Canvas::removeCanvas()
     }
 }
 
-SourceList::iterator Canvas::canvasBegin ()
+SourceList::iterator Canvas::begin ()
 {
     return canvases_.begin();
 }
 
-SourceList::iterator Canvas::canvasEnd ()
+SourceList::iterator Canvas::end ()
 {
     return canvases_.end();
 }
 
-CanvasSource *Canvas::canvasAt (size_t index) {
+CanvasSource *Canvas::at (size_t index) {
 
     auto it = canvases_.begin();
     std::advance(it, MIN(index, canvases_.size() - 1));
@@ -201,7 +201,7 @@ void Canvas::setLayout(int rows, int columns)
         float scaleY = cellHeight / 2.0f;
 
         int canvasIndex = 0;
-        for (auto cit = canvasBegin(); cit != canvasEnd() && canvasIndex < columns * rows; ++cit, ++canvasIndex) {
+        for (auto cit = begin(); cit != end() && canvasIndex < columns * rows; ++cit, ++canvasIndex) {
             // Calculate row and column for this canvas
             int row = canvasIndex / columns;
             int col = canvasIndex % columns;
@@ -265,7 +265,7 @@ void Canvas::load(const std::string &filename)
     {
         // create a new canvas if needed
         if ( canvas_it == canvases_.end() ) {
-            addCanvas();
+            add();
             canvas_it = --canvases_.end();
         }
 
@@ -276,7 +276,7 @@ void Canvas::load(const std::string &filename)
     }
     // delete extra canvases if any
     while ( canvas_it != canvases_.end() ) {
-        removeCanvas();
+        remove();
         canvas_it = --canvases_.end();  
     }
 }
@@ -303,7 +303,7 @@ void Canvas::save(const std::string &filename)
     XMLElement *canvasesNode = xmlDoc.NewElement("Canvases");
     pRoot->InsertEndChild(canvasesNode);
     SessionVisitor sv(&xmlDoc, canvasesNode);
-    for (auto iter = canvasBegin(); iter != canvasEnd(); ++iter, sv.setRoot(canvasesNode) )
+    for (auto iter = begin(); iter != end(); ++iter, sv.setRoot(canvasesNode) )
         // session visitor saves source configuration
         (*iter)->accept(sv);
 

@@ -282,8 +282,8 @@ void GeometryView::draw()
     }
 
     // draw all canvases 
-    for (auto canvas_iter = Canvas::manager().canvasBegin();
-            canvas_iter != Canvas::manager().canvasEnd(); ++canvas_iter) {
+    for (auto canvas_iter = Canvas::manager().begin();
+            canvas_iter != Canvas::manager().end(); ++canvas_iter) {
         // will draw its surface
         // canvas_surfaces.push_back((*canvas_iter)->groups_[GEOMETRY]);
         canvas_surfaces.push_back((*canvas_iter)->rendersurface_);
@@ -393,7 +393,7 @@ void GeometryView::draw()
                             Mixer::selection().clear();
                             // select first canvas as current if not already one selected
                             if (current_canvas_ == nullptr) 
-                                current_canvas_ = *Canvas::manager().canvasBegin();
+                                current_canvas_ = *Canvas::manager().begin();
                             // restore mode for current canvas
                             current_canvas_->setMode(Source::CURRENT);
                         }
@@ -415,12 +415,12 @@ void GeometryView::draw()
         if (editor_mode_ == EDIT_CANVAS) {
             // - Remove canvas
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (Canvas::manager().numCanvases() > 1) {
+            if (Canvas::manager().size() > 1) {
                 if (ImGuiToolkit::IconButton(19, 4, "Less canvas")) {
                     // remove last canvas
-                    Canvas::manager().removeCanvas();
+                    Canvas::manager().remove();
                     // set another canvas as current
-                    setCurrentCanvas(*(--Canvas::manager().canvasEnd()));
+                    setCurrentCanvas(*(--Canvas::manager().end()));
                 }
             }
             else
@@ -428,12 +428,12 @@ void GeometryView::draw()
 
             // + Add more canvas
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (Canvas::manager().numCanvases() < MAX_OUTPUT_CANVAS) {
+            if (Canvas::manager().size() < MAX_OUTPUT_CANVAS) {
                 if (ImGuiToolkit::IconButton(18, 4, "More canvas")) {
                     // create new canvas
-                    Canvas::manager().addCanvas();
+                    Canvas::manager().add();
                     // set newly created canvas as current
-                    setCurrentCanvas(*(--Canvas::manager().canvasEnd()));
+                    setCurrentCanvas(*(--Canvas::manager().end()));
                 }
             } 
             else
@@ -447,13 +447,13 @@ void GeometryView::draw()
                 ImGuiToolkit::ToolTip("Layout");
             if (ImGui::BeginPopup("combinations_popup", ImGuiWindowFlags_NoMove))  {
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                if (Canvas::manager().numCanvases() == 1) {
+                if (Canvas::manager().size() == 1) {
                     if (ImGui::Selectable("Fit whole output")) 
                         Canvas::manager().setLayout(1, 0);
                 }
                 else {
                     // get grid combinations for current number of canvases
-                    int N = Canvas::manager().numCanvases();
+                    int N = Canvas::manager().size();
                     std::vector<std::pair<int, int>> combinations = BaseToolkit::getGridCombinations(N);
                     std::vector<std::string> descriptions = BaseToolkit::getGridCombinationDescriptions(N);
                     for (size_t i = 0; i < descriptions.size(); ++i) {
@@ -689,8 +689,8 @@ void GeometryView::draw()
                 current_canvas_->group(mode_)->crop_ = glm::vec4(-1.f, 1.f, 1.f, -1.f);
                 current_canvas_->touch();;
             }
-            for (auto sit = Canvas::manager().canvasBegin();
-                 sit != Canvas::manager().canvasEnd(); ++sit) {
+            for (auto sit = Canvas::manager().begin();
+                 sit != Canvas::manager().end(); ++sit) {
                 if (*sit != current_canvas_) {
                     if (ImGui::MenuItem(std::string(ICON_FA_EXCHANGE_ALT "  Swap with " + (*sit)->name()).c_str())) {
                         // swap parameters
@@ -959,9 +959,9 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     if (picked_sources.empty()) {
                         // loop over all nodes picked to fill the list of sources clicked
                         for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp) {
-                            SourceList::iterator sit = std::find_if(Canvas::manager().canvasBegin(), 
-                                Canvas::manager().canvasEnd(), Source::hasNode( (*itp).first ));
-                            if ( sit != Canvas::manager().canvasEnd() ) {
+                            SourceList::iterator sit = std::find_if(Canvas::manager().begin(), 
+                                Canvas::manager().end(), Source::hasNode( (*itp).first ));
+                            if ( sit != Canvas::manager().end() ) {
                                 picked_sources.insert( *sit );
                             }
                         }
@@ -983,11 +983,11 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                 for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
 
                     // loop over all canvases to get if one was picked
-                    SourceList::iterator sit = std::find_if(Canvas::manager().canvasBegin(), 
-                        Canvas::manager().canvasEnd(), Source::hasNode( (*itp).first ));
+                    SourceList::iterator sit = std::find_if(Canvas::manager().begin(), 
+                        Canvas::manager().end(), Source::hasNode( (*itp).first ));
 
                     // accept picked canvas
-                    if ( sit != Canvas::manager().canvasEnd() ) {
+                    if ( sit != Canvas::manager().end() ) {
                         setCurrentCanvas(*sit);
                         break;
                     }
@@ -1414,8 +1414,8 @@ void GeometryView::initiate()
         View::initiate();
     else if (!current_action_ongoing_) {
         // all sources store their status at initiation of an action
-        for (auto sit = Canvas::manager().canvasBegin();
-             sit != Canvas::manager().canvasEnd(); ++sit)
+        for (auto sit = Canvas::manager().begin();
+             sit != Canvas::manager().end(); ++sit)
             (*sit)->store(mode_);
         // initiated
         current_action_ = "";
@@ -1468,8 +1468,8 @@ void GeometryView::terminate(bool force)
 
     // restore all handles canvas
     canvas_overlay_crop_->visible_   = false;
-    for (auto sit = Canvas::manager().canvasBegin();
-         sit != Canvas::manager().canvasEnd(); ++sit){
+    for (auto sit = Canvas::manager().begin();
+         sit != Canvas::manager().end(); ++sit){
         (*sit)->handles_[mode_][Handles::MENU]->visible_ = true;
         (*sit)->handles_[mode_][Handles::CROP_H]->visible_ = true;
         (*sit)->handles_[mode_][Handles::CROP_V]->visible_ = true;

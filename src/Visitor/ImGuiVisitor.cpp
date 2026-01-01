@@ -1047,7 +1047,7 @@ void ImGuiVisitor::visit (RenderSource& s)
             __canvas = s.canvasProvenance();
 
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::SliderInt("##Canvas", &__canvas, 0, Canvas::manager().numCanvases() - 1, "%02d");
+        ImGui::SliderInt("##Canvas", &__canvas, 0, Canvas::manager().size() - 1, "%02d");
         if (ImGui::IsItemDeactivatedAfterEdit()){
             s.setCanvasProvenance((size_t)__canvas);
             oss << "Canvas " << __canvas;

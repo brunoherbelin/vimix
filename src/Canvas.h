@@ -42,16 +42,16 @@ public:
     Group *canvasScene() const { return canvas_scene_; }
     
     // to manage canvases
-    void addCanvas();
-    void removeCanvas();
-    size_t numCanvases () const { return canvases_.size(); }
+    void add();
+    void remove();
+    size_t size () const { return canvases_.size(); }
 
     // for iteration over canvases
-    SourceList::iterator canvasBegin ();
-    SourceList::iterator canvasEnd ();
+    SourceList::iterator begin ();
+    SourceList::iterator end ();
 
     // direct access to source
-    CanvasSource *canvasAt (size_t index);
+    CanvasSource *at (size_t index);
 
     // configuration
     void load(const std::string &filename = std::string());
