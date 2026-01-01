@@ -36,8 +36,7 @@
 
 #include "CanvasSource.h"
 
-CanvasSource::CanvasSource(uint64_t id) : Source(id), 
-    rendered_output_(nullptr), rendered_surface_(nullptr), paused_(false), reset_(true)
+CanvasSource::CanvasSource(uint64_t id) : Source(id), paused_(false)
 {
     // set symbol
     symbol_ = new Symbol(Symbol::SCREEN, glm::vec3(0.75f, 0.75f, 0.01f));
@@ -69,70 +68,35 @@ CanvasSource::CanvasSource(uint64_t id) : Source(id),
 
 CanvasSource::~CanvasSource()
 {
-    // detatch from canvas rendering scene
-    // so that it is not deleted each time a Canvas is deleted
-    canvas_rendering_scene_.ws()->detach(Canvas::manager().canvas_surface_);
-
-    if (rendered_output_ != nullptr)
-        delete rendered_output_;
 
     Log::Info("Canvas '%s' deleted.", name().c_str());
 }
 
 Source::Failure CanvasSource::failed() const
 {
-    // if ( rendered_output_ != nullptr && renderview_ != nullptr ) {
-    //     // the rendering output was created, but resolution changed
-    //     if ( rendered_output_->resolution() != renderview_->frame()->resolution()
-    //          // or alpha channel changed (e.g. inside SessionSource)
-    //          || ( ( rendered_output_->flags() & FrameBuffer::FrameBuffer_alpha ) != ( renderview_->frame()->flags() & FrameBuffer::FrameBuffer_alpha ) )
-    //          ) {
-    //         return FAIL_RETRY;
-    //     }
-    // }
-
     return FAIL_NONE;
 }
 
 uint CanvasSource::texture() const
 {
-    if (rendered_output_ != nullptr)
-        return rendered_output_->texture();
-    else if (Canvas::manager().canvas_surface_ && Canvas::manager().canvas_surface_->frameBuffer())
-        return Canvas::manager().canvas_surface_->frameBuffer()->texture();
+    if (renderbuffer_ != nullptr)
+        return renderbuffer_->texture();
+    else if (Canvas::manager().framebuffer_)
+        return Canvas::manager().framebuffer_->texture();
     else
         return Resource::getTextureBlack(); // getTextureTransparent ?
 }
 
 void CanvasSource::init()
 {
-    if (Canvas::manager().canvas_surface_ 
-        && Canvas::manager().canvas_surface_->frameBuffer() 
-        && Canvas::manager().canvas_surface_->frameBuffer()->texture() != Resource::getTextureBlack()) {
+    if (Canvas::manager().framebuffer_ 
+        && Canvas::manager().framebuffer_->texture() != Resource::getTextureBlack()) {
 
-        // attach canvas surface to rendering scene (drawn by this source in update)
-        canvas_rendering_scene_.ws()->detach(Canvas::manager().canvas_surface_); // avoid double attach
-        canvas_rendering_scene_.ws()->attach(Canvas::manager().canvas_surface_);
-        canvas_rendering_scene_.update(0.f);
-
-        FrameBuffer *fb = Canvas::manager().canvas_surface_->frameBuffer();
-        // use same flags than rendering frame, without multisampling
-        FrameBuffer::FrameBufferFlags flag = fb->flags();
-        flag &= ~FrameBuffer::FrameBuffer_multisampling;
-
-        // create the frame buffer displayed by the source (all modes)
-        if (rendered_output_ != nullptr)
-            delete rendered_output_;
-        rendered_output_ = new FrameBuffer( fb->resolution(), flag );
-
-        // needs a first initialization (to get texture)
-        fb->blit(rendered_output_);
-
-        // set the texture index from internal framebuffer, apply it to the source texture surface
-        texturesurface_->setTextureIndex( rendered_output_->texture() );
+        if (renderbuffer_ != nullptr)
+            delete renderbuffer_;
 
         // create Frame buffer matching size of output session
-        FrameBuffer *renderbuffer = new FrameBuffer( fb->resolution() );
+        FrameBuffer *renderbuffer = new FrameBuffer( Canvas::manager().framebuffer_->resolution() );
 
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
@@ -141,54 +105,48 @@ void CanvasSource::init()
         ++View::need_deep_update_;
 
         // done init
-        Log::Info("Canvas '%s' linked to output (%d x %d).", name().c_str(), int(fb->resolution().x), int(fb->resolution().y) );
+        Log::Info("Canvas '%s' linked to output (%d x %d).", name().c_str(), int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
+    }
+}
+
+void CanvasSource::render ()
+{    
+    static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
+
+    if ( renderbuffer_ == nullptr )
+        init();
+    else {
+
+        // the scene root transform to the inverse of the source transform
+        glm::vec3 rotation = groups_[View::GEOMETRY]->rotation_;
+        glm::vec3 scale = groups_[View::GEOMETRY]->scale_;
+        scale.z = 1.f;
+        glm::vec3 translation = groups_[View::GEOMETRY]->translation_;
+        translation.z = 0.f;
+        translation.x /= Canvas::manager().framebuffer_->aspectRatio();
+
+        // ensure correct output texture is displayed (could have changed if canvas framebuffer changed)
+        texturesurface_->setTextureIndex( Canvas::manager().framebuffer_->texture() );
+
+        // render 
+        renderbuffer_->begin();
+        texturesurface_->draw(glm::inverse( GlmToolkit::transform(translation, rotation, scale) ), projection);
+        renderbuffer_->end();
+
+        ready_ = true;
     }
 }
 
 void CanvasSource::update(float dt)
 {
-    static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
-
     Source::update(dt);
 
-    if (Canvas::manager().canvas_surface_ 
-        && Canvas::manager().canvas_surface_->frameBuffer() 
-        && rendered_output_ && renderbuffer_) {
-    
-        if ((active_ && !paused_) || reset_) {
-            
-            //  the scene root transform to the inverse of the source transform
-            glm::vec3 rotation = this->groups_[View::GEOMETRY]->rotation_;
-            glm::vec3 scale = this->groups_[View::GEOMETRY]->scale_;
-            scale.z = 1.f;
-            glm::vec3 translation =  this->groups_[View::GEOMETRY]->translation_;
-            translation.z = 0.f;
-
-            // change projection to account for CROP (inverse transform)
-            glm::vec3 _c_s = glm::vec3(groups_[View::GEOMETRY]->crop_[0] - groups_[View::GEOMETRY]->crop_[1],
-                    groups_[View::GEOMETRY]->crop_[2] - groups_[View::GEOMETRY]->crop_[3],
-                    2.f) * 0.5f ;
-            glm::vec3 _t((_c_s.x + groups_[View::GEOMETRY]->crop_[1]),
-                            (_c_s.y + groups_[View::GEOMETRY]->crop_[3]), 0.f);
-            
-            glm::mat4 P = glm::scale(glm::translate(projection, _t), _c_s * 
-                glm::vec3(-1.f / Canvas::manager().canvas_surface_->frameBuffer()->aspectRatio(), 1.f, 1.f));
-
-            rendered_output_->begin();
-            // access to private RenderView in the session to call draw on the root of the scene
-            canvas_rendering_scene_.root()->draw(glm::inverse( GlmToolkit::transform(translation, rotation, scale) ), P);
-            rendered_output_->end();
-
-            // resize labels according to scale
-            label_0_->scale_.y = 0.05f / scale.y;
-            label_1_->scale_.y = 0.05f / scale.y;
-            label_0_->translation_.x = -0.015f / scale.x;
-            label_1_->translation_.x = 0.015f / scale.x;
-
-            // done reset
-            reset_ = false;
-        }
-    }
+    // resize labels according to scale
+    glm::vec3 scale = this->groups_[View::GEOMETRY]->scale_;
+    label_0_->scale_.y = 0.05f / scale.y;
+    label_1_->scale_.y = 0.05f / scale.y;
+    label_0_->translation_.x = -0.015f / scale.x;
+    label_1_->translation_.x = 0.015f / scale.x;
 
 }
 
@@ -200,8 +158,6 @@ void CanvasSource::play (bool on)
 
 void CanvasSource::replay ()
 {
-    // request next frame to reset
-    reset_ = true;
 }
 
 void CanvasSource::reload ()
@@ -210,17 +166,14 @@ void CanvasSource::reload ()
     if (renderbuffer_)
         delete renderbuffer_;
     renderbuffer_ = nullptr;
-
-    // request next frame to reset
-    reset_ = true;
 }
 
 glm::vec3 CanvasSource::resolution() const
 {
-    if (rendered_output_ != nullptr)
-        return rendered_output_->resolution();
-    else if (Canvas::manager().canvas_surface_ && Canvas::manager().canvas_surface_->frameBuffer())
-        return Canvas::manager().canvas_surface_->frameBuffer()->resolution();
+    if (renderbuffer_ != nullptr)
+        return renderbuffer_->resolution();
+    else if (Canvas::manager().framebuffer_)
+        return Canvas::manager().framebuffer_->resolution();
     else
         return glm::vec3(0.f);
 }

@@ -35,7 +35,7 @@ using namespace tinyxml2;
 
 #include "Canvas.h"
 
-Canvas::Canvas() : canvas_surface_(nullptr)
+Canvas::Canvas() : framebuffer_(nullptr)
 {
     canvas_scene_ = new Group;
 }
@@ -64,35 +64,24 @@ void Canvas::terminate()
         delete tmp;
     }
 
-    // delete canvas surface
-    if ( canvas_surface_ != nullptr) {
-        delete canvas_surface_;
-        canvas_surface_ = nullptr;
-    }
-
     // delete canvas scene
     delete canvas_scene_;
 }
 
 void Canvas::setFrameBuffer(FrameBuffer *fb)
 {
-    // create surface to render canvases
-    if ( canvas_surface_ == nullptr) 
-        canvas_surface_ = new FrameBufferSurface(fb);
-    
     // detect change of aspect ratio
-    if ( canvas_surface_->scale_.x != fb->aspectRatio() ) {
+    if ( framebuffer_ && framebuffer_->aspectRatio() != fb->aspectRatio() ) {
         // adjust all canvases x translation coordinate to new aspect ratio
         for (auto cit = begin(); cit != end(); ++cit) {
-            (*cit)->group(View::GEOMETRY)->translation_.x *= fb->aspectRatio() / canvas_surface_->scale_.x;
+            (*cit)->group(View::GEOMETRY)->translation_.x *= fb->aspectRatio() / framebuffer_->aspectRatio();
         }
     }
 
-    // update canvas surface framebuffer
-    canvas_surface_->setFrameBuffer(fb);
-    canvas_surface_->scale_.x = fb->aspectRatio();
+    // set new framebuffer
+    framebuffer_ = fb;
 
-    // reset all canvases with new canvas surface 
+    // reset all canvases to attach to new framebuffer
     for (auto cit = begin(); cit != end(); ++cit) {
         (*cit)->reload();
     }
@@ -219,7 +208,7 @@ void Canvas::setLayout(int rows, int columns)
             // Apply transformation to canvas
             (*cit)->group(View::GEOMETRY)->crop_ = glm::vec4(left, right, top, bottom);
             (*cit)->group(View::GEOMETRY)->scale_ = glm::vec3(scaleX, scaleY, 1.f);
-            (*cit)->group(View::GEOMETRY)->translation_ = glm::vec3(transX * canvas_surface_->scale_.x, transY, 0.f);
+            (*cit)->group(View::GEOMETRY)->translation_ = glm::vec3(transX * framebuffer_->aspectRatio(), transY, 0.f);
 
             // make sure the canvas is updated
             (*cit)->touch();

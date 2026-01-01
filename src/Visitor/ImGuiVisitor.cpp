@@ -1044,12 +1044,12 @@ void ImGuiVisitor::visit (RenderSource& s)
     if (s.renderingProvenance() == RenderSource::RENDER_CANVAS) {
         static int __canvas = -1;
         if (__canvas < 0)
-            __canvas = s.canvasProvenance();
+            __canvas = s.canvasProvenance() + 1;
 
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::SliderInt("##Canvas", &__canvas, 0, Canvas::manager().size() - 1, "%02d");
+        ImGui::SliderInt("##Canvas", &__canvas, 1, Canvas::manager().size(), "%02d");
         if (ImGui::IsItemDeactivatedAfterEdit()){
-            s.setCanvasProvenance((size_t)__canvas);
+            s.setCanvasProvenance((size_t)__canvas - 1);
             oss << "Canvas " << __canvas;
             Action::manager().store(oss.str());
             __canvas = -1;
@@ -1057,7 +1057,7 @@ void ImGuiVisitor::visit (RenderSource& s)
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton("Canvas")) {
             s.setCanvasProvenance(0);
-            oss << "Canvas 0";
+            oss << "Canvas 01";
             Action::manager().store(oss.str());
             __canvas = -1;
         }

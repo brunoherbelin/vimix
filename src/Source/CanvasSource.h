@@ -13,6 +13,7 @@ public:
 
     // implementation of source API
     void update (float dt) override;
+    void render () override;
     bool playing () const override { return !paused_; }
     void play (bool) override;
     void replay () override;
@@ -24,19 +25,14 @@ public:
     glm::vec3 resolution() const;
 
     Group *label;
-    Character  *label_0_, *label_1_;
+    Character *label_0_, *label_1_;
 
 protected:
 
     void init() override;
 
-    FrameBuffer *rendered_output_;
-    Surface *rendered_surface_;
-    Scene canvas_rendering_scene_;
-
     // control
     bool paused_;
-    bool reset_;
 };
 
 

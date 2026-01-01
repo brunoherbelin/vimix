@@ -68,7 +68,8 @@ protected:
 
     // accessed by CanvasSource
     // canvas_surface_ is shared between all canvases
-    FrameBufferSurface *canvas_surface_;
+    // FrameBufferSurface *canvas_surface_;
+    FrameBuffer *framebuffer_;
 
 };
 
