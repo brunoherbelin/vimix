@@ -18,6 +18,8 @@
 **/
 
 
+#include <cstddef>
+#include <iterator>
 #include <string>
 #include <vector>
 #include <iomanip>
@@ -64,6 +66,7 @@
 #include "Mixer.h"
 #include "ControlManager.h"
 #include "Transcoder.h"
+#include "Canvas.h"
 
 #include "imgui.h"
 #include "Toolkit/ImGuiToolkit.h"
@@ -1032,8 +1035,34 @@ void ImGuiVisitor::visit (RenderSource& s)
     // loopback provenance
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) s.renderingProvenance();
-    if (ImGuiToolkit::ComboIcon("##SelectRender", &m, RenderSource::ProvenanceMethod))
+    if (ImGuiToolkit::ComboIcon("##SelectRender", &m, RenderSource::ProvenanceMethod)) {
         s.setRenderingProvenance((RenderSource::RenderSourceProvenance)m);
+        oss << "Mode " << m;
+        Action::manager().store(oss.str());
+    }
+
+    if (s.renderingProvenance() == RenderSource::RENDER_CANVAS) {
+        static int __canvas = -1;
+        if (__canvas < 0)
+            __canvas = s.canvasProvenance();
+
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::SliderInt("##Canvas", &__canvas, 0, Canvas::manager().numCanvases() - 1, "%02d");
+        if (ImGui::IsItemDeactivatedAfterEdit()){
+            s.setCanvasProvenance((size_t)__canvas);
+            oss << "Canvas " << __canvas;
+            Action::manager().store(oss.str());
+            __canvas = -1;
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Canvas")) {
+            s.setCanvasProvenance(0);
+            oss << "Canvas 0";
+            Action::manager().store(oss.str());
+            __canvas = -1;
+        }
+
+    }
 
     ImVec2 botom = ImGui::GetCursorPos();
 

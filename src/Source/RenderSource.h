@@ -2,6 +2,7 @@
 #define RENDERSOURCE_H
 
 #include "Source.h"
+#include <cstddef>
 
 
 
@@ -39,8 +40,8 @@ public:
     void setRenderingProvenance(RenderSourceProvenance m) { provenance_ = m; }
     RenderSourceProvenance renderingProvenance() const { return provenance_; }
 
-    void setCanvasProvenance(uint c) { canvas_index_ = c; }
-    uint canvasProvenance() const { return canvas_index_; }
+    void setCanvasProvenance(size_t c) { canvas_index_ = c; }
+    size_t canvasProvenance() const { return canvas_index_; }
 
     glm::ivec2 icon() const override;
     std::string info() const override;
@@ -57,7 +58,7 @@ protected:
     bool paused_;
     bool reset_;
     RenderSourceProvenance provenance_;
-    uint canvas_index_;
+    size_t canvas_index_;
 };
 
 

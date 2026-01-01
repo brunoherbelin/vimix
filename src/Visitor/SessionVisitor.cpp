@@ -747,6 +747,7 @@ void SessionVisitor::visit (RenderSource& s)
 {
     xmlCurrent_->SetAttribute("type", "RenderSource");
     xmlCurrent_->SetAttribute("provenance", (int) s.renderingProvenance());
+    xmlCurrent_->SetAttribute("canvas", (int) s.canvasProvenance());
 }
 
 void SessionVisitor::visit (FrameBufferFilter& f)

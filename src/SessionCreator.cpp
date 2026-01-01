@@ -1276,6 +1276,9 @@ void SessionLoader::visit (RenderSource& s)
     int p = 0;
     xmlCurrent_->QueryIntAttribute("provenance", &p);
     s.setRenderingProvenance((RenderSource::RenderSourceProvenance)p);
+    int c = 0;
+    xmlCurrent_->QueryIntAttribute("canvas", &c);
+    s.setCanvasProvenance((size_t)c);
 
     // set session
     s.setSession( session_ );

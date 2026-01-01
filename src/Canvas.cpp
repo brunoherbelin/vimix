@@ -165,7 +165,8 @@ SourceList::iterator Canvas::canvasEnd ()
 CanvasSource *Canvas::canvasAt (size_t index) {
 
     auto it = canvases_.begin();
-    std::advance(it, MAX(index, canvases_.size() - 1));
+    std::advance(it, MIN(index, canvases_.size() - 1));
+    // NB : assume that canvases_ contains only CanvasSource elements and has at least one element
     return static_cast<CanvasSource *>(*it);
 }
 
