@@ -655,6 +655,7 @@ void Source::attach(FrameBuffer *renderbuffer)
 
     // request update
     need_update_ |= Source::SourceUpdate_Render;
+    need_update_ |= Source::SourceUpdate_Mask;
 }
 
 void Source::setActive (bool on)

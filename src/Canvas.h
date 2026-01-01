@@ -7,6 +7,7 @@
 class Group;
 class FrameBuffer;
 class FrameBufferSurface;
+class CanvasSource;
 
 class Canvas
 {
@@ -48,6 +49,9 @@ public:
     // for iteration over canvases
     SourceList::iterator canvasBegin ();
     SourceList::iterator canvasEnd ();
+
+    // direct access to source
+    CanvasSource *canvasAt (size_t index);
 
     // configuration
     void load(const std::string &filename = std::string());

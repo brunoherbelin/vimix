@@ -33,15 +33,20 @@
 #include "Visitor/Visitor.h"
 #include "Session.h"
 #include "Visitor/DrawVisitor.h"
+#include "Canvas.h"
+#include "CanvasSource.h"
 
 #include "RenderSource.h"
 
 std::vector< std::tuple<int, int, std::string> > RenderSource::ProvenanceMethod = {
-    { 16, 12, "Recursive" }, { 17, 5, "Entire scene", }, { 17, 12, "Local scene" }
+    { 16, 12, "Recursive" }, 
+    { 17, 5, "Entire scene", }, 
+    { 17, 12, "Local scene" },
+    { 18, 6, "Canvas" }
 };
 
 RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr),
-    paused_(false), reset_(true), provenance_(RENDER_TEXTURE)
+    paused_(false), reset_(true), provenance_(RENDER_TEXTURE), canvas_index_(0)
 {
     // set symbol
     symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.75f, 0.75f, 0.01f));
@@ -125,10 +130,16 @@ void RenderSource::update(float dt)
 
             // simulate a rendering of the session in a framebuffer
             if (provenance_ >= RENDER_PROJECTION || reset_ ) {
-                // temporarily exclude this RenderSource from the rendering
-                groups_[View::RENDERING]->visible_ = false;
 
-                if (provenance_ == RENDER_PROJECTION_SOURCE) {
+                if (provenance_ == RENDER_CANVAS) {
+                    
+                    CanvasSource *canvas = Canvas::manager().canvasAt(canvas_index_);
+
+                    if (canvas != nullptr) {
+                        canvas->frame()->blit(rendered_output_);
+                    }
+                }
+                else if (provenance_ == RENDER_PROJECTION_SOURCE) {
 
                     // temporarily set the scene root transform to the inverse of the source transform
                     glm::vec3 rotation = groups_[View::RENDERING]->rotation_;
@@ -154,7 +165,7 @@ void RenderSource::update(float dt)
                     
                     glm::mat4 P = glm::scale(glm::translate(projection, _t), _c_s * glm::vec3(-1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
 
-                    // render using visitor
+                    // access to private RenderView in the session to call draw on selected surfaces
                     rendered_output_->begin();
                     DrawVisitor draw_surfaces(surfaces, P);
                     session_->render_.scene.accept(draw_surfaces);
@@ -163,20 +174,29 @@ void RenderSource::update(float dt)
                     // restore scene root transform
                     session_->render_.scene.root()->transform_ = glm::identity<glm::mat4>();
                 }
+                // RENDER_PROJECTION or reset
                 else {
+
+                    // temporarily exclude this RenderSource from the rendering
+                    groups_[View::RENDERING]->visible_ = false;
+
+                    // change projection to account for aspect ratio
                     glm::mat4 P = glm::scale(projection,
                                          glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
-                    rendered_output_->begin();
+
                     // access to private RenderView in the session to call draw on the root of the scene
+                    rendered_output_->begin();
                     session_->render_.scene.root()->draw(glm::identity<glm::mat4>(), P);
                     rendered_output_->end();
+
+                    // restore this RenderSource visibility
+                    groups_[View::RENDERING]->visible_ = true;
                 }
-                // restore this RenderSource visibility
-                groups_[View::RENDERING]->visible_ = true;
                 // done reset
                 reset_ = false;
             }
-            // blit session frame to output
+            // RENDER_TEXTURE
+            // blit session frame to output (fastest)
             else if (!session_->frame()->blit(rendered_output_))
             {
                 // if failed (which should not happen),

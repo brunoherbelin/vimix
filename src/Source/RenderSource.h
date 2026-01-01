@@ -31,12 +31,16 @@ public:
     typedef enum {
         RENDER_TEXTURE = 0,
         RENDER_PROJECTION = 1,
-        RENDER_PROJECTION_SOURCE = 2
+        RENDER_PROJECTION_SOURCE = 2,
+        RENDER_CANVAS = 3
     } RenderSourceProvenance;
     static std::vector< std::tuple<int, int, std::string> > ProvenanceMethod;
 
     void setRenderingProvenance(RenderSourceProvenance m) { provenance_ = m; }
     RenderSourceProvenance renderingProvenance() const { return provenance_; }
+
+    void setCanvasProvenance(uint c) { canvas_index_ = c; }
+    uint canvasProvenance() const { return canvas_index_; }
 
     glm::ivec2 icon() const override;
     std::string info() const override;
@@ -53,6 +57,7 @@ protected:
     bool paused_;
     bool reset_;
     RenderSourceProvenance provenance_;
+    uint canvas_index_;
 };
 
 
