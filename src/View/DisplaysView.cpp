@@ -18,6 +18,7 @@
 **/
 
 #include "IconsFontAwesome5.h"
+#include "imgui.h"
 #include <cstddef>
 #include <glm/fwd.hpp>
 #include <string>
@@ -87,6 +88,8 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     if (grid)  delete grid;
     grid = new TranslationGrid(gridroot_);
     grid->root()->visible_ = false;
+
+    recenter();
 }
 
 void DisplaysView::update(float dt)
@@ -187,17 +190,17 @@ void  DisplaysView::recenter ()
     // compute scaling to fit the scene box into the view
     if ( scene_box.scale().x > scene_box.scale().y ) {
         // horizontal arrangement
-        scene.root()->scale_.x = glm::min(view.x, view.y) / ( scene_box.scale().x );
+        scene.root()->scale_.x = 1.1f * glm::min(view.x, view.y) / ( scene_box.scale().x );
         scene.root()->scale_.y = scene.root()->scale_.x;
     }
     else {
         // vertical arrangement
-        scene.root()->scale_.y = glm::min(view.x, view.y) / ( scene_box.scale().y );
+        scene.root()->scale_.y = glm::min(view.x, view.y) / ( 1.1f * scene_box.scale().y );
         scene.root()->scale_.x = scene.root()->scale_.y;
     }
 
     // compute translation to place at the center (considering scaling, + shift for buttons left and above)
-    scene.root()->translation_ = -scene.root()->scale_.x * (scene_box.center() + glm::vec3(-0.2f, 0.2f, 0.f));
+    scene.root()->translation_ = -scene.root()->scale_.x * (scene_box.center() + glm::vec3(-0.02f, 0.02f, 0.f));
 }
 
 void DisplaysView::resize ( int scale )
@@ -281,7 +284,7 @@ void DisplaysView::draw()
                             Settings::application.mainwindow.fullscreen);
 
         // Set window position depending on icons size
-        ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(P.x - 20.f, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
         if (ImGui::Begin((*monitor_iter).name.c_str(), NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                         | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                         | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
@@ -309,18 +312,16 @@ void DisplaysView::draw()
 
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (enabled) {
-                if (ImGui::Button(ICON_FA_TOGGLE_ON )) {
-                    // deactivate output
+                // deactivate output
+                if (ImGui::Button(ICON_FA_TOGGLE_ON )) 
                     (monitor_iter->output).setActive(false);
-                }
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip("Deactivate output");
             }
             else {
-                if (ImGui::Button(ICON_FA_TOGGLE_OFF )) {
-                    // activate output
+                // activate output
+                if (ImGui::Button(ICON_FA_TOGGLE_OFF )) 
                     (monitor_iter->output).setActive(true);
-                }
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip("Activate output");
             }

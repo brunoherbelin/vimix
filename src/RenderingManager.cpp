@@ -181,6 +181,7 @@ bool Rendering::init()
     //
     // Monitors
     //
+    // initial detection of monitors
     Rendering::MonitorConnect(nullptr, GLFW_DONT_CARE);
     // automatic detection of monitor connect & disconnect
     glfwSetMonitorCallback(Rendering::MonitorConnect);
@@ -569,11 +570,13 @@ bool Rendering::isAnyOutputActive()
 
 void Rendering::drawOutputWindows()
 {
+    bool any_active = false;
     // iterate through all monitors
     for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
         // if output is active and initialized, draw it
         if (it->output.isActive() && it->output.isInitialized()) {
             it->output.draw(Mixer::manager().session()->frame());
+            any_active = true;
         }
         // if output is active but not initialized, initialize it
         else if (it->output.isActive() && !it->output.isInitialized()) {
@@ -585,6 +588,8 @@ void Rendering::drawOutputWindows()
         }
     }
 
+    // inhibit screensaver if any output is active
+    inhibitScreensaver(any_active);
 }
 
 void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
@@ -609,7 +614,8 @@ void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
     }
 
     // inform Displays View that monitors changed
-    Mixer::manager().view(View::DISPLAYS)->recenter();
+    if (event != GLFW_DONT_CARE)
+        Mixer::manager().view(View::DISPLAYS)->recenter();
 
 #ifndef NDEBUG
     if (event == GLFW_CONNECTED)
