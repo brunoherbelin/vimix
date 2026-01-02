@@ -18,6 +18,7 @@
 **/
 
 #include <cstring>
+#include <glib.h>
 #include <stdlib.h>
 
 // Desktop OpenGL function loader
@@ -113,10 +114,6 @@ void MainWindow::setFullscreen_(GLFWmonitor *mo)
         const GLFWvidmode * mode = glfwGetVideoMode(mo);
         glfwSetWindowMonitor( window_, mo, 0, 0, mode->width, mode->height, mode->refreshRate);
     }
-
-    // Enable vsync on main window only 
-    // Workaround for disabled vsync in fullscreen (https://github.com/glfw/glfw/issues/1072)
-    glfwSwapInterval( Settings::application.render.vsync);
 
 }
 
@@ -249,6 +246,7 @@ bool MainWindow::init()
     glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
+    glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
 
     // create the window
     window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, nullptr);

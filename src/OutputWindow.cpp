@@ -128,8 +128,8 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
     ///
     glfwMakeContextCurrent(window_);
 
-    // NO vsync on output windows
-    glfwSwapInterval(0);
+    // vsync on output windows
+    glfwSwapInterval(Settings::application.render.vsync);
 
     // hide cursor
     glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);

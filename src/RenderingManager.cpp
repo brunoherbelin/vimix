@@ -230,8 +230,8 @@ bool Rendering::init()
     else
         Settings::application.render.multisampling = 0;
 
-    //  vsync on main opengl context
-    glfwSwapInterval(Settings::application.render.vsync);
+    //  no vsync on main opengl context (blocs rendering if main window is in background on some systems)
+    glfwSwapInterval(0);
 
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
