@@ -19,6 +19,7 @@
 
 #include "IconsFontAwesome5.h"
 #include <cstddef>
+#include <glm/fwd.hpp>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -124,11 +125,13 @@ void  DisplaysView::recenter ()
     scene.root()->scale_.x = 1.f;
     scene.root()->scale_.y = 1.f;
 
+    // reset the list of monitor groups
+    monitors_.clear();
+
     // fill scene background with the frames to show monitors
     int index = 1;
-    std::list<Rendering::Monitor> _monitors = Rendering::manager().monitors();
-    for (auto monitor_iter = _monitors.begin();
-         monitor_iter != _monitors.end(); ++monitor_iter, ++index) {
+    for (auto monitor_iter = Rendering::manager().monitors().begin();
+         monitor_iter != Rendering::manager().monitors().end(); ++monitor_iter, ++index) {
 
         // get coordinates of monitor in Display units
         glm::vec4 rect = DISPLAYS_UNIT * glm::vec4(monitor_iter->geometry);
@@ -151,7 +154,9 @@ void  DisplaysView::recenter ()
         label->translation_.y =  0.015f ;
         label->scale_.y =  0.3f / rect.p;
         m->attach(label);
+
         scene.bg()->attach( m );
+        monitors_.push_back(m);
 
         // add a foreground color frame (semi transparent for overlay)
         Group *f = new Group;
@@ -243,6 +248,11 @@ void DisplaysView::adaptGridToWindow(int w)
     }
 }
 
+void menuMonitor() {
+
+
+}
+
 void DisplaysView::draw()
 {
 
@@ -255,63 +265,130 @@ void DisplaysView::draw()
         DrawVisitor draw_grid(grid->root(), projection, true);
         scene.accept(draw_grid);
     }
+        
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+
+    auto group_it = monitors_.begin();
+    for (auto monitor_iter = Rendering::manager().monitors().begin();
+         monitor_iter != Rendering::manager().monitors().end(); ++monitor_iter, ++group_it) {
+
+        // Locate monitor upper left corner
+        glm::vec3 pos = (*group_it)->translation_;
+        pos.x -= (*group_it)->scale_.x;
+        pos.y += (*group_it)->scale_.y;
+        pos.z = 0.f;
+        glm::vec2 P = Rendering::manager().project(pos, scene.root()->transform_,
+                            Settings::application.mainwindow.fullscreen);
+
+        // Set window position depending on icons size
+        ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
+        if (ImGui::Begin((*monitor_iter).name.c_str(), NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                        | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
+        {
+            // colors for UI
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
+            ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
+            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
+            //
+            // Buttons on top
+            //
+
+            // // Disable output
+            // ImGuiToolkit::ButtonToggle(ICON_FA_EYE_SLASH, &Settings::application.render.disabled);
+            // if (ImGui::IsItemHovered())
+            //     ImGuiToolkit::ToolTip(MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE);
+
+            static bool enabled = false;
+            enabled = (monitor_iter->output).isActive();
+
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (enabled) {
+                if (ImGui::Button(ICON_FA_TOGGLE_ON )) {
+                    // deactivate output
+                    (monitor_iter->output).setActive(false);
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Deactivate output");
+            }
+            else {
+                if (ImGui::Button(ICON_FA_TOGGLE_OFF )) {
+                    // activate output
+                    (monitor_iter->output).setActive(true);
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Activate output");
+            }
+
+            ImGui::PopStyleColor(8);
+            ImGui::End();
+        }
+
+    }
+
+    ImGui::PopFont();
 
     // display interface
-    // Locate window at upper left corner
+    // Locate monitor at upper left corner
     glm::vec2 P(0.0f, 0.01f);
     P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_,
                         Settings::application.mainwindow.fullscreen);
 
-    // Set window position depending on icons size
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
-    if (ImGui::Begin("##DisplaysMaskOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
-                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
-    {
-        // colors for UI
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
-        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
-        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
-        //
-        // Buttons on top
-        //
+    // // Set window position depending on icons size
+    // ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    // ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
+    // if (ImGui::Begin("##DisplaysMonitorOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+    //                  | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+    //                  | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
+    // {
+    //     // colors for UI
+    //     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
+    //     ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+    //     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+    //     ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
+    //     ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
+    //     ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
+    //     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+    //     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
+    //     //
+    //     // Buttons on top
+    //     //
 
-        // // Disable output
-        // ImGuiToolkit::ButtonToggle(ICON_FA_EYE_SLASH, &Settings::application.render.disabled);
-        // if (ImGui::IsItemHovered())
-        //     ImGuiToolkit::ToolTip(MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE);
+    //     // // Disable output
+    //     // ImGuiToolkit::ButtonToggle(ICON_FA_EYE_SLASH, &Settings::application.render.disabled);
+    //     // if (ImGui::IsItemHovered())
+    //     //     ImGuiToolkit::ToolTip(MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE);
 
-        static bool enabled = false;
-        enabled = Rendering::manager().monitors().front().output.isActive();
+    //     static bool enabled = false;
+    //     enabled = Rendering::manager().monitors().front().output.isActive();
 
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (enabled) {
-            if (ImGui::Button(ICON_FA_TOGGLE_ON )) {
-                // deactivate output
-                Rendering::manager().monitors().front().output.setActive(false);
-            }
-            if (ImGui::IsItemHovered())
-                ImGuiToolkit::ToolTip("Deactivate output");
-        }
-        else {
-            if (ImGui::Button(ICON_FA_TOGGLE_OFF )) {
-                // activate output
-                Rendering::manager().monitors().front().output.setActive(true);
-            }
-            if (ImGui::IsItemHovered())
-                ImGuiToolkit::ToolTip("Activate output");
-        }
+    //     ImGui::SameLine(0, IMGUI_SAME_LINE);
+    //     if (enabled) {
+    //         if (ImGui::Button(ICON_FA_TOGGLE_ON )) {
+    //             // deactivate output
+    //             Rendering::manager().monitors().front().output.setActive(false);
+    //         }
+    //         if (ImGui::IsItemHovered())
+    //             ImGuiToolkit::ToolTip("Deactivate output");
+    //     }
+    //     else {
+    //         if (ImGui::Button(ICON_FA_TOGGLE_OFF )) {
+    //             // activate output
+    //             Rendering::manager().monitors().front().output.setActive(true);
+    //         }
+    //         if (ImGui::IsItemHovered())
+    //             ImGuiToolkit::ToolTip("Activate output");
+    //     }
 
-        ImGui::PopStyleColor(8);
-        ImGui::End();
-    }
-    ImGui::PopFont();
+    //     ImGui::PopStyleColor(8);
+    //     ImGui::End();
+    // }
+    // ImGui::PopFont();
 
     // display popup menu
     if (show_window_menu_ ) {

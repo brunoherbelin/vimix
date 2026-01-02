@@ -39,6 +39,8 @@ private:
     Group *gridroot_;
     void adaptGridToWindow(int w = -1);
 
+    std::list<Group *> monitors_;
+
 };
 
 

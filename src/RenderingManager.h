@@ -88,6 +88,7 @@ public:
     GLFWmonitor *monitorAt(int x, int y);
     // draw all output windows
     void drawOutputWindows();
+    bool isAnyOutputActive();
 
     // Application main window management
     inline MainWindow& mainWindow() { return main_; }

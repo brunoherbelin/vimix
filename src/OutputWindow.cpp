@@ -18,6 +18,7 @@
 **/
 
 #include <cstring>
+#include <glib.h>
 #include <stdlib.h>
 
 // Desktop OpenGL function loader
@@ -30,12 +31,9 @@
 #include <glm/ext/matrix_clip_space.hpp>
 
 // vimix
-#include "defines.h"
-#include "Log.h"
 #include "FrameBuffer.h"
 #include "Settings.h"
-#include "Mixer.h"
-#include "UserInterfaceManager.h"
+#include "Filter/ImageFilter.h"
 #include "ControlManager.h"
 #include "RenderingManager.h"
 #include "ImageShader.h"
@@ -59,7 +57,7 @@ public:
 };
 
 
-OutputWindow::OutputWindow() : window_(nullptr), monitor_(nullptr), active_(false), initialized_(false)
+OutputWindow::OutputWindow() : window_(nullptr), monitor_(nullptr), active_(false), initialized_(false), surface_(nullptr), shader_(nullptr)
 {
 
 }
@@ -128,8 +126,8 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
     ///
     glfwMakeContextCurrent(window_);
 
-    // vsync on output windows
-    glfwSwapInterval(Settings::application.render.vsync);
+    // vsync on output windows if this is the first active output window
+    glfwSwapInterval(Rendering::manager().isAnyOutputActive() ? 0 : Settings::application.render.vsync);
 
     // hide cursor
     glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
@@ -148,10 +146,25 @@ void OutputWindow::terminate()
         glfwDestroyWindow(window_);
     }
 
+    if (surface_) {
+        delete surface_;
+        surface_ = nullptr;
+        shader_ = nullptr; // shader is deleted by surface
+    }
+
+    // invalidate
     window_ = nullptr;
     monitor_ = nullptr;
     initialized_ = false;
     active_ = false;
+
+    // detect end
+    if ( !Rendering::manager().isAnyOutputActive() ) {
+        if (glfwGetWindowAttrib(Rendering::manager().mainWindow().window(), GLFW_VISIBLE) == GL_FALSE) {    
+            // all monitors disconnected and main window hidden : quit application
+            Rendering::manager().close();
+        }   
+    }
 }
 
 FilteringProgram whitebalance("Whitebalance",
@@ -189,12 +202,10 @@ bool OutputWindow::draw(FrameBuffer *fb)
     if (!Settings::application.render.disabled) {
 
         // create surface if needed (VAO is not shared between contexts)
-        static OutputWindowSurface *surface = nullptr;
-        static ImageFilteringShader *shader_ = nullptr;
-        if (surface == nullptr) {
+        if (surface_ == nullptr) {
             shader_ = new ImageFilteringShader;
             shader_->setCode( whitebalance.code().first );
-            surface = new OutputWindowSurface(shader_);
+            surface_ = new OutputWindowSurface(shader_);
         }
         if (shader_) {
             // TODO : set uniforms from settings
@@ -209,9 +220,9 @@ bool OutputWindow::draw(FrameBuffer *fb)
 
         // render the framebuffer texture to the output window
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
-        surface->setTextureIndex(fb->texture());
-        surface->update(0.f);
-        surface->draw(glm::identity<glm::mat4>(), projection);
+        surface_->setTextureIndex(fb->texture());
+        surface_->update(0.f);
+        surface_->draw(glm::identity<glm::mat4>(), projection);
 
         // done drawing (unload shader from this glcontext)
         ShadingProgram::enduse();
@@ -231,13 +242,14 @@ void OutputWindow::MouseButtonCallback(GLFWwindow *w, int button, int action, in
     // detect mouse press
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
+        double t = glfwGetTime();
         static double seconds = 0.f;
         // detect double click
-        if (glfwGetTime() - seconds < 0.2f) {
+        if ( t - seconds < 0.25f ) {
             // show main window
             Rendering::manager().mainWindow().show();
         }
         // for next double click detection
-        seconds = glfwGetTime();
+        seconds = t;
     }
 }

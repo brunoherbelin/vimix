@@ -1,16 +1,14 @@
 #ifndef __OUTPUT_WINDOW_H_
 #define __OUTPUT_WINDOW_H_
 
-#include <cstddef>
-#include <string>
-
 #include <gst/gl/gl.h>
 #include <glm/glm.hpp>
 
 typedef struct GLFWmonitor GLFWmonitor;
 typedef struct GLFWwindow GLFWwindow;
 typedef struct RenderingAttrib RenderingAttrib;
-
+class ImageFilteringShader;
+class OutputWindowSurface;
 class FrameBuffer;
 
 class OutputWindow
@@ -19,7 +17,9 @@ class OutputWindow
     GLFWmonitor *monitor_;
     bool active_;
     bool initialized_;
-    RenderingAttrib window_attributes_;
+    RenderingAttrib window_attributes_;        
+    OutputWindowSurface *surface_;
+    ImageFilteringShader *shader_;
 
 public:
     OutputWindow();

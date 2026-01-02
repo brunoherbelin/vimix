@@ -246,7 +246,6 @@ bool MainWindow::init()
     glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
-    glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
 
     // create the window
     window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, nullptr);

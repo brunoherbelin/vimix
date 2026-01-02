@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "FrameGrabbing.h"
 #include "MainWindow.h"
 #include <cstring>
 #include <stdlib.h>
@@ -270,6 +271,12 @@ void Rendering::show(bool show_main_window)
     // show main window (command line option --no-main-window to disable it)
     if (show_main_window)
         main_.show();
+    else {
+        // show all Outputs // TODO READ SETTINGS ?
+        for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
+            it->output.setActive(true);
+        }
+    }
 
     // show menu on first show
     UserInterface::manager().showPannel(NAV_MENU);
@@ -324,12 +331,12 @@ void Rendering::draw()
 
     glfwSwapBuffers(main_.window());
 
-    // software framerate limiter < 62 FPS
+    // software framerate limiter < 60 FPS
     {
         static GTimer *timer = g_timer_new ();
         double elapsed = g_timer_elapsed (timer, NULL) * 1000000.0;
-        if ( (elapsed < 15600.0) && (elapsed > 0.0) )
-            g_usleep( 15600 - (gulong)elapsed  );
+        if ( (elapsed < 16600.0) && (elapsed > 0.0) )
+            g_usleep( 16600 - (gulong)elapsed  );
         g_timer_start(timer);
     }
 }
@@ -550,6 +557,16 @@ GLFWmonitor *Rendering::monitorAt(int x, int y)
     return mo;
 }
 
+
+bool Rendering::isAnyOutputActive()
+{
+    for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
+        if (it->output.isActive())
+            return true;
+    }
+    return false;
+}
+
 void Rendering::drawOutputWindows()
 {
     // iterate through all monitors
@@ -568,13 +585,6 @@ void Rendering::drawOutputWindows()
         }
     }
 
-    // detect end // TODO : test if efficient code, i.e. getAttrib slow ?
-    if (monitors_.size() == 0 ) {
-        if (glfwGetWindowAttrib(Rendering::manager().mainWindow().window(), GLFW_VISIBLE) == GL_FALSE) {    
-            // all monitors disconnected and main window hidden : quit application
-            Rendering::manager().close();
-        }   
-    }
 }
 
 void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
