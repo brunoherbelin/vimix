@@ -71,6 +71,8 @@ OutputWindow::~OutputWindow()
         terminate();
 }
 
+uint OutputWindow::num_active_outputs = 0;
+
 bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
 {
     if (initialized_ || !monitor)
@@ -130,7 +132,7 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
     glfwMakeContextCurrent(window_);
 
     // vsync on output windows if this is the first active output window
-    glfwSwapInterval(Rendering::manager().isAnyOutputActive() ? 0 : Settings::application.render.vsync);
+    glfwSwapInterval(OutputWindow::num_active_outputs > 1 ? 0 : Settings::application.render.vsync);
 
     // hide cursor
     glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
@@ -148,7 +150,7 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
     // done !
     initialized_ = true;
 
-    // mark output as active in settings
+    // save settings
     Settings::application.monitors[monitor_name_].active_output = active_;
 
     return true;
@@ -162,7 +164,7 @@ void OutputWindow::setShowPattern(bool on)
 
 void OutputWindow::terminate()
 {
-    // mark output as inactive in settings
+    // save settings
     Settings::application.monitors[monitor_name_].active_output = active_;
 
     if (window_ != NULL) {
@@ -188,7 +190,7 @@ void OutputWindow::terminate()
     pattern_ = nullptr;
 
     // detect end
-    if ( !Rendering::manager().isAnyOutputActive() ) {
+    if ( OutputWindow::num_active_outputs == 0 ) {
         if (glfwGetWindowAttrib(Rendering::manager().mainWindow().window(), GLFW_VISIBLE) == GL_FALSE) {    
             // all monitors disconnected and main window hidden : quit application
             Rendering::manager().close();

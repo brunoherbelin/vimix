@@ -3,6 +3,7 @@
 
 #include <string>
 #include <list>
+#include <mutex>
 
 #include <gst/gl/gl.h>
 #include <glm/glm.hpp> 
@@ -81,14 +82,14 @@ public:
     glm::vec2 project(glm::vec3 scene_coordinate, glm::mat4 modelview = glm::mat4(1.f), bool to_framebuffer = true);
 
     // monitors management
-    inline std::list<Monitor>& monitors() { return monitors_; }
+    std::list<Monitor>& monitors();
     // get which monitor has this name, main monitor if not found
     GLFWmonitor *monitorNamed(const std::string &name);
     // get which monitor contains this point, main monitor if not found
     GLFWmonitor *monitorAt(int x, int y);
     // draw all output windows
     void drawOutputWindows();
-    bool isAnyOutputActive();
+    void deactivateOutput(const GLFWmonitor* monitor);
 
     // Application main window management
     inline MainWindow& mainWindow() { return main_; }
@@ -133,6 +134,7 @@ private:
 
     // monitors
     std::list<Monitor> monitors_;
+    std::mutex monitors_mutex_;
 
     Screenshot screenshot_;
     bool request_screenshot_;

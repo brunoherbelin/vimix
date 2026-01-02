@@ -279,12 +279,15 @@ void Rendering::show(bool show_main_window)
         // find if any output window is active in settings
         auto it = Settings::application.monitors.begin();
         for (; it != Settings::application.monitors.end(); ++it) {
-            if (it->second.active_output) 
+            if (it->second.active_output)
                 break;
         }
         // if no config specified or none has an active output, activate first monitor output
-        if ( it == Settings::application.monitors.end())
-            monitors_.begin()->output.setActive(true);
+        if ( it == Settings::application.monitors.end()) {
+            std::lock_guard<std::mutex> lock(monitors_mutex_);
+            if (!monitors_.empty())
+                monitors_.begin()->output.setActive(true);
+        }
     }
 
 }
@@ -356,9 +359,12 @@ void Rendering::terminate()
 #endif
 
     // terminate all output windows in monitors
-    for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
-        if (it->output.isInitialized())
-            it->output.terminate();
+    {
+        std::lock_guard<std::mutex> lock(monitors_mutex_);
+        for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
+            if (it->output.isInitialized())
+                it->output.terminate();
+        }
     }
 
     // terminate main window
@@ -529,8 +535,32 @@ bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags, int num_
 }
 
 
+std::list<Rendering::Monitor>& Rendering::monitors()
+{
+    std::lock_guard<std::mutex> lock(monitors_mutex_);
+    return monitors_;
+}
+
+
+void Rendering::deactivateOutput(const GLFWmonitor* monitor)
+{
+    if (monitor == nullptr)
+        return;
+
+    std::lock_guard<std::mutex> lock(monitors_mutex_);
+
+    for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
+        if (it->monitor == monitor) {
+            it->output.setActive(false);
+            break;
+        }
+    }
+}
+
 GLFWmonitor *Rendering::monitorNamed(const std::string &name)
 {
+    std::lock_guard<std::mutex> lock(monitors_mutex_);
+
     // default to primary monitor
     GLFWmonitor *mo = glfwGetPrimaryMonitor();
 
@@ -548,6 +578,8 @@ GLFWmonitor *Rendering::monitorNamed(const std::string &name)
 
 GLFWmonitor *Rendering::monitorAt(int x, int y)
 {
+    std::lock_guard<std::mutex> lock(monitors_mutex_);
+
     // default to primary monitor
     GLFWmonitor *mo = glfwGetPrimaryMonitor();
 
@@ -564,25 +596,17 @@ GLFWmonitor *Rendering::monitorAt(int x, int y)
     return mo;
 }
 
-
-bool Rendering::isAnyOutputActive()
-{
-    for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
-        if (it->output.isActive())
-            return true;
-    }
-    return false;
-}
-
 void Rendering::drawOutputWindows()
 {
-    bool any_active = false;
+    std::lock_guard<std::mutex> lock(Rendering::manager().monitors_mutex_);
+
+    bool busy = false;
     // iterate through all monitors
     for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
         // if output is active and initialized, draw it
         if (it->output.isActive() && it->output.isInitialized()) {
             it->output.draw(Mixer::manager().session()->frame());
-            any_active = true;
+            busy = true;
         }
         // if output is active but not initialized, initialize it
         else if (it->output.isActive() && !it->output.isInitialized()) {
@@ -595,11 +619,13 @@ void Rendering::drawOutputWindows()
     }
 
     // inhibit screensaver if any output is active
-    inhibitScreensaver(any_active);
+    inhibitScreensaver(busy);
 }
 
 void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
 {
+    std::lock_guard<std::mutex> lock(Rendering::manager().monitors_mutex_);
+
     // reset list of monitors
     Rendering::manager().monitors_.clear();
 
@@ -620,7 +646,7 @@ void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
         // add to settings if not already present
         if ( Settings::application.monitors.find(n) == Settings::application.monitors.end() ) {
             // sets default config for this monitor
-            Settings::application.monitors[n] = Settings::MonitorConfig();    
+            Settings::application.monitors[n] = Settings::MonitorConfig();
         }
         else if (Settings::application.monitors[n].active_output) {
             // activate output window if previously active

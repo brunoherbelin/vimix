@@ -28,6 +28,8 @@ class OutputWindow
     bool show_pattern_;
     Stream *pattern_;
 
+    static uint num_active_outputs;
+
 public:
     OutputWindow();
     ~OutputWindow();
@@ -38,7 +40,7 @@ public:
     inline bool isInitialized() const { return initialized_; }
 
     // active state
-    inline void setActive(bool on) { active_ = on; }
+    inline void setActive(bool on) { active_ = on; OutputWindow::num_active_outputs += on ? 1 : -1; }
     inline bool isActive() const { return active_; }
 
     // pattern state

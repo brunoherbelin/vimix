@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "RenderingManager.h"
 #include <cstddef>
 #include <thread>
 #include <mutex>
@@ -1650,12 +1651,7 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
             }
             else if  ( key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
                 // close current window on ESC
-                for (auto it = Rendering::manager().monitors().begin(); it != Rendering::manager().monitors().end(); ++it) {
-                    if (it->output.window() == w) {
-                        it->output.setActive(false);
-                        break;
-                    }
-                }
+                Rendering::manager().deactivateOutput(glfwGetWindowMonitor(w));
             }
         }
     }
