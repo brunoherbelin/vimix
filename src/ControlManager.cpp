@@ -1630,32 +1630,35 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
             }
             Control::manager().input_access_.unlock();
         }
-        // keys with modifiers in non-main window
-        else if ( w != Rendering::manager().mainWindow().window() )
-        {
-#if defined(APPLE)
-            if ( key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_SUPER  )
-#else
-            if ( key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
-#endif
-            {
-                // toggle fullscreen on CTRL+F
-                Rendering::manager().window(w)->toggleFullscreen();
-            }
-#if defined(APPLE)
-            else if ( key == GLFW_KEY_Q && action == GLFW_PRESS && mods == GLFW_MOD_SUPER  )
-#else
-            else if ( key == GLFW_KEY_Q && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
-#endif
-            {
-                // Quit on CTRL+Q (if no main window)
-                if (glfwGetWindowAttrib(Rendering::manager().mainWindow().window(), GLFW_VISIBLE)
-                    == GL_FALSE) {
-                    // close rendering manager = quit
-                    Rendering::manager().close();
-                }
-            }
-        }
+
+        // TODO NEW CANVAS MANAGER
+
+//         // keys with modifiers in non-main window
+//         else if ( w != Rendering::manager().mainWindow().window() )
+//         {
+// #if defined(APPLE)
+//             if ( key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_SUPER  )
+// #else
+//             if ( key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
+// #endif
+//             {
+//                 // toggle fullscreen on CTRL+F
+//                 Rendering::manager().window(w)->toggleFullscreen();
+//             }
+// #if defined(APPLE)
+//             else if ( key == GLFW_KEY_Q && action == GLFW_PRESS && mods == GLFW_MOD_SUPER  )
+// #else
+//             else if ( key == GLFW_KEY_Q && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
+// #endif
+//             {
+//                 // Quit on CTRL+Q (if no main window)
+//                 if (glfwGetWindowAttrib(Rendering::manager().mainWindow().window(), GLFW_VISIBLE)
+//                     == GL_FALSE) {
+//                     // close rendering manager = quit
+//                     Rendering::manager().close();
+//                 }
+//             }
+//         }
     }
 }
 

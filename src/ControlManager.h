@@ -2,10 +2,9 @@
 #define CONTROL_H
 
 #include <glm/fwd.hpp>
+#include <glm/glm.hpp> 
 #include <map>
-#include <list>
 #include <string>
-#include <atomic>
 #include <condition_variable>
 
 #include "osc/OscReceivedElements.h"
@@ -120,7 +119,7 @@ class GLFWwindow;
 
 class Control
 {
-    friend class RenderingWindow;
+    friend class MainWindow;
 
     // Private Constructor
     Control();

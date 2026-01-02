@@ -91,39 +91,14 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     XMLComment *pComment = xmlDoc.NewComment(comment.c_str());
     pRoot->InsertEndChild(pComment);
 
-    // Windows
-	{
-        XMLElement *windowsNode = xmlDoc.NewElement( "OutputWindows" );
-        windowsNode->SetAttribute("num_output_windows", application.num_output_windows);
-
-        for (int i = 0; i < (int) application.windows.size(); ++i)
-        {
-            const Settings::WindowConfig& w = application.windows[i];
-
-            XMLElement *window = xmlDoc.NewElement( "Window" );
-            window->SetAttribute("name", w.name.c_str());
-            window->SetAttribute("id", i);
-			window->SetAttribute("x", w.x);
-			window->SetAttribute("y", w.y);
-			window->SetAttribute("w", w.w);
-            window->SetAttribute("h", w.h);
-            window->SetAttribute("f", w.fullscreen);
-            window->SetAttribute("s", w.custom);
-            window->SetAttribute("d", w.decorated);
-            window->SetAttribute("m", w.monitor.c_str());
-            XMLElement *tmp = xmlDoc.NewElement("whitebalance");
-            tmp->SetAttribute("brightness", w.brightness);
-            tmp->SetAttribute("contrast", w.contrast);
-            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.whitebalance) );
-            window->InsertEndChild( tmp );
-            tmp = xmlDoc.NewElement("nodes");
-            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.nodes) );
-            window->InsertEndChild( tmp );
-            windowsNode->InsertEndChild(window);
-		}
-
-        pRoot->InsertEndChild(windowsNode);
-	}
+    // main window
+    XMLElement *window = xmlDoc.NewElement( "MainWindow" );
+    window->SetAttribute("name", application.mainwindow.name.c_str());
+    window->SetAttribute("w", application.mainwindow.w);
+    window->SetAttribute("h", application.mainwindow.h);
+    window->SetAttribute("f", application.mainwindow.fullscreen);
+    window->SetAttribute("m", application.mainwindow.monitor.c_str());
+    pRoot->InsertEndChild(window);
 
     // General application preferences
     XMLElement *applicationNode = xmlDoc.NewElement( "Application" );
@@ -613,71 +588,16 @@ void Settings::Load(const std::string &filename)
             transitionnode->QueryBoolAttribute("profile", &application.transition.profile);
         }
 
-        // Windows
-        {
-            XMLElement * pElement = pRoot->FirstChildElement("OutputWindows");
-            if (pElement)
-            {
-                pElement->QueryIntAttribute("num_output_windows", &application.num_output_windows);
-
-                XMLElement* windowNode = pElement->FirstChildElement("Window");
-                for( ; windowNode ; windowNode=windowNode->NextSiblingElement())
-                {
-                    Settings::WindowConfig w;
-                    windowNode->QueryIntAttribute("x", &w.x); // If this fails, original value is left as-is
-                    windowNode->QueryIntAttribute("y", &w.y);
-                    windowNode->QueryIntAttribute("w", &w.w);
-                    windowNode->QueryIntAttribute("h", &w.h);
-                    windowNode->QueryBoolAttribute("f", &w.fullscreen);
-                    windowNode->QueryBoolAttribute("s", &w.custom);
-                    windowNode->QueryBoolAttribute("d", &w.decorated);
-                    const char *text = windowNode->Attribute("m");
-                    if (text)
-                        w.monitor = std::string(text);
-
-                    int i = 0;
-                    windowNode->QueryIntAttribute("id", &i);
-                    if (i > 0)
-                        w.name = "Output " + std::to_string(i) + " - " APP_NAME;
-                    else
-                        w.name = APP_TITLE;
-                    // vec4 values for white balance correction
-                    XMLElement *tmp = windowNode->FirstChildElement("whitebalance");
-                    if (tmp) {
-                        tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec4"), w.whitebalance);
-                        tmp->QueryFloatAttribute("brightness", &w.brightness);
-                        tmp->QueryFloatAttribute("contrast", &w.contrast);
-                    }
-                    // mat4 values for custom fit distortion
-                    w.nodes = glm::zero<glm::mat4>();
-                    tmp = windowNode->FirstChildElement("nodes");
-                    if (tmp)
-                        tinyxml2::XMLElementToGLM( tmp->FirstChildElement("mat4"), w.nodes);
-                    else {
-                        // backward compatibility
-                        glm::vec3 scale, translation;
-                        tmp = windowNode->FirstChildElement("scale");
-                        if (tmp) {
-                            tinyxml2::XMLElementToGLM(tmp->FirstChildElement("vec3"), scale);
-                            tmp = windowNode->FirstChildElement("translation");
-                            if (tmp) {
-                                tinyxml2::XMLElementToGLM(tmp->FirstChildElement("vec3"), translation);
-                                // calculate nodes with scale and translation
-                                w.nodes[0].x =  1.f - ( 1.f * scale.x - translation.x );
-                                w.nodes[0].y =  1.f - ( 1.f * scale.y - translation.y );
-                                w.nodes[1].x =  1.f - ( 1.f * scale.x - translation.x );
-                                w.nodes[1].y = -1.f - (-1.f * scale.y - translation.y );
-                                w.nodes[2].x = -1.f - (-1.f * scale.x - translation.x );
-                                w.nodes[2].y =  1.f - ( 1.f * scale.y - translation.y );
-                                w.nodes[3].x = -1.f - (-1.f * scale.x - translation.x );
-                                w.nodes[3].y = -1.f - (-1.f * scale.y - translation.y );
-                            }
-                        }
-                    }
-                    application.windows[i] = w;
-                }
-            }
-        }
+        // Main Window
+        XMLElement * windowNode = pRoot->FirstChildElement("MainWindow");
+        if (windowNode) {
+            windowNode->QueryIntAttribute("w", &application.mainwindow.w);
+            windowNode->QueryIntAttribute("h", &application.mainwindow.h);
+            windowNode->QueryBoolAttribute("f", &application.mainwindow.fullscreen);
+            const char *text = windowNode->Attribute("m");
+            if (text)
+                application.mainwindow.monitor = std::string(text);
+        } 
 
         // Brush
         XMLElement * brushnode = pRoot->FirstChildElement("Brush");

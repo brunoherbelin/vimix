@@ -25,6 +25,7 @@ set(VMIX_SRCS
     FrameGrabbing.cpp
     Interpolator.cpp
     Loopback.cpp
+    MainWindow.cpp
     MediaPlayer.cpp
     Metronome.cpp
     Mixer.cpp
@@ -32,6 +33,7 @@ set(VMIX_SRCS
     MousePointer.cpp
     MultiFileRecorder.cpp
     Navigator.cpp
+    OutputWindow.cpp
     Overlay.cpp
     Playlist.cpp
     Recorder.cpp

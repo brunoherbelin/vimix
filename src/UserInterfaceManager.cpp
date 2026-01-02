@@ -1226,7 +1226,7 @@ void UserInterface::showMenuWindows()
     ImGui::Separator();
 
     // Enter / exit Fullscreen
-    if (Settings::application.windows[0].fullscreen){
+    if (Settings::application.mainwindow.fullscreen){
         if (ImGui::MenuItem( ICON_FA_COMPRESS_ALT "   Exit Fullscreen", SHORTCUT_FULLSCREEN ))
             Rendering::manager().mainWindow().toggleFullscreen();
     }

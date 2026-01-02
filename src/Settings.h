@@ -67,32 +67,13 @@ struct WidgetsConfig
 struct WindowConfig
 {
     std::string name;
-    int x,y,w,h;
+    int  w,h;
     bool fullscreen;
-    bool custom;
-    bool decorated;
     std::string monitor;
-    bool show_pattern;
-    glm::vec4 whitebalance;
-    glm::mat4 nodes;
-    float brightness, contrast;
 
-    WindowConfig() : name(APP_TITLE), x(15), y(15), w(1280), h(720),
-        fullscreen(false), custom(false), decorated(true),
-        monitor(""), show_pattern(false), whitebalance(glm::vec4(1.f, 1.f, 1.f, 0.5f)),
-        nodes(glm::zero<glm::mat4>()), brightness(0.f), contrast(0.f)
+    WindowConfig() : name(APP_TITLE), w(1280), h(720),
+        fullscreen(false), monitor("")
     { }
-
-};
-
-struct CanvasConfig
-{
-    int x, y, w, h;
-
-    CanvasConfig() : x(0), y(0), w(1), h(1)
-    {
-
-    }
 
 };
 
@@ -108,9 +89,7 @@ struct ViewConfig
         default_translation = glm::vec3(0.f);
         ignore_mix = false;
     }
-
 };
-
 
 struct RecordConfig
 {
@@ -345,9 +324,8 @@ struct Application
     // settings controller
     ControllerConfig control;
 
-    // multiple windows handling
-    int num_output_windows;
-    std::vector<WindowConfig> windows;
+    // main window config
+    WindowConfig mainwindow;
 
     // recent files histories
     History recentSessions;
@@ -409,10 +387,6 @@ struct Application
         current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
         brush_pressure_mode = 0;
-        num_output_windows = 1;
-        windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
-        windows[0].w = 1600;
-        windows[0].h = 930;
         accept_audio = false;
         dialogPosition = glm::ivec2(-1, -1);
         image_sequence.framerate_mode = 15;

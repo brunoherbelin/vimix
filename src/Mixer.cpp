@@ -148,7 +148,7 @@ void Mixer::update()
                 // set session filename
                 session_->setFilename(filename);
                 // cosmetics saved ok
-                Rendering::manager().setMainWindowTitle(SystemToolkit::filename(filename));
+                Rendering::manager().mainWindow().setTitle(SystemToolkit::filename(filename));
                 Settings::application.recentSessions.push(filename);
                 Log::Notify("Session '%s' saved.", filename.c_str());
             }
@@ -176,9 +176,9 @@ void Mixer::update()
             ++View::need_deep_update_;
             // inform new session filename
             if (session_->filename().empty()) {
-                Rendering::manager().setMainWindowTitle(Settings::application.windows[0].name);
+                Rendering::manager().mainWindow().setTitle(Settings::application.mainwindow.name);
             } else {
-                Rendering::manager().setMainWindowTitle(SystemToolkit::filename(session_->filename()));
+                Rendering::manager().mainWindow().setTitle(SystemToolkit::filename(session_->filename()));
                 Settings::application.recentSessions.push(session_->filename());
             }
         }
