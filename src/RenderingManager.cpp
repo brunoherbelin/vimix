@@ -187,7 +187,7 @@ bool Rendering::init()
     //
     // Main window
     //
-    if ( !main_.init(0) )
+    if ( !main_.init() )
         return false;
 
     //
@@ -303,7 +303,8 @@ void Rendering::draw()
     main_.changeFullscreen_();
     main_.changeTitle_();
 
-    // TODO DRAW OUTPUT WINDOWS
+    // draw output windows
+    drawOutputWindows();
 
     // operate on main window context
     main_.makeCurrent();
@@ -340,8 +341,11 @@ void Rendering::terminate()
     TabletInput::instance().terminate();
 #endif
 
-    // TODO terminate all output windows in monitors
-
+    // terminate all output windows in monitors
+    for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
+        if (it->output.isInitialized())
+            it->output.terminate();
+    }
 
     // terminate main window
     main_.terminate();
@@ -516,19 +520,12 @@ GLFWmonitor *Rendering::monitorNamed(const std::string &name)
     // default to primary monitor
     GLFWmonitor *mo = glfwGetPrimaryMonitor();
 
-    // list all monitors
-    int count_monitors = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
-
-    // if there is more than one monitor
-    if (count_monitors > 1) {
-        // try every monitor
-        for (int i = 0; i < count_monitors;  i++) {
-            if ( name.compare( glfwGetMonitorName(monitors[i]) ) == 0 ){
-                // found the monitor with this name
-                mo = monitors[i];
-                break;
-            }
+    // search in the monitors list
+    for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
+        if (it->name == name) {
+            // found the monitor with this name
+            mo = it->monitor;
+            break;
         }
     }
 
@@ -540,33 +537,50 @@ GLFWmonitor *Rendering::monitorAt(int x, int y)
     // default to primary monitor
     GLFWmonitor *mo = glfwGetPrimaryMonitor();
 
-    // list all monitors
-    int count_monitors = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
-
-    // if there is more than one monitor
-    if (count_monitors > 1) {
-        // try every monitor
-        for (int i = 0; i < count_monitors;  i++) {
-            int workarea_x, workarea_y;
-            glfwGetMonitorPos(monitors[i], &workarea_x, &workarea_y);
-            const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
-            if ( x >= workarea_x && x <= workarea_x + vm->width &&
-                 y >= workarea_y && y <= workarea_y + vm->height) {
-                // found the monitor containing this point !
-                mo = monitors[i];
-                break;
-            }
+    // search in the monitors list
+    for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
+        if (x >= it->geometry.x && x <= it->geometry.x + it->geometry.z &&
+            y >= it->geometry.y && y <= it->geometry.y + it->geometry.w) {
+            // found the monitor containing this point !
+            mo = it->monitor;
+            break;
         }
     }
 
     return mo;
 }
 
+void Rendering::drawOutputWindows()
+{
+    // iterate through all monitors
+    for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
+        // if output is active and initialized, draw it
+        if (it->output.isActive() && it->output.isInitialized()) {
+            it->output.draw(Mixer::manager().session()->frame());
+        }
+        // if output is active but not initialized, initialize it
+        else if (it->output.isActive() && !it->output.isInitialized()) {
+            it->output.init(it->monitor, Rendering::manager().mainWindow().window());
+        }
+        // if output is not active but initialized, terminate it
+        else if (!it->output.isActive() && it->output.isInitialized()) {
+            it->output.terminate();
+        }
+    }
+
+    // detect end // TODO : test if efficient code, i.e. getAttrib slow ?
+    if (monitors_.size() == 0 ) {
+        if (glfwGetWindowAttrib(Rendering::manager().mainWindow().window(), GLFW_VISIBLE) == GL_FALSE) {    
+            // all monitors disconnected and main window hidden : quit application
+            Rendering::manager().close();
+        }   
+    }
+}
+
 void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
 {
     // reset list of monitors
-    Rendering::manager().monitors_geometry_.clear();
+    Rendering::manager().monitors_.clear();
 
     // list monitors with GLFW
     int count_monitors = 0;
@@ -579,16 +593,9 @@ void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
         glfwGetMonitorPos(monitors[i], &x, &y);
         const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
         std::string n = glfwGetMonitorName(monitors[i]);
-        // add
-        Rendering::manager().monitors_geometry_[n] = glm::ivec4(x, y, vm->width, vm->height);
-    }
-
-    // Disconnection of a monitor messes up with fullscreen windows
-    if (event == GLFW_DISCONNECTED) {
-        // // exit fullscreen all windows
-        // for (auto w = Rendering::manager().windows_.begin();
-        //      w != Rendering::manager().windows_.end(); ++w)
-        //     w->second->setFullscreen_(nullptr);
+        glm::ivec4 geometry(x, y, vm->width, vm->height);
+        // add to list
+        Rendering::manager().monitors_.push_back(Monitor(monitors[i], n, geometry));
     }
 
     // inform Displays View that monitors changed

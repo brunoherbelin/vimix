@@ -1,7 +1,6 @@
 #ifndef __MAIN_WINDOW_H_
 #define __MAIN_WINDOW_H_
 
-#include <cstddef>
 #include <string>
 
 #include <gst/gl/gl.h>
@@ -44,7 +43,7 @@ public:
     ~MainWindow();
 
 
-    bool init(int index, GLFWwindow *share = NULL);
+    bool init();
     void terminate();
 
     // show window (bring front, set fullscreen if needed)

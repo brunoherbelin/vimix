@@ -126,12 +126,12 @@ void  DisplaysView::recenter ()
 
     // fill scene background with the frames to show monitors
     int index = 1;
-    std::map<std::string, glm::ivec4> _monitors = Rendering::manager().monitors();
+    std::list<Rendering::Monitor> _monitors = Rendering::manager().monitors();
     for (auto monitor_iter = _monitors.begin();
          monitor_iter != _monitors.end(); ++monitor_iter, ++index) {
 
         // get coordinates of monitor in Display units
-        glm::vec4 rect = DISPLAYS_UNIT * glm::vec4(monitor_iter->second);
+        glm::vec4 rect = DISPLAYS_UNIT * glm::vec4(monitor_iter->geometry);
 
         // add a background dark surface with glow shadow
         Group *m = new Group;
@@ -259,8 +259,8 @@ void DisplaysView::draw()
     // display interface
     // Locate window at upper left corner
     glm::vec2 P(0.0f, 0.01f);
-    // P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_,
-    //                     Settings::application.windows[0].fullscreen);
+    P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_,
+                        Settings::application.mainwindow.fullscreen);
 
     // Set window position depending on icons size
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
@@ -288,24 +288,24 @@ void DisplaysView::draw()
         //     ImGuiToolkit::ToolTip(MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE);
 
         static bool enabled = false;
-        // enabled = RenderingOutput::isEnabled(0);
+        enabled = Rendering::manager().monitors().front().output.isActive();
 
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (enabled) {
             if (ImGui::Button(ICON_FA_TOGGLE_ON )) {
-            
-                // RenderingOutput::setEnabled(0, false);
+                // deactivate output
+                Rendering::manager().monitors().front().output.setActive(false);
             }
             if (ImGui::IsItemHovered())
-                ImGuiToolkit::ToolTip("Disable Display");
+                ImGuiToolkit::ToolTip("Deactivate output");
         }
         else {
             if (ImGui::Button(ICON_FA_TOGGLE_OFF )) {
-                // add new display
-                // RenderingOutput::setEnabled(0, true);
+                // activate output
+                Rendering::manager().monitors().front().output.setActive(true);
             }
             if (ImGui::IsItemHovered())
-                ImGuiToolkit::ToolTip("Enable Display");
+                ImGuiToolkit::ToolTip("Activate output");
         }
 
         ImGui::PopStyleColor(8);

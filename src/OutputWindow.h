@@ -9,14 +9,39 @@
 
 typedef struct GLFWmonitor GLFWmonitor;
 typedef struct GLFWwindow GLFWwindow;
+typedef struct RenderingAttrib RenderingAttrib;
 
+class FrameBuffer;
 
 class OutputWindow
 {
+    GLFWwindow *window_;
+    GLFWmonitor *monitor_;
+    bool active_;
+    bool initialized_;
+    RenderingAttrib window_attributes_;
+
 public:
     OutputWindow();
     ~OutputWindow();
 
+    // initialization
+    bool init(GLFWmonitor *monitor, GLFWwindow *share);
+    void terminate();
+    inline bool isInitialized() const { return initialized_; }
+
+    // active state
+    inline void setActive(bool on) { active_ = on; }
+    inline bool isActive() const { return active_; }
+
+    // draw a framebuffer
+    bool draw(FrameBuffer *fb);
+
+    // get GLFW window
+    inline GLFWwindow *window() const { return window_; }
+
+    // glfw callbacks
+    static void MouseButtonCallback(GLFWwindow *w, int button, int action, int mods);
 };
 
 

@@ -7,6 +7,7 @@
 #include <string>
 #include <condition_variable>
 
+#include "OutputWindow.h"
 #include "osc/OscReceivedElements.h"
 #include "osc/OscPacketListener.h"
 #include "ip/UdpSocket.h"
@@ -120,6 +121,7 @@ class GLFWwindow;
 class Control
 {
     friend class MainWindow;
+    friend class OutputWindow;
 
     // Private Constructor
     Control();

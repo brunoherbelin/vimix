@@ -217,7 +217,7 @@ float MainWindow::aspectRatio()
     return static_cast<float>(window_attributes_.viewport.x) / static_cast<float>(window_attributes_.viewport.y);
 }
 
-bool MainWindow::init(int index, GLFWwindow *share)
+bool MainWindow::init()
 {
     // only once
     if (window_)

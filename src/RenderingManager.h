@@ -9,6 +9,7 @@
 #include <glm/glm.hpp> 
 
 #include "MainWindow.h"
+#include "OutputWindow.h"
 #include "Screenshot.h"
 
 typedef struct GLFWmonitor GLFWmonitor;
@@ -25,6 +26,18 @@ class Rendering
     Rendering& operator=(Rendering const& copy) = delete;
 
 public:
+
+    struct Monitor
+    {
+        GLFWmonitor* monitor;
+        std::string name;
+        glm::ivec4 geometry;
+        OutputWindow output;
+
+        Monitor() : monitor(nullptr), name(""), geometry(0, 0, 0, 0) {}
+        Monitor(GLFWmonitor* m, const std::string& n, const glm::ivec4& g)
+            : monitor(m), name(n), geometry(g) {}
+    };
 
     static Rendering& manager()
     {
@@ -68,11 +81,13 @@ public:
     glm::vec2 project(glm::vec3 scene_coordinate, glm::mat4 modelview = glm::mat4(1.f), bool to_framebuffer = true);
 
     // monitors management
-    inline std::map<std::string, glm::ivec4> monitors() { return monitors_geometry_; }  
+    inline std::list<Monitor>& monitors() { return monitors_; }
     // get which monitor has this name, main monitor if not found
-    GLFWmonitor *monitorNamed(const std::string &name);    
+    GLFWmonitor *monitorNamed(const std::string &name);
     // get which monitor contains this point, main monitor if not found
     GLFWmonitor *monitorAt(int x, int y);
+    // draw all output windows
+    void drawOutputWindows();
 
     // Application main window management
     inline MainWindow& mainWindow() { return main_; }
@@ -116,7 +131,7 @@ private:
     MainWindow main_;
 
     // monitors
-    std::map<std::string, glm::ivec4> monitors_geometry_;
+    std::list<Monitor> monitors_;
 
     Screenshot screenshot_;
     bool request_screenshot_;
