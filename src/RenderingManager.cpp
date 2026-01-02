@@ -270,17 +270,23 @@ bool Rendering::init()
 void Rendering::show(bool show_main_window)
 {
     // show main window (command line option --no-main-window to disable it)
-    if (show_main_window)
+    if (show_main_window) {
         main_.show();
+        // show menu on first show
+        UserInterface::manager().showPannel(NAV_MENU);
+    }
     else {
-        // show all Outputs // TODO READ SETTINGS ?
-        for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
-            it->output.setActive(true);
+        // find if any output window is active in settings
+        auto it = Settings::application.monitors.begin();
+        for (; it != Settings::application.monitors.end(); ++it) {
+            if (it->second.active_output) 
+                break;
         }
+        // if no config specified or none has an active output, activate first monitor output
+        if ( it == Settings::application.monitors.end())
+            monitors_.begin()->output.setActive(true);
     }
 
-    // show menu on first show
-    UserInterface::manager().showPannel(NAV_MENU);
 }
 
 bool Rendering::isActive()
@@ -359,7 +365,7 @@ void Rendering::terminate()
     main_.terminate();
 }
 
-void Rendering::pushAttrib(RenderingAttrib ra)
+void Rendering::pushAttrib(GlmToolkit::RenderingAttrib ra)
 {
     // push it to top of pile
     draw_attributes_.push_front(ra);
@@ -376,17 +382,17 @@ void Rendering::popAttrib()
         draw_attributes_.pop_front();
 
     // set attribute element to default
-    RenderingAttrib ra = currentAttrib();
+    GlmToolkit::RenderingAttrib ra = currentAttrib();
 
     // apply Changes to OpenGL
     glViewport(0, 0, ra.viewport.x, ra.viewport.y);
     glClearColor(ra.clear_color.r, ra.clear_color.g, ra.clear_color.b, ra.clear_color.a);
 }
 
-RenderingAttrib Rendering::currentAttrib()
+GlmToolkit::RenderingAttrib Rendering::currentAttrib()
 {
     // default rendering attrib is the main window's
-    RenderingAttrib ra = main_.attribs();
+    GlmToolkit::RenderingAttrib ra = main_.attribs();
 
     // but if there is an element at top, return it
     if (draw_attributes_.size() > 0)
@@ -611,6 +617,15 @@ void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
         glm::ivec4 geometry(x, y, vm->width, vm->height);
         // add to list
         Rendering::manager().monitors_.push_back(Monitor(monitors[i], n, geometry));
+        // add to settings if not already present
+        if ( Settings::application.monitors.find(n) == Settings::application.monitors.end() ) {
+            // sets default config for this monitor
+            Settings::application.monitors[n] = Settings::MonitorConfig();    
+        }
+        else if (Settings::application.monitors[n].active_output) {
+            // activate output window if previously active
+            Rendering::manager().monitors_.back().output.setActive(true);
+        }
     }
 
     // inform Displays View that monitors changed

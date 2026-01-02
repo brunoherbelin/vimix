@@ -78,6 +78,21 @@ struct WindowConfig
 
 };
 
+struct MonitorConfig
+{
+    bool active_output;
+    glm::vec4 whitebalance;
+    glm::mat4 nodes;
+    float brightness, contrast;
+    bool custom_geometry;
+
+    MonitorConfig() : active_output(false), whitebalance(glm::vec4(1.f, 1.f, 1.f, 0.5f)),
+        nodes(glm::zero<glm::mat4>()), brightness(0.f), contrast(0.f), custom_geometry(false)
+    { }
+
+};
+
+
 struct ViewConfig
 {
     std::string name;
@@ -327,6 +342,9 @@ struct Application
 
     // main window config
     WindowConfig mainwindow;
+
+    // Monitors config
+    std::map<std::string, MonitorConfig> monitors;
 
     // recent files histories
     History recentSessions;

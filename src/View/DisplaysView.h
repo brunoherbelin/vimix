@@ -40,7 +40,6 @@ private:
     void adaptGridToWindow(int w = -1);
 
     std::list<Group *> monitors_;
-
 };
 
 

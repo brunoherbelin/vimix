@@ -6,18 +6,13 @@
 #include <gst/gl/gl.h>
 #include <glm/glm.hpp>
 
+#include "Toolkit/GlmToolkit.h"
+
 typedef struct GLFWmonitor GLFWmonitor;
 typedef struct GLFWwindow GLFWwindow;
 
 class FrameBuffer;
 class Stream;
-
-struct RenderingAttrib
-{
-    RenderingAttrib() {}
-    glm::ivec2 viewport;
-    glm::vec4 clear_color;
-};
 
 
 class MainWindow
@@ -25,7 +20,7 @@ class MainWindow
     friend class Rendering;
 
     GLFWwindow *window_;
-    RenderingAttrib window_attributes_;
+    GlmToolkit::RenderingAttrib window_attributes_;
     std::string title_changed_;
     std::string main_new_title_;
     float dpi_scale_;
@@ -62,7 +57,7 @@ public:
     inline void setTitle(const std::string t) { main_new_title_ = t; }
 
     // get GLFW stuff
-    inline RenderingAttrib& attribs() { return window_attributes_; }
+    inline GlmToolkit::RenderingAttrib& attribs() { return window_attributes_; }
     inline GLFWwindow *window() const { return window_; }
     GLFWmonitor *monitor() const;
 

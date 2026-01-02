@@ -3,11 +3,11 @@
 
 #include <string>
 #include <list>
-#include <map>
 
 #include <gst/gl/gl.h>
 #include <glm/glm.hpp> 
 
+#include "Toolkit/GlmToolkit.h"
 #include "MainWindow.h"
 #include "OutputWindow.h"
 #include "Screenshot.h"
@@ -69,9 +69,9 @@ public:
     void pushBackDrawCallback(RenderingCallback function);
 
     // push and pop rendering attributes
-    void pushAttrib(RenderingAttrib ra);
+    void pushAttrib(GlmToolkit::RenderingAttrib ra);
     void popAttrib();
-    RenderingAttrib currentAttrib();
+    GlmToolkit::RenderingAttrib currentAttrib();
 
     // get projection matrix (for sharers) => Views
     glm::mat4 Projection();
@@ -123,7 +123,7 @@ protected:
 private:
 
     // list of rendering attributes
-    std::list<RenderingAttrib> draw_attributes_;
+    std::list<GlmToolkit::RenderingAttrib> draw_attributes_;
 
     // list of functions to call at each Draw
     std::list<RenderingCallback> draw_callbacks_;

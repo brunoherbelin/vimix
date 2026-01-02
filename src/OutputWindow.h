@@ -1,25 +1,32 @@
 #ifndef __OUTPUT_WINDOW_H_
 #define __OUTPUT_WINDOW_H_
 
+#include <string>
+
 #include <gst/gl/gl.h>
 #include <glm/glm.hpp>
 
+#include "Toolkit/GlmToolkit.h"
+
 typedef struct GLFWmonitor GLFWmonitor;
 typedef struct GLFWwindow GLFWwindow;
-typedef struct RenderingAttrib RenderingAttrib;
+
 class ImageFilteringShader;
 class OutputWindowSurface;
 class FrameBuffer;
+class Stream;
 
 class OutputWindow
 {
     GLFWwindow *window_;
-    GLFWmonitor *monitor_;
+    std::string monitor_name_;
     bool active_;
     bool initialized_;
-    RenderingAttrib window_attributes_;        
+    GlmToolkit::RenderingAttrib window_attributes_;        
     OutputWindowSurface *surface_;
     ImageFilteringShader *shader_;
+    bool show_pattern_;
+    Stream *pattern_;
 
 public:
     OutputWindow();
@@ -34,6 +41,10 @@ public:
     inline void setActive(bool on) { active_ = on; }
     inline bool isActive() const { return active_; }
 
+    // pattern state
+    void setShowPattern(bool on);
+    inline bool isShowPattern() const { return show_pattern_; }
+
     // draw a framebuffer
     bool draw(FrameBuffer *fb);
 
@@ -42,43 +53,8 @@ public:
 
     // glfw callbacks
     static void MouseButtonCallback(GLFWwindow *w, int button, int action, int mods);
+    
 };
 
 
 #endif /* #define __OUTPUT_WINDOW_H_ */
-
-// class RenderingOutput
-// {
-//     // friend class Rendering;
-//     static std::vector<RenderingOutput> vector_;
-
-//     GLFWmonitor* monitor;
-//     std::string name;
-//     glm::ivec4 geometry;
-//     GLFWwindow *window_;
-//     bool enabled;
-
-// public:
-//     RenderingOutput() : monitor(nullptr), name(""), geometry(0,0,0,0), enabled(false) {}
-
-//     static bool isEnabled(size_t index) {
-//         if (index >= vector_.size())
-//             return false;
-//         return vector_[index].enabled;
-//     }
-//     static void setEnabled(size_t index, bool en) {
-//         if (index >= vector_.size())
-//             return;
-//         vector_[index].enabled = en;
-//     }
-
-//     static void drawAll();
-
-//     static size_t count() { return vector_.size(); }  
-//     static RenderingOutput at(size_t index)   { 
-//         if (index >= vector_.size())
-//             return RenderingOutput();
-//         return vector_[index]; 
-//     }  
-
-// };

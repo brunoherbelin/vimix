@@ -23,8 +23,6 @@
 #include <glm/fwd.hpp>
 #include <string>
 #include <sstream>
-#include <iomanip>
-#include <algorithm>
 
 
 #include <glad/glad.h>
@@ -256,6 +254,57 @@ void menuMonitor() {
 
 }
 
+void popup_adjustment_color(Settings::MonitorConfig &conf) {
+    
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+
+    // top icons
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 1.f, 1.0f)); // High Kelvin = blue
+    ImGui::Text("  " ICON_FA_THERMOMETER_FULL "  ");
+    ImGui::PopStyleColor(1);
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip("Color Temperature, in Kelvin");
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGuiToolkit::Indication("Contrast", 2, 1);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGuiToolkit::Indication("Brightness", 4, 1 );
+
+    // Slider Temperature K
+    ImGui::VSliderFloat("##Temperatureslider", ImVec2(30,260), &conf.whitebalance.w, 0.0, 1.0, "");
+    if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
+        ImGui::BeginTooltip();
+        ImGui::Text("%d K", 4000 + (int) ceil(conf.whitebalance.w * 5000.f));
+        ImGui::EndTooltip();
+    }
+    // Slider Contrast
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::VSliderFloat("##contrastslider", ImVec2(30,260), &conf.contrast, -0.5, 0.5, "");
+    if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
+        ImGui::BeginTooltip();
+        ImGui::Text("%.1f %%", (100.f * conf.contrast));
+        ImGui::EndTooltip();
+    }
+    // Slider Brightness
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::VSliderFloat("##brightnessslider", ImVec2(30,260), &conf.brightness, -0.5, 0.5, "");
+    if (ImGui::IsItemHovered() || ImGui::IsItemActive() )  {
+        ImGui::BeginTooltip();
+        ImGui::Text("%.1f %%", (100.f * conf.brightness));
+        ImGui::EndTooltip();
+    }
+
+    // bottom icons
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.4f, 0.4f, 1.0f));  // Low Kelvin = red
+    ImGui::Text("  " ICON_FA_THERMOMETER_EMPTY  "  ");
+    ImGui::PopStyleColor(1);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGuiToolkit::Icon(1, 1, false);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGuiToolkit::Icon(3, 1, false);
+
+    ImGui::PopFont();
+}
+
 void DisplaysView::draw()
 {
 
@@ -270,6 +319,7 @@ void DisplaysView::draw()
     }
         
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    ImGuiContext& g = *GImGui;
 
     auto group_it = monitors_.begin();
     for (auto monitor_iter = Rendering::manager().monitors().begin();
@@ -298,20 +348,12 @@ void DisplaysView::draw()
             ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
+
             //
             // Buttons on top
             //
-
-            // // Disable output
-            // ImGuiToolkit::ButtonToggle(ICON_FA_EYE_SLASH, &Settings::application.render.disabled);
-            // if (ImGui::IsItemHovered())
-            //     ImGuiToolkit::ToolTip(MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE);
-
-            static bool enabled = false;
-            enabled = (monitor_iter->output).isActive();
-
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (enabled) {
+            if ((monitor_iter->output).isActive()) {
                 // deactivate output
                 if (ImGui::Button(ICON_FA_TOGGLE_ON )) 
                     (monitor_iter->output).setActive(false);
@@ -324,72 +366,72 @@ void DisplaysView::draw()
                     (monitor_iter->output).setActive(true);
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip("Activate output");
+
+                // skip rest of window
+                ImGui::PopStyleColor(8);
+                ImGui::End();
+                continue;
             }
+
+            // TEST PATTERN BUTTON
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            static bool show_test_pattern = false;  
+            show_test_pattern = (monitor_iter->output).isShowPattern();
+            if ( ImGuiToolkit::ButtonIconToggle(11,1, &show_test_pattern, "Test pattern") )
+                (monitor_iter->output).setShowPattern(show_test_pattern);
+
+            // WHITE BALANCE BUTTON
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::SetCursorPosY(2.f * g.Style.FramePadding.y); // hack to re-align color button to text
+            
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+            glm::vec4 color = Settings::application.monitors[monitor_iter->name].whitebalance;
+            if (ImGui::ColorButton("White balance", ImVec4(color.x, color.y, color.z, 1.f),
+                                   ImGuiColorEditFlags_NoAlpha)) {
+                if ( !DialogToolkit::ColorPickerDialog::instance().busy()) {
+                    // prepare the color picker to start with white balance color
+                    DialogToolkit::ColorPickerDialog::instance().setRGB( std::make_tuple(color.x, color.y, color.z) );
+                    // declare function to be called
+                    std::string m = monitor_iter->name;
+                    auto applyColor = [m](std::tuple<float, float, float> c)  {
+                        Settings::application.monitors[m].whitebalance.x = std::get<0>(c);
+                        Settings::application.monitors[m].whitebalance.y = std::get<1>(c);
+                        Settings::application.monitors[m].whitebalance.z = std::get<2>(c);
+                    };
+                    // open dialog (starts a thread that will call the 'applyColor' function
+                    DialogToolkit::ColorPickerDialog::instance().open( applyColor );
+                }
+            }
+            ImGui::PopFont();
+
+            // COLOR ADJUSTMENT POPUP BUTTON
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::SetCursorPosY(g.Style.FramePadding.y); // hack to re-align sliders to text
+
+            if (ImGui::Button(ICON_FA_SLIDERS_H ICON_FA_SORT_DOWN )) {
+                ImGui::OpenPopup("adjustments_popup");
+            }
+            if (ImGui::BeginPopup("adjustments_popup", ImGuiWindowFlags_NoMove))  {
+                popup_adjustment_color(Settings::application.monitors[monitor_iter->name]);
+                ImGui::EndPopup();
+            }
+
+            // RESET BUTTON
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGui::Button(ICON_FA_BACKSPACE )) {
+                Settings::application.monitors[monitor_iter->name] = Settings::MonitorConfig();
+                (monitor_iter->output).setShowPattern(false);
+            }
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Reset adjustments");
 
             ImGui::PopStyleColor(8);
             ImGui::End();
         }
 
     }
-
     ImGui::PopFont();
 
-    // display interface
-    // Locate monitor at upper left corner
-    glm::vec2 P(0.0f, 0.01f);
-    P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_,
-                        Settings::application.mainwindow.fullscreen);
-
-    // // Set window position depending on icons size
-    // ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    // ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
-    // if (ImGui::Begin("##DisplaysMonitorOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
-    //                  | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-    //                  | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
-    // {
-    //     // colors for UI
-    //     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
-    //     ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-    //     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
-    //     ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
-    //     ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
-    //     ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
-    //     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-    //     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
-    //     //
-    //     // Buttons on top
-    //     //
-
-    //     // // Disable output
-    //     // ImGuiToolkit::ButtonToggle(ICON_FA_EYE_SLASH, &Settings::application.render.disabled);
-    //     // if (ImGui::IsItemHovered())
-    //     //     ImGuiToolkit::ToolTip(MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE);
-
-    //     static bool enabled = false;
-    //     enabled = Rendering::manager().monitors().front().output.isActive();
-
-    //     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    //     if (enabled) {
-    //         if (ImGui::Button(ICON_FA_TOGGLE_ON )) {
-    //             // deactivate output
-    //             Rendering::manager().monitors().front().output.setActive(false);
-    //         }
-    //         if (ImGui::IsItemHovered())
-    //             ImGuiToolkit::ToolTip("Deactivate output");
-    //     }
-    //     else {
-    //         if (ImGui::Button(ICON_FA_TOGGLE_OFF )) {
-    //             // activate output
-    //             Rendering::manager().monitors().front().output.setActive(true);
-    //         }
-    //         if (ImGui::IsItemHovered())
-    //             ImGuiToolkit::ToolTip("Activate output");
-    //     }
-
-    //     ImGui::PopStyleColor(8);
-    //     ImGui::End();
-    // }
-    // ImGui::PopFont();
 
     // display popup menu
     if (show_window_menu_ ) {
@@ -488,84 +530,6 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
 
     return ret;
 }
-
-//View::Cursor DisplaysView::over (glm::vec2 pos, bool)
-//{
-//    output_zoomarea_->visible_ = false;
-
-//    if ( display_action_ == 2 ) {
-
-//        // utility
-//        bool _over_render = false;
-//        glm::vec2 _uv_cursor_center(0.f, 0.f);
-//        glm::vec3 scene_pos = Rendering::manager().unProject(pos);
-
-//        // find if the output_render surface is under the cursor at scene_pos
-//        _over_render = set_UV_output_render_from_pick(scene_pos, &_uv_cursor_center);
-
-//        // set coordinates of zoom area indicator under cursor at position 'pos'
-//        output_zoomarea_->translation_ = glm::inverse(scene.root()->transform_) * glm::vec4(scene_pos, 1.f);
-//        output_zoomarea_->visible_ = _over_render;
-//        output_zoomarea_->scale_ = glm::vec3(output_scale * output_->scale_.x, output_scale * output_->scale_.x, 1.f);
-
-//        // mouse cursor is over the rendering surface
-//        if (_over_render) {
-
-//            // get the imgui screen area to render the zoom window into
-//            const ImGuiIO& io = ImGui::GetIO();
-//            const ImVec2 margin(100.f, 50.f);
-//            ImVec2 screen = io.DisplaySize - margin * 2.f;
-//            ImVec2 win_pos = margin;
-//            ImVec2 win_size = screen * 0.5f;
-
-//            // vimix window is horizontal
-//            if ( screen.x > screen.y){
-//                // set zoom window to square
-//                win_size.y = win_size.x;
-//                // show the zoom window left and right of window
-//                win_pos.y += (screen.y - win_size.y) * 0.5f;
-//                win_pos.x += (pos.x > io.DisplaySize.x * 0.5f) ? 0 : win_size.x;
-//            }
-//            // vimix window is vertical
-//            else {
-//                // set zoom window to square
-//                win_size.x = win_size.y;
-//                // show the zoom window top and bottom of window
-//                win_pos.x += (screen.x - win_size.x) * 0.5f;
-//                win_pos.y += (pos.y > io.DisplaySize.y * 0.5f) ? 0 : win_size.y;
-//            }
-
-//            // DRAW window without decoration, 100% opaque, with 2 pixels on the border
-//            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
-//            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);
-//            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2.f, 2.f));
-
-//            ImGui::SetNextWindowPos(win_pos, ImGuiCond_Always);
-//            ImGui::SetNextWindowSize(win_size, ImGuiCond_Always);
-//            if (ImGui::Begin("##DisplaysMacro", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration
-//                             | ImGuiWindowFlags_NoSavedSettings ))
-//            {
-//                ImVec2 _zoom(zoom_factor,  zoom_factor * output_ar);
-//                ImVec2 _uv1( _uv_cursor_center.x - _zoom.x * 0.5f, _uv_cursor_center.y - _zoom.y * 0.5f);
-//                _uv1 = ImClamp( _uv1, ImVec2(0.f, 0.f), ImVec2(1.f, 1.f));
-
-//                ImVec2 rect = _uv1 + _zoom;
-//                ImVec2 _uv2 = ImClamp( rect, ImVec2(0.f, 0.f), ImVec2(1.f, 1.f));
-//                _uv1 = _uv2 - _zoom;
-
-
-//                ImGui::Image((void*)(intptr_t) output_render_->textureIndex(), win_size, _uv1, _uv2);
-
-//                ImGui::End();
-//            }
-//            ImGui::PopStyleVar(3);
-
-//        }
-
-//    }
-
-//    return Cursor();
-//}
 
 bool DisplaysView::doubleclic (glm::vec2 P)
 {

@@ -38,6 +38,8 @@
 #include "RenderingManager.h"
 #include "ImageShader.h"
 #include "Scene/Primitives.h"
+#include "Toolkit/GstToolkit.h"
+#include "Stream.h"
 
 #include "OutputWindow.h"
 
@@ -57,7 +59,8 @@ public:
 };
 
 
-OutputWindow::OutputWindow() : window_(nullptr), monitor_(nullptr), active_(false), initialized_(false), surface_(nullptr), shader_(nullptr)
+OutputWindow::OutputWindow() : window_(nullptr), active_(false), initialized_(false), 
+surface_(nullptr), shader_(nullptr), show_pattern_(false), pattern_(nullptr) 
 {
 
 }
@@ -73,7 +76,7 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
     if (initialized_ || !monitor)
         return false;
 
-    monitor_ = monitor;
+    monitor_name_ = glfwGetMonitorName(monitor);
 
     glfwMakeContextCurrent(NULL);
 
@@ -98,13 +101,13 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
     glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
     // get monitor video mode
-    const GLFWvidmode *mode = glfwGetVideoMode(monitor_);
+    const GLFWvidmode *mode = glfwGetVideoMode(monitor);
 
     // create fullscreen window on this monitor
-    window_ = glfwCreateWindow(mode->width, mode->height, "vimix Output", monitor_, share);
+    window_ = glfwCreateWindow(mode->width, mode->height, "vimix Output", monitor, share);
 
     if (window_ == NULL) {
-        g_printerr("Failed to create GLFW Output Window on monitor %s\n", glfwGetMonitorName(monitor_));
+        g_printerr("Failed to create GLFW Output Window on monitor %s\n", glfwGetMonitorName(monitor));
         return false;
     }
 
@@ -135,13 +138,33 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
     // show window
     glfwShowWindow(window_);
 
+    // create pattern source
+    pattern_ = new Stream;
+    if (GstToolkit::has_feature("frei0r-src-test-pat-b") )
+        pattern_->open("frei0r-src-test-pat-b type=0.7", mode->width, mode->height);
+    else 
+        pattern_->open("videotestsrc pattern=smpte", mode->width, mode->height);
+
+    // done !
     initialized_ = true;
+
+    // mark output as active in settings
+    Settings::application.monitors[monitor_name_].active_output = active_;
 
     return true;
 }
 
+void OutputWindow::setShowPattern(bool on) 
+{ 
+    show_pattern_ = on; 
+    pattern_->play(show_pattern_);
+}
+
 void OutputWindow::terminate()
 {
+    // mark output as inactive in settings
+    Settings::application.monitors[monitor_name_].active_output = active_;
+
     if (window_ != NULL) {
         glfwDestroyWindow(window_);
     }
@@ -154,9 +177,15 @@ void OutputWindow::terminate()
 
     // invalidate
     window_ = nullptr;
-    monitor_ = nullptr;
+    monitor_name_.clear();
     initialized_ = false;
     active_ = false;
+
+    // end pattern
+    show_pattern_ = false;
+    pattern_->close();
+    delete pattern_;
+    pattern_ = nullptr;
 
     // detect end
     if ( !Rendering::manager().isAnyOutputActive() ) {
@@ -208,19 +237,30 @@ bool OutputWindow::draw(FrameBuffer *fb)
             surface_ = new OutputWindowSurface(shader_);
         }
         if (shader_) {
-            // TODO : set uniforms from settings
-            shader_->uniforms_["Red"] = 1.f;
-            shader_->uniforms_["Green"] = 1.f;
-            shader_->uniforms_["Blue"] = 1.f;
-            shader_->uniforms_["Temperature"] = 0.5f;
-            shader_->uniforms_["Contrast"] = 0.f;
-            shader_->uniforms_["Brightness"] = 0.f;
-            shader_->iNodes = glm::zero<glm::mat4>();
+            // set uniforms from settings
+            Settings::MonitorConfig conf = Settings::application.monitors[monitor_name_];
+            shader_->uniforms_["Red"] = conf.whitebalance.r;
+            shader_->uniforms_["Green"] = conf.whitebalance.g;
+            shader_->uniforms_["Blue"] = conf.whitebalance.b;
+            shader_->uniforms_["Temperature"] = conf.whitebalance.a;
+            shader_->uniforms_["Contrast"] = conf.contrast;
+            shader_->uniforms_["Brightness"] = conf.brightness;
+            if (conf.custom_geometry )
+                shader_->iNodes = shader_->iNodes = conf.nodes;
+            else
+                shader_->iNodes = glm::zero<glm::mat4>();
         }
 
         // render the framebuffer texture to the output window
         static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
-        surface_->setTextureIndex(fb->texture());
+
+        // if test pattern requested, set its texture
+        if (show_pattern_) {
+            pattern_->update();
+            surface_->setTextureIndex(pattern_->texture());
+        }
+        else    
+            surface_->setTextureIndex(fb->texture());
         surface_->update(0.f);
         surface_->draw(glm::identity<glm::mat4>(), projection);
 
@@ -246,8 +286,8 @@ void OutputWindow::MouseButtonCallback(GLFWwindow *w, int button, int action, in
         static double seconds = 0.f;
         // detect double click
         if ( t - seconds < 0.25f ) {
-            // show main window
-            Rendering::manager().mainWindow().show();
+            // bring main window back to focus
+            glfwFocusWindow(Rendering::manager().mainWindow().window());
         }
         // for next double click detection
         seconds = t;
