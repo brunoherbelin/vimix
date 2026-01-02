@@ -85,6 +85,7 @@ public:
     static void FileDropped(GLFWwindow* w, int path_count, const char* paths[]);
     static void WindowCloseCallback( GLFWwindow* w );
     static void WindowResizeCallback( GLFWwindow *w, int width, int height);
+    static void WindowMoveCallback( GLFWwindow *w, int width, int height);
 
 };
 

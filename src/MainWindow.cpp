@@ -88,31 +88,33 @@ void MainWindow::setFullscreen_(GLFWmonitor *mo)
     if (!window_)
         return;
 
-    // disable fullscreen mode
+    // disable fullscreen 
     if (mo == nullptr) {
-        // store fullscreen mode
+        // store fullscreen windowed mode
         Settings::application.mainwindow.fullscreen = false;
 
         // set to window mode
-        glfwSetInputMode( window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        glfwSetWindowMonitor( window_, NULL, 0, 0,
-                                                Settings::application.mainwindow.w,
-                                                Settings::application.mainwindow.h, 0 );
+        // NB: this allows restoring window position and size
+        glfwSetWindowMonitor(window_, NULL, 
+            Settings::application.mainwindow.x, 
+            Settings::application.mainwindow.y,
+            Settings::application.mainwindow.w,
+            Settings::application.mainwindow.h, 
+        0 );  
+                                                
     }
-    // set fullscreen mode
+    // set fullscreen 
     else {
         // store fullscreen mode
         Settings::application.mainwindow.fullscreen = true;
         Settings::application.mainwindow.monitor = glfwGetMonitorName(mo);
 
-        // set to fullscreen mode
+        // set to fullscreen 
         const GLFWvidmode * mode = glfwGetVideoMode(mo);
         glfwSetWindowMonitor( window_, mo, 0, 0, mode->width, mode->height, mode->refreshRate);
-
-        glfwSetInputMode( window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     }
 
-    // Enable vsync on main window only (i.e. 0 if has a master)
+    // Enable vsync on main window only 
     // Workaround for disabled vsync in fullscreen (https://github.com/glfw/glfw/issues/1072)
     glfwSwapInterval( Settings::application.render.vsync);
 
@@ -149,24 +151,15 @@ void MainWindow::changeFullscreen_()
         // done request
         request_change_fullscreen_ = false;
 
-        GLFWmonitor *mo = monitor();
-        // if (index_ > 0)
-        //     mo = Rendering::manager().monitorNamed( Settings::application.windows[index_].monitor );
-
         // if in fullscreen mode
         if (isFullscreen ()) {
-
-            // changing fullscreen monitor
-            if ( glfwGetWindowMonitor(window_) != mo)
-                setFullscreen_(mo);
-            else
-                // exit fullscreen
-                setFullscreen_(nullptr);
+            // exit fullscreen
+            setFullscreen_(nullptr);
         }
         // not in fullscreen mode
         else {
             // enter fullscreen
-            setFullscreen_(mo);
+            setFullscreen_(monitor());
         }
     }
 }
@@ -294,10 +287,11 @@ bool MainWindow::init(int index, GLFWwindow *share)
     // window move and close callbacks
     glfwSetWindowCloseCallback( window_, WindowCloseCallback );
     glfwSetWindowSizeCallback( window_, WindowResizeCallback );
+    glfwSetWindowPosCallback( window_, WindowMoveCallback );
 
     // file drop callbacks
     glfwSetDropCallback( window_, MainWindow::FileDropped);
-    
+
     return true;
 }
 
@@ -358,13 +352,28 @@ void MainWindow::WindowResizeCallback( GLFWwindow *w, int width, int height)
     if (!Settings::application.mainwindow.fullscreen) {
         Settings::application.mainwindow.w = width;
         Settings::application.mainwindow.h = height;
+
+        // hack to refresh decorations after return from fullscreen
+        glfwSetWindowAttrib( w, GLFW_DECORATED, GLFW_TRUE );
     }
+    else {
+        glfwSetWindowAttrib( w, GLFW_DECORATED, GLFW_FALSE );
+    }
+
 
     // UI manager tries to keep windows in the workspace
     WorkspaceWindow::notifyWorkspaceSizeChanged(Rendering::manager().mainWindow().previous_size.x, Rendering::manager().mainWindow().previous_size.y, width, height);
     Rendering::manager().mainWindow().previous_size = glm::vec2(width, height);
-    Rendering::manager().draw();
+    // Rendering::manager().draw();
 
+}
+
+void MainWindow::WindowMoveCallback( GLFWwindow *w, int x, int y)
+{
+    if (!Settings::application.mainwindow.fullscreen) {
+        Settings::application.mainwindow.x = x;
+        Settings::application.mainwindow.y = y;
+    }
 }
 
 void MainWindow::FileDropped(GLFWwindow *, int path_count, const char* paths[])

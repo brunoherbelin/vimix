@@ -67,6 +67,7 @@ struct WidgetsConfig
 struct WindowConfig
 {
     std::string name;
+    int  x,y;
     int  w,h;
     bool fullscreen;
     std::string monitor;

@@ -94,6 +94,8 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     // main window
     XMLElement *window = xmlDoc.NewElement( "MainWindow" );
     window->SetAttribute("name", application.mainwindow.name.c_str());
+    window->SetAttribute("x", application.mainwindow.x);
+    window->SetAttribute("y", application.mainwindow.y);
     window->SetAttribute("w", application.mainwindow.w);
     window->SetAttribute("h", application.mainwindow.h);
     window->SetAttribute("f", application.mainwindow.fullscreen);
@@ -591,6 +593,8 @@ void Settings::Load(const std::string &filename)
         // Main Window
         XMLElement * windowNode = pRoot->FirstChildElement("MainWindow");
         if (windowNode) {
+            windowNode->QueryIntAttribute("x", &application.mainwindow.x);
+            windowNode->QueryIntAttribute("y", &application.mainwindow.y);
             windowNode->QueryIntAttribute("w", &application.mainwindow.w);
             windowNode->QueryIntAttribute("h", &application.mainwindow.h);
             windowNode->QueryBoolAttribute("f", &application.mainwindow.fullscreen);
