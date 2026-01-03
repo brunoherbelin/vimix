@@ -37,22 +37,18 @@ public:
     // canvases are updated each frame in Mixer 
     void update();
 
-    // get scene containing all canvases
-    // to be attached to GeometryView and DisplayView scenes
-    Group *canvasScene() const { return canvas_scene_; }
-    
     // to manage canvases
     void add();
     void remove();
+
+    // direct access 
     size_t size () const { return canvases_.size(); }
+    CanvasSource *at (size_t index);
 
     // for iteration over canvases
     SourceList::iterator begin ();
     SourceList::iterator end ();
-
-    // direct access to source
-    CanvasSource *at (size_t index);
-
+    
     // configuration
     void load(const std::string &filename = std::string());
     void save(const std::string &filename = std::string());
@@ -63,13 +59,13 @@ protected:
     // list of CanvasSource elements
     SourceList canvases_;
 
-    // queried by GeometryView and DisplayView
-    Group *canvas_scene_;
-
     // accessed by CanvasSource
     // canvas_surface_ is shared between all canvases
     // FrameBufferSurface *canvas_surface_;
     FrameBuffer *framebuffer_;
+
+    // reference to the session used for rendering canvases
+    Session *render_session_;
 
 };
 

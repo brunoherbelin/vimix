@@ -3,6 +3,7 @@
 
 #include "View.h"
 
+class CanvasSource;
 
 class GeometryView : public View
 {
@@ -25,6 +26,8 @@ public:
     void arrow (glm::vec2) override;
     Cursor over (glm::vec2) override;
 
+    void attach(Source *canvas);
+    void detach(Source *canvas);
     void setCurrentCanvas(Source *c = nullptr);
     Source *currentCanvas() const { return current_canvas_; }
 
@@ -43,6 +46,7 @@ private:
     Node *overlay_crop_;
 
     Source *current_canvas_;
+    Group *canvas_scene_;
     uint canvas_current_;
     Group *canvas_stored_status_;
     Node *canvas_overlay_crop_;

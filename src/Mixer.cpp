@@ -84,9 +84,6 @@ Mixer::Mixer() : session_(new Session), back_session_(nullptr), sessionSwapReque
     set( new Session );
     setView( View::MIXING );
 
-    // attach canvases to Geometry and Display Views workspace
-    geometry_.scene.ws()->attach( Canvas::manager().canvasScene() );
-    // displays_.scene.ws()->attach(Canvas::manager().canvasScene()); // TODO
 }
 
 void Mixer::update()
@@ -1755,10 +1752,6 @@ void Mixer::terminate()
     // all finished, we can clear the back session we just added
     delete back_session_;
     back_session_ = nullptr;
-
-    // detach canvases from Geometry and Display Views workspace
-    geometry_.scene.ws()->detach(Canvas::manager().canvasScene());
-    // displays_.scene.ws()->detach(Canvas::manager().canvasScene()); // TODO
 }
 
 void Mixer::set(Session *s)

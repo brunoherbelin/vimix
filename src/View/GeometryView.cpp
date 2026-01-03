@@ -157,6 +157,9 @@ GeometryView::GeometryView() : View(GEOMETRY)
     canvas_overlay_crop_ = border;
     scene.fg()->attach(canvas_overlay_crop_);
     canvas_overlay_crop_->visible_ = false;
+    // attach canvases to Geometry Views workspace
+    canvas_scene_ = new Group;
+    scene.ws()->attach( canvas_scene_ );
 
     // will be init later
     overlay_selection_scale_ = nullptr;
@@ -171,6 +174,21 @@ GeometryView::GeometryView() : View(GEOMETRY)
     rotation_grid_->root()->visible_ = false;
     if (grid) delete grid;
     grid = translation_grid_;
+
+}
+
+void GeometryView::attach(Source *canvas)
+{
+    // attach to scene 
+    canvas_scene_->attach( canvas->groups_[View::GEOMETRY] );
+    canvas_scene_->attach( canvas->frames_[View::GEOMETRY] );
+}
+
+void GeometryView::detach(Source *canvas)
+{
+    // detach from scene
+    canvas_scene_->detach( canvas->groups_[View::GEOMETRY] );
+    canvas_scene_->detach( canvas->frames_[View::GEOMETRY] );
 
 }
 

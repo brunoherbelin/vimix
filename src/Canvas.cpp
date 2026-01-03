@@ -32,14 +32,13 @@ using namespace tinyxml2;
 #include "Scene/Primitives.h"
 #include "Scene/Decorations.h"
 #include "FrameBuffer.h"
+#include "Mixer.h"
 
 #include "Canvas.h"
 
 Canvas::Canvas() : framebuffer_(nullptr)
 {
-    canvas_scene_ = new Group;
 }
-
 
 void Canvas::init()
 {
@@ -58,14 +57,12 @@ void Canvas::terminate()
     // delete all canvases
     while ( canvases_.size() > 0 ) {        
         Source *tmp = canvases_.back();
-        canvas_scene_->detach( tmp->groups_[View::GEOMETRY] );
-        canvas_scene_->detach( tmp->frames_[View::GEOMETRY] );
+        GeometryView *geometryView = static_cast<GeometryView *>(Mixer::manager().view(View::GEOMETRY));
+        geometryView->detach(tmp);
         canvases_.pop_back();
         delete tmp;
     }
 
-    // delete canvas scene
-    delete canvas_scene_;
 }
 
 void Canvas::setFrameBuffer(FrameBuffer *fb)
@@ -117,8 +114,8 @@ void Canvas::add()
     canvas->setActive( true );
 
     // attach to geometry view scene 
-    canvas_scene_->attach( canvas->groups_[View::GEOMETRY] );
-    canvas_scene_->attach( canvas->frames_[View::GEOMETRY] );
+    GeometryView *geometryView = static_cast<GeometryView *>(Mixer::manager().view(View::GEOMETRY));
+    geometryView->attach(canvas);
 }
 
 void Canvas::remove()
@@ -130,8 +127,8 @@ void Canvas::remove()
         Source *tmp = canvases_.back();
 
         // detach from scene
-        canvas_scene_->detach( tmp->groups_[View::GEOMETRY] );
-        canvas_scene_->detach( tmp->frames_[View::GEOMETRY] );
+        GeometryView *geometryView = static_cast<GeometryView *>(Mixer::manager().view(View::GEOMETRY));
+        geometryView->detach(tmp);
 
         // remove last canvas from list
         canvases_.pop_back();

@@ -3,9 +3,6 @@
 
 #include <string>
 
-#include <gst/gl/gl.h>
-#include <glm/glm.hpp>
-
 #include "Toolkit/GlmToolkit.h"
 
 typedef struct GLFWmonitor GLFWmonitor;
@@ -18,18 +15,7 @@ class Stream;
 
 class OutputWindow
 {
-    GLFWwindow *window_;
-    std::string monitor_name_;
-    bool active_;
-    bool initialized_;
-    GlmToolkit::RenderingAttrib window_attributes_;        
-    OutputWindowSurface *surface_;
-    ImageFilteringShader *shader_;
-    bool show_pattern_;
-    Stream *pattern_;
-
-    static uint num_active_outputs;
-
+    
 public:
     OutputWindow();
     ~OutputWindow();
@@ -56,6 +42,31 @@ public:
     // glfw callbacks
     static void MouseButtonCallback(GLFWwindow *w, int button, int action, int mods);
     
+private:
+
+    // number of active output windows (to detect when all are closed)
+    static uint num_active_outputs;
+
+    // GLFW window 
+    GLFWwindow *window_;
+    // name of monitor on which window is displayed
+    std::string monitor_name_;
+
+    // state management
+    bool active_;
+    bool initialized_;
+
+    // Drawing of framebuffer
+    GlmToolkit::RenderingAttrib window_attributes_;        
+    OutputWindowSurface *surface_;
+
+
+    // options 
+    ImageFilteringShader *shader_;
+    bool show_pattern_;
+    Stream *pattern_;
+
+
 };
 
 
