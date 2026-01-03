@@ -7,11 +7,11 @@
 class Group;
 class FrameBuffer;
 class FrameBufferSurface;
-class CanvasSource;
+class CanvasSurface;
 
 class Canvas
 {
-    friend class CanvasSource;
+    friend class CanvasSurface;
 
     // Private Constructor
     Canvas();
@@ -32,18 +32,24 @@ public:
 
     // Framebuffer is passed to Canvas manager by Mixer 
     // each time the session framebuffer is changed
-    void setFrameBuffer(FrameBuffer *fb);
+    void setInputFrameBuffer(FrameBuffer *fb);
+
+    // get session used for rendering canvases
+    inline Session *renderSession() const { return render_session_; }
+
+    // get result of rendering canvases
+    FrameBuffer *getRenderedFrameBuffer() const;
 
     // canvases are updated each frame in Mixer 
     void update();
 
     // to manage canvases
-    void add();
-    void remove();
+    void addSurface();
+    void removeSurface();
 
     // direct access 
     size_t size () const { return canvases_.size(); }
-    CanvasSource *at (size_t index);
+    CanvasSurface *at (size_t index);
 
     // for iteration over canvases
     SourceList::iterator begin ();

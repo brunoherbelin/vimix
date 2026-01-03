@@ -133,7 +133,7 @@ void RenderSource::update(float dt)
 
                 if (provenance_ == RENDER_CANVAS) {
                     
-                    CanvasSource *canvas = Canvas::manager().at(canvas_index_);
+                    CanvasSurface *canvas = Canvas::manager().at(canvas_index_);
 
                     if (canvas != nullptr) {
                         canvas->frame()->blit(rendered_output_);

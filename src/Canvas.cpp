@@ -32,21 +32,30 @@ using namespace tinyxml2;
 #include "Scene/Primitives.h"
 #include "Scene/Decorations.h"
 #include "FrameBuffer.h"
+#include "Source/RenderSource.h"
+#include "Session.h"
 #include "Mixer.h"
 
 #include "Canvas.h"
 
 Canvas::Canvas() : framebuffer_(nullptr)
 {
+    render_session_ = new Session;
 }
 
 void Canvas::init()
 {
     // minimum of one canvas
-    add();
+    addSurface();
 
     // load configuration
     load();
+
+    // // minimum one frame to put a canvas on
+    // RenderSource *frame_canvas = new RenderSource;
+    // frame_canvas->setRenderingProvenance( RenderSource::RENDER_CANVAS );  
+    // frame_canvas->setName( "FrameCanvas" );
+    
 }
 
 void Canvas::terminate()
@@ -63,9 +72,10 @@ void Canvas::terminate()
         delete tmp;
     }
 
+    delete render_session_;
 }
 
-void Canvas::setFrameBuffer(FrameBuffer *fb)
+void Canvas::setInputFrameBuffer(FrameBuffer *fb)
 {
     // detect change of aspect ratio
     if ( framebuffer_ && framebuffer_->aspectRatio() != fb->aspectRatio() ) {
@@ -92,12 +102,16 @@ void Canvas::update()
         (*cit)->update(0.f);
         (*cit)->render();
     }
+
+    // update render session
+    if ( render_session_ )
+        render_session_->update(0.f);   
 }
 
-void Canvas::add()
+void Canvas::addSurface()
 {
     // create a new canvas source
-    CanvasSource *canvas = new CanvasSource;
+    CanvasSurface *canvas = new CanvasSurface;
 
     // set Canvas name and label characters with 2-digit format
     std::ostringstream oss;
@@ -118,7 +132,7 @@ void Canvas::add()
     geometryView->attach(canvas);
 }
 
-void Canvas::remove()
+void Canvas::removeSurface()
 {
     // minumum one canvas
     if ( canvases_.size() > 1 ) {
@@ -148,12 +162,12 @@ SourceList::iterator Canvas::end ()
     return canvases_.end();
 }
 
-CanvasSource *Canvas::at (size_t index) {
+CanvasSurface *Canvas::at (size_t index) {
 
     auto it = canvases_.begin();
     std::advance(it, MIN(index, canvases_.size() - 1));
     // NB : assume that canvases_ contains only CanvasSource elements and has at least one element
-    return static_cast<CanvasSource *>(*it);
+    return static_cast<CanvasSurface *>(*it);
 }
 
 void Canvas::setLayout(int rows, int columns)
@@ -255,7 +269,7 @@ void Canvas::load(const std::string &filename)
     {
         // create a new canvas if needed
         if ( canvas_it == canvases_.end() ) {
-            add();
+            addSurface();
             canvas_it = --canvases_.end();
         }
 
@@ -266,7 +280,7 @@ void Canvas::load(const std::string &filename)
     }
     // delete extra canvases if any
     while ( canvas_it != canvases_.end() ) {
-        remove();
+        removeSurface();
         canvas_it = --canvases_.end();  
     }
 }
@@ -301,4 +315,10 @@ void Canvas::save(const std::string &filename)
     XMLError eResult = xmlDoc.SaveFile( settingsFilename.c_str());
     XMLResultError(eResult);
     
+}
+
+
+FrameBuffer *Canvas::getRenderedFrameBuffer() const 
+{ 
+    return render_session_->frame(); 
 }

@@ -353,7 +353,7 @@ void GeometryView::draw()
             current_canvas_->handles_[mode_][Handles::CROP_H],
             current_canvas_->handles_[mode_][Handles::CROP_V],
             current_canvas_->handles_[mode_][Handles::MENU], 
-            dynamic_cast<CanvasSource *>(current_canvas_)->label
+            dynamic_cast<CanvasSurface *>(current_canvas_)->label
         };
         DrawVisitor dv(canvas_handles, projection);
         scene.accept(dv);
@@ -441,7 +441,7 @@ void GeometryView::draw()
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 if (ImGui::Button(ICON_FA_MINUS )) {
                     // remove last canvas
-                    Canvas::manager().remove();
+                    Canvas::manager().removeSurface();
                     // set another canvas as current
                     setCurrentCanvas(*(--Canvas::manager().end()));
                 }
@@ -459,7 +459,7 @@ void GeometryView::draw()
             if (Canvas::manager().size() < MAX_OUTPUT_CANVAS) {
                 if (ImGui::Button(ICON_FA_PLUS )) {
                     // create new canvas
-                    Canvas::manager().add();
+                    Canvas::manager().addSurface();
                     // set newly created canvas as current
                     setCurrentCanvas(*(--Canvas::manager().end()));
                 }

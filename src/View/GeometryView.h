@@ -3,7 +3,7 @@
 
 #include "View.h"
 
-class CanvasSource;
+class CanvasSurface;
 
 class GeometryView : public View
 {

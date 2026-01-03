@@ -36,7 +36,7 @@
 
 #include "CanvasSource.h"
 
-CanvasSource::CanvasSource(uint64_t id) : Source(id), paused_(false)
+CanvasSurface::CanvasSurface(uint64_t id) : Source(id), paused_(false)
 {
     // set symbol
     symbol_ = new Symbol(Symbol::SCREEN, glm::vec3(0.75f, 0.75f, 0.01f));
@@ -66,18 +66,18 @@ CanvasSource::CanvasSource(uint64_t id) : Source(id), paused_(false)
     
 }
 
-CanvasSource::~CanvasSource()
+CanvasSurface::~CanvasSurface()
 {
 
     Log::Info("Canvas '%s' deleted.", name().c_str());
 }
 
-Source::Failure CanvasSource::failed() const
+Source::Failure CanvasSurface::failed() const
 {
     return FAIL_NONE;
 }
 
-uint CanvasSource::texture() const
+uint CanvasSurface::texture() const
 {
     if (renderbuffer_ != nullptr)
         return renderbuffer_->texture();
@@ -87,7 +87,7 @@ uint CanvasSource::texture() const
         return Resource::getTextureBlack(); // getTextureTransparent ?
 }
 
-void CanvasSource::init()
+void CanvasSurface::init()
 {
     if (Canvas::manager().framebuffer_ 
         && Canvas::manager().framebuffer_->texture() != Resource::getTextureBlack()) {
@@ -109,7 +109,7 @@ void CanvasSource::init()
     }
 }
 
-void CanvasSource::render ()
+void CanvasSurface::render ()
 {    
     static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
 
@@ -137,7 +137,7 @@ void CanvasSource::render ()
     }
 }
 
-void CanvasSource::update(float dt)
+void CanvasSurface::update(float dt)
 {
     Source::update(dt);
 
@@ -150,17 +150,17 @@ void CanvasSource::update(float dt)
 
 }
 
-void CanvasSource::play (bool on)
+void CanvasSurface::play (bool on)
 {
     // toggle state
     paused_ = !on;
 }
 
-void CanvasSource::replay ()
+void CanvasSurface::replay ()
 {
 }
 
-void CanvasSource::reload ()
+void CanvasSurface::reload ()
 {
     // reset renderbuffer_
     if (renderbuffer_)
@@ -168,7 +168,7 @@ void CanvasSource::reload ()
     renderbuffer_ = nullptr;
 }
 
-glm::vec3 CanvasSource::resolution() const
+glm::vec3 CanvasSurface::resolution() const
 {
     if (renderbuffer_ != nullptr)
         return renderbuffer_->resolution();
@@ -178,3 +178,18 @@ glm::vec3 CanvasSource::resolution() const
         return glm::vec3(0.f);
 }
 
+
+
+// CanvasRenderSource::CanvasRenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr),
+//     paused_(false), reset_(true), provenance_(RENDER_TEXTURE), canvas_index_(0)
+// {
+//     // set symbol
+//     symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.75f, 0.75f, 0.01f));
+//     symbol_->scale_.y = 1.5f;
+// }
+
+// CanvasRenderSource::~CanvasRenderSource()
+// {
+//     if (rendered_output_ != nullptr)
+//         delete rendered_output_;
+// }

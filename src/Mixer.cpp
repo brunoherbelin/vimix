@@ -1681,7 +1681,7 @@ void Mixer::swap()
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
     
     // adjust canvas to rewly updated framebuffer
-    Canvas::manager().setFrameBuffer(session_->frame());
+    Canvas::manager().setInputFrameBuffer(session_->frame());
 
     // no current source
     current_source_ = session_->end();
@@ -1778,7 +1778,7 @@ void Mixer::setResolution(glm::vec3 res)
         session_->setResolution(res);
 
         // adjust canvas to rewly updated framebuffer
-        Canvas::manager().setFrameBuffer(session_->frame());
+        Canvas::manager().setInputFrameBuffer(session_->frame());
 
         ++View::need_deep_update_;
         std::ostringstream info;
