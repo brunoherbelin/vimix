@@ -809,7 +809,16 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset
             // delete all button
             if ( Mixer::manager().session()->failedSources().size() > 1 ) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
-                if ( ImGui::Button( ICON_FA_BACKSPACE " Delete all failed", size) ) {
+                if ( ImGui::Button( ICON_FA_REDO_ALT " Retry all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
+                    auto failedsources = Mixer::manager().session()->failedSources();
+                    for (auto sit = failedsources.cbegin(); sit != failedsources.cend(); ++sit) {
+                        Source *s = Mixer::manager().findSource( (*sit)->id() );
+                        if (s)
+                            Mixer::manager().recreateSource( s );
+                    }
+                }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if ( ImGui::Button( ICON_FA_BACKSPACE " Delete all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
                     auto failedsources = Mixer::manager().session()->failedSources();
                     for (auto sit = failedsources.cbegin(); sit != failedsources.cend(); ++sit) {
                         Mixer::manager().deleteSource( Mixer::manager().findSource( (*sit)->id() ) );

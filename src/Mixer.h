@@ -61,6 +61,7 @@ public:
     Source * createSourceText   (const std::string &contents, glm::ivec2 res);
     Source * createSourceShader (glm::ivec2 res);
     Source * createSourceGroup  ();
+    bool recreateSource(Source *s);
 
     // operations on sources
     void addSource    (Source *s);
@@ -147,7 +148,6 @@ protected:
     std::list< std::pair<Source *, Source *> > candidate_sources_;
     SourceList stash_;
     void insertSource  (Source *s, View::Mode m = View::INVALID);
-    bool recreateSource(Source *s);
     void attachSource  (Source *s);
     void detachSource  (Source *s);
     bool attached      (Source *s) const;
