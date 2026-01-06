@@ -20,6 +20,7 @@
 #include <iomanip>
 
 #include <glm/gtc/matrix_transform.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtx/component_wise.hpp>
 
