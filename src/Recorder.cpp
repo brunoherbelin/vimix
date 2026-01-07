@@ -137,13 +137,35 @@ const char* VideoRecorder::profile_name[VideoRecorder::DEFAULT] = {
     "H264 (HQ)",
     "H265 (Realtime)",
     "H265 (HQ)",
-    "ProRes (Standard)",
-    "ProRes (HQ 4444)",
+    "ProRes (Realtime)",
+    "ProRes (HQ)",
     "WebM VP8 (Realtime)",
     "Multiple JPEG"
 };
 
-const std::vector<std::string> VideoRecorder::profile_description {
+const std::vector<std::string> x265enc_options {
+    // Control x265 encoder quality :
+    // NB: apparently x265 only accepts I420 format :(
+    // speed-preset
+    //    superfast (2)
+    //    veryfast (3)
+    //    faster (4)
+    //    fast (5)
+    // Tune
+    //   psnr (1)
+    //   ssim (2) DEFAULT
+    //   grain (3)
+    //   zerolatency (4)  Encoder latency is removed
+    //   fastdecode (5)
+    //   animation (6) optimize the encode quality for animation content without impacting the encode speed
+    // crf Quality-controlled variable bitrate [0 51]
+    //   default 28
+    //   24 for x265 should be visually transparent; anything lower will probably just waste file size
+    "x265enc tune=\"zerolatency\" speed-preset=2 option-string=\"crf=24\" ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "x265enc tune=\"zerolatency\" speed-preset=5 option-string=\"crf=12\" ! video/x-h265, profile=(string)main ! h265parse ! "
+};
+
+std::vector<std::string> VideoRecorder::profile_description {
     // Control x264 encoder quality :
     // pass
     //    quant (4) – Constant Quantizer
@@ -157,8 +179,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //    veryfast (3)
     //    faster (4)
     //    fast (5)
-    "video/x-raw, format=I420 ! x264enc tune=\"zerolatency\" pass=4 quantizer=22 speed-preset=2 ! video/x-h264, profile=baseline ! h264parse ! ",
-    "video/x-raw, format=Y444_10LE ! x264enc tune=\"zerolatency\" pass=4 quantizer=18 speed-preset=3 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
+    "x264enc tune=\"zerolatency\" pass=4 quantizer=22 speed-preset=2 ! video/x-h264, profile=baseline ! h264parse ! ",
+    "x264enc tune=\"zerolatency\" pass=4 quantizer=18 speed-preset=3 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
     // Control vah265enc encoder quality :
     //   target-usage : The target usage to control and balance the encoding speed/quality
     //                  The lower value has better quality but slower speed, the higher value has faster speed but lower quality.
@@ -169,8 +191,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //                            (2): cbr              - Constant Bitrate
     //                            (4): vbr              - Variable Bitrate
     //                            (16): cqp              - Constant Quantizer
-    "video/x-raw, format=NV12 ! vah265enc rate-control=\"cqp\" target-usage=5 ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "video/x-raw, format=NV12 ! vah265enc rate-control=\"cqp\" max-qp=18  target-usage=2 ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "vah265enc rate-control=\"cqp\" target-usage=5 ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "vah265enc rate-control=\"cqp\" max-qp=18  target-usage=2 ! video/x-h265, profile=(string)main ! h265parse ! ",
     // Apple ProRes encoding parameters
     //  pass
     //      cbr (0) – Constant Bitrate Encoding
@@ -189,8 +211,8 @@ const std::vector<std::string> VideoRecorder::profile_description {
     //      3  standard
     //      4  hq
     //      6  default
-    "video/x-raw, format=I422_10LE ! avenc_prores_ks pass=2 bits_per_mb=8000 profile=2 quant-mat=6 quantizer=8 ! ",
-    "video/x-raw, format=Y444_10LE ! avenc_prores_ks pass=2 bits_per_mb=8000 profile=4 quant-mat=6 quantizer=4 ! ",
+    "avenc_prores_ks pass=2 bits_per_mb=8000 profile=2 quant-mat=6 quantizer=8 ! ",
+    "avenc_prores_ks pass=2 bits_per_mb=8000 profile=4 quant-mat=6 quantizer=4 ! ",
     // VP8 WebM encoding
     //  deadline per frame (usec)
     //      0=best,
@@ -264,16 +286,24 @@ std::vector<std::string> vaapi_profile_description {
 #elif GST_GL_HAVE_PLATFORM_CGL
 // under CGL (Mac), gstreamer might have the VideoToolbox
 std::vector<std::string> VideoRecorder::hardware_encoder = {
-    "vtenc_h264_hw",
-    "vtenc_h264_hw",
-    "", "", "", "", "", ""
+    "qvtenc_h264_hw",
+    "qvtenc_h264_hw",
+    "qvtenc_h265_hw", 
+    "qvtenc_h265_hw", 
+    "qvtenc_prores", 
+    "qvtenc_prores", 
+    "", ""
 };
 
 std::vector<std::string> VideoRecorder::hardware_profile_description {
     // Control vtenc_h264_hw encoder
-    "video/x-raw, format=I420 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! h264parse ! ",
-    "video/x-raw, format=UYVY ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 quality=0.9 ! h264parse ! ",
-    "", "", "", "", "", ""
+    "vtenc_h264_hw realtime=1 allow-frame-reordering=0 quality=0.5 ! h264parse ! ",
+    "vtenc_h264_hw realtime=1 allow-frame-reordering=0 quality=0.9 ! h264parse ! ",
+    "vtenc_h265_hw realtime=1 allow-frame-reordering=0 quality=0.5 ! h265parse ! ",
+    "vtenc_h265_hw realtime=1 allow-frame-reordering=0 quality=0.9 ! h265parse ! ",
+    "vtenc_prores  realtime=1 allow-frame-reordering=0 quality=0.4 ! ", 
+    "vtenc_prores  realtime=1 allow-frame-reordering=0 quality=0.9 ! ", 
+    "", ""
 };
 
 #else
@@ -312,6 +342,12 @@ VideoRecorder::VideoRecorder(const std::string &basename) : FrameGrabber(), base
     }
 #endif 
 #endif
+
+    if (GstToolkit::has_feature("x265enc")) {
+        profile_description[2] = x265enc_options[0];
+        profile_description[3] = x265enc_options[1];
+    }
+
 }
 
 std::string VideoRecorder::init(GstCaps *caps)

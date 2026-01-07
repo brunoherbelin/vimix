@@ -52,7 +52,7 @@ public:
         DEFAULT
     } Profile;
     static const char*   profile_name[DEFAULT];
-    static const std::vector<std::string> profile_description;
+    static std::vector<std::string> profile_description;
     static std::vector<std::string> hardware_encoder;
     static std::vector<std::string> hardware_profile_description;
 
