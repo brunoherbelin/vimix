@@ -277,7 +277,7 @@ void Session::update(float dt)
     }
 
     // pre-render all sources
-    ready_ = true;
+    bool test_ready = true;
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); ++it){
 
         // ensure the RenderSource is rendering *this* session
@@ -299,7 +299,7 @@ void Session::update(float dt)
         else {
             // session is not ready if one source is not ready
             if ( !(*it)->ready() )
-                ready_ = false;
+                test_ready = false;
             // update the source
             (*it)->setActive(activation_threshold_);
             (*it)->update(dt);
@@ -310,6 +310,9 @@ void Session::update(float dt)
         // apply session fading to audio
         (*it)->setAudioVolumeFactor(Source::VOLUME_SESSION, 1.f - render_.fading());
     }
+
+    if (test_ready && !ready_) 
+        ready_ = true;
 
     // update session's mixing groups
     auto group_iter = mixing_groups_.begin();

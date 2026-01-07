@@ -66,6 +66,33 @@ void Action::init(const std::string &label)
     store(label);
 }
 
+bool session_is_ready(Session *se)
+{
+    if (se == nullptr)
+        return false;
+
+    // wait for session to be ready with a timeout
+    std::mutex mtx;
+    std::condition_variable cv;
+    std::unique_lock<std::mutex> lock(mtx); 
+    bool ready = false;
+    auto start = std::chrono::steady_clock::now();
+    auto timeout = std::chrono::seconds(2); // 2 seconds timeout
+
+    while (!ready) {
+        ready = se->ready();
+        if (ready) break;
+
+        if (cv.wait_for(lock, std::chrono::milliseconds(50)) == std::cv_status::timeout) {
+            if (std::chrono::steady_clock::now() - start > timeout) {
+                return false; // timeout reached, exit without storing
+            }
+        }
+    }
+
+    return true;
+}
+
 // must be called in a thread running in parrallel of the rendering
 // (needs opengl update to get thumbnail)
 void captureMixerSession(Session *se, std::string node, std::string label, tinyxml2::XMLDocument *doc = nullptr)
@@ -122,6 +149,9 @@ void captureMixerSession(Session *se, std::string node, std::string label, tinyx
         // save session attributes
         sessionNode->SetAttribute("activationThreshold", se->activationThreshold());
 
+        if (!session_is_ready(se))
+            return;
+
         // save all sources using source visitor
         SessionVisitor sv(_doc, sessionNode);
         for (auto iter = se->begin(); iter != se->end(); ++iter, sv.setRoot(sessionNode) )
@@ -139,27 +169,8 @@ void captureMixerSession(Session *se, std::string node, std::string label, tinyx
 
 void Action::storeSession(Session *se, std::string label)
 {
-    if (se == nullptr)
+    if (!se)
         return;
-
-    // wait for session to be ready with a timeout
-    std::mutex mtx;
-    std::condition_variable cv;
-    std::unique_lock<std::mutex> lock(mtx); 
-    bool ready = false;
-    auto start = std::chrono::steady_clock::now();
-    auto timeout = std::chrono::seconds(2); // 2 seconds timeout
-
-    while (!ready) {
-        ready = se->ready();
-        if (ready) break;
-
-        if (cv.wait_for(lock, std::chrono::milliseconds(50)) == std::cv_status::timeout) {
-            if (std::chrono::steady_clock::now() - start > timeout) {
-                return; // timeout reached, exit without storing
-            }
-        }
-    }
 
     // force lock for creation of first step
     if (Action::manager().history_step_ < 1)
