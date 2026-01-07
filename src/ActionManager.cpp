@@ -20,6 +20,8 @@
 #include <string>
 #include <thread>
 #include <regex>
+#include <mutex>
+#include <condition_variable>
 
 #include "Log.h"
 #include "View/View.h"
@@ -137,6 +139,28 @@ void captureMixerSession(Session *se, std::string node, std::string label, tinyx
 
 void Action::storeSession(Session *se, std::string label)
 {
+    if (se == nullptr)
+        return;
+
+    // wait for session to be ready with a timeout
+    std::mutex mtx;
+    std::condition_variable cv;
+    std::unique_lock<std::mutex> lock(mtx); 
+    bool ready = false;
+    auto start = std::chrono::steady_clock::now();
+    auto timeout = std::chrono::seconds(2); // 2 seconds timeout
+
+    while (!ready) {
+        ready = se->ready();
+        if (ready) break;
+
+        if (cv.wait_for(lock, std::chrono::milliseconds(50)) == std::cv_status::timeout) {
+            if (std::chrono::steady_clock::now() - start > timeout) {
+                return; // timeout reached, exit without storing
+            }
+        }
+    }
+
     // force lock for creation of first step
     if (Action::manager().history_step_ < 1)
         Action::manager().history_access_.lock();
