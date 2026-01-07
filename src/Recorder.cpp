@@ -286,12 +286,12 @@ std::vector<std::string> vaapi_profile_description {
 #elif GST_GL_HAVE_PLATFORM_CGL
 // under CGL (Mac), gstreamer might have the VideoToolbox
 std::vector<std::string> VideoRecorder::hardware_encoder = {
-    "qvtenc_h264_hw",
-    "qvtenc_h264_hw",
-    "qvtenc_h265_hw", 
-    "qvtenc_h265_hw", 
-    "qvtenc_prores", 
-    "qvtenc_prores", 
+    "vtenc_h264_hw",
+    "vtenc_h264_hw",
+    "vtenc_h265_hw", 
+    "vtenc_h265_hw", 
+    "vtenc_prores", 
+    "vtenc_prores", 
     "", ""
 };
 
