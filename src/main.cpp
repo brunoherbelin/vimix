@@ -248,11 +248,11 @@ int main(int argc, char *argv[])
     Rendering::manager().draw();
     Rendering::manager().show(!headlessRequested);
 
-    // Initialize Canvas (reads config)
-    Canvas::manager().init();
-
     // try to load file given in argument
     Mixer::manager().load(_openfile);
+
+    // Initialize Canvas (reads config)
+    Canvas::manager().init();
 
     ///
     /// Broadcast launch

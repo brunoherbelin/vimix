@@ -237,6 +237,10 @@ bool OutputWindow::draw(FrameBuffer *fb)
             shader_ = new ImageFilteringShader;
             shader_->setCode( whitebalance.code().first );
             surface_ = new OutputWindowSurface(shader_);
+            // scale surface to framebuffer size, vertical flip
+            surface_->scale_ = glm::vec3(fb->resolution().x / 2.f, -fb->resolution().y / 2.f, 1.f);
+            // position surface at center of window
+            surface_->translation_ = glm::vec3(surface_->scale_.x , -surface_->scale_.y, 0.f);
         }
         if (shader_) {
             // set uniforms from settings
@@ -254,7 +258,13 @@ bool OutputWindow::draw(FrameBuffer *fb)
         }
 
         // render the framebuffer texture to the output window
-        static glm::mat4 projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+        // using the orthographic projection adapted to window position and size (vertical flip)
+        int x = 0, y = 0, w = 2, h = 2;
+        glfwGetWindowPos(window_, &x, &y);
+        glfwGetWindowSize(window_, &w, &h);
+        glm::mat4 projection = glm::ortho(float(x), float(x+w),
+                                         float(y+h), float(y),
+                                         -1.f, 1.f);
 
         // if test pattern requested, set its texture
         if (show_pattern_) {

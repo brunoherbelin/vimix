@@ -97,6 +97,7 @@ class Source : public SourceCore
     friend class LayerView;
     friend class TextureView;
     friend class TransitionView;
+    friend class DisplaysView;
     friend class Canvas;
 
 public:

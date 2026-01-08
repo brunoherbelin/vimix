@@ -2,9 +2,15 @@
 #define CANVASSOURCE_H
 
 #include "Source.h"
+#include <cstddef>
 
 class RenderView;
 
+// A canvas surface is a source representing a canvas framebuffer
+// It is used internally in Geometry View to display the canvas content
+// and in CanvasSource to render it in the display output
+// CanvasSurface is managed by Canvas manager and cannot be used 
+// as normal sources in a session
 class CanvasSurface : public Source
 {
 public:
@@ -14,11 +20,10 @@ public:
     // implementation of source API
     void update (float dt) override;
     void render () override;
-    bool playing () const override { return !paused_; }
+    bool playing () const override { return false; }
     void play (bool) override;
-    void replay () override;
     void reload () override;
-    bool playable () const  override { return true; }
+    bool playable () const  override { return false; }
     Failure failed () const override;
     uint texture() const override;
 
@@ -35,43 +40,46 @@ protected:
     bool paused_;
 };
 
+// A canvas source is a source representing the content of a canvas rendered in the output
+// It is added to the canvas manager session to render the canvas content to the output framebuffer
+// It is manipulated in DisplayView to select which canvas to render and to change its 
+// position and geometry on Displays
+class CanvasSource : public Source
+{
+public:
+    CanvasSource(uint64_t id = 0);
+    ~CanvasSource();
 
-// class CanvasRenderSource : public Source
-// {
-// public:
-//     CanvasRenderSource(uint64_t id = 0);
-//     ~CanvasRenderSource();
+    // implementation of source API
+    void update (float dt) override;
+    bool playing () const override { return !paused_; }
+    void play (bool) override;
+    void replay () override;
+    void reload () override;
+    bool playable () const  override { return true; }
+    guint64 playtime () const override { return 0; }
+    Failure failed () const override;
+    uint texture() const override;
+    void accept (Visitor& v) override;
 
-//     // implementation of source API
-//     void update (float dt) override;
-//     bool playing () const override { return !paused_; }
-//     void play (bool) override;
-//     void replay () override;
-//     void reload () override;
-//     bool playable () const  override { return true; }
-//     guint64 playtime () const override { return 0; }
-//     Failure failed () const override;
-//     uint texture() const override;
-//     void accept (Visitor& v) override;
+    inline size_t canvas () const { return canvas_index_; }
+    inline void setCanvas (size_t index) { canvas_index_ = index; }
 
-//     inline CanvasSource *canvas () const { return canvas_; }
-//     inline void setCanvas (CanvasSource *se) { canvas_ = se; }
+    glm::vec3 resolution() const;
 
-//     glm::vec3 resolution() const;
+    glm::ivec2 icon() const override;
+    std::string info() const override;
 
-//     glm::ivec2 icon() const override;
-//     std::string info() const override;
+protected:
 
-// protected:
+    void init() override;
 
-//     void init() override;
-//     CanvasSource *canvas_;
+    size_t canvas_index_;
+    FrameBuffer *rendered_output_;
 
-//     FrameBuffer *rendered_output_;
-
-//     // control
-//     bool paused_;
-//     bool reset_;
-// };
+    // control
+    bool paused_;
+    bool reset_;
+};
 
 #endif // CANVASSOURCE_H

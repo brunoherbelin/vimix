@@ -23,7 +23,6 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/matrix.hpp>
-#include <gtk/gtk.h>
 
 #include "defines.h"
 #include "Log.h"
@@ -126,6 +125,7 @@ void RenderSource::update(float dt)
     Source::update(dt);
 
     if (session_ && session_->ready() && rendered_output_) {
+        
         if ((active_ && !paused_) || reset_) {
 
             // simulate a rendering of the session in a framebuffer
@@ -135,7 +135,7 @@ void RenderSource::update(float dt)
                     
                     CanvasSurface *canvas = Canvas::manager().at(canvas_index_);
 
-                    if (canvas != nullptr) {
+                    if (canvas != nullptr && canvas->frame()) {
                         canvas->frame()->blit(rendered_output_);
                     }
                 }

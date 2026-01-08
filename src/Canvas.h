@@ -8,10 +8,12 @@ class Group;
 class FrameBuffer;
 class FrameBufferSurface;
 class CanvasSurface;
+class CanvasSource;
 
 class Canvas
 {
     friend class CanvasSurface;
+    friend class CanvasSource;
 
     // Private Constructor
     Canvas();
@@ -35,13 +37,17 @@ public:
     void setInputFrameBuffer(FrameBuffer *fb);
 
     // get session used for rendering canvases
-    inline Session *renderSession() const { return render_session_; }
+    inline Session *session() const { return output_session_; }
+
+    // attach CanvasSource to the session and scenes
+    void attachCanvasSource(CanvasSource *cs);
+    void detachCanvasSource(CanvasSource *cs);
 
     // get result of rendering canvases
     FrameBuffer *getRenderedFrameBuffer() const;
 
     // canvases are updated each frame in Mixer 
-    void update();
+    void update(float dt);
 
     // to manage canvases
     void addSurface();
@@ -71,7 +77,7 @@ protected:
     FrameBuffer *framebuffer_;
 
     // reference to the session used for rendering canvases
-    Session *render_session_;
+    Session *output_session_;
 
 };
 

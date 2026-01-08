@@ -63,6 +63,7 @@
 #include "Log.h"
 #include "Settings.h"
 #include "Mixer.h"
+#include "Canvas.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Toolkit/GstToolkit.h"
 #include "UserInterfaceManager.h"
@@ -541,6 +542,18 @@ std::list<Rendering::Monitor>& Rendering::monitors()
     return monitors_;
 }
 
+glm::vec3 Rendering::monitorsResolution() 
+{
+    std::lock_guard<std::mutex> lock(monitors_mutex_);
+
+    glm::vec3 resolution(0, 0, 0);
+    for (const auto& monitor : monitors_) {
+        resolution.x = std::max(resolution.x, (float) (monitor.geometry.x + monitor.geometry.z) );
+        resolution.y = std::max(resolution.y, (float) (monitor.geometry.y + monitor.geometry.w) );
+    }
+    resolution.z = 0; 
+    return resolution;
+}
 
 void Rendering::deactivateOutput(const GLFWmonitor* monitor)
 {
@@ -605,7 +618,7 @@ void Rendering::drawOutputWindows()
     for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
         // if output is active and initialized, draw it
         if (it->output.isActive() && it->output.isInitialized()) {
-            it->output.draw(Mixer::manager().session()->frame());
+            it->output.draw(Canvas::manager().session()->frame());
             busy = true;
         }
         // if output is active but not initialized, initialize it

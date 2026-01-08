@@ -87,9 +87,10 @@ public:
     GLFWmonitor *monitorNamed(const std::string &name);
     // get which monitor contains this point, main monitor if not found
     GLFWmonitor *monitorAt(int x, int y);
-    // draw all output windows
-    void drawOutputWindows();
+    // deactivate output on this monitor
     void deactivateOutput(const GLFWmonitor* monitor);
+    // get resolution of all monitors combined
+    glm::vec3 monitorsResolution() ;
 
     // Application main window management
     inline MainWindow& mainWindow() { return main_; }
@@ -120,6 +121,9 @@ protected:
 
     // inhibit system screensaver
     static void inhibitScreensaver (bool on);
+
+    // draw all output windows
+    void drawOutputWindows();
 
 private:
 

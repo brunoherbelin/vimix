@@ -19,8 +19,8 @@
 
 
 #include "IconsFontAwesome5.h"
-#include "View/View.h"
 #include "imgui.h"
+
 #include <algorithm>
 #include <cstddef>
 #include <glib.h>
@@ -40,6 +40,7 @@
 #include "Toolkit/BaseToolkit.h"
 #include "Toolkit/ImGuiToolkit.h"
 
+#include "View/View.h"
 #include "Mixer.h"
 #include "defines.h"
 #include "Source/Source.h"
@@ -1483,7 +1484,6 @@ void GeometryView::terminate(bool force)
     if (editor_mode_ == EDIT_SOURCES)
         View::terminate(force);
     else if (current_action_ongoing_) {
-        // TODO Implement Undo/Redo for canvas manipulations
         // terminated
         current_action_ = "";
         current_action_ongoing_ = false;
@@ -1705,7 +1705,7 @@ void GeometryView::setCurrentCanvas(Source *c)
     current_canvas_->handles_[mode_][Handles::NODE_UPPER_LEFT]->visible_ = false;
     current_canvas_->handles_[mode_][Handles::ROUNDING]->visible_ = false;
     current_canvas_->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-    current_canvas_->handles_[mode_][Handles::CROP_V]->visible_ = true;
+    current_canvas_->handles_[mode_][Handles::CROP_H]->visible_ = true;
     current_canvas_->handles_[mode_][Handles::CROP_V]->visible_ = true;
     current_canvas_->handles_[mode_][Handles::MENU]->visible_ = true;
 }

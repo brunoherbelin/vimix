@@ -32,15 +32,16 @@ using namespace tinyxml2;
 #include "Scene/Primitives.h"
 #include "Scene/Decorations.h"
 #include "FrameBuffer.h"
-#include "Source/RenderSource.h"
 #include "Session.h"
 #include "Mixer.h"
+
+#include "Source/PatternSource.h"
 
 #include "Canvas.h"
 
 Canvas::Canvas() : framebuffer_(nullptr)
 {
-    render_session_ = new Session;
+    output_session_ = new Session;
 }
 
 void Canvas::init()
@@ -51,17 +52,27 @@ void Canvas::init()
     // load configuration
     load();
 
-    // // minimum one frame to put a canvas on
-    // RenderSource *frame_canvas = new RenderSource;
-    // frame_canvas->setRenderingProvenance( RenderSource::RENDER_CANVAS );  
-    // frame_canvas->setName( "FrameCanvas" );
-    
+    output_session_->setResolution(Rendering::manager().monitorsResolution());
+    //  update to draw framebuffer
+    output_session_->update( 0.f );
+
+    // glm::vec3 r = output_session_->frame()->resolution();
+    // g_printerr("Canvas manager initialized (%f x %f)\n", r.x, r.y);
+
+    // start with one source to put a canvas on
+    CanvasSource *s = new CanvasSource;
+    attachCanvasSource( s );
+
 }
 
 void Canvas::terminate()
 {
     // save configuration
     save();
+
+    // empty the output session
+    while ( !output_session_->empty() ) 
+        output_session_->popSource();
 
     // delete all canvases
     while ( canvases_.size() > 0 ) {        
@@ -72,7 +83,6 @@ void Canvas::terminate()
         delete tmp;
     }
 
-    delete render_session_;
 }
 
 void Canvas::setInputFrameBuffer(FrameBuffer *fb)
@@ -94,18 +104,65 @@ void Canvas::setInputFrameBuffer(FrameBuffer *fb)
     }
 }
 
-void Canvas::update()
+
+void Canvas::attachCanvasSource(CanvasSource *cs)
+{
+    if (!cs)
+        return;
+
+    cs->setActive( true );
+    output_session_->addSource( cs );
+    
+    DisplaysView *displays_ = static_cast<DisplaysView *>(Mixer::manager().view(View::DISPLAYS));
+    displays_->scene.ws()->attach( cs->group(View::GEOMETRY) ); 
+}
+
+void Canvas::detachCanvasSource(CanvasSource *cs)
+{
+    if (!cs)
+        return;
+
+    cs->setActive( false );
+    output_session_->deleteSource( cs );
+
+    DisplaysView *displays_ = static_cast<DisplaysView *>(Mixer::manager().view(View::DISPLAYS));
+    displays_->scene.ws()->detach( cs->group(View::GEOMETRY) ); 
+}
+
+FrameBuffer *Canvas::getRenderedFrameBuffer() const
+{
+    return output_session_->frame();
+}
+
+void Canvas::update(float dt)
 {
     // Render canvases
     for (auto cit = begin(); cit != end(); ++cit) {
         // render each canvas with their section of the background surface
-        (*cit)->update(0.f);
+        (*cit)->update(dt);
         (*cit)->render();
     }
 
-    // update render session
-    if ( render_session_ )
-        render_session_->update(0.f);   
+    // update all CanvasSources in the output session
+    if ( output_session_ ) {
+
+        // update session
+        output_session_->update(dt);
+
+        // manage failed SessionSources 
+        SourceListUnique _failedsources = output_session_->failedSources();
+        for(auto it = _failedsources.begin(); it != _failedsources.end(); ++it)  {
+            // intervention depends on the severity of the failure
+            Source::Failure fail = (*it)->failed();
+            if (fail == Source::FAIL_RETRY) {
+                // resolution of output changed : recreate source / update ? TODO
+            }
+            else {
+                // only other case is FAIL_FATAL ; delete source
+                output_session_->deleteSource(*it);
+            }
+        }
+    }
 }
 
 void Canvas::addSurface()
@@ -162,11 +219,13 @@ SourceList::iterator Canvas::end ()
     return canvases_.end();
 }
 
-CanvasSurface *Canvas::at (size_t index) {
+CanvasSurface *Canvas::at (size_t index) 
+{    
+    if (canvases_.size() == 0 || index >= canvases_.size())
+        return nullptr;
 
     auto it = canvases_.begin();
     std::advance(it, MIN(index, canvases_.size() - 1));
-    // NB : assume that canvases_ contains only CanvasSource elements and has at least one element
     return static_cast<CanvasSurface *>(*it);
 }
 
@@ -315,10 +374,4 @@ void Canvas::save(const std::string &filename)
     XMLError eResult = xmlDoc.SaveFile( settingsFilename.c_str());
     XMLResultError(eResult);
     
-}
-
-
-FrameBuffer *Canvas::getRenderedFrameBuffer() const 
-{ 
-    return render_session_->frame(); 
 }

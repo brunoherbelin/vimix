@@ -212,7 +212,7 @@ void Mixer::update()
     session_->update(dt_);
 
     // update canvases
-    Canvas::manager().update();
+    Canvas::manager().update(dt_);
 
     // grab frames to recorders & streamers
     FrameGrabbing::manager().grabFrame(session_->frame(), static_cast<guint64>(dt__));
