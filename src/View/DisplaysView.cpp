@@ -247,8 +247,10 @@ void  DisplaysView::recenter ()
     bounding_box.x = bounding_box.y =  std::numeric_limits<int>::max();
     bounding_box.z = bounding_box.w =  std::numeric_limits<int>::min(); 
 
-    for (auto monitor_iter = Rendering::manager().monitors().begin();
-         monitor_iter != Rendering::manager().monitors().end(); ++monitor_iter) {
+    std::list<Rendering::Monitor> rendering_monitors = Rendering::manager().monitorsList();
+
+    for (auto monitor_iter = rendering_monitors.begin();
+         monitor_iter != rendering_monitors.end(); ++monitor_iter) {
 
         // update bounding box
         bounding_box.x = MIN(bounding_box.x, monitor_iter->geometry.x);
@@ -256,22 +258,13 @@ void  DisplaysView::recenter ()
         bounding_box.z = MAX(bounding_box.z, monitor_iter->geometry.x + monitor_iter->geometry.z);
         bounding_box.w = MAX(bounding_box.w, monitor_iter->geometry.y + monitor_iter->geometry.w);  
     }
-
     setCoordinates(output_surface_, bounding_box, bounding_box);
-    // g_printerr("bounding (%d %d)  %d x %d \n", bounding_box.x, bounding_box.y,
-    //        bounding_box.z, bounding_box.w);
-    // g_printerr("surface  (%f %f)  %f x %f \n", output_surface_->translation_.x, output_surface_->translation_.y,
-    //        output_surface_->scale_.x, output_surface_->scale_.y);
 
 
     // fill scene background with the frames to show monitors
     int index = 1;
-    for (auto monitor_iter = Rendering::manager().monitors().begin();
-         monitor_iter != Rendering::manager().monitors().end(); ++monitor_iter, ++index) {
-
-        // g_printerr("add monitor (%d %d)  %d x %d \n", monitor_iter->geometry.x, monitor_iter->geometry.y,
-        //    monitor_iter->geometry.z, monitor_iter->geometry.w   );
-
+    for (auto monitor_iter = rendering_monitors.begin();
+         monitor_iter != rendering_monitors.end(); ++monitor_iter, ++index) {
 
         // add a background dark surface with glow shadow
         Group *m = new Group;
@@ -302,9 +295,6 @@ void  DisplaysView::recenter ()
         // f->attach(frame);
         // monitors_layout_->attach(f);
 
-//        g_printerr("- display %f,%f  %f,%f\n", rect.x, rect.y, rect.p, rect.q);
-//        g_printerr("          %f,%f  %f,%f\n", m->translation_.x, m->translation_.y,
-//                   m->scale_.x, m->scale_.y);
     }
 
 
@@ -487,8 +477,9 @@ void DisplaysView::draw()
     ImGuiContext& g = *GImGui;
 
     auto group_it = monitors_.begin();
-    for (auto monitor_iter = Rendering::manager().monitors().begin();
-         monitor_iter != Rendering::manager().monitors().end(); ++monitor_iter, ++group_it) {
+    std::list<Rendering::Monitor> rendering_monitors = Rendering::manager().monitorsList();
+    for (auto monitor_iter = rendering_monitors.begin();
+         monitor_iter != rendering_monitors.end(); ++monitor_iter, ++group_it) {
 
         // Locate monitor upper left corner
         glm::vec3 pos = (*group_it)->translation_;
@@ -738,20 +729,6 @@ void DisplaysView::setCurrentCanvasSource(Source *c)
     current_canvas_source_ = c;
     current_canvas_source_->setMode(Source::CURRENT);
 
-
-
-    // current_canvas_source_->manipulator_->setActive(0);
-    // current_canvas_source_->handles_[View::GEOMETRY][Handles::EDIT_SHAPE]->visible_ = false;
-    // current_canvas_source_->handles_[View::GEOMETRY][Handles::EDIT_CROP]->visible_ = false;
-
-    // current_canvas_source_->handles_[View::GEOMETRY][Handles::NODE_LOWER_RIGHT]->visible_ = false;
-    // current_canvas_source_->handles_[View::GEOMETRY][Handles::NODE_LOWER_LEFT]->visible_ = false;
-    // current_canvas_source_->handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT]->visible_ = false;
-    // current_canvas_source_->handles_[View::GEOMETRY][Handles::NODE_UPPER_LEFT]->visible_ = false;
-    // current_canvas_source_->handles_[View::GEOMETRY][Handles::ROUNDING]->visible_ = false;
-    // current_canvas_source_->handles_[View::GEOMETRY][Handles::CROP_H]->visible_ = false;
-    // current_canvas_source_->handles_[View::GEOMETRY][Handles::CROP_V]->visible_ = false;
-    // current_canvas_source_->handles_[View::GEOMETRY][Handles::MENU]->visible_ = true;
 }
 
 bool DisplaysView::canSelect(Source *) {
@@ -797,11 +774,9 @@ void DisplaysView::terminate(bool force)
 {
     // terminate pending action
     if (current_action_ongoing_ || force) {
-
         // terminated
         current_action_ = "";
         current_action_ongoing_ = false;
-
     }
 
     // hide all view overlays
@@ -827,7 +802,6 @@ void DisplaysView::terminate(bool force)
             (*sit)->handles_[View::GEOMETRY][h]->visible_ = true;
     }
 }
-
 
 
 View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick)

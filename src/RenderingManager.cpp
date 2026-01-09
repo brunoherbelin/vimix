@@ -536,7 +536,7 @@ bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags, int num_
 }
 
 
-std::list<Rendering::Monitor>& Rendering::monitors()
+std::list<Rendering::Monitor> Rendering::monitorsList() const
 {
     std::lock_guard<std::mutex> lock(monitors_mutex_);
     return monitors_;
@@ -637,37 +637,40 @@ void Rendering::drawOutputWindows()
 
 void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
 {
-    std::lock_guard<std::mutex> lock(Rendering::manager().monitors_mutex_);
+    // lock monitors list while updating it
+    {
+        std::lock_guard<std::mutex> lock(Rendering::manager().monitors_mutex_);
 
-    // reset list of monitors
-    Rendering::manager().monitors_.clear();
+        // reset list of monitors
+        Rendering::manager().monitors_.clear();
 
-    // list monitors with GLFW
-    int count_monitors = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
+        // list monitors with GLFW
+        int count_monitors = 0;
+        GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
 
-    // Fill list of monitors of rendering manager
-    for (int i = 0; i < count_monitors;  i++) {
-        // fill monitor structure
-        int x = 0, y = 0;
-        glfwGetMonitorPos(monitors[i], &x, &y);
-        const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
-        std::string n = glfwGetMonitorName(monitors[i]);
-        glm::ivec4 geometry(x, y, vm->width, vm->height);
-        // add to list
-        Rendering::manager().monitors_.push_back(Monitor(monitors[i], n, geometry));
-        // add to settings if not already present
-        if ( Settings::application.monitors.find(n) == Settings::application.monitors.end() ) {
-            // sets default config for this monitor
-            Settings::application.monitors[n] = Settings::MonitorConfig();
-        }
-        else if (Settings::application.monitors[n].active_output) {
-            // activate output window if previously active
-            Rendering::manager().monitors_.back().output.setActive(true);
+        // Fill list of monitors of rendering manager
+        for (int i = 0; i < count_monitors;  i++) {
+            // fill monitor structure
+            int x = 0, y = 0;
+            glfwGetMonitorPos(monitors[i], &x, &y);
+            const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
+            std::string n = glfwGetMonitorName(monitors[i]);
+            glm::ivec4 geometry(x, y, vm->width, vm->height);
+            // add to list
+            Rendering::manager().monitors_.push_back(Monitor(monitors[i], n, geometry));
+            // add to settings if not already present
+            if ( Settings::application.monitors.find(n) == Settings::application.monitors.end() ) {
+                // sets default config for this monitor
+                Settings::application.monitors[n] = Settings::MonitorConfig();
+            }
+            else if (Settings::application.monitors[n].active_output) {
+                // activate output window if previously active
+                Rendering::manager().monitors_.back().output.setActive(true);
+            }
         }
     }
 
-    // inform Displays View that monitors changed
+    // inform Displays View that monitors changed (after releasing the lock)
     if (event != GLFW_DONT_CARE)
         Mixer::manager().view(View::DISPLAYS)->recenter();
 

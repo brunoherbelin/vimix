@@ -82,7 +82,7 @@ public:
     glm::vec2 project(glm::vec3 scene_coordinate, glm::mat4 modelview = glm::mat4(1.f), bool to_framebuffer = true);
 
     // monitors management
-    std::list<Monitor>& monitors();
+    std::list<Monitor> monitorsList() const;
     // get which monitor has this name, main monitor if not found
     GLFWmonitor *monitorNamed(const std::string &name);
     // get which monitor contains this point, main monitor if not found
@@ -138,7 +138,7 @@ private:
 
     // monitors
     std::list<Monitor> monitors_;
-    std::mutex monitors_mutex_;
+    mutable std::mutex monitors_mutex_;
 
     Screenshot screenshot_;
     bool request_screenshot_;
