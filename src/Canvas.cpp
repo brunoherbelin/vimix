@@ -121,11 +121,6 @@ void Canvas::detachCanvasSource(CanvasSource *cs)
     output_session_->deleteSource( cs );
 }
 
-FrameBuffer *Canvas::getRenderedFrameBuffer() const
-{
-    return output_session_->frame();
-}
-
 void Canvas::update(float dt)
 {
     // Render canvases
@@ -156,6 +151,10 @@ void Canvas::update(float dt)
                 (*it)->touch();
             }
         }
+
+        // if resolution of output framebuffer changed, update session resolution
+        if (output_session_->frame() && output_session_->frame()->resolution() != Rendering::manager().monitorsResolution())
+            output_session_->setResolution(Rendering::manager().monitorsResolution());
     }
 }
 

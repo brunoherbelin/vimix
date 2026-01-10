@@ -43,9 +43,6 @@ public:
     void attachCanvasSource(CanvasSource *cs);
     void detachCanvasSource(CanvasSource *cs);
 
-    // get result of rendering canvases
-    FrameBuffer *getRenderedFrameBuffer() const;
-
     // canvases are updated each frame in Mixer 
     void update(float dt);
 
