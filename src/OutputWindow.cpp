@@ -232,7 +232,8 @@ bool OutputWindow::draw(FrameBuffer *fb)
 
     if (!Settings::application.render.disabled) {
 
-        // create surface if needed (VAO is not shared between contexts)
+        // create surface if needed 
+        // (NB: special OutputWindowSurface because VAO are not shared between contexts)
         if (surface_ == nullptr) {
             shader_ = new ImageFilteringShader;
             shader_->setCode( whitebalance.code().first );
@@ -258,22 +259,29 @@ bool OutputWindow::draw(FrameBuffer *fb)
         }
 
         // render the framebuffer texture to the output window
-        // using the orthographic projection adapted to window position and size (vertical flip)
-        int x = 0, y = 0, w = 2, h = 2;
-        glfwGetWindowPos(window_, &x, &y);
-        glfwGetWindowSize(window_, &w, &h);
-        glm::mat4 projection = glm::ortho(float(x), float(x+w),
-                                         float(y+h), float(y),
-                                         -1.f, 1.f);
+        int x = 0, y = 0, w = fb->resolution().x, h = fb->resolution().y;
 
         // if test pattern requested, set its texture
         if (show_pattern_) {
             pattern_->update();
             surface_->setTextureIndex(pattern_->texture());
         }
-        else    
+        // otherwise render the framebuffer
+        else {
             surface_->setTextureIndex(fb->texture());
+            // project only the part of framebuffer visible in the window
+            glfwGetWindowPos(window_, &x, &y);
+            glfwGetWindowSize(window_, &w, &h);
+        }
+
+        // draw texture on surface
         surface_->update(0.f);
+
+        // draw surface on output window
+        // using the orthographic projection adapted to window position and size (vertical flip)
+        glm::mat4 projection = glm::ortho(float(x), float(x+w),
+                                         float(y+h), float(y),
+                                         -1.f, 1.f);
         surface_->draw(glm::identity<glm::mat4>(), projection);
 
         // done drawing (unload shader from this glcontext)

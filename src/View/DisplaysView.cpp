@@ -76,19 +76,22 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
         restoreSettings();
     Settings::application.views[mode_].name = "Displays";
 
-
+    //
+    // Monitors in the background
+    //
+    // a surface showing bounding box of all monitors
     boundingbox_surface_ = new Surface;
     boundingbox_surface_->visible_ = true;
     boundingbox_surface_->shader()->color = glm::vec4(1.f, 1.f, 1.f, 0.4f);
-    // TODO : is the output surface needed in displays view ? 
     scene.bg()->attach(boundingbox_surface_);
 
-    // monitors layout background
+    // monitors layout surfaces and frames
     monitors_layout_ = new Group;
     monitors_layout_->visible_ = true;
     scene.bg()->attach(monitors_layout_);
     horizontal_layout_ = true;
 
+    //
     // User interface foreground
     //
     // point to show POSITION
@@ -165,7 +168,6 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     gridroot_ = new Group;
     gridroot_->visible_ = false;
     scene.root()->attach(gridroot_);
-
     // replace grid with appropriate one
     if (grid)  delete grid;
     grid = new TranslationGrid(gridroot_);
@@ -174,6 +176,7 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     // manage canvas sources
     current_canvas_source_ = nullptr;
 
+    // initial layouting
     recenter();
 }
 
@@ -272,21 +275,14 @@ void  DisplaysView::recenter ()
         label->setChar( std::to_string(index).back() );
         label->color = glm::vec4( COLOR_MONITOR, 1.f );
         label->translation_.y =  0.015f ;
-        label->scale_.y =  0.3f / (DISPLAYS_UNIT * monitor.geometry.w);
+        label->scale_.y =  0.25f / (DISPLAYS_UNIT * monitor.geometry.w);
         m->attach(label);
 
         // add monitor to layout
         monitors_layout_->attach( m );
         monitors_[monitor.name] = m;
 
-        // add a color frame 
-        // Group *f = new Group;
-        // f->copyTransform(m);
-        // frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
-        // frame->color = glm::vec4( COLOR_MONITOR, 0.2f );
-        // f->attach(frame);
-        // monitors_layout_->attach(f);
-
+        // count monitors
         ++index;
     }
 
@@ -433,12 +429,14 @@ void DisplaysView::draw()
     // 0. prepare projection for draw visitors
     glm::mat4 projection = Rendering::manager().Projection();
 
-    // Draw background display of monitors
-    DrawVisitor draw_monitors(monitors_layout_, projection);
-    scene.accept(draw_monitors);
-
+    // Draw background display of monitors bounding box
     DrawVisitor draw_rendering(boundingbox_surface_, projection);
     scene.accept(draw_rendering);
+
+    // Draw background display of monitors layout
+    // TODO MAKE IT OPTIONAL ?
+    DrawVisitor draw_monitors(monitors_layout_, projection);
+    scene.accept(draw_monitors);
 
     // Draw surface of Canvas sources 
     DrawVisitor draw_sources(source_surfaces, projection, true); 
@@ -485,9 +483,9 @@ void DisplaysView::draw()
 
             // Set window position depending on icons size
             if (horizontal_layout_)
-                ImGui::SetNextWindowPos(ImVec2(P.x - 20.f, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
+                ImGui::SetNextWindowPos(ImVec2(P.x - IMGUI_SAME_LINE, P.y - ImGui::GetFrameHeightWithSpacing() - IMGUI_TOP_ALIGN ), ImGuiCond_Always);
             else
-                ImGui::SetNextWindowPos(ImVec2(P.x - 2.f * ImGui::GetFrameHeight(), P.y + 10.f), ImGuiCond_Always);
+                ImGui::SetNextWindowPos(ImVec2(P.x - 2.f * ImGui::GetFrameHeightWithSpacing(), P.y), ImGuiCond_Always);
 
             if (ImGui::Begin(monitor.name.c_str(), NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
                             | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
@@ -583,12 +581,21 @@ void DisplaysView::draw()
                     Settings::application.monitors[monitor.name] = Settings::MonitorConfig();
                     (monitor.output).setShowPattern(false);
                 }
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip("Reset adjustments");
+
+                // OUTPUT DISABLED indicator
+                if (Settings::application.render.disabled)
+                {
+                    if (horizontal_layout_) 
+                        ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 0.8f));
+                    ImGui::Text(ICON_FA_EYE_SLASH);
+                    ImGui::PopStyleColor(1);
+                    if (ImGui::IsItemHovered())
+                        ImGuiToolkit::ToolTip("Output globally disabled", SHORTCUT_OUTPUTDISABLE);
+                }
 
                 ImGui::PopStyleColor(8);
                 ImGui::End();
-
             }
 
         }

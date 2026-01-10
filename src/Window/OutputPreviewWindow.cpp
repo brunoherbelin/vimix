@@ -599,7 +599,7 @@ void OutputPreviewWindow::Render()
         if (Settings::application.render.disabled)
         {
             ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + imagesize.y - 2.f*r));
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_WINDOW, 0.8f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 0.8f));
             ImGui::Text(ICON_FA_EYE_SLASH);
             ImGui::PopStyleColor(1);
         }
