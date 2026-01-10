@@ -91,17 +91,14 @@ void CanvasSurface::init()
     if (Canvas::manager().framebuffer_ 
         && Canvas::manager().framebuffer_->texture() != Resource::getTextureBlack()) {
 
-        if (renderbuffer_ != nullptr)
-            delete renderbuffer_;
-
         // create Frame buffer matching size of output session
         FrameBuffer *renderbuffer = new FrameBuffer( Canvas::manager().framebuffer_->resolution() );
 
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
 
-        // deep update to reorder
-        ++View::need_deep_update_;
+        // set output texture
+        texturesurface_->setTextureIndex( Canvas::manager().framebuffer_->texture() );
 
         // done init
         Log::Info("Canvas '%s' linked to output (%d x %d).", name().c_str(), int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
@@ -124,8 +121,8 @@ void CanvasSurface::render ()
         translation.z = 0.f;
         translation.x /= Canvas::manager().framebuffer_->aspectRatio();
 
-        // ensure correct output texture is displayed (could have changed if canvas framebuffer changed)
-        texturesurface_->setTextureIndex( Canvas::manager().framebuffer_->texture() );
+        // // ensure correct output texture is displayed (could have changed if canvas framebuffer changed)
+        // texturesurface_->setTextureIndex( Canvas::manager().framebuffer_->texture() );
 
         // render 
         renderbuffer_->begin();
@@ -199,10 +196,11 @@ Source::Failure CanvasSource::failed() const
 {
     CanvasSurface *canvas = Canvas::manager().at(canvas_index_);
 
+    // the canvas surface does not exist anymore
     if (canvas == nullptr)
         return FAIL_FATAL;
-    else if ( rendered_output_ != nullptr && canvas != nullptr ) {
-        // the renreding output was created, but resolution changed
+    // the canvas surface exists but resolution changed
+    else if ( rendered_output_ != nullptr && renderbuffer_ != nullptr ) {
         if ( rendered_output_->resolution() != canvas->frame()->resolution()
              // or alpha channel changed (e.g. inside SessionSource)
              || ( ( rendered_output_->flags() & FrameBuffer::FrameBuffer_alpha ) != ( canvas->frame()->flags() & FrameBuffer::FrameBuffer_alpha ) )

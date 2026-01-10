@@ -40,10 +40,8 @@
 #include "Toolkit/ImGuiToolkit.h"
 #include "imgui_internal.h"
 
-#include "Log.h"
-#include "Filter/ImageFilter.h"
-#include "Mixer.h"
 #include "defines.h"
+#include "Mixer.h"
 #include "Source/Source.h"
 #include "Settings.h"
 #include "Visitor/PickingVisitor.h"
@@ -53,6 +51,7 @@
 #include "Visitor/BoundingBoxVisitor.h"
 #include "RenderingManager.h"
 #include "GeometryHandleManipulation.h"
+#include "MousePointer.h"
 #include "Canvas.h"
 
 #include "DisplaysView.h"
@@ -227,7 +226,7 @@ void setCoordinates(Node *node, glm::ivec4 coordinates, glm::ivec4 bounding_box)
     node->translation_.y += 0.5f * DISPLAYS_UNIT * (bounding_box.y + bounding_box.w);
 
     // scaling to fit in scene
-    // horizontal layout : scale to height (w component of bounding box) 
+    // scale to height (w component of bounding box) 
     // because projection in OutputWindow is based on height 1.0
     float scalingratio = 1.f / (0.5f * DISPLAYS_UNIT * float(bounding_box.w) );
     node->scale_ *= glm::vec3( scalingratio, scalingratio, 1.f ); 
@@ -983,14 +982,17 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
             //
             // compute effective translation of current source s
             source_target = sourceNode->translation_ - current_canvas_source_->stored_status_->translation_;
-            // loop over selection
-            for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
-                if ( *it != current_canvas_source_ && !(*it)->locked() ) {
-                    // translate and request update
-                    (*it)->group(View::GEOMETRY)->translation_ = (*it)->stored_status_->translation_ + source_target;
-                    (*it)->touch();
-                }
-            }
+
+            // TODO manage selection of canvas sources
+
+            // // loop over selection
+            // for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
+            //     if ( *it != current_canvas_source_ && !(*it)->locked() ) {
+            //         // translate and request update
+            //         (*it)->group(View::GEOMETRY)->translation_ = (*it)->stored_status_->translation_ + source_target;
+            //         (*it)->touch();
+            //     }
+            // }
 
             // Show center overlay for POSITION
             overlay_position_->visible_ = true;
@@ -1017,24 +1019,71 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
     return ret;
 }
 
-bool DisplaysView::doubleclic (glm::vec2 P)
-{
-    // // bring window forward
-    // if ( pick(P).first != nullptr) {
-    //     Rendering::manager().outputWindow(current_window_).show();
-    //     return true;
-    // }
 
-    return false;
-}
-
-#define TIME_STEP 500
+#define MAX_DURATION 1000.f
+#define MIN_SPEED_A 0.005f
+#define MAX_SPEED_A 0.5f
 
 void DisplaysView::arrow (glm::vec2 movement)
 {
-    static uint _time = 0;
+static float _duration = 0.f;
     static glm::vec2 _from(0.f);
     static glm::vec2 _displacement(0.f);
+
+    Source *current = current_canvas_source_;
+
+    if (current) {
+
+        if (current_action_ongoing_) {
+
+            // add movement to displacement
+            _duration += dt_;
+            const float speed = MIN_SPEED_A + (MAX_SPEED_A - MIN_SPEED_A) * glm::min(1.f,_duration / MAX_DURATION);
+            _displacement += movement * dt_ * speed;
+
+            // set coordinates of target
+            glm::vec2 _to  = _from + _displacement;
+
+            // update mouse pointer action
+            MousePointer::manager().active()->update(_to, dt_ / 1000.f);
+
+            // simulate mouse grab
+            grab(current, _from, MousePointer::manager().active()->target(),
+                 std::make_pair(current->group(mode_), glm::vec2(0.f) ) );
+
+            // draw mouse pointer effect
+            MousePointer::manager().active()->draw();
+        }
+        else {
+
+            if (UserInterface::manager().altModifier() || Settings::application.mouse_pointer_lock)
+                MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
+            else
+                MousePointer::manager().setActiveMode( Pointer::POINTER_DEFAULT );
+
+            // reset
+            _duration = 0.f;
+            _displacement = glm::vec2(0.f);
+
+            // initiate view action and store status of source
+            initiate();
+
+            // get coordinates of source and set this as start of mouse position
+            _from = glm::vec2( Rendering::manager().project(current->group(mode_)->translation_, scene.root()->transform_) );
+
+            // Initiate mouse pointer action
+            MousePointer::manager().active()->initiate(_from);
+        }
+    }
+    else {
+        terminate(true);
+
+        // reset
+        _duration = 0.f;
+        _from = glm::vec2(0.f);
+        _displacement = glm::vec2(0.f);
+    }
+
 
 }
 

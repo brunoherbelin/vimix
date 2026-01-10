@@ -327,7 +327,8 @@ void GeometryView::draw()
 
     // 2. Draw surface of sources in the current workspace
     DrawVisitor draw_sources(source_surfaces, projection);
-    scene.accept(draw_sources);
+    if (editor_mode_ != EDIT_CANVAS)
+        scene.accept(draw_sources);
 
     // 3. Draw canvases on top of sources // foreground ?
     DrawVisitor draw_canvases(canvas_surfaces, projection);

@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <glib.h>
 #include <tinyxml2.h>
 using namespace tinyxml2;
 
@@ -94,9 +95,10 @@ void Canvas::setInputFrameBuffer(FrameBuffer *fb)
     // set new framebuffer
     framebuffer_ = fb;
 
-    // reset all canvases to attach to new framebuffer
+    // reset all canvas surfaces to attach to new framebuffer
     for (auto cit = begin(); cit != end(); ++cit) {
         (*cit)->reload();
+        (*cit)->touch();
     }
 }
 
@@ -118,11 +120,11 @@ void Canvas::detachCanvasSource(CanvasSource *cs)
     if (!cs)
         return;
 
-    cs->setActive( false );
-    output_session_->deleteSource( cs );
-
     DisplaysView *displays_ = static_cast<DisplaysView *>(Mixer::manager().view(View::DISPLAYS));
     displays_->scene.ws()->detach( cs->group(View::GEOMETRY) ); 
+
+    cs->setActive( false );
+    output_session_->deleteSource( cs );
 }
 
 FrameBuffer *Canvas::getRenderedFrameBuffer() const
@@ -150,12 +152,14 @@ void Canvas::update(float dt)
         for(auto it = _failedsources.begin(); it != _failedsources.end(); ++it)  {
             // intervention depends on the severity of the failure
             Source::Failure fail = (*it)->failed();
-            if (fail == Source::FAIL_RETRY) {
-                // resolution of output changed : recreate source / update ? TODO
+            if (fail == Source::FAIL_FATAL) {
+                // in case FAIL_FATAL ; delete source
+                detachCanvasSource( static_cast<CanvasSource *>(*it));
             }
-            else {
-                // only other case is FAIL_FATAL ; delete source
-                output_session_->deleteSource(*it);
+            else if (fail == Source::FAIL_RETRY) {
+                // Retry if resolution of output changed : just reload
+                (*it)->reload();
+                (*it)->touch();
             }
         }
     }
