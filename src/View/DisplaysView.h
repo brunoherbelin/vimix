@@ -31,7 +31,7 @@ private:
 
     Surface *boundingbox_surface_;
     Group *monitors_layout_;
-    std::map<std::string, Group *> monitors_;
+    std::map<std::string, Switch *> monitors_;
     bool horizontal_layout_;
 
     Node *overlay_position_;

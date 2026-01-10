@@ -260,27 +260,46 @@ void  DisplaysView::recenter ()
     monitors_.clear();
     for (auto& monitor : Rendering::manager().monitorsUnsafe()) {
 
-        // add a background dark surface with glow shadow
-        Group *m = new Group;
-        setCoordinates(m, monitor.geometry, bbox);
+        Switch *monitor_switch = new Switch;
+        setCoordinates(monitor_switch, monitor.geometry, bbox);
+
+        // DISABLED
+        Group *m1 = new Group;
         Surface *surf = new Surface( new Shader);
-        surf->shader()->color =  glm::vec4( 0.1f, 0.1f, 0.1f, 1.f );
-        m->attach(surf);
+        surf->shader()->color =  glm::vec4( 0.1f, 0.1f, 0.1f, 0.8f );
+        m1->attach(surf);
         // Monitor color frame
-        Frame *frame = new Frame(Frame::SHARP, Frame::THIN, Frame::GLOW);
-        frame->color = glm::vec4( COLOR_MONITOR, 1.f);
-        m->attach(frame);
+        Frame *frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+        frame->color = glm::vec4( COLOR_MONITOR, 0.8f);
+        m1->attach(frame);
         // central label
         Character  *label = new Character(4);
         label->setChar( std::to_string(index).back() );
-        label->color = glm::vec4( COLOR_MONITOR, 1.f );
+        label->color = glm::vec4( COLOR_MONITOR, 0.8f );
         label->translation_.y =  0.015f ;
         label->scale_.y =  0.25f / (DISPLAYS_UNIT * monitor.geometry.w);
-        m->attach(label);
+        m1->attach(label);
 
-        // add monitor to layout
-        monitors_layout_->attach( m );
-        monitors_[monitor.name] = m;
+        // ENABLED
+        Group *m2 = new Group;
+        Surface *surf2 = new Surface( new Shader);
+        surf2->shader()->color =  glm::vec4( 0.05f, 0.05f, 0.05f, 1.f );
+        m2->attach(surf2);
+        // Monitor color frame
+        Frame *frame2 = new Frame(Frame::SHARP, Frame::THIN, Frame::GLOW);
+        frame2->color = glm::vec4( COLOR_MONITOR, 1.f);
+        m2->attach(frame2);
+        // central label
+        m2->attach(label);
+
+        // SETUP SWITCH
+        monitor_switch->attach( m1 );
+        monitor_switch->attach( m2 );
+        monitor_switch->setActive(0); // by default disabled
+
+        // add monitor switch to layout
+        monitors_layout_->attach( monitor_switch );
+        monitors_[monitor.name] = monitor_switch;
 
         // count monitors
         ++index;
@@ -473,10 +492,11 @@ void DisplaysView::draw()
             glm::vec3 pos;
             auto it = monitors_.find(monitor.name);
             if (it != monitors_.end()) {
-                Group* group = it->second;
+                Switch* group = it->second;
                 pos = group->translation_;
                 pos.x -= group->scale_.x;
                 pos.y += group->scale_.y;
+                group->setActive((monitor.output).isActive() ? 1 : 0); // update active state
             }
             glm::vec2 P = Rendering::manager().project(pos, scene.root()->transform_,
                                 Settings::application.mainwindow.fullscreen);
@@ -577,10 +597,11 @@ void DisplaysView::draw()
                 // RESET BUTTON
                 if (horizontal_layout_) 
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
-                if (ImGui::Button(ICON_FA_BACKSPACE )) {
+                if (ImGui::Button(ICON_FA_UNDO_ALT )) {
                     Settings::application.monitors[monitor.name] = Settings::MonitorConfig();
                     (monitor.output).setShowPattern(false);
-                }
+                }if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Reset adjustments");
 
                 // OUTPUT DISABLED indicator
                 if (Settings::application.render.disabled)
@@ -591,7 +612,7 @@ void DisplaysView::draw()
                     ImGui::Text(ICON_FA_EYE_SLASH);
                     ImGui::PopStyleColor(1);
                     if (ImGui::IsItemHovered())
-                        ImGuiToolkit::ToolTip("Output globally disabled", SHORTCUT_OUTPUTDISABLE);
+                        ImGuiToolkit::ToolTip("Mix output disabled", SHORTCUT_OUTPUTDISABLE);
                 }
 
                 ImGui::PopStyleColor(8);
