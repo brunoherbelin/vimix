@@ -71,7 +71,7 @@ private:
     uint history_max_step_;
     uint history_min_step_;
     std::mutex history_access_;
-    static void storeSession(Session *se, std::string label, bool snapshot);
+    static void storeSession(Session *se, std::string label, bool thumbnail);
     void restore(uint target);
 
     uint64_t snapshot_id_;

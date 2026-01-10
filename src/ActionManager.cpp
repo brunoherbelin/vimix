@@ -68,7 +68,7 @@ void Action::init(const std::string &label)
 // (needs opengl update to get thumbnail)
 void captureMixerSession(Session *se, std::string node, 
     std::string label, 
-    bool snapshot,
+    bool thumbnail,
     tinyxml2::XMLDocument *doc = nullptr)
 {
     if (se != nullptr) {
@@ -111,7 +111,7 @@ void captureMixerSession(Session *se, std::string node,
             sessionNode->SetAttribute("shortlabel", short_label.c_str() );
         }
 
-        if (snapshot) {
+        if (thumbnail) {
             // get the thumbnail (requires one opengl update to render)
             FrameBufferImage *thumbnail = se->renderThumbnail();
             if (thumbnail) {
@@ -140,7 +140,7 @@ void captureMixerSession(Session *se, std::string node,
     }
 }
 
-void Action::storeSession(Session *se, std::string label, bool snapshot)
+void Action::storeSession(Session *se, std::string label, bool thumbnail)
 {
     // lock for creation of first step
     Action::manager().history_access_.lock();
@@ -168,7 +168,7 @@ void Action::storeSession(Session *se, std::string label, bool snapshot)
     captureMixerSession(se,
                         HISTORY_NODE(Action::manager().history_step_),
                         label,
-                        snapshot,
+                        thumbnail,
                         &Action::manager().history_doc_
                         );
 
