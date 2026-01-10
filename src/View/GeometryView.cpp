@@ -442,12 +442,9 @@ void GeometryView::draw()
         // CANVAS EDIT OPTIONS
         if (editor_mode_ == EDIT_CANVAS) {
 
-            const float padding = ImGui::GetStyle().FramePadding.x ;
-            const float spacing = ImGui::GetStyle().FrameRounding ;
-
             // - Remove canvas
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (Canvas::manager().size() > 1) {
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
                 if (ImGui::Button(ICON_FA_MINUS )) {
                     // remove last canvas
                     Canvas::manager().removeSurface();
@@ -456,15 +453,16 @@ void GeometryView::draw()
                 }
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip("Remove canvas");
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
             }
             else{
-                ImGui::SameLine(0, IMGUI_SAME_LINE + padding);
-                ImGui::TextDisabled(ICON_FA_MINUS);
-                ImGui::SameLine(0, IMGUI_SAME_LINE + padding);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 0.5f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
+                ImGui::Button(ICON_FA_MINUS );
+                ImGui::PopStyleColor(2);
             }
 
             // + Add more canvas
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (Canvas::manager().size() < MAX_OUTPUT_CANVAS) {
                 if (ImGui::Button(ICON_FA_PLUS )) {
                     // create new canvas
@@ -474,15 +472,16 @@ void GeometryView::draw()
                 }
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip("Add canvas");
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
             } 
             else {
-                ImGui::SameLine(0, IMGUI_SAME_LINE + padding);
-                ImGui::TextDisabled(ICON_FA_PLUS);
-                ImGui::SameLine(0, IMGUI_SAME_LINE + padding);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 0.5f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
+                ImGui::Button(ICON_FA_MINUS );
+                ImGui::PopStyleColor(2);
             }
 
             // layout selection
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (ImGui::Button(ICON_FA_TH ICON_FA_SORT_DOWN ))
                 ImGui::OpenPopup("combinations_popup");
             if (ImGui::IsItemHovered())

@@ -3,6 +3,9 @@
 
 #include "View.h"
 
+class Source;
+class CanvasSource;
+
 
 class DisplaysView : public View
 {
@@ -45,16 +48,10 @@ private:
     Node *overlay_scaling_grid_;
     Node *overlay_crop_;
 
-
-    Source *current_canvas_source_;
-
+    CanvasSource *current_canvas_source_;
     void setCurrentCanvasSource(Source *c = nullptr);
-    Source *currentCanvasSource() const { return current_canvas_source_; }
-
-    // float output_ar;
-    // Group *current_window_status_;
-    // Group *current_output_status_;
-    // bool show_window_menu_;
+    Source *currentCanvasSource() const;
+    void menuCanvasSource();
 
     Group *gridroot_;
     void adaptGridToWindow(int w = -1);
