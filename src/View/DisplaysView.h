@@ -29,8 +29,10 @@ public:
 
 private:
 
-    Surface *output_surface_;
+    Surface *boundingbox_surface_;
     Group *monitors_layout_;
+    std::map<std::string, Group *> monitors_;
+    bool horizontal_layout_;
 
     Node *overlay_position_;
     Node *overlay_position_cross_;
@@ -58,7 +60,6 @@ private:
     Group *gridroot_;
     void adaptGridToWindow(int w = -1);
 
-    std::list<Group *> monitors_;
 };
 
 

@@ -77,16 +77,17 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     Settings::application.views[mode_].name = "Displays";
 
 
-    output_surface_ = new Surface;
-    output_surface_->visible_ = true;
-    output_surface_->shader()->color = glm::vec4(1.f, 1.f, 1.f, 0.4f);
-
+    boundingbox_surface_ = new Surface;
+    boundingbox_surface_->visible_ = true;
+    boundingbox_surface_->shader()->color = glm::vec4(1.f, 1.f, 1.f, 0.4f);
     // TODO : is the output surface needed in displays view ? 
-//     scene.bg()->attach(output_surface_);
+    scene.bg()->attach(boundingbox_surface_);
 
+    // monitors layout background
     monitors_layout_ = new Group;
     monitors_layout_->visible_ = true;
     scene.bg()->attach(monitors_layout_);
+    horizontal_layout_ = true;
 
     // User interface foreground
     //
@@ -187,7 +188,7 @@ void DisplaysView::update(float dt)
         FrameBuffer *output = Canvas::manager().session()->frame();
         if (output){
 
-            output_surface_->setTextureIndex( output->texture() );
+            boundingbox_surface_->setTextureIndex( output->texture() );
 
             // set grid aspect ratio
             if (Settings::application.proportional_grid)
@@ -222,7 +223,9 @@ void setCoordinates(Node *node, glm::ivec4 coordinates, glm::ivec4 bounding_box)
     node->translation_.x -= 0.5f * DISPLAYS_UNIT * (bounding_box.x + bounding_box.z);
     node->translation_.y += 0.5f * DISPLAYS_UNIT * (bounding_box.y + bounding_box.w);
 
-    // sacling to fit in scene
+    // scaling to fit in scene
+    // horizontal layout : scale to height (w component of bounding box) 
+    // because projection in OutputWindow is based on height 1.0
     float scalingratio = 1.f / (0.5f * DISPLAYS_UNIT * float(bounding_box.w) );
     node->scale_ *= glm::vec3( scalingratio, scalingratio, 1.f ); 
     node->translation_ *= glm::vec3( scalingratio, scalingratio, 1.f ); 
@@ -231,44 +234,32 @@ void setCoordinates(Node *node, glm::ivec4 coordinates, glm::ivec4 bounding_box)
 // recenter is called also when RenderingManager detects a change of monitors
 void  DisplaysView::recenter ()
 {
-    // clear monitors layouy
-    monitors_layout_->clear();
+    glm::ivec4 bbox;
+    bbox.x = bbox.y =  std::numeric_limits<int>::max();
+    bbox.z = bbox.w =  std::numeric_limits<int>::min(); 
 
-    // reset the list of monitor groups
-    monitors_.clear();
+    // lock monitors list while reading it
+    std::lock_guard<std::mutex> lock(Rendering::manager().getMonitorsMutex());
 
-    // reset scene transform
-    scene.root()->translation_.x = 0.f;
-    scene.root()->translation_.y = 0.f;
-    scene.root()->scale_.x = 1.f;
-    scene.root()->scale_.y = 1.f;
-
-    glm::ivec4 bounding_box;
-    bounding_box.x = bounding_box.y =  std::numeric_limits<int>::max();
-    bounding_box.z = bounding_box.w =  std::numeric_limits<int>::min(); 
-
-    std::list<Rendering::Monitor> rendering_monitors = Rendering::manager().monitorsList();
-
-    for (auto monitor_iter = rendering_monitors.begin();
-         monitor_iter != rendering_monitors.end(); ++monitor_iter) {
-
-        // update bounding box
-        bounding_box.x = MIN(bounding_box.x, monitor_iter->geometry.x);
-        bounding_box.y = MIN(bounding_box.y, monitor_iter->geometry.y);
-        bounding_box.z = MAX(bounding_box.z, monitor_iter->geometry.x + monitor_iter->geometry.z);
-        bounding_box.w = MAX(bounding_box.w, monitor_iter->geometry.y + monitor_iter->geometry.w);  
+    // update bounding box
+    for (auto& monitor : Rendering::manager().monitorsUnsafe()) {
+        bbox.x = MIN(bbox.x, monitor.geometry.x);
+        bbox.y = MIN(bbox.y, monitor.geometry.y);
+        bbox.z = MAX(bbox.z, monitor.geometry.x + monitor.geometry.z);
+        bbox.w = MAX(bbox.w, monitor.geometry.y + monitor.geometry.w);  
     }
-    setCoordinates(output_surface_, bounding_box, bounding_box);
-
+    setCoordinates(boundingbox_surface_, bbox, bbox);
 
     // fill scene background with the frames to show monitors
+    // Reset and fill monitors_layout_ and list of monitors_
     int index = 1;
-    for (auto monitor_iter = rendering_monitors.begin();
-         monitor_iter != rendering_monitors.end(); ++monitor_iter, ++index) {
+    monitors_layout_->clear();
+    monitors_.clear();
+    for (auto& monitor : Rendering::manager().monitorsUnsafe()) {
 
         // add a background dark surface with glow shadow
         Group *m = new Group;
-        setCoordinates(m, monitor_iter->geometry, bounding_box);
+        setCoordinates(m, monitor.geometry, bbox);
         Surface *surf = new Surface( new Shader);
         surf->shader()->color =  glm::vec4( 0.1f, 0.1f, 0.1f, 1.f );
         m->attach(surf);
@@ -281,11 +272,12 @@ void  DisplaysView::recenter ()
         label->setChar( std::to_string(index).back() );
         label->color = glm::vec4( COLOR_MONITOR, 1.f );
         label->translation_.y =  0.015f ;
-        label->scale_.y =  0.3f / (DISPLAYS_UNIT * monitor_iter->geometry.w);
+        label->scale_.y =  0.3f / (DISPLAYS_UNIT * monitor.geometry.w);
         m->attach(label);
 
+        // add monitor to layout
         monitors_layout_->attach( m );
-        monitors_.push_back(m);
+        monitors_[monitor.name] = m;
 
         // add a color frame 
         // Group *f = new Group;
@@ -295,39 +287,32 @@ void  DisplaysView::recenter ()
         // f->attach(frame);
         // monitors_layout_->attach(f);
 
+        ++index;
     }
 
-
-    // calculate screen area required to see the entire scene
-    BoundingBoxVisitor scene_visitor_bbox(true);
-    scene.accept(scene_visitor_bbox);
-    GlmToolkit::AxisAlignedBoundingBox scene_box = scene_visitor_bbox.bbox();
-    // calculate the coordinates of top-left window corner: this indicates space available in view
-    static glm::mat4 projection = glm::ortho(-SCENE_UNIT, SCENE_UNIT, -SCENE_UNIT, SCENE_UNIT, -SCENE_DEPTH, 1.f);
-    float viewar = (float) Settings::application.mainwindow.w / (float) Settings::application.mainwindow.h;
-    glm::mat4 scale = glm::scale(glm::identity<glm::mat4>(), glm::vec3(viewar > 1.f ? 1.f : 1.f / viewar, viewar > 1.f ? viewar : 1.f, 1.f));
-    glm::vec4 viewport = glm::vec4(0.f, 0.f, Settings::application.mainwindow.w, Settings::application.mainwindow.h);
-    glm::vec3 view = glm::unProject(glm::vec3(0.f),glm::identity<glm::mat4>(), projection * scale, viewport);
-    view = glm::abs(view);
-
-    // compute scaling to fit the scene box into the view
-    if ( scene_box.scale().x > scene_box.scale().y ) {
-        // horizontal arrangement
-        scene.root()->scale_.x = 1.1f * glm::min(view.x, view.y) / ( scene_box.scale().x );
+    // Adjust scene scaling to fit all monitors in view
+    // take top-left corner in scene coordinates as reference for extents of view
+    glm::vec3 top_left = Rendering::manager().unProject(glm::vec3(0.f, 0.f, 0.f));
+    glm::vec3 view = glm::abs(top_left);
+    // apply scene scaling depending on layout
+    if (boundingbox_surface_->scale_.x >= boundingbox_surface_->scale_.y) {
+        horizontal_layout_ = true;
+        scene.root()->scale_.x = view.x / (DISPLAYS_DEFAULT_SCALE * boundingbox_surface_->scale_.x) ;
         scene.root()->scale_.y = scene.root()->scale_.x;
     }
     else {
-        // vertical arrangement
-        scene.root()->scale_.y = glm::min(view.x, view.y) / ( 1.1f * scene_box.scale().y );
+        horizontal_layout_ = false;
+        scene.root()->scale_.y = view.y / (DISPLAYS_DEFAULT_SCALE * boundingbox_surface_->scale_.y) ;
         scene.root()->scale_.x = scene.root()->scale_.y;
     }
+    // reset scene translation
+    scene.root()->translation_ = glm::vec3(0.f);
 
-    // compute translation to place at the center (considering scaling, + shift for buttons left and above)
-    scene.root()->translation_ = -scene.root()->scale_.x * (scene_box.center() + glm::vec3(-0.02f, 0.02f, 0.f));
 }
 
 void DisplaysView::resize ( int scale )
 {
+    // compute scale
     float z = CLAMP(0.01f * (float) scale, 0.f, 1.f);
     z *= z; // square
     z *= DISPLAYS_MAX_SCALE - DISPLAYS_MIN_SCALE;
@@ -337,9 +322,14 @@ void DisplaysView::resize ( int scale )
     if (scale != size())
         scene.root()->translation_ *= z / scene.root()->scale_.x;
 
-    // apply scaling
+    // apply new scale
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
+
+    // Clamp translation to acceptable area
+    glm::vec3 border = boundingbox_surface_->scale_ * scene.root()->scale_;
+    scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, border);
+
 }
 
 int  DisplaysView::size ()
@@ -447,7 +437,7 @@ void DisplaysView::draw()
     DrawVisitor draw_monitors(monitors_layout_, projection);
     scene.accept(draw_monitors);
 
-    DrawVisitor draw_rendering(output_surface_, projection);
+    DrawVisitor draw_rendering(boundingbox_surface_, projection);
     scene.accept(draw_rendering);
 
     // Draw surface of Canvas sources 
@@ -473,120 +463,138 @@ void DisplaysView::draw()
     //
     // 10. Display interface
     //
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    ImGuiContext& g = *GImGui;
+    {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGuiContext& g = *GImGui;
 
-    auto group_it = monitors_.begin();
-    std::list<Rendering::Monitor> rendering_monitors = Rendering::manager().monitorsList();
-    for (auto monitor_iter = rendering_monitors.begin();
-         monitor_iter != rendering_monitors.end(); ++monitor_iter, ++group_it) {
+        // protected access to monitors list
+        std::lock_guard<std::mutex> lock(Rendering::manager().getMonitorsMutex());
+        for (auto& monitor : Rendering::manager().monitorsUnsafe()) {
 
-        // Locate monitor upper left corner
-        glm::vec3 pos = (*group_it)->translation_;
-        pos.x -= (*group_it)->scale_.x;
-        pos.y += (*group_it)->scale_.y;
-        pos.z = 0.f;
-        glm::vec2 P = Rendering::manager().project(pos, scene.root()->transform_,
-                            Settings::application.mainwindow.fullscreen);
-
-        // Set window position depending on icons size
-        ImGui::SetNextWindowPos(ImVec2(P.x - 20.f, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
-        if (ImGui::Begin((*monitor_iter).name.c_str(), NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
-                        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-                        | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
-        {
-            // colors for UI
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
-            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
-            ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
-            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
-
-            //
-            // Buttons on top
-            //
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if ((monitor_iter->output).isActive()) {
-                // deactivate output
-                if (ImGui::Button(ICON_FA_TOGGLE_ON )) 
-                    (monitor_iter->output).setActive(false);
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip("Deactivate output");
+            // Locate monitor view upper left corner
+            glm::vec3 pos;
+            auto it = monitors_.find(monitor.name);
+            if (it != monitors_.end()) {
+                Group* group = it->second;
+                pos = group->translation_;
+                pos.x -= group->scale_.x;
+                pos.y += group->scale_.y;
             }
-            else {
-                // activate output
-                if (ImGui::Button(ICON_FA_TOGGLE_OFF )) 
-                    (monitor_iter->output).setActive(true);
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip("Activate output");
+            glm::vec2 P = Rendering::manager().project(pos, scene.root()->transform_,
+                                Settings::application.mainwindow.fullscreen);
 
-                // skip rest of window
+            // Set window position depending on icons size
+            if (horizontal_layout_)
+                ImGui::SetNextWindowPos(ImVec2(P.x - 20.f, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
+            else
+                ImGui::SetNextWindowPos(ImVec2(P.x - 2.f * ImGui::GetFrameHeight(), P.y + 10.f), ImGuiCond_Always);
+
+            if (ImGui::Begin(monitor.name.c_str(), NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                            | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                            | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
+            {
+                // colors for UI
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
+                ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.85f, 0.85f, 0.85f, 0.86f));
+                ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
+
+                //
+                // Buttons on top
+                //
+                if (horizontal_layout_)
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if ((monitor.output).isActive()) {
+                    // deactivate output
+                    if (ImGui::Button(ICON_FA_TOGGLE_ON )) 
+                        (monitor.output).setActive(false);
+                    if (ImGui::IsItemHovered())
+                        ImGuiToolkit::ToolTip(std::string("Deactivate monitor ").append(monitor.name).c_str());
+                }
+                else {
+                    // activate output
+                    if (ImGui::Button(ICON_FA_TOGGLE_OFF )) 
+                        (monitor.output).setActive(true);
+                    if (ImGui::IsItemHovered())
+                        ImGuiToolkit::ToolTip(std::string("Activate monitor ").append(monitor.name).c_str());
+
+                    // skip rest of window
+                    ImGui::PopStyleColor(8);
+                    ImGui::End();
+                    continue;
+                }
+
+                // TEST PATTERN BUTTON
+                if (horizontal_layout_)
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                static bool show_test_pattern = false;  
+                show_test_pattern = (monitor.output).isShowPattern();
+                if ( ImGuiToolkit::ButtonIconToggle(11,1, &show_test_pattern, "Test pattern") )
+                    (monitor.output).setShowPattern(show_test_pattern);
+
+                // WHITE BALANCE BUTTON
+                if (horizontal_layout_) {
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    ImGui::SetCursorPosY(2.f * g.Style.FramePadding.y); // hack to align color button to text
+                }
+                
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                glm::vec4 color = Settings::application.monitors[monitor.name].whitebalance;
+                if (ImGui::ColorButton("White balance", ImVec4(color.x, color.y, color.z, 1.f),
+                                    ImGuiColorEditFlags_NoAlpha)) {
+                    if ( !DialogToolkit::ColorPickerDialog::instance().busy()) {
+                        // prepare the color picker to start with white balance color
+                        DialogToolkit::ColorPickerDialog::instance().setRGB( std::make_tuple(color.x, color.y, color.z) );
+                        // declare function to be called
+                        std::string m = monitor.name;
+                        auto applyColor = [m](std::tuple<float, float, float> c)  {
+                            Settings::application.monitors[m].whitebalance.x = std::get<0>(c);
+                            Settings::application.monitors[m].whitebalance.y = std::get<1>(c);
+                            Settings::application.monitors[m].whitebalance.z = std::get<2>(c);
+                        };
+                        // open dialog (starts a thread that will call the 'applyColor' function
+                        DialogToolkit::ColorPickerDialog::instance().open( applyColor );
+                    }
+                }
+                ImGui::PopFont();
+
+                // COLOR ADJUSTMENT POPUP BUTTON
+                if (horizontal_layout_) {
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    ImGui::SetCursorPosY(g.Style.FramePadding.y); // hack to re-align sliders button back
+                }
+
+                if (ImGui::Button(ICON_FA_SLIDERS_H ICON_FA_SORT_DOWN )) {
+                    ImGui::OpenPopup("adjustments_popup");
+                }
+                if (ImGui::BeginPopup("adjustments_popup", ImGuiWindowFlags_NoMove))  {
+                    popup_adjustment_color(Settings::application.monitors[monitor.name]);
+                    ImGui::EndPopup();
+                }
+
+                // RESET BUTTON
+                if (horizontal_layout_) 
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGui::Button(ICON_FA_BACKSPACE )) {
+                    Settings::application.monitors[monitor.name] = Settings::MonitorConfig();
+                    (monitor.output).setShowPattern(false);
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Reset adjustments");
+
                 ImGui::PopStyleColor(8);
                 ImGui::End();
-                continue;
+
             }
 
-            // TEST PATTERN BUTTON
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            static bool show_test_pattern = false;  
-            show_test_pattern = (monitor_iter->output).isShowPattern();
-            if ( ImGuiToolkit::ButtonIconToggle(11,1, &show_test_pattern, "Test pattern") )
-                (monitor_iter->output).setShowPattern(show_test_pattern);
-
-            // WHITE BALANCE BUTTON
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            ImGui::SetCursorPosY(2.f * g.Style.FramePadding.y); // hack to re-align color button to text
-            
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-            glm::vec4 color = Settings::application.monitors[monitor_iter->name].whitebalance;
-            if (ImGui::ColorButton("White balance", ImVec4(color.x, color.y, color.z, 1.f),
-                                   ImGuiColorEditFlags_NoAlpha)) {
-                if ( !DialogToolkit::ColorPickerDialog::instance().busy()) {
-                    // prepare the color picker to start with white balance color
-                    DialogToolkit::ColorPickerDialog::instance().setRGB( std::make_tuple(color.x, color.y, color.z) );
-                    // declare function to be called
-                    std::string m = monitor_iter->name;
-                    auto applyColor = [m](std::tuple<float, float, float> c)  {
-                        Settings::application.monitors[m].whitebalance.x = std::get<0>(c);
-                        Settings::application.monitors[m].whitebalance.y = std::get<1>(c);
-                        Settings::application.monitors[m].whitebalance.z = std::get<2>(c);
-                    };
-                    // open dialog (starts a thread that will call the 'applyColor' function
-                    DialogToolkit::ColorPickerDialog::instance().open( applyColor );
-                }
-            }
-            ImGui::PopFont();
-
-            // COLOR ADJUSTMENT POPUP BUTTON
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            ImGui::SetCursorPosY(g.Style.FramePadding.y); // hack to re-align sliders to text
-
-            if (ImGui::Button(ICON_FA_SLIDERS_H ICON_FA_SORT_DOWN )) {
-                ImGui::OpenPopup("adjustments_popup");
-            }
-            if (ImGui::BeginPopup("adjustments_popup", ImGuiWindowFlags_NoMove))  {
-                popup_adjustment_color(Settings::application.monitors[monitor_iter->name]);
-                ImGui::EndPopup();
-            }
-
-            // RESET BUTTON
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGui::Button(ICON_FA_BACKSPACE )) {
-                Settings::application.monitors[monitor_iter->name] = Settings::MonitorConfig();
-                (monitor_iter->output).setShowPattern(false);
-            }
-            if (ImGui::IsItemHovered())
-                ImGuiToolkit::ToolTip("Reset adjustments");
-
-            ImGui::PopStyleColor(8);
-            ImGui::End();
         }
 
+        ImGui::PopFont();
     }
-    ImGui::PopFont();
 
 
     // // display popup menu

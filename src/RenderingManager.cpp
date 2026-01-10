@@ -535,13 +535,6 @@ bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags, int num_
     return ( RAM.x > framebufferMemoryInKB * (num_buffers + 1) );
 }
 
-
-std::list<Rendering::Monitor> Rendering::monitorsList() const
-{
-    std::lock_guard<std::mutex> lock(monitors_mutex_);
-    return monitors_;
-}
-
 glm::vec3 Rendering::monitorsResolution() 
 {
     std::lock_guard<std::mutex> lock(monitors_mutex_);

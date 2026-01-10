@@ -81,8 +81,10 @@ public:
     // project from scene coordinate to window
     glm::vec2 project(glm::vec3 scene_coordinate, glm::mat4 modelview = glm::mat4(1.f), bool to_framebuffer = true);
 
-    // monitors management
-    std::list<Monitor> monitorsList() const;
+    // Direct access for when caller holds the lock
+    std::list<Monitor>& monitorsUnsafe() { return monitors_; }
+    std::mutex& getMonitorsMutex() { return monitors_mutex_; }
+
     // get which monitor has this name, main monitor if not found
     GLFWmonitor *monitorNamed(const std::string &name);
     // get which monitor contains this point, main monitor if not found

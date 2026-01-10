@@ -35,8 +35,6 @@ using namespace tinyxml2;
 #include "Session.h"
 #include "Mixer.h"
 
-#include "Source/PatternSource.h"
-
 #include "Canvas.h"
 
 Canvas::Canvas() : framebuffer_(nullptr)
@@ -56,8 +54,6 @@ void Canvas::init()
     //  update to draw framebuffer
     output_session_->update( 0.f );
 
-    // glm::vec3 r = output_session_->frame()->resolution();
-    // g_printerr("Canvas manager initialized (%f x %f)\n", r.x, r.y);
 
     // start with one source to put a canvas on
     CanvasSource *s = new CanvasSource;
