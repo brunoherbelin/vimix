@@ -2,6 +2,7 @@
 #define SESSION_H
 
 #include <mutex>
+#include <string>
 
 #include "Source/SourceList.h"
 #include "View/GeometryView.h"
@@ -28,7 +29,7 @@ struct SessionNote
     SessionNote(const std::string &t = "", bool l = false, int s = 0);
 };
 
-#define SNAPSHOT_NODE(i) std::to_string(i).insert(0,1,'S')
+#define SNAPSHOT_NODE(i) (std::string("S") + std::to_string(i))
 
 struct SessionSnapshots {
 

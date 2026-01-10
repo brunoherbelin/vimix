@@ -818,9 +818,9 @@ std::string Session::save(const std::string& filename, Session *session, const s
         // lock access while saving
         session->access_.lock();
 
-        // capture a snapshot of current version if requested (do not create thread)
+        // capture a snapshot of current version if requested (create thread)
         if (!snapshot_name.empty())
-            Action::takeSnapshot(session, snapshot_name, false );
+            Action::takeSnapshot(session, snapshot_name, true );
 
         // save file to disk
         if (SessionVisitor::saveSession(filename, session))

@@ -31,7 +31,7 @@ public:
     void init (const std::string &label);
 
     // Undo History
-    void store (const std::string &label);
+    void store (const std::string &label, bool threaded = true);
     void undo ();
     void redo ();
     void stepTo (uint target);
@@ -71,7 +71,7 @@ private:
     uint history_max_step_;
     uint history_min_step_;
     std::mutex history_access_;
-    static void storeSession(Session *se, std::string label);
+    static void storeSession(Session *se, std::string label, bool snapshot);
     void restore(uint target);
 
     uint64_t snapshot_id_;
