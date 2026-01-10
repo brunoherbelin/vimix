@@ -28,6 +28,7 @@ public:
     uint texture() const override;
 
     glm::vec3 resolution() const;
+    float aspectRatio() const ;
 
     Group *label;
     Character *label_0_, *label_1_;

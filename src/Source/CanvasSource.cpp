@@ -169,6 +169,10 @@ glm::vec3 CanvasSurface::resolution() const
 }
 
 
+float CanvasSurface::aspectRatio() const 
+{
+    return group(View::GEOMETRY)->scale_.x / group(View::GEOMETRY)->scale_.y;
+}
 
 CanvasSource::CanvasSource(uint64_t id) : Source(id), canvas_index_(0),  rendered_output_(nullptr),
     paused_(false), reset_(true)
@@ -249,8 +253,9 @@ void CanvasSource::init()
         // set the renderbuffer of the source and attach rendering nodes
         attach(renderbuffer);
 
-        // adjust aspect ratio of source to match canvas
-        groups_[View::GEOMETRY]->scale_.x = canvas->group(View::GEOMETRY)->scale_.x;
+        // // adjust aspect ratio of source to match canvas
+        // float AR = fb->aspectRatio();
+        // groups_[View::GEOMETRY]->scale_.x = groups_[View::GEOMETRY]->scale_.y * AR;
 
         // deep update to reorder
         ++View::need_deep_update_;

@@ -51,15 +51,9 @@ void Canvas::init()
     // load configuration
     load();
 
+    // set resolution & update to draw framebuffer
     output_session_->setResolution(Rendering::manager().monitorsResolution());
-    //  update to draw framebuffer
     output_session_->update( 0.f );
-
-
-    // start with one source to put a canvas on
-    CanvasSource *s = new CanvasSource;
-    attachCanvasSource( s );
-
 }
 
 void Canvas::terminate()

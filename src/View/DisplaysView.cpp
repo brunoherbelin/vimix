@@ -488,13 +488,26 @@ void DisplaysView::menuCanvasSource ()
             ImGui::PopStyleColor(2);
         }
 
+        if (!horizontal_layout_)
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+
         // + action ADD new canvas source
         if (ImGui::Button(ICON_FA_PLUS )) {
 
-            // start with one source to put a canvas on
+            // create a canvas source of default Canvas 01 
             CanvasSource *s = new CanvasSource;
             Canvas::manager().attachCanvasSource( s );
-                
+
+            CanvasSurface *canvas = Canvas::manager().at(0);
+            float AR = canvas->aspectRatio();
+
+            s->group(View::GEOMETRY)->scale_.x = monitors_.begin()->second->scale_.y * 0.5f * AR;
+            s->group(View::GEOMETRY)->scale_.y = monitors_.begin()->second->scale_.y * 0.5f;
+            s->group(View::GEOMETRY)->rotation_.z = 0;
+            s->group(View::GEOMETRY)->translation_ = monitors_.begin()->second->translation_;
+            s->touch();
+
+            // set as current canvas source
             setCurrentCanvasSource(s);
         }
         if (ImGui::IsItemHovered())
@@ -741,6 +754,17 @@ void DisplaysView::draw()
         
         ImGui::Separator();
 
+        // Restore aspect ratio of Canvas
+        if (ImGui::MenuItem( ICON_FA_EXPAND_ALT "  Restore aspect ratio" )){
+
+            CanvasSurface *canvas = Canvas::manager().at(current_canvas_source_->canvas());
+            float AR = canvas->aspectRatio();
+            current_canvas_source_->group(View::GEOMETRY)->scale_.x = current_canvas_source_->group(View::GEOMETRY)->scale_.y * AR;
+            current_canvas_source_->group(View::GEOMETRY)->scale_.x *= (current_canvas_source_->group(View::GEOMETRY)->crop_[1] - current_canvas_source_->group(View::GEOMETRY)->crop_[0]) /
+                                            (current_canvas_source_->group(View::GEOMETRY)->crop_[2] - current_canvas_source_->group(View::GEOMETRY)->crop_[3]);
+            current_canvas_source_->touch();
+        }
+
         // list of fit to options
         if (ImGui::BeginMenu(ICON_FA_EXPAND "  Fit to...")) {
 
@@ -754,16 +778,23 @@ void DisplaysView::draw()
                 current_canvas_source_->touch();
             }
 
-            size_t i = 1;
-            for ( auto & monitor_pair : monitors_ ) {
-                std::string label = "Monitor " + std::to_string(i++) + " (" + monitor_pair.first + ")";
-                if (ImGui::MenuItem( label.c_str() )) {
-                    current_canvas_source_->group(View::GEOMETRY)->scale_.x = monitor_pair.second->scale_.x / AR;
-                    current_canvas_source_->group(View::GEOMETRY)->scale_.y = monitor_pair.second->scale_.y;
-                    current_canvas_source_->group(View::GEOMETRY)->rotation_.z = 0;
-                    current_canvas_source_->group(View::GEOMETRY)->translation_ = monitor_pair.second->translation_;
-                    current_canvas_source_->touch();
-                    
+            size_t monitor_index = 0;
+            for (auto& monitor : Rendering::manager().monitorsUnsafe()) {
+
+                monitor_index++;
+                std::string monitor_title = "Monitor " + std::to_string(monitor_index);
+                monitor_title += " (" + monitor.name + ")";
+
+                if (ImGui::MenuItem( monitor_title.c_str() )) {
+                    auto it = monitors_.find(monitor.name);
+                    if (it != monitors_.end()) {
+                        Switch* group = it->second;
+                        current_canvas_source_->group(View::GEOMETRY)->scale_.x = group->scale_.x / AR;
+                        current_canvas_source_->group(View::GEOMETRY)->scale_.y = group->scale_.y;
+                        current_canvas_source_->group(View::GEOMETRY)->rotation_.z = 0;
+                        current_canvas_source_->group(View::GEOMETRY)->translation_ = group->translation_;
+                        current_canvas_source_->touch();
+                    }
                 }
             }
 
