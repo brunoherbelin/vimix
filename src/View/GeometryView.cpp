@@ -246,11 +246,18 @@ void GeometryView::resize ( int scale )
     z *= z;
     z *= GEOMETRY_MAX_SCALE - GEOMETRY_MIN_SCALE;
     z += GEOMETRY_MIN_SCALE;
+
+    // centered zoom : if zooming, adjust translation to ratio of scaling
+    if (scale != size())
+        scene.root()->translation_ *= z / scene.root()->scale_.x;
+
+    // apply new scale
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
 
     // Clamp translation to acceptable area
     glm::vec3 border(2.f * Mixer::manager().session()->frame()->aspectRatio(), 2.f, 0.f);
+    border = border * scene.root()->scale_;
     scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, border);
 }
 
