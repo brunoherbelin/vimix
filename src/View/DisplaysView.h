@@ -53,8 +53,9 @@ private:
     Source *currentCanvasSource() const;
     void menuCanvasSource();
 
-    Group *gridroot_;
-    void adaptGridToWindow(int w = -1);
+    void adaptGridToSource(Source *s = nullptr, Node *picked = nullptr);
+    TranslationGrid *translation_grid_;
+    RotationGrid *rotation_grid_;
 
 };
 

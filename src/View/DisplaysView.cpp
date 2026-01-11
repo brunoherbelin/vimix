@@ -164,15 +164,13 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     scene.fg()->attach(overlay_crop_);
     overlay_crop_->visible_ = false;
 
-    // grid is attached to a transform group
-    // to adapt to windows geometry; see adaptGridToWindow()
-    gridroot_ = new Group;
-    gridroot_->visible_ = false;
-    scene.root()->attach(gridroot_);
     // replace grid with appropriate one
-    if (grid)  delete grid;
-    grid = new TranslationGrid(gridroot_);
-    grid->root()->visible_ = false;
+    translation_grid_ = new TranslationGrid(scene.root());
+    translation_grid_->root()->visible_ = false;
+    rotation_grid_ = new RotationGrid(scene.root());
+    rotation_grid_->root()->visible_ = false;
+    if (grid) delete grid;
+    grid = translation_grid_;
 
     // manage canvas sources
     current_canvas_source_ = nullptr;
@@ -196,14 +194,15 @@ void DisplaysView::update(float dt)
 
             // set grid aspect ratio
             if (Settings::application.proportional_grid)
-                grid->setAspectRatio( output->aspectRatio() );
+                translation_grid_->setAspectRatio( output->aspectRatio() );
             else
-                grid->setAspectRatio( 1.f );
+                translation_grid_->setAspectRatio( 1.f );
         }
 
         // change grid color
         ImVec4 c = ImGuiToolkit::HighlightColor();
-        grid->setColor( glm::vec4(c.x, c.y, c.z, 0.3) );
+        translation_grid_->setColor( glm::vec4(c.x, c.y, c.z, 0.3) );
+        rotation_grid_->setColor( glm::vec4(c.x, c.y, c.z, 0.3) );
     }
 
     // specific update when this view is active
@@ -354,31 +353,6 @@ int  DisplaysView::size ()
     return (int) ( sqrt(z) * 100.f);
 }
 
-
-void DisplaysView::adaptGridToWindow(int w)
-{
-    // reset by default
-    gridroot_->scale_ = glm::vec3(1.f);
-    gridroot_->translation_ = glm::vec3(0.f);
-    grid->setAspectRatio(1.f);
-
-
-    // set grid aspect ratio to display size otherwise
-   {
-
-        if (Settings::application.proportional_grid) {
-            // std::string m = Rendering::manager()
-            //                     .monitorNameAt(Settings::application.windows[current_window_ + 1].x,
-            //                                    Settings::application.windows[current_window_ + 1].y);
-            // glm::ivec4 rect = Rendering::manager().monitors()[m];
-
-            // gridroot_->translation_.x = rect.x * DISPLAYS_UNIT;
-            // gridroot_->translation_.y = rect.y * -DISPLAYS_UNIT;
-            // gridroot_->scale_.x = rect.p * 0.5f * DISPLAYS_UNIT;
-            // gridroot_->scale_.y = rect.q * 0.5f * DISPLAYS_UNIT;
-        }
-    }
-}
 
 void popup_adjustment_color(Settings::MonitorConfig &conf) {
     
@@ -817,6 +791,63 @@ void DisplaysView::draw()
 
 }
 
+
+void DisplaysView::adaptGridToSource(Source *s, Node *picked)
+{
+    // Reset by default
+    rotation_grid_->root()->translation_ = glm::vec3(0.f);
+    rotation_grid_->root()->scale_ = glm::vec3(1.f);
+    translation_grid_->root()->translation_ = glm::vec3(0.f);
+    translation_grid_->root()->rotation_.z  = 0.f;
+
+    if (s != nullptr && picked != nullptr) {
+        if (picked == s->handles_[View::GEOMETRY][Handles::ROTATE]) {
+            // shift grid at center of source
+            rotation_grid_->root()->translation_ = s->group(View::GEOMETRY)->translation_;
+            rotation_grid_->root()->scale_.x = glm::length(
+                        glm::vec2(s->frame()->aspectRatio() * s->group(View::GEOMETRY)->scale_.x,
+                                  s->group(View::GEOMETRY)->scale_.y) );
+            rotation_grid_->root()->scale_.y = rotation_grid_->root()->scale_.x;
+            // Swap grid to rotation grid
+            rotation_grid_->setActive( grid->active() );
+            translation_grid_->setActive( false );
+            grid = rotation_grid_;
+            return;
+        }
+        else if ( picked == s->handles_[View::GEOMETRY][Handles::RESIZE] ||
+                  picked == s->handles_[View::GEOMETRY][Handles::RESIZE_V] ||
+                  picked == s->handles_[View::GEOMETRY][Handles::RESIZE_H] ){
+            translation_grid_->root()->translation_ = glm::vec3(0.f);
+            translation_grid_->root()->rotation_.z = s->group(View::GEOMETRY)->rotation_.z;
+            // Swap grid to translation grid
+            translation_grid_->setActive( grid->active() );
+            rotation_grid_->setActive( false );
+            grid = translation_grid_;
+        }
+        else if ( picked == s->handles_[View::GEOMETRY][Handles::SCALE] ||
+                  picked == s->handles_[View::GEOMETRY][Handles::NODE_LOWER_LEFT] ||
+                  picked == s->handles_[View::GEOMETRY][Handles::NODE_UPPER_LEFT] ||
+                  picked == s->handles_[View::GEOMETRY][Handles::NODE_LOWER_RIGHT] ||
+                  picked == s->handles_[View::GEOMETRY][Handles::NODE_UPPER_RIGHT] ||
+                  picked == s->handles_[View::GEOMETRY][Handles::CROP_V] ||
+                  picked == s->handles_[View::GEOMETRY][Handles::CROP_H] ){
+            translation_grid_->root()->translation_ = s->group(View::GEOMETRY)->translation_;
+            translation_grid_->root()->rotation_.z = s->group(View::GEOMETRY)->rotation_.z;
+            // Swap grid to translation grid
+            translation_grid_->setActive( grid->active() );
+            rotation_grid_->setActive( false );
+            grid = translation_grid_;
+        }
+    }
+    else {
+        // Default:
+        // Grid in scene global coordinate
+        translation_grid_->setActive( grid->active()  );
+        rotation_grid_->setActive( false );
+        grid = translation_grid_;
+    }
+}
+
 std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
 {
     // prepare empty return value
@@ -849,6 +880,8 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
                 if ( is_in_source( picked_canvas_source ) ){
                     // a node in the current canvas was clicked !
                     pick = *itp;
+                    // adapt grid to prepare grab action
+                    adaptGridToSource(picked_canvas_source, pick.first);
                     break;
                 }
             }
@@ -1016,6 +1049,9 @@ void DisplaysView::terminate(bool force)
         for (auto h = 0; h < 15; ++h)
             (*sit)->handles_[View::GEOMETRY][h]->visible_ = true;
     }
+
+    // reset grid
+    adaptGridToSource();
 }
 
 
