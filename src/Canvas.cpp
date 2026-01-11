@@ -102,6 +102,8 @@ void Canvas::attachCanvasSource(CanvasSource *cs)
     if (!cs)
         return;
 
+    std::lock_guard<std::mutex> lock(output_mutex_);
+
     // activate it
     cs->setActive( true );
 
@@ -126,6 +128,8 @@ void Canvas::detachCanvasSource(CanvasSource *cs)
     if (!cs)
         return;
 
+    std::lock_guard<std::mutex> lock(output_mutex_);
+
     DisplaysView *displays_ = static_cast<DisplaysView *>(Mixer::manager().view(View::DISPLAYS));
     displays_->scene.ws()->detach( cs->group(View::GEOMETRY) ); 
 
@@ -145,6 +149,8 @@ void Canvas::bringToFront(CanvasSource *cs)
     // already at front
     if (cs->depth() >= depth)
         return;
+
+    std::lock_guard<std::mutex> lock(output_mutex_);
 
     if ( depth > MAX_DEPTH - LAYER_STEP ) {
         // renormalize all depths to avoid overflow
@@ -177,6 +183,8 @@ void Canvas::sendToBack(CanvasSource *cs)
     // already at back
     if (cs->depth() <= depth)
         return;
+
+    std::lock_guard<std::mutex> lock(output_mutex_);
 
     if ( depth < MIN_DEPTH + LAYER_STEP ) {
         // renormalize all depths to avoid overflow
@@ -514,7 +522,8 @@ void Canvas::save(const std::string &filename)
         // session visitor saves source configuration
         (*iter)->accept(sv_canvas);
 
-    // lock access ?
+    // lock access 
+    std::lock_guard<std::mutex> lock(output_mutex_);
 
     // Save list of canvas sources
     XMLElement *sessionNode = xmlDoc.NewElement("CanvasSources");

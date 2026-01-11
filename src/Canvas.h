@@ -2,6 +2,7 @@
 #define CANVAS_H
 
 #include <string>
+#include <mutex>
 #include "Source/SourceList.h"
 
 class Group;
@@ -78,6 +79,7 @@ protected:
 
     // reference to the session used for rendering canvases
     Session *output_session_;
+    mutable std::mutex output_mutex_;
 
 };
 
