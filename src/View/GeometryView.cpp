@@ -75,11 +75,15 @@ GeometryView::GeometryView() : View(GEOMETRY)
         restoreSettings();
     Settings::application.views[mode_].name = "Geometry";
 
-    // Geometry Scene foreground
+    // Geometry Scene background
     output_surface_ = new Surface;
     output_surface_->visible_ = true;
-    output_surface_->shader()->color = glm::vec4(1.f, 1.f, 1.f, 0.5f);
+    output_surface_->shader()->color = glm::vec4(0.8f, 0.8f, 0.8f, 0.5f);
     scene.bg()->attach(output_surface_);
+
+    output_frame_ = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    output_frame_->color = glm::vec4( 0.f, 0.f, 0.f, 0.4f );
+    scene.bg()->attach(output_frame_);
 
     // User interface foreground
     //
@@ -312,7 +316,6 @@ void GeometryView::draw()
     for (auto canvas_iter = Canvas::manager().begin();
             canvas_iter != Canvas::manager().end(); ++canvas_iter) {
         // will draw its surface
-        // canvas_surfaces.push_back((*canvas_iter)->groups_[GEOMETRY]);
         canvas_surfaces.push_back((*canvas_iter)->rendersurface_);
         // will draw its frame
         canvas_overlays.push_back((*canvas_iter)->frames_[GEOMETRY]);
@@ -322,15 +325,17 @@ void GeometryView::draw()
     glm::mat4 projection = Rendering::manager().Projection();
 
     // 1. Draw output surface (render frame to show global framebuffer, semi transparent)
-    DrawVisitor draw_rendering(output_surface_, projection);
+    output_surface_->shader()->color.a = editor_mode_ == EDIT_CANVAS ? 0.6f : 0.3f;
+    DrawVisitor draw_rendering(scene.bg(), projection);
     scene.accept(draw_rendering);
 
-    // 2. Draw surface of sources in the current workspace
-    DrawVisitor draw_sources(source_surfaces, projection);
-    if (editor_mode_ != EDIT_CANVAS)
+    if (editor_mode_ != EDIT_CANVAS) {
+        // 2. Draw surface of sources in the current workspace
+        DrawVisitor draw_sources(source_surfaces, projection);
         scene.accept(draw_sources);
+    }
 
-    // 3. Draw canvases on top of sources // foreground ?
+    // 3. Draw canvases on top of sources 
     DrawVisitor draw_canvases(canvas_surfaces, projection);
     scene.accept(draw_canvases);
 

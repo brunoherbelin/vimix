@@ -33,6 +33,7 @@ public:
 
 private:
     Surface *output_surface_;
+    Frame *output_frame_;
     Node *overlay_position_;
     Node *overlay_position_cross_;
     Symbol *overlay_rotation_;
