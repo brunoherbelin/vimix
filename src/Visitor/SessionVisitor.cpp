@@ -48,6 +48,7 @@ using namespace tinyxml2;
 #include "MixingGroup.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Source/ShaderSource.h"
+#include "Source/CanvasSource.h"
 
 #include "SessionVisitor.h"
 
@@ -1040,6 +1041,13 @@ void SessionVisitor::visit (SrtReceiverSource& s)
     XMLText *porttext = xmlDoc_->NewText( s.port().c_str() );
     port->InsertEndChild( porttext );
     xmlCurrent_->InsertEndChild(port);
+}
+
+
+void SessionVisitor::visit (CanvasSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "CanvasSource");
+    xmlCurrent_->SetAttribute("canvas", s.canvas());
 }
 
 void SessionVisitor::visit (SourceCallback &c)

@@ -48,6 +48,7 @@
 #include "Toolkit/SystemToolkit.h"
 #include "Visitor/SessionVisitor.h"
 #include "Source/ShaderSource.h"
+#include "Source/CanvasSource.h"
 
 #include "Toolkit/tinyxml2Toolkit.h"
 using namespace tinyxml2;
@@ -1687,6 +1688,13 @@ void SessionLoader::visit (CloneSource& s)
         // set config filter
         s.filter()->accept(*this);
     }
+}
+
+void SessionLoader::visit (CanvasSource &c)
+{
+    size_t canvas = 0;
+    xmlCurrent_->QueryUnsigned64Attribute("canvas", &canvas);
+    c.setCanvas(canvas);
 }
 
 void SessionLoader::visit (SourceCallback &)

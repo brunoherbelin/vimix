@@ -153,8 +153,11 @@ void Canvas::update(float dt)
         }
 
         // if resolution of output framebuffer changed, update session resolution
-        if (output_session_->frame() && output_session_->frame()->resolution() != Rendering::manager().monitorsResolution())
-            output_session_->setResolution(Rendering::manager().monitorsResolution());
+        if (output_session_->frame()) {
+            glm::vec3 res = Rendering::manager().monitorsResolution();
+            if( output_session_->frame()->resolution() != res)
+                output_session_->setResolution(res);
+        }
     }
 }
 
@@ -301,23 +304,20 @@ void Canvas::load(const std::string &filename)
     if (pRoot == nullptr)
         return;
 
-    // first child should be canvases
+    // First main element is the list of canvases
     XMLElement * canvasesNode = pRoot->FirstChildElement("Canvases");
     if (canvasesNode == nullptr)
         return;
-    
+
     // use a session loader visitor to load canvases as sources
-    SessionLoader loader;
-
-    SourceList::iterator canvas_it = canvases_.begin();
-    XMLElement* sourceNode = canvasesNode->FirstChildElement("Source");
-
-    // no canvases found
-    if (sourceNode == nullptr)
-        return;
+    SessionLoader canvas_loader;
 
     // iterate over XML source nodes
-    for(int i = 0 ; sourceNode ; sourceNode = sourceNode->NextSiblingElement("Source"))
+    SourceList::iterator canvas_it = canvases_.begin();
+
+    // loop over list of canvas as source nodes
+    XMLElement* sourceNode = canvasesNode->FirstChildElement("Source");
+    for(; sourceNode ; sourceNode = sourceNode->NextSiblingElement("Source"))
     {
         // create a new canvas if needed
         if ( canvas_it == canvases_.end() ) {
@@ -326,8 +326,8 @@ void Canvas::load(const std::string &filename)
         }
 
         // session loader loads source configuration
-        loader.setCurrentXML( sourceNode );
-        (*canvas_it)->accept( loader );
+        canvas_loader.setCurrentXML( sourceNode );
+        (*canvas_it)->accept( canvas_loader );
         ++canvas_it;
     }
     // delete extra canvases if any
@@ -335,6 +335,72 @@ void Canvas::load(const std::string &filename)
         removeSurface();
         canvas_it = --canvases_.end();  
     }
+
+    // Second main element is the list of canvas sources for output session
+    XMLElement * sessionNode = pRoot->FirstChildElement("CanvasSources");
+    if (sessionNode == nullptr)
+        return;
+
+    // TODO read id of sessionNode to check if it matches output_session_ id ?    
+
+    // sessionsources contains list of ids of all sources currently in the session (before loading)
+    SourceIdList previous_sources = output_session_->getIdList();
+
+    // use a session loader visitor to load canvas sources for output session
+    SessionLoader session_loader;
+
+    // loop over session source nodes
+    XMLElement* sourceCanvasNode = sessionNode->FirstChildElement("Source");
+    for(; sourceCanvasNode ; sourceCanvasNode = sourceCanvasNode->NextSiblingElement("Source"))
+    {
+        // source to load
+        CanvasSource *load_source = nullptr;
+
+        // read the xml id of this source element
+        uint64_t id_xml_ = 0;
+        sourceCanvasNode->QueryUnsigned64Attribute("id", &id_xml_);
+
+        // check if a source with the given id exists in the output session
+        SourceList::iterator sit = output_session_->find(id_xml_);
+
+        // no source with this id exists
+        if ( sit == output_session_->end() ) {
+            // create a new source depending on type
+            const char *pType = sourceCanvasNode->Attribute("type");
+            if (!pType) 
+                continue;
+            else if ( std::string(pType) == "CanvasSource") 
+                load_source = new CanvasSource(id_xml_);
+            else 
+                continue;
+
+            // add to output session
+            attachCanvasSource( load_source );
+        }
+        // get reference to the existing source
+        else {
+            load_source = static_cast<CanvasSource*>(*sit);
+            // remove from previous sources list
+            previous_sources.remove( id_xml_ );
+        }
+    
+        // use session loader to load source configuration
+        session_loader.setCurrentXML( sourceCanvasNode );
+        load_source->accept(session_loader);
+
+        // make sure source is updated
+        load_source->touch();
+
+    }
+
+    // remaining ids in list previous_sources : to remove from output session
+    for ( auto psit = previous_sources.begin(); psit != previous_sources.end(); psit++ ) {
+        SourceList::iterator sit = output_session_->find( *psit );
+        if (sit != output_session_->end()) {
+            detachCanvasSource( static_cast<CanvasSource *>(*sit) );   
+        }
+    }
+
 }
 
 void Canvas::save(const std::string &filename)
@@ -358,10 +424,20 @@ void Canvas::save(const std::string &filename)
     // TODO : muliple list of Canvases as set of configurations ?
     XMLElement *canvasesNode = xmlDoc.NewElement("Canvases");
     pRoot->InsertEndChild(canvasesNode);
-    SessionVisitor sv(&xmlDoc, canvasesNode);
-    for (auto iter = begin(); iter != end(); ++iter, sv.setRoot(canvasesNode) )
+    SessionVisitor sv_canvas(&xmlDoc, canvasesNode);
+    for (auto iter = begin(); iter != end(); ++iter, sv_canvas.setRoot(canvasesNode) )
         // session visitor saves source configuration
-        (*iter)->accept(sv);
+        (*iter)->accept(sv_canvas);
+
+    // lock access ?
+
+    // Save list of canvas sources
+    XMLElement *sessionNode = xmlDoc.NewElement("CanvasSources");
+    pRoot->InsertEndChild(sessionNode);
+    SessionVisitor sv_session(&xmlDoc, sessionNode);
+    for (auto iter = output_session_->begin(); iter != output_session_->end(); ++iter, sv_session.setRoot(sessionNode) )
+        // source visitor
+        (*iter)->accept(sv_session);
 
     // save canvases config
     XMLError eResult = xmlDoc.SaveFile( settingsFilename.c_str());
