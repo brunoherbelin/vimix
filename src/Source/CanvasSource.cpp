@@ -202,7 +202,7 @@ Source::Failure CanvasSource::failed() const
 
     // the canvas surface does not exist anymore
     if (canvas == nullptr)
-        return FAIL_FATAL;
+        return FAIL_CRITICAL;
     // the canvas surface exists but resolution changed
     else if ( rendered_output_ != nullptr && renderbuffer_ != nullptr ) {
         if ( rendered_output_->resolution() != canvas->frame()->resolution()

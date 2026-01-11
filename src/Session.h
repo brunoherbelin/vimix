@@ -94,6 +94,9 @@ public:
     // get total number of sources (recursively)
     uint numSources() const;
 
+    // get min and max depth of sources in session
+    std::pair<float, float> depthRange() const;
+
     // update all sources and mark sources which failed
     inline bool ready () const  { return ready_; }
     void update (float dt);

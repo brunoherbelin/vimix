@@ -43,6 +43,9 @@ public:
     void attachCanvasSource(CanvasSource *cs);
     void detachCanvasSource(CanvasSource *cs);
 
+    void bringToFront(CanvasSource *cs);
+    void sendToBack(CanvasSource *cs);
+
     // canvases are updated each frame in Mixer 
     void update(float dt);
 

@@ -18,6 +18,7 @@
 **/
 
 #include "IconsFontAwesome5.h"
+#include "Log.h"
 #include "View/View.h"
 #include "imgui.h"
 
@@ -466,7 +467,7 @@ void DisplaysView::menuCanvasSource ()
         const float spacing = ImGui::GetStyle().FrameRounding ;
 
         // - action REMOVE canvas source
-        if (Canvas::manager().session()->size() > 1 && current_canvas_source_ != nullptr) {
+        if (Canvas::manager().session()->size() > 0 && current_canvas_source_ != nullptr) {
             if (ImGui::Button(ICON_FA_MINUS )) {
 
                 // detach current source (this deletes it from session)
@@ -528,9 +529,11 @@ void DisplaysView::draw()
             source_iter != Canvas::manager().session()->end(); ++source_iter) {
                 
         // will draw its surface
-        source_surfaces.push_back((*source_iter)->groups_[GEOMETRY]);
-        // will draw its frame 
+        source_surfaces.push_back((*source_iter)->rendersurface_);
+        // will draw its frame and manipulators
         source_overlays.push_back((*source_iter)->frames_[GEOMETRY]);
+        source_overlays.push_back((*source_iter)->manipulator_);
+        source_overlays.push_back((*source_iter)->handles_[GEOMETRY][Handles::MENU]);
     }
 
     // 0. prepare projection for draw visitors
@@ -546,14 +549,14 @@ void DisplaysView::draw()
     scene.accept(draw_monitors);
 
     // Draw surface of Canvas sources 
-    DrawVisitor draw_sources(source_surfaces, projection, true); 
+    DrawVisitor draw_sources(source_surfaces, projection); 
     scene.accept(draw_sources);
 
-    // Draw frames and icons of Canvas sources 
+    // Draw frames and icons of Canvas sources on top 
     DrawVisitor draw_overlays(source_overlays, projection);
     scene.accept(draw_overlays);
 
-    // Finally, draw overlays of view
+    // Finally, draw overlays of view on top of all
     DrawVisitor draw_foreground(scene.fg(), projection);
     scene.accept(draw_foreground);
 
@@ -800,6 +803,13 @@ void DisplaysView::draw()
 
             ImGui::EndMenu();
         }
+
+        ImGui::Separator();
+        if (ImGui::MenuItem( ICON_FA_ARROW_UP "  Bring to front" ))
+            Canvas::manager().bringToFront(current_canvas_source_);
+
+        if (ImGui::MenuItem( ICON_FA_ARROW_DOWN "  Send to back" ))
+            Canvas::manager().sendToBack(current_canvas_source_);
 
         ImGui::PopStyleColor(2);
         ImGui::EndPopup();

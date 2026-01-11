@@ -102,9 +102,21 @@ void Canvas::attachCanvasSource(CanvasSource *cs)
     if (!cs)
         return;
 
+    // activate it
     cs->setActive( true );
+
+    // set initial depth 
+    float depth = output_session_->empty() ? LAYER_BACKGROUND : output_session_->depthRange().second;
+    cs->group(View::LAYER)->translation_.z = depth + LAYER_STEP; 
+
+    // add to output session
     output_session_->addSource( cs );
-    
+    cs->touch();
+
+    // request reordering of scene at next update
+    ++View::need_deep_update_;
+
+    // attach to displays view scene
     DisplaysView *displays_ = static_cast<DisplaysView *>(Mixer::manager().view(View::DISPLAYS));
     displays_->scene.ws()->attach( cs->group(View::GEOMETRY) ); 
 }
@@ -119,6 +131,72 @@ void Canvas::detachCanvasSource(CanvasSource *cs)
 
     cs->setActive( false );
     output_session_->deleteSource( cs );
+}
+
+
+void Canvas::bringToFront(CanvasSource *cs)
+{
+    if (!cs)
+        return;
+
+    // get max depth
+    float depth = output_session_->depthRange().second;
+
+    // already at front
+    if (cs->depth() >= depth)
+        return;
+
+    if ( depth > MAX_DEPTH - LAYER_STEP ) {
+        // renormalize all depths to avoid overflow
+        depth = LAYER_BACKGROUND;
+        SourceList dsl = output_session_->getDepthSortedList();
+        for (auto it : dsl) {
+            depth += LAYER_STEP;
+            it->group(View::LAYER)->translation_.z = depth;
+        }
+    }
+    
+    // set depth to front
+    cs->group(View::LAYER)->translation_.z = depth + LAYER_STEP; 
+
+    // request reordering of scene at next update
+    ++View::need_deep_update_;
+
+    // request update of source
+    cs->touch();
+}
+
+void Canvas::sendToBack(CanvasSource *cs)
+{
+    if (!cs)
+        return;
+
+    // get min depth
+    float depth = output_session_->depthRange().first;
+
+    // already at back
+    if (cs->depth() <= depth)
+        return;
+
+    if ( depth < MIN_DEPTH + LAYER_STEP ) {
+        // renormalize all depths to avoid overflow
+        depth = LAYER_BACKGROUND;
+        SourceList dsl = output_session_->getDepthSortedList();
+        for (auto it : dsl) {
+            depth += LAYER_STEP;
+            it->group(View::LAYER)->translation_.z = depth;
+        }        
+        depth = LAYER_BACKGROUND;
+    }
+
+    // set depth to back
+    cs->group(View::LAYER)->translation_.z = depth - LAYER_STEP; 
+
+    // request reordering of scene at next update
+    ++View::need_deep_update_;
+
+    // request update of source
+    cs->touch();
 }
 
 void Canvas::update(float dt)
@@ -144,6 +222,13 @@ void Canvas::update(float dt)
             if (fail == Source::FAIL_FATAL) {
                 // in case FAIL_FATAL ; delete source
                 detachCanvasSource( static_cast<CanvasSource *>(*it));
+            }
+            else if (fail == Source::FAIL_CRITICAL) {
+                // revert to default canvas if critical failure
+                CanvasSource *cs = static_cast<CanvasSource *>(*it);
+                cs->setCanvas(0);
+                cs->reload();
+                cs->touch();
             }
             else if (fail == Source::FAIL_RETRY) {
                 // Retry if resolution of output changed : just reload

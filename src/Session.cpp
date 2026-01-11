@@ -556,6 +556,25 @@ uint Session::numSources() const
     return counter.numSources();
 }
 
+std::pair<float, float> Session::depthRange() const
+{
+    float min_d = MAX_DEPTH;
+    float max_d = MIN_DEPTH;
+
+    for( SourceList::const_iterator it = sources_.cbegin(); it != sources_.cend(); ++it) {
+        float d = (*it)->depth();
+        if ( d < min_d ) 
+            min_d = d;
+        if ( d > max_d ) 
+            max_d = d;
+    }
+
+    if ( min_d > max_d )
+        return std::make_pair(MIN_DEPTH, MIN_DEPTH);
+
+    return std::make_pair(min_d, max_d);
+}
+
 SourceIdList Session::getIdList() const
 {
     return ids(sources_);
