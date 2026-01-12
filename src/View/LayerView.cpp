@@ -545,7 +545,8 @@ void LayerView::updateSelectionOverlay(glm::vec4 color)
 
     if (overlay_selection_->visible_) {
         // calculate bbox on selection
-        GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(Mixer::selection().getCopy(), this);
+        GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(Mixer::selection().getCopy(), 
+                                                        scene.ws(), View::LAYER);
         overlay_selection_->scale_ = selection_box.scale();
         overlay_selection_->translation_ = selection_box.center();
 

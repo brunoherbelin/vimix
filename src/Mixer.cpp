@@ -876,7 +876,8 @@ void Mixer::group(SourceList sourcelist)
         if ( (*sit)->active() && (*sit)->visible() )
             visiblelist.push_back( *sit );
     }
-    GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(visiblelist, &geometry_);
+    GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(visiblelist, 
+                                                            geometry_.scene.ws(), View::GEOMETRY );
     sessionbundle->setDimensions( selection_box.scale(), selection_box.center(),
                                  session_->frame()->resolution().y );
                     
@@ -1004,7 +1005,7 @@ void Mixer::groupAll(bool only_active)
             visiblelist.push_back( *sit );
     }
     GlmToolkit::AxisAlignedBoundingBox bounding_box = BoundingBoxVisitor::AABB(
-                                                    visiblelist, &geometry_);
+                                                    visiblelist, geometry_.scene.ws(), View::GEOMETRY);
     sessionbundle->setDimensions( bounding_box.scale(), bounding_box.center(),
                                 session_->frame()->resolution().y );
                         

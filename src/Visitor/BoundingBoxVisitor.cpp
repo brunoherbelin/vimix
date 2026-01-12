@@ -65,28 +65,28 @@ void BoundingBoxVisitor::visit(Scene &n)
     }
 }
 
-GlmToolkit::AxisAlignedBoundingBox BoundingBoxVisitor::AABB(SourceList l, View *view)
+GlmToolkit::AxisAlignedBoundingBox BoundingBoxVisitor::AABB(SourceList l, Group *root, View::Mode mode)
 {
     // calculate bbox on selection
     BoundingBoxVisitor selection_visitor_bbox;
     for (auto it = l.begin(); it != l.end(); ++it) {
         // calculate bounding box of area covered by selection
-        selection_visitor_bbox.setModelview( view->scene.ws()->transform_ );
-        (*it)->group( view->mode() )->accept(selection_visitor_bbox);
+        selection_visitor_bbox.setModelview( root->transform_ );
+        (*it)->group( mode )->accept(selection_visitor_bbox);
     }
 
     return selection_visitor_bbox.bbox();
 }
 
-GlmToolkit::OrientedBoundingBox BoundingBoxVisitor::OBB(SourceList l, View *view)
+GlmToolkit::OrientedBoundingBox BoundingBoxVisitor::OBB(SourceList l, Group *root, View::Mode mode)
 {
     GlmToolkit::OrientedBoundingBox obb_;
 
     // try the orientation of each source in the list
     for (auto source_it = l.begin(); source_it != l.end(); ++source_it) {
 
-        float angle = (*source_it)->group( view->mode() )->rotation_.z;
-        glm::mat4 transform = view->scene.ws()->transform_;
+        float angle = (*source_it)->group( mode )->rotation_.z;
+        glm::mat4 transform = root->transform_;
         transform = glm::rotate(transform, -angle, glm::vec3(0.f, 0.f, 1.f) );
 
         // calculate bbox of the list in this orientation
@@ -94,7 +94,7 @@ GlmToolkit::OrientedBoundingBox BoundingBoxVisitor::OBB(SourceList l, View *view
         for (auto it = l.begin(); it != l.end(); ++it) {
             // calculate bounding box of area covered by sources' nodes
             selection_visitor_bbox.setModelview( transform );
-            (*it)->group( view->mode() )->accept(selection_visitor_bbox);
+            (*it)->group( mode )->accept(selection_visitor_bbox);
         }
 
         // if not initialized or if new bbox is smaller than previous

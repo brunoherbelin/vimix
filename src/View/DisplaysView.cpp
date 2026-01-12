@@ -18,9 +18,9 @@
 **/
 
 #include "IconsFontAwesome5.h"
-#include "Log.h"
 #include "View/View.h"
 #include "imgui.h"
+#include "imgui_internal.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -28,7 +28,6 @@
 #include <iomanip>
 #include <string>
 #include <sstream>
-
 
 #include <glad/glad.h>
 #include <glm/fwd.hpp>
@@ -38,19 +37,17 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/vector_angle.hpp>
 
-#include "Toolkit/ImGuiToolkit.h"
-#include "imgui_internal.h"
-
 #include "defines.h"
 #include "Mixer.h"
+#include "Settings.h"
 #include "Source/Source.h"
 #include "Source/CanvasSource.h"
-#include "Settings.h"
 #include "Visitor/PickingVisitor.h"
 #include "Visitor/DrawVisitor.h"
+#include "Visitor/BoundingBoxVisitor.h"
+#include "Toolkit/ImGuiToolkit.h"
 #include "Scene/Decorations.h"
 #include "UserInterfaceManager.h"
-#include "Visitor/BoundingBoxVisitor.h"
 #include "RenderingManager.h"
 #include "GeometryHandleManipulation.h"
 #include "MousePointer.h"
@@ -208,7 +205,9 @@ void DisplaysView::update(float dt)
     // specific update when this view is active
     if ( Mixer::manager().view() == this ) {
 
-        // TODO update selection overlay
+        // update the selection overlay
+        const ImVec4 c = ImGuiToolkit::HighlightColor();
+        updateSelectionOverlay(glm::vec4(c.x, c.y, c.z, c.w));
         
     }
 }
@@ -864,7 +863,7 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
     if ( !pv.empty() ) {
 
         // canvas source are not managed as sources; cancel normal source picking
-        pick = { nullptr, glm::vec2(0.f) };
+        // pick = { nullptr, glm::vec2(0.f) };
 
         // remember picked sources to cycle through them
         static SourceListUnique picked_sources;
@@ -889,6 +888,7 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
             if (itp == pv.rend() ) {
                 picked_sources.clear();
                 picked_canvas_source = nullptr;
+                pick = { nullptr, glm::vec2(0.f) };
             }
             // picking on the menu handle: show context menu & reset picked sources
             else if ( pick.first == picked_canvas_source->handles_[View::GEOMETRY][Handles::MENU] ) {
@@ -943,7 +943,8 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
 
                 // accept picked canvas
                 if ( sit != Canvas::manager().session()->end() ) {
-                    setCurrentCanvasSource(*sit);
+                    setCurrentCanvasSource(*sit);                            
+                    pick = { current_canvas_source_->group(View::GEOMETRY), (*itp).second };
                     break;
                 }
             }
@@ -981,7 +982,7 @@ Source *DisplaysView::currentCanvasSource() const {
 
 bool DisplaysView::canSelect(Source *) {
 
-    return false;
+    return true;
 }
 
 void DisplaysView::select(glm::vec2 A, glm::vec2 B)
@@ -994,12 +995,24 @@ void DisplaysView::select(glm::vec2 A, glm::vec2 B)
     PickingVisitor pv(scene_point_A, scene_point_B, true);
     scene.accept(pv);
 
-    // TODO Multiple window selection?
+    // picking visitor found nodes in the area?
+    if ( !pv.empty()) {
 
-    if (!pv.empty()) {
+        // create a list of source matching the list of picked nodes
+        SourceList selection;
+        // loop over the nodes and add all sources found.
+         for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); ++p){
+            SourceList::iterator sit = Canvas::manager().session()->find( p->first );
 
-        
+            if ( sit != Canvas::manager().session()->end() )
+                selection.push_back( *sit );
+        }
+        // set the selection with list of picked (overlaped) sources
+        canvas_source_selection_ = selection;
     }
+    else
+        // reset selection
+        canvas_source_selection_.clear();
 }
 
 void DisplaysView::initiate()
@@ -1092,7 +1105,6 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
         // transformation from scene to corner:
         const glm::mat4 scene_to_corner_transform = source_to_corner_transform * scene_to_source_transform;
         const glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
-
 
         // Create context for handle manipulation functions
         GeometryHandleManipulation::HandleGrabContext ctx = {
@@ -1199,16 +1211,14 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
             // compute effective translation of current source s
             source_target = sourceNode->translation_ - current_canvas_source_->stored_status_->translation_;
 
-            // TODO manage selection of canvas sources
-
-            // // loop over selection
-            // for (auto it = Mixer::selection().begin(); it != Mixer::selection().end(); ++it) {
-            //     if ( *it != current_canvas_source_ && !(*it)->locked() ) {
-            //         // translate and request update
-            //         (*it)->group(View::GEOMETRY)->translation_ = (*it)->stored_status_->translation_ + source_target;
-            //         (*it)->touch();
-            //     }
-            // }
+            // loop over selection
+            for (auto it = canvas_source_selection_.begin(); it != canvas_source_selection_.end(); ++it) {
+                if ( *it != current_canvas_source_ ) {
+                    // translate and request update
+                    (*it)->group(View::GEOMETRY)->translation_ = (*it)->stored_status_->translation_ + source_target;
+                    (*it)->touch();
+                }
+            }
 
             // Show center overlay for POSITION
             overlay_position_->visible_ = true;
@@ -1304,4 +1314,59 @@ static float _duration = 0.f;
 }
 
 
+void DisplaysView::updateSelectionOverlay(glm::vec4 color)
+{
+    // create first
+    if (overlay_selection_ == nullptr) {
+        overlay_selection_ = new Group;
+        overlay_selection_icon_ = new Handles(Handles::MENU);
+        overlay_selection_->attach(overlay_selection_icon_);
+        overlay_selection_frame_ = new Frame(Frame::SHARP, Frame::LARGE, Frame::NONE);
+        overlay_selection_->attach(overlay_selection_frame_);
+        scene.fg()->attach(overlay_selection_);
+
+        overlay_selection_stored_status_ = new Group;
+        overlay_selection_scale_ = new Handles(Handles::SCALE);
+        overlay_selection_->attach(overlay_selection_scale_);
+        overlay_selection_rotate_ = new Handles(Handles::ROTATE);
+        overlay_selection_->attach(overlay_selection_rotate_);
+    }
+
+    // no overlay by default
+    overlay_selection_->visible_ = false;
+
+    // potential selection if more than 1 source selected
+    if (canvas_source_selection_.size() > 1) {
+        // show group overlay
+        overlay_selection_->visible_ = true;
+        overlay_selection_frame_->color = color;
+        overlay_selection_frame_->color.a *= 0.8;
+        overlay_selection_icon_->color = color;
+    }
+    // no selection: reset drawing selection overlay
+    else
+        overlay_selection_->scale_ = glm::vec3(0.f, 0.f, 1.f);
+
+    if (overlay_selection_->visible_) {
+
+        if ( !overlay_selection_active_) {
+
+            // calculate ORIENTED bbox on selection
+            GlmToolkit::OrientedBoundingBox selection_box = BoundingBoxVisitor::OBB(canvas_source_selection_, 
+                                                        scene.ws(), View::GEOMETRY);
+
+            // apply transform
+            overlay_selection_->rotation_ = selection_box.orientation;
+            overlay_selection_->scale_ = selection_box.aabb.scale();
+            glm::mat4 rot = glm::rotate(glm::identity<glm::mat4>(), selection_box.orientation.z, glm::vec3(0.f, 0.f, 1.f) );
+            glm::vec4 vec = rot * glm::vec4(selection_box.aabb.center(), 1.f);
+            overlay_selection_->translation_ = glm::vec3(vec);
+        }
+
+        // cosmetics
+        overlay_selection_scale_->color = overlay_selection_icon_->color;
+        overlay_selection_rotate_->color = overlay_selection_icon_->color;
+    }
+
+}
 

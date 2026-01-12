@@ -1680,7 +1680,7 @@ void GeometryView::updateSelectionOverlay(glm::vec4 color)
         if ( !overlay_selection_active_) {
 
             // calculate ORIENTED bbox on selection
-            GlmToolkit::OrientedBoundingBox selection_box = BoundingBoxVisitor::OBB(Mixer::selection().getCopy(), this);
+            GlmToolkit::OrientedBoundingBox selection_box = BoundingBoxVisitor::OBB(Mixer::selection().getCopy(), scene.ws(), mode_);
 
             // apply transform
             overlay_selection_->rotation_ = selection_box.orientation;

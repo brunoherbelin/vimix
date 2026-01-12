@@ -1,15 +1,15 @@
 #ifndef DISPLAYSVIEW_H
 #define DISPLAYSVIEW_H
 
-#include "View.h"
+#include "View/View.h"
+#include "Source/SourceList.h"
 
-class Source;
 class CanvasSource;
-
 
 class DisplaysView : public View
 {
 public:
+
     DisplaysView();
     // non assignable class
     DisplaysView(DisplaysView const&) = delete;
@@ -52,6 +52,13 @@ private:
     void setCurrentCanvasSource(Source *c = nullptr);
     Source *currentCanvasSource() const;
     void menuCanvasSource();
+
+    SourceList canvas_source_selection_;
+    void updateSelectionOverlay(glm::vec4 color) override;
+    bool overlay_selection_active_;
+    Group *overlay_selection_stored_status_;
+    Handles *overlay_selection_scale_;
+    Handles *overlay_selection_rotate_;
 
     void adaptGridToSource(Source *s = nullptr, Node *picked = nullptr);
     TranslationGrid *translation_grid_;

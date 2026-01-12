@@ -4,7 +4,7 @@
 #include "Toolkit/GlmToolkit.h"
 #include "Visitor.h"
 #include "Source/SourceList.h"
-class View;
+#include "View/View.h"
 
 class BoundingBoxVisitor: public Visitor
 {
@@ -26,8 +26,8 @@ public:
     void visit(Switch& n) override;
     void visit(Primitive& n) override;
 
-    static GlmToolkit::AxisAlignedBoundingBox AABB(SourceList l, View *view);
-    static GlmToolkit::OrientedBoundingBox OBB(SourceList l, View *view);
+    static GlmToolkit::AxisAlignedBoundingBox AABB(SourceList l, Group *root, View::Mode mode);
+    static GlmToolkit::OrientedBoundingBox OBB(SourceList l, Group *root, View::Mode mode);
 };
 
 #endif // BOUNDINGBOXVISITOR_H
