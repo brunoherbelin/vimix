@@ -52,9 +52,12 @@ private:
     void setCurrentCanvasSource(Source *c = nullptr);
     Source *currentCanvasSource() const;
     void menuCanvasSource();
+    void contextMenuCanvasSource();
 
     SourceList canvas_source_selection_;
     void updateSelectionOverlay(glm::vec4 color) override;
+    void applySelectionTransform(glm::mat4 M);
+    void contextMenuCanvasSelection();
     bool overlay_selection_active_;
     Group *overlay_selection_stored_status_;
     Handles *overlay_selection_scale_;

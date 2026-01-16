@@ -18,6 +18,7 @@
 **/
 
 #include "IconsFontAwesome5.h"
+#include "Source/SourceList.h"
 #include "View/View.h"
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -160,6 +161,12 @@ DisplaysView::DisplaysView() : View(DISPLAYS)
     overlay_crop_ = border;
     scene.fg()->attach(overlay_crop_);
     overlay_crop_->visible_ = false;
+
+    // will be init later
+    overlay_selection_scale_ = nullptr;
+    overlay_selection_rotate_ = nullptr;
+    overlay_selection_stored_status_ = nullptr;
+    overlay_selection_active_ = false;
 
     // replace grid with appropriate one
     translation_grid_ = new TranslationGrid(scene.root());
@@ -708,88 +715,186 @@ void DisplaysView::draw()
             ImGui::EndPopup();
             return;
         }
-
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_WINDOW, 1.f));
-
-        // list of available canvases
-        size_t selected = current_canvas_source_->canvas();
-        for (auto canvas_index = 0;
-            canvas_index < Canvas::manager().size(); ++canvas_index) {
-     
-            // label with canvas name
-            std::string label = ICON_FA_BORDER_ALL "  ";
-            label += Canvas::manager().at(canvas_index)->name();    
-
-            // select a canvas surface for current canvas source
-            if (ImGui::MenuItem(label.c_str(), NULL, selected == canvas_index)) {
-                if (selected != canvas_index)
-                    current_canvas_source_->setCanvas(canvas_index);
-            }   
-        }
-        
-        ImGui::Separator();
-
-        // Restore aspect ratio of Canvas
-        if (ImGui::MenuItem( ICON_FA_EXPAND_ALT "  Restore aspect ratio" )){
-
-            CanvasSurface *canvas = Canvas::manager().at(current_canvas_source_->canvas());
-            float AR = canvas->aspectRatio();
-            current_canvas_source_->group(View::GEOMETRY)->scale_.x = current_canvas_source_->group(View::GEOMETRY)->scale_.y * AR;
-            current_canvas_source_->group(View::GEOMETRY)->scale_.x *= (current_canvas_source_->group(View::GEOMETRY)->crop_[1] - current_canvas_source_->group(View::GEOMETRY)->crop_[0]) /
-                                            (current_canvas_source_->group(View::GEOMETRY)->crop_[2] - current_canvas_source_->group(View::GEOMETRY)->crop_[3]);
-            current_canvas_source_->touch();
-        }
-
-        // list of fit to options
-        if (ImGui::BeginMenu(ICON_FA_EXPAND "  Fit to...")) {
-
-            float AR = current_canvas_source_->frame()->aspectRatio();
-
-            if (ImGui::MenuItem(  "All monitors" )){
-                current_canvas_source_->group(View::GEOMETRY)->scale_ = glm::vec3(1.f);
-                current_canvas_source_->group(View::GEOMETRY)->scale_.x = boundingbox_surface_->scale_.x / AR;
-                current_canvas_source_->group(View::GEOMETRY)->rotation_.z = 0;
-                current_canvas_source_->group(View::GEOMETRY)->translation_ = glm::vec3(0.f);
-                current_canvas_source_->touch();
-            }
-
-            size_t monitor_index = 0;
-            for (auto& monitor : Rendering::manager().monitorsUnsafe()) {
-
-                monitor_index++;
-                std::string monitor_title = "Monitor " + std::to_string(monitor_index);
-                monitor_title += " (" + monitor.name + ")";
-
-                if (ImGui::MenuItem( monitor_title.c_str() )) {
-                    auto it = monitors_.find(monitor.name);
-                    if (it != monitors_.end()) {
-                        Switch* group = it->second;
-                        current_canvas_source_->group(View::GEOMETRY)->scale_.x = group->scale_.x / AR;
-                        current_canvas_source_->group(View::GEOMETRY)->scale_.y = group->scale_.y;
-                        current_canvas_source_->group(View::GEOMETRY)->rotation_.z = 0;
-                        current_canvas_source_->group(View::GEOMETRY)->translation_ = group->translation_;
-                        current_canvas_source_->touch();
-                    }
-                }
-            }
-
-            ImGui::EndMenu();
-        }
-
-        ImGui::Separator();
-        if (ImGui::MenuItem( ICON_FA_ARROW_UP "  Bring to front" ))
-            Canvas::manager().bringToFront(current_canvas_source_);
-
-        if (ImGui::MenuItem( ICON_FA_ARROW_DOWN "  Send to back" ))
-            Canvas::manager().sendToBack(current_canvas_source_);
-
-        ImGui::PopStyleColor(2);
+        contextMenuCanvasSource();
         ImGui::EndPopup();
     }
 
+    // display popup menu canvas selection
+    if (show_context_menu_ == MENU_SELECTION) {
+        ImGui::OpenPopup( "DisplaysSelectionContextMenu" );
+        show_context_menu_ = MENU_NONE;
+    }
+    if (ImGui::BeginPopup("DisplaysSelectionContextMenu")) {
+        contextMenuCanvasSelection();
+        ImGui::EndPopup();
+    }
 }
 
+
+void DisplaysView::contextMenuCanvasSource()
+{
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_WINDOW, 1.f));
+
+    // list of available canvases
+    size_t selected = current_canvas_source_->canvas();
+    for (auto canvas_index = 0;
+        canvas_index < Canvas::manager().size(); ++canvas_index) {
+    
+        // label with canvas name
+        std::string label = ICON_FA_BORDER_ALL "  ";
+        label += Canvas::manager().at(canvas_index)->name();    
+
+        // select a canvas surface for current canvas source
+        if (ImGui::MenuItem(label.c_str(), NULL, selected == canvas_index)) {
+            if (selected != canvas_index)
+                current_canvas_source_->setCanvas(canvas_index);
+        }   
+    }
+    
+    ImGui::Separator();
+
+    // CROP source manipulation mode
+    if (current_canvas_source_->manipulator_->active() > 0) {
+        if (ImGui::MenuItem(ICON_FA_VECTOR_SQUARE "  Switch to Shape mode"))
+            current_canvas_source_->manipulator_->setActive(0);
+
+        if (ImGui::MenuItem(ICON_FA_CROP_ALT "  Reset crop")) {
+            current_canvas_source_->group(View::GEOMETRY)->crop_ = glm::vec4(-1.f, 1.f, 1.f, -1.f);
+            current_canvas_source_->touch();
+        }
+        ImGui::Text(ICON_FA_ANGLE_LEFT);
+        ImGui::SameLine(18);
+        if (ImGui::MenuItem(ICON_FA_ANGLE_RIGHT "   Reset corners")) {
+            current_canvas_source_->group(View::GEOMETRY)->data_ = glm::zero<glm::mat4>();
+            current_canvas_source_->touch();
+        }
+    }
+    // SHAPE source manipulation mode
+    else {
+        if (ImGui::MenuItem( ICON_FA_CROP_ALT "  Switch to Crop mode" ))
+            current_canvas_source_->manipulator_->setActive(1);
+
+        if (ImGui::MenuItem( ICON_FA_VECTOR_SQUARE "  Reset shape" )){
+            CanvasSurface *canvas = Canvas::manager().at(current_canvas_source_->canvas());
+            float AR = canvas->aspectRatio();
+            current_canvas_source_->group(View::GEOMETRY)->scale_ = glm::vec3(AR, 1.f, 1.f);
+            current_canvas_source_->group(View::GEOMETRY)->rotation_.z = 0;
+            current_canvas_source_->touch();
+        }
+        if (ImGui::MenuItem( ICON_FA_CIRCLE_NOTCH "  Reset rotation" )){
+            current_canvas_source_->group(View::GEOMETRY)->rotation_.z = 0;
+            current_canvas_source_->touch();
+        }
+    }
+
+    // Restore aspect ratio of Canvas
+    if (ImGui::MenuItem( ICON_FA_EXPAND_ALT "  Restore aspect ratio" )){
+
+        CanvasSurface *canvas = Canvas::manager().at(current_canvas_source_->canvas());
+        float AR = canvas->aspectRatio();
+        current_canvas_source_->group(View::GEOMETRY)->scale_.x = current_canvas_source_->group(View::GEOMETRY)->scale_.y * AR;
+        current_canvas_source_->group(View::GEOMETRY)->scale_.x *= (current_canvas_source_->group(View::GEOMETRY)->crop_[1] - current_canvas_source_->group(View::GEOMETRY)->crop_[0]) /
+                                        (current_canvas_source_->group(View::GEOMETRY)->crop_[2] - current_canvas_source_->group(View::GEOMETRY)->crop_[3]);
+        current_canvas_source_->touch();
+    }
+
+    // list of fit to options
+    if (ImGui::BeginMenu(ICON_FA_EXPAND "  Fit to...")) {
+
+        float AR = current_canvas_source_->frame()->aspectRatio();
+
+        // option to fit to each monitor
+        // protected access to monitors list
+        size_t monitor_index = 0;
+        for (auto& monitor : Rendering::manager().monitorsUnsafe()) {
+
+            monitor_index++;
+            std::string monitor_title = "Monitor " + std::to_string(monitor_index);
+            monitor_title += " (" + monitor.name + ")";
+
+            if (ImGui::MenuItem( monitor_title.c_str() )) {
+                auto it = monitors_.find(monitor.name);
+                if (it != monitors_.end()) {
+                    Switch* group = it->second;
+                    current_canvas_source_->group(View::GEOMETRY)->scale_.x = group->scale_.x / AR;
+                    current_canvas_source_->group(View::GEOMETRY)->scale_.y = group->scale_.y;
+                    current_canvas_source_->group(View::GEOMETRY)->rotation_.z = 0;
+                    current_canvas_source_->group(View::GEOMETRY)->translation_ = group->translation_;
+                    current_canvas_source_->touch();
+                }
+            }
+        }
+
+        // for more than one monitor, option to fit to all monitors bounding box
+        if (monitor_index > 1 && ImGui::MenuItem(  "All monitors" )){
+            current_canvas_source_->group(View::GEOMETRY)->scale_ = glm::vec3(1.f);
+            current_canvas_source_->group(View::GEOMETRY)->scale_.x = boundingbox_surface_->scale_.x / AR;
+            current_canvas_source_->group(View::GEOMETRY)->rotation_.z = 0;
+            current_canvas_source_->group(View::GEOMETRY)->translation_ = glm::vec3(0.f);
+            current_canvas_source_->touch();
+        }
+
+        ImGui::EndMenu();
+    }
+
+    ImGui::Separator();
+    if (ImGui::MenuItem( ICON_FA_ARROW_UP "  Bring to front" ))
+        Canvas::manager().bringToFront(current_canvas_source_);
+
+    if (ImGui::MenuItem( ICON_FA_ARROW_DOWN "  Send to back" ))
+        Canvas::manager().sendToBack(current_canvas_source_);
+
+    ImGui::PopStyleColor(2);
+}
+
+
+void DisplaysView::contextMenuCanvasSelection()
+{        
+    // colored context menu
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.8f));
+
+    if (ImGui::Selectable( ICON_FA_CROSSHAIRS "  Center" )){
+        glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
+        initiate();
+        applySelectionTransform(T);
+        terminate();
+    }
+    if (ImGui::Selectable( ICON_FA_COMPASS "  Align" )){
+        for (auto sit = canvas_source_selection_.begin(); sit != canvas_source_selection_.end(); ++sit){
+            (*sit)->group(View::GEOMETRY)->rotation_.z = overlay_selection_->rotation_.z;
+            (*sit)->touch();
+        }
+    }
+    if (ImGui::Selectable( ICON_FA_OBJECT_GROUP "  Best Fit" )){
+        glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
+        float factor = 1.f;
+        float angle = -overlay_selection_->rotation_.z;
+        if ( overlay_selection_->scale_.x < overlay_selection_->scale_.y) {
+            factor *= boundingbox_surface_->scale_.x / overlay_selection_->scale_.y;
+            angle += glm::pi<float>() / 2.f;
+        }
+        else {
+            factor *= boundingbox_surface_->scale_.x / overlay_selection_->scale_.x;
+        }
+        glm::mat4 S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(factor, factor, 1.f));
+        glm::mat4 R = glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3(0.f, 0.f, 1.f) );
+        glm::mat4 M = S * R * T;
+        initiate();
+        applySelectionTransform(M);
+        terminate();
+    }
+    if (ImGui::Selectable( ICON_FA_EXCHANGE_ALT "  Mirror" )){
+        glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), -overlay_selection_->translation_);
+        glm::mat4 F = glm::scale(glm::identity<glm::mat4>(), glm::vec3(-1.f, 1.f, 1.f));
+        glm::mat4 M = glm::inverse(T) * F * T;
+        initiate();
+        applySelectionTransform(M);
+        terminate();
+    }
+    ImGui::PopStyleColor(2);
+}
 
 void DisplaysView::adaptGridToSource(Source *s, Node *picked)
 {
@@ -905,10 +1010,6 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
                 picked_canvas_source->manipulator_->setActive(1);
                 picked_sources.clear();
             }
-            // TODO
-            // 
-            // Pick LOCK ?
-            //
             // second clic not on a handle, maybe select another canvas source below
             else {
                 if (picked_sources.empty()) {
@@ -934,6 +1035,11 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
             if(current_canvas_source_ != nullptr)
                 setCurrentCanvasSource(nullptr);
 
+            if (pv.empty()) {
+                canvas_source_selection_.clear();
+                return pick;
+            }
+
             // loop over all nodes picked
             for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
 
@@ -947,7 +1053,27 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
                     pick = { current_canvas_source_->group(View::GEOMETRY), (*itp).second };
                     break;
                 }
+                //  not a source clicked, maybe a handle of the selection?
+                else if ( pick.first == nullptr && !canvas_source_selection_.empty() ) {
+                    
+                    // picked on selection handles
+                    if ( (*itp).first == overlay_selection_scale_ || (*itp).first == overlay_selection_rotate_ ) {
+                        pick = (*itp);
+                        // initiate selection manipulation
+                        if (overlay_selection_stored_status_) {
+                            overlay_selection_stored_status_->copyTransform(overlay_selection_);
+                            overlay_selection_active_ = true;
+                        }
+                        break;
+                    }
+                    else if ( overlay_selection_icon_ != nullptr && (*itp).first == overlay_selection_icon_ ) {
+                        pick = (*itp);
+                        openContextMenu(MENU_SELECTION);
+                        break;
+                    }
+                }
             }
+
         }
 
     }
@@ -974,6 +1100,14 @@ void DisplaysView::setCurrentCanvasSource(Source *c)
     current_canvas_source_ = static_cast<CanvasSource *>(c);
     current_canvas_source_->setMode(Source::CURRENT);
 
+    // cancel selection if current canvas source is not in selection
+    if (canvas_source_selection_.size() > 0){
+        if ( std::find(canvas_source_selection_.begin(), canvas_source_selection_.end(), current_canvas_source_) == canvas_source_selection_.end() ) 
+            canvas_source_selection_.clear();
+        else
+            current_canvas_source_->setMode(Source::SELECTED);
+    }
+
 }
 
 Source *DisplaysView::currentCanvasSource() const { 
@@ -999,16 +1133,27 @@ void DisplaysView::select(glm::vec2 A, glm::vec2 B)
     if ( !pv.empty()) {
 
         // create a list of source matching the list of picked nodes
-        SourceList selection;
+        SourceListUnique selection;
         // loop over the nodes and add all sources found.
          for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); ++p){
             SourceList::iterator sit = Canvas::manager().session()->find( p->first );
 
             if ( sit != Canvas::manager().session()->end() )
-                selection.push_back( *sit );
+                selection.insert( *sit );
         }
-        // set the selection with list of picked (overlaped) sources
-        canvas_source_selection_ = selection;
+
+        if (selection.empty()) {
+            canvas_source_selection_.clear();
+        }
+        else if (selection.size() < 2 ) {
+            // if only one source selected, set it as current
+            setCurrentCanvasSource( *selection.begin() );
+        }
+        else {
+            // set the selection with list of picked (overlaped) sources
+            canvas_source_selection_.assign(selection.begin(), selection.end());
+            setCurrentCanvasSource( nullptr);
+        }
     }
     else
         // reset selection
@@ -1052,6 +1197,13 @@ void DisplaysView::terminate(bool force)
     overlay_scaling_->visible_        = false;
     overlay_crop_->visible_           = false;
 
+    // restore possible color change after selection operation
+    overlay_rotation_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
+    overlay_rotation_fix_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
+    overlay_rotation_clock_tic_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
+    overlay_scaling_->color = glm::vec4(1.f, 1.f, 1.f, 0.8f);
+    overlay_scaling_cross_->color =  glm::vec4(1.f, 1.f, 1.f, 0.8f);
+
     // restore of all handles overlays
     glm::vec2 c(0.f, 0.f);
     for (auto sit = Canvas::manager().session()->begin();
@@ -1062,6 +1214,8 @@ void DisplaysView::terminate(bool force)
         for (auto h = 0; h < 15; ++h)
             (*sit)->handles_[View::GEOMETRY][h]->visible_ = true;
     }
+
+    overlay_selection_active_ = false;
 
     // reset grid
     adaptGridToSource();
@@ -1076,9 +1230,134 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
     glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
-    // TODO : grab selection
-    if ( current_canvas_source_ == nullptr )
+    // if grabing the selection overlay handles
+    if (current_canvas_source_ == nullptr && overlay_selection_ && overlay_selection_active_ ) {
+
+        // rotation center to selection position
+        glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), overlay_selection_stored_status_->translation_);
+        glm::vec4 selection_from = glm::inverse(T) * glm::vec4( scene_from,  1.f );
+        glm::vec4 selection_to   = glm::inverse(T) * glm::vec4( scene_to,  1.f );
+
+        // calculate scaling of selection
+        float factor = glm::length( glm::vec2( selection_to ) ) / glm::length( glm::vec2( selection_from ) );
+        glm::mat4 S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(factor, factor, 1.f));
+
+        // if interaction with selection SCALING handle
+        if (pick.first == overlay_selection_scale_) {
+
+            // show manipulation overlay
+            overlay_scaling_cross_->visible_ = true;
+            overlay_scaling_grid_->visible_ = false;
+            overlay_scaling_->visible_ = true;
+            overlay_scaling_->translation_.x = overlay_selection_stored_status_->translation_.x;
+            overlay_scaling_->translation_.y = overlay_selection_stored_status_->translation_.y;
+            overlay_scaling_->rotation_.z = overlay_selection_stored_status_->rotation_.z;
+            overlay_scaling_->update(0);
+            overlay_scaling_cross_->copyTransform(overlay_scaling_);
+            overlay_scaling_->color = overlay_selection_icon_->color;
+            overlay_scaling_cross_->color = overlay_selection_icon_->color;
+
+            //
+            // Manipulate the scaling handle in the SCENE coordinates to apply grid snap
+            //
+            if ( grid->active() ) {
+                glm::vec3 handle = glm::vec3(1.f, -1.f, 0.f);
+                // Compute handle coordinates into SCENE reference frame
+                handle = overlay_selection_stored_status_->transform_ * glm::vec4( handle, 1.f );
+                // move the handle we hold by the mouse translation (in scene reference frame)
+                handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * glm::vec4( handle, 1.f );
+                // snap handle coordinates to grid (if active)
+                handle = grid->snap(handle);
+                // Compute handle coordinates back in SOURCE reference frame
+                handle = glm::inverse(overlay_selection_stored_status_->transform_) * glm::vec4( handle,  1.f );
+                // The scaling factor is computed by dividing new handle coordinates with the ones before transform
+                glm::vec3 handle_scaling = glm::vec3(handle) / glm::vec3(1.f, -1.f, 1.f);
+                S = glm::scale(glm::identity<glm::mat4>(), handle_scaling);
+            }
+
+            // apply to selection overlay
+            glm::vec4 vec = S * glm::vec4( overlay_selection_stored_status_->scale_, 0.f );
+            overlay_selection_->scale_ = glm::vec3(vec);
+
+            // apply to selection sources
+            // NB: complete transform matrix (right to left) : move to center, scale and move back
+            glm::mat4 M = T * S * glm::inverse(T);
+            applySelectionTransform(M);
+
+            // store action in history
+            current_action_ = "Scale selection";
+            ret.type = Cursor_ResizeNWSE;
+        }
+        // ...or if interaction with selection ROTATION handle
+        else if (pick.first == overlay_selection_rotate_) {
+
+            // show manipulation overlay
+            overlay_rotation_->visible_ = true;
+            overlay_rotation_->translation_.x = overlay_selection_stored_status_->translation_.x;
+            overlay_rotation_->translation_.y = overlay_selection_stored_status_->translation_.y;
+            overlay_rotation_->update(0);
+            overlay_rotation_->color = overlay_selection_icon_->color;
+            overlay_rotation_fix_->visible_ = false;
+            overlay_rotation_fix_->copyTransform(overlay_rotation_);
+            overlay_rotation_fix_->color = overlay_selection_icon_->color;
+
+            // Swap grid to rotation, shifted at center of source
+            rotation_grid_->setActive( grid->active() );
+            translation_grid_->setActive( false );
+            grid = rotation_grid_;
+            grid->root()->translation_ = overlay_selection_stored_status_->translation_;
+
+            // prepare variables
+            const float diagonal = glm::length( glm::vec2(overlay_selection_stored_status_->scale_));
+            glm::vec2 handle_polar = glm::vec2( diagonal, 0.f);
+
+            // compute rotation angle
+            float angle = glm::orientedAngle( glm::normalize(glm::vec2(selection_from)), glm::normalize(glm::vec2(selection_to)));
+            handle_polar.y = overlay_selection_stored_status_->rotation_.z + angle;
+
+            // compute scaling of diagonal to reach new coordinates
+            handle_polar.x *= factor;
+
+            // snap polar coordiantes (diagonal lenght, angle)
+            if ( grid->active() ) {
+                handle_polar = glm::round( handle_polar / grid->step() ) * grid->step();
+                // prevent null size
+                handle_polar.x = glm::max( grid->step().x,  handle_polar.x );
+            }
+
+            // cancel scaling with SHIFT modifier key
+            if (UserInterface::manager().shiftModifier()) {
+                overlay_rotation_fix_->visible_ = true;
+                handle_polar.x = 1.f;
+            }
+            else
+                handle_polar.x /= diagonal ;
+
+            S = glm::scale(glm::identity<glm::mat4>(), glm::vec3(handle_polar.x, handle_polar.x, 1.f));
+
+            // apply to selection overlay
+            glm::vec4 vec = S * glm::vec4( overlay_selection_stored_status_->scale_, 0.f );
+            overlay_selection_->scale_ = glm::vec3(vec);
+            overlay_selection_->rotation_.z = handle_polar.y;
+
+            // apply to selection sources
+            // NB: complete transform matrix (right to left) : move to center, rotate, scale and move back
+            angle = handle_polar.y - overlay_selection_stored_status_->rotation_.z;
+            glm::mat4 R = glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3(0.f, 0.f, 1.f) );
+            glm::mat4 M = T * S * R * glm::inverse(T);
+            applySelectionTransform(M);
+
+            // store action in history
+            current_action_ = "Scale and rotate selection";
+            ret.type = Cursor_Hand;
+        }
+
         return ret;
+    }
+
+    
+    // if ( current_canvas_source_ == nullptr )
+    //     return ret;
 
     /* canvas source grab */    
     Group *sourceNode = current_canvas_source_->group(View::GEOMETRY); 
@@ -1332,10 +1611,7 @@ void DisplaysView::updateSelectionOverlay(glm::vec4 color)
         overlay_selection_->attach(overlay_selection_rotate_);
     }
 
-    // no overlay by default
-    overlay_selection_->visible_ = false;
-
-    // potential selection if more than 1 source selected
+    // selection active if more than 1 source selected
     if (canvas_source_selection_.size() > 1) {
         // show group overlay
         overlay_selection_->visible_ = true;
@@ -1344,8 +1620,11 @@ void DisplaysView::updateSelectionOverlay(glm::vec4 color)
         overlay_selection_icon_->color = color;
     }
     // no selection: reset drawing selection overlay
-    else
+    else {
+        // no overlay by default
+        overlay_selection_->visible_ = false;
         overlay_selection_->scale_ = glm::vec3(0.f, 0.f, 1.f);
+    }
 
     if (overlay_selection_->visible_) {
 
@@ -1370,3 +1649,17 @@ void DisplaysView::updateSelectionOverlay(glm::vec4 color)
 
 }
 
+void DisplaysView::applySelectionTransform(glm::mat4 M)
+{
+    for (auto sit = canvas_source_selection_.begin(); sit != canvas_source_selection_.end(); ++sit){
+        // recompute all from matrix transform
+        glm::mat4 transform = M * (*sit)->stored_status_->transform_;
+        glm::vec3 tra, rot, sca;
+        GlmToolkit::inverse_transform(transform, tra, rot, sca);
+        (*sit)->group(View::GEOMETRY)->translation_ = tra;
+        (*sit)->group(View::GEOMETRY)->scale_ = sca;
+        (*sit)->group(View::GEOMETRY)->rotation_ = rot;
+        // will have to be updated
+        (*sit)->touch();
+    }
+}
