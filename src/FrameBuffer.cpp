@@ -212,6 +212,13 @@ glm::vec3 FrameBuffer::resolution() const
     return glm::vec3(attrib_.viewport.x, attrib_.viewport.y, 0.f);
 }
 
+glm::vec3 FrameBuffer::maxResolution()
+{
+    GLint max_texture_size = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
+    return glm::vec3(max_texture_size, max_texture_size, 0.f);
+}
+
 void FrameBuffer::resize(glm::vec3 res)
 {
     if (framebufferid_) {

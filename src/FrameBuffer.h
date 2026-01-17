@@ -97,6 +97,7 @@ public:
 
     // how much memory used, in Bytes
     static unsigned long memory_usage();
+    static glm::vec3 maxResolution();
 
 private:
     void init();
