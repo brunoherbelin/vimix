@@ -36,6 +36,7 @@ private:
     Group *monitors_layout_;
     std::map<std::string, Switch *> monitors_;
     bool horizontal_layout_;
+    float monitors_scaling_ratio_;
 
     Node *overlay_position_;
     Node *overlay_position_cross_;

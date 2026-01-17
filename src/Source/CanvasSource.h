@@ -29,6 +29,8 @@ public:
 
     glm::vec3 resolution() const;
     float aspectRatio() const ;
+    
+    glm::vec3 scale() const { return group(View::GEOMETRY)->scale_; }
 
     Group *label;
     Character *label_0_, *label_1_;

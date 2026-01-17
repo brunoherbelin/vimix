@@ -65,6 +65,7 @@ FilteringProgram _whitebalance("Whitebalance", "shaders/filters/whitebalance.gls
 DisplaysView::DisplaysView() : View(DISPLAYS)
 {
     scene.root()->scale_ = glm::vec3(DISPLAYS_DEFAULT_SCALE, DISPLAYS_DEFAULT_SCALE, 1.0f);
+    monitors_scaling_ratio_ = 1.f;
 
     // read default settings
     if ( Settings::application.views[mode_].name.empty() ) {
@@ -219,7 +220,7 @@ void DisplaysView::update(float dt)
     }
 }
 
-void setCoordinates(Node *node, glm::ivec4 coordinates, glm::ivec4 bounding_box)
+float setCoordinates(Node *node, glm::ivec4 coordinates, glm::ivec4 bounding_box)
 {
     glm::vec4 rect = DISPLAYS_UNIT * glm::vec4(coordinates);
     
@@ -237,6 +238,8 @@ void setCoordinates(Node *node, glm::ivec4 coordinates, glm::ivec4 bounding_box)
     float scalingratio = 1.f / (0.5f * DISPLAYS_UNIT * float(bounding_box.w) );
     node->scale_ *= glm::vec3( scalingratio, scalingratio, 1.f ); 
     node->translation_ *= glm::vec3( scalingratio, scalingratio, 1.f ); 
+
+    return scalingratio;
 }
 
 // recenter is called also when RenderingManager detects a change of monitors
@@ -256,7 +259,7 @@ void  DisplaysView::recenter ()
         bbox.z = MAX(bbox.z, monitor.geometry.x + monitor.geometry.z);
         bbox.w = MAX(bbox.w, monitor.geometry.y + monitor.geometry.w);  
     }
-    setCoordinates(boundingbox_surface_, bbox, bbox);
+    monitors_scaling_ratio_ = setCoordinates(boundingbox_surface_, bbox, bbox);
 
     // fill scene background with the frames to show monitors
     // Reset and fill monitors_layout_ and list of monitors_
@@ -479,11 +482,12 @@ void DisplaysView::menuCanvasSource ()
             CanvasSource *s = new CanvasSource;
             Canvas::manager().attachCanvasSource( s );
 
+            // initialize its frame size to match canvas resolution in monitors space
             CanvasSurface *canvas = Canvas::manager().at(0);
             float AR = canvas->aspectRatio();
-
-            s->group(View::GEOMETRY)->scale_.x = monitors_.begin()->second->scale_.y * 0.5f * AR;
-            s->group(View::GEOMETRY)->scale_.y = monitors_.begin()->second->scale_.y * 0.5f;
+            float ryh = canvas->resolution().y * canvas->scale().y * DISPLAYS_UNIT * 0.5f * monitors_scaling_ratio_;
+            s->group(View::GEOMETRY)->scale_.y = ryh;
+            s->group(View::GEOMETRY)->scale_.x = ryh * AR;
             s->group(View::GEOMETRY)->rotation_.z = 0;
             s->group(View::GEOMETRY)->translation_ = monitors_.begin()->second->translation_;
             s->touch();
@@ -561,7 +565,8 @@ void DisplaysView::draw()
 
             monitor_index++;
             std::string monitor_title = "Monitor " + std::to_string(monitor_index);
-            monitor_title += " (" + monitor.name + ")";
+            monitor_title += "\n" + monitor.name;
+            monitor_title += " (" + std::to_string(monitor.geometry.z) + "x" + std::to_string(monitor.geometry.w) + ")";
 
             // Locate monitor view upper left corner
             glm::vec3 pos;
@@ -789,13 +794,16 @@ void DisplaysView::contextMenuCanvasSource()
     }
 
     // Restore aspect ratio of Canvas
-    if (ImGui::MenuItem( ICON_FA_EXPAND_ALT "  Restore aspect ratio" )){
+    if (ImGui::MenuItem( ICON_FA_DESKTOP "  1:1 pixel ratio" )){
 
         CanvasSurface *canvas = Canvas::manager().at(current_canvas_source_->canvas());
         float AR = canvas->aspectRatio();
+        float height = current_canvas_source_->group(View::GEOMETRY)->crop_[2] - current_canvas_source_->group(View::GEOMETRY)->crop_[3];
+        float width = current_canvas_source_->group(View::GEOMETRY)->crop_[1] - current_canvas_source_->group(View::GEOMETRY)->crop_[0];
+        float ryh = canvas->resolution().y * canvas->scale().y * height * DISPLAYS_UNIT * 0.25f * monitors_scaling_ratio_;
+        current_canvas_source_->group(View::GEOMETRY)->scale_.y = ryh;
         current_canvas_source_->group(View::GEOMETRY)->scale_.x = current_canvas_source_->group(View::GEOMETRY)->scale_.y * AR;
-        current_canvas_source_->group(View::GEOMETRY)->scale_.x *= (current_canvas_source_->group(View::GEOMETRY)->crop_[1] - current_canvas_source_->group(View::GEOMETRY)->crop_[0]) /
-                                        (current_canvas_source_->group(View::GEOMETRY)->crop_[2] - current_canvas_source_->group(View::GEOMETRY)->crop_[3]);
+        current_canvas_source_->group(View::GEOMETRY)->scale_.x *= width / height;
         current_canvas_source_->touch();
     }
 
