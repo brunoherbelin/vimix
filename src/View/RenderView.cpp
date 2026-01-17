@@ -34,8 +34,8 @@
 
 const char* RenderView::ratio_preset_name[6] = { "4:3", "3:2", "16:10", "16:9", "21:9", "Custom" };
 glm::vec2 RenderView::ratio_preset_value[6] = { glm::vec2(4.f,3.f), glm::vec2(3.f,2.f), glm::vec2(16.f,10.f), glm::vec2(16.f,9.f), glm::vec2(21.f,9.f) , glm::vec2(1.f,2.f) };
-const char* RenderView::height_preset_name[5] = { "720", "1080", "1200", "1440", "2160" };
-float RenderView::height_preset_value[5] = { 720.f, 1080.f, 1200.f, 1440.f, 2160.f };
+const char* RenderView::height_preset_name[6] = { "720", "1080", "1200", "1440", "2160", "4320" };
+float RenderView::height_preset_value[6] = { 720.f, 1080.f, 1200.f, 1440.f, 2160.f, 4320.f };
 
 
 glm::vec3 RenderView::resolutionFromPreset(int ar, int h)
