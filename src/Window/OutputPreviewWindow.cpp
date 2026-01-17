@@ -22,7 +22,9 @@
 
 // ImGui
 #include "FrameGrabber.h"
+#include "IconsFontAwesome5.h"
 #include "Toolkit/ImGuiToolkit.h"
+#include "imgui.h"
 #include "imgui_internal.h"
 
 #include "defines.h"
@@ -38,6 +40,8 @@
 #include "ShmdataBroadcast.h"
 #include "FrameGrabbing.h"
 #include "GPUVideoRecorder.h"
+#include "Canvas.h"
+#include "Source/CanvasSource.h"
 
 #include "UserInterfaceManager.h"
 #include "OutputPreviewWindow.h"
@@ -195,7 +199,16 @@ void OutputPreviewWindow::Render()
     const ImGuiContext& g = *GImGui;
     bool openInitializeSystemLoopback = false;
 
+    // default to show mixer output
     FrameBuffer *output = Mixer::manager().session()->frame();
+
+    // tries to show canvas output if selected
+    if (Settings::application.widget.preview_output > -1) {
+        Settings::application.widget.preview_output = MIN( Canvas::manager().size()-1, Settings::application.widget.preview_output );
+        output = Canvas::manager().at(Settings::application.widget.preview_output)->frame();
+    } 
+    
+    // ensure valid output
     if (output)
     {
         // constraint aspect ratio resizing
@@ -229,6 +242,26 @@ void OutputPreviewWindow::Render()
                 if (ImGuiToolkit::MenuItemIcon(ICON_PREVIEW, MENU_PREVIEW, SHORTCUT_PREVIEW_OUT) )
                     UserInterface::manager().show_preview = UserInterface::PREVIEW_OUTPUT;
                 ImGui::MenuItem( MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE, &Settings::application.render.disabled);
+
+                // select what to show in window & for recording
+                ImGui::Separator();
+
+                bool busy = Outputs::manager().enabled( 
+                    FrameGrabber::GRABBER_VIDEO, 
+                    FrameGrabber::GRABBER_GPU, 
+                    FrameGrabber::GRABBER_P2P,
+                    FrameGrabber::GRABBER_BROADCAST,
+                    FrameGrabber::GRABBER_SHM,
+                    FrameGrabber::GRABBER_LOOPBACK 
+                );
+
+                if (ImGui::MenuItem(ICON_FA_EXPAND "   Full Mix Output", nullptr, Settings::application.widget.preview_output == -1, !busy))
+                    Settings::application.widget.preview_output = -1;
+                for (size_t c = 0; c < Canvas::manager().size(); ++c) {
+                    std::string label = ICON_FA_BORDER_ALL "   Canvas " + std::to_string(c+1);;
+                    if (ImGui::MenuItem(label.c_str(), nullptr, Settings::application.widget.preview_output == (int)c, !busy))
+                        Settings::application.widget.preview_output = (int)c;
+                }
 
                 // Display window manager menu
                 ImGui::Separator();

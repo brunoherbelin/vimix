@@ -53,6 +53,7 @@
 #include "Source/ShaderSource.h"
 #include "Source/SrtReceiverSource.h"
 #include "Source/SourceCallback.h"
+#include "Source/CanvasSource.h"
 
 #include "Canvas.h"
 #include "SessionCreator.h"
@@ -215,7 +216,13 @@ void Mixer::update()
     Canvas::manager().update(dt_);
 
     // grab frames to recorders & streamers
-    FrameGrabbing::manager().grabFrame(session_->frame(), static_cast<guint64>(dt__));
+    FrameBuffer *output = session_->frame();
+    // tries to show canvas output if selected
+    if (Settings::application.widget.preview_output > -1) {
+        Settings::application.widget.preview_output = MIN( Canvas::manager().size()-1, Settings::application.widget.preview_output );
+        output = Canvas::manager().at(Settings::application.widget.preview_output)->frame();
+    } 
+    FrameGrabbing::manager().grabFrame(output, static_cast<guint64>(dt__));
 
     // manage sources which failed update
     if (session_->ready()) {

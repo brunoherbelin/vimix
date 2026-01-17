@@ -21,6 +21,7 @@ struct WidgetsConfig
     bool logs;
     bool preview;
     int  preview_view;
+    int  preview_output;
     bool media_player;
     int  media_player_view;
     int  media_player_timeline_editmode;
@@ -45,6 +46,7 @@ struct WidgetsConfig
         logs = false;
         preview = false;
         preview_view = -1;
+        preview_output = -1;
         media_player = false;
         media_player_view = -1;
         media_player_timeline_editmode = 0;
