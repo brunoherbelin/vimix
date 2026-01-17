@@ -414,6 +414,57 @@ void popup_adjustment_color(Settings::MonitorConfig &conf) {
     ImGui::PopFont();
 }
 
+void DisplaysView::addCanvasSource()
+{
+    // create a canvas source of default Canvas 01 
+    CanvasSource *s = new CanvasSource;
+    Canvas::manager().attachCanvasSource( s );
+
+    // initialize its frame size to match canvas resolution in monitors space
+    CanvasSurface *canvas = Canvas::manager().at(0);
+    float AR = canvas->aspectRatio();
+    float ryh = canvas->resolution().y * canvas->scale().y * DISPLAYS_UNIT * 0.5f * monitors_scaling_ratio_;
+    s->group(View::GEOMETRY)->scale_.y = ryh;
+    s->group(View::GEOMETRY)->scale_.x = ryh * AR;
+    s->group(View::GEOMETRY)->rotation_.z = 0;
+    s->group(View::GEOMETRY)->translation_ = monitors_.begin()->second->translation_;
+    s->touch();
+
+    // set as current canvas source
+    setCurrentCanvasSource(s);
+}
+
+void DisplaysView::removeCurrentCanvasSource()
+{
+    // detach current source (this deletes it from session)
+    CanvasSource *cs = dynamic_cast<CanvasSource *>(current_canvas_source_);
+    if (cs) {
+        setCurrentCanvasSource( nullptr );
+        Canvas::manager().detachCanvasSource(cs);
+    }
+
+    // set another current source if any
+    if ( Canvas::manager().session()->size() > 0 )
+        setCurrentCanvasSource( *Canvas::manager().session()->begin() );
+}
+
+void DisplaysView::removeCurrentCanvasSelection()
+{
+    // get copy of selected sources before clearing selection
+    SourceList tmp = selected_canvas_sources_.getCopy();
+    selected_canvas_sources_.clear();
+
+    // detach all sources that were in the selection
+    for ( auto cs : tmp ) {
+        if ( cs == current_canvas_source_ )
+            setCurrentCanvasSource( nullptr );
+        Canvas::manager().detachCanvasSource( static_cast<CanvasSource*>(cs));
+    }
+
+    // set another current source if any
+    if ( Canvas::manager().session()->size() > 0 )
+        setCurrentCanvasSource( *Canvas::manager().session()->begin() );
+}
 
 void DisplaysView::menuCanvasSource ()
 {
@@ -452,15 +503,7 @@ void DisplaysView::menuCanvasSource ()
         // - action REMOVE canvas source
         if (Canvas::manager().session()->size() > 0 && current_canvas_source_ != nullptr) {
             if (ImGui::Button(ICON_FA_MINUS )) {
-
-                // detach current source (this deletes it from session)
-                CanvasSource *cs = dynamic_cast<CanvasSource *>(current_canvas_source_);
-                if (cs)
-                    Canvas::manager().detachCanvasSource(cs);
-
-                // set another current source if any
-                current_canvas_source_ = nullptr;
-                setCurrentCanvasSource( *Canvas::manager().session()->begin() );
+                removeCurrentCanvasSource();
             }
             if (ImGui::IsItemHovered())
                 ImGuiToolkit::ToolTip("Remove selected canvas frame");
@@ -477,23 +520,7 @@ void DisplaysView::menuCanvasSource ()
 
         // + action ADD new canvas source
         if (ImGui::Button(ICON_FA_PLUS )) {
-
-            // create a canvas source of default Canvas 01 
-            CanvasSource *s = new CanvasSource;
-            Canvas::manager().attachCanvasSource( s );
-
-            // initialize its frame size to match canvas resolution in monitors space
-            CanvasSurface *canvas = Canvas::manager().at(0);
-            float AR = canvas->aspectRatio();
-            float ryh = canvas->resolution().y * canvas->scale().y * DISPLAYS_UNIT * 0.5f * monitors_scaling_ratio_;
-            s->group(View::GEOMETRY)->scale_.y = ryh;
-            s->group(View::GEOMETRY)->scale_.x = ryh * AR;
-            s->group(View::GEOMETRY)->rotation_.z = 0;
-            s->group(View::GEOMETRY)->translation_ = monitors_.begin()->second->translation_;
-            s->touch();
-
-            // set as current canvas source
-            setCurrentCanvasSource(s);
+            addCanvasSource();
         }
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Add new canvas frame");

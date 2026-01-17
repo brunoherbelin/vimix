@@ -32,6 +32,7 @@
 #include <tinyxml2.h>
 
 #include "ImageShader.h"
+#include "View/DisplaysView.h"
 #include "defines.h"
 #include "Settings.h"
 #include "Log.h"
@@ -763,6 +764,14 @@ void Mixer::uncover(Source *s)
 
 void Mixer::deleteSelection()
 {
+    // operate on canvas source in Displays view
+    if ( current_view_ == &displays_ ) {
+        // cancel selection deletion in Displays view
+        displays_.removeCurrentCanvasSelection();
+        return;
+    }
+
+    // operate on session sources otherwise
     // number of sources in selection
     uint N = selection().size();
     // ignore if selection empty

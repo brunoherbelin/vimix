@@ -30,6 +30,10 @@ public:
     Cursor grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair<Node *, glm::vec2> pick) override;
     void arrow (glm::vec2) override;
 
+    void addCanvasSource();
+    void removeCurrentCanvasSource();
+    void removeCurrentCanvasSelection();
+
 private:
 
     Surface *boundingbox_surface_;
