@@ -2,6 +2,7 @@
 #define DISPLAYSVIEW_H
 
 #include "View/View.h"
+#include "Selection.h"
 #include "Source/SourceList.h"
 
 class CanvasSource;
@@ -54,7 +55,7 @@ private:
     void menuCanvasSource();
     void contextMenuCanvasSource();
 
-    SourceList canvas_source_selection_;
+    Selection selected_canvas_sources_;
     void updateSelectionOverlay(glm::vec4 color) override;
     void applySelectionTransform(glm::mat4 M);
     void contextMenuCanvasSelection();

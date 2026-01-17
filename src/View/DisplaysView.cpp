@@ -18,8 +18,6 @@
 **/
 
 #include "IconsFontAwesome5.h"
-#include "Source/SourceList.h"
-#include "View/View.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 
@@ -41,6 +39,8 @@
 #include "defines.h"
 #include "Mixer.h"
 #include "Settings.h"
+#include "Scene/Scene.h"
+#include "Source/SourceList.h"
 #include "Source/Source.h"
 #include "Source/CanvasSource.h"
 #include "Visitor/PickingVisitor.h"
@@ -862,7 +862,7 @@ void DisplaysView::contextMenuCanvasSelection()
         terminate();
     }
     if (ImGui::Selectable( ICON_FA_COMPASS "  Align" )){
-        for (auto sit = canvas_source_selection_.begin(); sit != canvas_source_selection_.end(); ++sit){
+        for (auto sit = selected_canvas_sources_.begin(); sit != selected_canvas_sources_.end(); ++sit){
             (*sit)->group(View::GEOMETRY)->rotation_.z = overlay_selection_->rotation_.z;
             (*sit)->touch();
         }
@@ -967,9 +967,6 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
     // picking visitor found nodes?
     if ( !pv.empty() ) {
 
-        // canvas source are not managed as sources; cancel normal source picking
-        // pick = { nullptr, glm::vec2(0.f) };
-
         // remember picked sources to cycle through them
         static SourceListUnique picked_sources;
 
@@ -1010,33 +1007,23 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
                 picked_canvas_source->manipulator_->setActive(1);
                 picked_sources.clear();
             }
-            // second clic not on a handle, maybe select another canvas source below
             else {
-                if (picked_sources.empty()) {
-                    // loop over all nodes picked to fill the list of canvas sources clicked
-                    for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp) {
-                        SourceList::iterator sit = std::find_if(Canvas::manager().session()->begin(), 
-                            Canvas::manager().session()->end(), Source::hasNode( (*itp).first ));
-                        if ( sit != Canvas::manager().session()->end() ) {
-                            picked_sources.insert( *sit );
-                        }
+                // ctrl pressed: maybe remove from selection
+                if (UserInterface::manager().ctrlModifier()) {
+                    if ( selected_canvas_sources_.contains(picked_canvas_source) && 
+                         selected_canvas_sources_.size() > 1 ) {
+                        selected_canvas_sources_.remove( picked_canvas_source );
+                        setCurrentCanvasSource(selected_canvas_sources_.front());
                     }
-                }
-                if (!picked_sources.empty()){
-                    setCurrentCanvasSource( *picked_sources.begin() );
-                    picked_sources.erase(picked_sources.begin());
                 }
             }
         }
         // the clicked canvas source might have changed
         if (picked_canvas_source == nullptr) {
 
-            // default to no canvas source picked
-            if(current_canvas_source_ != nullptr)
-                setCurrentCanvasSource(nullptr);
-
             if (pv.empty()) {
-                canvas_source_selection_.clear();
+                setCurrentCanvasSource(nullptr);
+                selected_canvas_sources_.clear();
                 return pick;
             }
 
@@ -1047,14 +1034,38 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
                 SourceList::iterator sit = std::find_if(Canvas::manager().session()->begin(), 
                     Canvas::manager().session()->end(), Source::hasNode( (*itp).first ));
 
-                // accept picked canvas
+                // accept picked canvas source
                 if ( sit != Canvas::manager().session()->end() ) {
-                    setCurrentCanvasSource(*sit);                            
-                    pick = { current_canvas_source_->group(View::GEOMETRY), (*itp).second };
+
+                    Source *s = *sit;
+                    
+                    // if ctrl is pressed
+                    if (UserInterface::manager().ctrlModifier()) {
+
+                        if ( !selected_canvas_sources_.contains(s) )
+                            selected_canvas_sources_.add( s );
+                        else if ( selected_canvas_sources_.size() > 1 ) {
+                            selected_canvas_sources_.remove( s );
+                            s = selected_canvas_sources_.front();
+                        }
+                    } 
+                    else {
+                        // a source is picked but is not in an active selection? don't pick this one!
+                        if ( selected_canvas_sources_.size() > 1 && !selected_canvas_sources_.contains(s) )
+                            continue;
+                    }
+                    
+                    if (s) {
+                        // set as current canvas source
+                        setCurrentCanvasSource(s);                            
+                        pick = { s->group(View::GEOMETRY), (*itp).second };
+                    }
+                    else 
+                        setCurrentCanvasSource(nullptr);        
                     break;
                 }
                 //  not a source clicked, maybe a handle of the selection?
-                else if ( pick.first == nullptr && !canvas_source_selection_.empty() ) {
+                else if ( pick.first == nullptr && selected_canvas_sources_.size() > 1 ) {
                     
                     // picked on selection handles
                     if ( (*itp).first == overlay_selection_scale_ || (*itp).first == overlay_selection_rotate_ ) {
@@ -1089,25 +1100,39 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
 
 void DisplaysView::setCurrentCanvasSource(Source *c)
 {
+    // reset previous current canvas source
     if (current_canvas_source_ != nullptr) {
-        current_canvas_source_->setMode(Source::VISIBLE);
+
+        // current source is part of the selection, keep inside and change status
+        if (selected_canvas_sources_.size() > 1) 
+            current_canvas_source_->setMode(Source::SELECTED);
+        // current source is the only selected source, unselect fully
+        else
+        {
+            // remove from selection
+            selected_canvas_sources_.clear();
+            current_canvas_source_->setMode(Source::VISIBLE);
+        }
+
+        // no more current
         current_canvas_source_ = nullptr;
     }
 
+    // no new current canvas source requested
     if (c == nullptr) 
         return;
 
+    // SET CURRENT CANVAS SOURCE
     current_canvas_source_ = static_cast<CanvasSource *>(c);
-    current_canvas_source_->setMode(Source::CURRENT);
 
-    // cancel selection if current canvas source is not in selection
-    if (canvas_source_selection_.size() > 0){
-        if ( std::find(canvas_source_selection_.begin(), canvas_source_selection_.end(), current_canvas_source_) == canvas_source_selection_.end() ) 
-            canvas_source_selection_.clear();
-        else
-            current_canvas_source_->setMode(Source::SELECTED);
-    }
+    // set selection for this only source if not already part of a selection
+    if (!selected_canvas_sources_.contains(c)) 
+        selected_canvas_sources_.set(c);
 
+    if (selected_canvas_sources_.size() > 1) 
+        current_canvas_source_->setMode(Source::SELECTED);
+    else 
+        current_canvas_source_->setMode(Source::CURRENT);
 }
 
 Source *DisplaysView::currentCanvasSource() const { 
@@ -1133,17 +1158,18 @@ void DisplaysView::select(glm::vec2 A, glm::vec2 B)
     if ( !pv.empty()) {
 
         // create a list of source matching the list of picked nodes
-        SourceListUnique selection;
+        SourceList selection;
         // loop over the nodes and add all sources found.
          for(std::vector< std::pair<Node *, glm::vec2> >::const_reverse_iterator p = pv.rbegin(); p != pv.rend(); ++p){
             SourceList::iterator sit = Canvas::manager().session()->find( p->first );
 
             if ( sit != Canvas::manager().session()->end() )
-                selection.insert( *sit );
+                selection.push_back( *sit );
         }
+        selection.unique();
 
         if (selection.empty()) {
-            canvas_source_selection_.clear();
+            selected_canvas_sources_.clear();
         }
         else if (selection.size() < 2 ) {
             // if only one source selected, set it as current
@@ -1151,13 +1177,13 @@ void DisplaysView::select(glm::vec2 A, glm::vec2 B)
         }
         else {
             // set the selection with list of picked (overlaped) sources
-            canvas_source_selection_.assign(selection.begin(), selection.end());
+            selected_canvas_sources_.set(selection);
             setCurrentCanvasSource( nullptr);
         }
     }
     else
         // reset selection
-        canvas_source_selection_.clear();
+        selected_canvas_sources_.clear();
 }
 
 void DisplaysView::initiate()
@@ -1231,7 +1257,7 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
     // if grabing the selection overlay handles
-    if (current_canvas_source_ == nullptr && overlay_selection_ && overlay_selection_active_ ) {
+    if (overlay_selection_ && overlay_selection_active_ ) {
 
         // rotation center to selection position
         glm::mat4 T = glm::translate(glm::identity<glm::mat4>(), overlay_selection_stored_status_->translation_);
@@ -1491,7 +1517,7 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
             source_target = sourceNode->translation_ - current_canvas_source_->stored_status_->translation_;
 
             // loop over selection
-            for (auto it = canvas_source_selection_.begin(); it != canvas_source_selection_.end(); ++it) {
+            for (auto it = selected_canvas_sources_.begin(); it != selected_canvas_sources_.end(); ++it) {
                 if ( *it != current_canvas_source_ ) {
                     // translate and request update
                     (*it)->group(View::GEOMETRY)->translation_ = (*it)->stored_status_->translation_ + source_target;
@@ -1612,7 +1638,7 @@ void DisplaysView::updateSelectionOverlay(glm::vec4 color)
     }
 
     // selection active if more than 1 source selected
-    if (canvas_source_selection_.size() > 1) {
+    if (selected_canvas_sources_.size() > 1) {
         // show group overlay
         overlay_selection_->visible_ = true;
         overlay_selection_frame_->color = color;
@@ -1631,7 +1657,7 @@ void DisplaysView::updateSelectionOverlay(glm::vec4 color)
         if ( !overlay_selection_active_) {
 
             // calculate ORIENTED bbox on selection
-            GlmToolkit::OrientedBoundingBox selection_box = BoundingBoxVisitor::OBB(canvas_source_selection_, 
+            GlmToolkit::OrientedBoundingBox selection_box = BoundingBoxVisitor::OBB(selected_canvas_sources_.getCopy(), 
                                                         scene.ws(), View::GEOMETRY);
 
             // apply transform
@@ -1651,7 +1677,7 @@ void DisplaysView::updateSelectionOverlay(glm::vec4 color)
 
 void DisplaysView::applySelectionTransform(glm::mat4 M)
 {
-    for (auto sit = canvas_source_selection_.begin(); sit != canvas_source_selection_.end(); ++sit){
+    for (auto sit = selected_canvas_sources_.begin(); sit != selected_canvas_sources_.end(); ++sit){
         // recompute all from matrix transform
         glm::mat4 transform = M * (*sit)->stored_status_->transform_;
         glm::vec3 tra, rot, sca;
