@@ -1002,59 +1002,52 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
     // picking visitor found nodes?
     if ( !pv.empty() ) {
 
-        // remember picked sources to cycle through them
-        static SourceListUnique picked_sources;
-
         // keep current canvas active if it is clicked
-        Source *picked_canvas_source = current_canvas_source_;
-        if (picked_canvas_source != nullptr) {
+        Source *picked_current_source = current_canvas_source_;
+        if (picked_current_source != nullptr) {
             // find if the current canvas was picked
             auto itp = pv.rbegin();
             for (; itp != pv.rend(); ++itp){
                 // test if canvas contains this node
                 Source::hasNode is_in_source((*itp).first );
-                if ( is_in_source( picked_canvas_source ) ){
+                if ( is_in_source( picked_current_source ) ){
                     // a node in the current canvas was clicked !
                     pick = *itp;
                     // adapt grid to prepare grab action
-                    adaptGridToSource(picked_canvas_source, pick.first);
+                    adaptGridToSource(picked_current_source, pick.first);
                     break;
                 }
             }
             // not found: the current canvas was not clicked
             if (itp == pv.rend() ) {
-                picked_sources.clear();
-                picked_canvas_source = nullptr;
+                picked_current_source = nullptr;
                 pick = { nullptr, glm::vec2(0.f) };
             }
             // picking on the menu handle: show context menu & reset picked sources
-            else if ( pick.first == picked_canvas_source->handles_[View::GEOMETRY][Handles::MENU] ) {
+            else if ( pick.first == picked_current_source->handles_[View::GEOMETRY][Handles::MENU] ) {
                 openContextMenu(MENU_SOURCE);
-                picked_sources.clear();
             }
             // picking on the crop handle : switch to shape manipulation mode
-            else if (pick.first == picked_canvas_source->handles_[View::GEOMETRY][Handles::EDIT_CROP]) {
-                picked_canvas_source->manipulator_->setActive(0);
-                picked_sources.clear();
+            else if (pick.first == picked_current_source->handles_[View::GEOMETRY][Handles::EDIT_CROP]) {
+                picked_current_source->manipulator_->setActive(0);
             }
             // picking on the shape handle : switch to crop manipulation mode
-            else if (pick.first == picked_canvas_source->handles_[View::GEOMETRY][Handles::EDIT_SHAPE]) {
-                picked_canvas_source->manipulator_->setActive(1);
-                picked_sources.clear();
+            else if (pick.first == picked_current_source->handles_[View::GEOMETRY][Handles::EDIT_SHAPE]) {
+                picked_current_source->manipulator_->setActive(1);
             }
             else {
                 // ctrl pressed: maybe remove from selection
                 if (UserInterface::manager().ctrlModifier()) {
-                    if ( selected_canvas_sources_.contains(picked_canvas_source) && 
+                    if ( selected_canvas_sources_.contains(picked_current_source) && 
                          selected_canvas_sources_.size() > 1 ) {
-                        selected_canvas_sources_.remove( picked_canvas_source );
+                        selected_canvas_sources_.remove( picked_current_source );
                         setCurrentCanvasSource(selected_canvas_sources_.front());
                     }
                 }
             }
         }
         // the clicked canvas source might have changed
-        if (picked_canvas_source == nullptr) {
+        if (picked_current_source == nullptr) {
 
             if (pv.empty()) {
                 setCurrentCanvasSource(nullptr);
@@ -1189,6 +1182,10 @@ void DisplaysView::select(glm::vec2 A, glm::vec2 B)
     PickingVisitor pv(scene_point_A, scene_point_B, true);
     scene.accept(pv);
 
+    // reset selection
+    selected_canvas_sources_.clear();
+    setCurrentCanvasSource( nullptr);
+
     // picking visitor found nodes in the area?
     if ( !pv.empty()) {
 
@@ -1203,22 +1200,16 @@ void DisplaysView::select(glm::vec2 A, glm::vec2 B)
         }
         selection.unique();
 
-        if (selection.empty()) {
-            selected_canvas_sources_.clear();
-        }
-        else if (selection.size() < 2 ) {
+        if (selection.size() < 2 ) {
             // if only one source selected, set it as current
             setCurrentCanvasSource( *selection.begin() );
         }
         else {
             // set the selection with list of picked (overlaped) sources
             selected_canvas_sources_.set(selection);
-            setCurrentCanvasSource( nullptr);
         }
     }
-    else
-        // reset selection
-        selected_canvas_sources_.clear();
+
 }
 
 void DisplaysView::initiate()
@@ -1416,9 +1407,9 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
         return ret;
     }
 
-    
-    // if ( current_canvas_source_ == nullptr )
-    //     return ret;
+    // necessary current canvas source to perform manipulation
+    if ( current_canvas_source_ == nullptr )
+        return ret;
 
     /* canvas source grab */    
     Group *sourceNode = current_canvas_source_->group(View::GEOMETRY); 
