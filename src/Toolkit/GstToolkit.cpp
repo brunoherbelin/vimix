@@ -333,7 +333,7 @@ GstToolkit::PipelineConfigSet GstToolkit::getPipelineConfigs(const std::string &
     if (elem) {
 
         // initialize the pipeline
-        GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_READY);
+        GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PAUSED);
         if (ret != GST_STATE_CHANGE_FAILURE) {
 
             // get the first pad and its content

@@ -38,11 +38,13 @@ TabletInput::~TabletInput()
 bool TabletInput::init()
 {
     // Create event monitor for tablet events
+    // Note: Tablet data is delivered as subtypes of mouse events, not as separate tablet events
     NSEventMask mask = NSEventMaskTabletPoint |
                        NSEventMaskTabletProximity |
                        NSEventMaskLeftMouseDown |
                        NSEventMaskLeftMouseUp |
-                       NSEventMaskLeftMouseDragged;
+                       NSEventMaskLeftMouseDragged |
+                       NSEventMaskMouseMoved;
 
     // Capture reference to data_ for the block
     TabletData *dataPtr = &data_;
@@ -50,19 +52,9 @@ bool TabletInput::init()
     id monitor = [NSEvent addLocalMonitorForEventsMatchingMask:mask
         handler:^NSEvent *(NSEvent *event) {
 
-            // Check for tablet point events
-            if (event.type == NSEventTypeTabletPoint ||
-                (event.subtype == NSEventSubtypeTabletPoint)) {
+            // Tablet proximity event
+            if (event.type == NSEventTypeTabletProximity) {
 
-                dataPtr->has_pressure = true;
-                dataPtr->pressure = event.pressure;
-                dataPtr->tilt_x = event.tilt.x;
-                dataPtr->tilt_y = event.tilt.y;
-                dataPtr->tip_down = (event.pressure > 0.0f);
-                dataPtr->in_proximity = true;
-            }
-            // Handle proximity events
-            else if (event.type == NSEventTypeTabletProximity) {
                 dataPtr->in_proximity = event.isEnteringProximity;
                 if (!dataPtr->in_proximity) {
                     dataPtr->pressure = 0.0f;
@@ -71,11 +63,39 @@ bool TabletInput::init()
                     dataPtr->tip_down = false;
                 }
             }
-            // Fallback to regular mouse events if tablet is in proximity
+            // Mouse events with tablet data (this is how tablet data is actually delivered)
             else if (event.type == NSEventTypeLeftMouseDown) {
-                if (dataPtr->in_proximity && dataPtr->pressure == 0.0f) {
-                    // Set minimal pressure if tablet is near but not reporting pressure
+
+                // Check if this mouse event contains tablet data
+                if (event.subtype == NSEventSubtypeTabletPoint) {
+                    dataPtr->has_pressure = true;
+                    dataPtr->pressure = event.pressure;
+                    dataPtr->tilt_x = event.tilt.x;
+                    dataPtr->tilt_y = event.tilt.y;
+                    dataPtr->tip_down = true;
+                    dataPtr->in_proximity = true;
+                }
+                else if (dataPtr->in_proximity && dataPtr->pressure == 0.0f) {
+                    // Fallback: Set minimal pressure if tablet is near but not reporting pressure
                     dataPtr->pressure = 0.1f;
+                    dataPtr->tip_down = true;
+                }
+
+            }
+            else if (event.type == NSEventTypeLeftMouseDragged) {
+
+                // Check if this mouse drag event contains tablet data (continuous pressure updates)
+                if (event.subtype == NSEventSubtypeTabletPoint) {
+                    dataPtr->has_pressure = true;
+                    dataPtr->pressure = event.pressure;
+                    dataPtr->tilt_x = event.tilt.x;
+                    dataPtr->tilt_y = event.tilt.y;
+                    dataPtr->tip_down = true;
+                    dataPtr->in_proximity = true;
+                }
+                else if (dataPtr->in_proximity && dataPtr->has_pressure) {
+                    // Tablet point events should handle pressure updates
+                    // This is just to ensure tip_down stays true during drag
                     dataPtr->tip_down = true;
                 }
             }
@@ -87,11 +107,24 @@ bool TabletInput::init()
                     }
                 }
             }
+            else if (event.type == NSEventTypeMouseMoved) {
+                // Check if this mouse move event contains tablet data (continuous pressure updates)
+                if (event.subtype == NSEventSubtypeTabletPoint) {
+                    dataPtr->has_pressure = true;
+                    dataPtr->pressure = event.pressure;
+                    dataPtr->tilt_x = event.tilt.x;
+                    dataPtr->tilt_y = event.tilt.y;
+                    dataPtr->tip_down = (event.pressure > 0.0f);
+                    dataPtr->in_proximity = true;
+                }
+            }
 
             return event;
         }];
 
-    monitor_ = (__bridge_retained void*)monitor;
+    // Store the monitor with manual retain
+    monitor_ = (__bridge void*)monitor;
+    [monitor retain];
     active_ = true;
 
     Log::Info("TabletInput: macOS tablet input initialized (NSEvent)");
@@ -107,8 +140,10 @@ void TabletInput::pollEvents()
 void TabletInput::terminate()
 {
     if (monitor_) {
-        id monitor = (__bridge_transfer id)monitor_;
+        // release
+        id monitor = (__bridge id)monitor_;
         [NSEvent removeMonitor:monitor];
+        [monitor release];
         monitor_ = nullptr;
     }
     data_.pressure = 0.0f;

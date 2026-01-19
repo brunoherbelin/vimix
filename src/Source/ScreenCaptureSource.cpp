@@ -430,8 +430,9 @@ void ScreenCaptureSource::setWindow(const std::string &windowname)
                 pipeline << " ! " << best.stream;
                 if (!best.format.empty())
                     pipeline << ",format=" << best.format;
+#ifndef APPLE                    
                 pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
-
+#endif
                 // convert (force alpha to 1)
                 pipeline << " ! alpha alpha=1 ! queue ! videoconvert ! videoscale";
 

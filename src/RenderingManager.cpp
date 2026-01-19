@@ -45,10 +45,6 @@
 #include <gst/gl/gl.h>
 #include <gst/gl/gstglcontext.h>
 
-#ifdef GLFW_EXPOSE_NATIVE_COCOA
-//#include "osx/CocoaToolkit.h"
-//#include <gst/gl/cocoa/gstgldisplay_cocoa.h>
-#endif
 #ifdef GLFW_EXPOSE_NATIVE_GLX
 #include <gst/gl/x11/gstgldisplay_x11.h>
 #include <gio/gio.h>
@@ -242,12 +238,13 @@ bool Rendering::init()
     global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
                                                    GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
 #elif GST_GL_HAVE_PLATFORM_CGL
-    //    global_display = GST_GL_DISPLAY ( glfwGetCocoaMonitor(main_.window()) );
-    global_display = GST_GL_DISPLAY (gst_gl_display_cocoa_new ());
-
-    global_gl_context = gst_gl_context_new_wrapped (global_display,
-                                                   (guintptr) 0,
-                                                   GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL);
+    // macOS: Disable OpenGL context sharing due to NSOpenGLContext threading incompatibility
+    // GStreamer's Cocoa GL implementation requires main thread for context operations,
+    // but dispatches from worker threads cause deadlock with GLFW's event loop.
+    // Solution: Use CPU transfer with PBO (fast, proven path)
+    global_display = NULL;
+    global_gl_context = NULL;
+    Log::Info("OpenGL context sharing disabled on macOS (NSOpenGLContext threading limitations)");
 #elif GST_GL_HAVE_PLATFORM_GLX
     global_display = (GstGLDisplay*) gst_gl_display_x11_new_with_display( glfwGetX11Display() );
     global_gl_context = gst_gl_context_new_wrapped (global_display,
