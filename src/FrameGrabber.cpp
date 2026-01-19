@@ -17,8 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <algorithm>
-
 //  Desktop OpenGL function loader
 #include <glad/glad.h>
 
@@ -41,7 +39,7 @@
 
 FrameGrabber::FrameGrabber(): finished_(false), initialized_(false), active_(false),
     endofstream_(false), accept_buffer_(false), buffering_full_(false), pause_(false),
-    pipeline_(nullptr), src_(nullptr), caps_(nullptr), timer_(nullptr), timer_firstframe_(0),
+    pipeline_(nullptr), src_(nullptr), read_caps_(nullptr), write_caps_(nullptr), timer_(nullptr), timer_firstframe_(0),
     timer_pauseframe_(0), timestamp_(0), duration_(0), pause_duration_(0), frame_count_(0),
     keyframe_count_(0), buffering_size_(MIN_BUFFER_SIZE), buffering_count_(0), timestamp_on_clock_(true)
 {
@@ -55,8 +53,10 @@ FrameGrabber::~FrameGrabber()
 {
     if (src_ != nullptr)
         gst_object_unref (src_);
-    if (caps_ != nullptr)
-        gst_caps_unref (caps_);
+    if (read_caps_ != nullptr)
+        gst_caps_unref (read_caps_);
+    if (write_caps_ != nullptr)
+        gst_caps_unref (write_caps_);
     if (timer_)
         gst_object_unref (timer_);
 
@@ -249,12 +249,12 @@ GstPadProbeReturn FrameGrabber::callback_event_probe(GstPad *, GstPadProbeInfo *
 }
 
 
-std::string FrameGrabber::initialize(FrameGrabber *rec, GstCaps *caps)
+std::string FrameGrabber::initialize(FrameGrabber *rec, GstCaps *read_caps, GstCaps *write_caps)
 {
-    return rec->init(caps);
+    return rec->init(read_caps, write_caps);
 }
 
-void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
+void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *read_caps, GstCaps *write_caps)
 {
     // ignore
     if (buffer == nullptr)
@@ -306,11 +306,11 @@ void FrameGrabber::addFrame (GstBuffer *buffer, GstCaps *caps)
     }
     // first time initialization
     else if (pipeline_ == nullptr) {
-        initializer_ = std::async( FrameGrabber::initialize, this, caps);
+        initializer_ = std::async( FrameGrabber::initialize, this, read_caps, write_caps);
     }
 
     // stop if an incompatilble frame buffer given after initialization
-    if (initialized_ && !gst_caps_is_subset( caps_, caps ))
+    if (initialized_ && !gst_caps_is_subset( read_caps_, read_caps ))
     {
         stop();
         Log::Warning("Frame capture interrupted because the resolution changed.");

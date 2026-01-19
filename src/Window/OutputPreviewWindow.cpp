@@ -209,7 +209,7 @@ void OutputPreviewWindow::Render()
         output = Canvas::manager().at(Settings::application.widget.preview_output)->frame();
         // get dimensions of canvas
         const glm::vec2 _crop = output->projectionSize();
-        _cropsize = ImVec2(_crop[0], _crop[1]);
+        _cropsize = ImVec2(_crop.x, _crop.y);
     } 
     
     // ensure valid output
@@ -518,13 +518,19 @@ void OutputPreviewWindow::Render()
         ImVec2 areasize = ImGui::GetContentRegionAvail();
         ImVec2 imagesize = areasize;
 
-        // image height respects original aspect ratio but is at most the available window height
-        imagesize.y = MIN( imagesize.x  * _cropsize.y / _cropsize.x, imagesize.y);
-        // image respects original aspect ratio
-        imagesize.x = imagesize.y * ar * _cropsize.x / _cropsize.y;
+        if ( _cropsize.x / _cropsize.y  < 1.f) {
+            // image height respects original aspect ratio but is at most the available window height
+            imagesize.y = MIN( imagesize.x  * _cropsize.y / _cropsize.x, imagesize.y);
+            // image respects original aspect ratio
+            imagesize.x = imagesize.y * ar * _cropsize.x / _cropsize.y;
+        } 
+        else {
+            imagesize.x = MIN( imagesize.y  * ar * _cropsize.x / _cropsize.y, imagesize.x);
+            // image respects original aspect ratio
+            imagesize.y = imagesize.x  * _cropsize.y / _cropsize.x  / ar;
+        }
 
         // center image in available area
-
         ImVec2 imagepos = draw_pos + (areasize - imagesize) * 0.5f;
         ImGui::SetCursorScreenPos(imagepos);
 

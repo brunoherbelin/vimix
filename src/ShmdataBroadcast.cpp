@@ -82,13 +82,13 @@ ShmdataBroadcast::ShmdataBroadcast(Method m, const std::string &socketpath): Fra
         method_ = SHM_SHMSINK;
 }
 
-std::string ShmdataBroadcast::init(GstCaps *caps)
+std::string ShmdataBroadcast::init(GstCaps *read_caps, GstCaps *write_caps)
 {
     if (!ShmdataBroadcast::available())
         return std::string("Shared Memory Broadcast : Not available (missing shmsink or shmdatasink plugin)");
 
     // ignore
-    if (caps == nullptr)
+    if (read_caps == nullptr)
         return std::string("Shared Memory Broadcast : Invalid caps");
 
     // create a gstreamer pipeline
@@ -129,7 +129,7 @@ std::string ShmdataBroadcast::init(GstCaps *caps)
         gst_app_src_set_max_bytes( src_, buffering_size_ );
 
         // specify streaming framerate in the given caps
-        GstCaps *tmp = gst_caps_copy( caps );
+        GstCaps *tmp = gst_caps_copy( read_caps );
         GValue v = G_VALUE_INIT;
         g_value_init (&v, GST_TYPE_FRACTION);
         gst_value_set_fraction (&v, SHMDATA_FPS, 1);  // fixed 30 FPS
@@ -137,8 +137,8 @@ std::string ShmdataBroadcast::init(GstCaps *caps)
         g_value_unset (&v);
 
         // instruct src to use the caps
-        caps_ = gst_caps_copy( tmp );
-        gst_app_src_set_caps (src_, caps_);
+        read_caps_ = gst_caps_copy( tmp );
+        gst_app_src_set_caps (src_, read_caps_);
         gst_caps_unref (tmp);
 
         // setup callbacks
@@ -188,7 +188,7 @@ std::string ShmdataBroadcast::gst_pipeline() const
     if (method_ == SHM_SHMSINK){
         pipeline += " is-live=true";
         pipeline += " ! ";
-        pipeline += std::string( gst_caps_to_string(caps_) );
+        pipeline += std::string( gst_caps_to_string(read_caps_) );
         pipeline = std::regex_replace(pipeline, std::regex("\\(int\\)"), "");
         pipeline = std::regex_replace(pipeline, std::regex("\\(fraction\\)"), "");
         pipeline = std::regex_replace(pipeline, std::regex("\\(string\\)"), "");

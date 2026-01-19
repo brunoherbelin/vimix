@@ -105,13 +105,13 @@ VideoBroadcast::VideoBroadcast(int port): FrameGrabber(), port_(port)
         port_ = BROADCAST_DEFAULT_PORT;
 }
 
-std::string VideoBroadcast::init(GstCaps *caps)
+std::string VideoBroadcast::init(GstCaps *read_caps, GstCaps *write_caps)
 {
     if (!VideoBroadcast::available())
         return std::string("Video Broadcast : Not available (missing SRT or H264)");
 
     // ignore
-    if (caps == nullptr)
+    if (read_caps == nullptr)
         return std::string("Video Broadcast : Invalid caps");
 
     // create a gstreamer pipeline
@@ -174,7 +174,7 @@ std::string VideoBroadcast::init(GstCaps *caps)
         gst_app_src_set_max_bytes( src_, buffering_size_ );
 
         // specify streaming framerate in the given caps
-        GstCaps *tmp = gst_caps_copy( caps );
+        GstCaps *tmp = gst_caps_copy( read_caps );
         GValue v = G_VALUE_INIT;
         g_value_init (&v, GST_TYPE_FRACTION);
         gst_value_set_fraction (&v, BROADCAST_FPS, 1);  // fixed 30 FPS
@@ -182,8 +182,8 @@ std::string VideoBroadcast::init(GstCaps *caps)
         g_value_unset (&v);
 
         // instruct src to use the caps
-        caps_ = gst_caps_copy( tmp );
-        gst_app_src_set_caps (src_, caps_);
+        read_caps = gst_caps_copy( tmp );
+        gst_app_src_set_caps (src_, read_caps);
         gst_caps_unref (tmp);
 
         // setup callbacks

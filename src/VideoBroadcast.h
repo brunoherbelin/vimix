@@ -22,7 +22,7 @@ public:
     std::string info(bool extended = false) const override;
 
 private:
-    std::string init(GstCaps *caps) override;
+    std::string init(GstCaps *read_caps, GstCaps *write_caps) override;
     void terminate() override;
 
     // connection information

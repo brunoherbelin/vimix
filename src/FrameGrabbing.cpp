@@ -33,8 +33,8 @@
 #include "FrameGrabbing.h"
 
 
-FrameGrabbing::FrameGrabbing(): pbo_index_(0), pbo_next_index_(0), size_(0),
-    width_(0), height_(0), use_alpha_(0), caps_(NULL)
+FrameGrabbing::FrameGrabbing(): pbo_index_(0), pbo_next_index_(0), read_size_(0),
+    write_width_(0), write_height_(0), use_alpha_(0), read_caps_(NULL)
 {
     pbo_[0] = 0;
     pbo_[1] = 0;
@@ -46,8 +46,8 @@ FrameGrabbing::~FrameGrabbing()
     clearAll();
 
     // cleanup
-    if (caps_)
-        gst_caps_unref (caps_);
+    if (read_caps_)
+        gst_caps_unref (read_caps_);
 
 //    if (pbo_[0] > 0) // automatically deleted at shutdown
 //        glDeleteBuffers(2, pbo_);
@@ -150,19 +150,28 @@ void FrameGrabbing::clearAll()
 
 void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
 {
-    if (frame_buffer == nullptr)
+    if (grabbers_.empty() || frame_buffer == nullptr)
         return;
 
+    // determine input size from frame buffer and crop, ensuring divisible by 2
+    glm::vec2 size = frame_buffer->projectionSize();
+    guint write_width = 2 * (int) ceilf(float(frame_buffer->width()) * size.x / 2.f);
+    guint write_height = 2 * (int) ceilf(float(frame_buffer->height()) * size.y / 2.f);
+
     // if different frame buffer from previous frame
-    if ( frame_buffer->width() != width_ ||
-         frame_buffer->height() != height_ ||
+    if ( frame_buffer->width() != read_width_ ||
+         frame_buffer->height() != read_height_ ||
+         write_width != write_width_ ||
+         write_height != write_height_ ||
          (frame_buffer->flags() & FrameBuffer::FrameBuffer_alpha) != use_alpha_) {
 
         // define stream properties
-        width_ = frame_buffer->width();
-        height_ = frame_buffer->height();
+        read_width_ = frame_buffer->width();
+        read_height_ = frame_buffer->height();
         use_alpha_ = (frame_buffer->flags() & FrameBuffer::FrameBuffer_alpha);
-        size_ = width_ * height_ * (use_alpha_ ? 4 : 3);
+        read_size_ = read_width_ * read_height_ * (use_alpha_ ? 4 : 3);
+        write_width_ = write_width;
+        write_height_ = write_height;
 
         // first time initialization
         if ( pbo_[0] == 0 )
@@ -170,25 +179,31 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
 
         // re-affect pixel buffer object
         glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[1]);
-        glBufferData(GL_PIXEL_PACK_BUFFER, size_, NULL, GL_STREAM_READ);
+        glBufferData(GL_PIXEL_PACK_BUFFER, read_size_, NULL, GL_STREAM_READ);
         glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[0]);
-        glBufferData(GL_PIXEL_PACK_BUFFER, size_, NULL, GL_STREAM_READ);
+        glBufferData(GL_PIXEL_PACK_BUFFER, read_size_, NULL, GL_STREAM_READ);
 
         // reset indices
         pbo_index_ = 0;
         pbo_next_index_ = 0;
 
         // new caps
-        if (caps_)
-            gst_caps_unref (caps_);
-        caps_ = gst_caps_new_simple ("video/x-raw",
+        if (read_caps_)
+            gst_caps_unref (read_caps_);
+        read_caps_ = gst_caps_new_simple ("video/x-raw",
                                      "format", G_TYPE_STRING, use_alpha_ ? "RGBA" : "RGB",
-                                     "width",  G_TYPE_INT, width_,
-                                     "height", G_TYPE_INT, height_,
+                                     "width",  G_TYPE_INT, read_width_,
+                                     "height", G_TYPE_INT, read_height_,
+                                     NULL);
+        if (write_caps_)
+            gst_caps_unref (write_caps_);
+        write_caps_ = gst_caps_new_simple ("video/x-raw",
+                                     "width",  G_TYPE_INT, write_width_,
+                                     "height", G_TYPE_INT, write_height_,
                                      NULL);
     }
 
-    if (grabbers_.empty() || size_ <= 0)
+    if (read_size_ <= 0)
         return;
 
     // separate CPU and GPU grabbers
@@ -209,14 +224,8 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
         // set buffer target for writing in a new frame
         glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[pbo_index_]);
 
-#ifdef USE_GLREADPIXEL
-        // get frame
+        // get frame (this takes into account projection area)
         frame_buffer->readPixels();
-#else
-        glBindTexture(GL_TEXTURE_2D, frame_buffer->texture());
-        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-        glBindTexture(GL_TEXTURE_2D, 0);
-#endif
 
         // update case ; alternating indices
         if ( pbo_next_index_ != pbo_index_ ) {
@@ -225,7 +234,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
             glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo_[pbo_next_index_]);
 
             // new buffer
-            buffer = gst_buffer_new_and_alloc (size_);
+            buffer = gst_buffer_new_and_alloc (read_size_);
 
             // map gst buffer into a memory  WRITE target
             GstMapInfo map;
@@ -236,7 +245,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
 
             // transfer pixels from PBO memory to buffer memory
             if (NULL != ptr)
-                memmove(map.data, ptr, size_);
+                memmove(map.data, ptr, read_size_);
 
             // un-map
             glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
@@ -262,7 +271,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
                 if (max_duration > 0 && rec->duration() >= max_duration - rec->frameDuration() * 2) 
                     rec->stop();
                 
-                rec->addFrame(buffer, caps_);
+                rec->addFrame(buffer, read_caps_, write_caps_);
 
                 // remove finished recorders
                 if (rec->finished()) {
@@ -296,7 +305,7 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
             if (max_duration > 0 && rec->duration() + rec->frameDuration() + dt_millisec >= max_duration  ) 
                 rec->stop();
                 
-            rec->addFrame(frame_buffer->texture(), caps_);
+            rec->addFrame(frame_buffer->texture(), read_caps_, write_caps_);
 
             // remove finished recorders
             if (rec->finished()) {

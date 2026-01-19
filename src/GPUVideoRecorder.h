@@ -66,8 +66,8 @@ public:
      *
      * @param texture_id OpenGL texture ID from vimix's FrameBuffer
      */
-    void addFrame(guint texture_id, GstCaps *caps) override;
-    void addFrame(GstBuffer *buffer, GstCaps *caps) override {}
+    void addFrame(guint texture_id, GstCaps *read_caps, GstCaps *write_caps) override;
+    void addFrame(GstBuffer *buffer, GstCaps *read_caps, GstCaps *write_caps) override {}
 
     /**
      * Stop recording and finalize file
@@ -120,7 +120,7 @@ protected:
      * @param fps Target framerate
      * @return True on success, false on failure
      */
-    std::string init(GstCaps *caps) override;
+    std::string init(GstCaps *read_caps, GstCaps *write_caps) override;
 
 private:
     // GStreamer pipeline elements
@@ -153,7 +153,7 @@ private:
     static bool isEncoderAvailable(Profile profile);
 
     // Build pipeline description
-    std::string buildPipeline(Profile profile);
+    std::string buildPipeline(Profile profile, GstCaps *write_caps);
 };
 
 #endif // USE_GST_OPENGL_SYNC_HANDLER

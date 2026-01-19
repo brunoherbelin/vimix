@@ -36,6 +36,7 @@
 #include "MediaPlayer.h"
 #include "Log.h"
 #include "Audio.h"
+#include "gst/gstcaps.h"
 
 #include "Recorder.h"
 
@@ -43,14 +44,18 @@ PNGRecorder::PNGRecorder(const std::string &basename) : FrameGrabber(), basename
 {
 }
 
-std::string PNGRecorder::init(GstCaps *caps)
+std::string PNGRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
 {
     // ignore
-    if (caps == nullptr)
+    if (read_caps == nullptr)
         return std::string("Invalid caps");
 
     // create a gstreamer pipeline
-    std::string description = "appsrc name=src ! videoconvert ! pngenc ! filesink name=sink";
+    std::string description = "appsrc name=src ! videoconvert ! videoscale ! XXXX ! pngenc ! filesink name=sink";
+
+    std::string::size_type xxxx = description.find("XXXX");
+    if (xxxx != std::string::npos)
+        description.replace(xxxx, 4, std::string( gst_caps_to_string(write_caps)));
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -91,8 +96,8 @@ std::string PNGRecorder::init(GstCaps *caps)
         gst_app_src_set_max_bytes( src_, 0 );
 
         // instruct src to use the required caps
-        caps_ = gst_caps_copy( caps );
-        gst_app_src_set_caps (src_, caps_);
+        read_caps_ = gst_caps_copy( read_caps );
+        gst_app_src_set_caps (src_, read_caps_);
 
         // setup callbacks
         GstAppSrcCallbacks callbacks;
@@ -105,7 +110,7 @@ std::string PNGRecorder::init(GstCaps *caps)
     else {
         return std::string("PNG Capture : Failed to configure frame grabber.");
     }
-
+ 
 
     // all good
     initialized_ = true;
@@ -120,9 +125,9 @@ void PNGRecorder::terminate()
     Log::Notify("PNG Capture %s is ready.", filename_.c_str());
 }
 
-void PNGRecorder::addFrame(GstBuffer *buffer, GstCaps *caps)
+void PNGRecorder::addFrame(GstBuffer *buffer, GstCaps *read_caps, GstCaps *write_caps)
 {
-    FrameGrabber::addFrame(buffer, caps);
+    FrameGrabber::addFrame(buffer, read_caps, write_caps);
 
     // PNG Recorder specific :
     // stop after one frame
@@ -314,10 +319,10 @@ VideoRecorder::VideoRecorder(const std::string &basename) : FrameGrabber(), base
 #endif
 }
 
-std::string VideoRecorder::init(GstCaps *caps)
+std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
 {
     // ignore
-    if (caps == nullptr)
+    if (read_caps == nullptr)
         return std::string("Invalid caps");
 
     // apply settings
@@ -339,14 +344,18 @@ std::string VideoRecorder::init(GstCaps *caps)
         GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile])) {
         // glupload: system memory → GLMemory (in GStreamer's thread)
         // glcolorconvert: GPU color conversion (RGBA → NV12 for VAAPI, passthrough for NVIDIA)
-        description += "glupload ! glcolorconvert ! ";
+        description += "glupload ! glcolorconvert ! gltransformation ! XXXX ! ";
         Log::Info("Video Recording with glupload & GPU color conversion");
     } else
 #endif
     {
         // CPU path: use regular videoconvert
-        description += "videoconvert ! ";
+        description += "videoconvert ! videoscale ! XXXX ! ";
     }
+
+    std::string::size_type xxxx = description.find("XXXX");
+    if (xxxx != std::string::npos)
+        description.replace(xxxx, 4, std::string( gst_caps_to_string(write_caps)));
 
     description += "queue ! ";
     if (Settings::application.record.profile < 0 || Settings::application.record.profile >= DEFAULT)
@@ -455,7 +464,7 @@ std::string VideoRecorder::init(GstCaps *caps)
         gst_app_src_set_max_bytes( src_, buffering_size_);
 
         // specify recorder framerate in the given caps
-        GstCaps *tmp = gst_caps_copy( caps );
+        GstCaps *tmp = gst_caps_copy( read_caps );
         GValue v = G_VALUE_INIT;
         g_value_init (&v, GST_TYPE_FRACTION);
         gst_value_set_fraction (&v, framerate_preset_value[Settings::application.record.framerate_mode], 1);
@@ -463,8 +472,8 @@ std::string VideoRecorder::init(GstCaps *caps)
         g_value_unset (&v);
 
         // instruct src to use the caps
-        caps_ = gst_caps_copy( tmp );
-        gst_app_src_set_caps (src_, caps_);
+        read_caps_ = gst_caps_copy( tmp );
+        gst_app_src_set_caps (src_, read_caps_);
         gst_caps_unref (tmp);
 
         // setup callbacks
