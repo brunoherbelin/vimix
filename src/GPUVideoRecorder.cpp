@@ -95,6 +95,10 @@ std::string GPUVideoRecorder::buildPipeline(Profile profile, GstCaps *write_caps
     if (xxxx != std::string::npos)
         pipeline.replace(xxxx, 4, std::string( gst_caps_to_string(write_caps)));
 
+    xxxx = pipeline.find("video/x-raw");
+    if (xxxx != std::string::npos)
+        pipeline.replace(xxxx, 11, "video/x-raw(memory:GLMemory)");
+
     // Build encoder-specific pipeline
     switch (profile) {
         case NVENC_H264_REALTIME:
@@ -207,7 +211,14 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     // keep frame duration
     gint fps = MAXI(framerate_preset[Settings::application.record.framerate_mode], 15);
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, fps);
-    
+
+    // Check and store caps dimensions
+    GstStructure *structure = gst_caps_get_structure(read_caps, 0);
+    gst_structure_get_int(structure, "width", &width_);
+    gst_structure_get_int(structure, "height", &height_);    
+    if (width_ <= 0 || height_ <= 0) {
+        return "GPU Video Recording: Invalid video dimensions in caps";
+    }
     // specify recorder framerate in the given caps
     GstCaps *tmp = gst_caps_copy( read_caps );
     GValue v = G_VALUE_INIT;
@@ -269,35 +280,6 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     gst_app_src_set_latency(src_, -1, 0);
     gst_app_src_set_max_bytes(src_, 0);  // No buffering limit
 
-    // Check and store caps dimensions
-    GstStructure *structure = gst_caps_get_structure(read_caps, 0);
-    gst_structure_get_int(structure, "width", &width_);
-    gst_structure_get_int(structure, "height", &height_);    
-    if (width_ <= 0 || height_ <= 0) {
-        return "GPU Video Recording: Invalid video dimensions in caps";
-    }
-
-    // // keep frame duration
-    // gint fps = MAXI(framerate_preset[Settings::application.record.framerate_mode], 15);
-    // frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, fps);
-
-    // // specify recorder framerate in the given caps
-    // GstCaps *tmp = gst_caps_copy( read_caps );
-    // GValue v = G_VALUE_INIT;
-    // g_value_init (&v, GST_TYPE_FRACTION);
-    // gst_value_set_fraction (&v, fps, 1);
-    // gst_caps_set_value(tmp, "framerate", &v);
-    // g_value_unset (&v);
-    
-    // // Create GLMemory caps from  caps
-    // read_caps_ = gst_caps_copy( tmp );
-    // GstCapsFeatures *features = gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr);
-    // gst_caps_set_features(read_caps_, 0, features);
-    
-    // write_caps_ = gst_caps_copy( write_caps );
-    // features = gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr);
-    // gst_caps_set_features(write_caps_, 0, features);
-
     // instruct src to use the caps
     gst_app_src_set_caps(src_, read_caps_);
     gst_caps_unref (tmp);
@@ -319,9 +301,6 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     if (ret == GST_STATE_CHANGE_FAILURE) {
         return "GPU Video Recording: Failed to start pipeline";
     }
-
-    // Get GStreamer's GL context (it will be created when pipeline starts)
-    // We'll get it on first frame when the context is ready
 
     // Initialize timer
     timer_ = gst_system_clock_obtain();

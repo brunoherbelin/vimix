@@ -344,18 +344,24 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
         GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile])) {
         // glupload: system memory → GLMemory (in GStreamer's thread)
         // glcolorconvert: GPU color conversion (RGBA → NV12 for VAAPI, passthrough for NVIDIA)
-        description += "glupload ! glcolorconvert ! gltransformation ! XXXX ! ";
+        description += "glupload ! glcolorconvert ! gltransformation ! XXXX ! ";    
+        std::string::size_type xxxx = description.find("XXXX");
+        if (xxxx != std::string::npos)
+            description.replace(xxxx, 4, std::string( gst_caps_to_string(write_caps)));
+        xxxx = description.find("video/x-raw");
+        if (xxxx != std::string::npos)
+            description.replace(xxxx, 11, "video/x-raw(memory:GLMemory)");
         Log::Info("Video Recording with glupload & GPU color conversion");
     } else
 #endif
     {
         // CPU path: use regular videoconvert
         description += "videoconvert ! videoscale ! XXXX ! ";
+        std::string::size_type xxxx = description.find("XXXX");
+        if (xxxx != std::string::npos)
+            description.replace(xxxx, 4, std::string( gst_caps_to_string(write_caps)));
     }
 
-    std::string::size_type xxxx = description.find("XXXX");
-    if (xxxx != std::string::npos)
-        description.replace(xxxx, 4, std::string( gst_caps_to_string(write_caps)));
 
     description += "queue ! ";
     if (Settings::application.record.profile < 0 || Settings::application.record.profile >= DEFAULT)
