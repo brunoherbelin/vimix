@@ -89,10 +89,6 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-#if __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-
     // no multisampling in output windows
     glfwWindowHint(GLFW_SAMPLES, 0);
 
@@ -100,18 +96,35 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
     glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
-    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
     // get monitor video mode
     const GLFWvidmode *mode = glfwGetVideoMode(monitor);
 
-    // create fullscreen window on this monitor
-    window_ = glfwCreateWindow(mode->width, mode->height, "vimix Output", monitor, share);
+#if __APPLE__
+    // special Apple
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_COCOA_MENUBAR, GLFW_TRUE);    
 
+    // create borderless window with same dimensions as monitor (without larger framebuffer)
+    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);  
+    window_ = glfwCreateWindow(mode->width, mode->height, "vimix Output", NULL, share);
     if (window_ == NULL) {
         g_printerr("Failed to create GLFW Output Window on monitor %s\n", glfwGetMonitorName(monitor));
         return false;
     }
+    // move window to monitor position
+    int x = 0, y = 0;
+    glfwGetMonitorPos(monitor, &x, &y);
+    glfwSetWindowPos(window_, x, y);
+#else
+    // create fullscreenwindow on this monitor
+    window_ = glfwCreateWindow(mode->width, mode->height, "vimix Output", monitor, share);
+    if (window_ == NULL) {
+        g_printerr("Failed to create GLFW Output Window on monitor %s\n", glfwGetMonitorName(monitor));
+        return false;
+    }
+#endif
 
     // set rendering area
     window_attributes_.viewport.x = mode->width;
