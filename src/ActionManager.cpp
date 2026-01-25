@@ -144,6 +144,9 @@ void captureMixerSession(Session *se, std::string node,
 
 void Action::storeSession(Session *se, std::string label, bool thumbnail)
 {
+    if (se == nullptr)
+        return;
+
     // lock for creation of first step
     Action::manager().history_access_.lock();
 
