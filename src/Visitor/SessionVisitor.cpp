@@ -1047,7 +1047,7 @@ void SessionVisitor::visit (SrtReceiverSource& s)
 void SessionVisitor::visit (CanvasSource& s)
 {
     xmlCurrent_->SetAttribute("type", "CanvasSource");
-    xmlCurrent_->SetAttribute("canvas", s.canvas());
+    xmlCurrent_->SetAttribute("canvas", (uint64_t) s.canvas());
 }
 
 void SessionVisitor::visit (SourceCallback &c)

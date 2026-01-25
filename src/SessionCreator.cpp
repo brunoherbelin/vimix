@@ -1692,7 +1692,7 @@ void SessionLoader::visit (CloneSource& s)
 
 void SessionLoader::visit (CanvasSource &c)
 {
-    size_t canvas = 0;
+    uint64_t canvas = 0;
     xmlCurrent_->QueryUnsigned64Attribute("canvas", &canvas);
     c.setCanvas(canvas);
 }
