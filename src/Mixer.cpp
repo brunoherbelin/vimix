@@ -1725,6 +1725,8 @@ void Mixer::swap()
         Log::Notify("Session '%s' loaded with %s.", session_->filename().c_str(), numsource.c_str());
     }
 
+    // needs refresh 
+    ++View::need_deep_update_;
 }
 
 void Mixer::close(bool smooth)
