@@ -371,7 +371,7 @@ VideoStreamer::VideoStreamer(const NetworkToolkit::StreamConfig &conf): FrameGra
 std::string VideoStreamer::init(GstCaps *read_caps, GstCaps *write_caps)
 {
     // ignore
-    if (read_caps == nullptr)
+    if (read_caps == nullptr || write_caps == nullptr)
         return std::string("Invalid caps");
 
     // check that config matches the given buffer properties
@@ -385,6 +385,19 @@ std::string VideoStreamer::init(GstCaps *read_caps, GstCaps *write_caps)
         return std::string("Video Streamer cannot start: given frames (") + std::to_string(w) + " x " + std::to_string(h) +
                 ") are incompatible with stream (" + std::to_string(config_.width) + " x " + std::to_string(config_.height) + ")";
     }
+            
+    // specify streaming framerate in the given caps
+    GstCaps *tmp = gst_caps_copy( read_caps );
+    GValue v = G_VALUE_INIT;
+    g_value_init (&v, GST_TYPE_FRACTION);
+    gst_value_set_fraction (&v, STREAMING_FPS, 1);  // fixed 30 FPS
+    gst_caps_set_value(tmp, "framerate", &v);
+    g_value_unset (&v);
+    read_caps_ = gst_caps_copy( tmp );
+    gst_caps_unref (tmp);
+
+    // set write caps
+    write_caps_ = gst_caps_copy( write_caps );
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! ";
@@ -430,6 +443,13 @@ std::string VideoStreamer::init(GstCaps *read_caps, GstCaps *write_caps)
         return msg;
     }
 
+    // setup capsfilter for scaling to write_caps
+    GstElement *capsfilter = gst_bin_get_by_name (GST_BIN (pipeline_), "capf");
+    if (capsfilter) {
+        g_object_set (G_OBJECT (capsfilter), "caps", write_caps_, NULL);
+        gst_object_unref (capsfilter);
+    }
+
     // setup streaming sink
     if (config_.protocol == NetworkToolkit::SHM_RAW) {
         std::string path = SystemToolkit::full_filename(SystemToolkit::temp_path(), "shm");
@@ -462,18 +482,8 @@ std::string VideoStreamer::init(GstCaps *read_caps, GstCaps *write_caps)
         // Set buffer size
         gst_app_src_set_max_bytes( src_, buffering_size_ );
 
-        // specify streaming framerate in the given caps
-        GstCaps *tmp = gst_caps_copy( read_caps );
-        GValue v = G_VALUE_INIT;
-        g_value_init (&v, GST_TYPE_FRACTION);
-        gst_value_set_fraction (&v, STREAMING_FPS, 1);  // fixed 30 FPS
-        gst_caps_set_value(tmp, "framerate", &v);
-        g_value_unset (&v);
-
-        // instruct src to use the caps
-        read_caps = gst_caps_copy( tmp );
-        gst_app_src_set_caps (src_, read_caps);
-        gst_caps_unref (tmp);
+        // instruct src to use the read caps
+        gst_app_src_set_caps (src_, read_caps_);
 
         // setup callbacks
         GstAppSrcCallbacks callbacks;

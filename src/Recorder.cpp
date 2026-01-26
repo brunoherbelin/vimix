@@ -51,11 +51,7 @@ std::string PNGRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
         return std::string("Invalid caps");
 
     // create a gstreamer pipeline
-    std::string description = "appsrc name=src ! videoconvert ! videoscale ! XXXX ! pngenc ! filesink name=sink";
-
-    std::string::size_type xxxx = description.find("XXXX");
-    if (xxxx != std::string::npos)
-        description.replace(xxxx, 4, std::string( gst_caps_to_string(write_caps)));
+    std::string description = "appsrc name=src ! videoconvert ! videoscale ! capsfilter name=capf ! pngenc ! filesink name=sink";
 
     // parse pipeline descriptor
     GError *error = NULL;
@@ -64,6 +60,13 @@ std::string PNGRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
         std::string msg = std::string("PNG Capture Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
         return msg;
+    }
+
+    // setup capsfilter for scaling to write_caps
+    GstElement *capsfilter = gst_bin_get_by_name (GST_BIN (pipeline_), "capf");
+    if (capsfilter) {
+        g_object_set (G_OBJECT (capsfilter), "caps", write_caps, NULL);
+        gst_object_unref (capsfilter);
     }
 
     // construct filename:
@@ -358,8 +361,19 @@ VideoRecorder::VideoRecorder(const std::string &basename) : FrameGrabber(), base
 std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
 {
     // ignore
-    if (read_caps == nullptr)
+    if (read_caps == nullptr || write_caps == nullptr)
         return std::string("Invalid caps");
+
+    // specify recorder framerate in the read caps
+    read_caps_ = gst_caps_copy( read_caps );
+    GValue v = G_VALUE_INIT;
+    g_value_init (&v, GST_TYPE_FRACTION);
+    gst_value_set_fraction (&v, framerate_preset_value[Settings::application.record.framerate_mode], 1);
+    gst_caps_set_value(read_caps_, "framerate", &v);
+    g_value_unset (&v);
+
+    // set write caps
+    write_caps_ = gst_caps_copy( write_caps );        
 
     // apply settings
     buffering_size_ = MAX( MIN_BUFFER_SIZE, buffering_preset_value[Settings::application.record.buffering_mode]);
@@ -380,24 +394,17 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
         GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile])) {
         // glupload: system memory → GLMemory (in GStreamer's thread)
         // glcolorconvert: GPU color conversion (RGBA → NV12 for VAAPI, passthrough for NVIDIA)
-        description += "glupload ! glcolorconvert ! gltransformation ! XXXX ! ";    
-        std::string::size_type xxxx = description.find("XXXX");
-        if (xxxx != std::string::npos)
-            description.replace(xxxx, 4, std::string( gst_caps_to_string(write_caps)));
-        xxxx = description.find("video/x-raw");
-        if (xxxx != std::string::npos)
-            description.replace(xxxx, 11, "video/x-raw(memory:GLMemory)");
+        description += "glupload ! glcolorconvert ! gltransformation ! capsfilter name=capf ! ";     
+        // specify that write caps are in GLMemory
+        GstCapsFeatures *features = gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr);
+        gst_caps_set_features(write_caps_, 0, features);
         Log::Info("Video Recording with glupload & GPU color conversion");
     } else
 #endif
     {
         // CPU path: use regular videoconvert
-        description += "videoconvert ! videoscale ! XXXX ! ";
-        std::string::size_type xxxx = description.find("XXXX");
-        if (xxxx != std::string::npos)
-            description.replace(xxxx, 4, std::string( gst_caps_to_string(write_caps)));
+        description += "videoconvert ! videoscale ! capsfilter name=capf ! ";
     }
-
 
     description += "queue ! ";
     if (Settings::application.record.profile < 0 || Settings::application.record.profile >= DEFAULT)
@@ -480,6 +487,13 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
         return msg;
     }
 
+    // setup video capsfilter for sink
+    GstElement *capsfilter = gst_bin_get_by_name (GST_BIN (pipeline_), "capf");
+    if (capsfilter) {
+        g_object_set (G_OBJECT (capsfilter), "caps", write_caps_, NULL);
+        gst_object_unref (capsfilter);
+    }
+
     // setup file sink
     g_object_set (G_OBJECT (gst_bin_get_by_name (GST_BIN (pipeline_), "sink")),
                   "location", filename_.c_str(),
@@ -505,18 +519,8 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
         // Set buffer size
         gst_app_src_set_max_bytes( src_, buffering_size_);
 
-        // specify recorder framerate in the given caps
-        GstCaps *tmp = gst_caps_copy( read_caps );
-        GValue v = G_VALUE_INIT;
-        g_value_init (&v, GST_TYPE_FRACTION);
-        gst_value_set_fraction (&v, framerate_preset_value[Settings::application.record.framerate_mode], 1);
-        gst_caps_set_value(tmp, "framerate", &v);
-        g_value_unset (&v);
-
         // instruct src to use the caps
-        read_caps_ = gst_caps_copy( tmp );
         gst_app_src_set_caps (src_, read_caps_);
-        gst_caps_unref (tmp);
 
         // setup callbacks
         GstAppSrcCallbacks callbacks;
