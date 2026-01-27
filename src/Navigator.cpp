@@ -2458,6 +2458,17 @@ void Navigator::RenderMainPannelSession()
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
         ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view, "Show action View");
     }
+    else {
+        if ( Action::manager().max() > 1 )  {
+            ImVec2 pos_tmp = ImGui::GetCursorPos();
+            ImVec2 space_size = ImGui::CalcTextSize(" Undo history ", NULL);
+            space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space;
+            ImGui::SetCursorPos( pos_tmp + space_size );
+            ImGui::Text("( %u )", Action::manager().max() - 1);
+            ImGui::SetCursorPos( pos_tmp );
+        }
+    }
 
     ImGui::PopStyleColor(1);
 }
