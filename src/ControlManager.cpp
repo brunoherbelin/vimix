@@ -168,24 +168,26 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 else if ( attribute.compare(OSC_NEXT) == 0) {
                     // set current to NEXT
                     Mixer::manager().setCurrentNext();
+                    UserInterface::manager().setSourceInPanel(Mixer::manager().currentSource());
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
                 else if ( attribute.compare(OSC_PREVIOUS) == 0) {
                     // set current to PREVIOUS
                     Mixer::manager().setCurrentPrevious();
+                    UserInterface::manager().setSourceInPanel(Mixer::manager().currentSource());
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
                 else if ( BaseToolkit::is_a_number( attribute.substr(1), &sourceid) ){
                     // set current to given INDEX
-                    Mixer::manager().setCurrentIndex(sourceid);
+                    UserInterface::manager().setSourceInPanel(sourceid);
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
                 else if ( _cs != nullptr ) {
                     // set current to given source by name
-                    Mixer::manager().setCurrentSource(_cs);
+                    UserInterface::manager().setSourceInPanel(_cs);
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
