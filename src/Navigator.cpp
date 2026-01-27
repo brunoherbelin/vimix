@@ -1653,6 +1653,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                       ICON_FA_CARET_RIGHT " vimix display loopback\n"
                                       ICON_FA_CARET_RIGHT " screen capture\n"
                                       ICON_FA_CARET_RIGHT " broadcasted with SRT over network.\n"
+                                      "For connected devices;\n"
                                       ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                       ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network.");
             ImGui::SameLine();
@@ -1797,7 +1798,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 ImGuiToolkit::HelpToolTip("Create a source capturing the vimix display output (loopback).\n"
                                           ICON_FA_CARET_RIGHT " Recursive: capture everything shown on the screen, including the loopback source itself.\n"
                                           ICON_FA_CARET_RIGHT " Entire scene: capture everything shown on the screen, excluding the loopback source.\n"
-                                          ICON_FA_CARET_RIGHT " Local scene: capture the section of the scene behind the loopback source.");
+                                          ICON_FA_CARET_RIGHT " Local scene: capture the section of the scene behind the loopback source.\n"
+                                          ICON_FA_CARET_RIGHT " Canvas: capture the section of the scene in the selected canvas.");
 
             }
         }

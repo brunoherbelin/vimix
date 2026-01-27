@@ -151,8 +151,11 @@ void RenderSource::update(float dt)
 
                     // add all sources below this one in the scene graph
                     std::vector<Node *> surfaces;
+                    float threshold_z = groups_[View::RENDERING]->translation_.z;   
+                    if (threshold_z < 0.f)
+                        threshold_z = LAYER_FOREGROUND;
                     for (auto sit = session_->begin(); sit != session_->end(); ++sit) {
-                        if ((*sit)->group(View::RENDERING)->translation_.z < groups_[View::RENDERING]->translation_.z)
+                        if ((*sit)->group(View::RENDERING)->translation_.z < threshold_z)
                             surfaces.push_back((*sit)->group(View::RENDERING));
                     }
 

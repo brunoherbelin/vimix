@@ -1040,6 +1040,12 @@ void ImGuiVisitor::visit (RenderSource& s)
         oss << "Mode " << m;
         Action::manager().store(oss.str());
     }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Mode ")) {
+        s.setRenderingProvenance(RenderSource::RENDER_TEXTURE);
+        oss << "Mode 0";
+        Action::manager().store(oss.str());
+    }
 
     if (s.renderingProvenance() == RenderSource::RENDER_CANVAS) {
         static int __canvas = -1;

@@ -28,7 +28,6 @@
 
 #include "Toolkit/ImGuiToolkit.h"
 
-#include <algorithm>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -36,7 +35,6 @@
 #include "Mixer.h"
 #include "defines.h"
 #include "Source/Source.h"
-#include "Source/CloneSource.h"
 #include "Source/SourceCallback.h"
 #include "Settings.h"
 #include "Scene/Decorations.h"
