@@ -248,6 +248,9 @@ XMLElement * SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Sess
                     else if ( const size_t* v = std::get_if<size_t>(&kit->first)) {
                         cbNode->SetAttribute("batch", (uint64_t) *v);
                     }
+                    else {
+                        cbNode->SetAttribute("current", true);
+                    }
                     inputsNode->InsertEndChild(cbNode);
                     // launch visitor to complete attributes
                     SessionVisitor sv(doc, cbNode);

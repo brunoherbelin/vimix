@@ -255,6 +255,10 @@ void SessionLoader::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
                     // assign variant
                     target = (size_t) bid;
                 }
+                else if ( xmlCurrent_->BoolAttribute("current", false) ) {
+                    // assign variant
+                    target = Current{};
+                }
 
                 // if could identify the target
                 if (target.index() > 0) {

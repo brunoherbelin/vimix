@@ -23,6 +23,7 @@
 
 #include <tinyxml2.h>
 
+#include "Mixer.h"
 #include "Source/SourceList.h"
 #include "defines.h"
 #include "Toolkit/BaseToolkit.h"
@@ -205,8 +206,27 @@ void Session::update(float dt)
                 if (input_active) {
 
                     // Add callback to the target(s)
+
+                    // 3. Case of variant as Current source
+                    if (std::holds_alternative<Current>(k->second.target_)) {
+                        Source *s = Mixer::manager().currentSource();
+                        if ( s != nullptr ) {
+                            // generate a new callback from the model
+                            SourceCallback *forward = k->second.model_->clone();
+                            // apply value multiplyer from input
+                            forward->multiply( Control::manager().inputValue(k->first) );
+                            // add delay
+                            forward->delay( Metronome::manager().timeToSync( (Metronome::Synchronicity) input_sync_[k->first] ) );
+                            // add callback to source
+                            s->call( forward );
+                            // get the reverse of the callback (can be null)
+                            SourceCallback *backward = forward->reverse(s);
+                            // remember instances
+                            k->second.instances_[s->id()] = {forward, backward};
+                        }
+                    }
                     // 1. Case of variant as Source pointer
-                    if (Source * const* v = std::get_if<Source *>(&k->second.target_)) {
+                    else if (Source * const* v = std::get_if<Source *>(&k->second.target_)) {
                         // verify variant value
                         if ( *v != nullptr ) {
                             // generate a new callback from the model

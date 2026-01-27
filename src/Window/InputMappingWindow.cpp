@@ -18,6 +18,7 @@
 **/
 
 #include "Source/MediaSource.h"
+#include "Source/SourceList.h"
 #include <string>
 #include <algorithm>
 #include <list>
@@ -97,10 +98,16 @@ Target InputMappingWindow::ComboSelectTarget(const Target &current)
         else if ( const size_t* v = std::get_if<size_t>(&current)) {
             label = std::string("Batch #") + std::to_string(*v);
         }
+        else {
+            label = "Current source";
+        }
     }
 
     if (ImGui::BeginCombo("##ComboSelectSource", label.c_str()) )
     {
+        if (ImGui::Selectable( "Current source" )) {
+            selected = Current{};
+        }
         Session *ses = Mixer::manager().session();
         for (auto sit = ses->begin(); sit != ses->end(); ++sit) {
             label = std::string((*sit)->initials()) + " - " + (*sit)->name();
@@ -1449,7 +1456,7 @@ void InputMappingWindow::Render()
             // step 1 : press '+'
             if (temp_new_input) {
                 if (ImGuiToolkit::IconButton(ICON_FA_TIMES, "Cancel") ){
-                    temp_new_target = std::monostate();
+                    temp_new_target = Uninitialized{};
                     temp_new_callback = 0;
                     temp_new_input = false;
                 }
@@ -1488,7 +1495,7 @@ void InputMappingWindow::Render()
                         // step 4 : create new callback and add it to source
                         S->assignInputCallback(current_input_, temp_new_target, SourceCallback::create((SourceCallback::CallbackType)temp_new_callback) );
                         // done
-                        temp_new_target = std::monostate();
+                        temp_new_target = Uninitialized{};
                         temp_new_callback = 0;
                         temp_new_input = false;
                     }
