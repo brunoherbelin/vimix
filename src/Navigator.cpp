@@ -519,7 +519,7 @@ void Navigator::Render()
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
             // if a pointer to a Source is provided in tupple
             Source *_s = std::get<2>(tooltip);
-            if (_s != nullptr) {
+            if (_s != nullptr && _s->failed() == Source::FAIL_NONE) {
                 ImGui::BeginTooltip();
                 const ImVec2 image_top = ImGui::GetCursorPos();
                 const ImVec2 thumbnail_size = ImVec2(width_, width_ / _s->frame()->aspectRatio()) * 3.f;
@@ -808,7 +808,7 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset
                 Action::manager().store(sname + std::string(": Deleted"));
             }
             // delete all button
-            if ( Mixer::manager().session()->failedSources().size() > 1 ) {
+            if ( s->failed() && Mixer::manager().session()->failedSources().size() > 1 ) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
                 if ( ImGui::Button( ICON_FA_UNDO_ALT " Retry all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
                     auto failedsources = Mixer::manager().session()->failedSources();
@@ -2307,7 +2307,7 @@ void Navigator::RenderMainPannelSession()
                 // export option if possible
                 std::string filename = Mixer::manager().session()->filename();
                 if (filename.size()>0) {
-                    if (ImGui::Selectable( ICON_FA_FILE_DOWNLOAD "     Export", false, 0, size )) {
+                    if (ImGui::Selectable( ICON_FA_FILE_DOWNLOAD "     Export as session", false, 0, size )) {
                         Action::manager().saveas(filename);
                     }
                 }
@@ -2330,10 +2330,10 @@ void Navigator::RenderMainPannelSession()
 
         // right button
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
-        if (ImGuiToolkit::IconButton( ICON_FA_CODE_BRANCH " +", "Save & Keep version"))
+        if (ImGuiToolkit::IconButton( ICON_FA_CODE_BRANCH "+", "Save & Keep version"))
             UserInterface::manager().saveOrSaveAs(true);
         if (!snapshots.empty()) {
-            ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetFrameHeight()));
+            ImGui::SameLine();
             if (ImGuiToolkit::IconButton( 12, 14, "Clear list"))
                 Action::manager().clearSnapshots();
         }

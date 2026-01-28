@@ -626,28 +626,23 @@ void ImGuiVisitor::visit (Source& s)
     else {
 
         // remember where we were...
-        ImVec2 pos = ImGui::GetCursorPos();
+        ImVec2 pos = ImGui::GetCursorScreenPos();
 
-        // preview (black texture)
-        float width = preview_width;
-        float height = s.frame()->projectionSize().y * width / ( s.frame()->projectionSize().x * s.frame()->aspectRatio());
-        if (height > preview_height - space) {
-            height = preview_height - space;
-            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionSize().x / s.frame()->projectionSize().y);
-        }
-        // centered image
-        ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
-        ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
+        // preview = black rectangle
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(ImVec2(pos.x + space, pos.y + space), 
+            ImVec2(pos.x + preview_width - space, pos.y + preview_height - space),
+            ImColor(0, 0, 0, 255));
 
         // centered icon of failed (skull)
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::SetCursorPos( ImVec2(pos.x + (preview_width  -ImGui::GetFrameHeight())* 0.5f ,
+        ImGui::SetCursorScreenPos( ImVec2(pos.x + space + (preview_width  -ImGui::GetFrameHeight())* 0.5f ,
                                     pos.y + (preview_height -ImGui::GetFrameHeight()) * 0.5f) );
         ImGui::Text(ICON_FA_SKULL);
         ImGui::PopFont();
 
         // back
-        ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
+        ImGui::SetCursorScreenPos( ImVec2( pos.x, pos.y + preview_height));
     }
 
     ImGui::PopID();
