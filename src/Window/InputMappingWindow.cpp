@@ -156,6 +156,12 @@ uint InputMappingWindow::ComboSelectCallback(uint current, bool imageprocessing,
                                        "  None"
     };
 
+    if (!ismediaplayer && current > SourceCallback::CALLBACK_PLAY && current <= SourceCallback::CALLBACK_FLAG) 
+        return SourceCallback::CALLBACK_INVALID;
+
+    if (!imageprocessing && current >= SourceCallback::CALLBACK_GAMMA) 
+        return SourceCallback::CALLBACK_INVALID;
+
     uint selected = 0;
     if (ImGui::BeginCombo("##ComboSelectCallback", callback_names[current]) ) {
         for (uint i = SourceCallback::CALLBACK_ALPHA; 
@@ -1371,6 +1377,10 @@ void InputMappingWindow::Render()
         // adding actions is possible only if there are sources in the session
         if (!Mixer::manager().session()->empty()) {
 
+            static bool temp_new_input = false;
+            static Target temp_new_target;
+            static uint temp_new_callback = 0;
+
             ///
             /// list of input callbacks for the current input
             ///
@@ -1420,6 +1430,16 @@ void InputMappingWindow::Render()
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
                     ImGui::SetNextItemWidth(w);
                     uint type = ComboSelectCallback( callback->type(), withimageprocessing, ismediaplayer );
+                    if (type == SourceCallback::CALLBACK_INVALID) {
+                        // remove previous callback
+                        S->deleteInputCallback(callback);   
+                        // offer to create a new one instead       
+                        temp_new_input = true;
+                        temp_new_target = target;                        
+                        // reload
+                        ImGui::PopID();
+                        break;
+                    }
                     if (type > 0) {
                         // remove previous callback
                         S->deleteInputCallback(callback);
@@ -1449,10 +1469,6 @@ void InputMappingWindow::Render()
             ///
             ///
 
-            static bool temp_new_input = false;
-            static Target temp_new_target;
-            static uint temp_new_callback = 0;
-
             // step 1 : press '+'
             if (temp_new_input) {
                 if (ImGuiToolkit::IconButton(ICON_FA_TIMES, "Cancel") ){
@@ -1460,13 +1476,16 @@ void InputMappingWindow::Render()
                     temp_new_callback = 0;
                     temp_new_input = false;
                 }
+                ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetFontSize() * 0.15f);
             }
-            else if (ImGuiToolkit::IconButton(ICON_FA_PLUS, "Add mapping") )
-                temp_new_input = true;
+            else {
+                if (ImGuiToolkit::IconButton(ICON_FA_PLUS, "Add mapping") )
+                    temp_new_input = true;
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+            }
 
             if (temp_new_input) {
                 // step 2 : Get input for source
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::SetNextItemWidth(w);
 
                 Target selected_target = ComboSelectTarget(temp_new_target);
@@ -1491,7 +1510,7 @@ void InputMappingWindow::Render()
                     ImGui::SetNextItemWidth(w);
                     temp_new_callback = ComboSelectCallback( temp_new_callback, withimageprocessing, mediaplayer );
                     // user selected a callback type
-                    if (temp_new_callback > 0) {
+                    if (temp_new_callback > 0 && temp_new_callback != SourceCallback::CALLBACK_INVALID) {
                         // step 4 : create new callback and add it to source
                         S->assignInputCallback(current_input_, temp_new_target, SourceCallback::create((SourceCallback::CallbackType)temp_new_callback) );
                         // done
