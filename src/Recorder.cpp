@@ -333,8 +333,6 @@ VideoRecorder::VideoRecorder(const std::string &basename) : FrameGrabber(), base
 {
     // first run initialization of hardware encoders in linux
 #if GST_GL_HAVE_PLATFORM_GLX
-    // Encoding in GPU is really beneficial only with gstreamer gst-gl
-#ifdef USE_GST_OPENGL_SYNC_HANDLER
     if (hardware_encoder.size() < 1) {
         // test nvidia encoder
         if ( GstToolkit::has_feature(nvidia_encoder[0] ) )   {
@@ -349,7 +347,6 @@ VideoRecorder::VideoRecorder(const std::string &basename) : FrameGrabber(), base
         }
     }
 #endif 
-#endif
 
     if (GstToolkit::has_feature("x265enc")) {
         profile_description[2] = x265enc_options[0];
@@ -388,9 +385,11 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     // Use glupload + glcolorconvert for hardware encoders
     // This uploads system memory to GPU and does color conversion in GPU shader
     if (Settings::application.render.gpu_decoding &&
+        Settings::application.render.gst_glmemory_context &&
         (int) hardware_encoder.size() > 0 &&
         GstToolkit::has_feature("glupload") &&  
         GstToolkit::has_feature("glcolorconvert") &&  
+        GstToolkit::has_feature("gltransformation") &&  
         GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile])) {
         // glupload: system memory → GLMemory (in GStreamer's thread)
         // glcolorconvert: GPU color conversion (RGBA → NV12 for VAAPI, passthrough for NVIDIA)
@@ -398,7 +397,7 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
         // specify that write caps are in GLMemory
         GstCapsFeatures *features = gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr);
         gst_caps_set_features(write_caps_, 0, features);
-        Log::Info("Video Recording with glupload & GPU color conversion");
+        Log::Info("Video Recording : using pure openGL pipeline.");
     } else
 #endif
     {
@@ -415,12 +414,12 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
             GstToolkit::has_feature(hardware_encoder[Settings::application.record.profile]) ) {
 
         description += hardware_profile_description[Settings::application.record.profile];
-        Log::Info("Video Recording with hardware accelerated encoder (%s)", description.c_str());
+        Log::Info("Video Recording : hardware accelerated encoder (%s)", description.c_str());
     }
     // revert to software encoder
     else {
         description += profile_description[Settings::application.record.profile];
-        Log::Info("Video Recording with software encoder (%s)", description.c_str());
+        Log::Info("Video Recording : software encoder (%s)", description.c_str());
     }
 
     // setup muxer and prepare filename
@@ -451,8 +450,7 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
                 else
                     description += "avenc_aac ! aacparse ! queue ! ";
 
-                Log::Info("Video Recording with audio (%s)", Audio::manager().pipeline(current_audio).c_str());
-
+                Log::Info("Video Recording : audio (%s)", Audio::manager().pipeline(current_audio).c_str());
             }
         }
 
@@ -543,7 +541,7 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     // all good
     initialized_ = true;
 
-    return std::string("Video Recording starting ") + profile_name[Settings::application.record.profile];
+    return std::string("Video Recording : starting ") + profile_name[Settings::application.record.profile];
 }
 
 void VideoRecorder::terminate()
@@ -572,7 +570,7 @@ void VideoRecorder::terminate()
     MediaInfo media = MediaPlayer::UriDiscoverer(uri);
     if (media.valid && !media.isimage) {
         Settings::application.recentRecordings.push(filename_);
-        Log::Notify("Video Recording %s is ready.", filename_.c_str());
+        Log::Notify("Video Recording : %s is ready.", filename_.c_str());
     }
     else
         Settings::application.recentRecordings.remove(filename_);
