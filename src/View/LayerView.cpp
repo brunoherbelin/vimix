@@ -35,6 +35,7 @@
 #include "Mixer.h"
 #include "defines.h"
 #include "Source/Source.h"
+#include "Source/CloneSource.h"
 #include "Source/SourceCallback.h"
 #include "Settings.h"
 #include "Scene/Decorations.h"
@@ -337,7 +338,12 @@ std::pair<Node *, glm::vec2> LayerView::pick(glm::vec2 P)
             }
             // pick the symbol: ask to show editor
             else if ( pick.first == s->symbol_ ) {
-                UserInterface::manager().showSourceEditor(s);
+                CloneSource *cs = dynamic_cast<CloneSource *>(s);
+                if (cs != nullptr) {
+                    pick = { cs->origin()->group(mode_), glm::vec2(0.f) };
+                }
+                else
+                    UserInterface::manager().showSourceEditor(s);
             }
             // pick the initials: show in panel
             else if ( pick.first == s->initial_1_ ) {
