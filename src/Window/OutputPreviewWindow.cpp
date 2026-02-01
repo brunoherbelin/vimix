@@ -96,6 +96,7 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
         if (save_and_continue) {
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
             if ( Settings::application.render.gst_glmemory_context && 
+                 Settings::application.render.gpu_decoding && 
                  GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
                 Outputs::manager().chain(
                     new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
@@ -118,6 +119,7 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
         if ( Settings::application.render.gst_glmemory_context && 
+             Settings::application.render.gpu_decoding && 
              GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
             Outputs::manager().start(
                 new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),

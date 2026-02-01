@@ -547,6 +547,9 @@ void Settings::Load(const std::string &filename)
             rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
             rendernode->QueryBoolAttribute("gpu_decoding", &application.render.gpu_decoding);
             rendernode->QueryBoolAttribute("gst_glmemory_context", &application.render.gst_glmemory_context);
+#ifndef USE_GST_OPENGL_SYNC_HANDLER
+            application.render.gst_glmemory_context = false;
+#endif
             rendernode->QueryIntAttribute("ratio", &application.render.ratio);
             rendernode->QueryIntAttribute("res", &application.render.res);
             rendernode->QueryIntAttribute("custom_width", &application.render.custom_width);
