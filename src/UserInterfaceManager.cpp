@@ -75,6 +75,7 @@
 #include "MousePointer.h"
 #include "Playlist.h"
 #include "FrameGrabbing.h"
+#include "Canvas.h"
 
 #include "UserInterfaceManager.h"
 
@@ -204,6 +205,10 @@ bool UserInterface::Init(int font_size)
     sessionimportdialog = new DialogToolkit::OpenFileDialog("Import Sources",
                                                             VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
     settingsexportdialog = new DialogToolkit::SaveFileDialog("Export settings",
+                                                             SETTINGS_FILE_TYPE, SETTINGS_FILE_PATTERN);
+    configimportdialog = new DialogToolkit::OpenFileDialog("Import Configuration",
+                                                            SETTINGS_FILE_TYPE, SETTINGS_FILE_PATTERN);
+    configexportdialog = new DialogToolkit::SaveFileDialog("Export configuration",
                                                              SETTINGS_FILE_TYPE, SETTINGS_FILE_PATTERN);
 
     // init tooltips
@@ -885,9 +890,14 @@ void UserInterface::NewFrame()
     if (sessionsavedialog && sessionsavedialog->closed() && !sessionsavedialog->path().empty())
         Mixer::manager().saveas(sessionsavedialog->path(), Settings::application.save_version_snapshot);
 
-    if (settingsexportdialog && settingsexportdialog->closed()
-        && !settingsexportdialog->path().empty())
+    if (settingsexportdialog && settingsexportdialog->closed() && !settingsexportdialog->path().empty())
         Settings::Save(0, settingsexportdialog->path());
+
+    if (configexportdialog && configexportdialog->closed() && !configexportdialog->path().empty())
+        Canvas::manager().save(configexportdialog->path());
+
+    if (configimportdialog && configimportdialog->closed() && !configimportdialog->path().empty())
+        Canvas::manager().load(configimportdialog->path());
 
     // overlay to ensure file dialog is modal
     if (DialogToolkit::FileDialog::busy()){
@@ -1290,6 +1300,31 @@ void UserInterface::showMenuFile()
     ImGui::Separator();
     if (ImGui::MenuItem( MENU_QUIT, SHORTCUT_QUIT) && TryClose())
         Rendering::manager().close();
+
+}
+
+void UserInterface::showMenuConfig()
+{
+    // SAVE and LOAD of canvas & displays config
+    if (ImGui::MenuItem(ICON_FA_TV "  Export canvas & displays config")) {
+        if (configexportdialog) 
+            configexportdialog->open();
+        navigator.discardPannel();
+    }
+
+    if (ImGui::MenuItem(ICON_FA_TV "  Load canvas & displays config")) {
+        if (configimportdialog)
+            configimportdialog->open();
+        navigator.discardPannel();
+    }
+
+    // Export settings
+    ImGui::Separator();
+    if (ImGui::MenuItem(" " ICON_FA_SAVE "  Export vimix settings")) {
+        if (settingsexportdialog)
+            settingsexportdialog->open();
+        navigator.discardPannel();
+    }
 
 }
 

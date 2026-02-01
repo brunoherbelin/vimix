@@ -2987,43 +2987,64 @@ void Navigator::RenderMainPannelSettings()
     //
     ImVec2 pos = ImGui::GetCursorPos();
     ImGui::SetCursorPos(ImVec2(pannel_width_ IMGUI_RIGHT_ALIGN, pos.y - 1.6 * ImGui::GetTextLineHeight()));
-    if ( ImGuiToolkit::IconButton(ICON_FA_SAVE,"Export settings\nYou can then "
-                                  "launch vimix with the option "
-                                  "'--settings filename.xml' "
-                                  "to restore output windows and configuration.") ){
-        // launch file dialog to select file to save settings
-        if (UserInterface::manager().settingsexportdialog)
-            UserInterface::manager().settingsexportdialog->open();
+    if (ImGui::BeginMenu("Config")) {
+        UserInterface::manager().showMenuConfig();
+        ImGui::EndMenu();
     }
     ImGui::SetCursorPos(pos);
 
     //
-    // Appearance
+    // Appearance 
     //
-    int v = Settings::application.accent_color;
-    if (ImGui::RadioButton("##Color", &v, v)){
-        Settings::application.accent_color = (v+1)%3;
-        ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
-        // ask Views to update
-        View::need_deep_update_++;
-    }
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip("Change accent color");
-    ImGui::SameLine();
-    ImGui::SetCursorPosX(align_x);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if ( ImGui::InputFloat("##Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
-        Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 5.f);
-        ImGui::GetIO().FontGlobalScale = Settings::application.scale;
-    }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    if (ImGuiToolkit::TextButton("Scale")) {
-        Settings::application.scale = 1.f;
-        ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
+    Settings::application.pannel_settings[5] = ImGui::CollapsingHeader("Appearance",
+                                                                       Settings::application.pannel_settings[5] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    ImGui::PopStyleColor(1);
+    if (Settings::application.pannel_settings[5]){
+        //
+        // Appearance
+        //
+        bool changed = false;
+        int color = Settings::application.accent_color;
+
+        // colored button to select accent color
+        ImGui::SetCursorPosX(align_x);
+        ImGui::PushStyleColor(ImGuiCol_Button, g.Style.Colors[ImGuiCol_Header]);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, g.Style.Colors[ImGuiCol_HeaderHovered]);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, g.Style.Colors[ImGuiCol_HeaderActive]);
+        if (ImGui::Button("    ", ImVec2(pannel_width_ -align_x - g.Style.ItemSpacing.x + IMGUI_RIGHT_ALIGN, 0)) ) {
+            color = (color+1)%3;
+            changed = true;
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Color")) {
+            color = 0;
+            changed = true;
+        }
+        // change accent color; outside of if(Button) to escape Push/Pop mismatch
+        if (changed) {
+            Settings::application.accent_color = color;
+            ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+            // ask Views to update
+            View::need_deep_update_++;
+        }
+        
+        // Scale of interface
+        ImGui::SetCursorPosX(align_x);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if ( ImGui::InputFloat("##Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
+            Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 5.f);
+            ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Scale")) {
+            Settings::application.scale = 1.f;
+            ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+        }
     }
 
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
-
     //
     // Recording preferences
     //

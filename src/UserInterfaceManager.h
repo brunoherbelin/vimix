@@ -109,6 +109,8 @@ protected:
     DialogToolkit::OpenFileDialog *sessionimportdialog;
     DialogToolkit::SaveFileDialog *sessionsavedialog;
     DialogToolkit::SaveFileDialog *settingsexportdialog;
+    DialogToolkit::OpenFileDialog *configimportdialog;
+    DialogToolkit::SaveFileDialog *configexportdialog;
 
     // Favorites and playlists
     Playlist favorites;
@@ -127,6 +129,7 @@ protected:
     void showMenuEdit();
     void showMenuWindows();
     void showMenuBundle();
+    void showMenuConfig();
     bool saveOrSaveAs(bool force_versioning = false);
     void selectSaveFilename();
     void selectOpenFilename();

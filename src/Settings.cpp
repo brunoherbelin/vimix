@@ -142,6 +142,8 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("pannel_settings_1", application.pannel_settings[1]);
     applicationNode->SetAttribute("pannel_settings_2", application.pannel_settings[2]);
     applicationNode->SetAttribute("pannel_settings_3", application.pannel_settings[3]);
+    applicationNode->SetAttribute("pannel_settings_4", application.pannel_settings[4]);
+    applicationNode->SetAttribute("pannel_settings_5", application.pannel_settings[5]);
     applicationNode->SetAttribute("pannel_always_visible", application.pannel_always_visible);
     applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
     applicationNode->SetAttribute("broadcast_port", application.broadcast_port);
@@ -494,6 +496,8 @@ void Settings::Load(const std::string &filename)
             applicationNode->QueryBoolAttribute("pannel_settings_1", &application.pannel_settings[1]);
             applicationNode->QueryBoolAttribute("pannel_settings_2", &application.pannel_settings[2]);
             applicationNode->QueryBoolAttribute("pannel_settings_3", &application.pannel_settings[3]);
+            applicationNode->QueryBoolAttribute("pannel_settings_4", &application.pannel_settings[4]);
+            applicationNode->QueryBoolAttribute("pannel_settings_5", &application.pannel_settings[5]);
             applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
             applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
             applicationNode->QueryIntAttribute("loopback_camera", &application.loopback_camera);

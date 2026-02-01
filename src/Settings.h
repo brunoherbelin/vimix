@@ -300,7 +300,7 @@ struct Application
     int  pannel_playlist_mode;
     bool pannel_session[3];
     bool pannel_always_visible;
-    bool pannel_settings[5];
+    bool pannel_settings[6];
 
     // connection settings
     bool accept_connections;
@@ -400,6 +400,8 @@ struct Application
         pannel_settings[1] = false;
         pannel_settings[2] = false;
         pannel_settings[3] = false;
+        pannel_settings[4] = false;
+        pannel_settings[5] = false;
         transcode_options[0] = true;
         transcode_options[1] = false;
         transcode_options[2] = false;
