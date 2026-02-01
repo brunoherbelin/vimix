@@ -208,6 +208,7 @@ Source::Failure CanvasSource::failed() const
              // or alpha channel changed (e.g. inside SessionSource)
              || ( ( rendered_output_->flags() & FrameBuffer::FrameBuffer_alpha ) != ( canvas->frame()->flags() & FrameBuffer::FrameBuffer_alpha ) )
              ) {
+                
             return FAIL_RETRY;
         }
     }
@@ -266,16 +267,13 @@ void CanvasSource::init()
 
 void CanvasSource::update(float dt)
 {
-    static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
-
     Source::update(dt);
 
-    CanvasSurface *canvas = Canvas::manager().at(canvas_index_);
-    if (canvas && canvas->frame() && rendered_output_) {
-
-        if ((active_ && !paused_) || reset_) {
-
+    if ((active_ && !paused_) || reset_) {
+        CanvasSurface *canvas = Canvas::manager().at(canvas_index_);
+        if (canvas && canvas->frame() && rendered_output_) {
             canvas->frame()->blit(rendered_output_);
+            reset_ = false;
         }
     }
 }

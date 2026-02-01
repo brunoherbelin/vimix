@@ -78,19 +78,20 @@ void Canvas::terminate()
 
 void Canvas::setInputFrameBuffer(FrameBuffer *fb)
 {
-    // detect change of aspect ratio
-    if ( framebuffer_ && framebuffer_->aspectRatio() != fb->aspectRatio() ) {
-        // adjust all canvases x translation coordinate to new aspect ratio
-        for (auto cit = begin(); cit != end(); ++cit) {
-            (*cit)->group(View::GEOMETRY)->translation_.x *= fb->aspectRatio() / framebuffer_->aspectRatio();
-        }
-    }
+    if (fb == nullptr)
+        return;
 
     // set new framebuffer
     framebuffer_ = fb;
 
     // reset all canvas surfaces to attach to new framebuffer
     for (auto cit = begin(); cit != end(); ++cit) {
+
+        // adjust position according to crop
+        glm::vec4 crop = (*cit)->group(View::GEOMETRY)->crop_;
+        (*cit)->group(View::GEOMETRY)->translation_.x = (crop[0] + crop[1]) * 0.5f * framebuffer_->aspectRatio();
+            
+        // reload to attach to new framebuffer
         (*cit)->reload();
         (*cit)->touch();
     }
@@ -372,6 +373,32 @@ void Canvas::setLayout(int rows, int columns)
         }
     }
 
+}
+
+void Canvas::reset(bool surfaces, bool session)
+{
+    // delete all canvas surfaces
+    if (surfaces) {
+
+        GeometryView *geometryView = static_cast<GeometryView *>(Mixer::manager().view(View::GEOMETRY));
+        while ( canvases_.size() > 0 ) {        
+            Source *tmp = canvases_.back();
+            geometryView->detach(tmp);
+            canvases_.pop_back();
+            delete tmp;
+        }
+        addSurface();
+        
+    }
+        
+    // reset session related elements 
+    if (session) {
+        std::lock_guard<std::mutex> lock(output_mutex_);
+
+        // empty the output session
+        while ( !output_session_->empty() ) 
+            output_session_->popSource();
+    }
 }
 
 void Canvas::load(const std::string &filename)

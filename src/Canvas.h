@@ -63,6 +63,7 @@ public:
     SourceList::iterator end ();
     
     // configuration
+    void reset(bool surfaces = true, bool session = true);
     void load(const std::string &filename = std::string());
     void save(const std::string &filename = std::string());
     void setLayout(int rows, int columns);

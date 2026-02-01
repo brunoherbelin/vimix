@@ -165,6 +165,8 @@ GeometryView::GeometryView() : View(GEOMETRY)
     // attach canvases to Geometry Views workspace
     canvas_scene_ = new Group;
     scene.ws()->attach( canvas_scene_ );
+    // no current canvas
+    current_canvas_ = nullptr;
 
     // will be init later
     overlay_selection_scale_ = nullptr;
@@ -425,10 +427,7 @@ void GeometryView::draw()
                             // clear selection (disabled for canvases)
                             Mixer::selection().clear();
                             // select first canvas as current if not already one selected
-                            if (current_canvas_ == nullptr) 
-                                current_canvas_ = *Canvas::manager().begin();
-                            // restore mode for current canvas
-                            current_canvas_->setMode(Source::CURRENT);
+                            setCurrentCanvas(*Canvas::manager().begin());
                         }
                         else {
                             // temporarily disable current mode of canvas
@@ -492,9 +491,10 @@ void GeometryView::draw()
             if (ImGui::IsItemHovered())
                 ImGuiToolkit::ToolTip("Layout");
             if (ImGui::BeginPopup("combinations_popup", ImGuiWindowFlags_NoMove))  {
+
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                 if (Canvas::manager().size() == 1) {
-                    if (ImGui::Selectable("Fit whole output")) 
+                    if (ImGui::Selectable(ICON_FA_EXPAND "   Fit whole output")) 
                         Canvas::manager().setLayout(1, 0);
                 }
                 else {
@@ -504,7 +504,7 @@ void GeometryView::draw()
                     std::vector<std::string> descriptions = BaseToolkit::getGridCombinationDescriptions(N);
                     for (size_t i = 0; i < descriptions.size(); ++i) {
                         std::ostringstream oss;
-                        oss << descriptions[i];
+                        oss << ICON_FA_TH << "   " << descriptions[i];
                         if (ImGui::Selectable(oss.str().c_str())) {
                             // // set combination
                             Canvas::manager().setLayout(combinations[i].first, 
@@ -512,6 +512,15 @@ void GeometryView::draw()
                         }
                     }
                 }
+
+                // reset option
+                ImGui::Separator();
+                if (ImGui::Selectable(ICON_FA_BACKSPACE "  Reset all")) {
+                    Canvas::manager().reset(true, false);
+                    // clear current canvas
+                    setCurrentCanvas(nullptr);
+                }
+
                 // TODO : add load and save canvas layout ?
                 ImGui::PopFont();
                 ImGui::EndPopup();
@@ -1109,7 +1118,10 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
-    if (editor_mode_ == EDIT_CANVAS && current_canvas_) {
+    if (editor_mode_ == EDIT_CANVAS) {
+
+        if (!current_canvas_)
+            return ret;
 
         Group *sourceNode = current_canvas_->group(mode_); // groups_[View::GEOMETRY]
 
@@ -1699,11 +1711,23 @@ void GeometryView::updateSelectionOverlay(glm::vec4 color)
 
 void GeometryView::setCurrentCanvas(Source *c)
 {
+    // check if current canvas is still valid
+    SourceList::iterator sit = std::find(Canvas::manager().begin(), 
+                            Canvas::manager().end(), current_canvas_);
+    if ( sit == Canvas::manager().end() ) 
+        // invalid canvas; set current to null
+        current_canvas_ = nullptr;
+
+    // un-select current canvas if null given
     if (c == nullptr) {
         if (current_canvas_ != nullptr) {
             current_canvas_->setMode(Source::VISIBLE);
             current_canvas_ = nullptr;
         }
+        return;
+    } 
+    else if (current_canvas_ == c) {
+        // nothing to change if same canvas
         return;
     }
 
