@@ -11,6 +11,24 @@ namespace DialogToolkit
 
 void ErrorDialog(const char* message);
 
+class yesCancelDialog
+{
+protected:
+    std::string message_;
+    bool result_; //  FALSE:cancel, TRUE:yes
+    std::vector< std::future<bool> > promises_;
+    static bool busy_;
+
+public:
+    yesCancelDialog(const std::string &message);
+
+    void open();
+    bool closed();
+    inline bool result() const { return result_; }
+
+    static bool busy() { return busy_; }
+};
+
 class FileDialog
 {
 protected:

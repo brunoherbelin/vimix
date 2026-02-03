@@ -206,10 +206,13 @@ bool UserInterface::Init(int font_size)
                                                             VIMIX_FILE_TYPE, VIMIX_FILE_PATTERN);
     settingsexportdialog = new DialogToolkit::SaveFileDialog("Export settings",
                                                              SETTINGS_FILE_TYPE, SETTINGS_FILE_PATTERN);
-    configimportdialog = new DialogToolkit::OpenFileDialog("Import Configuration",
-                                                            SETTINGS_FILE_TYPE, SETTINGS_FILE_PATTERN);
-    configexportdialog = new DialogToolkit::SaveFileDialog("Export configuration",
-                                                             SETTINGS_FILE_TYPE, SETTINGS_FILE_PATTERN);
+    configimportdialog = new DialogToolkit::OpenFileDialog("Load Configuration",
+                                                            CONFIG_FILE_TYPE, CONFIG_FILE_PATTERN);
+    configexportdialog = new DialogToolkit::SaveFileDialog("Save Configuration",
+                                                            CONFIG_FILE_TYPE, CONFIG_FILE_PATTERN);
+    resetconfirmdialog = new DialogToolkit::yesCancelDialog("Reset vimix to factory default ?\n\n"
+                                                           "This will reset all settings and exit vimix.\n"
+                                                           "This action cannot be undone.");
 
     // init tooltips
     ImGuiToolkit::setToolTipsEnabled(Settings::application.show_tooptips);
@@ -899,6 +902,13 @@ void UserInterface::NewFrame()
     if (configimportdialog && configimportdialog->closed() && !configimportdialog->path().empty())
         Canvas::manager().load(configimportdialog->path());
 
+    // confirm reset dialog
+    if (resetconfirmdialog && resetconfirmdialog->closed() && resetconfirmdialog->result()) {
+        if (TryClose())
+            Rendering::manager().close();
+        Settings::Reset();
+    }
+
     // overlay to ensure file dialog is modal
     if (DialogToolkit::FileDialog::busy()){
         if (!ImGui::IsPopupOpen("Busy"))
@@ -1305,27 +1315,44 @@ void UserInterface::showMenuFile()
 
 void UserInterface::showMenuConfig()
 {
-    // SAVE and LOAD of canvas & displays config
-    if (ImGui::MenuItem(ICON_FA_TV "  Export canvas & displays config")) {
-        if (configexportdialog) 
-            configexportdialog->open();
-        navigator.discardPannel();
-    }
-
-    if (ImGui::MenuItem(ICON_FA_TV "  Load canvas & displays config")) {
+    //  Canvas & displays config
+    ImGui::TextDisabled("Canvas and Displays");
+    // LOAD
+    if (ImGui::MenuItem(ICON_FA_TV "  Load config")) {
         if (configimportdialog)
             configimportdialog->open();
         navigator.discardPannel();
     }
+    // SAVE
+    if (ImGui::MenuItem(  ICON_FA_TV "  Save config")) {
+        if (configexportdialog) 
+            configexportdialog->open();
+        navigator.discardPannel();
+    }
+    // RESET
+    if (ImGui::MenuItem(ICON_FA_REDO_ALT "   Reset config")) {
+        Canvas::manager().reset(true, true);
+        navigator.discardPannel();
+    }
 
-    // Export settings
+    //  SETTINGS
     ImGui::Separator();
-    if (ImGui::MenuItem(" " ICON_FA_SAVE "  Export vimix settings")) {
+    ImGui::TextDisabled("Vimix settings");
+    // offer to open settings location
+    ImGui::SameLine(0, IMGUI_SAME_LINE * 3);
+    if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+        SystemToolkit::open(SystemToolkit::settings_path());
+    // EXPORT 
+    if (ImGui::MenuItem(ICON_FA_SAVE "    Export")) {
         if (settingsexportdialog)
             settingsexportdialog->open();
         navigator.discardPannel();
     }
-
+    // FACTORY RESET
+    if (ImGui::MenuItem(ICON_FA_RECYCLE "   Factory reset")) {
+        resetconfirmdialog->open();
+        navigator.discardPannel();
+    }
 }
 
 void UserInterface::StartScreenshot()

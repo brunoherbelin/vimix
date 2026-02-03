@@ -74,7 +74,7 @@ struct WindowConfig
     bool fullscreen;
     std::string monitor;
 
-    WindowConfig() : name(APP_TITLE), w(1280), h(720),
+    WindowConfig() : name(APP_TITLE), w(1600), h(900),
         fullscreen(false), monitor("")
     { }
 
@@ -429,6 +429,7 @@ void Load(const std::string &filename = "");
 void Lock();
 void Unlock();
 void Check();
+void Reset();
 
 }
 

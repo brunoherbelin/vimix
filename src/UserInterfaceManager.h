@@ -111,6 +111,7 @@ protected:
     DialogToolkit::SaveFileDialog *settingsexportdialog;
     DialogToolkit::OpenFileDialog *configimportdialog;
     DialogToolkit::SaveFileDialog *configexportdialog;
+    DialogToolkit::yesCancelDialog *resetconfirmdialog;
 
     // Favorites and playlists
     Playlist favorites;

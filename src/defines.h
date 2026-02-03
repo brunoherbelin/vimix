@@ -10,7 +10,6 @@
 #define MAX_SESSION_LEVEL 3
 #define MAX_OUTPUT_WINDOW 3
 #define MAX_OUTPUT_CANVAS 12
-#define APP_CANVAS "vimix_canvas.xml"
 
 #define VIMIX_GL_VERSION "opengl3"
 #define VIMIX_GLSL_VERSION "#version 150"
@@ -49,6 +48,13 @@
 #define SETTINGS_FILE_PATTERN \
 { \
         "*.xml" \
+}
+#define APP_CANVAS "config.vmx"
+#define CONFIG_FILE_TYPE "vimix configuration (VMX)"
+#define CONFIG_FILE_EXT "vmx"
+#define CONFIG_FILE_PATTERN \
+{ \
+        "*.vmx" \
 }
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))

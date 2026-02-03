@@ -935,3 +935,8 @@ void Settings::Check()
 	xmlDoc.Print();
 }
 
+void Settings::Reset()
+{
+    application = Settings::Application();
+}
+
