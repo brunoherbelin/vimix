@@ -49,12 +49,12 @@
 { \
         "*.xml" \
 }
-#define APP_CANVAS "config.vmx"
-#define CONFIG_FILE_TYPE "vimix configuration (VMX)"
-#define CONFIG_FILE_EXT "vmx"
+#define APP_CANVAS "config.vix"
+#define CONFIG_FILE_TYPE "vimix configuration (VIX)"
+#define CONFIG_FILE_EXT "vix"
 #define CONFIG_FILE_PATTERN \
 { \
-        "*.vmx" \
+        "*.vix" \
 }
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))
