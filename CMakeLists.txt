@@ -32,8 +32,29 @@ if(GIT_EXECUTABLE)
       add_definitions(-DVIMIX_VERSION_MAJOR=${VIMIX_VERSION_MAJOR})
       add_definitions(-DVIMIX_VERSION_MINOR=${VIMIX_VERSION_MINOR})
       add_definitions(-DVIMIX_VERSION_PATCH=${VIMIX_VERSION_PATCH})
-      message(STATUS "Compiling vimix version ${VIMIX_VERSION_MAJOR}.${VIMIX_VERSION_MINOR}.${VIMIX_VERSION_PATCH} (${GIT_DESCRIBE_VERSION})")
+      message(STATUS "Compiling vimix \n   version ${VIMIX_VERSION_MAJOR}.${VIMIX_VERSION_MINOR}.${VIMIX_VERSION_PATCH} (${GIT_DESCRIBE_VERSION})\n")
   endif()
+endif()
+
+if (NOT GIT_EXECUTABLE OR GIT_DESCRIBE_ERROR_CODE)
+    #####
+    ##### Fallback: Read version from snap/snapcraft.yaml if git is not available
+    #####
+    set(SNAPCRAFT_YAML "${CMAKE_CURRENT_SOURCE_DIR}/snap/snapcraft.yaml")
+    if(EXISTS ${SNAPCRAFT_YAML})
+    file(READ ${SNAPCRAFT_YAML} SNAPCRAFT_CONTENT)
+    # Extract version line: "version: '0.8.5d'"
+    string(REGEX MATCH "version: *'([0-9]+)\\.([0-9]+)\\.([0-9]+[a-z]?)'" VERSION_MATCH ${SNAPCRAFT_CONTENT})
+    if(VERSION_MATCH)
+        set(VIMIX_VERSION_MAJOR ${CMAKE_MATCH_1})
+        set(VIMIX_VERSION_MINOR ${CMAKE_MATCH_2})
+        set(VIMIX_VERSION_PATCH ${CMAKE_MATCH_3})
+        add_definitions(-DVIMIX_VERSION_MAJOR=${VIMIX_VERSION_MAJOR})
+        add_definitions(-DVIMIX_VERSION_MINOR=${VIMIX_VERSION_MINOR})
+        add_definitions(-DVIMIX_VERSION_PATCH=${VIMIX_VERSION_PATCH})
+        message(STATUS "Compiling vimix \n   version ${VIMIX_VERSION_MAJOR}.${VIMIX_VERSION_MINOR}.${VIMIX_VERSION_PATCH}\n")
+    endif()
+    endif()
 endif()
 
 
