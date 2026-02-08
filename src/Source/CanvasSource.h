@@ -83,6 +83,9 @@ protected:
     // control
     bool paused_;
     bool reset_;
+
+    // eye slash icon to indicate disabled output
+    Handles *disabled_output_handle_;
 };
 
 #endif // CANVASSOURCE_H

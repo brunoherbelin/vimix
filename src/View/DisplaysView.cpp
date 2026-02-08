@@ -550,9 +550,8 @@ void DisplaysView::draw()
         // will draw its surface
         source_surfaces.push_back((*source_iter)->rendersurface_);
         // will draw its frame and manipulators
+        source_overlays.push_back((*source_iter)->overlays_[GEOMETRY]);
         source_overlays.push_back((*source_iter)->frames_[GEOMETRY]);
-        source_overlays.push_back((*source_iter)->manipulator_);
-        source_overlays.push_back((*source_iter)->handles_[GEOMETRY][Handles::MENU]);
     }
 
     // 0. prepare projection for draw visitors

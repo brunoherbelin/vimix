@@ -24,6 +24,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/matrix.hpp>
 
+#include "Settings.h"
 #include "defines.h"
 #include "Log.h"
 #include "FrameBuffer.h"
@@ -180,6 +181,11 @@ CanvasSource::CanvasSource(uint64_t id) : Source(id), canvas_index_(0),  rendere
     symbol_ = new Symbol(Symbol::RECEIVE, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
 
+    // eye slash icon to indicate disabled output
+    disabled_output_handle_ = new Handles(Handles::EYESLASHED);
+    disabled_output_handle_->visible_ = false;  
+    overlays_[View::GEOMETRY]->attach( disabled_output_handle_ );
+    
     // default visible 
     groups_[View::MIXING]->translation_ = glm::vec3( 0.f );
     groups_[View::LAYER]->translation_.z = 1.f;
@@ -276,6 +282,9 @@ void CanvasSource::update(float dt)
             reset_ = false;
         }
     }
+
+    // show eye slash icon if output is disabled 
+    disabled_output_handle_->visible_ = Settings::application.render.disabled;
 }
 
 void CanvasSource::play (bool on)
