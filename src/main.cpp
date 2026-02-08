@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
 
     if (cleanRequested) {
         // clean settings : save settings before loading
-        Settings::Save();
+        Settings::terminate();
         printf("%s: clean OK\n", argv[0]);
         ret = 0;
     }
@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
     ///
     /// Settings
     ///
-    Settings::Load( settingsRequested );
+    Settings::init( settingsRequested );
     Settings::application.executable = std::string(argv[0]);
 
     /// lock to inform an instance is running
@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
     ///
     /// Settings
     ///
-    Settings::Save(UserInterface::manager().Runtime());
+    Settings::terminate(UserInterface::manager().Runtime());
 
     /// ok
     return 0;

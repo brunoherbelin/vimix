@@ -283,6 +283,7 @@ struct Application
     std::string name;
     std::string executable;
     uint64_t total_runtime;
+    bool request_factory_reset;
 
     // Global settings Application interface
     float scale;
@@ -373,6 +374,7 @@ struct Application
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         total_runtime = 0;
+        request_factory_reset = false;
         scale = 1.f;
         accent_color = 0;
         smooth_transition = true;
@@ -424,12 +426,10 @@ struct Application
 extern Application application;
 
 // Save and Load store settings in XML file
-void Save(uint64_t runtime = 0, const std::string &filename = "");
-void Load(const std::string &filename = "");
+void terminate(uint64_t runtime = 0, const std::string &filename = "");
+void init(const std::string &filename = "");
 void Lock();
 void Unlock();
-void Check();
-void Reset();
 
 }
 

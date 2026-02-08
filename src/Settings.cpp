@@ -67,8 +67,26 @@ XMLElement *save_knownhost(Settings::KnownHosts &h, const char *nodename, XMLDoc
 
 
 
-void Settings::Save(uint64_t runtime, const std::string &filename)
+void Settings::terminate(uint64_t runtime, const std::string &filename)
 {
+    // RESET FACTORY DEFAULT BY REMOVING SETTINGS FILE
+    if (application.request_factory_reset && filename.empty()) {
+
+        // remove vimix settings file, if exists
+        if (!settingsFilename.empty()) 
+            SystemToolkit::remove_file(settingsFilename);
+
+        // remove settings file for OSC, if exists
+        if (!application.control.osc_filename.empty()) 
+            SystemToolkit::remove_file(application.control.osc_filename);
+
+        // remove settings file for IMGUI, if exists
+        std::string imguiFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), "imgui.ini");
+        SystemToolkit::remove_file(imguiFilename);
+
+        return;
+    }
+
     // impose C locale for all app
     setlocale(LC_ALL, "C");
 
@@ -430,7 +448,7 @@ void load_knownhost(Settings::KnownHosts &h, const char *nodename, XMLElement *r
     }
 }
 
-void Settings::Load(const std::string &filename)
+void Settings::init(const std::string &filename)
 {
     // impose C locale for all app
     setlocale(LC_ALL, "C");
@@ -922,21 +940,5 @@ void Settings::Unlock()
         fprintf(file, "0");
         fclose(file);
     }
-}
-
-
-void Settings::Check()
-{
-    XMLDocument xmlDoc;
-    XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
-    if (XMLResultError(eResult)) {
-        return;
-    }
-	xmlDoc.Print();
-}
-
-void Settings::Reset()
-{
-    application = Settings::Application();
 }
 

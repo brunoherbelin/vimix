@@ -894,7 +894,7 @@ void UserInterface::NewFrame()
         Mixer::manager().saveas(sessionsavedialog->path(), Settings::application.save_version_snapshot);
 
     if (settingsexportdialog && settingsexportdialog->closed() && !settingsexportdialog->path().empty())
-        Settings::Save(0, settingsexportdialog->path());
+        Settings::terminate(0, settingsexportdialog->path());
 
     if (configexportdialog && configexportdialog->closed() && !configexportdialog->path().empty())
         Canvas::manager().save(configexportdialog->path());
@@ -906,7 +906,7 @@ void UserInterface::NewFrame()
     if (resetconfirmdialog && resetconfirmdialog->closed() && resetconfirmdialog->result()) {
         if (TryClose())
             Rendering::manager().close();
-        Settings::Reset();
+        Settings::application.request_factory_reset = true;
     }
 
     // overlay to ensure file dialog is modal
