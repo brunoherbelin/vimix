@@ -499,10 +499,18 @@ void DisplaysView::menuCanvasSource ()
 
         const float padding = ImGui::GetStyle().FramePadding.x ;
         const float spacing = ImGui::GetStyle().FrameRounding ;
+        const float button_width = ImGui::GetFrameHeightWithSpacing() + spacing + padding;
+
+        // OUTPUT DISABLED button
+        ImGuiToolkit::ButtonToggle(ICON_FA_EYE_SLASH, &Settings::application.render.disabled);
+        if (!horizontal_layout_)
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip(MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE);
 
         // - action REMOVE canvas source
         if (Canvas::manager().session()->size() > 0 && current_canvas_source_ != nullptr) {
-            if (ImGui::Button(ICON_FA_MINUS )) {
+            if (ImGui::Button(ICON_FA_MINUS, ImVec2(button_width, 0))) {
                 removeCurrentCanvasSource();
             }
             if (ImGui::IsItemHovered())
@@ -511,7 +519,7 @@ void DisplaysView::menuCanvasSource ()
         else {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 0.5f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
-            ImGui::Button(ICON_FA_MINUS );
+            ImGui::Button(ICON_FA_MINUS, ImVec2(button_width, 0));
             ImGui::PopStyleColor(2);
         }
 
@@ -519,7 +527,7 @@ void DisplaysView::menuCanvasSource ()
             ImGui::SameLine(0, IMGUI_SAME_LINE);
 
         // + action ADD new canvas source
-        if (ImGui::Button(ICON_FA_PLUS )) {
+        if (ImGui::Button(ICON_FA_PLUS, ImVec2(button_width, 0))) {
             addCanvasSource();
         }
         if (ImGui::IsItemHovered())
@@ -704,24 +712,11 @@ void DisplaysView::draw()
                 // RESET BUTTON
                 if (horizontal_layout_) 
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
-                if (ImGui::Button(ICON_FA_UNDO_ALT )) {
+                if (ImGui::Button(ICON_FA_BACKSPACE )) {
                     Settings::application.monitors[monitor.name] = Settings::MonitorConfig();
-                    monitor.output.setShowPattern(false);
                 }
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip("Reset adjustments");
-
-                // OUTPUT DISABLED indicator
-                if (Settings::application.render.disabled)
-                {
-                    if (horizontal_layout_) 
-                        ImGui::SameLine(0, IMGUI_SAME_LINE);
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 0.8f));
-                    ImGui::Text(ICON_FA_EYE_SLASH);
-                    ImGui::PopStyleColor(1);
-                    if (ImGui::IsItemHovered())
-                        ImGuiToolkit::ToolTip("Mix output disabled", SHORTCUT_OUTPUTDISABLE);
-                }
 
                 ImGui::PopStyleColor(8);
                 ImGui::End();

@@ -218,7 +218,7 @@
 #define SHORTCUT_CAPTURE_PLAYER "F10"
 #define MENU_CAPTUREGUI       ICON_FA_CAMERA "  Screenshot vimix"
 #define SHORTCUT_CAPTURE_GUI  "F9"
-#define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable"
+#define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable outputs"
 #define SHORTCUT_OUTPUTDISABLE "F12"
 #define ICON_PREVIEW          4, 15
 #define MENU_PREVIEW          "Preview"
