@@ -1076,10 +1076,6 @@ void ImGuiVisitor::visit (RenderSource& s)
                 UserInterface::manager().showSourceEditor(&s);
             top.x += ImGui::GetFrameHeight();
         }
-        // icon to open output view
-        ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(ICON_FA_DESKTOP, "Open Display"))
-            Settings::application.widget.preview = true;
     }
     else
         info.reset();

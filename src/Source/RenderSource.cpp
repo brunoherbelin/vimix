@@ -41,7 +41,7 @@ std::vector< std::tuple<int, int, std::string> > RenderSource::ProvenanceMethod 
     { 16, 12, "Recursive" }, 
     { 17, 5, "Entire scene", }, 
     { 17, 12, "Local scene" },
-    { 18, 6, "Canvas" }
+    { 2, 10, "Canvas" }
 };
 
 RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr),
