@@ -102,6 +102,10 @@ To build the vimix flatpak with code from local folder (debugging), change the f
 }
 ```
 
+Run this to use the custom local desc
+
+    flatpak-builder --user --install --force-clean build [your_development_dir]/flatpak/io.github.brunoherbelin.Vimix.json
+
 ## Testing performance
 
 Linux perf command
