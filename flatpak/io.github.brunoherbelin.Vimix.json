@@ -7,7 +7,7 @@
     "rename-desktop-file": "vimix.desktop",
     "rename-icon": "vimix",
     "finish-args": [
-        "--socket=x11",
+        "--socket=fallback-x11",
         "--socket=wayland",
         "--socket=pulseaudio",
         "--share=ipc",
