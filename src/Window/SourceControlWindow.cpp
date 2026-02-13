@@ -26,6 +26,7 @@
 #include <gst/gst.h>
 
 // ImGui
+#include "IconsFontAwesome5.h"
 #include "Toolkit/ImGuiToolkit.h"
 #include "Timeline.h"
 #include "gst/gstclock.h"
@@ -516,14 +517,15 @@ void SourceControlWindow::Render()
         p.x += g.CurrentWindow->Size.x - 2.1f * g.FontSize;
         if (g.CurrentWindow->DC.CursorPos.x < p.x)
         {
+            bool enabled = (active_selection_ < 0 && selection_.size() == 1);
+            ImGui::PushStyleColor(ImGuiCol_Text, enabled ? ImGui::GetColorU32(ImGuiCol_Text) : ImGui::GetColorU32(ImGuiCol_TextDisabled));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
             ImGui::SetCursorScreenPos(p);
-            if (selection_.size() == 1) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
-                ImGuiToolkit::ButtonToggle( ICON_FA_SEARCH, &magnifying_glass);
-                ImGui::PopStyleColor();
-            }
-            else
-                ImGui::TextDisabled(" " ICON_FA_SEARCH);
+            ImGuiToolkit::ButtonToggle( ICON_FA_SEARCH, &magnifying_glass);
+            // FORCE DISABLE IF NOT ENABLED 
+            if (!enabled) 
+                magnifying_glass = false;
+            ImGui::PopStyleColor(2);
         }
 
         ImGui::EndMenuBar();
@@ -976,7 +978,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
 
         // show time when hovering
         if (hovered) 
-            ImGui::SetTooltip(" <%d>  %s ", index, GstToolkit::time_to_string(flag_time).c_str());
+            ImGui::SetTooltip(ICON_FA_FLAG " %d (%s)", index, GstToolkit::time_to_string(flag_time).c_str());
 
         ++index;
     }   
@@ -1783,7 +1785,7 @@ int SourceControlWindow::SourceButton(Source *s, ImVec2 framesize)
         // centered icon in front of dark background
         if (s->active() && s->playable()) {
             draw_list->AddRectFilled(frame_center - ImVec2(H * 0.3f, H * 0.2f),
-                                     frame_center + ImVec2(H * 1.1f, H * 1.2f), ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed), 6.f);
+                                     frame_center + ImVec2(H * 1.1f, H * 1.15f), ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed), 6.f);
             draw_list->AddText(frame_center, icon_color, s->playing() ? ICON_FA_PAUSE : ICON_FA_PLAY);
         }
     }

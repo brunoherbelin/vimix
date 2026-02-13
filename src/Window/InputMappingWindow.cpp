@@ -537,11 +537,11 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
 
         ImGui::SetNextItemWidth(right_align);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        if (ImGui::SliderInt("##CALLBACK_PLAY_FLAG", &val, -1, max, val < 0 ? "Next Flag" : "Flag <%d>"))
+        if (ImGui::SliderInt("##CALLBACK_PLAY_FLAG", &val, -1, max, val < 0 ?  ICON_FA_FLAG " Next" : ICON_FA_FLAG " %d"))
             edited->setValue(val );
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
-        testButton(edited, target, "Flag to jump to in a video source.", 12, 6);
+        testButton(edited, target, "Flag to jump to in a video source.", 11, 6);
 
     }
         break;
