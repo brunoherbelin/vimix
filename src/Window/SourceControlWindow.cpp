@@ -45,6 +45,7 @@
 #include "Source/StreamSource.h"
 #include "MediaPlayer.h"
 #include "ActionManager.h"
+#include "Source/SourceCallback.h"
 #include "UserInterfaceManager.h"
 
 #include "SourceControlWindow.h"
@@ -3217,8 +3218,9 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
             enabled = true;
         if ( (*source)->playing() )
             n_play++;
-        // if ( (*source)->hasFlags() )
-        //     hasflags = true;
+        MediaSource *ms = dynamic_cast<MediaSource*>(*source);
+        if ( ms && ms->mediaplayer() && ms->mediaplayer()->timeline() && ms->mediaplayer()->timeline()->numFlags() > 0 )
+            hasflags = true;
     }
 
     // buttons style for disabled / enabled bar
@@ -3280,7 +3282,16 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
         }
     }
     ImGui::SameLine(0, h_space_);
+    if (hasflags) {
+        if( ImGuiToolkit::ButtonIcon(5, 0, "Go to next flag", enabled) && enabled ) {
+            for (auto source = selection_.begin(); source != selection_.end(); ++source) {
+                (*source)->call( new Flag( ));
+            }
+        }
+    }
 
     // restore style
     ImGui::PopStyleColor(3);
+
+    ImGui::SameLine(0, h_space_);
 }
