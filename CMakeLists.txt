@@ -44,7 +44,7 @@ if (NOT GIT_EXECUTABLE OR GIT_DESCRIBE_ERROR_CODE)
     if(EXISTS ${SNAPCRAFT_YAML})
     file(READ ${SNAPCRAFT_YAML} SNAPCRAFT_CONTENT)
     # Extract version line: "version: '0.8.5d'"
-    string(REGEX MATCH "version: *'([0-9]+)\\.([0-9]+)\\.([0-9]+[a-z]?)'" VERSION_MATCH ${SNAPCRAFT_CONTENT})
+    string(REGEX MATCH "version: *'([0-9]+)\\.([0-9]+)\\.([0-9]+)?([a-z])?'" VERSION_MATCH ${SNAPCRAFT_CONTENT})
     if(VERSION_MATCH)
         set(VIMIX_VERSION_MAJOR ${CMAKE_MATCH_1})
         set(VIMIX_VERSION_MINOR ${CMAKE_MATCH_2})
