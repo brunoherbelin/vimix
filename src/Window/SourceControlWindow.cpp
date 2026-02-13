@@ -1067,7 +1067,7 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
 
     // PLOT of opacity is inside the bbox, at the top
     const ImVec2 plot_pos = frame_pos + style.FramePadding;
-    const ImRect plot_bbox( plot_pos, plot_pos + ImVec2(timeline_size.x, frame_size.y - 4.f * style.FramePadding.y - timeline_size.y));
+    const ImRect plot_bbox( plot_pos, plot_pos + ImVec2(timeline_size.x, frame_size.y - 4.f * style.FramePadding.y - timeline_size.y -1));
 
     //
     // THIRD RENDER
@@ -1097,6 +1097,8 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
         //
         // FLAGS 
         //
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, 0.f));
+        ImGui::PushStyleColor( ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_Button) );
         int index = 0;
         bool flag_pressed = false;
         const TimeIntervalSet flags = timeline->flags();
@@ -1109,12 +1111,12 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
             draw_pos -= ImVec2(2.f, -3.f); 
 
             // icon depends on flag type & color on hovered
-            ImGui::PushStyleColor( ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_FrameBg) );
             _drawIcon(draw_pos, 11 + flag_Interval.type, 6, true, window);
-            ImGui::PopStyleColor();
 
             ++index;
         }   
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(1);
 
         // draw the cursor
         float time_ = static_cast<float> ( static_cast<double>(time - section->begin) / static_cast<double>(section->duration()) );
@@ -3208,12 +3210,15 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
 
     // play bar is enabled if only one source selected is enabled
     bool enabled = false;
+    bool hasflags = false;
     size_t n_play = 0;
     for (auto source = selection_.begin(); source != selection_.end(); ++source){
         if ( (*source)->active() && (*source)->playable())
             enabled = true;
         if ( (*source)->playing() )
             n_play++;
+        // if ( (*source)->hasFlags() )
+        //     hasflags = true;
     }
 
     // buttons style for disabled / enabled bar
