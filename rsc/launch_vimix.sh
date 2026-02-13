@@ -9,7 +9,7 @@ if [[ $gpu == *' nvidia '* ]]; then
     # Test if running under wayland
     if [ -z "$WAYLAND_DISPLAY" ]; then
         # not Wayland
-        __GLX_VENDOR_LIBRARY_NAME=nvidia vimix "$@"
+        __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia vimix "$@"
     else
         # Wayland: 
         __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia vimix "$@"

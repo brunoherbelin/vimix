@@ -109,8 +109,9 @@
             ],
             "sources": [
                 {
-                "type":"dir",
-                "path": "/home/bh/Claude/VimixDev/vimix"
+                "type": "git",
+                "branch": "beta",
+                "url": "https://github.com/brunoherbelin/vimix.git"
                 }
             ]
         }
