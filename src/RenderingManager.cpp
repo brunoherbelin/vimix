@@ -196,10 +196,45 @@ bool Rendering::init()
     // take opengl context ownership on main window
     glfwMakeContextCurrent(main_.window());
 
-    // Initialize OpenGL loader 
+    // Initialize OpenGL loader
     bool err = gladLoadGL((GLADloadfunc) glfwGetProcAddress) == 0;
     if (err) {
         g_printerr("Failed to initialize GLAD OpenGL loader.");
+        return false;
+    }
+
+    // Query OpenGL vendor and renderer to detect driver issues
+    const GLubyte* renderer = glGetString(GL_RENDERER);
+    const GLubyte* version = glGetString(GL_VERSION);
+
+    if (renderer == NULL || version == NULL) {
+        g_printerr("Failed to query OpenGL driver information - context may be invalid\n");
+        Log::Warning("Graphics Driver Error\n\n"
+                     "Your graphics drivers may be missing or corrupted.\n");
+        return false;
+    }
+
+    // Log driver information for debugging
+    Log::Info("OpenGL %s on %s", version, renderer);
+
+    // Detect software rendering fallback (common indicators)
+    const char* renderer_str = (const char*)renderer;
+    bool is_software_renderer = (
+        strstr(renderer_str, "llvmpipe") != NULL ||  // Mesa software renderer
+        strstr(renderer_str, "Software") != NULL ||  // Generic software renderer
+        strstr(renderer_str, "softpipe") != NULL ||  // Mesa software pipe
+        strstr(renderer_str, "SwiftShader") != NULL  // SwiftShader software renderer
+    );
+
+    if (is_software_renderer) {
+        g_printerr("WARNING: Software rendering detected (%s)\n", renderer_str);
+        Log::Warning("Software Rendering Detected\n\n"
+                     "Vimix is running on software OpenGL renderer (%s).\n"
+                     "This will result in poor performance.\n\n"
+                     "This could indicate:\n"
+                     "- Outdated Flatpak runtime/drivers (try 'flatpak update')\n"
+                     "- Missing GPU drivers on your system\n"
+                     "- GPU driver compatibility issues", renderer_str);
         return false;
     }
 
@@ -233,7 +268,9 @@ bool Rendering::init()
     glfwSwapInterval(0);
 
 
-#ifdef USE_GST_OPENGL_SYNC_HANDLER
+#ifdef USE_GST_OPENGL_SYNC_HANDLER    
+    global_display = NULL;
+    global_gl_context = NULL;
 #if GST_GL_HAVE_PLATFORM_WGL
     global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
                                                    GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
@@ -241,15 +278,22 @@ bool Rendering::init()
     // macOS: Disable OpenGL context sharing due to NSOpenGLContext threading incompatibility
     // GStreamer's Cocoa GL implementation requires main thread for context operations,
     // but dispatches from worker threads cause deadlock with GLFW's event loop.
-    // Solution: Use CPU transfer with PBO (fast, proven path)
-    global_display = NULL;
-    global_gl_context = NULL;
     Log::Info("OpenGL context sharing disabled on macOS (NSOpenGLContext threading limitations)");
 #elif GST_GL_HAVE_PLATFORM_GLX
     global_display = (GstGLDisplay*) gst_gl_display_x11_new_with_display( glfwGetX11Display() );
-    global_gl_context = gst_gl_context_new_wrapped (global_display,
+    if (global_display == NULL) {
+        g_printerr("Failed to create GStreamer X11 display \n");
+        Log::Warning("Failed to create GStreamer X11 display.");
+    }
+    else
+        global_gl_context = gst_gl_context_new_wrapped (global_display,
                                                    (guintptr) glfwGetGLXContext(main_.window()),
                                                    GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL);
+    if (global_gl_context == NULL) {
+        g_printerr("Failed to wrap GStreamer GLX context\n");
+        Log::Warning("Failed to wrap GStreamer GLX context.");
+        global_display = NULL;
+    }
 #endif
 #endif
 

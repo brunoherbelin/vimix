@@ -78,3 +78,8 @@ To run from command line:
 
     flatpak uninstall vimix
 
+## Troubleshooting 
+
+Outdated flatpack drivers can cause vimix to fail. Keep your flatpak up to date; 
+
+    flatpak update
