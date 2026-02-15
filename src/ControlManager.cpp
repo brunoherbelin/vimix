@@ -357,11 +357,48 @@ std::string Control::alias (std::string target)
 
 std::string Control::translate (std::string addresspattern)
 {
+    // First try exact match
     auto it_translation  = translation_.find(addresspattern);
-    if ( it_translation != translation_.end() )
+    if ( it_translation != translation_.end() ){
+        Log::Osc(CONTROL_OSC_MSG "translated '%s' from '%s'", addresspattern.c_str(), it_translation->second.c_str());
         return it_translation->second;
-    else
-        return addresspattern;
+    }
+
+    // Try partial matches
+    // Find the longest matching substring in the translation map
+    std::string best_match_from;
+    std::string best_match_to;
+    size_t best_match_pos = std::string::npos;
+
+    for (const auto& translation : translation_) {
+        const std::string& from = translation.first;
+        const std::string& to = translation.second;
+
+        // Find if this translation pattern exists anywhere in the address
+        size_t pos = addresspattern.find(from);
+        if (pos != std::string::npos) {
+            // Keep the longest matching substring
+            // In case of same length, prefer the one that appears first
+            if (from.size() > best_match_from.size() ||
+                (from.size() == best_match_from.size() && pos < best_match_pos)) {
+                best_match_from = from;
+                best_match_to = to;
+                best_match_pos = pos;
+            }
+        }
+    }
+
+    // If we found a partial match, apply it
+    if (!best_match_from.empty()) {
+        // Replace the first occurrence and keep the rest
+        std::string result = addresspattern;
+        result.replace(best_match_pos, best_match_from.size(), best_match_to);
+        Log::Osc(CONTROL_OSC_MSG "translated '%s' to '%s'", addresspattern.c_str(), result.c_str());
+        return result;
+    }
+
+    // No match found, return original
+    return addresspattern;
 }
 
 void Control::loadOscConfig()
@@ -735,7 +772,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             arguments >> label >> osc::EndMessage;
             Mixer::manager().renameSource(target, label);
         }
-        /// e.g. '/vimix/current/play' or '/vimix/current/play T' or '/vimix/current/play F'
+        /// e.g. '/vimix/current/play' or '/vimix/current/play f 1' or '/vimix/current/play f 0'
         else if ( attribute.compare(OSC_SOURCE_PLAY) == 0) {
             float on = 1.f;
             if ( !arguments.Eos()) {
@@ -743,7 +780,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             target->call( new Play(on > 0.5f) );
         }
-        /// e.g. '/vimix/current/pause' or '/vimix/current/pause T' or '/vimix/current/pause F'
+        /// e.g. '/vimix/current/pause' or '/vimix/current/pause f 1' or '/vimix/current/pause f 0'
         else if ( attribute.compare(OSC_SOURCE_PAUSE) == 0) {
             float on = 1.f;
             if ( !arguments.Eos()) {
@@ -1055,6 +1092,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             target->setImageProcessingEnabled(on > 0.5f);
         }
+        /// e.g. '/vimix/current/flag f -1'
         else if ( attribute.compare(OSC_SOURCE_FLAG) == 0) {
             float f = -1.f;
             if (!arguments.Eos()) {
