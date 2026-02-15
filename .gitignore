@@ -36,3 +36,5 @@ flatpak/build/
 build/
 .vscode/
 .cache/
+
+.claude/

@@ -23,6 +23,7 @@
 
 #include <tinyxml2.h>
 
+#include "Mixer.h"
 #include "Source/SourceList.h"
 #include "defines.h"
 #include "Toolkit/BaseToolkit.h"
@@ -205,8 +206,27 @@ void Session::update(float dt)
                 if (input_active) {
 
                     // Add callback to the target(s)
+
+                    // 3. Case of variant as Current source
+                    if (std::holds_alternative<Current>(k->second.target_)) {
+                        Source *s = Mixer::manager().currentSource();
+                        if ( s != nullptr ) {
+                            // generate a new callback from the model
+                            SourceCallback *forward = k->second.model_->clone();
+                            // apply value multiplyer from input
+                            forward->multiply( Control::manager().inputValue(k->first) );
+                            // add delay
+                            forward->delay( Metronome::manager().timeToSync( (Metronome::Synchronicity) input_sync_[k->first] ) );
+                            // add callback to source
+                            s->call( forward );
+                            // get the reverse of the callback (can be null)
+                            SourceCallback *backward = forward->reverse(s);
+                            // remember instances
+                            k->second.instances_[s->id()] = {forward, backward};
+                        }
+                    }
                     // 1. Case of variant as Source pointer
-                    if (Source * const* v = std::get_if<Source *>(&k->second.target_)) {
+                    else if (Source * const* v = std::get_if<Source *>(&k->second.target_)) {
                         // verify variant value
                         if ( *v != nullptr ) {
                             // generate a new callback from the model
@@ -277,7 +297,7 @@ void Session::update(float dt)
     }
 
     // pre-render all sources
-    ready_ = true;
+    bool test_ready = true;
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); ++it){
 
         // ensure the RenderSource is rendering *this* session
@@ -299,7 +319,7 @@ void Session::update(float dt)
         else {
             // session is not ready if one source is not ready
             if ( !(*it)->ready() )
-                ready_ = false;
+                test_ready = false;
             // update the source
             (*it)->setActive(activation_threshold_);
             (*it)->update(dt);
@@ -310,6 +330,9 @@ void Session::update(float dt)
         // apply session fading to audio
         (*it)->setAudioVolumeFactor(Source::VOLUME_SESSION, 1.f - render_.fading());
     }
+
+    if (test_ready && !ready_) 
+        ready_ = true;
 
     // update session's mixing groups
     auto group_iter = mixing_groups_.begin();
@@ -554,6 +577,25 @@ uint Session::numSources() const
         (*it)->accept(counter);
     }
     return counter.numSources();
+}
+
+std::pair<float, float> Session::depthRange() const
+{
+    float min_d = MAX_DEPTH;
+    float max_d = MIN_DEPTH;
+
+    for( SourceList::const_iterator it = sources_.cbegin(); it != sources_.cend(); ++it) {
+        float d = (*it)->depth();
+        if ( d < min_d ) 
+            min_d = d;
+        if ( d > max_d ) 
+            max_d = d;
+    }
+
+    if ( min_d > max_d )
+        return std::make_pair(MIN_DEPTH, MIN_DEPTH);
+
+    return std::make_pair(min_d, max_d);
 }
 
 SourceIdList Session::getIdList() const
@@ -818,9 +860,9 @@ std::string Session::save(const std::string& filename, Session *session, const s
         // lock access while saving
         session->access_.lock();
 
-        // capture a snapshot of current version if requested (do not create thread)
+        // capture a snapshot of current version if requested (create thread)
         if (!snapshot_name.empty())
-            Action::takeSnapshot(session, snapshot_name, false );
+            Action::takeSnapshot(session, snapshot_name, true );
 
         // save file to disk
         if (SessionVisitor::saveSession(filename, session))

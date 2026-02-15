@@ -17,6 +17,7 @@ set(VMIX_SRCS
     Log.cpp
     ActionManager.cpp
     Audio.cpp
+    Canvas.cpp
     Connection.cpp
     ControlManager.cpp
     FrameBuffer.cpp
@@ -24,6 +25,7 @@ set(VMIX_SRCS
     FrameGrabbing.cpp
     Interpolator.cpp
     Loopback.cpp
+    MainWindow.cpp
     MediaPlayer.cpp
     Metronome.cpp
     Mixer.cpp
@@ -31,6 +33,7 @@ set(VMIX_SRCS
     MousePointer.cpp
     MultiFileRecorder.cpp
     Navigator.cpp
+    OutputWindow.cpp
     Overlay.cpp
     Playlist.cpp
     Recorder.cpp
@@ -84,6 +87,7 @@ set(VMIX_SRCS
     Source/SrtReceiverSource.cpp
     Source/StreamSource.cpp
     Source/TextSource.cpp
+    Source/CanvasSource.cpp
     
     # Toolkit/ folder
     Toolkit/BaseToolkit.cpp
@@ -98,6 +102,7 @@ set(VMIX_SRCS
     # View/ folder
     View/DisplaysView.cpp
     View/GeometryView.cpp
+    View/GeometryHandleManipulation.cpp
     View/LayerView.cpp
     View/MixingView.cpp
     View/RenderView.cpp

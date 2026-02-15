@@ -26,7 +26,7 @@
 #include "Filter/DelayFilter.h"
 
 DelayFilter::DelayFilter(): FrameBufferFilter(),
-    temp_frame_(nullptr), now_(0.0), delay_(0.5)
+    now_(0.0), delay_(0.5)
 {
 
 }
@@ -74,43 +74,40 @@ void DelayFilter::update (float dt)
         // What time is it?
         now_ += double(dt) * 0.001;
 
-        // if temporary FBO was pending to be deleted, delete it now
-        if (temp_frame_ != nullptr) {
-            delete temp_frame_;
-            temp_frame_ = nullptr;
-        }
+        // fill the queue until we reach the delay time
+        if (now_ - elapsed_.front() < delay_){
 
-        // is the total buffer of images longer than delay ?
-        if ( !frames_.empty() && now_ - elapsed_.front() > delay_ )
-        {
-            // remember FBO to be reused if needed (see below) or deleted later
-            temp_frame_ = frames_.front();
-
-            // remove element from queue (front)
-            frames_.pop();
-            elapsed_.pop();
-        }
-
-        // add image to queue to accumulate buffer images until delay reached (with margin)
-        if ( frames_.empty() || now_ - elapsed_.front() < delay_ + ( double(dt) * 0.002) )
-        {
-            // create a FBO if none can be reused (from above) and test for RAM in GPU
-            if (temp_frame_ == nullptr && ( frames_.empty() || Rendering::shouldHaveEnoughMemory(input_->resolution(), input_->flags()) ) ){
-                temp_frame_ = new FrameBuffer( input_->resolution(), input_->flags() );
-            }
-            // image available
-            if (temp_frame_ != nullptr) {
-                // add element to queue (back)
-                frames_.push( temp_frame_ );
+            if (Rendering::shouldHaveEnoughMemory(input_->resolution(), input_->flags()) )
+            {
+                // add new element to queue (back)
+                frames_.push( new FrameBuffer( input_->resolution(), input_->flags() ));
                 elapsed_.push( now_ );
-                // temp_frame_ FBO is now used, it should not be deleted
-                temp_frame_ = nullptr;
             }
-            else {
-                // set delay to maximum affordable
-                delay_ = now_ - elapsed_.front() - (dt * 0.001);
-                Log::Warning("Cannot satisfy delay: not enough RAM in graphics card.");
-            }
+        }
+        // empty the queue if we exceed the delay time
+        else if (!frames_.empty()) {
+
+            // temp pointer to loop 
+            FrameBuffer *temp_ = nullptr;
+
+            do {
+                // after first iteration, delete temp_
+                if (temp_ != nullptr) 
+                    delete temp_;
+                
+                // take and remove front element of the queue
+                // (does not fail as we check !frames_.empty())
+                temp_ = frames_.front();
+                frames_.pop();
+                elapsed_.pop();
+
+                // Loop with a margin to avoid popping and pushing too often
+            } while (now_ - elapsed_.front() > ( delay_ + double(dt) * 0.003 ) && !frames_.empty());
+
+            // reinsert last popped element to queue (back) to avoid re-allocating it
+            frames_.push( temp_ );
+            elapsed_.push( now_ );
+
         }
     }
 }

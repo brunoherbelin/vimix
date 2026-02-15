@@ -8,6 +8,7 @@ Instructions are at https://flatpak.org/setup/
 e.g. for Ubuntu:
 
     sudo apt install flatpak
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
 
 ## Install vimix releases from Flathub
@@ -16,17 +17,17 @@ If you followed all instructions of the [flatpak setup](https://flatpak.org/setu
 
     flatpak install vimix
 
+Get info on the Flathub release [here](https://flathub.org/en/apps/io.github.brunoherbelin.Vimix).
 
 ## Build local beta flatpack package of vimix
 
 If you want to have the latest developper version of vimix (before releases), you can build a vimix flatpak yourself. This way, the application vimix is still sandboxed (i.e. not installing libs in your system), removable (entirely free space after remove) and updatable (just re-compile to update).
 
-### 1. Install flatpak build environments
+#### 1. Install flatpak build environments
 
 If not already installed, install the builder and the flathub repository:
 
     sudo apt install flatpak-builder    
-    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
 Install the runtime environments:
     
@@ -35,9 +36,9 @@ Install the runtime environments:
 
 These settings of git are needed to enable clone of local repos during build (done only once):
 
-    git config --global --add protocol.file.allow always
+    git config --global --add protocol.file.allow always    
 
-### 2. Build vimix flatpak
+#### 2. Build vimix flatpak
 
 Launch the build of the flatpak:
 
@@ -45,10 +46,28 @@ Launch the build of the flatpak:
 
 The build will be quite long as some dependencies are also re-build from source. However, the build of dependencies is kept in cache; rebuilding vimix will subsequently be much faster.
 
+If all goes well, the build should end with 
+
+    ...
+    Installing app/io.github.brunoherbelin.Vimix/x86_64/master
+    Pruning cache
+
+
+#### Troubleshooting build
+
+For a clean rebuild, remove the `.flatpak-builder` folder from where you run the flatpak-builder command;
+
+    rm -fr .flatpak-builder/  
+
+Make sure your version of flatpak-builder is >= 1.4.4. If not, you might upgrade it with;
+
+    sudo add-apt-repository ppa:flatpak/stable -y
+    sudo apt install flatpak-builder   
+
 
 ## Run vimix flatpak
 
-If all goes well, the package will have been generated and be able to run. The vimix app icon should be available. 
+If all goes well, the package will have been installed and be able to run. The vimix app icon should be available. 
 
 To run from command line:
 
@@ -59,3 +78,8 @@ To run from command line:
 
     flatpak uninstall vimix
 
+## Troubleshooting 
+
+Outdated flatpack drivers can cause vimix to fail. Keep your flatpak up to date; 
+
+    flatpak update

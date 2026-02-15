@@ -97,6 +97,7 @@ public:
 
     // how much memory used, in Bytes
     static unsigned long memory_usage();
+    static glm::vec3 maxResolution();
 
 private:
     void init();
@@ -104,7 +105,7 @@ private:
     bool checkFramebufferStatus();
 
     FrameBufferFlags flags_;
-    RenderingAttrib attrib_;
+    GlmToolkit::RenderingAttrib attrib_;
     glm::mat4 projection_;
     glm::vec4 projection_area_;
     uint textureid_, multisampling_textureid_;

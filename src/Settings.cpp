@@ -67,8 +67,26 @@ XMLElement *save_knownhost(Settings::KnownHosts &h, const char *nodename, XMLDoc
 
 
 
-void Settings::Save(uint64_t runtime, const std::string &filename)
+void Settings::terminate(uint64_t runtime, const std::string &filename)
 {
+    // RESET FACTORY DEFAULT BY REMOVING SETTINGS FILE
+    if (application.request_factory_reset && filename.empty()) {
+
+        // remove vimix settings file, if exists
+        if (!settingsFilename.empty()) 
+            SystemToolkit::remove_file(settingsFilename);
+
+        // remove settings file for OSC, if exists
+        if (!application.control.osc_filename.empty()) 
+            SystemToolkit::remove_file(application.control.osc_filename);
+
+        // remove settings file for IMGUI, if exists
+        std::string imguiFilename = SystemToolkit::full_filename(SystemToolkit::settings_path(), "imgui.ini");
+        SystemToolkit::remove_file(imguiFilename);
+
+        return;
+    }
+
     // impose C locale for all app
     setlocale(LC_ALL, "C");
 
@@ -91,60 +109,38 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     XMLComment *pComment = xmlDoc.NewComment(comment.c_str());
     pRoot->InsertEndChild(pComment);
 
-    // Windows
-	{
-        XMLElement *windowsNode = xmlDoc.NewElement( "OutputWindows" );
-        windowsNode->SetAttribute("num_output_windows", application.num_output_windows);
+    // main window
+    XMLElement *window = xmlDoc.NewElement( "MainWindow" );
+    window->SetAttribute("name", application.mainwindow.name.c_str());
+    window->SetAttribute("x", application.mainwindow.x);
+    window->SetAttribute("y", application.mainwindow.y);
+    window->SetAttribute("w", application.mainwindow.w);
+    window->SetAttribute("h", application.mainwindow.h);
+    window->SetAttribute("f", application.mainwindow.fullscreen);
+    window->SetAttribute("m", application.mainwindow.monitor.c_str());
+    pRoot->InsertEndChild(window);
 
-        for (int i = 0; i < (int) application.windows.size(); ++i)
-        {
-            const Settings::WindowConfig& w = application.windows[i];
+    // save application.monitors MonitorConfig
+    XMLElement *monitorsNode = xmlDoc.NewElement( "Monitors" );
+    for( auto it = application.monitors.begin(); it != application.monitors.end(); it++ ) {
+        XMLElement *monitorNode = xmlDoc.NewElement( "Monitor" );
+        monitorNode->SetAttribute("name", (*it).first.c_str());
+        monitorNode->SetAttribute("active_output", (*it).second.active_output);
+        monitorNode->SetAttribute("brightness", (*it).second.brightness);
+        monitorNode->SetAttribute("contrast", (*it).second.contrast);
+        monitorNode->SetAttribute("custom_geometry", (*it).second.custom_geometry);
 
-            XMLElement *window = xmlDoc.NewElement( "Window" );
-            window->SetAttribute("name", w.name.c_str());
-            window->SetAttribute("id", i);
-			window->SetAttribute("x", w.x);
-			window->SetAttribute("y", w.y);
-			window->SetAttribute("w", w.w);
-            window->SetAttribute("h", w.h);
-            window->SetAttribute("f", w.fullscreen);
-            window->SetAttribute("s", w.custom);
-            window->SetAttribute("d", w.decorated);
-            window->SetAttribute("m", w.monitor.c_str());
-            XMLElement *tmp = xmlDoc.NewElement("whitebalance");
-            tmp->SetAttribute("brightness", w.brightness);
-            tmp->SetAttribute("contrast", w.contrast);
-            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.whitebalance) );
-            window->InsertEndChild( tmp );
-            tmp = xmlDoc.NewElement("nodes");
-            tmp->InsertEndChild( XMLElementFromGLM(&xmlDoc, w.nodes) );
-            window->InsertEndChild( tmp );
-            windowsNode->InsertEndChild(window);
-		}
+        XMLElement *whitebalanceNode = xmlDoc.NewElement( "whitebalance" );
+        whitebalanceNode->InsertEndChild( XMLElementFromGLM(&xmlDoc, (*it).second.whitebalance) );
+        monitorNode->InsertEndChild(whitebalanceNode);
 
-        pRoot->InsertEndChild(windowsNode);
-	}
+        XMLElement *nodesNode = xmlDoc.NewElement( "nodes" );
+        nodesNode->InsertEndChild( XMLElementFromGLM(&xmlDoc, (*it).second.nodes) );
+        monitorNode->InsertEndChild(nodesNode);
 
-    // Surfaces
-    {
-        XMLElement *surfacesNode = xmlDoc.NewElement( "OutputSurfaces" );
-        surfacesNode->SetAttribute("num_output_surfaces", application.num_output_surfaces);
-
-        for (int i = 0; i < (int) application.surfaces.size(); ++i)
-        {
-            const Settings::CanvasConfig& w = application.surfaces[i];
-
-            XMLElement *surface = xmlDoc.NewElement( "Surface" );
-            surface->SetAttribute("id", i);
-            surface->SetAttribute("x", w.x);
-            surface->SetAttribute("y", w.y);
-            surface->SetAttribute("w", w.w);
-            surface->SetAttribute("h", w.h);
-            surfacesNode->InsertEndChild(surface);
-        }
-
-        pRoot->InsertEndChild(surfacesNode);
+        monitorsNode->InsertEndChild(monitorNode);
     }
+    pRoot->InsertEndChild(monitorsNode);
 
     // General application preferences
     XMLElement *applicationNode = xmlDoc.NewElement( "Application" );
@@ -164,6 +160,8 @@ void Settings::Save(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("pannel_settings_1", application.pannel_settings[1]);
     applicationNode->SetAttribute("pannel_settings_2", application.pannel_settings[2]);
     applicationNode->SetAttribute("pannel_settings_3", application.pannel_settings[3]);
+    applicationNode->SetAttribute("pannel_settings_4", application.pannel_settings[4]);
+    applicationNode->SetAttribute("pannel_settings_5", application.pannel_settings[5]);
     applicationNode->SetAttribute("pannel_always_visible", application.pannel_always_visible);
     applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
     applicationNode->SetAttribute("broadcast_port", application.broadcast_port);
@@ -450,7 +448,7 @@ void load_knownhost(Settings::KnownHosts &h, const char *nodename, XMLElement *r
     }
 }
 
-void Settings::Load(const std::string &filename)
+void Settings::init(const std::string &filename)
 {
     // impose C locale for all app
     setlocale(LC_ALL, "C");
@@ -516,6 +514,8 @@ void Settings::Load(const std::string &filename)
             applicationNode->QueryBoolAttribute("pannel_settings_1", &application.pannel_settings[1]);
             applicationNode->QueryBoolAttribute("pannel_settings_2", &application.pannel_settings[2]);
             applicationNode->QueryBoolAttribute("pannel_settings_3", &application.pannel_settings[3]);
+            applicationNode->QueryBoolAttribute("pannel_settings_4", &application.pannel_settings[4]);
+            applicationNode->QueryBoolAttribute("pannel_settings_5", &application.pannel_settings[5]);
             applicationNode->QueryIntAttribute("stream_protocol", &application.stream_protocol);
             applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
             applicationNode->QueryIntAttribute("loopback_camera", &application.loopback_camera);
@@ -569,6 +569,9 @@ void Settings::Load(const std::string &filename)
             rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
             rendernode->QueryBoolAttribute("gpu_decoding", &application.render.gpu_decoding);
             rendernode->QueryBoolAttribute("gst_glmemory_context", &application.render.gst_glmemory_context);
+#ifndef USE_GST_OPENGL_SYNC_HANDLER
+            application.render.gst_glmemory_context = false;
+#endif
             rendernode->QueryIntAttribute("ratio", &application.render.ratio);
             rendernode->QueryIntAttribute("res", &application.render.res);
             rendernode->QueryIntAttribute("custom_width", &application.render.custom_width);
@@ -634,93 +637,56 @@ void Settings::Load(const std::string &filename)
             transitionnode->QueryBoolAttribute("profile", &application.transition.profile);
         }
 
-        // Windows
-        {
-            XMLElement * pElement = pRoot->FirstChildElement("OutputWindows");
-            if (pElement)
-            {
-                pElement->QueryIntAttribute("num_output_windows", &application.num_output_windows);
+        // Main Window
+        XMLElement * windowNode = pRoot->FirstChildElement("MainWindow");
+        if (windowNode) {
+            windowNode->QueryIntAttribute("x", &application.mainwindow.x);
+            windowNode->QueryIntAttribute("y", &application.mainwindow.y);
+            windowNode->QueryIntAttribute("w", &application.mainwindow.w);
+            windowNode->QueryIntAttribute("h", &application.mainwindow.h);
+            windowNode->QueryBoolAttribute("f", &application.mainwindow.fullscreen);
+            const char *text = windowNode->Attribute("m");
+            if (text)
+                application.mainwindow.monitor = std::string(text);
+        } 
 
-                XMLElement* windowNode = pElement->FirstChildElement("Window");
-                for( ; windowNode ; windowNode=windowNode->NextSiblingElement())
-                {
-                    Settings::WindowConfig w;
-                    windowNode->QueryIntAttribute("x", &w.x); // If this fails, original value is left as-is
-                    windowNode->QueryIntAttribute("y", &w.y);
-                    windowNode->QueryIntAttribute("w", &w.w);
-                    windowNode->QueryIntAttribute("h", &w.h);
-                    windowNode->QueryBoolAttribute("f", &w.fullscreen);
-                    windowNode->QueryBoolAttribute("s", &w.custom);
-                    windowNode->QueryBoolAttribute("d", &w.decorated);
-                    const char *text = windowNode->Attribute("m");
-                    if (text)
-                        w.monitor = std::string(text);
+        // read application.monitors MonitorConfig
+        XMLElement *monitorsNode = pRoot->FirstChildElement("Monitors");
+        if (monitorsNode != nullptr) {
+            XMLElement *monitorNode = monitorsNode->FirstChildElement("Monitor");
+            for( ; monitorNode ; monitorNode = monitorNode->NextSiblingElement()) {
+                const char *name = monitorNode->Attribute("name");
+                if (name) {
+                    std::string monitorName = std::string(name);
 
-                    int i = 0;
-                    windowNode->QueryIntAttribute("id", &i);
-                    if (i > 0)
-                        w.name = "Output " + std::to_string(i) + " - " APP_NAME;
-                    else
-                        w.name = APP_TITLE;
-                    // vec4 values for white balance correction
-                    XMLElement *tmp = windowNode->FirstChildElement("whitebalance");
-                    if (tmp) {
-                        tinyxml2::XMLElementToGLM( tmp->FirstChildElement("vec4"), w.whitebalance);
-                        tmp->QueryFloatAttribute("brightness", &w.brightness);
-                        tmp->QueryFloatAttribute("contrast", &w.contrast);
+                    // create config for this monitor if it doesn't exist
+                    if (application.monitors.find(monitorName) == application.monitors.end()) {
+                        application.monitors[monitorName] = Settings::MonitorConfig();
                     }
-                    // mat4 values for custom fit distortion
-                    w.nodes = glm::zero<glm::mat4>();
-                    tmp = windowNode->FirstChildElement("nodes");
-                    if (tmp)
-                        tinyxml2::XMLElementToGLM( tmp->FirstChildElement("mat4"), w.nodes);
-                    else {
-                        // backward compatibility
-                        glm::vec3 scale, translation;
-                        tmp = windowNode->FirstChildElement("scale");
-                        if (tmp) {
-                            tinyxml2::XMLElementToGLM(tmp->FirstChildElement("vec3"), scale);
-                            tmp = windowNode->FirstChildElement("translation");
-                            if (tmp) {
-                                tinyxml2::XMLElementToGLM(tmp->FirstChildElement("vec3"), translation);
-                                // calculate nodes with scale and translation
-                                w.nodes[0].x =  1.f - ( 1.f * scale.x - translation.x );
-                                w.nodes[0].y =  1.f - ( 1.f * scale.y - translation.y );
-                                w.nodes[1].x =  1.f - ( 1.f * scale.x - translation.x );
-                                w.nodes[1].y = -1.f - (-1.f * scale.y - translation.y );
-                                w.nodes[2].x = -1.f - (-1.f * scale.x - translation.x );
-                                w.nodes[2].y =  1.f - ( 1.f * scale.y - translation.y );
-                                w.nodes[3].x = -1.f - (-1.f * scale.x - translation.x );
-                                w.nodes[3].y = -1.f - (-1.f * scale.y - translation.y );
-                            }
-                        }
+
+                    // read attributes                    
+                    monitorNode->QueryBoolAttribute("active_output", &application.monitors[monitorName].active_output);
+                    monitorNode->QueryFloatAttribute("brightness", &application.monitors[monitorName].brightness);
+                    monitorNode->QueryFloatAttribute("contrast", &application.monitors[monitorName].contrast);
+                    monitorNode->QueryBoolAttribute("custom_geometry", &application.monitors[monitorName].custom_geometry);
+
+                    // read whitebalance vec4
+                    XMLElement *whitebalanceNode = monitorNode->FirstChildElement("whitebalance");
+                    if (whitebalanceNode) {
+                        tinyxml2::XMLElementToGLM(whitebalanceNode->FirstChildElement("vec4"),
+                                                 application.monitors[monitorName].whitebalance);
                     }
-                    application.windows[i] = w;
+
+                    // read nodes mat4
+                    XMLElement *nodesNode = monitorNode->FirstChildElement("nodes");
+                    if (nodesNode) {
+                        tinyxml2::XMLElementToGLM(nodesNode->FirstChildElement("mat4"),
+                                                 application.monitors[monitorName].nodes);
+                    }
                 }
             }
         }
 
-        // Surfaces
-        {
-            XMLElement *pElement = pRoot->FirstChildElement("OutputSurfaces");
-            if (pElement) {
-                pElement->QueryIntAttribute("num_output_surfaces", &application.num_output_surfaces);
-
-                XMLElement *surfaceNode = pElement->FirstChildElement("Surface");
-                for (; surfaceNode; surfaceNode = surfaceNode->NextSiblingElement()) {
-                    Settings::CanvasConfig w;
-                    surfaceNode->QueryIntAttribute("x", &w.x);
-                    surfaceNode->QueryIntAttribute("y", &w.y);
-                    surfaceNode->QueryIntAttribute("w", &w.w);
-                    surfaceNode->QueryIntAttribute("h", &w.h);
-
-                    int i = 0;
-                    surfaceNode->QueryIntAttribute("id", &i);
-
-                    application.surfaces[i] = w;
-                }
-            }
-        }
 
         // Brush
         XMLElement * brushnode = pRoot->FirstChildElement("Brush");
@@ -974,16 +940,5 @@ void Settings::Unlock()
         fprintf(file, "0");
         fclose(file);
     }
-}
-
-
-void Settings::Check()
-{
-    XMLDocument xmlDoc;
-    XMLError eResult = xmlDoc.LoadFile(settingsFilename.c_str());
-    if (XMLResultError(eResult)) {
-        return;
-    }
-	xmlDoc.Print();
 }
 

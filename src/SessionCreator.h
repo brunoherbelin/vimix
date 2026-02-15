@@ -22,6 +22,7 @@ public:
     void load(tinyxml2::XMLElement *sessionNode);
     std::map< uint64_t, Source* > getSources() const;
     std::list< SourceList > getMixingGroups() const;
+    void setCurrentXML(tinyxml2::XMLElement *xml) { xmlCurrent_ = xml; }
 
     typedef enum {
         CLONE,
@@ -67,6 +68,7 @@ public:
     void visit (SrtReceiverSource& s) override;
     void visit (TextSource& s) override;
     void visit (ShaderSource& s) override;
+    void visit (CanvasSource& s) override;
 
     void visit (CloneSource& s) override;
     void visit (FrameBufferFilter&) override;

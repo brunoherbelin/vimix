@@ -52,7 +52,8 @@ public:
         CALLBACK_POSTERIZE,
         CALLBACK_FILTER,
         CALLBACK_FILTER_UNIFORM,
-        CALLBACK_BLENDING
+        CALLBACK_BLENDING,
+        CALLBACK_INVALID
     } CallbackType;
 
     static SourceCallback *create(CallbackType type);

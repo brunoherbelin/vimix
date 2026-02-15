@@ -4,14 +4,15 @@ __Live Video Mixing__
 <img src=docs/vimix_screenshot.png width="800">
 
 
-vimix performs graphical mixing and blending of several movie clips and
-computer generated graphics, with image processing effects in real-time.
+Vimix performs graphical mixing and blending of several movie clips and
+computer generated graphics, with image processing effects in real-time (OpenGL). 
+Vimix supports GPU accelerated decoding and encoding.
 
 Its intuitive and hands-on user interface gives direct control on image opacity and
 shape for producing live graphics during concerts and VJ-ing sessions.
 
-The output image is typically projected full-screen on an external
-monitor or a projector, and can be streamed live (SRT, Shmdata) or recorded (without audio).
+Video mapping can be configured for projection on all connected monitors.
+The output can also be live streamed (SRT, shared memory) or recorded.
 
 vimix is the successor for GLMixer - https://sourceforge.net/projects/glmixer/
 

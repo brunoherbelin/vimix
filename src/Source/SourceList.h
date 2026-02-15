@@ -63,6 +63,12 @@ void clearLinkList (SourceLinkList list);
 SourceList validateLinkList (const SourceLinkList &list);
 
 // utility type to target either a source or a batch
-typedef std::variant<std::monostate, Source *, size_t> Target;
+struct Uninitialized {
+    bool operator==(const Uninitialized&) const { return true; }
+};
+struct Current {
+    bool operator==(const Current&) const { return true; }
+};
+typedef std::variant<Uninitialized, Source *, size_t, Current> Target;
 
 #endif // SOURCELIST_H

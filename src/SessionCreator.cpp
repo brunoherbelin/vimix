@@ -48,6 +48,7 @@
 #include "Toolkit/SystemToolkit.h"
 #include "Visitor/SessionVisitor.h"
 #include "Source/ShaderSource.h"
+#include "Source/CanvasSource.h"
 
 #include "Toolkit/tinyxml2Toolkit.h"
 using namespace tinyxml2;
@@ -253,6 +254,10 @@ void SessionLoader::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
                 else if ( xmlCurrent_->QueryUnsigned64Attribute("batch", &bid) != XML_NO_ATTRIBUTE ) {
                     // assign variant
                     target = (size_t) bid;
+                }
+                else if ( xmlCurrent_->BoolAttribute("current", false) ) {
+                    // assign variant
+                    target = Current{};
                 }
 
                 // if could identify the target
@@ -1104,10 +1109,12 @@ void SessionLoader::visit (Source& s)
         // set id of source used as mask (if exists)
         uint64_t id__ = 0;
         xmlCurrent_->QueryUnsigned64Attribute("source", &id__);
-        s.maskSource()->connect(id__, session_);
-        s.touch(Source::SourceUpdate_Mask);
+        if (id__ > 0) 
+            s.maskSource()->connect(id__, session_);
         // set the mask from jpeg (if exists)
         s.setMask( SessionLoader::XMLToImage(xmlCurrent_) );
+        // update mask
+        s.touch(Source::SourceUpdate_Mask);
     }
 
     xmlCurrent_ = sourceNode->FirstChildElement("ImageProcessing");
@@ -1274,6 +1281,9 @@ void SessionLoader::visit (RenderSource& s)
     int p = 0;
     xmlCurrent_->QueryIntAttribute("provenance", &p);
     s.setRenderingProvenance((RenderSource::RenderSourceProvenance)p);
+    int c = 0;
+    xmlCurrent_->QueryIntAttribute("canvas", &c);
+    s.setCanvasProvenance((size_t)c);
 
     // set session
     s.setSession( session_ );
@@ -1682,6 +1692,13 @@ void SessionLoader::visit (CloneSource& s)
         // set config filter
         s.filter()->accept(*this);
     }
+}
+
+void SessionLoader::visit (CanvasSource &c)
+{
+    uint64_t canvas = 0;
+    xmlCurrent_->QueryUnsigned64Attribute("canvas", &canvas);
+    c.setCanvas(canvas);
 }
 
 void SessionLoader::visit (SourceCallback &)

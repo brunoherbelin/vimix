@@ -43,8 +43,8 @@ public:
     };
     static const char* ratio_preset_name[6];
     static glm::vec2 ratio_preset_value[6];
-    static const char* height_preset_name[5];
-    static float height_preset_value[5];
+    static const char* height_preset_name[6];
+    static float height_preset_value[6];
 
     static glm::vec3 resolutionFromPreset(int ar, int h);
     static glm::ivec2 presetFromResolution(glm::vec3 res);

@@ -32,6 +32,7 @@
 #include <tinyxml2.h>
 
 #include "ImageShader.h"
+#include "View/DisplaysView.h"
 #include "defines.h"
 #include "Settings.h"
 #include "Log.h"
@@ -53,7 +54,9 @@
 #include "Source/ShaderSource.h"
 #include "Source/SrtReceiverSource.h"
 #include "Source/SourceCallback.h"
+#include "Source/CanvasSource.h"
 
+#include "Canvas.h"
 #include "SessionCreator.h"
 #include "MediaPlayer.h"
 #include "ActionManager.h"
@@ -82,6 +85,7 @@ Mixer::Mixer() : session_(new Session), back_session_(nullptr), sessionSwapReque
     // initialize with a new empty session
     set( new Session );
     setView( View::MIXING );
+
 }
 
 void Mixer::update()
@@ -143,7 +147,7 @@ void Mixer::update()
                 // set session filename
                 session_->setFilename(filename);
                 // cosmetics saved ok
-                Rendering::manager().setMainWindowTitle(SystemToolkit::filename(filename));
+                Rendering::manager().mainWindow().setTitle(SystemToolkit::filename(filename));
                 Settings::application.recentSessions.push(filename);
                 Log::Notify("Session '%s' saved.", filename.c_str());
             }
@@ -171,9 +175,9 @@ void Mixer::update()
             ++View::need_deep_update_;
             // inform new session filename
             if (session_->filename().empty()) {
-                Rendering::manager().setMainWindowTitle(Settings::application.windows[0].name);
+                Rendering::manager().mainWindow().setTitle(Settings::application.mainwindow.name);
             } else {
-                Rendering::manager().setMainWindowTitle(SystemToolkit::filename(session_->filename()));
+                Rendering::manager().mainWindow().setTitle(SystemToolkit::filename(session_->filename()));
                 Settings::application.recentSessions.push(session_->filename());
             }
         }
@@ -209,8 +213,17 @@ void Mixer::update()
     // update session and associated sources
     session_->update(dt_);
 
+    // update canvases
+    Canvas::manager().update(dt_);
+
     // grab frames to recorders & streamers
-    FrameGrabbing::manager().grabFrame(session_->frame(), static_cast<guint64>(dt__));
+    FrameBuffer *output = session_->frame();
+    // tries to show canvas output if selected
+    if (Settings::application.widget.preview_output > -1) {
+        Settings::application.widget.preview_output = MIN( Canvas::manager().size()-1, Settings::application.widget.preview_output );
+        output = Canvas::manager().at(Settings::application.widget.preview_output)->frame();
+    } 
+    FrameGrabbing::manager().grabFrame(output, static_cast<guint64>(dt__));
 
     // manage sources which failed update
     if (session_->ready()) {
@@ -350,10 +363,11 @@ Source * Mixer::createSourceMultifile(const std::list<std::string> &list_files, 
     return s;
 }
 
-Source * Mixer::createSourceRender()
+Source * Mixer::createSourceRender(int provenance)
 {
     // ready to create a source
     RenderSource *s = new RenderSource;
+    s->setRenderingProvenance( (RenderSource::RenderSourceProvenance)provenance );  
     s->setSession(session_);
 
     // propose a new name based on session name
@@ -555,7 +569,7 @@ void Mixer::insertSource(Source *s, View::Mode m)
         renameSource(s);
 
         // Add source to Session (ignored if source already in)
-        SourceList::iterator sit = session_->addSource(s);
+        SourceList::iterator sit = session_->addSource(s); // TODO; check if needed as attached in attachSource
 
         // set a default depth to the new source
         layer_.setDepth(s);
@@ -750,6 +764,14 @@ void Mixer::uncover(Source *s)
 
 void Mixer::deleteSelection()
 {
+    // operate on canvas source in Displays view
+    if ( current_view_ == &displays_ ) {
+        // cancel selection deletion in Displays view
+        displays_.removeCurrentCanvasSelection();
+        return;
+    }
+
+    // operate on session sources otherwise
     // number of sources in selection
     uint N = selection().size();
     // ignore if selection empty
@@ -870,7 +892,8 @@ void Mixer::group(SourceList sourcelist)
         if ( (*sit)->active() && (*sit)->visible() )
             visiblelist.push_back( *sit );
     }
-    GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(visiblelist, &geometry_);
+    GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(visiblelist, 
+                                                            geometry_.scene.ws(), View::GEOMETRY );
     sessionbundle->setDimensions( selection_box.scale(), selection_box.center(),
                                  session_->frame()->resolution().y );
                     
@@ -998,7 +1021,7 @@ void Mixer::groupAll(bool only_active)
             visiblelist.push_back( *sit );
     }
     GlmToolkit::AxisAlignedBoundingBox bounding_box = BoundingBoxVisitor::AABB(
-                                                    visiblelist, &geometry_);
+                                                    visiblelist, geometry_.scene.ws(), View::GEOMETRY);
     sessionbundle->setDimensions( bounding_box.scale(), bounding_box.center(),
                                 session_->frame()->resolution().y );
                         
@@ -1673,6 +1696,9 @@ void Mixer::swap()
 
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
+    
+    // adjust canvas to rewly updated framebuffer
+    Canvas::manager().setInputFrameBuffer(session_->frame());
 
     // no current source
     current_source_ = session_->end();
@@ -1699,6 +1725,8 @@ void Mixer::swap()
         Log::Notify("Session '%s' loaded with %s.", session_->filename().c_str(), numsource.c_str());
     }
 
+    // needs refresh 
+    ++View::need_deep_update_;
 }
 
 void Mixer::close(bool smooth)
@@ -1721,7 +1749,7 @@ void Mixer::close(bool smooth)
     Settings::application.recentSessions.front_is_valid = false;
 }
 
-void Mixer::clear()
+void Mixer::terminate()
 {
     // wait finish saving / loading
     while (busy())
@@ -1764,7 +1792,13 @@ void Mixer::set(Session *s)
 void Mixer::setResolution(glm::vec3 res)
 {
     if (session_) {
+
+        // set session resolution
         session_->setResolution(res);
+
+        // adjust canvas to rewly updated framebuffer
+        Canvas::manager().setInputFrameBuffer(session_->frame());
+
         ++View::need_deep_update_;
         std::ostringstream info;
         info << "Session resolution changed to " << res.x << "x" << res.y;

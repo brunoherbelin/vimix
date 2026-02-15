@@ -48,6 +48,7 @@ using namespace tinyxml2;
 #include "MixingGroup.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Source/ShaderSource.h"
+#include "Source/CanvasSource.h"
 
 #include "SessionVisitor.h"
 
@@ -246,6 +247,9 @@ XMLElement * SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Sess
                     // 2. Case of variant as index of batch
                     else if ( const size_t* v = std::get_if<size_t>(&kit->first)) {
                         cbNode->SetAttribute("batch", (uint64_t) *v);
+                    }
+                    else {
+                        cbNode->SetAttribute("current", true);
                     }
                     inputsNode->InsertEndChild(cbNode);
                     // launch visitor to complete attributes
@@ -747,6 +751,7 @@ void SessionVisitor::visit (RenderSource& s)
 {
     xmlCurrent_->SetAttribute("type", "RenderSource");
     xmlCurrent_->SetAttribute("provenance", (int) s.renderingProvenance());
+    xmlCurrent_->SetAttribute("canvas", (int) s.canvasProvenance());
 }
 
 void SessionVisitor::visit (FrameBufferFilter& f)
@@ -1039,6 +1044,13 @@ void SessionVisitor::visit (SrtReceiverSource& s)
     XMLText *porttext = xmlDoc_->NewText( s.port().c_str() );
     port->InsertEndChild( porttext );
     xmlCurrent_->InsertEndChild(port);
+}
+
+
+void SessionVisitor::visit (CanvasSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "CanvasSource");
+    xmlCurrent_->SetAttribute("canvas", (uint64_t) s.canvas());
 }
 
 void SessionVisitor::visit (SourceCallback &c)

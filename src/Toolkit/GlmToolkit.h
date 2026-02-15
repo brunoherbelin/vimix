@@ -7,6 +7,13 @@
 namespace GlmToolkit
 {
 
+struct RenderingAttrib
+{
+    RenderingAttrib() {}
+    glm::ivec2 viewport;
+    glm::vec4 clear_color;
+};
+
 // get Matrix for these transformation components
 glm::mat4 transform(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
 void inverse_transform(glm::mat4 M, glm::vec3 &translation, glm::vec3 &rotation, glm::vec3 &scale);

@@ -22,7 +22,9 @@
 
 // ImGui
 #include "FrameGrabber.h"
+#include "IconsFontAwesome5.h"
 #include "Toolkit/ImGuiToolkit.h"
+#include "imgui.h"
 #include "imgui_internal.h"
 
 #include "defines.h"
@@ -38,6 +40,8 @@
 #include "ShmdataBroadcast.h"
 #include "FrameGrabbing.h"
 #include "GPUVideoRecorder.h"
+#include "Canvas.h"
+#include "Source/CanvasSource.h"
 
 #include "UserInterfaceManager.h"
 #include "OutputPreviewWindow.h"
@@ -92,6 +96,7 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
         if (save_and_continue) {
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
             if ( Settings::application.render.gst_glmemory_context && 
+                 Settings::application.render.gpu_decoding && 
                  GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
                 Outputs::manager().chain(
                     new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
@@ -114,6 +119,7 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
         if ( Settings::application.render.gst_glmemory_context && 
+             Settings::application.render.gpu_decoding && 
              GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
             Outputs::manager().start(
                 new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
@@ -195,7 +201,20 @@ void OutputPreviewWindow::Render()
     const ImGuiContext& g = *GImGui;
     bool openInitializeSystemLoopback = false;
 
+    // default to show mixer output
     FrameBuffer *output = Mixer::manager().session()->frame();
+    ImVec2 _cropsize(1.f,1.f);
+
+    // tries to show canvas output if selected
+    if (Settings::application.widget.preview_output > -1) {
+        Settings::application.widget.preview_output = MIN( Canvas::manager().size()-1, Settings::application.widget.preview_output );
+        output = Canvas::manager().at(Settings::application.widget.preview_output)->frame();
+        // get dimensions of canvas
+        const glm::vec2 _crop = output->projectionSize();
+        _cropsize = ImVec2(_crop.x, _crop.y);
+    } 
+    
+    // ensure valid output
     if (output)
     {
         // constraint aspect ratio resizing
@@ -229,6 +248,26 @@ void OutputPreviewWindow::Render()
                 if (ImGuiToolkit::MenuItemIcon(ICON_PREVIEW, MENU_PREVIEW, SHORTCUT_PREVIEW_OUT) )
                     UserInterface::manager().show_preview = UserInterface::PREVIEW_OUTPUT;
                 ImGui::MenuItem( MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE, &Settings::application.render.disabled);
+
+                // select what to show in window & for recording
+                ImGui::Separator();
+
+                bool busy = Outputs::manager().enabled( 
+                    FrameGrabber::GRABBER_VIDEO, 
+                    FrameGrabber::GRABBER_GPU, 
+                    FrameGrabber::GRABBER_P2P,
+                    FrameGrabber::GRABBER_BROADCAST,
+                    FrameGrabber::GRABBER_SHM,
+                    FrameGrabber::GRABBER_LOOPBACK 
+                );
+
+                if (ImGui::MenuItem(ICON_FA_EXPAND "   Full Mix Output", nullptr, Settings::application.widget.preview_output == -1, !busy))
+                    Settings::application.widget.preview_output = -1;
+                for (size_t c = 0; c < Canvas::manager().size(); ++c) {
+                    std::string label = ICON_FA_BORDER_ALL "   Canvas " + std::to_string(c+1);;
+                    if (ImGui::MenuItem(label.c_str(), nullptr, Settings::application.widget.preview_output == (int)c, !busy))
+                        Settings::application.widget.preview_output = (int)c;
+                }
 
                 // Display window manager menu
                 ImGui::Separator();
@@ -477,14 +516,26 @@ void OutputPreviewWindow::Render()
         }
 
         // image takes the available window area
-        ImVec2 imagesize = ImGui::GetContentRegionAvail();
-        // image height respects original aspect ratio but is at most the available window height
-        imagesize.y = MIN( imagesize.x / ar, imagesize.y);
-        // image respects original aspect ratio
-        imagesize.x = imagesize.y * ar;
-
-        // virtual button to show the output window when clic on the preview
         ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+        ImVec2 areasize = ImGui::GetContentRegionAvail();
+        ImVec2 imagesize = areasize;
+
+        if ( _cropsize.x / _cropsize.y  < 1.f) {
+            // image height respects original aspect ratio but is at most the available window height
+            imagesize.y = MIN( imagesize.x  * _cropsize.y / _cropsize.x, imagesize.y);
+            // image respects original aspect ratio
+            imagesize.x = imagesize.y * ar * _cropsize.x / _cropsize.y;
+        } 
+        else {
+            imagesize.x = MIN( imagesize.y  * ar * _cropsize.x / _cropsize.y, imagesize.x);
+            // image respects original aspect ratio
+            imagesize.y = imagesize.x  * _cropsize.y / _cropsize.x  / ar;
+        }
+
+        // center image in available area
+        ImVec2 imagepos = draw_pos + (areasize - imagesize) * 0.5f;
+        ImGui::SetCursorScreenPos(imagepos);
+
         // 100% opacity for the image (ensures true colors)
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
         ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
@@ -495,7 +546,7 @@ void OutputPreviewWindow::Render()
             magnifying_glass = false;
 
         // handle mouse clic and hovering on image
-        const ImRect bb(draw_pos, draw_pos + imagesize);
+        const ImRect bb(imagepos, imagepos + imagesize);
         const ImGuiID id = ImGui::GetCurrentWindow()->GetID("##output-texture");
         bool hovered, held;
         bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held,
@@ -510,7 +561,7 @@ void OutputPreviewWindow::Render()
         }
         // show magnifying glass if active and mouse hovering
         else if (hovered && magnifying_glass)
-            DrawInspector(output->texture(), imagesize, imagesize, draw_pos);
+            DrawInspector(output->texture(), areasize, imagesize, imagepos);
 
         ///
         /// Icons overlays
@@ -521,10 +572,10 @@ void OutputPreviewWindow::Render()
         bool drawoverlay = false;
         if (!magnifying_glass) {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.f, 0.f, 0.f, 0.8f));
-            ImGui::SetCursorScreenPos(draw_pos + ImVec2(imagesize.x - r, 6));
+            ImGui::SetCursorScreenPos(draw_pos + ImVec2(areasize.x - r, 6));
             ImGui::Text(ICON_FA_CIRCLE);
             ImGui::PopStyleColor(1);
-            ImGui::SetCursorScreenPos(draw_pos + ImVec2(imagesize.x - r, 6));
+            ImGui::SetCursorScreenPos(draw_pos + ImVec2(areasize.x - r, 6));
             ImGui::Text(ICON_FA_INFO_CIRCLE);
             drawoverlay = ImGui::IsItemHovered();
         }
@@ -552,7 +603,7 @@ void OutputPreviewWindow::Render()
         float vertical = r;
         if (Outputs::manager().enabled( FrameGrabber::GRABBER_BROADCAST ))
         {
-            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + areasize.x - 2.5f * r, draw_pos.y + vertical));
             if (Outputs::manager().busy( FrameGrabber::GRABBER_BROADCAST ))
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
@@ -564,7 +615,7 @@ void OutputPreviewWindow::Render()
         // shmdata indicator
         if (Outputs::manager().enabled( FrameGrabber::GRABBER_SHM ))
         {
-            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + areasize.x - 2.5f * r, draw_pos.y + vertical));
             if (Outputs::manager().busy( FrameGrabber::GRABBER_SHM ))
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
@@ -576,7 +627,7 @@ void OutputPreviewWindow::Render()
         // loopback camera indicator
         if (Outputs::manager().enabled( FrameGrabber::GRABBER_LOOPBACK ))
         {
-            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.5f * r, draw_pos.y + vertical));
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + areasize.x - 2.5f * r, draw_pos.y + vertical));
             if (Outputs::manager().busy( FrameGrabber::GRABBER_LOOPBACK ))
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_BROADCAST, 0.8f));
             else
@@ -587,7 +638,7 @@ void OutputPreviewWindow::Render()
         // streaming indicator
         if (Settings::application.accept_connections)
         {
-            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + imagesize.x - 2.4f * r, draw_pos.y + imagesize.y - 2.f*r));
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + areasize.x - 2.4f * r, draw_pos.y + areasize.y - 2.f*r));
             if ( Streaming::manager().busy())
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.8f));
             else
@@ -598,8 +649,8 @@ void OutputPreviewWindow::Render()
         // OUTPUT DISABLED indicator
         if (Settings::application.render.disabled)
         {
-            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + imagesize.y - 2.f*r));
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_WINDOW, 0.8f));
+            ImGui::SetCursorScreenPos(ImVec2(draw_pos.x + r, draw_pos.y + areasize.y - 2.f*r));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME, 0.8f));
             ImGui::Text(ICON_FA_EYE_SLASH);
             ImGui::PopStyleColor(1);
         }
@@ -614,9 +665,10 @@ void OutputPreviewWindow::Render()
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             float h = 1.f;
             h += (Settings::application.accept_connections ? 1.f : 0.f);
-            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + imagesize.x, draw_pos.y + h * r), IMGUI_COLOR_OVERLAY);
+            draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + areasize.x, draw_pos.y + h * r), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(draw_pos);
-            ImGui::Text(" " ICON_FA_DESKTOP "  %d x %d px, %.d fps", output->width(), output->height(), int(Mixer::manager().fps()) );
+            ImGui::Text(" " ICON_FA_DESKTOP "  %.0f x %.0f px, %.d fps", 
+                    float(output->width()) * _cropsize.x, float(output->height()) * _cropsize.y, int(Mixer::manager().fps()) );
             if (Settings::application.accept_connections)
                 ImGui::Text( "  " ICON_FA_SHARE_ALT_SQUARE "   Available as %s (%ld peer connected)",
                              Connection::manager().info().name.c_str(),

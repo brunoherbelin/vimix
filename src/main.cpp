@@ -24,6 +24,7 @@
 #include <gst/gst.h>
 
 // vmix
+#include "Canvas.h"
 #include "Settings.h"
 #include "Mixer.h"
 #include "RenderingManager.h"
@@ -154,7 +155,7 @@ int main(int argc, char *argv[])
 
     if (cleanRequested) {
         // clean settings : save settings before loading
-        Settings::Save();
+        Settings::terminate();
         printf("%s: clean OK\n", argv[0]);
         ret = 0;
     }
@@ -186,7 +187,7 @@ int main(int argc, char *argv[])
     ///
     /// Settings
     ///
-    Settings::Load( settingsRequested );
+    Settings::init( settingsRequested );
     Settings::application.executable = std::string(argv[0]);
 
     /// lock to inform an instance is running
@@ -250,6 +251,9 @@ int main(int argc, char *argv[])
     // try to load file given in argument
     Mixer::manager().load(_openfile);
 
+    // Initialize Canvas (reads config)
+    Canvas::manager().init();
+
     ///
     /// Broadcast launch
     ///
@@ -268,9 +272,10 @@ int main(int argc, char *argv[])
     UserInterface::manager().Terminate();
 
     ///
-    /// MIXER TERMINATE
+    /// MIXER & CANVAS TERMINATE
     ///
-    Mixer::manager().clear();
+    Mixer::manager().terminate();
+    Canvas::manager().terminate();
 
     ///
     /// RENDERING TERMINATE
@@ -298,7 +303,7 @@ int main(int argc, char *argv[])
     ///
     /// Settings
     ///
-    Settings::Save(UserInterface::manager().Runtime());
+    Settings::terminate(UserInterface::manager().Runtime());
 
     /// ok
     return 0;

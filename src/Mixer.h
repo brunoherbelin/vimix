@@ -51,7 +51,7 @@ public:
     Source * createSourceFile   (const std::string &path, bool disable_hw_decoding = false);
     Source * createSourceMultifile(const std::list<std::string> &list_files, uint fps);
     class CloneSource *createSourceClone(const std::string &namesource = "", bool copy_attributes = true);
-    Source * createSourceRender ();
+    Source * createSourceRender (int provenance = 0);
     Source * createSourceStream (const std::string &gstreamerpipeline);
     Source * createSourcePattern(uint pattern, glm::ivec2 res);
     Source * createSourceDevice (const std::string &namedevice);
@@ -61,6 +61,7 @@ public:
     Source * createSourceText   (const std::string &contents, glm::ivec2 res);
     Source * createSourceShader (glm::ivec2 res);
     Source * createSourceGroup  ();
+    bool recreateSource(Source *s);
 
     // operations on sources
     void addSource    (Source *s);
@@ -111,7 +112,7 @@ public:
 
     // manipulate, load and save sessions
     inline Session * session () const { return session_; }
-    void clear  ();
+    void terminate();
     void save   (bool with_version = false);
     void saveas (const std::string& filename, bool with_version = false, bool with_thumbail = false);
     void load   (const std::string& filename);
@@ -147,7 +148,6 @@ protected:
     std::list< std::pair<Source *, Source *> > candidate_sources_;
     SourceList stash_;
     void insertSource  (Source *s, View::Mode m = View::INVALID);
-    bool recreateSource(Source *s);
     void attachSource  (Source *s);
     void detachSource  (Source *s);
     bool attached      (Source *s) const;

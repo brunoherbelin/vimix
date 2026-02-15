@@ -18,6 +18,7 @@
 **/
 
 #include "Source/MediaSource.h"
+#include "Source/SourceList.h"
 #include <string>
 #include <algorithm>
 #include <list>
@@ -97,10 +98,16 @@ Target InputMappingWindow::ComboSelectTarget(const Target &current)
         else if ( const size_t* v = std::get_if<size_t>(&current)) {
             label = std::string("Batch #") + std::to_string(*v);
         }
+        else {
+            label = "Current source";
+        }
     }
 
     if (ImGui::BeginCombo("##ComboSelectSource", label.c_str()) )
     {
+        if (ImGui::Selectable( "Current source" )) {
+            selected = Current{};
+        }
         Session *ses = Mixer::manager().session();
         for (auto sit = ses->begin(); sit != ses->end(); ++sit) {
             label = std::string((*sit)->initials()) + " - " + (*sit)->name();
@@ -148,6 +155,12 @@ uint InputMappingWindow::ComboSelectCallback(uint current, bool imageprocessing,
                                        ICON_FA_PALETTE "  Invert",
                                        "  None"
     };
+
+    if (!ismediaplayer && current > SourceCallback::CALLBACK_PLAY && current <= SourceCallback::CALLBACK_FLAG) 
+        return SourceCallback::CALLBACK_INVALID;
+
+    if (!imageprocessing && current >= SourceCallback::CALLBACK_GAMMA) 
+        return SourceCallback::CALLBACK_INVALID;
 
     uint selected = 0;
     if (ImGui::BeginCombo("##ComboSelectCallback", callback_names[current]) ) {
@@ -524,11 +537,11 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
 
         ImGui::SetNextItemWidth(right_align);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        if (ImGui::SliderInt("##CALLBACK_PLAY_FLAG", &val, -1, max, val < 0 ? "Next Flag" : "Flag <%d>"))
+        if (ImGui::SliderInt("##CALLBACK_PLAY_FLAG", &val, -1, max, val < 0 ?  ICON_FA_FLAG " Next" : ICON_FA_FLAG " %d"))
             edited->setValue(val );
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
-        testButton(edited, target, "Flag to jump to in a video source.", 12, 6);
+        testButton(edited, target, "Flag to jump to in a video source.", 11, 6);
 
     }
         break;
@@ -1364,6 +1377,10 @@ void InputMappingWindow::Render()
         // adding actions is possible only if there are sources in the session
         if (!Mixer::manager().session()->empty()) {
 
+            static bool temp_new_input = false;
+            static Target temp_new_target;
+            static uint temp_new_callback = 0;
+
             ///
             /// list of input callbacks for the current input
             ///
@@ -1413,6 +1430,16 @@ void InputMappingWindow::Render()
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
                     ImGui::SetNextItemWidth(w);
                     uint type = ComboSelectCallback( callback->type(), withimageprocessing, ismediaplayer );
+                    if (type == SourceCallback::CALLBACK_INVALID) {
+                        // remove previous callback
+                        S->deleteInputCallback(callback);   
+                        // offer to create a new one instead       
+                        temp_new_input = true;
+                        temp_new_target = target;                        
+                        // reload
+                        ImGui::PopID();
+                        break;
+                    }
                     if (type > 0) {
                         // remove previous callback
                         S->deleteInputCallback(callback);
@@ -1442,24 +1469,23 @@ void InputMappingWindow::Render()
             ///
             ///
 
-            static bool temp_new_input = false;
-            static Target temp_new_target;
-            static uint temp_new_callback = 0;
-
             // step 1 : press '+'
             if (temp_new_input) {
                 if (ImGuiToolkit::IconButton(ICON_FA_TIMES, "Cancel") ){
-                    temp_new_target = std::monostate();
+                    temp_new_target = Uninitialized{};
                     temp_new_callback = 0;
                     temp_new_input = false;
                 }
+                ImGui::SameLine(0, IMGUI_SAME_LINE + ImGui::GetFontSize() * 0.15f);
             }
-            else if (ImGuiToolkit::IconButton(ICON_FA_PLUS, "Add mapping") )
-                temp_new_input = true;
+            else {
+                if (ImGuiToolkit::IconButton(ICON_FA_PLUS, "Add mapping") )
+                    temp_new_input = true;
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+            }
 
             if (temp_new_input) {
                 // step 2 : Get input for source
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::SetNextItemWidth(w);
 
                 Target selected_target = ComboSelectTarget(temp_new_target);
@@ -1484,11 +1510,11 @@ void InputMappingWindow::Render()
                     ImGui::SetNextItemWidth(w);
                     temp_new_callback = ComboSelectCallback( temp_new_callback, withimageprocessing, mediaplayer );
                     // user selected a callback type
-                    if (temp_new_callback > 0) {
+                    if (temp_new_callback > 0 && temp_new_callback != SourceCallback::CALLBACK_INVALID) {
                         // step 4 : create new callback and add it to source
                         S->assignInputCallback(current_input_, temp_new_target, SourceCallback::create((SourceCallback::CallbackType)temp_new_callback) );
                         // done
-                        temp_new_target = std::monostate();
+                        temp_new_target = Uninitialized{};
                         temp_new_callback = 0;
                         temp_new_input = false;
                     }

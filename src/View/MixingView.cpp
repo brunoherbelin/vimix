@@ -33,6 +33,7 @@
 #include "Mixer.h"
 #include "defines.h"
 #include "Source/Source.h"
+#include "Source/CloneSource.h"
 #include "Source/SourceCallback.h"
 #include "Settings.h"
 #include "Scene/Decorations.h"
@@ -456,7 +457,12 @@ std::pair<Node *, glm::vec2> MixingView::pick(glm::vec2 P)
             }
             // pick the symbol: ask to show editor
             else if ( pick.first == s->symbol_ ) {
-                UserInterface::manager().showSourceEditor(s);
+                CloneSource *cs = dynamic_cast<CloneSource *>(s);
+                if (cs != nullptr) {
+                    pick = { cs->origin()->group(mode_), glm::vec2(0.f) };
+                }
+                else
+                    UserInterface::manager().showSourceEditor(s);
             }
             // pick the initials: show in panel
             else if ( pick.first == s->initial_1_ ) {
@@ -802,7 +808,8 @@ void MixingView::updateSelectionOverlay(glm::vec4 color)
 
     if (overlay_selection_->visible_) {
         // calculate bbox on selection
-        GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(Mixer::selection().getCopy(), this);
+        GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(Mixer::selection().getCopy(), 
+                                                        scene.ws(), View::MIXING);
         overlay_selection_->scale_ = selection_box.scale();
         overlay_selection_->translation_ = selection_box.center();
 

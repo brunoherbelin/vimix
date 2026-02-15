@@ -26,6 +26,7 @@
 #include <gst/gst.h>
 
 // ImGui
+#include "IconsFontAwesome5.h"
 #include "Toolkit/ImGuiToolkit.h"
 #include "Timeline.h"
 #include "gst/gstclock.h"
@@ -45,6 +46,7 @@
 #include "Source/StreamSource.h"
 #include "MediaPlayer.h"
 #include "ActionManager.h"
+#include "Source/SourceCallback.h"
 #include "UserInterfaceManager.h"
 
 #include "SourceControlWindow.h"
@@ -515,14 +517,15 @@ void SourceControlWindow::Render()
         p.x += g.CurrentWindow->Size.x - 2.1f * g.FontSize;
         if (g.CurrentWindow->DC.CursorPos.x < p.x)
         {
+            bool enabled = (active_selection_ < 0 && selection_.size() == 1);
+            ImGui::PushStyleColor(ImGuiCol_Text, enabled ? ImGui::GetColorU32(ImGuiCol_Text) : ImGui::GetColorU32(ImGuiCol_TextDisabled));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
             ImGui::SetCursorScreenPos(p);
-            if (selection_.size() == 1) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
-                ImGuiToolkit::ButtonToggle( ICON_FA_SEARCH, &magnifying_glass);
-                ImGui::PopStyleColor();
-            }
-            else
-                ImGui::TextDisabled(" " ICON_FA_SEARCH);
+            ImGuiToolkit::ButtonToggle( ICON_FA_SEARCH, &magnifying_glass);
+            // FORCE DISABLE IF NOT ENABLED 
+            if (!enabled) 
+                magnifying_glass = false;
+            ImGui::PopStyleColor(2);
         }
 
         ImGui::EndMenuBar();
@@ -975,7 +978,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
 
         // show time when hovering
         if (hovered) 
-            ImGui::SetTooltip(" <%d>  %s ", index, GstToolkit::time_to_string(flag_time).c_str());
+            ImGui::SetTooltip(ICON_FA_FLAG " %d (%s)", index, GstToolkit::time_to_string(flag_time).c_str());
 
         ++index;
     }   
@@ -1042,6 +1045,7 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
 
     // fixed elements of timeline
     float *lines_array = timeline->fadingArray();
+    float *flags_array = timeline->flagsArray();
     const guint64 duration = timeline->sectionsDuration();
     TimeIntervalSet se = timeline->sections();
     const ImVec2 timeline_size( static_cast<float>( static_cast<double>(duration) * width_ratio ), 2.f * fontsize);
@@ -1066,7 +1070,7 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
 
     // PLOT of opacity is inside the bbox, at the top
     const ImVec2 plot_pos = frame_pos + style.FramePadding;
-    const ImRect plot_bbox( plot_pos, plot_pos + ImVec2(timeline_size.x, frame_size.y - 4.f * style.FramePadding.y - timeline_size.y));
+    const ImRect plot_bbox( plot_pos, plot_pos + ImVec2(timeline_size.x, frame_size.y - 4.f * style.FramePadding.y - timeline_size.y -1));
 
     //
     // THIRD RENDER
@@ -1090,7 +1094,32 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
         // adjust bbox of section and render a timeline
         ImRect section_bbox(section_bbox_min, section_bbox_max);
         // render the timeline
-        ImGuiToolkit::RenderTimeline(section_bbox_min, section_bbox_max, section->begin, section->end, timeline->step());        
+        ImGuiToolkit::RenderTimeline(section_bbox_min, section_bbox_max, 
+            section->begin, section->end, timeline->step());        
+
+        //
+        // FLAGS 
+        //
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, 0.f));
+        ImGui::PushStyleColor( ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_Button) );
+        int index = 0;
+        bool flag_pressed = false;
+        const TimeIntervalSet flags = timeline->flags();
+        for (const auto &flag_Interval : flags) {
+
+            // set position in screen corresponding to flag time
+            GstClockTime flag_time = flag_Interval.midpoint();
+            float flag_pos_ = static_cast<float> ( static_cast<double>(flag_time - timeline->begin()) / static_cast<double>(timeline->duration()) );
+            ImVec2 draw_pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), flag_pos_);
+            draw_pos -= ImVec2(2.f, -3.f); 
+
+            // icon depends on flag type & color on hovered
+            _drawIcon(draw_pos, 11 + flag_Interval.type, 6, true, window);
+
+            ++index;
+        }   
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(1);
 
         // draw the cursor
         float time_ = static_cast<float> ( static_cast<double>(time - section->begin) / static_cast<double>(section->duration()) );
@@ -1099,16 +1128,31 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
             ImGui::RenderArrow(window->DrawList, pos, ImGui::GetColorU32(ImGuiCol_SliderGrab), ImGuiDir_Up);
         }
 
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.f, 0.f));
+
         // draw plot of lines
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.f, 0.f));
         ImGui::SetCursorScreenPos(ImVec2(section_bbox_min.x, plot_bbox.Min.y));
         // find the index in timeline array of the section start time
         size_t i = timeline->fadingIndexAt(section->begin);
         // number of values is the index after end time of section (+1), minus the start index
         size_t values_count = 1 + timeline->fadingIndexAt(section->end) - i;
-        ImGui::PlotLines("##linessection", lines_array + i, values_count, 0, NULL, 0.f, 1.f, ImVec2(section_bbox.GetWidth(), plot_bbox.GetHeight()));
+        ImGui::PlotLines("##linessection", lines_array + i, values_count, 
+            0, NULL, 0.f, 1.f, 
+            ImVec2(section_bbox.GetWidth(), plot_bbox.GetHeight()));
         ImGui::PopStyleColor(1);
+
+        // back to draw
+        ImGui::SetCursorScreenPos(ImVec2(section_bbox_min.x, plot_bbox.Min.y));
+
+        // plot flags (transparent background)
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_TabActive]); // cursor color
+        ImGui::PlotHistogram("##flagssection", flags_array, MAX_TIMELINE_ARRAY, 
+            0, NULL, 0.f, 1.f, 
+            ImVec2(section_bbox.GetWidth(), plot_bbox.GetHeight()));
+        ImGui::PopStyleColor(2);
+
         ImGui::PopStyleVar(1);
 
         // detect if there was a gap before
@@ -1741,7 +1785,7 @@ int SourceControlWindow::SourceButton(Source *s, ImVec2 framesize)
         // centered icon in front of dark background
         if (s->active() && s->playable()) {
             draw_list->AddRectFilled(frame_center - ImVec2(H * 0.3f, H * 0.2f),
-                                     frame_center + ImVec2(H * 1.1f, H * 1.2f), ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed), 6.f);
+                                     frame_center + ImVec2(H * 1.1f, H * 1.15f), ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed), 6.f);
             draw_list->AddText(frame_center, icon_color, s->playing() ? ICON_FA_PAUSE : ICON_FA_PLAY);
         }
     }
@@ -3169,12 +3213,16 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
 
     // play bar is enabled if only one source selected is enabled
     bool enabled = false;
+    bool hasflags = false;
     size_t n_play = 0;
     for (auto source = selection_.begin(); source != selection_.end(); ++source){
         if ( (*source)->active() && (*source)->playable())
             enabled = true;
         if ( (*source)->playing() )
             n_play++;
+        MediaSource *ms = dynamic_cast<MediaSource*>(*source);
+        if ( ms && ms->mediaplayer() && ms->mediaplayer()->timeline() && ms->mediaplayer()->timeline()->numFlags() > 0 )
+            hasflags = true;
     }
 
     // buttons style for disabled / enabled bar
@@ -3236,7 +3284,16 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
         }
     }
     ImGui::SameLine(0, h_space_);
+    if (hasflags) {
+        if( ImGuiToolkit::ButtonIcon(5, 0, "Go to next flag", enabled) && enabled ) {
+            for (auto source = selection_.begin(); source != selection_.end(); ++source) {
+                (*source)->call( new Flag( ));
+            }
+        }
+    }
 
     // restore style
     ImGui::PopStyleColor(3);
+
+    ImGui::SameLine(0, h_space_);
 }

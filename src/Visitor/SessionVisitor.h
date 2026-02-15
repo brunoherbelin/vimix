@@ -73,6 +73,7 @@ public:
     void visit (SrtReceiverSource& s) override;
     void visit (TextSource& s) override;
     void visit (ShaderSource& s) override;
+    void visit (CanvasSource& s) override;
 
     void visit (CloneSource& s) override;
     void visit (FrameBufferFilter&) override;

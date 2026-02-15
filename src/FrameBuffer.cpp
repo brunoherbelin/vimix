@@ -212,6 +212,13 @@ glm::vec3 FrameBuffer::resolution() const
     return glm::vec3(attrib_.viewport.x, attrib_.viewport.y, 0.f);
 }
 
+glm::vec3 FrameBuffer::maxResolution()
+{
+    GLint max_texture_size = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
+    return glm::vec3(max_texture_size, max_texture_size, 0.f);
+}
+
 void FrameBuffer::resize(glm::vec3 res)
 {
     if (framebufferid_) {
@@ -416,7 +423,7 @@ glm::vec2 FrameBuffer::projectionSize() const
 
 void FrameBuffer::setProjectionArea(glm::vec4 c)
 {
-    projection_area_ = glm::clamp(c, glm::vec4(-1.f, 0.1f, 0.1f, -1.f), glm::vec4(-0.1f, 1.f, 1.f, -0.1f));
+    projection_area_ = glm::clamp(c, glm::vec4(-1.f, -1.f, -1.f, -1.f), glm::vec4(1.f, 1.f, 1.f, 1.f));
     projection_ = glm::ortho(projection_area_[0],
                              projection_area_[1],
                              projection_area_[2],

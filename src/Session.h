@@ -2,8 +2,10 @@
 #define SESSION_H
 
 #include <mutex>
+#include <string>
 
 #include "Source/SourceList.h"
+#include "View/GeometryView.h"
 #include "View/RenderView.h"
 #include "Metronome.h"
 
@@ -27,7 +29,7 @@ struct SessionNote
     SessionNote(const std::string &t = "", bool l = false, int s = 0);
 };
 
-#define SNAPSHOT_NODE(i) std::to_string(i).insert(0,1,'S')
+#define SNAPSHOT_NODE(i) (std::string("S") + std::to_string(i))
 
 struct SessionSnapshots {
 
@@ -39,6 +41,7 @@ struct SessionSnapshots {
 class Session
 {
     friend class RenderSource;
+    friend class GeometryView;
 
 public:
     Session(uint64_t id = 0);
@@ -90,6 +93,9 @@ public:
 
     // get total number of sources (recursively)
     uint numSources() const;
+
+    // get min and max depth of sources in session
+    std::pair<float, float> depthRange() const;
 
     // update all sources and mark sources which failed
     inline bool ready () const  { return ready_; }

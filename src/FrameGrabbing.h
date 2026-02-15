@@ -1,11 +1,13 @@
 #ifndef FRAMEGRABBING_H
 #define FRAMEGRABBING_H
 
+#include <glm/fwd.hpp>
 #include <list>
 #include <map>
 #include <string>
 
 #include <gst/gst.h>
+#include <glm/ext/vector_float4.hpp>
 
 #include "FrameGrabber.h"
 
@@ -57,13 +59,13 @@ public:
      * @brief Get the width of captured frames
      * @return Frame width in pixels
      */
-    inline uint width() const { return width_; }
+    inline uint width() const { return write_width_; }
 
     /**
      * @brief Get the height of captured frames
      * @return Frame height in pixels
      */
-    inline uint height() const { return height_; }
+    inline uint height() const { return write_height_; }
 
     /**
      * @brief Add a new frame grabber to the active list
@@ -136,11 +138,14 @@ private:
     guint pbo_[2];
     guint pbo_index_;
     guint pbo_next_index_;
-    guint size_;
-    guint width_;
-    guint height_;
+    guint read_size_;
+    guint read_width_;
+    guint read_height_;
+    guint write_width_;
+    guint write_height_;
     bool  use_alpha_;
-    GstCaps *caps_;
+    GstCaps *read_caps_;
+    GstCaps *write_caps_;
 };
 
 /**

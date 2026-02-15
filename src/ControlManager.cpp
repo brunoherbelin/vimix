@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "RenderingManager.h"
 #include <cstddef>
 #include <thread>
 #include <mutex>
@@ -167,24 +168,26 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 else if ( attribute.compare(OSC_NEXT) == 0) {
                     // set current to NEXT
                     Mixer::manager().setCurrentNext();
+                    UserInterface::manager().setSourceInPanel(Mixer::manager().currentSource());
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
                 else if ( attribute.compare(OSC_PREVIOUS) == 0) {
                     // set current to PREVIOUS
                     Mixer::manager().setCurrentPrevious();
+                    UserInterface::manager().setSourceInPanel(Mixer::manager().currentSource());
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
                 else if ( BaseToolkit::is_a_number( attribute.substr(1), &sourceid) ){
                     // set current to given INDEX
-                    Mixer::manager().setCurrentIndex(sourceid);
+                    UserInterface::manager().setSourceInPanel(sourceid);
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
                 else if ( _cs != nullptr ) {
                     // set current to given source by name
-                    Mixer::manager().setCurrentSource(_cs);
+                    UserInterface::manager().setSourceInPanel(_cs);
                     // send the status of all sources
                     Control::manager().sendSourcesStatus(remoteEndpoint, m.ArgumentStream());
                 }
@@ -354,11 +357,48 @@ std::string Control::alias (std::string target)
 
 std::string Control::translate (std::string addresspattern)
 {
+    // First try exact match
     auto it_translation  = translation_.find(addresspattern);
-    if ( it_translation != translation_.end() )
+    if ( it_translation != translation_.end() ){
+        Log::Osc(CONTROL_OSC_MSG "translated '%s' from '%s'", addresspattern.c_str(), it_translation->second.c_str());
         return it_translation->second;
-    else
-        return addresspattern;
+    }
+
+    // Try partial matches
+    // Find the longest matching substring in the translation map
+    std::string best_match_from;
+    std::string best_match_to;
+    size_t best_match_pos = std::string::npos;
+
+    for (const auto& translation : translation_) {
+        const std::string& from = translation.first;
+        const std::string& to = translation.second;
+
+        // Find if this translation pattern exists anywhere in the address
+        size_t pos = addresspattern.find(from);
+        if (pos != std::string::npos) {
+            // Keep the longest matching substring
+            // In case of same length, prefer the one that appears first
+            if (from.size() > best_match_from.size() ||
+                (from.size() == best_match_from.size() && pos < best_match_pos)) {
+                best_match_from = from;
+                best_match_to = to;
+                best_match_pos = pos;
+            }
+        }
+    }
+
+    // If we found a partial match, apply it
+    if (!best_match_from.empty()) {
+        // Replace the first occurrence and keep the rest
+        std::string result = addresspattern;
+        result.replace(best_match_pos, best_match_from.size(), best_match_to);
+        Log::Osc(CONTROL_OSC_MSG "translated '%s' to '%s'", addresspattern.c_str(), result.c_str());
+        return result;
+    }
+
+    // No match found, return original
+    return addresspattern;
 }
 
 void Control::loadOscConfig()
@@ -732,7 +772,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             arguments >> label >> osc::EndMessage;
             Mixer::manager().renameSource(target, label);
         }
-        /// e.g. '/vimix/current/play' or '/vimix/current/play T' or '/vimix/current/play F'
+        /// e.g. '/vimix/current/play' or '/vimix/current/play f 1' or '/vimix/current/play f 0'
         else if ( attribute.compare(OSC_SOURCE_PLAY) == 0) {
             float on = 1.f;
             if ( !arguments.Eos()) {
@@ -740,7 +780,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             target->call( new Play(on > 0.5f) );
         }
-        /// e.g. '/vimix/current/pause' or '/vimix/current/pause T' or '/vimix/current/pause F'
+        /// e.g. '/vimix/current/pause' or '/vimix/current/pause f 1' or '/vimix/current/pause f 0'
         else if ( attribute.compare(OSC_SOURCE_PAUSE) == 0) {
             float on = 1.f;
             if ( !arguments.Eos()) {
@@ -1052,6 +1092,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             }
             target->setImageProcessingEnabled(on > 0.5f);
         }
+        /// e.g. '/vimix/current/flag f -1'
         else if ( attribute.compare(OSC_SOURCE_FLAG) == 0) {
             float f = -1.f;
             if (!arguments.Eos()) {
@@ -1629,23 +1670,16 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
                 Control::manager().input_values[INPUT_NUMPAD_FIRST + _key - GLFW_KEY_KP_0] = action > GLFW_RELEASE ? 1.f : 0.f;
             }
             Control::manager().input_access_.unlock();
+            
         }
-        // keys with modifiers in non-main window
-        else if ( w != Rendering::manager().mainWindow().window() )
+
+        // keys in non-main window
+        if ( w != Rendering::manager().mainWindow().window() )
         {
 #if defined(APPLE)
-            if ( key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_SUPER  )
+            if ( key == GLFW_KEY_Q && action == GLFW_PRESS && mods == GLFW_MOD_SUPER  )
 #else
-            if ( key == GLFW_KEY_F && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
-#endif
-            {
-                // toggle fullscreen on CTRL+F
-                Rendering::manager().window(w)->toggleFullscreen();
-            }
-#if defined(APPLE)
-            else if ( key == GLFW_KEY_Q && action == GLFW_PRESS && mods == GLFW_MOD_SUPER  )
-#else
-            else if ( key == GLFW_KEY_Q && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
+            if ( key == GLFW_KEY_Q && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL  )
 #endif
             {
                 // Quit on CTRL+Q (if no main window)
@@ -1654,6 +1688,10 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
                     // close rendering manager = quit
                     Rendering::manager().close();
                 }
+            }
+            else if  ( key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
+                // close current window on ESC
+                Rendering::manager().deactivateOutput(glfwGetWindowMonitor(w));
             }
         }
     }

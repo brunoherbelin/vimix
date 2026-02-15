@@ -3,29 +3,7 @@
 
 #include "View.h"
 
-struct Canvas
-{
-    bool current_;
-    Group *root_;
-    Switch *frames_;
-    Group *overlays_;
-    Handles *handles_[3];
-    Handles *menu_;
-
-    Canvas()
-    {
-        current_ = false;
-        root_ = nullptr;
-        frames_ = nullptr;
-        overlays_ = nullptr;
-        menu_ = nullptr;
-        handles_[0] = nullptr;
-        handles_[1] = nullptr;
-        handles_[2] = nullptr;
-    }
-
-    void setCurrent(bool on);
-};
+class CanvasSurface;
 
 class GeometryView : public View
 {
@@ -48,8 +26,14 @@ public:
     void arrow (glm::vec2) override;
     Cursor over (glm::vec2) override;
 
+    void attach(Source *canvas);
+    void detach(Source *canvas);
+    void setCurrentCanvas(Source *c = nullptr);
+    Source *currentCanvas() const { return current_canvas_; }
+
 private:
     Surface *output_surface_;
+    Frame *output_frame_;
     Node *overlay_position_;
     Node *overlay_position_cross_;
     Symbol *overlay_rotation_;
@@ -62,9 +46,11 @@ private:
     Node *overlay_scaling_grid_;
     Node *overlay_crop_;
 
-    std::vector<Canvas> canvas_;
+    Source *current_canvas_;
+    Group *canvas_scene_;
     uint canvas_current_;
     Group *canvas_stored_status_;
+    Node *canvas_overlay_crop_;
 
     enum GeometryModes {
         EDIT_SOURCES = 0,

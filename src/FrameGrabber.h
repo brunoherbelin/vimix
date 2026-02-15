@@ -9,10 +9,6 @@
 #include <gst/app/gstappsrc.h>
 
 
-// use glReadPixel or glGetTextImage
-// read pixels & pbo should be the fastest
-// https://stackoverflow.com/questions/38140527/glreadpixels-vs-glgetteximage
-#define USE_GLREADPIXEL
 #define DEFAULT_GRABBER_FPS 30
 #define MIN_BUFFER_SIZE 33177600  // 33177600 bytes = 1 frames 4K, 9 frames 720p
 
@@ -67,11 +63,11 @@ public:
 protected:
 
     // only FrameGrabbing manager can add frame
-    virtual void addFrame(GstBuffer *buffer, GstCaps *caps);
-    virtual void addFrame(guint texture_id, GstCaps *caps) {}
+    virtual void addFrame(GstBuffer *buffer, GstCaps *read_caps, GstCaps *write_caps);
+    virtual void addFrame(guint texture_id, GstCaps *read_caps, GstCaps *write_caps) {}
 
     // only addFrame method shall call those
-    virtual std::string init(GstCaps *caps) = 0;
+    virtual std::string init(GstCaps *read_caps, GstCaps *write_caps) = 0;
     virtual void terminate() = 0;
 
     // thread-safe testing termination
@@ -86,7 +82,8 @@ protected:
     // gstreamer pipeline
     GstElement   *pipeline_;
     GstAppSrc    *src_;
-    GstCaps      *caps_;
+    GstCaps      *read_caps_;
+    GstCaps      *write_caps_;
 
     GstClock     *timer_;
     GstClockTime timer_firstframe_;
@@ -103,7 +100,7 @@ protected:
 
     // async threaded initializer
     std::future<std::string> initializer_;
-    static std::string initialize(FrameGrabber *rec, GstCaps *caps);
+    static std::string initialize(FrameGrabber *rec, GstCaps *read_caps, GstCaps *write_caps);
 
     // gstreamer callbacks
     static void callback_need_data (GstAppSrc *, guint, gpointer user_data);

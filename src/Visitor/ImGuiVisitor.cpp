@@ -18,6 +18,8 @@
 **/
 
 
+#include <cstddef>
+#include <iterator>
 #include <string>
 #include <vector>
 #include <iomanip>
@@ -64,6 +66,7 @@
 #include "Mixer.h"
 #include "ControlManager.h"
 #include "Transcoder.h"
+#include "Canvas.h"
 
 #include "imgui.h"
 #include "Toolkit/ImGuiToolkit.h"
@@ -623,28 +626,23 @@ void ImGuiVisitor::visit (Source& s)
     else {
 
         // remember where we were...
-        ImVec2 pos = ImGui::GetCursorPos();
+        ImVec2 pos = ImGui::GetCursorScreenPos();
 
-        // preview (black texture)
-        float width = preview_width;
-        float height = s.frame()->projectionSize().y * width / ( s.frame()->projectionSize().x * s.frame()->aspectRatio());
-        if (height > preview_height - space) {
-            height = preview_height - space;
-            width = height * s.frame()->aspectRatio() * ( s.frame()->projectionSize().x / s.frame()->projectionSize().y);
-        }
-        // centered image
-        ImGui::SetCursorPos( ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space)) );
-        ImGui::Image((void*)(uintptr_t) s.frame()->texture(), ImVec2(width, height));
+        // preview = black rectangle
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(ImVec2(pos.x + space, pos.y + space), 
+            ImVec2(pos.x + preview_width - space, pos.y + preview_height - space),
+            ImColor(0, 0, 0, 255));
 
         // centered icon of failed (skull)
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::SetCursorPos( ImVec2(pos.x + (preview_width  -ImGui::GetFrameHeight())* 0.5f ,
+        ImGui::SetCursorScreenPos( ImVec2(pos.x + space + (preview_width  -ImGui::GetFrameHeight())* 0.5f ,
                                     pos.y + (preview_height -ImGui::GetFrameHeight()) * 0.5f) );
         ImGui::Text(ICON_FA_SKULL);
         ImGui::PopFont();
 
         // back
-        ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
+        ImGui::SetCursorScreenPos( ImVec2( pos.x, pos.y + preview_height));
     }
 
     ImGui::PopID();
@@ -1032,8 +1030,40 @@ void ImGuiVisitor::visit (RenderSource& s)
     // loopback provenance
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) s.renderingProvenance();
-    if (ImGuiToolkit::ComboIcon("##SelectRender", &m, RenderSource::ProvenanceMethod))
+    if (ImGuiToolkit::ComboIcon("##SelectRender", &m, RenderSource::ProvenanceMethod)) {
         s.setRenderingProvenance((RenderSource::RenderSourceProvenance)m);
+        oss << "Mode " << m;
+        Action::manager().store(oss.str());
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Mode ")) {
+        s.setRenderingProvenance(RenderSource::RENDER_TEXTURE);
+        oss << "Mode 0";
+        Action::manager().store(oss.str());
+    }
+
+    if (s.renderingProvenance() == RenderSource::RENDER_CANVAS) {
+        static int __canvas = -1;
+        if (__canvas < 0)
+            __canvas = s.canvasProvenance() + 1;
+
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::SliderInt("##Canvas", &__canvas, 1, Canvas::manager().size(), "%02d");
+        if (ImGui::IsItemDeactivatedAfterEdit()){
+            s.setCanvasProvenance((size_t)__canvas - 1);
+            oss << "Canvas " << __canvas;
+            Action::manager().store(oss.str());
+            __canvas = -1;
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Canvas")) {
+            s.setCanvasProvenance(0);
+            oss << "Canvas 01";
+            Action::manager().store(oss.str());
+            __canvas = -1;
+        }
+
+    }
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1046,10 +1076,6 @@ void ImGuiVisitor::visit (RenderSource& s)
                 UserInterface::manager().showSourceEditor(&s);
             top.x += ImGui::GetFrameHeight();
         }
-        // icon to open output view
-        ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(ICON_FA_DESKTOP, "Open Display"))
-            Settings::application.widget.preview = true;
     }
     else
         info.reset();

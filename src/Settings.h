@@ -21,6 +21,7 @@ struct WidgetsConfig
     bool logs;
     bool preview;
     int  preview_view;
+    int  preview_output;
     bool media_player;
     int  media_player_view;
     int  media_player_timeline_editmode;
@@ -45,6 +46,7 @@ struct WidgetsConfig
         logs = false;
         preview = false;
         preview_view = -1;
+        preview_output = -1;
         media_player = false;
         media_player_view = -1;
         media_player_timeline_editmode = 0;
@@ -67,34 +69,31 @@ struct WidgetsConfig
 struct WindowConfig
 {
     std::string name;
-    int x,y,w,h;
+    int  x,y;
+    int  w,h;
     bool fullscreen;
-    bool custom;
-    bool decorated;
     std::string monitor;
-    bool show_pattern;
-    glm::vec4 whitebalance;
-    glm::mat4 nodes;
-    float brightness, contrast;
 
-    WindowConfig() : name(APP_TITLE), x(15), y(15), w(1280), h(720),
-        fullscreen(false), custom(false), decorated(true),
-        monitor(""), show_pattern(false), whitebalance(glm::vec4(1.f, 1.f, 1.f, 0.5f)),
-        nodes(glm::zero<glm::mat4>()), brightness(0.f), contrast(0.f)
+    WindowConfig() : name(APP_TITLE), w(1600), h(900),
+        fullscreen(false), monitor("")
     { }
 
 };
 
-struct CanvasConfig
+struct MonitorConfig
 {
-    int x, y, w, h;
+    bool active_output;
+    glm::vec4 whitebalance;
+    glm::mat4 nodes;
+    float brightness, contrast;
+    bool custom_geometry;
 
-    CanvasConfig() : x(0), y(0), w(1), h(1)
-    {
-
-    }
+    MonitorConfig() : active_output(false), whitebalance(glm::vec4(1.f, 1.f, 1.f, 0.5f)),
+        nodes(glm::zero<glm::mat4>()), brightness(0.f), contrast(0.f), custom_geometry(false)
+    { }
 
 };
+
 
 struct ViewConfig
 {
@@ -108,9 +107,7 @@ struct ViewConfig
         default_translation = glm::vec3(0.f);
         ignore_mix = false;
     }
-
 };
-
 
 struct RecordConfig
 {
@@ -286,6 +283,7 @@ struct Application
     std::string name;
     std::string executable;
     uint64_t total_runtime;
+    bool request_factory_reset;
 
     // Global settings Application interface
     float scale;
@@ -303,7 +301,7 @@ struct Application
     int  pannel_playlist_mode;
     bool pannel_session[3];
     bool pannel_always_visible;
-    bool pannel_settings[5];
+    bool pannel_settings[6];
 
     // connection settings
     bool accept_connections;
@@ -345,13 +343,11 @@ struct Application
     // settings controller
     ControllerConfig control;
 
-    // multiple windows handling
-    int num_output_windows;
-    std::vector<WindowConfig> windows;
+    // main window config
+    WindowConfig mainwindow;
 
-    // multiple surfaces handling
-    int num_output_surfaces;
-    std::vector<CanvasConfig> surfaces;
+    // Monitors config
+    std::map<std::string, MonitorConfig> monitors;
 
     // recent files histories
     History recentSessions;
@@ -378,6 +374,7 @@ struct Application
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         total_runtime = 0;
+        request_factory_reset = false;
         scale = 1.f;
         accent_color = 0;
         smooth_transition = true;
@@ -405,6 +402,8 @@ struct Application
         pannel_settings[1] = false;
         pannel_settings[2] = false;
         pannel_settings[3] = false;
+        pannel_settings[4] = false;
+        pannel_settings[5] = false;
         transcode_options[0] = true;
         transcode_options[1] = false;
         transcode_options[2] = false;
@@ -413,12 +412,6 @@ struct Application
         current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
         brush_pressure_mode = 0;
-        num_output_windows = 1;
-        windows = std::vector<WindowConfig>(1+MAX_OUTPUT_WINDOW);
-        windows[0].w = 1600;
-        windows[0].h = 930;
-        num_output_surfaces = 1;
-        surfaces = std::vector<CanvasConfig>(MAX_OUTPUT_CANVAS);
         accept_audio = false;
         dialogPosition = glm::ivec2(-1, -1);
         image_sequence.framerate_mode = 15;
@@ -433,11 +426,10 @@ struct Application
 extern Application application;
 
 // Save and Load store settings in XML file
-void Save(uint64_t runtime = 0, const std::string &filename = "");
-void Load(const std::string &filename = "");
+void terminate(uint64_t runtime = 0, const std::string &filename = "");
+void init(const std::string &filename = "");
 void Lock();
 void Unlock();
-void Check();
 
 }
 

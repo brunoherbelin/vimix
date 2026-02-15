@@ -23,6 +23,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "IconsFontAwesome5.h"
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
@@ -50,6 +51,7 @@
 #include "Source/ScreenCaptureSource.h"
 #include "Source/MultiFileSource.h"
 #include "Source/SourceCallback.h"
+#include "Source/RenderSource.h"
 #include "RenderingManager.h"
 #include "Connection.h"
 #include "ControlManager.h"
@@ -119,8 +121,7 @@ void Navigator::clearNewPannel()
     new_source_preview_.setSource();
     pattern_type = -1;
     generated_type = -1;
-    custom_connected = false;
-    custom_screencapture = false;
+    custom_type = -1;
     sourceSequenceFiles.clear();
     sourceMediaFileCurrent.clear();
     new_media_mode_changed = true;
@@ -518,7 +519,7 @@ void Navigator::Render()
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
             // if a pointer to a Source is provided in tupple
             Source *_s = std::get<2>(tooltip);
-            if (_s != nullptr) {
+            if (_s != nullptr && _s->failed() == Source::FAIL_NONE) {
                 ImGui::BeginTooltip();
                 const ImVec2 image_top = ImGui::GetCursorPos();
                 const ImVec2 thumbnail_size = ImVec2(width_, width_ / _s->frame()->aspectRatio()) * 3.f;
@@ -807,9 +808,18 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset
                 Action::manager().store(sname + std::string(": Deleted"));
             }
             // delete all button
-            if ( Mixer::manager().session()->failedSources().size() > 1 ) {
+            if ( s->failed() && Mixer::manager().session()->failedSources().size() > 1 ) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
-                if ( ImGui::Button( ICON_FA_BACKSPACE " Delete all failed", size) ) {
+                if ( ImGui::Button( ICON_FA_UNDO_ALT " Retry all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
+                    auto failedsources = Mixer::manager().session()->failedSources();
+                    for (auto sit = failedsources.cbegin(); sit != failedsources.cend(); ++sit) {
+                        Source *s = Mixer::manager().findSource( (*sit)->id() );
+                        if (s)
+                            Mixer::manager().recreateSource( s );
+                    }
+                }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if ( ImGui::Button( ICON_FA_BACKSPACE " Delete all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
                     auto failedsources = Mixer::manager().session()->failedSources();
                     for (auto sit = failedsources.cbegin(); sit != failedsources.cend(); ++sit) {
                         Mixer::manager().deleteSource( Mixer::manager().findSource( (*sit)->id() ) );
@@ -1598,23 +1608,20 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             {
                 // 1. Loopback source
                 if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_RENDER, "Display Loopback", false) ) {
-                    custom_connected = false;
-                    custom_screencapture = false;
-                    new_source_preview_.setSource( Mixer::manager().createSourceRender(), "Display Loopback");
+                    custom_type = 0;
+                    new_source_preview_.setSource();
                 }
 
                 // 2. Screen capture (open selector)
                 if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_DEVICE_SCREEN, "Screen capture", false) ) {
-                    custom_connected = false;
+                    custom_type = 1;
                     new_source_preview_.setSource();
-                    custom_screencapture = true;
                 }
 
                 // 3. Network connected SRT
                 if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_SRT, "SRT Broadcast", false) ) {
+                    custom_type = 2;
                     new_source_preview_.setSource();
-                    custom_connected = true;
-                    custom_screencapture = false;
                 }
 
                 // 4. Devices
@@ -1622,8 +1629,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 for (int d = 0; d < Device::manager().numDevices(); ++d){
                     std::string namedev = Device::manager().name(d);
                     if (ImGui::Selectable( namedev.c_str() )) {
-                        custom_connected = false;
-                        custom_screencapture = false;
+                        custom_type = -1;
                         new_source_preview_.setSource( Mixer::manager().createSourceDevice(namedev), namedev);
                     }
                 }
@@ -1632,8 +1638,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 for (int d = 1; d < Connection::manager().numHosts(); ++d){
                     std::string namehost = Connection::manager().info(d).name;
                     if (ImGui::Selectable( namehost.c_str() )) {
-                        custom_connected = false;
-                        custom_screencapture = false;
+                        custom_type = -1;
                         new_source_preview_.setSource( Mixer::manager().createSourceNetwork(namehost), namehost);
                     }
                 }
@@ -1648,6 +1653,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                       ICON_FA_CARET_RIGHT " vimix display loopback\n"
                                       ICON_FA_CARET_RIGHT " screen capture\n"
                                       ICON_FA_CARET_RIGHT " broadcasted with SRT over network.\n"
+                                      "For connected devices;\n"
                                       ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                       ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network.");
             ImGui::SameLine();
@@ -1657,7 +1663,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             }
             ImGui::Spacing();
 
-            if (custom_connected) {
+            if (custom_type==2) {
 
                 bool valid_ = false;
                 static std::string url_;
@@ -1672,7 +1678,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 ImGui::Text("SRT broadcast");
                 ImGui::SameLine();
                 ImGui::SetCursorPosX(pos.x);
-                ImGuiToolkit::HelpToolTip("Set the IP and Port for connecting with Secure Reliable Transport (SRT) protocol to a video broadcaster that is waiting for connections (listener mode).");
+                ImGuiToolkit::HelpToolTip("Set the IP and Port for connecting with Secure Reliable Transport (SRT) "
+                    "protocol to a video broadcaster that is waiting for connections (listener mode).");
 
                 // Entry field for IP
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1740,7 +1747,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 ImGui::PopStyleColor(3);
             }
 
-            if (custom_screencapture) {
+            if (custom_type==1) {
 
                 ImGui::NewLine();
                 ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN);
@@ -1758,6 +1765,42 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     }
                     ImGui::EndCombo();
                 }
+                // indication
+                ImGui::SameLine();
+                ImGui::SetCursorPosX(pos.x);
+                ImGuiToolkit::HelpToolTip("Create a source capturing the screen or other windows.\n"
+                                          "The choice is limited by constraints of the operating system.");
+            }
+
+            if (custom_type==0) {
+
+                ImGui::NewLine();
+                ImGuiToolkit::Icon(ICON_SOURCE_RENDER);
+                ImGui::SameLine();
+                ImGui::Text("Display Loopback");
+
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                if (ImGui::BeginCombo("##LoopbackSelect", "Select mode", ImGuiComboFlags_HeightLarge))
+                {
+                    for (auto item = RenderSource::ProvenanceMethod.cbegin(); item != RenderSource::ProvenanceMethod.cend(); ++item) {
+                        if (ImGuiToolkit::SelectableIcon(std::get<0>(*item),
+                                                        std::get<1>(*item ),
+                                                        std::get<2>(*item).c_str(), false)) {
+                            new_source_preview_.setSource( Mixer::manager().createSourceRender(
+                                std::distance(RenderSource::ProvenanceMethod.cbegin(), item)), "Loopback");
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                // indication
+                ImGui::SameLine();
+                ImGui::SetCursorPosX(pos.x);
+                ImGuiToolkit::HelpToolTip("Create a source capturing the vimix display output (loopback).\n"
+                                          ICON_FA_CARET_RIGHT " Recursive: capture everything shown on the screen, including the loopback source itself.\n"
+                                          ICON_FA_CARET_RIGHT " Entire scene: capture everything shown on the screen, excluding the loopback source.\n"
+                                          ICON_FA_CARET_RIGHT " Local scene: capture the section of the scene behind the loopback source.\n"
+                                          ICON_FA_CARET_RIGHT " Canvas: capture the section of the scene in the selected canvas.");
+
             }
         }
 
@@ -2264,7 +2307,7 @@ void Navigator::RenderMainPannelSession()
                 // export option if possible
                 std::string filename = Mixer::manager().session()->filename();
                 if (filename.size()>0) {
-                    if (ImGui::Selectable( ICON_FA_FILE_DOWNLOAD "     Export", false, 0, size )) {
+                    if (ImGui::Selectable( ICON_FA_FILE_DOWNLOAD "     Export as session", false, 0, size )) {
                         Action::manager().saveas(filename);
                     }
                 }
@@ -2287,10 +2330,10 @@ void Navigator::RenderMainPannelSession()
 
         // right button
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y ));
-        if (ImGuiToolkit::IconButton( ICON_FA_CODE_BRANCH " +", "Save & Keep version"))
+        if (ImGuiToolkit::IconButton( ICON_FA_CODE_BRANCH "+", "Save & Keep version"))
             UserInterface::manager().saveOrSaveAs(true);
         if (!snapshots.empty()) {
-            ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + ImGui::GetFrameHeight()));
+            ImGui::SameLine();
             if (ImGuiToolkit::IconButton( 12, 14, "Clear list"))
                 Action::manager().clearSnapshots();
         }
@@ -2414,6 +2457,17 @@ void Navigator::RenderMainPannelSession()
         // toggle button for shhow in view
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
         ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view, "Show action View");
+    }
+    else {
+        if ( Action::manager().max() > 1 )  {
+            ImVec2 pos_tmp = ImGui::GetCursorPos();
+            ImVec2 space_size = ImGui::CalcTextSize(" Undo history ", NULL);
+            space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space;
+            ImGui::SetCursorPos( pos_tmp + space_size );
+            ImGui::Text("( %u )", Action::manager().max() - 1);
+            ImGui::SetCursorPos( pos_tmp );
+        }
     }
 
     ImGui::PopStyleColor(1);
@@ -2933,43 +2987,64 @@ void Navigator::RenderMainPannelSettings()
     //
     ImVec2 pos = ImGui::GetCursorPos();
     ImGui::SetCursorPos(ImVec2(pannel_width_ IMGUI_RIGHT_ALIGN, pos.y - 1.6 * ImGui::GetTextLineHeight()));
-    if ( ImGuiToolkit::IconButton(ICON_FA_SAVE,"Export settings\nYou can then "
-                                  "launch vimix with the option "
-                                  "'--settings filename.xml' "
-                                  "to restore output windows and configuration.") ){
-        // launch file dialog to select file to save settings
-        if (UserInterface::manager().settingsexportdialog)
-            UserInterface::manager().settingsexportdialog->open();
+    if (ImGui::BeginMenu("Config")) {
+        UserInterface::manager().showMenuConfig();
+        ImGui::EndMenu();
     }
     ImGui::SetCursorPos(pos);
 
     //
-    // Appearance
+    // Appearance 
     //
-    int v = Settings::application.accent_color;
-    if (ImGui::RadioButton("##Color", &v, v)){
-        Settings::application.accent_color = (v+1)%3;
-        ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
-        // ask Views to update
-        View::need_deep_update_++;
-    }
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip("Change accent color");
-    ImGui::SameLine();
-    ImGui::SetCursorPosX(align_x);
-    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    if ( ImGui::InputFloat("##Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
-        Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 5.f);
-        ImGui::GetIO().FontGlobalScale = Settings::application.scale;
-    }
-    ImGui::SameLine(0, IMGUI_SAME_LINE);
-    if (ImGuiToolkit::TextButton("Scale")) {
-        Settings::application.scale = 1.f;
-        ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
+    Settings::application.pannel_settings[5] = ImGui::CollapsingHeader("Appearance",
+                                                                       Settings::application.pannel_settings[5] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    ImGui::PopStyleColor(1);
+    if (Settings::application.pannel_settings[5]){
+        //
+        // Appearance
+        //
+        bool changed = false;
+        int color = Settings::application.accent_color;
+
+        // colored button to select accent color
+        ImGui::SetCursorPosX(align_x);
+        ImGui::PushStyleColor(ImGuiCol_Button, g.Style.Colors[ImGuiCol_Header]);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, g.Style.Colors[ImGuiCol_HeaderHovered]);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, g.Style.Colors[ImGuiCol_HeaderActive]);
+        if (ImGui::Button("    ", ImVec2(pannel_width_ -align_x - g.Style.ItemSpacing.x + IMGUI_RIGHT_ALIGN, 0)) ) {
+            color = (color+1)%3;
+            changed = true;
+        }
+        ImGui::PopStyleColor(3);
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Color")) {
+            color = 0;
+            changed = true;
+        }
+        // change accent color; outside of if(Button) to escape Push/Pop mismatch
+        if (changed) {
+            Settings::application.accent_color = color;
+            ImGuiToolkit::SetAccentColor(static_cast<ImGuiToolkit::accent_color>(Settings::application.accent_color));
+            // ask Views to update
+            View::need_deep_update_++;
+        }
+        
+        // Scale of interface
+        ImGui::SetCursorPosX(align_x);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if ( ImGui::InputFloat("##Scale", &Settings::application.scale, 0.1f, 0.1f, "%.1f")) {
+            Settings::application.scale = CLAMP(Settings::application.scale, 0.5f, 5.f);
+            ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+        }
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Scale")) {
+            Settings::application.scale = 1.f;
+            ImGui::GetIO().FontGlobalScale = Settings::application.scale;
+        }
     }
 
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
-
     //
     // Recording preferences
     //

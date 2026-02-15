@@ -97,6 +97,8 @@ class Source : public SourceCore
     friend class LayerView;
     friend class TextureView;
     friend class TransitionView;
+    friend class DisplaysView;
+    friend class Canvas;
 
 public:
     // create a source and add it to the list

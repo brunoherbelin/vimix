@@ -1122,9 +1122,13 @@ void Timeline::fillArrayFromFlags(float *array, size_t array_size)
             size_t e = ( ( (*it).begin + step_ + FLAG_MARGIN ) * array_size ) / d ;
 
             // fill with 1 where there is a flag
+            if (e >= 2)
+                flagsArray_[e-2] = 1.f;
             flagsArray_[e-1] = 1.f;
             flagsArray_[ e ] = 1.f;
             flagsArray_[e+1] = 1.f;
+            if (e < array_size - 2)
+                flagsArray_[e+2] = 1.f;
         }
 
         // done !

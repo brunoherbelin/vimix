@@ -17,7 +17,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <glib.h>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/fwd.hpp>
+#include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/matrix.hpp>
 
 #include "defines.h"
 #include "Log.h"
@@ -26,15 +31,21 @@
 #include "Resource.h"
 #include "Visitor/Visitor.h"
 #include "Session.h"
+#include "Visitor/DrawVisitor.h"
+#include "Canvas.h"
+#include "CanvasSource.h"
 
 #include "RenderSource.h"
 
 std::vector< std::tuple<int, int, std::string> > RenderSource::ProvenanceMethod = {
-    { 16, 12, "Recursive" }, { 15, 12, "Non-recursive"}
+    { 16, 12, "Recursive" }, 
+    { 17, 5, "Entire scene", }, 
+    { 17, 12, "Local scene" },
+    { 2, 10, "Canvas" }
 };
 
-RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr), rendered_surface_(nullptr),
-    paused_(false), reset_(true), provenance_(RENDER_TEXTURE)
+RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr),
+    paused_(false), reset_(true), provenance_(RENDER_TEXTURE), canvas_index_(0)
 {
     // set symbol
     symbol_ = new Symbol(Symbol::RENDER, glm::vec3(0.75f, 0.75f, 0.01f));
@@ -78,15 +89,13 @@ void RenderSource::init()
 
         FrameBuffer *fb = session_->frame();
 
-        // get the texture index from framebuffer of view for RENDER_TEXTURE mode
-//        rendered_surface_ = new Surface;
-//        rendered_surface_->setTextureIndex( fb->texture() );
-
         // use same flags than session frame, without multisampling
         FrameBuffer::FrameBufferFlags flag = fb->flags();
         flag &= ~FrameBuffer::FrameBuffer_multisampling;
 
         // create the frame buffer displayed by the source (all modes)
+        if (rendered_output_ != nullptr)
+            delete rendered_output_;
         rendered_output_ = new FrameBuffer( fb->resolution(), flag );
 
         // needs a first initialization (to get texture)
@@ -116,23 +125,81 @@ void RenderSource::update(float dt)
     Source::update(dt);
 
     if (session_ && session_->ready() && rendered_output_) {
+        
         if ((active_ && !paused_) || reset_) {
-            if (provenance_ == RENDER_EXCLUSIVE || reset_ ) {
-                // temporarily exclude this RenderSource from the rendering
-                groups_[View::RENDERING]->visible_ = false;
-                // simulate a rendering of the session in a framebuffer
-                glm::mat4 P = glm::scale(projection,
+
+            // simulate a rendering of the session in a framebuffer
+            if (provenance_ >= RENDER_PROJECTION || reset_ ) {
+
+                if (provenance_ == RENDER_CANVAS) {
+                    
+                    CanvasSurface *canvas = Canvas::manager().at(canvas_index_);
+
+                    if (canvas != nullptr && canvas->frame()) {
+                        canvas->frame()->blit(rendered_output_);
+                    }
+                }
+                else if (provenance_ == RENDER_PROJECTION_SOURCE) {
+
+                    // temporarily set the scene root transform to the inverse of the source transform
+                    glm::vec3 rotation = groups_[View::RENDERING]->rotation_;
+                    glm::vec3 scale = groups_[View::RENDERING]->scale_ ;
+                    scale.z = 1.f;
+                    glm::vec3 translation =  groups_[View::RENDERING]->translation_;
+                    translation.z = 0.f;
+                    session_->render_.scene.root()->transform_ = glm::inverse( GlmToolkit::transform(translation, rotation, scale) );
+
+                    // add all sources below this one in the scene graph
+                    std::vector<Node *> surfaces;
+                    float threshold_z = groups_[View::RENDERING]->translation_.z;   
+                    if (threshold_z < 0.f)
+                        threshold_z = LAYER_FOREGROUND;
+                    for (auto sit = session_->begin(); sit != session_->end(); ++sit) {
+                        if ((*sit)->group(View::RENDERING)->translation_.z < threshold_z)
+                            surfaces.push_back((*sit)->group(View::RENDERING));
+                    }
+
+                    // change projection to account for CROP (inverse transform)
+                    glm::vec3 _c_s = glm::vec3(groups_[View::GEOMETRY]->crop_[0] - groups_[View::GEOMETRY]->crop_[1],
+                            groups_[View::GEOMETRY]->crop_[2] - groups_[View::GEOMETRY]->crop_[3],
+                            2.f) * 0.5f ;
+                    glm::vec3 _t((_c_s.x + groups_[View::GEOMETRY]->crop_[1]),
+                                 (_c_s.y + groups_[View::GEOMETRY]->crop_[3]), 0.f);
+                    
+                    glm::mat4 P = glm::scale(glm::translate(projection, _t), _c_s * glm::vec3(-1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
+
+                    // access to private RenderView in the session to call draw on selected surfaces
+                    rendered_output_->begin();
+                    DrawVisitor draw_surfaces(surfaces, P);
+                    session_->render_.scene.accept(draw_surfaces);
+                    rendered_output_->end();
+
+                    // restore scene root transform
+                    session_->render_.scene.root()->transform_ = glm::identity<glm::mat4>();
+                }
+                // RENDER_PROJECTION or reset
+                else {
+
+                    // temporarily exclude this RenderSource from the rendering
+                    groups_[View::RENDERING]->visible_ = false;
+
+                    // change projection to account for aspect ratio
+                    glm::mat4 P = glm::scale(projection,
                                          glm::vec3(1.f / rendered_output_->aspectRatio(), 1.f, 1.f));
-                rendered_output_->begin();
-                // access to private RenderView in the session to call draw on the root of the scene
-                session_->render_.scene.root()->draw(glm::identity<glm::mat4>(), P);
-                rendered_output_->end();
-                // restore this RenderSource visibility
-                groups_[View::RENDERING]->visible_ = true;
+
+                    // access to private RenderView in the session to call draw on the root of the scene
+                    rendered_output_->begin();
+                    session_->render_.scene.root()->draw(glm::identity<glm::mat4>(), P);
+                    rendered_output_->end();
+
+                    // restore this RenderSource visibility
+                    groups_[View::RENDERING]->visible_ = true;
+                }
                 // done reset
                 reset_ = false;
             }
-            // blit session frame to output
+            // RENDER_TEXTURE
+            // blit session frame to output (fastest)
             else if (!session_->frame()->blit(rendered_output_))
             {
                 // if failed (which should not happen),

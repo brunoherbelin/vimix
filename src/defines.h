@@ -9,7 +9,7 @@
 #define MAX_RECENT_HISTORY 20
 #define MAX_SESSION_LEVEL 3
 #define MAX_OUTPUT_WINDOW 3
-#define MAX_OUTPUT_CANVAS 8
+#define MAX_OUTPUT_CANVAS 12
 
 #define VIMIX_GL_VERSION "opengl3"
 #define VIMIX_GLSL_VERSION "#version 150"
@@ -48,6 +48,13 @@
 #define SETTINGS_FILE_PATTERN \
 { \
         "*.xml" \
+}
+#define APP_CANVAS "config.vic"
+#define CONFIG_FILE_TYPE "vimix configuration (VIC)"
+#define CONFIG_FILE_EXT "vic"
+#define CONFIG_FILE_PATTERN \
+{ \
+        "*.vic" \
 }
 #define MINI(a, b)  (((a) < (b)) ? (a) : (b))
 #define MAXI(a, b)  (((a) > (b)) ? (a) : (b))
@@ -100,7 +107,7 @@
 #define TRANSITION_MIN_DURATION 0.2f
 #define TRANSITION_MAX_DURATION 10.f
 #define DISPLAYS_UNIT 0.001f
-#define DISPLAYS_DEFAULT_SCALE 1.4f
+#define DISPLAYS_DEFAULT_SCALE 1.2f
 #define DISPLAYS_MIN_SCALE 0.4f
 #define DISPLAYS_MAX_SCALE 7.0f
 #define ARROWS_MOVEMENT_FACTOR 0.1f
@@ -121,7 +128,7 @@
 #define IMGUI_COLOR_BROADCAST 1.0, 0.9, 0.3
 #define IMGUI_NOTIFICATION_DURATION 2.5f
 #define IMGUI_TOOLTIP_TIMEOUT 80
-#define IMGUI_COLOR_FAILED 1.0, 0.3, 0.2
+#define IMGUI_COLOR_FAILED 1.0, 0.4, 0.3
 #define PLOT_CIRCLE_SEGMENTS 64
 
 #define COLOR_BGROUND 0.2f, 0.2f, 0.2f
@@ -158,7 +165,7 @@
 #define IMGUI_TITLE_HELP ICON_FA_LIFE_RING "  Help"
 #define IMGUI_TITLE_TOOLBOX ICON_FA_HAMSA "  Guru Toolbox"
 #define IMGUI_TITLE_SHADEREDITOR ICON_FA_CODE "  Shader Editor"
-#define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Display"
+#define IMGUI_TITLE_PREVIEW ICON_FA_DESKTOP "  Mix"
 
 #ifdef APPLE
 #define CTRL_MOD "Cmd+"
@@ -211,7 +218,7 @@
 #define SHORTCUT_CAPTURE_PLAYER "F10"
 #define MENU_CAPTUREGUI       ICON_FA_CAMERA "  Screenshot vimix"
 #define SHORTCUT_CAPTURE_GUI  "F9"
-#define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable"
+#define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable outputs"
 #define SHORTCUT_OUTPUTDISABLE "F12"
 #define ICON_PREVIEW          4, 15
 #define MENU_PREVIEW          "Preview"
@@ -229,9 +236,9 @@
 #define MENU_PLAYER           ICON_FA_PLAY_CIRCLE "  Player "
 #define TOOLTIP_PLAYER        "Player "
 #define SHORTCUT_PLAYER       CTRL_MOD "P"
-#define MENU_OUTPUT           ICON_FA_DESKTOP " Display "
-#define TOOLTIP_OUTPUT        "Display "
-#define SHORTCUT_OUTPUT       CTRL_MOD "D"
+#define MENU_OUTPUT           ICON_FA_DESKTOP "  Mix "
+#define TOOLTIP_OUTPUT        "Mix "
+#define SHORTCUT_OUTPUT       CTRL_MOD "M"
 #define MENU_TIMER            ICON_FA_CLOCK "  Timer "
 #define TOOLTIP_TIMER         "Timer "
 #define SHORTCUT_TIMER        CTRL_MOD "T"

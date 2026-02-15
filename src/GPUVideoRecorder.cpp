@@ -20,6 +20,7 @@
 #include "gst/gl/gstglformat.h"
 
 #include <glad/glad.h>
+#include <glib.h>
 #include <gst/gl/gl.h>
 #include <gst/video/video.h>
 #include <gst/gstcaps.h>
@@ -82,12 +83,14 @@ bool GPUVideoRecorder::isEncoderAvailable(Profile profile)
 {
     if (!GstToolkit::has_feature("glcolorconvert"))
         return false;
+    if (!GstToolkit::has_feature("gltransformation"))
+        return false;
     return GstToolkit::has_feature(profile_encoder[profile]);
 }
 
-std::string GPUVideoRecorder::buildPipeline(Profile profile)
+std::string GPUVideoRecorder::buildPipeline(Profile profile, GstCaps *write_caps)
 {
-    std::string pipeline = "appsrc name=src ! glcolorconvert name=glclcvt ! ";
+    std::string pipeline = "appsrc name=src ! glcolorconvert name=glclcvt ! gltransformation ! capsfilter name=capf ! ";
 
     // Build encoder-specific pipeline
     switch (profile) {
@@ -139,8 +142,7 @@ std::string GPUVideoRecorder::buildPipeline(Profile profile)
             pipeline += "identity name=audiosync ! ";
             pipeline += "avenc_aac ! aacparse ! queue ! ";
 
-            Log::Info("GPU Video Recording with audio (%s)", Audio::manager().pipeline(current_audio).c_str());
-
+            Log::Info("GPU Video Recording : audio (%s)", Audio::manager().pipeline(current_audio).c_str());
         }
     }
 
@@ -164,11 +166,11 @@ bool GPUVideoRecorder::hasProfile(int i)
     return false;
 }
 
-std::string GPUVideoRecorder::init(GstCaps *caps)
+std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
 {
     // ignore
-    if (caps == nullptr){
-        return ("GPU Video Recording: Invalid Caps");
+    if (read_caps == nullptr){
+        return ("GPU Video Recording : Invalid Caps");
     }
 
     // set profile from settings
@@ -185,29 +187,66 @@ std::string GPUVideoRecorder::init(GstCaps *caps)
 
             // test if hardware encoder is available
             if (!isEncoderAvailable(profile_)) {
-                return("GPU Video Recording: No GPU Encoder available (nvdec or vaapi).");
+                return("GPU Video Recording : No GPU Encoder available (nvdec or vaapi).");
             }
         }
     } 
     else {
-        return "GPU Video Recording: profile not available for GPU encoder (accepts only H264 and H265).";
+        return "GPU Video Recording : profile not available for GPU encoder (accepts only H264 and H265).";
     }
 
     // Validate GL context sharing is set up
     if (!Rendering::manager().global_gl_context || !Rendering::manager().global_display) {
-        return "GPU Video Recording: OpenGL context sharing not initialized";
+        return "GPU Video Recording : OpenGL context sharing not initialized";
     }
 
+    // keep frame duration
+    gint fps = MAXI(framerate_preset[Settings::application.record.framerate_mode], 15);
+    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, fps);
+
+    // Check and store caps dimensions
+    GstStructure *structure = gst_caps_get_structure(read_caps, 0);
+    gst_structure_get_int(structure, "width", &width_);
+    gst_structure_get_int(structure, "height", &height_);    
+    if (width_ <= 0 || height_ <= 0) {
+        return "GPU Video Recording : Invalid video dimensions in caps";
+    }
+    // specify recorder framerate in the given caps
+    GstCaps *tmp = gst_caps_copy( read_caps );
+    GValue v = G_VALUE_INIT;
+    g_value_init (&v, GST_TYPE_FRACTION);
+    gst_value_set_fraction (&v, fps, 1);
+    gst_caps_set_value(tmp, "framerate", &v);
+    g_value_unset (&v);
+    
+    // Create GLMemory caps from  caps
+    read_caps_ = gst_caps_copy( tmp );
+    GstCapsFeatures *features = gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr);
+    gst_caps_set_features(read_caps_, 0, features);
+    
+    write_caps_ = gst_caps_copy( write_caps );
+    features = gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr);
+    gst_caps_set_features(write_caps_, 0, features);
+    
     // Build pipeline
-    std::string pipeline_desc = buildPipeline(profile_);
+    std::string pipeline_desc = buildPipeline(profile_, write_caps);
 
     // Parse pipeline
     GError *error = nullptr;
     pipeline_ = gst_parse_launch(pipeline_desc.c_str(), &error);
     if (error != nullptr) {
-        std::string msg = std::string("GPU Video Recording: Could not construct pipeline ") + pipeline_desc + "\n" + std::string(error->message);
+        std::string msg = std::string("GPU Video Recording : Could not construct pipeline ") + pipeline_desc + "\n" + std::string(error->message);
         g_clear_error(&error);
         return msg;
+    }
+    
+    // setup video capsfilter for sink
+    GstElement *capsfilter = gst_bin_get_by_name (GST_BIN (pipeline_), "capf");
+    if (capsfilter) {
+        g_object_set (G_OBJECT (capsfilter), "caps", write_caps_, NULL);
+        gst_object_unref (capsfilter);
+    } else {
+        return "GPU Video Recording : Failed to find capsfilter element";
     }
 
     // Generate filename
@@ -222,13 +261,13 @@ std::string GPUVideoRecorder::init(GstCaps *caps)
         g_object_set(G_OBJECT(sink), "location", filename_.c_str(), "sync", FALSE, nullptr);
         gst_object_unref(sink);
     } else {
-        return "GPU Video Recording: Failed to find filesink element";
+        return "GPU Video Recording : Failed to find filesink element";
     }
 
     // Configure appsrc
     src_ = GST_APP_SRC(gst_bin_get_by_name(GST_BIN(pipeline_), "src"));
     if (!src_) {
-        return "GPU Video Recording: Failed to find appsrc element";
+        return "GPU Video Recording : Failed to find appsrc element";
     }
 
     // Set appsrc properties
@@ -242,33 +281,8 @@ std::string GPUVideoRecorder::init(GstCaps *caps)
     gst_app_src_set_latency(src_, -1, 0);
     gst_app_src_set_max_bytes(src_, 0);  // No buffering limit
 
-    // Check and store caps dimensions
-    GstStructure *structure = gst_caps_get_structure(caps, 0);
-    gst_structure_get_int(structure, "width", &width_);
-    gst_structure_get_int(structure, "height", &height_);    
-    if (width_ <= 0 || height_ <= 0) {
-        return "GPU Video Recording: Invalid video dimensions in caps";
-    }
-
-    // keep frame duration
-    gint fps = MAXI(framerate_preset[Settings::application.record.framerate_mode], 15);
-    frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, fps);
-
-    // specify recorder framerate in the given caps
-    GstCaps *tmp = gst_caps_copy( caps );
-    GValue v = G_VALUE_INIT;
-    g_value_init (&v, GST_TYPE_FRACTION);
-    gst_value_set_fraction (&v, fps, 1);
-    gst_caps_set_value(tmp, "framerate", &v);
-    g_value_unset (&v);
-    
-    // Create GLMemory caps from input caps
-    caps_ = gst_caps_copy( tmp );
-    GstCapsFeatures *features = gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr);
-    gst_caps_set_features(caps_, 0, features);
-
     // instruct src to use the caps
-    gst_app_src_set_caps(src_, caps_);
+    gst_app_src_set_caps(src_, read_caps_);
     gst_caps_unref (tmp);
 
     // Set callbacks
@@ -286,11 +300,8 @@ std::string GPUVideoRecorder::init(GstCaps *caps)
     // Start pipeline
     GstStateChangeReturn ret = gst_element_set_state(pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        return "GPU Video Recording: Failed to start pipeline";
+        return "GPU Video Recording : Failed to start pipeline";
     }
-
-    // Get GStreamer's GL context (it will be created when pipeline starts)
-    // We'll get it on first frame when the context is ready
 
     // Initialize timer
     timer_ = gst_system_clock_obtain();
@@ -303,7 +314,7 @@ std::string GPUVideoRecorder::init(GstCaps *caps)
     accept_buffer_ = false;
     finished_ = false;
 
-    Log::Info("GPU Video Recording started: %s (%s)", filename_.c_str(), profile_name[profile_]);
+    Log::Info("GPU Video Recording : started %s (%s)", filename_.c_str(), profile_name[profile_]);
 
     return "";
 }
@@ -318,7 +329,7 @@ void GPUVideoRecorder::perform_texture_transfer(GstGLContext *context, gpointer 
     // Get the GLMemory from the buffer
     GstMemory *mem = gst_buffer_peek_memory(buffer, 0);
     if (!gst_is_gl_memory(mem)) {
-        Log::Warning("GPU Video Recording: Buffer does not contain GLMemory");
+        Log::Warning("GPU Video Recording : Buffer does not contain GLMemory");
         return;
     }
 
@@ -355,32 +366,32 @@ void GPUVideoRecorder::perform_texture_transfer(GstGLContext *context, gpointer 
     // Check for errors
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) {
-        Log::Warning("GPU Video Recording: OpenGL error during texture transfer: 0x%x", err);
+        Log::Warning("GPU Video Recording : OpenGL error during texture transfer: 0x%x", err);
     }
 }
 
-void GPUVideoRecorder::addFrame(guint texture_id, GstCaps *caps)
+void GPUVideoRecorder::addFrame(guint texture_id, GstCaps *read_caps, GstCaps *write_caps)
 {
-    if (caps == nullptr)
+    if (read_caps == nullptr)
         return;
 
     if (!initialized_) {
         // init on first frame
-        std::string msg = init(caps);
+        std::string msg = init(read_caps, write_caps);
         if (!msg.empty()) {
             finished_ = true;
-            Log::Warning("GPU Video Recording: initialization failed: %s", msg.c_str());
+            Log::Warning("GPU Video Recording : initialization failed: %s", msg.c_str());
             return;
         }
     }
 
     // stop if an incompatilble caps given after initialization
     gint width, height;
-    GstStructure *structure = gst_caps_get_structure(caps, 0);
+    GstStructure *structure = gst_caps_get_structure(read_caps, 0);
     gst_structure_get_int(structure, "width", &width);
     gst_structure_get_int(structure, "height", &height);    
     if (width_ != width || height_ != height) {
-        Log::Warning("GPU Video Recording: interrupted because the resolution changed");
+        Log::Warning("GPU Video Recording : interrupted because the resolution changed");
         stop();
         return;
     }
@@ -401,10 +412,10 @@ void GPUVideoRecorder::addFrame(guint texture_id, GstCaps *caps)
         // compute duration of the pausing time and add to total pause duration
         pause_duration_ += gst_clock_get_time(timer_) - timer_pauseframe_;
 
-        // // sync audio packets
-        // GstElement *audiosync = GST_ELEMENT_CAST(gst_bin_get_by_name(GST_BIN(pipeline_), "audiosync"));
-        // if (audiosync)
-        //     g_object_set(G_OBJECT(audiosync), "ts-offset", -timer_pauseframe_, NULL);
+        // sync audio packets
+        GstElement *audiosync = GST_ELEMENT_CAST(gst_bin_get_by_name(GST_BIN(pipeline_), "audiosync"));
+        if (audiosync)
+            g_object_set(G_OBJECT(audiosync), "ts-offset", -timer_pauseframe_, NULL);
 
         // reset pause frame time
         timer_pauseframe_ = 0;
@@ -428,7 +439,7 @@ void GPUVideoRecorder::addFrame(guint texture_id, GstCaps *caps)
         }
 
         if (!gl_context_) {
-            Log::Warning("GPU Video Recording: Could not get GL context from pipeline");
+            Log::Warning("GPU Video Recording : Could not get GL context from pipeline");
             return;
         }
     }
@@ -436,14 +447,14 @@ void GPUVideoRecorder::addFrame(guint texture_id, GstCaps *caps)
     // Allocate GLMemory buffer
     GstGLMemoryAllocator *allocator = gst_gl_memory_allocator_get_default(gl_context_);
     if (!allocator) {
-        Log::Warning("GPU Video Recording: Failed to get GL memory allocator");
+        Log::Warning("GPU Video Recording : Failed to get GL memory allocator");
         return;
     }
 
     // Extract video info from caps
     GstVideoInfo v_info;
-    if (!gst_video_info_from_caps(&v_info, caps_)) {
-        Log::Warning("GPU Video Recording: Failed to parse video info from caps");
+    if (!gst_video_info_from_caps(&v_info, read_caps)) {
+        Log::Warning("GPU Video Recording : Failed to parse video info from caps");
         return;
     }
 
@@ -467,7 +478,7 @@ void GPUVideoRecorder::addFrame(guint texture_id, GstCaps *caps)
     GstMemory *mem = (GstMemory *)gl_mem;
 
     if (!mem) {
-        Log::Warning("GPU Video Recording: Failed to allocate GL memory");
+        Log::Warning("GPU Video Recording : Failed to allocate GL memory");
         return;
     }
 
@@ -491,7 +502,7 @@ void GPUVideoRecorder::addFrame(guint texture_id, GstCaps *caps)
     // gst_buffer_ref(buffer);
     GstFlowReturn ret = gst_app_src_push_buffer(src_, buffer);
     if (ret != GST_FLOW_OK) {
-        Log::Warning("GPU Video Recording: Failed to push buffer: %s", gst_flow_get_name(ret));
+        Log::Warning("GPU Video Recording : Failed to push buffer: %s", gst_flow_get_name(ret));
         if (ret == GST_FLOW_EOS || ret == GST_FLOW_FLUSHING) {
             active_ = false;
         }
@@ -513,7 +524,7 @@ void GPUVideoRecorder::stop()
         endofstream_ = true;
     }
 
-    Log::Info("GPU Video Recording: %llu frames recorded", (unsigned long long)frame_count_);
+    Log::Info("GPU Video Recording : %llu frames recorded", (unsigned long long)frame_count_);
 }
 
 uint64_t GPUVideoRecorder::duration() const
@@ -528,7 +539,7 @@ void GPUVideoRecorder::terminate()
     MediaInfo media = MediaPlayer::UriDiscoverer(uri);
     if (media.valid && !media.isimage) {
         Settings::application.recentRecordings.push(filename_);
-        Log::Notify("GPU Video Recording %s is ready.", filename_.c_str());
+        Log::Notify("GPU Video Recording : %s is ready.", filename_.c_str());
     }
     else
         Settings::application.recentRecordings.remove(filename_);
@@ -601,7 +612,7 @@ GstBusSyncReply GPUVideoRecorder::bus_sync_handler(GstBus *, GstMessage *msg, gp
     if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
         GError *error;
         gst_message_parse_error(msg, &error, nullptr);
-        Log::Warning("GPU Video Recording Error: %s", error->message);
+        Log::Warning("GPU Video Recording : Error %s", error->message);
         g_error_free(error);
 
         if (grabber)
@@ -612,7 +623,6 @@ GstBusSyncReply GPUVideoRecorder::bus_sync_handler(GstBus *, GstMessage *msg, gp
     if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_EOS) {
         if (grabber) {
             grabber->finished_ = true;
-            Log::Notify("GPU Video Recording ready: %s", grabber->filename_.c_str());
         }
     }
 

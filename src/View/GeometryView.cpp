@@ -17,6 +17,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+
+#include "IconsFontAwesome5.h"
+#include "imgui.h"
+
+#include <algorithm>
+#include <cstddef>
+#include <glib.h>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -30,8 +37,10 @@
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtx/component_wise.hpp>
 
+#include "Toolkit/BaseToolkit.h"
 #include "Toolkit/ImGuiToolkit.h"
 
+#include "View/View.h"
 #include "Mixer.h"
 #include "defines.h"
 #include "Source/Source.h"
@@ -43,19 +52,17 @@
 #include "Visitor/BoundingBoxVisitor.h"
 #include "ActionManager.h"
 #include "MousePointer.h"
+#include "Scene/Scene.h"
+#include "Source/CanvasSource.h"
+#include "Source/SourceList.h"
+#include "Canvas.h"
 
 #include "GeometryView.h"
-
+#include "GeometryHandleManipulation.h"
 
 const char* GeometryView::editor_icons[2]  = { ICON_FA_OBJECT_UNGROUP, ICON_FA_BORDER_ALL };
 const char *GeometryView::editor_names[2] = {"Edit sources", " Edit canvas"};
 
-
-void Canvas::setCurrent(bool on)
-{
-    root_->visible_ = true;
-    frames_->setActive( on ? 1 : 0);
-}
 
 GeometryView::GeometryView() : View(GEOMETRY)
 {
@@ -68,56 +75,15 @@ GeometryView::GeometryView() : View(GEOMETRY)
         restoreSettings();
     Settings::application.views[mode_].name = "Geometry";
 
-    // Geometry Scene foreground
+    // Geometry Scene background
     output_surface_ = new Surface;
-    output_surface_->visible_ = false;
-    scene.fg()->attach(output_surface_);
+    output_surface_->visible_ = true;
+    output_surface_->shader()->color = glm::vec4(0.8f, 0.8f, 0.8f, 0.5f);
+    scene.bg()->attach(output_surface_);
 
-    // Geometry surfaces
-    canvas_ = std::vector<Canvas>(MAX_OUTPUT_CANVAS);
-    for (auto &c : canvas_) {
-        // root node
-        c.root_ = new Group;
-        scene.fg()->attach(c.root_);
-        c.root_->visible_ = false;
-
-        // attach all modes of frame to the switch node
-        c.frames_ = new Switch;
-        c.root_->attach(c.frames_);
-
-        // frames_[0] : not current
-        Frame *frame = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
-        frame->color = glm::vec4(COLOR_FRAME, 0.95f);
-        c.frames_->attach(frame);
-
-        // frames_[1] : current
-        c.overlays_ = new Group;
-        c.frames_->attach(c.overlays_);
-
-        frame = new Frame(Frame::SHARP, Frame::LARGE, Frame::GLOW); // current
-        frame->color = glm::vec4(COLOR_FRAME, 1.f);
-        c.overlays_->attach(frame);
-
-        c.menu_ = new Handles(Handles::MENU);
-        c.menu_->color = glm::vec4(COLOR_FRAME, 1.f);
-        c.overlays_->attach(c.menu_);
-
-        c.handles_[Handles::RESIZE] = new Handles(Handles::RESIZE);
-        c.handles_[Handles::RESIZE]->color = glm::vec4(COLOR_FRAME, 1.f);
-        c.overlays_->attach(c.handles_[Handles::RESIZE]);
-        c.handles_[Handles::RESIZE_H] = new Handles(Handles::RESIZE_H);
-        c.handles_[Handles::RESIZE_H]->color = glm::vec4(COLOR_FRAME, 1.f);
-        c.overlays_->attach(c.handles_[Handles::RESIZE_H]);
-        c.handles_[Handles::RESIZE_V] = new Handles(Handles::RESIZE_V);
-        c.handles_[Handles::RESIZE_V]->color = glm::vec4(COLOR_FRAME, 1.f);
-        c.overlays_->attach(c.handles_[Handles::RESIZE_V]);
-    }
-
-    // first surface is always visible
-    canvas_current_ = 0;
-    canvas_[canvas_current_].setCurrent(false);
-    canvas_stored_status_ = new Group;
-
+    output_frame_ = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    output_frame_->color = glm::vec4( 0.f, 0.f, 0.f, 0.4f );
+    scene.bg()->attach(output_frame_);
 
     // User interface foreground
     //
@@ -183,12 +149,24 @@ GeometryView::GeometryView() : View(GEOMETRY)
     overlay_scaling_->scale_ = glm::vec3(0.3f, 0.3f, 1.f);
     scene.fg()->attach(overlay_scaling_);
     overlay_scaling_->visible_ = false;
-
+    // frame to show the full image size for CROP
     Frame *border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
     border->color = glm::vec4( COLOR_HIGHLIGHT_SOURCE, 0.2f );
     overlay_crop_ = border;
     scene.fg()->attach(overlay_crop_);
     overlay_crop_->visible_ = false;
+
+    // same to show the full image size for CROP CANVAS
+    border = new Frame(Frame::SHARP, Frame::THIN, Frame::NONE);
+    border->color = glm::vec4( COLOR_FRAME_LIGHT, 0.3f );
+    canvas_overlay_crop_ = border;
+    scene.fg()->attach(canvas_overlay_crop_);
+    canvas_overlay_crop_->visible_ = false;
+    // attach canvases to Geometry Views workspace
+    canvas_scene_ = new Group;
+    scene.ws()->attach( canvas_scene_ );
+    // no current canvas
+    current_canvas_ = nullptr;
 
     // will be init later
     overlay_selection_scale_ = nullptr;
@@ -203,6 +181,22 @@ GeometryView::GeometryView() : View(GEOMETRY)
     rotation_grid_->root()->visible_ = false;
     if (grid) delete grid;
     grid = translation_grid_;
+
+}
+
+void GeometryView::attach(Source *canvas)
+{
+    // attach to scene 
+    canvas_scene_->attach( canvas->groups_[View::GEOMETRY] );
+    canvas_scene_->attach( canvas->frames_[View::GEOMETRY] );
+}
+
+void GeometryView::detach(Source *canvas)
+{
+    // detach from scene
+    canvas_scene_->detach( canvas->groups_[View::GEOMETRY] );
+    canvas_scene_->detach( canvas->frames_[View::GEOMETRY] );
+
 }
 
 void GeometryView::update(float dt)
@@ -258,11 +252,18 @@ void GeometryView::resize ( int scale )
     z *= z;
     z *= GEOMETRY_MAX_SCALE - GEOMETRY_MIN_SCALE;
     z += GEOMETRY_MIN_SCALE;
+
+    // centered zoom : if zooming, adjust translation to ratio of scaling
+    if (scale != size())
+        scene.root()->translation_ *= z / scene.root()->scale_.x;
+
+    // apply new scale
     scene.root()->scale_.x = z;
     scene.root()->scale_.y = z;
 
     // Clamp translation to acceptable area
     glm::vec3 border(2.f * Mixer::manager().session()->frame()->aspectRatio(), 2.f, 0.f);
+    border = border * scene.root()->scale_;
     scene.root()->translation_ = glm::clamp(scene.root()->translation_, -border, border);
 }
 
@@ -274,6 +275,15 @@ int  GeometryView::size ()
 
 void GeometryView::draw()
 {
+    // Drawing of Geometry view is different as it renders
+    // only sources in the current workspace
+    std::vector<Node *> source_surfaces;
+    std::vector<Node *> source_overlays;
+    std::vector<Node *> canvas_surfaces;
+    std::vector<Node *> canvas_overlays;
+    uint workspaces_counts_[Source::WORKSPACE_ANY+1] = {0};
+    uint hidden_count_ = 0;
+
     // work on the current source
     Source *s = Mixer::manager().currentSource();
 
@@ -282,53 +292,61 @@ void GeometryView::draw()
     if (s != nullptr &&  Mixer::selection().size() > 1)
         s->setMode(Source::SELECTED);
 
-    // Drawing of Geometry view is different as it renders
-    // only sources in the current workspace
-    std::vector<Node *> surfaces;
-    std::vector<Node *> overlays;
-    uint workspaces_counts_[Source::WORKSPACE_ANY+1] = {0};
-    uint hidden_count_ = 0;
-
-    // fills list of sources only in SOURCE EDIT MODE
-    if (editor_mode_ == EDIT_SOURCES) {
-        for (auto source_iter = Mixer::manager().session()->begin();
-             source_iter != Mixer::manager().session()->end(); ++source_iter) {
-            // count if it is visible
-            if (Settings::application.views[mode_].ignore_mix || (*source_iter)->visible()) {
-                // if it is in the current workspace
-                if (Settings::application.current_workspace == Source::WORKSPACE_ANY
-                    || (*source_iter)->workspace() == Settings::application.current_workspace) {
-                    // will draw its surface
-                    surfaces.push_back((*source_iter)->groups_[mode_]);
-                    // will draw its frame and locker icon
-                    overlays.push_back((*source_iter)->frames_[mode_]);
-                    overlays.push_back((*source_iter)->locker_);
+    for (auto source_iter = Mixer::manager().session()->begin();
+            source_iter != Mixer::manager().session()->end(); ++source_iter) {
+        // count if it is visible
+        if (Settings::application.views[mode_].ignore_mix || (*source_iter)->visible()) {
+            // if it is in the current workspace
+            if (Settings::application.current_workspace == Source::WORKSPACE_ANY
+                || (*source_iter)->workspace() == Settings::application.current_workspace) {
+                // will draw its surface
+                source_surfaces.push_back((*source_iter)->groups_[mode_]);
+                // will draw its frame and locker icon
+                if (editor_mode_ == EDIT_SOURCES) {
+                    source_overlays.push_back((*source_iter)->frames_[mode_]);
+                    source_overlays.push_back((*source_iter)->locker_);
                 }
-                // count number of sources per workspace
-                workspaces_counts_[(*source_iter)->workspace()]++;
-                workspaces_counts_[Source::WORKSPACE_ANY]++;
             }
-            hidden_count_ += (*source_iter)->visible() ? 0 : 1;
+            // count number of sources per workspace
+            workspaces_counts_[(*source_iter)->workspace()]++;
+            workspaces_counts_[Source::WORKSPACE_ANY]++;
         }
+        hidden_count_ += (*source_iter)->visible() ? 0 : 1;
     }
 
+    // draw all canvases 
+    for (auto canvas_iter = Canvas::manager().begin();
+            canvas_iter != Canvas::manager().end(); ++canvas_iter) {
+        // will draw its surface
+        canvas_surfaces.push_back((*canvas_iter)->rendersurface_);
+        // will draw its frame
+        canvas_overlays.push_back((*canvas_iter)->frames_[GEOMETRY]);
+    }
+    
     // 0. prepare projection for draw visitors
     glm::mat4 projection = Rendering::manager().Projection();
 
-    // 1. Draw surface of sources in the current workspace
-    DrawVisitor draw_surfaces(surfaces, projection);
-    scene.accept(draw_surfaces);
-
-    // 2. Draw scene rendering on top (which includes rendering of all visible sources)
-    DrawVisitor draw_rendering(output_surface_, projection, true);
+    // 1. Draw output surface (render frame to show global framebuffer, semi transparent)
+    output_surface_->shader()->color.a = editor_mode_ == EDIT_CANVAS ? 0.6f : 0.3f;
+    DrawVisitor draw_rendering(scene.bg(), projection);
     scene.accept(draw_rendering);
 
-    if (!overlays.empty())  {
-        // 3. Draw frames and icons of sources in the current workspace
-        DrawVisitor draw_overlays(overlays, projection);
+    if (editor_mode_ != EDIT_CANVAS) {
+        // 2. Draw surface of sources in the current workspace
+        DrawVisitor draw_sources(source_surfaces, projection);
+        scene.accept(draw_sources);
+    }
+
+    // 3. Draw canvases on top of sources 
+    DrawVisitor draw_canvases(canvas_surfaces, projection);
+    scene.accept(draw_canvases);
+
+    if (!source_overlays.empty())  {
+        // 5. Draw frames and icons of sources in the current workspace
+        DrawVisitor draw_overlays(source_overlays, projection);
         scene.accept(draw_overlays);
 
-        // 4. Draw control overlays of current source on top (if selected)
+        // 6. Draw control overlays of current source on top (if selected)
         if (s != nullptr &&
             (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
              s->workspace() == Settings::application.current_workspace) &&
@@ -340,18 +358,36 @@ void GeometryView::draw()
             s->setMode(Source::CURRENT);
         }
     }
+    
+    // 7. Draw frames of the canvases
+    DrawVisitor draw_overlays(canvas_overlays, projection);
+    scene.accept(draw_overlays);
 
-    // 5. Finally, draw overlays of view
+    if (editor_mode_ == EDIT_CANVAS && current_canvas_ != nullptr) {
+
+        std::vector<Node *> canvas_handles = {
+            current_canvas_->handles_[mode_][Handles::CROP_H],
+            current_canvas_->handles_[mode_][Handles::CROP_V],
+            current_canvas_->handles_[mode_][Handles::MENU], 
+            dynamic_cast<CanvasSurface *>(current_canvas_)->label
+        };
+        DrawVisitor dv(canvas_handles, projection);
+        scene.accept(dv);
+    }
+
+    // 8. Finally, draw overlays of view
     DrawVisitor draw_foreground(scene.fg(), projection);
     scene.accept(draw_foreground);
 
-    // 6. Display grid
+    // 9. Display grid
     if (grid->active() && current_action_ongoing_) {
         DrawVisitor draw_grid(grid->root(), projection, true);
         scene.accept(draw_grid);
     }
 
-    // display interface
+    //
+    // 10. Display interface
+    //
     // Locate window at upper right corner
     glm::vec2 P(-output_surface_->scale_.x, output_surface_->scale_.y + 0.01f);
     P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
@@ -370,8 +406,6 @@ void GeometryView::draw()
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
 
-#ifdef ENABLE_CANVAS
-
         // SELECT EDITOR MODE
         ImGui::SetNextItemWidth(ImGui::GetTextLineHeightWithSpacing() * 2.6);
         if (ImGui::Button(
@@ -385,45 +419,125 @@ void GeometryView::draw()
             for (int m = GeometryView::EDIT_SOURCES; m <= GeometryView::EDIT_CANVAS; ++m) {
                 if (ImGui::Selectable(
                         std::string(std::string(editor_icons[m]) + " " + editor_names[m]).c_str())) {
-                    // change edit mode
-                    editor_mode_ = m;
-                    // cancel selection of sources
-                    if (m != GeometryView::EDIT_SOURCES){
-                        Mixer::selection().clear();
-                        canvas_[canvas_current_].setCurrent(true);
-                    }
-                    else {
-                        canvas_[canvas_current_].setCurrent(false);
+                    if (m != editor_mode_) {
+                        // Switch mode
+                        editor_mode_ = m;
+                        // actions to do when changing mode
+                        if (editor_mode_ == GeometryView::EDIT_CANVAS){
+                            // clear selection (disabled for canvases)
+                            Mixer::selection().clear();
+                            // select first canvas as current if not already one selected
+                            setCurrentCanvas(*Canvas::manager().begin());
+                        }
+                        else {
+                            // temporarily disable current mode of canvas
+                            if (current_canvas_ != nullptr) 
+                                current_canvas_->setMode(Source::VISIBLE);
+                            // save status on exit
+                            Canvas::manager().save();
+                        }
                     }
                 }
             }
             ImGui::PopFont();
             ImGui::EndPopup();
         }
-#endif
 
-        // SURFACES EDIT OPTIONS
+        // CANVAS EDIT OPTIONS
         if (editor_mode_ == EDIT_CANVAS) {
 
-            // add / remove surfaces
+            // - Remove canvas
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (Settings::application.num_output_surfaces > 1) {
-                if (ImGuiToolkit::IconButton(19, 4, "Less canvas")) {
-                    Settings::application.num_output_surfaces--;
+            if (Canvas::manager().size() > 1) {
+                if (ImGui::Button(ICON_FA_MINUS )) {
+                    // remove last canvas
+                    Canvas::manager().removeSurface();
+                    // set another canvas as current
+                    setCurrentCanvas(*(--Canvas::manager().end()));
                 }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Remove canvas");
             }
-            else
-                ImGuiToolkit::Icon(19, 4, false);
+            else{
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 0.5f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
+                ImGui::Button(ICON_FA_MINUS );
+                ImGui::PopStyleColor(2);
+            }
 
+            // + Add more canvas
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (Settings::application.num_output_surfaces < MAX_OUTPUT_CANVAS) {
-                if (ImGuiToolkit::IconButton(18, 4, "More canvas")) {
-                    Settings::application.num_output_surfaces++;
+            if (Canvas::manager().size() < MAX_OUTPUT_CANVAS) {
+                if (ImGui::Button(ICON_FA_PLUS )) {
+                    // create new canvas
+                    Canvas::manager().addSurface();
+                    // set newly created canvas as current
+                    setCurrentCanvas(*(--Canvas::manager().end()));
                 }
-            } else
-                ImGuiToolkit::Icon(18, 4, false);
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Add canvas");
+            } 
+            else {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 0.5f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
+                ImGui::Button(ICON_FA_MINUS );
+                ImGui::PopStyleColor(2);
+            }
 
+            // layout selection
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGui::Button(ICON_FA_TH ICON_FA_SORT_DOWN ))
+                ImGui::OpenPopup("combinations_popup");
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Layout");
+            if (ImGui::BeginPopup("combinations_popup", ImGuiWindowFlags_NoMove))  {
 
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                if (Canvas::manager().size() == 1) {
+                    if (ImGui::Selectable(ICON_FA_EXPAND "   Fit whole output")) 
+                        Canvas::manager().setLayout(1, 0);
+                }
+                else {
+                    // get grid combinations for current number of canvases
+                    int N = Canvas::manager().size();
+                    std::vector<std::pair<int, int>> combinations = BaseToolkit::getGridCombinations(N);
+                    std::vector<std::string> descriptions = BaseToolkit::getGridCombinationDescriptions(N);
+                    for (size_t i = 0; i < descriptions.size(); ++i) {
+                        std::ostringstream oss;
+                        oss << ICON_FA_TH << "   " << descriptions[i];
+                        if (ImGui::Selectable(oss.str().c_str())) {
+                            // // set combination
+                            Canvas::manager().setLayout(combinations[i].first, 
+                                combinations[i].second);
+                        }
+                    }
+                }
+
+                // reset option
+                ImGui::Separator();
+                if (ImGui::Selectable(ICON_FA_BACKSPACE "  Reset all")) {
+                    Canvas::manager().reset(true, false);
+                    // clear current canvas
+                    setCurrentCanvas(nullptr);
+                }
+
+                // TODO : add load and save canvas layout ?
+                ImGui::PopFont();
+                ImGui::EndPopup();
+            }
+
+            // cancel current canvas edition
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGui::Button(ICON_FA_TIMES_CIRCLE )) {
+                // restore saved status
+                Canvas::manager().load();
+                // clear current canvas
+                setCurrentCanvas(nullptr);
+                // switch back to source edition
+                editor_mode_ = EDIT_SOURCES;
+            }
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Cancel");
         }
         // SOURCES EDIT OPTIONS
         else {
@@ -519,13 +633,35 @@ void GeometryView::draw()
                 s->touch();
                 Action::manager().store(s->name() + std::string(": Restore aspect ratio"));
             }
-            if (ImGui::MenuItem( ICON_FA_EXPAND "  Fit to output" )){
-                s->group(mode_)->scale_ = glm::vec3(output_surface_->scale_.x/ s->frame()->aspectRatio(), 1.f, 1.f);
-                s->group(mode_)->rotation_.z = 0;
-                s->group(mode_)->translation_ = glm::vec3(0.f);
-                s->touch();
-                Action::manager().store(s->name() + std::string(": Fit to output"));
+
+            if (ImGui::BeginMenu(ICON_FA_EXPAND "  Fit to...")) {
+
+                if (ImGui::MenuItem(  "Mix output" )){
+                    s->group(mode_)->scale_ = glm::vec3(output_surface_->scale_.x/ s->frame()->aspectRatio(), 1.f, 1.f);
+                    s->group(mode_)->rotation_.z = 0;
+                    s->group(mode_)->translation_ = glm::vec3(0.f);
+                    s->touch();
+                    Action::manager().store(s->name() + std::string(": Fit to Mix output"));
+                }
+
+                for (auto canvas_iter = Canvas::manager().begin();
+                        canvas_iter != Canvas::manager().end(); ++canvas_iter) {
+                    std::string label =  (*canvas_iter)->name();
+                    if (ImGui::MenuItem( label.c_str() )) {
+                        float canvas_aspect = (*canvas_iter)->frame()->aspectRatio() / s->frame()->aspectRatio();
+                        s->group(mode_)->scale_.x = (*canvas_iter)->group(mode_)->scale_.x * canvas_aspect;
+                        s->group(mode_)->scale_.y = (*canvas_iter)->group(mode_)->scale_.y;
+                        s->group(mode_)->rotation_.z = 0;
+                        s->group(mode_)->translation_.x = (*canvas_iter)->group(mode_)->translation_.x;
+                        s->group(mode_)->translation_.y = (*canvas_iter)->group(mode_)->translation_.y;
+                        s->touch();
+                        Action::manager().store(s->name() + std::string(": Fit to ") + label);
+                    }
+                }
+
+                ImGui::EndMenu();
             }
+
         }
         ImGui::EndPopup();
     }
@@ -538,7 +674,7 @@ void GeometryView::draw()
 
         // colored context menu
         ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.8f));
 
         // batch manipulation of sources in Geometry view
         if (ImGui::Selectable( ICON_FA_EXPAND "  Fit all" )){
@@ -611,6 +747,46 @@ void GeometryView::draw()
         }
 
         ImGui::PopStyleColor(2);
+        ImGui::EndPopup();
+    }
+    // display popup menu canvas
+    if (show_context_menu_ == MENU_CANVAS) {
+        ImGui::OpenPopup( "GeometryCanvasContextMenu" );
+        show_context_menu_ = MENU_NONE;
+    }
+    if (ImGui::BeginPopup("GeometryCanvasContextMenu")) {
+        if (current_canvas_ != nullptr) {
+            
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.8f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 1.f));
+
+            if (ImGui::MenuItem(ICON_FA_EXPAND "  Fit to output")) {
+                current_canvas_->group(mode_)->translation_ = glm::vec3(0.f, 0.f, 0.f);
+                current_canvas_->group(mode_)->scale_ = glm::vec3(1.f, 1.f, 1.f);
+                current_canvas_->group(mode_)->crop_ = glm::vec4(-1.f, 1.f, 1.f, -1.f);
+                current_canvas_->touch();;
+            }
+            for (auto sit = Canvas::manager().begin();
+                 sit != Canvas::manager().end(); ++sit) {
+                if (*sit != current_canvas_) {
+                    if (ImGui::MenuItem(std::string(ICON_FA_EXCHANGE_ALT "  Swap with " + (*sit)->name()).c_str())) {
+                        // swap parameters
+                        glm::vec3 t = current_canvas_->group(mode_)->translation_;
+                        glm::vec3 s = current_canvas_->group(mode_)->scale_;
+                        glm::vec4 c = current_canvas_->group(mode_)->crop_;
+                        current_canvas_->group(mode_)->translation_ = (*sit)->group(mode_)->translation_;
+                        current_canvas_->group(mode_)->scale_ = (*sit)->group(mode_)->scale_;
+                        current_canvas_->group(mode_)->crop_ = (*sit)->group(mode_)->crop_;
+                        (*sit)->group(mode_)->translation_ = t;
+                        (*sit)->group(mode_)->scale_ = s;
+                        (*sit)->group(mode_)->crop_ = c;
+                        current_canvas_->touch();
+                        (*sit)->touch();
+                    }
+                }
+            }   
+            ImGui::PopStyleColor(2);
+        }
         ImGui::EndPopup();
     }
 }
@@ -819,20 +995,88 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
         }
         // CANVAS EDIT
         else {
-            // picking node
-            pick = pv.back();
+            // canvas are not sources; cancel normal source picking
+            pick = { nullptr, glm::vec2(0.f) };
 
-            if (pick.first == canvas_[canvas_current_].menu_) {
-                // TODO context menu canvas
-                g_printerr("Canvas MENU\n");
+            // remember picked sources to cycle through them
+            static SourceListUnique picked_sources;
+
+            // keep current canvas active if it is clicked
+            Source *picked_canvas = current_canvas_;
+            if (picked_canvas != nullptr) {
+                // find if the current canvas was picked
+                auto itp = pv.rbegin();
+                for (; itp != pv.rend(); ++itp){
+                    // test if canvas contains this node
+                    Source::hasNode is_in_source((*itp).first );
+                    if ( is_in_source( picked_canvas ) ){
+                        // a node in the current canvas was clicked !
+                        pick = *itp;
+                        break;
+                    }
+                }
+                // not found: the current canvas was not clicked
+                if (itp == pv.rend() ) {
+                    picked_sources.clear();
+                    picked_canvas = nullptr;
+                }
+                // picking on the menu handle: show context menu & reset picked sources
+                else if ( pick.first == picked_canvas->handles_[mode_][Handles::MENU] ) {
+                    openContextMenu(MENU_CANVAS); 
+                    picked_sources.clear();
+                }
+                // picking on the manipulation handle: reset picked sources
+                else if ( pick.first == picked_canvas->handles_[mode_][Handles::CROP_H] ||
+                          pick.first == picked_canvas->handles_[mode_][Handles::CROP_V] ) 
+                {
+                    picked_sources.clear();
+                }
+                // second clic not on a handle, maybe select another canvas below
+                else {
+                    if (picked_sources.empty()) {
+                        // loop over all nodes picked to fill the list of sources clicked
+                        for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp) {
+                            SourceList::iterator sit = std::find_if(Canvas::manager().begin(), 
+                                Canvas::manager().end(), Source::hasNode( (*itp).first ));
+                            if ( sit != Canvas::manager().end() ) {
+                                picked_sources.insert( *sit );
+                            }
+                        }
+                    }
+                    if (!picked_sources.empty()){
+                        setCurrentCanvas( *picked_sources.begin() );
+                        picked_sources.erase(picked_sources.begin());
+                    }
+                }
             }
-            // else {
+            // the clicked canvas might have changed
+            if (picked_canvas == nullptr) {
 
-            //     g_printerr("Pick x %f  y %f\n", pick.second.x, pick.second.y);
-            // }
+                // default to no canvas picked
+                if(current_canvas_ != nullptr)
+                    setCurrentCanvas(nullptr);
 
+                // loop over all nodes picked
+                for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
+
+                    // loop over all canvases to get if one was picked
+                    SourceList::iterator sit = std::find_if(Canvas::manager().begin(), 
+                        Canvas::manager().end(), Source::hasNode( (*itp).first ));
+
+                    // accept picked canvas
+                    if ( sit != Canvas::manager().end() ) {
+                        setCurrentCanvas(*sit);
+                        break;
+                    }
+                }
+            }
         }
 
+    }
+    // nothing picked
+    else if( editor_mode_ == EDIT_CANVAS ) {
+        // cancel current canvas if clicked outside
+        setCurrentCanvas(nullptr);
     }
 
     return pick;
@@ -874,75 +1118,87 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
     glm::vec3 scene_from = Rendering::manager().unProject(from, scene.root()->transform_);
     glm::vec3 scene_to   = Rendering::manager().unProject(to, scene.root()->transform_);
 
-    if (editor_mode_ == EDIT_CANVAS && pick.first) {
-        const glm::mat4 scene_to_canvas_transform = glm::inverse(canvas_stored_status_->transform_);
-        // const glm::mat4 canvas_to_scene_transform = scene_to_canvas_transform;
+    if (editor_mode_ == EDIT_CANVAS) {
 
-        // which corner was picked ?
-        glm::vec2 corner = glm::round(pick.second);
+        if (!current_canvas_)
+            return ret;
 
-        // keep transform from source center to opposite corner
-        const glm::mat4 canvas_to_corner_transform = glm::translate(glm::identity<glm::mat4>(),
-                                                                    glm::vec3(corner, 0.f));
-        // transformation from scene to corner:
-        const glm::mat4 scene_to_corner_transform = canvas_to_corner_transform
-                                                    * scene_to_canvas_transform;
-        const glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
+        Group *sourceNode = current_canvas_->group(mode_); // groups_[View::GEOMETRY]
 
-        // clamp coordinates of target cursor position to remain inside output surface
-        scene_to = glm::clamp(scene_to, glm::vec3(-output_surface_->scale_.x, -1.f, -10.f),
-                              glm::vec3(output_surface_->scale_.x, 1.f, 10.f));
+        // make sure matrix transform of stored status is updated
+        current_canvas_->stored_status_->update(0);
 
-        if (pick.first == canvas_[canvas_current_].handles_[Handles::RESIZE]) {
-            // hide other grips
-            canvas_[canvas_current_].menu_->visible_ = false;
-            canvas_[canvas_current_].handles_[Handles::RESIZE_H]->visible_ = false;
-            canvas_[canvas_current_].handles_[Handles::RESIZE_V]->visible_ = false;
-            // inform on which corner should be overlayed (opposite)
-            canvas_[canvas_current_].handles_[Handles::RESIZE]->overlayActiveCorner(-corner);
+        // grab coordinates in source-root reference frame
+        const glm::mat4 source_scale = glm::scale(glm::identity<glm::mat4>(),
+                                                glm::vec3(1.f / current_canvas_->frame()->aspectRatio(), 1.f, 1.f));
+        const glm::mat4 scene_to_source_transform = source_scale * glm::inverse(current_canvas_->stored_status_->transform_);
+        const glm::mat4 source_to_scene_transform = glm::inverse(scene_to_source_transform);
 
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f);
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if (grid->active())
-                handle = grid->snap(handle);
-            // Compute handleNODE_UPPER_RIGHT coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 corner_scaling = glm::vec2(handle) / glm::vec2(corner * 2.f);
-            // proportional SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier()) {
-                corner_scaling = glm::vec2(glm::compMax(corner_scaling));
+        std::ostringstream info;
+        // which manipulation to perform?
+
+        if (pick.first)  {
+
+            // which corner was picked ?
+            glm::vec2 corner = glm::round(pick.second);
+
+            // keep transform from source center to opposite corner
+            const glm::mat4 source_to_corner_transform = glm::translate(glm::identity<glm::mat4>(), glm::vec3(corner, 0.f));
+
+            // transformation from scene to corner:
+            const glm::mat4 scene_to_corner_transform = source_to_corner_transform * scene_to_source_transform;
+            const glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
+
+
+            // Create context for handle manipulation functions
+            GeometryHandleManipulation::HandleGrabContext ctx = {
+                sourceNode,                     // targetNode
+                current_canvas_->stored_status_,              // stored_status
+                current_canvas_->frame(),                     // frame
+                scene_from,                     // scene_from
+                scene_to,                       // scene_to
+                scene_to_source_transform,      // scene_to_target_transform
+                source_to_scene_transform,      // target_to_scene_transform
+                scene_to_corner_transform,      // scene_to_corner_transform
+                corner_to_scene_transform,      // corner_to_scene_transform
+                corner,                         // corner
+                pick,                           // pick
+                grid,                           // grid
+                info,                           // info
+                ret,                            // cursor
+                current_canvas_->handles_[mode_],             // handles
+                canvas_overlay_crop_,                  // overlay_crop
+                overlay_scaling_,               // overlay_scaling
+                overlay_scaling_cross_,         // overlay_scaling_cross
+                overlay_rotation_,              // overlay_rotation
+                overlay_rotation_fix_,          // overlay_rotation_fix
+                overlay_rotation_clock_hand_    // overlay_rotation_clock_hand
+            };
+
+            if (pick.first == current_canvas_->handles_[mode_][Handles::CROP_H]) {
+                GeometryHandleManipulation::handleCropH(ctx);
             }
-            // Apply scaling to the source
-            canvas_[canvas_current_].root_->scale_ = canvas_stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
-
-            //
-            // Adjust translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-            // Apply scaling to the source
-            canvas_[canvas_current_].root_->translation_ = glm::vec3(corner_center);
-
+            // Vertical CROP
+            else if (pick.first == current_canvas_->handles_[mode_][Handles::CROP_V]) {
+                GeometryHandleManipulation::handleCropV(ctx);
+            }
         }
 
+        // request update
+        current_canvas_->touch();
+
+        // store action in history
+        current_action_ = current_canvas_->name() + ": " + info.str();
+
         // update cursor
+        ret.info = info.str();
         return ret;
     }
 
-    // No source is given
-    if (!s) {
+    // if no source is given when editing sources...
+    if (!s && editor_mode_ == EDIT_SOURCES) {
 
-        // possibly grabing the selection overlay handles
+        // ..possibly grabing the selection overlay handles
         if (overlay_selection_ && overlay_selection_active_ ) {
 
             // rotation center to selection position
@@ -1000,7 +1256,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 current_action_ = "Scale selection";
                 ret.type = Cursor_ResizeNWSE;
             }
-            // if interaction with selection ROTATION handle
+            // ...or if interaction with selection ROTATION handle
             else if (pick.first == overlay_selection_rotate_) {
 
                 // show manipulation overlay
@@ -1063,13 +1319,12 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 current_action_ = "Scale and rotate selection";
                 ret.type = Cursor_Hand;
             }
-
         }
 
-        // update cursor
         return ret;
     }
 
+    // normal source grab 
     Group *sourceNode = s->group(mode_); // groups_[View::GEOMETRY]
 
     // make sure matrix transform of stored status is updated
@@ -1096,608 +1351,75 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         const glm::mat4 corner_to_scene_transform = glm::inverse(scene_to_corner_transform);
 
 
+        // Create context for handle manipulation functions
+        GeometryHandleManipulation::HandleGrabContext ctx = {
+            sourceNode,                     // targetNode
+            s->stored_status_,              // stored_status
+            s->frame(),                     // frame
+            scene_from,                     // scene_from
+            scene_to,                       // scene_to
+            scene_to_source_transform,      // scene_to_target_transform
+            source_to_scene_transform,      // target_to_scene_transform
+            scene_to_corner_transform,      // scene_to_corner_transform
+            corner_to_scene_transform,      // corner_to_scene_transform
+            corner,                         // corner
+            pick,                           // pick
+            grid,                           // grid
+            info,                           // info
+            ret,                            // cursor
+            s->handles_[mode_],             // handles
+            overlay_crop_,                  // overlay_crop
+            overlay_scaling_,               // overlay_scaling
+            overlay_scaling_cross_,         // overlay_scaling_cross
+            overlay_rotation_,              // overlay_rotation
+            overlay_rotation_fix_,          // overlay_rotation_fix
+            overlay_rotation_clock_hand_    // overlay_rotation_clock_hand
+        };
+
         // picking on a Node
         if (pick.first == s->handles_[mode_][Handles::NODE_LOWER_LEFT]) {
-            // hide other grips
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-            // get stored status
-            glm::vec3 node_pos = glm::vec3(s->stored_status_->data_[0].x,
-                                           s->stored_status_->data_[0].y,
-                                           0.f);
-            // Compute target coordinates of manipulated handle into SCENE reference frame
-            node_pos = source_to_scene_transform * glm::vec4(node_pos, 1.f);
-            // apply translation of target in SCENE
-            node_pos = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from)  * glm::vec4(node_pos, 1.f);
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                node_pos = grid->snap(node_pos);
-            // Compute handle coordinates back in SOURCE reference frame
-            node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);
-            // Diagonal SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier())
-                node_pos.y = node_pos.x;
-            // apply to source Node and to handles
-            sourceNode->data_[0].x = CLAMP( node_pos.x, 0.f, 0.96f );
-            sourceNode->data_[0].y = CLAMP( node_pos.y, 0.f, 0.96f );
-            info << "Corner low-left " << std::fixed << std::setprecision(3) << sourceNode->data_[0].x;
-            info << " x "  << sourceNode->data_[0].y;
+            GeometryHandleManipulation::handleNodeLowerLeft(ctx);
         }
         else if (pick.first == s->handles_[mode_][Handles::NODE_UPPER_LEFT]) {
-            // hide other grips
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-            // get stored status
-            glm::vec3 node_pos = glm::vec3(s->stored_status_->data_[1].x,
-                                           s->stored_status_->data_[1].y,
-                                           0.f);
-            // Compute target coordinates of manipulated handle into SCENE reference frame
-            node_pos = source_to_scene_transform * glm::vec4(node_pos, 1.f);
-            // apply translation of target in SCENE
-            node_pos = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from)  * glm::vec4(node_pos, 1.f);
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                node_pos = grid->snap(node_pos);
-            // Compute handle coordinates back in SOURCE reference frame
-            node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);
-            // Diagonal SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier())
-                node_pos.y = -node_pos.x;
-            // apply to source Node and to handles
-            sourceNode->data_[1].x = CLAMP( node_pos.x, 0.f, 0.96f );
-            sourceNode->data_[1].y = CLAMP( node_pos.y, -0.96f, 0.f );
-            info << "Corner up-left " << std::fixed << std::setprecision(3) << sourceNode->data_[1].x;
-            info << " x "  << sourceNode->data_[1].y;
+            GeometryHandleManipulation::handleNodeUpperLeft(ctx);
         }
         else if ( pick.first == s->handles_[mode_][Handles::NODE_LOWER_RIGHT] ) {
-            // hide other grips
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-            // get stored status
-            glm::vec3 node_pos = glm::vec3(s->stored_status_->data_[2].x,
-                                           s->stored_status_->data_[2].y,
-                                           0.f);
-            // Compute target coordinates of manipulated handle into SCENE reference frame
-            node_pos = source_to_scene_transform * glm::vec4(node_pos, 1.f);
-            // apply translation of target in SCENE
-            node_pos = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from)  * glm::vec4(node_pos, 1.f);
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                node_pos = grid->snap(node_pos);
-            // Compute handle coordinates back in SOURCE reference frame
-            node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);            
-            // Diagonal SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier())
-                node_pos.y = -node_pos.x;
-            // apply to source Node and to handles
-            sourceNode->data_[2].x = CLAMP( node_pos.x, -0.96f, 0.f );
-            sourceNode->data_[2].y = CLAMP( node_pos.y, 0.f, 0.96f );
-            info << "Corner low-right " << std::fixed << std::setprecision(3) << sourceNode->data_[2].x;
-            info << " x "  << sourceNode->data_[2].y;
+            GeometryHandleManipulation::handleNodeLowerRight(ctx);
         }
         else if (pick.first == s->handles_[mode_][Handles::NODE_UPPER_RIGHT]) {
-            // hide other grips
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-
-            // get stored status
-            glm::vec3 node_pos = glm::vec3(s->stored_status_->data_[3].x,
-                                           s->stored_status_->data_[3].y,
-                                           0.f);
-            // Compute target coordinates of manipulated handle into SCENE reference frame
-            node_pos = source_to_scene_transform * glm::vec4(node_pos, 1.f);
-            // apply translation of target in SCENE
-            node_pos = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from)  * glm::vec4(node_pos, 1.f);
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                node_pos = grid->snap(node_pos);
-            // Compute handle coordinates back in SOURCE reference frame
-            node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);
-            // Diagonal SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier())
-                node_pos.y = node_pos.x;
-            // apply to source Node and to handles
-            sourceNode->data_[3].x = CLAMP( node_pos.x, -0.96f, 0.f );
-            sourceNode->data_[3].y = CLAMP( node_pos.y, -0.96f, 0.f );
-            info << "Corner up-right " << std::fixed << std::setprecision(3) << sourceNode->data_[3].x;
-            info << " x "  << sourceNode->data_[3].y;
+            GeometryHandleManipulation::handleNodeUpperRight(ctx);
         }
         // horizontal CROP
         else if (pick.first == s->handles_[mode_][Handles::CROP_H]) {
-            // hide all other grips
-            s->handles_[mode_][Handles::NODE_LOWER_RIGHT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_LOWER_LEFT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_UPPER_RIGHT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_UPPER_LEFT]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-
-            // prepare overlay frame showing full image size
-            glm::vec3 _c_s = glm::vec3(s->stored_status_->crop_[0]
-                                                       - s->stored_status_->crop_[1],
-                                                   s->stored_status_->crop_[2]
-                                                       - s->stored_status_->crop_[3],
-                                                   2.f)
-                                         * 0.5f;
-            overlay_crop_->scale_ = s->stored_status_->scale_ / _c_s;
-            overlay_crop_->scale_.x *= s->frame()->aspectRatio();
-            overlay_crop_->rotation_.z = s->stored_status_->rotation_.z;
-            overlay_crop_->translation_ = s->stored_status_->translation_;
-            glm::vec3 _t((s->stored_status_->crop_[1] + _c_s.x) * overlay_crop_->scale_.x,
-                         (-s->stored_status_->crop_[2] + _c_s.y) * overlay_crop_->scale_.y, 0.f);
-            _t = glm::rotate(glm::identity<glm::mat4>(),
-                             overlay_crop_->rotation_.z,
-                             glm::vec3(0.f, 0.f, 1.f))
-                 * glm::vec4(_t, 1.f);
-            overlay_crop_->translation_ += _t;
-            overlay_crop_->translation_.z = 0.f;
-            overlay_crop_->update(0);
-            overlay_crop_->visible_ = true;
-            
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-
-            // Compute coordinates coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 handle_scaling = glm::vec2(handle.x, 1.f) / glm::vec2(corner.x * 2.f, 1.f);
-
-            // Apply transform to the CROP
-            if (corner.x > 0.f) {
-                // RIGHT SIDE ; clamp between 0.1 and 1
-                sourceNode->crop_[1] = CLAMP(s->stored_status_->crop_[0]
-                                                 + (s->stored_status_->crop_[1]
-                                                    - s->stored_status_->crop_[0])
-                                                       * handle_scaling.x,
-                                             0.1f,
-                                             1.f);
-            } else {
-                // LEFT SIDE : clamp between -1 and -0.1
-                sourceNode->crop_[0] = CLAMP(s->stored_status_->crop_[1]
-                                                 - (s->stored_status_->crop_[1]
-                                                    - s->stored_status_->crop_[0])
-                                                       * handle_scaling.x,
-                                             -1.f,
-                                             -0.1f);
-            }
-
-            // get back the horizontal scaling after clamping of cropped coordinates
-            handle_scaling.x = (sourceNode->crop_[1] - sourceNode->crop_[0])
-                               / (s->stored_status_->crop_[1] - s->stored_status_->crop_[0]);
-
-            //
-            // Adjust scale and translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4(corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(handle_scaling, 1.f))
-                            * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-
-            // Apply translation to the source
-            sourceNode->translation_ = glm::vec3(corner_center);
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(handle_scaling, 1.f);
-
-            // show cursor depending on angle
-            float c = tan(sourceNode->rotation_.z);
-            ret.type = ABS(c) > 1.f ? Cursor_ResizeNS : Cursor_ResizeEW;
-            info << "Crop H " << std::fixed << std::setprecision(3) << sourceNode->crop_[0];
-            info << " x " << sourceNode->crop_[1];
+            GeometryHandleManipulation::handleCropH(ctx);
         }
         // Vertical CROP
         else if (pick.first == s->handles_[mode_][Handles::CROP_V]) {
-            // hide all other grips
-            s->handles_[mode_][Handles::NODE_LOWER_RIGHT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_LOWER_LEFT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_UPPER_RIGHT]->visible_ = false;
-            s->handles_[mode_][Handles::NODE_UPPER_LEFT]->visible_ = false;
-            s->handles_[mode_][Handles::ROUNDING]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-
-            // prepare overlay frame showing full image size
-            glm::vec3 _c_s = glm::vec3(s->stored_status_->crop_[0]
-                                           - s->stored_status_->crop_[1],
-                                       s->stored_status_->crop_[2]
-                                           - s->stored_status_->crop_[3],
-                                       2.f)
-                             * 0.5f;
-            overlay_crop_->scale_ = s->stored_status_->scale_ / _c_s;
-            overlay_crop_->scale_.x *= s->frame()->aspectRatio();
-            overlay_crop_->rotation_.z = s->stored_status_->rotation_.z;
-            overlay_crop_->translation_ = s->stored_status_->translation_;
-            glm::vec3 _t((s->stored_status_->crop_[1] + _c_s.x) * overlay_crop_->scale_.x,
-                         (-s->stored_status_->crop_[2] + _c_s.y) * overlay_crop_->scale_.y, 0.f);
-            _t = glm::rotate(glm::identity<glm::mat4>(),
-                             overlay_crop_->rotation_.z,
-                             glm::vec3(0.f, 0.f, 1.f))
-                 * glm::vec4(_t, 1.f);
-            overlay_crop_->translation_ += _t;
-            overlay_crop_->translation_.z = 0.f;
-            overlay_crop_->update(0);
-            overlay_crop_->visible_ = true;
-
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-
-            // Compute coordinates coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 handle_scaling = glm::vec2(1.f, handle.y) / glm::vec2(1.f, corner.y * 2.f);
-
-            // Apply transform to the CROP
-            if (corner.y > 0.f) {
-                // TOP SIDE ; clamp between 0.1 and 1
-                sourceNode->crop_[2] = CLAMP(s->stored_status_->crop_[3]
-                                                 + (s->stored_status_->crop_[2]
-                                                    - s->stored_status_->crop_[3])
-                                                       * handle_scaling.y,
-                                             0.1f,
-                                             1.f);
-            } else {
-                // BOTTON SIDE : clamp between -1 and -0.1
-                sourceNode->crop_[3] = CLAMP(s->stored_status_->crop_[2]
-                                                 - (s->stored_status_->crop_[2]
-                                                    - s->stored_status_->crop_[3])
-                                                       * handle_scaling.y,
-                                             -1.f,
-                                             -0.1f);
-            }
-
-            // get back the horizontal scaling after clamping of cropped coordinates
-            handle_scaling.y = (sourceNode->crop_[2] - sourceNode->crop_[3])
-                               / (s->stored_status_->crop_[2] - s->stored_status_->crop_[3]);
-
-            //
-            // Adjust scale and translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4(corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(handle_scaling, 1.f))
-                            * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-
-            // Apply translation to the source
-            sourceNode->translation_ = glm::vec3(corner_center);
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(handle_scaling, 1.f);
-
-            // show cursor depending on angle
-            float c = tan(sourceNode->rotation_.z);
-            ret.type = ABS(c) > 1.f ? Cursor_ResizeEW : Cursor_ResizeNS;
-            info << "Crop V " << std::fixed << std::setprecision(3) << sourceNode->crop_[2];
-            info << " x "  << sourceNode->crop_[3];
+            GeometryHandleManipulation::handleCropV(ctx);
         }
         // pick the corner rounding handle
         else if (pick.first == s->handles_[mode_][Handles::ROUNDING]) {
-            // hide other grips
-            s->handles_[mode_][Handles::CROP_H]->visible_ = false;
-            s->handles_[mode_][Handles::CROP_V]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
-            // get stored status
-            glm::vec3 node_pos = glm::vec3( -s->stored_status_->data_[0].w, 0.f, 0.f);
-            // Compute target coordinates of manipulated handle into SCENE reference frame
-            node_pos = source_to_scene_transform * glm::vec4(node_pos, 1.f);
-            // apply translation of target in SCENE
-            node_pos = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * glm::vec4(node_pos, 1.f);
-            // Compute handle coordinates back in SOURCE reference frame
-            node_pos = scene_to_source_transform * glm::vec4(node_pos, 1.f);
-
-            // apply to source Node and to handles
-            sourceNode->data_[0].w = - CLAMP( node_pos.x, -1.f, 0.f );
-            info << "Corner round " << std::fixed << std::setprecision(3) << sourceNode->data_[0].w;
+            GeometryHandleManipulation::handleRounding(ctx);
         }
         // picking on the resizing handles in the corners RESIZE CORNER
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE] ) {
-            // hide  other grips
-            s->handles_[mode_][Handles::SCALE]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_SHAPE]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            // inform on which corner should be overlayed (opposite)
-            s->handles_[mode_][Handles::RESIZE]->overlayActiveCorner(-corner);
-
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-            // Compute handleNODE_UPPER_RIGHT coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 corner_scaling = glm::vec2(handle) / glm::vec2(corner * 2.f);
-
-            // proportional SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier()) {
-                corner_scaling = glm::vec2(glm::compMax(corner_scaling));
-            }
-
-            // Apply scaling to the source
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
-
-            //
-            // Adjust translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-            // Apply scaling to the source
-            sourceNode->translation_ = glm::vec3(corner_center);
-
-            // show cursor depending on diagonal (corner picked)
-            glm::mat4 T = glm::rotate(glm::identity<glm::mat4>(), s->stored_status_->rotation_.z, glm::vec3(0.f, 0.f, 1.f));
-            T = glm::scale(T, s->stored_status_->scale_);
-            corner = T * glm::vec4( corner, 0.f, 0.f );
-            ret.type = corner.x * corner.y > 0.f ? Cursor_ResizeNESW : Cursor_ResizeNWSE;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-            info << " x "  << sourceNode->scale_.y;
+            GeometryHandleManipulation::handleResize(ctx);
         }
         // picking on the BORDER RESIZING handles left or right
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE_H] ) {
-
-            // hide all other grips
-            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
-            s->handles_[mode_][Handles::SCALE]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_SHAPE]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            // inform on which corner should be overlayed (opposite)
-            s->handles_[mode_][Handles::RESIZE_H]->overlayActiveCorner(-corner);
-
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-            // Compute coordinates coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 corner_scaling =  glm::vec2(handle.x, 1.f) / glm::vec2(corner.x * 2.f, 1.f);
-
-            // Apply scaling to the source
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
-
-            // SHIFT: restore previous aspect ratio
-            if (UserInterface::manager().shiftModifier()) {
-                float ar = s->stored_status_->scale_.y / s->stored_status_->scale_.x;
-                sourceNode->scale_.y = ar * sourceNode->scale_.x;
-            }
-
-            //
-            // Adjust translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-            // Apply scaling to the source
-            sourceNode->translation_ = glm::vec3(corner_center);
-
-            // show cursor depending on angle
-            float c = tan(sourceNode->rotation_.z);
-            ret.type = ABS(c) > 1.f ? Cursor_ResizeNS : Cursor_ResizeEW;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-            info << " x "  << sourceNode->scale_.y;
+            GeometryHandleManipulation::handleResizeH(ctx);
         }
         // picking on the BORDER RESIZING handles top or bottom
         else if ( pick.first == s->handles_[mode_][Handles::RESIZE_V] ) {
-
-            // hide all other grips
-            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
-            s->handles_[mode_][Handles::SCALE]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
-            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_SHAPE]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            // inform on which corner should be overlayed (opposite)
-            s->handles_[mode_][Handles::RESIZE_V]->overlayActiveCorner(-corner);
-
-            //
-            // Manipulate the handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec4 handle = corner_to_scene_transform * glm::vec4(corner * 2.f, 0.f, 1.f );
-            // move the corner we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * handle;
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-            // Compute coordinates coordinates back in CORNER reference frame
-            handle = scene_to_corner_transform * handle;
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 corner_scaling =  glm::vec2(1.f, handle.y) / glm::vec2(1.f, corner.y * 2.f);
-
-            // Apply scaling to the source
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(corner_scaling, 1.f);
-
-            // SHIFT: restore previous aspect ratio
-            if (UserInterface::manager().shiftModifier()) {
-                float ar = s->stored_status_->scale_.x / s->stored_status_->scale_.y;
-                sourceNode->scale_.x = ar * sourceNode->scale_.y;
-            }
-
-            //
-            // Adjust translation
-            //
-            // The center of the source in CORNER reference frame
-            glm::vec4 corner_center = glm::vec4( corner, 0.f, 1.f);
-            // scale center of source in CORNER reference frame
-            corner_center = glm::scale(glm::identity<glm::mat4>(), glm::vec3(corner_scaling, 1.f)) * corner_center;
-            // convert center back into scene reference frame
-            corner_center = corner_to_scene_transform * corner_center;
-            // Apply scaling to the source
-            sourceNode->translation_ = glm::vec3(corner_center);
-
-            // show cursor depending on angle
-            float c = tan(sourceNode->rotation_.z);
-            ret.type = ABS(c) > 1.f ? Cursor_ResizeEW : Cursor_ResizeNS;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-            info << " x "  << sourceNode->scale_.y;
+            GeometryHandleManipulation::handleResizeV(ctx);
         }
         // picking on the CENTRER SCALING handle
         else if ( pick.first == s->handles_[mode_][Handles::SCALE] ) {
-
-            // hide all other grips
-            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
-            s->handles_[mode_][Handles::ROTATE]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_SHAPE]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            // prepare overlay
-            overlay_scaling_cross_->visible_ = false;
-            overlay_scaling_grid_->visible_ = false;
-            overlay_scaling_->visible_ = true;
-            overlay_scaling_->translation_.x = s->stored_status_->translation_.x;
-            overlay_scaling_->translation_.y = s->stored_status_->translation_.y;
-            overlay_scaling_->rotation_.z = s->stored_status_->rotation_.z;
-            overlay_scaling_->update(0);
-
-            //
-            // Manipulate the scaling handle in the SCENE coordinates to apply grid snap
-            //
-            glm::vec3 handle = glm::vec3( glm::round(pick.second), 0.f);
-            // Compute handle coordinates into SCENE reference frame
-            handle = source_to_scene_transform * glm::vec4( handle, 1.f );
-            // move the handle we hold by the mouse translation (in scene reference frame)
-            handle = glm::translate(glm::identity<glm::mat4>(), scene_to - scene_from) * glm::vec4( handle, 1.f );
-            // snap handle coordinates to grid (if active)
-            if ( grid->active() )
-                handle = grid->snap(handle);
-            // Compute handle coordinates back in SOURCE reference frame
-            handle = scene_to_source_transform * glm::vec4( handle,  1.f );
-            // The scaling factor is computed by dividing new handle coordinates with the ones before transform
-            glm::vec2 handle_scaling = glm::vec2(handle) / glm::round(pick.second);
-
-            // proportional SCALING with SHIFT
-            if (UserInterface::manager().shiftModifier()) {
-                handle_scaling = glm::vec2(glm::compMax(handle_scaling));
-                overlay_scaling_cross_->visible_ = true;
-                overlay_scaling_cross_->copyTransform(overlay_scaling_);
-            }
-            // Apply scaling to the source
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(handle_scaling, 1.f);
-
-            // show cursor depending on diagonal
-            corner = glm::sign(sourceNode->scale_);
-            ret.type = (corner.x * corner.y) > 0.f ? Cursor_ResizeNWSE : Cursor_ResizeNESW;
-            info << "Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-            info << " x "  << sourceNode->scale_.y;
+            GeometryHandleManipulation::handleScale(ctx);
         }
         // picking on the rotating handle
         else if ( pick.first == s->handles_[mode_][Handles::ROTATE] ) {
-
-            // hide all other grips
-            s->handles_[mode_][Handles::RESIZE]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_H]->visible_ = false;
-            s->handles_[mode_][Handles::RESIZE_V]->visible_ = false;
-            s->handles_[mode_][Handles::SCALE]->visible_ = false;
-            s->handles_[mode_][Handles::EDIT_SHAPE]->visible_ = false;
-            s->handles_[mode_][Handles::MENU]->visible_ = false;
-            // ROTATION on CENTER
-            overlay_rotation_->visible_ = true;
-            overlay_rotation_->translation_.x = s->stored_status_->translation_.x;
-            overlay_rotation_->translation_.y = s->stored_status_->translation_.y;
-            overlay_rotation_->update(0);
-            overlay_rotation_fix_->visible_ = false;
-            overlay_rotation_fix_->copyTransform(overlay_rotation_);
-            overlay_rotation_clock_->visible_ = false;
-            overlay_rotation_clock_hand_->visible_ = true;
-            overlay_rotation_clock_hand_->translation_.x = s->stored_status_->translation_.x;
-            overlay_rotation_clock_hand_->translation_.y = s->stored_status_->translation_.y;
-
-            // prepare variables
-            const float diagonal = glm::length( glm::vec2(s->frame()->aspectRatio() * s->stored_status_->scale_.x, s->stored_status_->scale_.y));
-            glm::vec2 handle_polar = glm::vec2(diagonal, 0.f);
-
-            // rotation center to center of source (disregarding scale)
-            glm::mat4 M = glm::translate(glm::identity<glm::mat4>(), s->stored_status_->translation_);
-            glm::vec3 source_from = glm::inverse(M) * glm::vec4( scene_from,  1.f );
-            glm::vec3 source_to   = glm::inverse(M) * glm::vec4( scene_to,  1.f );
-
-            // compute rotation angle on Z axis
-            float angle = glm::orientedAngle( glm::normalize(glm::vec2(source_from)), glm::normalize(glm::vec2(source_to)));
-            handle_polar.y = s->stored_status_->rotation_.z + angle;
-            info << "Angle " << std::fixed << std::setprecision(1) << glm::degrees(sourceNode->rotation_.z) << UNICODE_DEGREE;
-
-            // compute scaling of diagonal to reach new coordinates
-            handle_polar.x *= glm::length( glm::vec2(source_to) ) / glm::length( glm::vec2(source_from) );
-
-            // snap polar coordiantes (diagonal lenght, angle)
-            if ( grid->active() ) {
-                handle_polar = glm::round( handle_polar / grid->step() ) * grid->step();
-                // prevent null size
-                handle_polar.x = glm::max( grid->step().x,  handle_polar.x );
-            }
-
-            // Cancel scaling diagonal with SHIFT
-            if (UserInterface::manager().shiftModifier()) {
-                handle_polar.x = diagonal;
-                overlay_rotation_fix_->visible_ = true;
-            } else {
-                info << std::endl << "   Size " << std::fixed << std::setprecision(3) << sourceNode->scale_.x;
-                info << " x "  << sourceNode->scale_.y ;
-            }
-
-            // apply after snap
-            sourceNode->rotation_ = glm::vec3(0.f, 0.f, handle_polar.y);
-            handle_polar.x /= diagonal ;
-            sourceNode->scale_ = s->stored_status_->scale_ * glm::vec3(handle_polar.x, handle_polar.x, 1.f);
-
-            // update overlay
-            overlay_rotation_clock_hand_->rotation_.z = sourceNode->rotation_.z;
-            overlay_rotation_clock_hand_->update(0);
-
-            // show cursor for rotation
-            ret.type = Cursor_Hand;
+            GeometryHandleManipulation::handleRotate(ctx);
         }
         // picking anywhere but on a handle: user wants to move the source
         else {
@@ -1770,11 +1492,11 @@ void GeometryView::initiate()
 {
     if (editor_mode_ == EDIT_SOURCES)
         View::initiate();
-    else if (!current_action_ongoing_ ) {
-        // store status current canvas
-        canvas_stored_status_->copyTransform(canvas_[canvas_current_].root_);
-        canvas_stored_status_->update(0.f);
-
+    else if (!current_action_ongoing_) {
+        // all sources store their status at initiation of an action
+        for (auto sit = Canvas::manager().begin();
+             sit != Canvas::manager().end(); ++sit)
+            (*sit)->store(mode_);
         // initiated
         current_action_ = "";
         current_action_ongoing_ = true;
@@ -1783,7 +1505,13 @@ void GeometryView::initiate()
 
 void GeometryView::terminate(bool force)
 {
-    View::terminate(force);
+    if (editor_mode_ == EDIT_SOURCES)
+        View::terminate(force);
+    else if (current_action_ongoing_) {
+        // terminated
+        current_action_ = "";
+        current_action_ongoing_ = false;
+    }
 
     // hide all view overlays
     overlay_position_->visible_       = false;
@@ -1818,14 +1546,13 @@ void GeometryView::terminate(bool force)
     overlay_selection_active_ = false;
 
     // restore all handles canvas
-    for (auto &c : canvas_) {
-        c.menu_->visible_ = true;
-        c.handles_[Handles::RESIZE]->visible_ = true;
-        c.handles_[Handles::RESIZE]->overlayActiveCorner( glm::vec2(0.f, 0.f) );
-        c.handles_[Handles::RESIZE_H]->visible_ = true;
-        c.handles_[Handles::RESIZE_V]->visible_ = true;
+    canvas_overlay_crop_->visible_   = false;
+    for (auto sit = Canvas::manager().begin();
+         sit != Canvas::manager().end(); ++sit){
+        (*sit)->handles_[mode_][Handles::MENU]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::CROP_H]->visible_ = true;
+        (*sit)->handles_[mode_][Handles::CROP_V]->visible_ = true;
     }
-
 
     // reset grid
     adaptGridToSource();
@@ -1965,7 +1692,7 @@ void GeometryView::updateSelectionOverlay(glm::vec4 color)
         if ( !overlay_selection_active_) {
 
             // calculate ORIENTED bbox on selection
-            GlmToolkit::OrientedBoundingBox selection_box = BoundingBoxVisitor::OBB(Mixer::selection().getCopy(), this);
+            GlmToolkit::OrientedBoundingBox selection_box = BoundingBoxVisitor::OBB(Mixer::selection().getCopy(), scene.ws(), mode_);
 
             // apply transform
             overlay_selection_->rotation_ = selection_box.orientation;
@@ -1981,3 +1708,40 @@ void GeometryView::updateSelectionOverlay(glm::vec4 color)
     }
 }
 
+
+void GeometryView::setCurrentCanvas(Source *c)
+{
+    // check if current canvas is still valid
+    SourceList::iterator sit = std::find(Canvas::manager().begin(), 
+                            Canvas::manager().end(), current_canvas_);
+    if ( sit == Canvas::manager().end() ) 
+        // invalid canvas; set current to null
+        current_canvas_ = nullptr;
+
+    // un-select current canvas if null given
+    if (c == nullptr) {
+        if (current_canvas_ != nullptr) {
+            current_canvas_->setMode(Source::VISIBLE);
+            current_canvas_ = nullptr;
+        }
+        return;
+    } 
+    else if (current_canvas_ == c) {
+        // nothing to change if same canvas
+        return;
+    }
+
+    current_canvas_ = c;
+    current_canvas_->setMode(Source::CURRENT);
+
+    current_canvas_->manipulator_->setActive(1);
+    current_canvas_->handles_[mode_][Handles::NODE_LOWER_RIGHT]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::NODE_LOWER_LEFT]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::NODE_UPPER_RIGHT]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::NODE_UPPER_LEFT]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::ROUNDING]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::EDIT_CROP]->visible_ = false;
+    current_canvas_->handles_[mode_][Handles::CROP_H]->visible_ = true;
+    current_canvas_->handles_[mode_][Handles::CROP_V]->visible_ = true;
+    current_canvas_->handles_[mode_][Handles::MENU]->visible_ = true;
+}

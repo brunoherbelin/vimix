@@ -20,6 +20,8 @@
 #include <string>
 #include <thread>
 #include <regex>
+#include <mutex>
+#include <condition_variable>
 
 #include "Log.h"
 #include "View/View.h"
@@ -38,7 +40,7 @@
 #define ACTION_DEBUG
 #endif
 
-#define HISTORY_NODE(i) std::to_string(i).insert(0,1,'H')
+#define HISTORY_NODE(i) (std::string("H") + std::to_string(i))
 
 using namespace tinyxml2;
 
@@ -61,12 +63,15 @@ void Action::init(const std::string &label)
     snapshot_id_ = 0;
     snapshot_node_ = nullptr;
 
-    store(label);
+    store(label, false);
 }
 
 // must be called in a thread running in parrallel of the rendering
 // (needs opengl update to get thumbnail)
-void captureMixerSession(Session *se, std::string node, std::string label, tinyxml2::XMLDocument *doc = nullptr)
+void captureMixerSession(Session *se, std::string node, 
+    std::string label, 
+    bool thumbnail,
+    tinyxml2::XMLDocument *doc = nullptr)
 {
     if (se != nullptr) {
 
@@ -108,13 +113,15 @@ void captureMixerSession(Session *se, std::string node, std::string label, tinyx
             sessionNode->SetAttribute("shortlabel", short_label.c_str() );
         }
 
-        // get the thumbnail (requires one opengl update to render)
-        FrameBufferImage *thumbnail = se->renderThumbnail();
         if (thumbnail) {
-            XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, _doc);
-            if (imageelement)
-                sessionNode->InsertEndChild(imageelement);
-            delete thumbnail;
+            // get the thumbnail (requires one opengl update to render)
+            FrameBufferImage *thumbnail = se->renderThumbnail();
+            if (thumbnail) {
+                XMLElement *imageelement = SessionVisitor::ImageToXML(thumbnail, _doc);
+                if (imageelement)
+                    sessionNode->InsertEndChild(imageelement);
+                delete thumbnail;
+            }
         }
 
         // save session attributes
@@ -135,15 +142,13 @@ void captureMixerSession(Session *se, std::string node, std::string label, tinyx
     }
 }
 
-void Action::storeSession(Session *se, std::string label)
+void Action::storeSession(Session *se, std::string label, bool thumbnail)
 {
-    // force lock for creation of first step
-    if (Action::manager().history_step_ < 1)
-        Action::manager().history_access_.lock();
-    // try lock for storing history in normal case
-    // (i.e. priority to realtime performance over storing history)
-    else if (!Action::manager().history_access_.try_lock())
+    if (se == nullptr)
         return;
+
+    // lock for creation of first step
+    Action::manager().history_access_.lock();
 
     // incremental naming of history nodes
     Action::manager().history_step_++;
@@ -168,7 +173,9 @@ void Action::storeSession(Session *se, std::string label)
     captureMixerSession(se,
                         HISTORY_NODE(Action::manager().history_step_),
                         label,
-                        &Action::manager().history_doc_);
+                        thumbnail,
+                        &Action::manager().history_doc_
+                        );
 
     Action::manager().history_access_.unlock();
     
@@ -179,14 +186,17 @@ void Action::storeSession(Session *se, std::string label)
 }
 
 
-void Action::store(const std::string &label)
+void Action::store(const std::string &label, bool threaded)
 {
     // ignore if no label is given
     if (label.empty())
         return;
 
     // threaded capturing state of current session
-    std::thread(Action::storeSession, Mixer::manager().session(), label).detach();
+    if (threaded)
+        std::thread(Action::storeSession, Mixer::manager().session(), label, true).detach();
+    else
+        Action::storeSession(Mixer::manager().session(), label, false);
 }
 
 void Action::undo()
@@ -297,9 +307,9 @@ void Action::takeSnapshot(Session *se, const std::string &label, bool create_thr
 
         if (create_thread)
             // threaded capture state of current session
-            std::thread(captureMixerSession, se, SNAPSHOT_NODE(id), label, nullptr).detach();
+            std::thread(captureMixerSession, se, SNAPSHOT_NODE(id), label, true, nullptr).detach();
         else
-            captureMixerSession(se, SNAPSHOT_NODE(id), label);
+            captureMixerSession(se, SNAPSHOT_NODE(id), label, false); 
 
 #ifdef ACTION_DEBUG
         Log::Info("Snapshot stored %d '%s'", id, label.c_str());
@@ -357,7 +367,7 @@ void Action::replace(uint64_t snapshotid)
             se->snapshots()->access_.unlock();
 
             // threaded capture state of current session
-            std::thread(captureMixerSession, se, SNAPSHOT_NODE(snapshot_id_), label, nullptr).detach();
+            std::thread(captureMixerSession, se, SNAPSHOT_NODE(snapshot_id_), label, true, nullptr).detach();
 
 #ifdef ACTION_DEBUG
             Log::Info("Snapshot replaced %d '%s'", snapshot_id_, label.c_str());

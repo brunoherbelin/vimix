@@ -2,6 +2,7 @@
 #define RENDERSOURCE_H
 
 #include "Source.h"
+#include <cstddef>
 
 
 
@@ -30,12 +31,17 @@ public:
 
     typedef enum {
         RENDER_TEXTURE = 0,
-        RENDER_EXCLUSIVE
+        RENDER_PROJECTION = 1,
+        RENDER_PROJECTION_SOURCE = 2,
+        RENDER_CANVAS = 3
     } RenderSourceProvenance;
     static std::vector< std::tuple<int, int, std::string> > ProvenanceMethod;
 
     void setRenderingProvenance(RenderSourceProvenance m) { provenance_ = m; }
     RenderSourceProvenance renderingProvenance() const { return provenance_; }
+
+    void setCanvasProvenance(size_t c) { canvas_index_ = c; }
+    size_t canvasProvenance() const { return canvas_index_; }
 
     glm::ivec2 icon() const override;
     std::string info() const override;
@@ -47,12 +53,12 @@ protected:
     uint64_t runtime_;
 
     FrameBuffer *rendered_output_;
-    Surface *rendered_surface_;
 
     // control
     bool paused_;
     bool reset_;
     RenderSourceProvenance provenance_;
+    size_t canvas_index_;
 };
 
 

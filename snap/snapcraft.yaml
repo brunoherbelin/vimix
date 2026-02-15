@@ -1,6 +1,6 @@
 name: vimix
 base: core24
-version: '0.8.5d'
+version: '0.9.0'
 summary: Video live mixer
 title: vimix
 description: |

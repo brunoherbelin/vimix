@@ -22,6 +22,7 @@
 #include <iostream>
 
 // gstreamer
+#include <gst/gl/gl.h>
 #include <gst/gstformat.h>
 #include <gst/video/video.h>
 #include <gst/app/gstappsrc.h>
@@ -105,14 +106,25 @@ VideoBroadcast::VideoBroadcast(int port): FrameGrabber(), port_(port)
         port_ = BROADCAST_DEFAULT_PORT;
 }
 
-std::string VideoBroadcast::init(GstCaps *caps)
+std::string VideoBroadcast::init(GstCaps *read_caps, GstCaps *write_caps)
 {
     if (!VideoBroadcast::available())
         return std::string("Video Broadcast : Not available (missing SRT or H264)");
 
     // ignore
-    if (caps == nullptr)
+    if (read_caps == nullptr || write_caps == nullptr)
         return std::string("Video Broadcast : Invalid caps");
+
+    // specify streaming framerate in the read caps
+    read_caps_ = gst_caps_copy( read_caps );
+    GValue v = G_VALUE_INIT;
+    g_value_init (&v, GST_TYPE_FRACTION);
+    gst_value_set_fraction (&v, BROADCAST_FPS, 1);  // fixed 30 FPS
+    gst_caps_set_value(read_caps_, "framerate", &v);
+    g_value_unset (&v);
+
+    // set write caps
+    write_caps_ = gst_caps_copy( write_caps );
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! ";
@@ -124,13 +136,16 @@ std::string VideoBroadcast::init(GstCaps *caps)
         srt_encoder_.find("vaapih264enc") != std::string::npos) {
         // glupload: system memory → GLMemory (in GStreamer's thread)
         // glcolorconvert: GPU color conversion (RGBA → NV12 for VAAPI, passthrough for NVIDIA)
-        description += "glupload ! glcolorconvert ! ";
+        description += "glupload ! glcolorconvert ! gltransformation ! capsfilter name=capf ! ";
+        // specify that write caps are in GLMemory
+        GstCapsFeatures *features = gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr);
+        gst_caps_set_features(write_caps_, 0, features);
         Log::Info("Video Broadcast with glupload & GPU color conversion");
     } else
 #endif
     {
         // CPU path: use regular videoconvert
-        description += "videoconvert ! ";
+        description += "videoconvert ! videoscale ! capsfilter name=capf ! ";
     }
 
     // complement pipeline with encoder
@@ -147,6 +162,13 @@ std::string VideoBroadcast::init(GstCaps *caps)
         std::string msg = std::string("Video Broadcast : Could not construct pipeline ") + description + "\n" + std::string(error->message);
         g_clear_error (&error);
         return msg;
+    }
+
+    // setup video capsfilter for sink
+    GstElement *capsfilter = gst_bin_get_by_name (GST_BIN (pipeline_), "capf");
+    if (capsfilter) {
+        g_object_set (G_OBJECT (capsfilter), "caps", write_caps_, NULL);
+        gst_object_unref (capsfilter);
     }
 
     // setup SRT streaming sink properties (uri, latency)
@@ -173,18 +195,8 @@ std::string VideoBroadcast::init(GstCaps *caps)
         // Set buffer size
         gst_app_src_set_max_bytes( src_, buffering_size_ );
 
-        // specify streaming framerate in the given caps
-        GstCaps *tmp = gst_caps_copy( caps );
-        GValue v = G_VALUE_INIT;
-        g_value_init (&v, GST_TYPE_FRACTION);
-        gst_value_set_fraction (&v, BROADCAST_FPS, 1);  // fixed 30 FPS
-        gst_caps_set_value(tmp, "framerate", &v);
-        g_value_unset (&v);
-
-        // instruct src to use the caps
-        caps_ = gst_caps_copy( tmp );
-        gst_app_src_set_caps (src_, caps_);
-        gst_caps_unref (tmp);
+        // instruct src to use the read caps
+        gst_app_src_set_caps (src_, read_caps_);
 
         // setup callbacks
         GstAppSrcCallbacks callbacks;

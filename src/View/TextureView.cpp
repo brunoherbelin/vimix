@@ -1076,7 +1076,7 @@ void TextureView::draw()
     }
     if (ImGui::BeginPopup("AppearanceSourceContextMenu", ImGuiWindowFlags_NoMove)) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_APPEARANCE_SOURCE, 1.f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.8f));
         Source *s = Mixer::manager().currentSource();
         if (s != nullptr) {
 

@@ -87,6 +87,7 @@ bool gtk_init()
 // globals
 const std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
 bool DialogToolkit::FileDialog::busy_ = false;
+bool DialogToolkit::yesCancelDialog::busy_ = false;
 
 //
 // FileDialog common functions
@@ -555,6 +556,80 @@ std::string openFolderDialog(const std::string &label, const std::string &path)
     return foldername;
 }
 
+
+//
+// Yes/Cancel dialog implementation
+//
+
+bool yesCancelDialogCallback(const std::string &message);
+
+DialogToolkit::yesCancelDialog::yesCancelDialog(const std::string &message)
+    : message_(message), result_(false)
+{
+}
+
+void DialogToolkit::yesCancelDialog::open()
+{
+    if ( !busy_ && promises_.empty() ) {
+        promises_.emplace_back( std::async(std::launch::async, yesCancelDialogCallback, message_) );
+        busy_ = true;
+    }
+}
+
+bool DialogToolkit::yesCancelDialog::closed()
+{
+    if ( !promises_.empty() ) {
+        // check that dialog thread finished
+        if (promises_.back().wait_for(timeout) == std::future_status::ready ) {
+            // get the result from the dialog
+            result_ = promises_.back().get();
+            // done with this dialog
+            promises_.pop_back();
+            busy_ = false;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool yesCancelDialogCallback(const std::string &message)
+{
+    bool result = false;
+
+#if USE_TINYFILEDIALOG
+    int ret = tinyfd_messageBox(APP_TITLE, message.c_str(), "okcancel", "warning", 0);
+    result = (ret == 1); // 1 = ok, 0 = no/cancel
+#else
+    if (!gtk_init()) {
+        return result;
+    }
+
+    GtkWidget *dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_DESTROY_WITH_PARENT,
+                                               GTK_MESSAGE_WARNING, GTK_BUTTONS_OK_CANCEL,
+                                               "%s", message.c_str());
+
+    gtk_window_set_keep_above(GTK_WINDOW(dialog), TRUE);
+    if (Settings::application.dialogPosition.x > 0 && Settings::application.dialogPosition.y > 0)
+        gtk_window_move(GTK_WINDOW(dialog),
+                       Settings::application.dialogPosition.x,
+                       Settings::application.dialogPosition.y);
+
+    // show and get response
+    gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+    result = (response == GTK_RESPONSE_OK);
+
+    // remember position
+    gtk_window_get_position(GTK_WINDOW(dialog),
+                           &Settings::application.dialogPosition.x,
+                           &Settings::application.dialogPosition.y);
+
+    // done
+    gtk_widget_destroy(dialog);
+    wait_for_event();
+#endif
+
+    return result;
+}
 
 void DialogToolkit::ErrorDialog(const char* message)
 {
