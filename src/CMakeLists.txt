@@ -269,7 +269,7 @@ IF(APPLE)
     ### install gst plugins
     message(STATUS "Install with gst-plugins ${PKG_GSTREAMER_PLUGIN_DIR}")
     install(DIRECTORY "${PKG_GSTREAMER_PLUGIN_DIR}" DESTINATION "${plugin_dest_dir}" COMPONENT Runtime)
-    list(APPEND GSTPLUGINS_EXCLUDE "libgstgtk4.dylib" "libgstgtk.dylib" "libgstpython.dylib")
+    list(APPEND GSTPLUGINS_EXCLUDE "libgstgtk4.dylib" "libgstgtk.dylib" "libgstpython.dylib" "libgstnice.dylib")
 
     # install the gst-plugin-scanner program (used by plugins at load time)
     set(PKG_GSTREAMER_SCANNER "${PKG_GSTREAMER_PREFIX}/libexec/gstreamer-1.0/gst-plugin-scanner")
@@ -314,7 +314,7 @@ IF(APPLE)
         message(\"       - Adding \${SIZE} plugins to bundle...\")
         include(BundleUtilities)
         set(BU_CHMOD_BUNDLE_ITEMS TRUE)
-        fixup_bundle(\"${APPS}\" \"\${ALLPLUGINS}\" \"/opt/homebrew/lib\" IGNORE_ITEM \"Python\")
+        fixup_bundle(\"${APPS}\" \"\${ALLPLUGINS}\" \"/opt/homebrew/lib;${ICU_LIBRARY_DIRS}\" IGNORE_ITEM \"Python\")
         file(REMOVE_RECURSE \"${APPS}/Contents/Frameworks/Python.framework\")
         "
         COMPONENT Runtime
@@ -364,6 +364,23 @@ IF(APPLE)
                 COMPONENT Runtime
         )
     endif()
+
+    ##
+    ## APPLE NOTARIZATION
+    ## Custom target to sign, notarize, and staple the DMG after cpack
+    ## Usage: cmake --build . --target notarize
+    ##
+    set(DMG_NAME "${CPACK_PACKAGE_FILE_NAME}.dmg")
+    add_custom_target(notarize
+        COMMAND ${CMAKE_COMMAND}
+            -DDMG_PATH=${CMAKE_BINARY_DIR}/${DMG_NAME}
+            -DCODESIGN_IDENTITY=${APPLE_CODESIGN_IDENTITY}
+            -DKEYCHAIN_PROFILE=vimix
+            -P ${CMAKE_SOURCE_DIR}/osx/notarize.cmake
+        COMMENT "Signing and notarizing DMG..."
+        USES_TERMINAL
+        VERBATIM
+    )
 
 ELSE(APPLE)
 
