@@ -600,6 +600,8 @@ void Navigator::Render()
                 SourceList::iterator cs = Mixer::manager().session()->at( selected_index );
                 if (cs != Mixer::manager().session()->end() )
                     RenderSourcePannel(*cs, iconsize, reset_visitor);
+                else
+                    selected_index = -1;
             }
             reset_visitor = false;
         }
@@ -808,7 +810,8 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset
                 Action::manager().store(sname + std::string(": Deleted"));
             }
             // delete all button
-            if ( s->failed() && Mixer::manager().session()->failedSources().size() > 1 ) {
+            if ( Mixer::manager().session()->failedSources().size() > 1 && 
+                Mixer::manager().session()->find(s) != Mixer::manager().session()->end() && s->failed()) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
                 if ( ImGui::Button( ICON_FA_UNDO_ALT " Retry all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
                     auto failedsources = Mixer::manager().session()->failedSources();

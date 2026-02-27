@@ -400,7 +400,7 @@ typedef enum {
 void MediaPlayer::execute_open()
 {
     // create playbin
-    pipeline_ = gst_element_factory_make ("playbin3", std::to_string(id_).c_str());
+    pipeline_ = gst_element_factory_make ("playbin", std::to_string(id_).c_str());
 
     // set uri of file to open
     g_object_set ( G_OBJECT (pipeline_),  "uri", uri_.c_str(),  NULL);

@@ -219,8 +219,7 @@ void MediaSource::updateAudio()
 
 void MediaSource::render()
 {
-    if ( renderbuffer_ == nullptr || 
-         texturesurface_->textureIndex() != mediaplayer_->texture() )
+    if ( renderbuffer_ == nullptr )
         init();
     else {
         // render the media player into frame buffer

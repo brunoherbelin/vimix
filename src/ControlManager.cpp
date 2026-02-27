@@ -1533,9 +1533,20 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
     // build socket to send message to indicated endpoint
     UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );
 
-    // build messages packet
-    char buffer[IP_MTU_SIZE];
-    osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
+    // Calculate required buffer size dynamically
+    // Each source sends 3 messages:
+    // 1. OSC address (~32 bytes) + float value (4 bytes) + OSC overhead (~20 bytes) = ~56 bytes
+    // 2. OSC address (~32 bytes) + float value (4 bytes) + OSC overhead (~20 bytes) = ~56 bytes
+    // 3. OSC address (~32 bytes) + string name (~64 bytes max) + OSC overhead (~20 bytes) = ~116 bytes
+    // Total per source: ~228 bytes
+    // Bundle overhead: ~32 bytes
+    size_t bytes_per_source = 228;
+    size_t bundle_overhead = 32;
+    size_t buffer_size = bundle_overhead + (bytes_per_source * (size_t)N);
+
+    // Allocate buffer dynamically
+    char* buffer = new char[buffer_size];
+    osc::OutboundPacketStream p( buffer, buffer_size );
 
     p.Clear();
     p << osc::BeginBundle();
@@ -1574,6 +1585,9 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
 
     p << osc::EndBundle;
     socket.Send( p.Data(), p.Size() );
+
+    // Clean up dynamic allocation
+    delete[] buffer;
 }
 
 void Control::sendBatchStatus(const IpEndpointName &remoteEndpoint)
@@ -1581,19 +1595,35 @@ void Control::sendBatchStatus(const IpEndpointName &remoteEndpoint)
     // build socket to send message to indicated endpoint
     UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );
 
-    // build messages packet
-    char buffer[IP_MTU_SIZE];
-    osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
+    // data structures to browse batch
+    std::vector<SourceIdList> pl = Mixer::manager().session()->getAllBatch();
+    Session *_session = Mixer::manager().session();
+
+    // Calculate required buffer size dynamically
+    // For each batch, we send 2 messages:
+    // 1. /vimix/batch#i/index with N integers (4 bytes each) + OSC address (~32 bytes) + overhead (~20 bytes)
+    // 2. /vimix/batch#i/alpha with N floats (4 bytes each) + OSC address (~32 bytes) + overhead (~20 bytes)
+    // Calculate total number of sources across all batches
+    size_t total_sources = 0;
+    for (const auto& batch : pl) {
+        total_sources += batch.size();
+    }
+    // Per batch: 2 messages * (32 address + 20 overhead) = ~104 bytes
+    // Per source in batch: 2 values * 4 bytes = 8 bytes
+    size_t bytes_per_batch = 104;
+    size_t bytes_per_source = 8;
+    size_t bundle_overhead = 32;
+    size_t buffer_size = bundle_overhead + (bytes_per_batch * pl.size()) + (bytes_per_source * total_sources);
+
+    // Allocate buffer dynamically
+    char* buffer = new char[buffer_size];
+    osc::OutboundPacketStream p( buffer, buffer_size );
 
     p.Clear();
     p << osc::BeginBundle();
 
-    // data structures to browse batch
     int i = 0;
     char oscaddr[128];
-    std::vector<SourceIdList> pl = Mixer::manager().session()->getAllBatch();
-
-    Session *_session = Mixer::manager().session();
 
     // batch list
     for (auto plit = pl.begin(); plit != pl.end(); ++plit, ++i) {
@@ -1626,6 +1656,9 @@ void Control::sendBatchStatus(const IpEndpointName &remoteEndpoint)
 
     p << osc::EndBundle;
     socket.Send( p.Data(), p.Size() );
+
+    // Clean up dynamic allocation
+    delete[] buffer;
 }
 
 void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)

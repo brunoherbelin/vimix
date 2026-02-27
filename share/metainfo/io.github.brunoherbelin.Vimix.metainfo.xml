@@ -19,9 +19,11 @@
   </categories>
   <screenshots>
   <screenshot type="default">
+    <caption>Mixing view with multiple sources</caption>
     <image type="source">https://brunoherbelin.github.io/vimix/vimix_screenshot.png</image>
   </screenshot>
   <screenshot>
+    <caption>Geometry view showing source arrangement</caption>
     <image type="source">https://brunoherbelin.github.io/vimix/vimix_screenshot_2.png</image>
   </screenshot>
   </screenshots>
@@ -80,6 +82,7 @@
   <url type="help">https://github.com/brunoherbelin/vimix/wiki/User-manual</url>
   <url type="faq">https://github.com/brunoherbelin/vimix/wiki</url>
   <url type="bugtracker">https://github.com/brunoherbelin/vimix/issues</url>
+  <url type="vcs-browser">https://github.com/brunoherbelin/vimix</url>
   <developer id="io.github.brunoherbelin">
     <name>Bruno Herbelin</name>
   </developer>
