@@ -82,9 +82,12 @@ void Streaming::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                 // exception: if client is black listed for SHM
                 if ( std::find( Streaming::manager().shm_blacklist_.begin(),
                                 Streaming::manager().shm_blacklist_.end(), client_name
-                                ) != Streaming::manager().shm_blacklist_.end() )
+                                ) != Streaming::manager().shm_blacklist_.end() ){
                     // then enforce local UDP transfer
-                    protocol = NetworkToolkit::UDP_RAW;
+                    protocol = NetworkToolkit::UDP_JPEG;
+                    if (Settings::application.stream_protocol > 0)
+                        protocol = NetworkToolkit::UDP_H264;
+                }
                 // add stream answering to request
                 Streaming::manager()._addStream(sender, reply_to_port, client_name, protocol);
             }
@@ -140,14 +143,15 @@ Streaming::~Streaming()
 
 bool Streaming::busy()
 {
-    bool b = false;
+    if (streamers_.empty())
+        return false;
 
-    if (streamers_lock_.try_lock()) {
-        std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
-        for (; sit != streamers_.end() && !b; ++sit)
-            b = (*sit)->busy() ;
-        streamers_lock_.unlock();
-    }
+    streamers_lock_.lock();
+    bool b = false;
+    std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
+    for (; sit != streamers_.end() && !b; ++sit)
+        b = (*sit)->busy() ;
+    streamers_lock_.unlock();
 
     return b;
 }
@@ -157,12 +161,11 @@ std::vector<std::string> Streaming::listStreams()
 {
     std::vector<std::string>  ls;
 
-    if (streamers_lock_.try_lock()) {
-        std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
-        for (; sit != streamers_.end(); ++sit)
-            ls.push_back( (*sit)->info() );
-        streamers_lock_.unlock();
-    }
+    streamers_lock_.lock();
+    std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
+    for (; sit != streamers_.end(); ++sit)
+        ls.push_back( (*sit)->info() );
+    streamers_lock_.unlock();
 
     return ls;
 }
@@ -237,7 +240,9 @@ void Streaming::removeStreams(const std::string &clientname)
 
 void Streaming::removeStream(const VideoStreamer *vs)
 {
-    if ( vs!= nullptr && streamers_lock_.try_lock()) {
+    if ( vs!= nullptr) {
+
+        streamers_lock_.lock();
 
         std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
         while ( sit != streamers_.end() ){
@@ -404,7 +409,7 @@ std::string VideoStreamer::init(GstCaps *read_caps, GstCaps *write_caps)
 
     // prevent eroneous protocol values
     if (config_.protocol < 0 || config_.protocol >= NetworkToolkit::DEFAULT)
-        config_.protocol = NetworkToolkit::UDP_RAW;
+        config_.protocol = NetworkToolkit::UDP_JPEG;
 
     // special case H264: can be Hardware accelerated
     bool found_harware_acceleration = false;
@@ -419,6 +424,7 @@ std::string VideoStreamer::init(GstCaps *read_caps, GstCaps *write_caps)
                     Log::Info("Video Streamer with glupload & GPU color conversion");
                 }
                 else 
+                    description += "videoconvert ! ";
 #endif
                 {
                     description += config->second;
@@ -500,7 +506,7 @@ std::string VideoStreamer::init(GstCaps *read_caps, GstCaps *write_caps)
     // all good
     initialized_ = true;
 
-    return std::string("Streaming to ") + config_.client_name + " started.";
+    return std::string("Streaming to ") + config_.client_name + " started.\n" + description;
 }
 
 void VideoStreamer::terminate()
@@ -527,10 +533,6 @@ void VideoStreamer::stop ()
 {
     // stop recording
     FrameGrabber::stop ();
-
-    // inform streaming manager to remove myself
-    // NB: will not be effective if called inside a locked streamers_lock_
-    Streaming::manager().removeStream(this);
 }
 
 std::string VideoStreamer::info(bool extended) const

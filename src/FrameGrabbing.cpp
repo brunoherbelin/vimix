@@ -30,6 +30,7 @@
 #include <gst/video/video.h>
 
 #include "FrameBuffer.h"
+#include "Streamer.h"
 #include "FrameGrabbing.h"
 
 
@@ -138,6 +139,8 @@ void FrameGrabbing::clearAll()
         rec->stop();
         if (rec->finished()) {
             iter = grabbers_.erase(iter);
+            if (rec->type() == FrameGrabber::GRABBER_P2P)
+                Streaming::manager().removeStream(dynamic_cast<VideoStreamer*>(rec));
             delete rec;
         }
         else
@@ -150,19 +153,22 @@ void FrameGrabbing::clearAll()
 
 void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
 {
-    if (grabbers_.empty() || frame_buffer == nullptr)
+    // invalid frame buffer
+    if (frame_buffer == nullptr)
         return;
 
     // determine input size from frame buffer and crop, ensuring divisible by 2
     glm::vec2 size = frame_buffer->projectionSize();
-    guint write_width = 2 * (int) ceilf(float(frame_buffer->width()) * size.x / 2.f);
-    guint write_height = 2 * (int) ceilf(float(frame_buffer->height()) * size.y / 2.f);
+    write_width_ = 2 * (int) ceilf(float(frame_buffer->width()) * size.x / 2.f);
+    write_height_ = 2 * (int) ceilf(float(frame_buffer->height()) * size.y / 2.f);
+
+    // nothing to do read
+    if (grabbers_.empty())
+        return;
 
     // if different frame buffer from previous frame
     if ( frame_buffer->width() != read_width_ ||
          frame_buffer->height() != read_height_ ||
-         write_width != write_width_ ||
-         write_height != write_height_ ||
          (frame_buffer->flags() & FrameBuffer::FrameBuffer_alpha) != use_alpha_) {
 
         // define stream properties
@@ -170,8 +176,6 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
         read_height_ = frame_buffer->height();
         use_alpha_ = (frame_buffer->flags() & FrameBuffer::FrameBuffer_alpha);
         read_size_ = read_width_ * read_height_ * (use_alpha_ ? 4 : 3);
-        write_width_ = write_width;
-        write_height_ = write_height;
 
         // first time initialization
         if ( pbo_[0] == 0 )
@@ -281,6 +285,8 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
                     grabbers_duration_.erase(rec);
                     // remove from local list and iterate
                     iter = cpu_grabbers_.erase(iter);
+                    if (rec->type() == FrameGrabber::GRABBER_P2P)
+                        Streaming::manager().removeStream(dynamic_cast<VideoStreamer*>(rec));
                     delete rec;
                 }
                 else
@@ -315,6 +321,8 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
                 grabbers_duration_.erase(rec);
                 // remove from local list and iterate
                 iter = gpu_grabbers_.erase(iter);
+                if (rec->type() == FrameGrabber::GRABBER_P2P)
+                    Streaming::manager().removeStream(dynamic_cast<VideoStreamer*>(rec));
                 delete rec;
             }
             else
