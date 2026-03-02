@@ -3,7 +3,6 @@
 
 #include "FrameGrabber.h"
 
-#define SHMDATA_DEFAULT_PATH "/tmp/shm_vimix"
 #define SHMDATA_FPS 30
 
 class ShmdataBroadcast : public FrameGrabber

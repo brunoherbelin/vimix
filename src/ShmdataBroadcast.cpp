@@ -75,7 +75,7 @@ ShmdataBroadcast::ShmdataBroadcast(Method m, const std::string &socketpath): Fra
 
     // default socket path
     if (socket_path_.empty())
-        socket_path_ = SHMDATA_DEFAULT_PATH;
+        socket_path_ = SystemToolkit::full_filename(SystemToolkit::temp_path(), "shm_vimix");
 
     // default to SHMSINK / ignore SHM_SHMDATASINK if not available
     if (!GstToolkit::has_feature(shm_sink_[SHM_SHMDATASINK]) || m == SHM_SHMDATAANY)
@@ -197,6 +197,7 @@ std::string ShmdataBroadcast::gst_pipeline() const
         pipeline += " is-live=true";
         pipeline += " ! ";
         pipeline += std::string( gst_caps_to_string(write_caps_) );
+        pipeline += ", format=RGB, framerate=30/1";
         pipeline = std::regex_replace(pipeline, std::regex("\\(int\\)"), "");
         pipeline = std::regex_replace(pipeline, std::regex("\\(fraction\\)"), "");
         pipeline = std::regex_replace(pipeline, std::regex("\\(string\\)"), "");
