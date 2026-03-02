@@ -7,7 +7,6 @@
     "rename-desktop-file": "vimix.desktop",
     "rename-icon": "vimix",
     "finish-args": [
-        "--socket=wayland",
         "--socket=x11",
         "--socket=pulseaudio",
         "--share=ipc",
@@ -16,7 +15,8 @@
         "--device=shm",
         "--device=all",
         "--filesystem=home",
-        "--filesystem=/tmp",
+        "--filesystem=xdg-run",
+        "--persist=.config/vimix",
         "--talk-name=org.gtk.vfs.*",
         "--env=FREI0R_PATH=/app/lib/frei0r-1"
     ],
