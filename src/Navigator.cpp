@@ -3228,7 +3228,7 @@ void Navigator::RenderMainPannelSettings()
             std::string _shm_socket_file = Settings::application.shm_socket_path;
             if (_shm_socket_path.empty() || !SystemToolkit::file_exists(_shm_socket_path))
                 _shm_socket_path = SystemToolkit::temp_path();
-            _shm_socket_file = SystemToolkit::full_filename(_shm_socket_path, "shm_vimix");
+            _shm_socket_file = SystemToolkit::full_filename(_shm_socket_path, "shm");
 
             char msg[256];
             if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {

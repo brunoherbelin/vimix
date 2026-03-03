@@ -15,7 +15,7 @@
         "--device=shm",
         "--device=all",
         "--filesystem=home",
-        "--filesystem=xdg-run",
+        "--filesystem=xdg-run/vimix:create",
         "--persist=.config/vimix",
         "--talk-name=org.gtk.vfs.*",
         "--env=FREI0R_PATH=/app/lib/frei0r-1"

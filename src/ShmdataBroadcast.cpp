@@ -75,7 +75,7 @@ ShmdataBroadcast::ShmdataBroadcast(Method m, const std::string &socketpath): Fra
 
     // default socket path
     if (socket_path_.empty())
-        socket_path_ = SystemToolkit::full_filename(SystemToolkit::temp_path(), "shm_vimix");
+        socket_path_ = SystemToolkit::full_filename(SystemToolkit::temp_path(), "shm");
 
     // default to SHMSINK / ignore SHM_SHMDATASINK if not available
     if (!GstToolkit::has_feature(shm_sink_[SHM_SHMDATASINK]) || m == SHM_SHMDATAANY)

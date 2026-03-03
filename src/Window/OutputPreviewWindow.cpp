@@ -167,7 +167,7 @@ void OutputPreviewWindow::ToggleSharedMemory()
         std::string _shm_socket_file = Settings::application.shm_socket_path;
         if (_shm_socket_file.empty() || !SystemToolkit::file_exists(_shm_socket_file))
             _shm_socket_file = SystemToolkit::temp_path();
-        _shm_socket_file = SystemToolkit::full_filename(_shm_socket_file, "shm_vimix");
+        _shm_socket_file = SystemToolkit::full_filename(_shm_socket_file, "shm");
 
         // create shhmdata broadcaster with method
         Outputs::manager().start( new ShmdataBroadcast( (ShmdataBroadcast::Method) Settings::application.shm_method, _shm_socket_file));
