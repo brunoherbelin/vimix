@@ -1067,9 +1067,12 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 
             // different labels for each mode
             static const char *listboxname[3] = { "##NewSourceMediaRecent", "##NewSourceMediaRecording", "##NewSourceMediafolder"};
+            // compute maximum number of items to display in listbox according to available height
+            int max_items = (int) ((height_ - pos_top.y - 12.f * ImGui::GetFrameHeightWithSpacing() ) / ImGui::GetTextLineHeight());
+            max_items = CLAMP(max_items, 6, 25);
             // display the import-list and detect if one was selected
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::ListBoxHeader(listboxname[new_media_mode], sourceMediaFiles.size(), CLAMP(sourceMediaFiles.size(), 4, 6)) ) {
+            if (ImGui::ListBoxHeader(listboxname[new_media_mode], sourceMediaFiles.size(), CLAMP(sourceMediaFiles.size(), 4, max_items)) ) {
                 static int tooltip = 0;
                 static std::string filenametooltip;
                 // loop over list of files
@@ -1439,8 +1442,14 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines) )
                     update_new_source = true;
 
-                // Local menu for list of examples
                 ImVec2 pos_bot = ImGui::GetCursorPos();
+                // Paste & go
+                ImGui::SetCursorPos( pos_bot + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -2.f * ImGui::GetFrameHeightWithSpacing()));
+                if ( ImGuiToolkit::IconButton(ICON_FA_PASTE, "Paste & go") ) {
+                    _description = ImGui::GetClipboardText();
+                    update_new_source = true;
+                }
+                // Local menu for list of examples
                 ImGui::SetCursorPos( pos_bot + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -ImGui::GetFrameHeightWithSpacing()));
                 if (ImGui::BeginCombo("##Examples", "Examples", ImGuiComboFlags_NoPreview | ImGuiComboFlags_HeightLarge))  {
                     ImGui::TextDisabled("Examples");

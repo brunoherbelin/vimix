@@ -2080,7 +2080,7 @@ void ImGuiVisitor::visit(TextSource &s)
                 }
             }
             ImGui::SetCursorPos(ImVec2(top.x, botom.y - 2.f * ImGui::GetFrameHeight()));
-            if (ImGuiToolkit::IconButton(ICON_FA_CODE, "Pango markup"))
+            if (ImGuiToolkit::IconButton(ICON_FA_EXTERNAL_LINK_ALT, "Pango markup"))
                 SystemToolkit::open("https://docs.gtk.org/Pango/pango_markup.html");
         }
 
