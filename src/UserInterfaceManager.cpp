@@ -2335,8 +2335,19 @@ void UserInterface::RenderAbout(bool* p_open)
     ImGui::SetCursorScreenPos(top);
     ImGui::Image((void*)(intptr_t)img_crow, ImVec2(512, 340));
 
-    ImGui::Text("vimix performs graphical mixing and blending of\nseveral movie clips and computer generated graphics,\nwith image processing effects in real-time.");
-    ImGui::Text("\nvimix is licensed under GNU GPL version 3 or later.\n" UNICODE_COPYRIGHT " 2019-2025 Bruno Herbelin.");
+    ImVec2 bottom = ImGui::GetCursorScreenPos();
+#ifdef VIMIX_SYSTEM_PROCESSOR
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
+    ImGui::SetCursorScreenPos(bottom - ImVec2(-128, 1.2f * ImGui::GetTextLineHeightWithSpacing()));
+    ImGui::Text("%s  |  %s %s  |  %s", VIMIX_SYSTEM_PROCESSOR, VIMIX_COMPILER_ID, VIMIX_COMPILER_VERSION, VIMIX_BUILD_TYPE);
+    ImGui::PopFont();
+#endif
+    ImGui::SetCursorScreenPos(bottom);
+    ImGui::Text("Vimix performs the graphical mixing, blending and\n"
+                    "projection mapping of several movie clips, live streams\n"
+                    "and computer generated graphics, with real-time GPU\n"
+                    "image processing and shaders.");
+    ImGui::Text("\nVimix is licensed under GNU GPL version 3 or later.\n" UNICODE_COPYRIGHT " 2019-2026 Bruno Herbelin.");
 
     ImGui::Spacing();
     ImGuiToolkit::ButtonOpenUrl("Visit vimix website", "https://brunoherbelin.github.io/vimix/", ImVec2(ImGui::GetContentRegionAvail().x, 0));

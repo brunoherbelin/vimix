@@ -36,6 +36,12 @@ if(GIT_EXECUTABLE)
   endif()
 endif()
 
+##### Build configuration info (compiler, platform, build type)
+add_definitions(-DVIMIX_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
+add_definitions(-DVIMIX_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}")
+add_definitions(-DVIMIX_COMPILER_VERSION="${CMAKE_CXX_COMPILER_VERSION}")
+add_definitions(-DVIMIX_SYSTEM_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}")
+
 if (NOT GIT_EXECUTABLE OR GIT_DESCRIBE_ERROR_CODE)
     #####
     ##### Fallback: Read version from snap/snapcraft.yaml if git is not available
