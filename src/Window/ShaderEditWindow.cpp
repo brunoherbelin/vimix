@@ -1,6 +1,7 @@
 #include <fstream>
 
 // ImGui
+#include "IconsFontAwesome5.h"
 #include "Toolkit/ImGuiToolkit.h"
 #include "imgui_internal.h"
 
@@ -260,6 +261,12 @@ void ShaderEditWindow::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_SHADEREDITOR))
         {
             // Menu entry to allow creating a custom filter
+            if (ImGui::MenuItem(ICON_FA_PLUS "  New shader source"))
+            {
+                glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio, Settings::application.source.res);
+                Mixer::manager().addSource ( Mixer::manager().createSourceShader(res) );   
+                UserInterface::manager().showPannel(  Mixer::manager().numSource() );                 
+            }
             if (ImGui::MenuItem(ICON_FA_SHARE_SQUARE "  Clone source & add shader",
                                 nullptr, nullptr, cs != nullptr)) {
                 CloneSource *filteredclone = Mixer::manager().createSourceClone();
