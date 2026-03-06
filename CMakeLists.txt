@@ -110,7 +110,13 @@ if(UNIX)
         set(APPLE_CODESIGN_STORED_CREDENTIAL "vimix" CACHE STRING "")
 
         # find icu4c in OSX (pretty well hidden...)
-        set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/opt/icu4c/lib/pkgconfig:/opt/homebrew/opt/icu4c/lib/pkgconfig")
+        if (CMAKE_OSX_ARCHITECTURES STREQUAL "arm64" OR 
+            (NOT CMAKE_OSX_ARCHITECTURES AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64"))
+            set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/opt/homebrew/opt/icu4c/lib/pkgconfig")
+        elseif (CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64" OR 
+                (NOT CMAKE_OSX_ARCHITECTURES AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"))
+            set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/opt/icu4c/lib/pkgconfig")
+        endif()
 
     else()
         add_definitions(-DLINUX)
