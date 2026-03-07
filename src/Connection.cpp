@@ -30,6 +30,7 @@
 #include "Settings.h"
 #include "Streamer.h"
 #include "Log.h"
+#include "Toolkit/NetworkToolkit.h"
 
 #include "Connection.h"
 
@@ -219,9 +220,13 @@ void Connection::ask()
     // loop infinitely
     while(Connection::manager().asking_)
     {
-        // broadcast on several ports
-        for(int i=HANDSHAKE_PORT; i<HANDSHAKE_PORT+MAX_HANDSHAKE; i++)
-            socket.SendTo( IpEndpointName( i ), p.Data(), p.Size() );
+        // broadcast on several ports using directed subnet broadcast addresses
+        // (required on macOS; 0.0.0.0 only reaches loopback there)
+        std::vector<std::string> bcasts = NetworkToolkit::broadcast_ips();
+        for(int i=HANDSHAKE_PORT; i<HANDSHAKE_PORT+MAX_HANDSHAKE; i++) {
+            for (const std::string &bcast : bcasts)
+                socket.SendTo( IpEndpointName( bcast.c_str(), i ), p.Data(), p.Size() );
+        }
 
         // wait a bit
         std::this_thread::sleep_for(std::chrono::milliseconds(500));

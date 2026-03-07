@@ -61,6 +61,7 @@ struct StreamConfig {
 
 std::string hostname();
 std::vector<std::string> host_ips();
+std::vector<std::string> broadcast_ips();
 bool is_host_ip(const std::string &ip);
 std::string closest_host_ip(const std::string &ip);
 

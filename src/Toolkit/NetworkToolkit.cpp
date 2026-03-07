@@ -183,6 +183,52 @@ std::vector<std::string> NetworkToolkit::host_ips()
     return ipstrings_;
 }
 
+std::vector<std::string> NetworkToolkit::broadcast_ips()
+{
+    std::vector<std::string> broadcasts;
+
+    char buf[16384];
+    int fd = socket(PF_INET, SOCK_DGRAM, 0);
+    if (fd < 0)
+        return broadcasts;
+
+    struct ifconf ifconf;
+    ifconf.ifc_len = sizeof buf;
+    ifconf.ifc_buf = buf;
+    if (ioctl(fd, SIOCGIFCONF, &ifconf) == 0) {
+        struct ifreq *ifreq = ifconf.ifc_req;
+        for (int i = 0; i < ifconf.ifc_len; ) {
+            size_t len;
+#ifndef linux
+            len = IFNAMSIZ + ifreq->ifr_addr.sa_len;
+#else
+            len = sizeof *ifreq;
+#endif
+            // only consider IPv4 interfaces
+            struct ifreq req;
+            memset(&req, 0, sizeof req);
+            strncpy(req.ifr_name, ifreq->ifr_name, IFNAMSIZ);
+            if (ioctl(fd, SIOCGIFADDR, &req) == 0 &&
+                req.ifr_addr.sa_family == AF_INET) {
+                // get broadcast address for this interface
+                if (ioctl(fd, SIOCGIFBRDADDR, &req) == 0) {
+                    char host[128];
+                    getnameinfo(&req.ifr_broadaddr, sizeof req.ifr_broadaddr,
+                                host, sizeof host, 0, 0, NI_NUMERICHOST);
+                    std::string bcast(host);
+                    // exclude loopback broadcast and duplicates
+                    if (bcast != "0.0.0.0" && bcast != "255.255.255.255" &&
+                        std::find(broadcasts.begin(), broadcasts.end(), bcast) == broadcasts.end())
+                        broadcasts.push_back(bcast);
+                }
+            }
+            ifreq = (struct ifreq *)((char *)ifreq + len);
+            i += len;
+        }
+    }
+    close(fd);
+    return broadcasts;
+}
 
 bool NetworkToolkit::is_host_ip(const std::string &ip)
 {
