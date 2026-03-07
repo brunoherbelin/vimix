@@ -183,14 +183,14 @@ std::vector<std::string> NetworkToolkit::host_ips()
     return ipstrings_;
 }
 
-std::vector<std::string> NetworkToolkit::broadcast_ips()
+std::vector<std::pair<std::string,std::string>> NetworkToolkit::interface_broadcasts()
 {
-    std::vector<std::string> broadcasts;
+    std::vector<std::pair<std::string,std::string>> result;
 
     char buf[16384];
     int fd = socket(PF_INET, SOCK_DGRAM, 0);
     if (fd < 0)
-        return broadcasts;
+        return result;
 
     struct ifconf ifconf;
     ifconf.ifc_len = sizeof buf;
@@ -204,22 +204,24 @@ std::vector<std::string> NetworkToolkit::broadcast_ips()
 #else
             len = sizeof *ifreq;
 #endif
-            // only consider IPv4 interfaces
             struct ifreq req;
             memset(&req, 0, sizeof req);
             strncpy(req.ifr_name, ifreq->ifr_name, IFNAMSIZ);
             if (ioctl(fd, SIOCGIFADDR, &req) == 0 &&
                 req.ifr_addr.sa_family == AF_INET) {
-                // get broadcast address for this interface
+                char src[128] = {};
+                getnameinfo(&req.ifr_addr, sizeof req.ifr_addr,
+                            src, sizeof src, 0, 0, NI_NUMERICHOST);
                 if (ioctl(fd, SIOCGIFBRDADDR, &req) == 0) {
-                    char host[128];
+                    char bcast[128] = {};
                     getnameinfo(&req.ifr_broadaddr, sizeof req.ifr_broadaddr,
-                                host, sizeof host, 0, 0, NI_NUMERICHOST);
-                    std::string bcast(host);
-                    // exclude loopback broadcast and duplicates
-                    if (bcast != "0.0.0.0" && bcast != "255.255.255.255" &&
-                        std::find(broadcasts.begin(), broadcasts.end(), bcast) == broadcasts.end())
-                        broadcasts.push_back(bcast);
+                                bcast, sizeof bcast, 0, 0, NI_NUMERICHOST);
+                    std::string src_s(src), bcast_s(bcast);
+                    // exclude loopback broadcast, limited broadcast and duplicates
+                    if (bcast_s != "0.0.0.0" && bcast_s != "255.255.255.255" &&
+                        std::find_if(result.begin(), result.end(),
+                            [&bcast_s](const auto& p){ return p.second == bcast_s; }) == result.end())
+                        result.push_back({src_s, bcast_s});
                 }
             }
             ifreq = (struct ifreq *)((char *)ifreq + len);
@@ -227,7 +229,7 @@ std::vector<std::string> NetworkToolkit::broadcast_ips()
         }
     }
     close(fd);
-    return broadcasts;
+    return result;
 }
 
 bool NetworkToolkit::is_host_ip(const std::string &ip)

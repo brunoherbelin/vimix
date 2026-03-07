@@ -74,7 +74,6 @@ public:
     void terminate();
 
     int numHosts () const;
-    int index(ConnectionInfo i) const;
     int index(const std::string &name) const;
     ConnectionInfo info(int index = 0);  // index 0 for self
 

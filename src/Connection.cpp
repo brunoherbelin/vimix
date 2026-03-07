@@ -175,17 +175,6 @@ int Connection::index(const std::string &name) const
     return id;
 }
 
-int Connection::index(ConnectionInfo i) const
-{
-    int id = -1;
-
-    std::vector<ConnectionInfo>::const_iterator p = std::find(connections_.begin(), connections_.end(), i);
-    if (p != connections_.end())
-        id = std::distance(connections_.begin(), p);
-
-    return id;
-}
-
 void Connection::print()
 {
     for(size_t i = 0; i<connections_.size(); i++) {
@@ -214,18 +203,25 @@ void Connection::ask()
     p << (osc::int32) Connection::manager().connections_[0].port_handshake;
     p << osc::EndMessage;
 
-    UdpSocket socket;
-    socket.SetEnableBroadcast(true);
-
     // loop infinitely
     while(Connection::manager().asking_)
     {
-        // broadcast on several ports using directed subnet broadcast addresses
-        // (required on macOS; 0.0.0.0 only reaches loopback there)
-        std::vector<std::string> bcasts = NetworkToolkit::broadcast_ips();
-        for(int i=HANDSHAKE_PORT; i<HANDSHAKE_PORT+MAX_HANDSHAKE; i++) {
-            for (const std::string &bcast : bcasts)
-                socket.SendTo( IpEndpointName( bcast.c_str(), i ), p.Data(), p.Size() );
+        // For each local interface, bind a socket to the source IP before sending
+        // to the directed subnet broadcast address. Binding forces the OS to route
+        // the packet out on the correct physical interface (fixes macOS unbound-socket
+        // routing which can silently send broadcasts to the wrong/virtual interface).
+        auto interfaces = NetworkToolkit::interface_broadcasts();
+        for (const auto &iface : interfaces) {
+            try {
+                UdpSocket socket;
+                socket.SetEnableBroadcast(true);
+                socket.Bind( IpEndpointName( iface.first.c_str(), IpEndpointName::ANY_PORT ) );
+                for (int i = HANDSHAKE_PORT; i < HANDSHAKE_PORT + MAX_HANDSHAKE; i++)
+                    socket.SendTo( IpEndpointName( iface.second.c_str(), i ), p.Data(), p.Size() );
+            }
+            catch (const std::runtime_error&) {
+                // socket bind failed for this interface (e.g. interface went away), skip
+            }
         }
 
         // wait a bit
@@ -312,7 +308,7 @@ void Connection::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             info.port_osc = (arg++)->AsInt32();
 
             // do we know this connection ?
-            int i = Connection::manager().index(info);
+            int i = Connection::manager().index(info.name);
             if ( i < 0) {
                 // a new connection! Add to list
                 Connection::manager().connections_.push_back(info);
