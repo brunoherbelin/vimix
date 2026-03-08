@@ -304,6 +304,11 @@ std::size_t UdpSocket::ReceiveFrom( IpEndpointName& remoteEndpoint, char *data, 
 	return impl_->ReceiveFrom( remoteEndpoint, data, size );
 }
 
+int UdpSocket::GetFd() const
+{
+    return impl_->Socket();
+}
+
 
 struct AttachedTimerListener{
 	AttachedTimerListener( int id, int p, TimerListener *tl )

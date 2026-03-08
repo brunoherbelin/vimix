@@ -20,6 +20,10 @@
 #include <thread>
 #include <chrono>
 #include <algorithm>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 #if ((ULONG_MAX) != (UINT_MAX))
 #define _M_X64
@@ -90,6 +94,18 @@ bool Connection::init()
         // regularly check for available streaming hosts
         asking_ = true;
         std::thread(ask).detach();
+
+        // Join multicast group on all network interfaces so we receive multicast pings
+        {
+            auto ifaces = NetworkToolkit::interface_broadcasts();
+            for (const auto &iface : ifaces) {
+                struct ip_mreq mreq = {};
+                mreq.imr_multiaddr.s_addr = inet_addr(VIMIX_MULTICAST_GROUP);
+                mreq.imr_interface.s_addr = inet_addr(iface.first.c_str());
+                setsockopt(receiver_->GetFd(), IPPROTO_IP, IP_ADD_MEMBERSHIP,
+                           &mreq, sizeof(mreq));
+            }
+        }
 
         // inform the application settings of our id
         Settings::application.instance_id = connections_[0].port_handshake - HANDSHAKE_PORT;
@@ -206,22 +222,29 @@ void Connection::ask()
     // loop infinitely
     while(Connection::manager().asking_)
     {
-        // For each local interface, bind a socket to the source IP before sending
-        // to the directed subnet broadcast address. Binding forces the OS to route
-        // the packet out on the correct physical interface (fixes macOS unbound-socket
-        // routing which can silently send broadcasts to the wrong/virtual interface).
-        auto interfaces = NetworkToolkit::interface_broadcasts();
-        for (const auto &iface : interfaces) {
-            try {
-                UdpSocket socket;
-                socket.SetEnableBroadcast(true);
-                socket.Bind( IpEndpointName( iface.first.c_str(), IpEndpointName::ANY_PORT ) );
-                for (int i = HANDSHAKE_PORT; i < HANDSHAKE_PORT + MAX_HANDSHAKE; i++)
-                    socket.SendTo( IpEndpointName( iface.second.c_str(), i ), p.Data(), p.Size() );
+        // Send multicast PING on each network interface.
+        // Explicitly setting IP_MULTICAST_IF per interface ensures the packet goes out
+        // on the correct physical interface (fixes macOS routing to the wrong interface).
+        auto ifaces = NetworkToolkit::interface_broadcasts();
+        for (const auto &iface : ifaces) {
+            int mfd = ::socket(AF_INET, SOCK_DGRAM, 0);
+            if (mfd < 0) continue;
+            // Route multicast out on this interface
+            struct in_addr iface_addr;
+            iface_addr.s_addr = inet_addr(iface.first.c_str());
+            setsockopt(mfd, IPPROTO_IP, IP_MULTICAST_IF, &iface_addr, sizeof(iface_addr));
+            // TTL >= 1 so packets leave the host and reach LAN peers
+            int ttl = VIMIX_MULTICAST_TTL;
+            setsockopt(mfd, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
+            // Send to the multicast group on each possible handshake port
+            struct sockaddr_in dst = {};
+            dst.sin_family = AF_INET;
+            dst.sin_addr.s_addr = inet_addr(VIMIX_MULTICAST_GROUP);
+            for (int i = 0; i < MAX_HANDSHAKE; i++) {
+                dst.sin_port = htons(HANDSHAKE_PORT + i);
+                ::sendto(mfd, p.Data(), p.Size(), 0, (struct sockaddr*)&dst, sizeof(dst));
             }
-            catch (const std::runtime_error&) {
-                // socket bind failed for this interface (e.g. interface went away), skip
-            }
+            ::close(mfd);
         }
 
         // wait a bit
@@ -262,7 +285,6 @@ void Connection::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
     std::string remote_ip(sender);
     remote_ip = remote_ip.substr(0, remote_ip.find_last_of(":"));
 
-
     try{
         // ping request : reply with pong
         if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_PING) == 0 ){
@@ -273,7 +295,8 @@ void Connection::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
 
             // ignore requests from myself
             if ( !NetworkToolkit::is_host_ip(remote_ip)
-                 || Connection::manager().connections_[0].port_handshake != remote_port) {
+                 || Connection::manager().connections_[0].port_handshake != remote_port) 
+                {
 
                 // build message
                 char buffer[IP_MTU_SIZE];

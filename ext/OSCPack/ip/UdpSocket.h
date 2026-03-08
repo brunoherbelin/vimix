@@ -126,6 +126,8 @@ public:
 	bool IsBound() const;
 
     std::size_t ReceiveFrom( IpEndpointName& remoteEndpoint, char *data, std::size_t size );
+
+    int GetFd() const;  // returns raw socket fd, e.g. for setsockopt(IP_ADD_MEMBERSHIP)
 };
 
 

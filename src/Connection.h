@@ -15,6 +15,9 @@
 #define OSC_DIALOG_PORT 71010
 #define ALIVE 3
 
+#define VIMIX_MULTICAST_GROUP "239.255.71.31"
+#define VIMIX_MULTICAST_TTL 3
+
 
 struct ConnectionInfo {
 
