@@ -9,14 +9,11 @@
 #include <osc/OscPacketListener.h>
 #include <ip/UdpSocket.h>
 
-#define MAX_HANDSHAKE 20
+#define MAX_HANDSHAKE 5
 #define HANDSHAKE_PORT 71310
 #define STREAM_REQUEST_PORT 71510
 #define OSC_DIALOG_PORT 71010
 #define ALIVE 3
-
-#define VIMIX_MULTICAST_GROUP "239.255.71.31"
-#define VIMIX_MULTICAST_TTL 3
 
 
 struct ConnectionInfo {
@@ -80,6 +77,9 @@ public:
     int index(const std::string &name) const;
     ConnectionInfo info(int index = 0);  // index 0 for self
 
+    void addPeer(const ConnectionInfo &info);      // add new peer or refresh alive if known
+    void removePeer(const std::string &name);      // remove peer, cancel its streams
+
 protected:
     class RequestListener : public osc::OscPacketListener {
 
@@ -90,16 +90,15 @@ protected:
 
 private:
 
-    static void ask();
-    std::atomic<bool> asking_;
-    std::condition_variable ask_end_;
+    static void mdns();
+    std::atomic<bool> mdns_running_;
+    std::condition_variable mdns_end_;
     static void listen();
     RequestListener listener_;
     std::condition_variable listen_end_;
     UdpListeningReceiveSocket *receiver_;
 
     std::vector< ConnectionInfo > connections_;
-
     void print();
 };
 

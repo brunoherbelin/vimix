@@ -242,6 +242,12 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
     vmix::rc
 )
 
+# Avahi for Linux mDNS peer discovery (macOS uses built-in Bonjour, no extra link needed)
+if(AVAHI_FOUND)
+    target_include_directories(${VMIX_BINARY} PRIVATE ${AVAHI_INCLUDE_DIRS})
+    target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${AVAHI_LIBRARIES})
+endif()
+
 #####
 ##### DEFINE THE APPLICATION PACKAGING (OS specific)
 #####

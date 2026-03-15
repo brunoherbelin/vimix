@@ -84,6 +84,10 @@ if(UNIX)
     if (APPLE)
         add_definitions(-DAPPLE)
 
+        # macOS Bonjour/DNS-SD is always available (built-in SDK, no extra package)
+        add_definitions(-DVIMIX_USE_BONJOUR)
+        message(STATUS "mDNS/Bonjour: YES (macOS built-in)")
+
         # the RPATH to be used when installing
         set(CMAKE_SKIP_RPATH TRUE)
         set(OpenGL_DIR /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/)
@@ -157,6 +161,18 @@ if(UNIX)
                 macro_log_feature(LIBUDEV_FOUND "libudev" "Device management library" "https://www.freedesktop.org/software/systemd/man/libudev.html" FALSE)
             else()
                 message(STATUS "XInput2 (Xi) or libinput or libudev not found - tablet pressure support will be disabled")
+            endif()
+        endif()
+
+        # Linux: native Avahi client for mDNS peer discovery
+        # (NOT avahi-compat-libdnssd — it has no .pc file and missing symbols)
+        if(PKG_CONFIG_FOUND)
+            pkg_check_modules(AVAHI avahi-client)
+            if(AVAHI_FOUND)
+                add_definitions(-DVIMIX_USE_AVAHI)
+                message(STATUS "mDNS/Avahi: YES (libavahi-client)")
+            else()
+                message(STATUS "mDNS/Avahi: NO (install libavahi-client-dev for peer discovery)")
             endif()
         endif()
 

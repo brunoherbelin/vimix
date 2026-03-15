@@ -20,15 +20,27 @@
 #include <thread>
 #include <chrono>
 #include <algorithm>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
 
 #if ((ULONG_MAX) != (UINT_MAX))
 #define _M_X64
 #endif
 #include "osc/OscOutboundPacketStream.h"
+
+#ifdef VIMIX_USE_AVAHI
+#include <avahi-client/client.h>
+#include <avahi-client/lookup.h>
+#include <avahi-client/publish.h>
+#include <avahi-common/simple-watch.h>
+#include <avahi-common/error.h>
+#include <avahi-common/address.h>
+#endif
+
+#ifdef VIMIX_USE_BONJOUR
+#include <dns_sd.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/select.h>
+#endif
 
 #include "defines.h"
 #include "Settings.h"
@@ -43,7 +55,7 @@
 #endif
 
 
-Connection::Connection() : asking_(false), receiver_(nullptr)
+Connection::Connection() : mdns_running_(false), receiver_(nullptr)
 {
 }
 
@@ -88,32 +100,18 @@ bool Connection::init()
 
     // perfect, we could initialize the receiver
     if (receiver_!=nullptr) {
-        // listen for answers
+
+        // listen for pong replies
         std::thread(listen).detach();
 
-        // regularly check for available streaming hosts
-        asking_ = true;
-        std::thread(ask).detach();
-
-        // Join multicast group on all network interfaces so we receive multicast pings
-        {
-            auto ifaces = NetworkToolkit::interface_broadcasts();
-            for (const auto &iface : ifaces) {
-                struct ip_mreq mreq = {};
-                mreq.imr_multiaddr.s_addr = inet_addr(VIMIX_MULTICAST_GROUP);
-                mreq.imr_interface.s_addr = inet_addr(iface.first.c_str());
-                setsockopt(receiver_->GetFd(), IPPROTO_IP, IP_ADD_MEMBERSHIP,
-                           &mreq, sizeof(mreq));
-            }
-        }
+        // mDNS peer discovery: register our service and browse for peers
+#if defined(VIMIX_USE_AVAHI) || defined(VIMIX_USE_BONJOUR)
+        mdns_running_ = true;
+        std::thread(mdns).detach();
+#endif
 
         // inform the application settings of our id
         Settings::application.instance_id = connections_[0].port_handshake - HANDSHAKE_PORT;
-        // use or replace instance name from settings
-//        if (Settings::application.instance_names.count(Settings::application.instance_id))
-//            connections_[0].name = Settings::application.instance_names[Settings::application.instance_id];
-//        else
-//            Settings::application.instance_names[Settings::application.instance_id] = connections_[0].name;
         // restore state of Streamer
         Streaming::manager().enable( Settings::application.accept_connections );
 
@@ -124,12 +122,16 @@ bool Connection::init()
 
 void Connection::terminate()
 {
-    // end ask loop
-    std::mutex mtx;
-    std::unique_lock<std::mutex> lck(mtx);
-    asking_ = false;
-    if ( ask_end_.wait_for(lck,std::chrono::seconds(2)) == std::cv_status::timeout)
-        g_printerr("Failed to terminate Connection manager (asker).");
+    // end mDNS thread
+#if defined(VIMIX_USE_AVAHI) || defined(VIMIX_USE_BONJOUR)
+    {
+        std::mutex mtx;
+        std::unique_lock<std::mutex> lck(mtx);
+        mdns_running_ = false;
+        if ( mdns_end_.wait_for(lck, std::chrono::seconds(2)) == std::cv_status::timeout)
+            g_printerr("Failed to terminate Connection manager (mDNS).");
+    }
+#endif
 
     // end receiver
     if (receiver_!=nullptr) {
@@ -198,6 +200,35 @@ void Connection::print()
     }
 }
 
+void Connection::addPeer(const ConnectionInfo &info)
+{
+    int i = index(info.name);
+    if (i < 0) {
+        connections_.push_back(info);
+#ifdef CONNECTION_DEBUG
+        Log::Info("Connection: peer joined: %s %s:%d",
+            info.name.c_str(), info.address.c_str(), info.port_handshake);
+        print();
+#endif
+    }
+    else {
+        connections_[i].alive = ALIVE;
+    }
+}
+
+void Connection::removePeer(const std::string &name)
+{
+    int i = index(name);
+    if (i > 0) {
+        Streaming::manager().removeStreams(connections_[i].name);
+        connections_.erase(connections_.begin() + i);
+#ifdef CONNECTION_DEBUG
+        Log::Info("Connection: peer left: %s", name.c_str());
+        print();
+#endif
+    }
+}
+
 void Connection::listen()
 {
 #ifdef CONNECTION_DEBUG
@@ -209,71 +240,302 @@ void Connection::listen()
     Connection::manager().listen_end_.notify_all();
 }
 
-void Connection::ask()
+
+// ---- mDNS peer discovery ----
+//
+// When a peer's service appears on the network, we send them a unicast PONG
+// with our connection info (name, ports). Their existing OSC listener receives it
+// and adds us to their connections_ list. Simultaneously, they see OUR service
+// appear and send us a PONG — which our OSC listener handles symmetrically.
+//
+// On peer departure (graceful or after mDNS cache expiry), BROWSER_REMOVE fires
+// and we remove them from connections_ directly — no alive countdown needed.
+
+
+#ifdef VIMIX_USE_AVAHI
+
+static void avahi_group_cb(AvahiEntryGroup *, AvahiEntryGroupState state, void *)
 {
-    // prepare OSC PING message
-    char buffer[IP_MTU_SIZE];
-    osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
-    p.Clear();
-    p << osc::BeginMessage( OSC_PREFIX OSC_PING );
-    p << (osc::int32) Connection::manager().connections_[0].port_handshake;
-    p << osc::EndMessage;
+    if (state == AVAHI_ENTRY_GROUP_COLLISION)
+        Log::Info("Connection: mDNS service name collision");
+    else if (state == AVAHI_ENTRY_GROUP_FAILURE)
+        Log::Info("Connection: mDNS entry group failure");
+}
 
-    // loop infinitely
-    while(Connection::manager().asking_)
-    {
-        // Send multicast PING on each network interface.
-        // Explicitly setting IP_MULTICAST_IF per interface ensures the packet goes out
-        // on the correct physical interface (fixes macOS routing to the wrong interface).
-        auto ifaces = NetworkToolkit::interface_broadcasts();
-        for (const auto &iface : ifaces) {
-            int mfd = ::socket(AF_INET, SOCK_DGRAM, 0);
-            if (mfd < 0) continue;
-            // Route multicast out on this interface
-            struct in_addr iface_addr;
-            iface_addr.s_addr = inet_addr(iface.first.c_str());
-            setsockopt(mfd, IPPROTO_IP, IP_MULTICAST_IF, &iface_addr, sizeof(iface_addr));
-            // TTL >= 1 so packets leave the host and reach LAN peers
-            int ttl = VIMIX_MULTICAST_TTL;
-            setsockopt(mfd, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
-            // Send to the multicast group on each possible handshake port
-            struct sockaddr_in dst = {};
-            dst.sin_family = AF_INET;
-            dst.sin_addr.s_addr = inet_addr(VIMIX_MULTICAST_GROUP);
-            for (int i = 0; i < MAX_HANDSHAKE; i++) {
-                dst.sin_port = htons(HANDSHAKE_PORT + i);
-                ::sendto(mfd, p.Data(), p.Size(), 0, (struct sockaddr*)&dst, sizeof(dst));
-            }
-            ::close(mfd);
-        }
+// Called when a peer service has been resolved to an IP address and port.
+// Sends a unicast PONG to that peer so they add us to their connections_.
+static void avahi_resolve_cb(AvahiServiceResolver *r,
+    AvahiIfIndex, AvahiProtocol,
+    AvahiResolverEvent event,
+    const char *, const char *, const char *,   // name, type, domain
+    const char *,                                // hosttarget
+    const AvahiAddress *address,
+    uint16_t port,                               // host byte order
+    AvahiStringList *, AvahiLookupResultFlags,
+    void *)
+{
+    if (event == AVAHI_RESOLVER_FOUND) {
+        char ipstr[AVAHI_ADDRESS_STR_MAX];
+        avahi_address_snprint(ipstr, sizeof(ipstr), address);
 
-        // wait a bit
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        ConnectionInfo self = Connection::manager().info(0);
 
-        // check the list of connections for non responding (disconnected)
-        std::vector< ConnectionInfo >::iterator it = Connection::manager().connections_.begin();
-        for(++it; it!=Connection::manager().connections_.end(); ) {
-            // decrease life score
-            (*it).alive--;
-            // erase connection if its life score is negative (not responding too many times)
-            if ( (*it).alive < 0 ) {
-                // inform streamer to cancel streaming to this client
-                Streaming::manager().removeStreams( (*it).name );
-                // remove from list
-                it = Connection::manager().connections_.erase(it);
+        // ignore self
+        if (!NetworkToolkit::is_host_ip(ipstr) || port != (uint16_t)self.port_handshake)
+        {
+            // send our PONG so the peer adds us to their connections_
+            char buffer[IP_MTU_SIZE];
+            osc::OutboundPacketStream p(buffer, IP_MTU_SIZE);
+            p.Clear();
+            p << osc::BeginMessage(OSC_PREFIX OSC_PONG);
+            p << self.name.c_str();
+            p << (osc::int32) self.port_handshake;
+            p << (osc::int32) self.port_stream_request;
+            p << (osc::int32) self.port_osc;
+            p << osc::EndMessage;
+
+            try {
+                // port is already host byte order — UdpTransmitSocket will htons() it
+                UdpTransmitSocket( IpEndpointName(ipstr, (int)port) ).Send(p.Data(), p.Size());
+            } catch (...) {}
+
 #ifdef CONNECTION_DEBUG
-                Log::Info("List of connection updated:");
-                Connection::manager().print();
+            Log::Info("Connection: mDNS sent PONG to %s:%d", ipstr, (int)port);
+#endif
+        }
+    }
+    avahi_service_resolver_free(r);
+}
+
+// Called when a _vimix._udp service appears or disappears on the network.
+static void avahi_browse_cb(AvahiServiceBrowser *,
+    AvahiIfIndex iface, AvahiProtocol proto,
+    AvahiBrowserEvent event,
+    const char *name, const char *type, const char *domain,
+    AvahiLookupResultFlags, void *userdata)
+{
+    AvahiClient *client = (AvahiClient *)userdata;
+
+    if (event == AVAHI_BROWSER_NEW) {
+        if (!avahi_service_resolver_new(client, iface, proto, name, type, domain,
+                AVAHI_PROTO_INET, (AvahiLookupFlags)0, avahi_resolve_cb, NULL))
+            Log::Info("Connection: avahi_service_resolver_new failed: %s",
+                avahi_strerror(avahi_client_errno(client)));
+    }
+    else if (event == AVAHI_BROWSER_REMOVE) {
+        Connection::manager().removePeer(name);
+    }
+}
+
+// Called when the Avahi client state changes.
+// When the daemon is ready, register our service and start browsing.
+static void avahi_client_cb(AvahiClient *client, AvahiClientState state, void *)
+{
+    if (state == AVAHI_CLIENT_S_RUNNING) {
+        ConnectionInfo self = Connection::manager().info(0);
+        AvahiEntryGroup *group = avahi_entry_group_new(client, avahi_group_cb, NULL);
+        if (group) {
+            // port in host byte order — Avahi handles the htons() internally
+            int ret = avahi_entry_group_add_service(group,
+                AVAHI_IF_UNSPEC, AVAHI_PROTO_INET, (AvahiPublishFlags)0,
+                self.name.c_str(), "_vimix._udp",
+                NULL, NULL,
+                (uint16_t)self.port_handshake,
+                NULL);
+            if (ret < 0)
+                Log::Info("Connection: avahi_entry_group_add_service failed: %s",
+                    avahi_strerror(ret));
+            else
+                avahi_entry_group_commit(group);
+        }
+        avahi_service_browser_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_INET,
+            "_vimix._udp", NULL, (AvahiLookupFlags)0, avahi_browse_cb, client);
+    }
+    else if (state == AVAHI_CLIENT_FAILURE) {
+        Log::Info("Connection: Avahi client failure: %s",
+            avahi_strerror(avahi_client_errno(client)));
+    }
+}
+
+void Connection::mdns()
+{
+    AvahiSimplePoll *poll = avahi_simple_poll_new();
+    if (!poll) {
+        Log::Info("Connection: avahi_simple_poll_new failed");
+        Connection::manager().mdns_end_.notify_all();
+        return;
+    }
+
+    int error;
+    AvahiClient *client = avahi_client_new(
+        avahi_simple_poll_get(poll),
+        (AvahiClientFlags)0,
+        avahi_client_cb,
+        NULL,
+        &error);
+    if (!client) {
+        Log::Info("Connection: Avahi client init failed: %s", avahi_strerror(error));
+        avahi_simple_poll_free(poll);
+        Connection::manager().mdns_end_.notify_all();
+        return;
+    }
+
+    // iterate() with 200ms timeout checks mdns_running_ without long blocking
+    while (Connection::manager().mdns_running_) {
+        if (avahi_simple_poll_iterate(poll, 200) != 0)
+            break;
+    }
+
+    avahi_client_free(client);
+    avahi_simple_poll_free(poll);
+    Connection::manager().mdns_end_.notify_all();
+}
+
+#endif // VIMIX_USE_AVAHI
+
+
+#ifdef VIMIX_USE_BONJOUR
+
+// Context passed from browse callback to resolve callback.
+// Stores the sub-ref (initialized to main_ref, overwritten by DNSServiceResolve).
+// Must be heap-allocated so it outlives the browse callback stack frame.
+struct BonjourResolveCtx {
+    std::string name;   // service instance name for potential debug use
+    DNSServiceRef ref;  // sub-ref; written by DNSServiceResolve, freed in resolve_cb
+};
+
+// Called when a peer service has been resolved to hostname + port.
+// Uses getaddrinfo to get IP, then sends unicast PONG.
+static void DNSSD_API bonjour_resolve_cb(
+    DNSServiceRef sdRef,
+    DNSServiceFlags,
+    uint32_t,
+    DNSServiceErrorType error,
+    const char *,           // fullname
+    const char *hosttarget,
+    uint16_t port,          // network byte order
+    uint16_t,
+    const unsigned char *,
+    void *context)
+{
+    BonjourResolveCtx *ctx = (BonjourResolveCtx *)context;
+
+    if (error == kDNSServiceErr_NoError) {
+        struct addrinfo hints = {}, *res = nullptr;
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_DGRAM;
+        if (getaddrinfo(hosttarget, NULL, &hints, &res) == 0 && res) {
+            char ipstr[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET,
+                &((struct sockaddr_in *)res->ai_addr)->sin_addr,
+                ipstr, sizeof(ipstr));
+            freeaddrinfo(res);
+
+            uint16_t p = ntohs(port);   // convert to host byte order
+            ConnectionInfo self = Connection::manager().info(0);
+
+            // ignore self
+            if (!NetworkToolkit::is_host_ip(ipstr) || p != (uint16_t)self.port_handshake)
+            {
+                char buffer[IP_MTU_SIZE];
+                osc::OutboundPacketStream msg(buffer, IP_MTU_SIZE);
+                msg.Clear();
+                msg << osc::BeginMessage(OSC_PREFIX OSC_PONG);
+                msg << self.name.c_str();
+                msg << (osc::int32)self.port_handshake;
+                msg << (osc::int32)self.port_stream_request;
+                msg << (osc::int32)self.port_osc;
+                msg << osc::EndMessage;
+
+                try {
+                    UdpTransmitSocket( IpEndpointName(ipstr, (int)p) ).Send(msg.Data(), msg.Size());
+                } catch (...) {}
+
+#ifdef CONNECTION_DEBUG
+                Log::Info("Connection: mDNS sent PONG to %s:%d", ipstr, (int)p);
 #endif
             }
-            // loop
-            else
-                ++it;
         }
     }
 
-    Connection::manager().ask_end_.notify_all();
+    DNSServiceRefDeallocate(sdRef);
+    delete ctx;
 }
+
+// Called when a _vimix._udp service appears or disappears on the network.
+static void DNSSD_API bonjour_browse_cb(
+    DNSServiceRef,
+    DNSServiceFlags flags,
+    uint32_t ifIndex,
+    DNSServiceErrorType error,
+    const char *name,
+    const char *type,
+    const char *domain,
+    void *context)
+{
+    if (error != kDNSServiceErr_NoError) return;
+
+    DNSServiceRef main_ref = (DNSServiceRef)context;
+
+    if (flags & kDNSServiceFlagsAdd) {
+        // resolve to get hostname + port, then send PONG in resolve_cb
+        BonjourResolveCtx *ctx = new BonjourResolveCtx{name, main_ref};
+        DNSServiceErrorType err = DNSServiceResolve(
+            &ctx->ref, kDNSServiceFlagsShareConnection,
+            ifIndex, name, type, domain,
+            bonjour_resolve_cb, ctx);
+        if (err != kDNSServiceErr_NoError) {
+            Log::Info("Connection: DNSServiceResolve failed: %d", (int)err);
+            delete ctx;
+        }
+    }
+    else {
+        Connection::manager().removePeer(name);
+    }
+}
+
+void Connection::mdns()
+{
+    DNSServiceRef main_ref;
+    if (DNSServiceCreateConnection(&main_ref) != kDNSServiceErr_NoError) {
+        Log::Info("Connection: DNSServiceCreateConnection failed");
+        Connection::manager().mdns_end_.notify_all();
+        return;
+    }
+
+    ConnectionInfo self = Connection::manager().info(0);
+
+    // Register this vimix instance so other peers can discover it
+    DNSServiceRef reg_ref = main_ref;
+    DNSServiceRegister(&reg_ref, kDNSServiceFlagsShareConnection, 0,
+        self.name.c_str(), "_vimix._udp", NULL, NULL,
+        htons((uint16_t)self.port_handshake),
+        0, NULL, NULL, NULL);
+
+    // Browse for other vimix instances; pass main_ref as context for sub-ref creation
+    DNSServiceRef browse_ref = main_ref;
+    DNSServiceBrowse(&browse_ref, kDNSServiceFlagsShareConnection, 0,
+        "_vimix._udp", NULL,
+        bonjour_browse_cb, (void *)main_ref);
+
+    // Event loop: 500ms select timeout so mdns_running_ is checked regularly
+    int fd = DNSServiceRefSockFD(main_ref);
+    while (Connection::manager().mdns_running_) {
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(fd, &readfds);
+        struct timeval tv = {0, 500000};
+        if (select(fd + 1, &readfds, NULL, NULL, &tv) > 0)
+            DNSServiceProcessResult(main_ref);
+    }
+
+    // Deallocating main_ref cancels all sub-operations (register, browse, any pending resolves)
+    DNSServiceRefDeallocate(main_ref);
+    Connection::manager().mdns_end_.notify_all();
+}
+
+#endif // VIMIX_USE_BONJOUR
+
 
 void Connection::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                                                 const IpEndpointName& remoteEndpoint )
@@ -286,38 +548,8 @@ void Connection::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
     remote_ip = remote_ip.substr(0, remote_ip.find_last_of(":"));
 
     try{
-        // ping request : reply with pong
-        if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_PING) == 0 ){
-
-            // PING message has parameter : port where to reply
-            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
-            int remote_port = (arg++)->AsInt32();
-
-            // ignore requests from myself
-            if ( !NetworkToolkit::is_host_ip(remote_ip)
-                 || Connection::manager().connections_[0].port_handshake != remote_port) 
-                {
-
-                // build message
-                char buffer[IP_MTU_SIZE];
-                osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
-                p.Clear();
-                p << osc::BeginMessage( OSC_PREFIX OSC_PONG );
-                p << Connection::manager().connections_[0].name.c_str();
-                p << (osc::int32) Connection::manager().connections_[0].port_handshake;
-                p << (osc::int32) Connection::manager().connections_[0].port_stream_request;
-                p << (osc::int32) Connection::manager().connections_[0].port_osc;
-                p << osc::EndMessage;
-
-                // send OSC message to port indicated by remote
-                IpEndpointName host( remote_ip.c_str(), remote_port );
-                UdpTransmitSocket socket( host );
-                socket.Send( p.Data(), p.Size() );
-
-            }
-        }
-        // pong response: add info
-        else if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_PONG) == 0 ){
+        // pong: a peer is introducing itself with its connection info
+        if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_PONG) == 0 ){
 
             // create info struct
             ConnectionInfo info;
@@ -330,31 +562,17 @@ void Connection::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             info.port_stream_request = (arg++)->AsInt32();
             info.port_osc = (arg++)->AsInt32();
 
-            // do we know this connection ?
-            int i = Connection::manager().index(info.name);
-            if ( i < 0) {
-                // a new connection! Add to list
-                Connection::manager().connections_.push_back(info);
-                // replace instance name in settings
-//                int id = info.port_handshake - HANDSHAKE_PORT;
-//                Settings::application.instance_names[id] = info.name;
-
-#ifdef CONNECTION_DEBUG
-                Log::Info("List of connection updated:");
-                Connection::manager().print();
-#endif
-            }
-            else {
-                // we know this connection: keep its status to ALIVE
-                Connection::manager().connections_[i].alive = ALIVE;
-            }
-
+            Connection::manager().addPeer(info);
         }
+#ifdef CONNECTION_DEBUG
+        else {
+            Log::Info("Connection: unexpected message '%s' from %s",
+                m.AddressPattern(), sender);
+        }
+#endif
     }
     catch( osc::Exception& e ){
-        // any parsing errors such as unexpected argument types, or
-        // missing arguments get thrown as exceptions.
-        Log::Info("Error while parsing message '%s' from %s : %s", m.AddressPattern(), sender, e.what());
+        Log::Info("Error while parsing message '%s' from %s : %s",
+            m.AddressPattern(), sender, e.what());
     }
 }
-
