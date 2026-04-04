@@ -9,6 +9,7 @@
     "finish-args": [
         "--socket=x11",
         "--socket=pulseaudio",
+        "--system-talk-name=org.freedesktop.Avahi",
         "--share=ipc",
         "--share=network",
         "--device=dri",

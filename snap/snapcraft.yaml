@@ -48,6 +48,7 @@ apps:
       - x11
       - home
       - network
+      - avahi-observe
       - camera
       - raw-usb
       - removable-media
@@ -83,6 +84,7 @@ parts:
     -  libtinyxml2-dev
     -  libglm-dev
     -  execstack
+    -  libavahi-client-dev
     stage-packages:
     -  libglu1-mesa
     -  libblas3
@@ -108,6 +110,7 @@ parts:
     -  libicu74
     -  libtinyxml2-10
     -  pciutils
+    -  libavahi-client3
     override-prime: |
        craftctl default
        # try remove execstack on armhf

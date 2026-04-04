@@ -267,13 +267,18 @@ static void avahi_group_cb(AvahiEntryGroup *, AvahiEntryGroupState state, void *
 static void avahi_resolve_cb(AvahiServiceResolver *r,
     AvahiIfIndex, AvahiProtocol,
     AvahiResolverEvent event,
-    const char *, const char *, const char *,   // name, type, domain
-    const char *,                                // hosttarget
+    const char *name, const char *, const char *,   // name, type, domain
+    const char *,                                    // hosttarget
     const AvahiAddress *address,
-    uint16_t port,                               // host byte order
+    uint16_t port,                                   // host byte order
     AvahiStringList *, AvahiLookupResultFlags,
     void *)
 {
+    if (event == AVAHI_RESOLVER_FAILURE) {
+        Log::Info("Connection: mDNS resolve failed for '%s'", name);
+        avahi_service_resolver_free(r);
+        return;
+    }
     if (event == AVAHI_RESOLVER_FOUND) {
         char ipstr[AVAHI_ADDRESS_STR_MAX];
         avahi_address_snprint(ipstr, sizeof(ipstr), address);
@@ -299,9 +304,9 @@ static void avahi_resolve_cb(AvahiServiceResolver *r,
                 UdpTransmitSocket( IpEndpointName(ipstr, (int)port) ).Send(p.Data(), p.Size());
             } catch (...) {}
 
-#ifdef CONNECTION_DEBUG
+// #ifdef CONNECTION_DEBUG
             Log::Info("Connection: mDNS sent PONG to %s:%d", ipstr, (int)port);
-#endif
+// #endif
         }
     }
     avahi_service_resolver_free(r);
@@ -317,6 +322,7 @@ static void avahi_browse_cb(AvahiServiceBrowser *,
     AvahiClient *client = (AvahiClient *)userdata;
 
     if (event == AVAHI_BROWSER_NEW) {
+        Log::Info("Connection: mDNS discovered '%s'", name);
         if (!avahi_service_resolver_new(client, iface, proto, name, type, domain,
                 AVAHI_PROTO_INET, (AvahiLookupFlags)0, avahi_resolve_cb, NULL))
             Log::Info("Connection: avahi_service_resolver_new failed: %s",
@@ -348,7 +354,7 @@ static void avahi_client_cb(AvahiClient *client, AvahiClientState state, void *)
             else
                 avahi_entry_group_commit(group);
         }
-        avahi_service_browser_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_INET,
+        avahi_service_browser_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC,
             "_vimix._udp", NULL, (AvahiLookupFlags)0, avahi_browse_cb, client);
     }
     else if (state == AVAHI_CLIENT_FAILURE) {
@@ -547,6 +553,8 @@ void Connection::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
     std::string remote_ip(sender);
     remote_ip = remote_ip.substr(0, remote_ip.find_last_of(":"));
 
+            Log::Info("Connection: received message '%s' from %s",
+                m.AddressPattern(), sender);
     try{
         // pong: a peer is introducing itself with its connection info
         if( std::strcmp( m.AddressPattern(), OSC_PREFIX OSC_PONG) == 0 ){
