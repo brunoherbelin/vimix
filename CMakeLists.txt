@@ -36,6 +36,12 @@ if(GIT_EXECUTABLE)
   endif()
 endif()
 
+##### Build configuration info (compiler, platform, build type)
+add_definitions(-DVIMIX_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
+add_definitions(-DVIMIX_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}")
+add_definitions(-DVIMIX_COMPILER_VERSION="${CMAKE_CXX_COMPILER_VERSION}")
+add_definitions(-DVIMIX_SYSTEM_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}")
+
 if (NOT GIT_EXECUTABLE OR GIT_DESCRIBE_ERROR_CODE)
     #####
     ##### Fallback: Read version from snap/snapcraft.yaml if git is not available
@@ -78,6 +84,10 @@ if(UNIX)
     if (APPLE)
         add_definitions(-DAPPLE)
 
+        # macOS Bonjour/DNS-SD is always available (built-in SDK, no extra package)
+        add_definitions(-DVIMIX_USE_BONJOUR)
+        message(STATUS "mDNS/Bonjour: YES (macOS built-in)")
+
         # the RPATH to be used when installing
         set(CMAKE_SKIP_RPATH TRUE)
         set(OpenGL_DIR /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/)
@@ -104,7 +114,13 @@ if(UNIX)
         set(APPLE_CODESIGN_STORED_CREDENTIAL "vimix" CACHE STRING "")
 
         # find icu4c in OSX (pretty well hidden...)
-        set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/opt/icu4c/lib/pkgconfig:/opt/homebrew/opt/icu4c/lib/pkgconfig")
+        if (CMAKE_OSX_ARCHITECTURES STREQUAL "arm64" OR 
+            (NOT CMAKE_OSX_ARCHITECTURES AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64"))
+            set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/opt/homebrew/opt/icu4c/lib/pkgconfig")
+        elseif (CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64" OR 
+                (NOT CMAKE_OSX_ARCHITECTURES AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"))
+            set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/opt/icu4c/lib/pkgconfig")
+        endif()
 
     else()
         add_definitions(-DLINUX)
@@ -145,6 +161,18 @@ if(UNIX)
                 macro_log_feature(LIBUDEV_FOUND "libudev" "Device management library" "https://www.freedesktop.org/software/systemd/man/libudev.html" FALSE)
             else()
                 message(STATUS "XInput2 (Xi) or libinput or libudev not found - tablet pressure support will be disabled")
+            endif()
+        endif()
+
+        # Linux: native Avahi client for mDNS peer discovery
+        # (NOT avahi-compat-libdnssd — it has no .pc file and missing symbols)
+        if(PKG_CONFIG_FOUND)
+            pkg_check_modules(AVAHI avahi-client)
+            if(AVAHI_FOUND)
+                add_definitions(-DVIMIX_USE_AVAHI)
+                message(STATUS "mDNS/Avahi: YES (libavahi-client)")
+            else()
+                message(STATUS "mDNS/Avahi: NO (install libavahi-client-dev for peer discovery)")
             endif()
         endif()
 

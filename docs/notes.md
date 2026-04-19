@@ -8,25 +8,30 @@ Copyright 2024 Bruno Herbelin
     
 -   Update `snap/snapcraft.yaml`Change version string
     
--   commit to Beta
+-   Git commit to Beta
     
 -   Test the flatpack for Beta[https://github.com/brunoherbelin/vimix/tree/master/flatpak](https://github.com/brunoherbelin/vimix/tree/master/flatpak)
     
--   Test the snap for Beta
+-   Test the snap for Beta (launch snapcraft from vimix base dir):
     
     ```bash
-    $ snap remove vimix$ snapcraft pack (from vimix base dir)$ snap install ./vimix_0.X.Y_amd64.snap --devmode$ snap connections vimix
+    $ snap remove vimix
+    $ snapcraft pack
+    $ snap install ./vimix_0.X.Y_amd64.snap --devmode
+    $ snap connections vimix
     ```
     
--   Merge Beta into origin/master
+-   Git Merge Beta into origin/master
     
--   push origin/master
+-   Git push origin/master
     
--   Create Release & Tag in [https://github.com/brunoherbelin/vimix](https://github.com/brunoherbelin/vimix)Document new features and major bugfixes
+-   Create Release & Tag in [https://github.com/brunoherbelin/vimix](https://github.com/brunoherbelin/vimix). Document new features and major bugfixes
     
--   Edit the Json on [https://github.com/flathub/io.github.brunoherbelin.Vimix](https://github.com/flathub/io.github.brunoherbelin.Vimix)Set vimix git Tag and Commit #Merge pull-request after successful flathubbot compilation(delete branch)
-    
--   Follow-up status of flathub package build on [https://buildbot.flathub.org](https://buildbot.flathub.org)(link is sent by email)
+-   flathub : 
+    -    Edit the Json on [https://github.com/flathub/io.github.brunoherbelin.Vimix](https://github.com/flathub/io.github.brunoherbelin.Vimix). 
+    -    Set vimix git Tag and Commit 
+    -    Merge pull-request after successful flathubbot compilation (delete branch)
+    -    Follow-up status of flathub package build on [https://buildbot.flathub.org](https://buildbot.flathub.org)(link is sent by email)
     
 
 ## Mac OSX specificities

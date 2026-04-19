@@ -1529,6 +1529,7 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
     float N = Mixer::manager().numSource();
     if ( !arguments.Eos())
         arguments >> N >> osc::EndMessage;
+    N = MIN(N, (float)Mixer::manager().numSource());
 
     // build socket to send message to indicated endpoint
     UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );

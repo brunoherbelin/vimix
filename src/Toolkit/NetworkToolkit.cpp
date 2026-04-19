@@ -183,6 +183,54 @@ std::vector<std::string> NetworkToolkit::host_ips()
     return ipstrings_;
 }
 
+std::vector<std::pair<std::string,std::string>> NetworkToolkit::interface_broadcasts()
+{
+    std::vector<std::pair<std::string,std::string>> result;
+
+    char buf[16384];
+    int fd = socket(PF_INET, SOCK_DGRAM, 0);
+    if (fd < 0)
+        return result;
+
+    struct ifconf ifconf;
+    ifconf.ifc_len = sizeof buf;
+    ifconf.ifc_buf = buf;
+    if (ioctl(fd, SIOCGIFCONF, &ifconf) == 0) {
+        struct ifreq *ifreq = ifconf.ifc_req;
+        for (int i = 0; i < ifconf.ifc_len; ) {
+            size_t len;
+#ifndef linux
+            len = IFNAMSIZ + ifreq->ifr_addr.sa_len;
+#else
+            len = sizeof *ifreq;
+#endif
+            struct ifreq req;
+            memset(&req, 0, sizeof req);
+            strncpy(req.ifr_name, ifreq->ifr_name, IFNAMSIZ);
+            if (ioctl(fd, SIOCGIFADDR, &req) == 0 &&
+                req.ifr_addr.sa_family == AF_INET) {
+                char src[128] = {};
+                getnameinfo(&req.ifr_addr, sizeof req.ifr_addr,
+                            src, sizeof src, 0, 0, NI_NUMERICHOST);
+                if (ioctl(fd, SIOCGIFBRDADDR, &req) == 0) {
+                    char bcast[128] = {};
+                    getnameinfo(&req.ifr_broadaddr, sizeof req.ifr_broadaddr,
+                                bcast, sizeof bcast, 0, 0, NI_NUMERICHOST);
+                    std::string src_s(src), bcast_s(bcast);
+                    // exclude loopback broadcast, limited broadcast and duplicates
+                    if (bcast_s != "0.0.0.0" && bcast_s != "255.255.255.255" &&
+                        std::find_if(result.begin(), result.end(),
+                            [&bcast_s](const auto& p){ return p.second == bcast_s; }) == result.end())
+                        result.push_back({src_s, bcast_s});
+                }
+            }
+            ifreq = (struct ifreq *)((char *)ifreq + len);
+            i += len;
+        }
+    }
+    close(fd);
+    return result;
+}
 
 bool NetworkToolkit::is_host_ip(const std::string &ip)
 {

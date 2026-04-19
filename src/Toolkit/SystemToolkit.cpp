@@ -258,15 +258,27 @@ string SystemToolkit::temp_path()
 {
     string temp;
 
-    const char *tmpdir = getenv("TMPDIR");
-    if (tmpdir)
-        temp = std::string(tmpdir);
-    else
-        temp = std::string( P_tmpdir );
+    // Linux and flatpak : XDG_RUNTIME_DIR points to /run/user/$UID 
+    const char *xdg = getenv("XDG_RUNTIME_DIR");
+    if (xdg)
+        temp = std::string(xdg);
+    else {
+        // alternative (works on OSX): use system temporary directory
+        const char *tmpdir = getenv("TMPDIR");
+        if (tmpdir)
+            temp = std::string(tmpdir);
+        else
+            temp = std::string(P_tmpdir);
+    }
 
-    temp += PATH_SEP;
+    // add subfolder for vimix to avoid conflicts with other applications
+    temp += PATH_SEP + string(APP_NAME) + PATH_SEP;
+
+    // ensure temp path exists
+    if (!SystemToolkit::file_exists(temp))
+        SystemToolkit::create_directory(temp);  
+
     return temp;
-    // TODO : verify WIN32 implementation
 }
 
 string SystemToolkit::full_filename(const std::string& path, const string &filename)

@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <cstddef>
 #include <string>
 #include <sstream>
 #include <regex>
@@ -1066,9 +1067,12 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 
             // different labels for each mode
             static const char *listboxname[3] = { "##NewSourceMediaRecent", "##NewSourceMediaRecording", "##NewSourceMediafolder"};
+            // compute maximum number of items to display in listbox according to available height
+            int max_items = (int) ((height_ - pos_top.y - 12.f * ImGui::GetFrameHeightWithSpacing() ) / ImGui::GetTextLineHeight());
+            max_items = CLAMP(max_items, 6, 25);
             // display the import-list and detect if one was selected
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::ListBoxHeader(listboxname[new_media_mode], sourceMediaFiles.size(), CLAMP(sourceMediaFiles.size(), 4, 6)) ) {
+            if (ImGui::ListBoxHeader(listboxname[new_media_mode], sourceMediaFiles.size(), CLAMP(sourceMediaFiles.size(), 4, max_items)) ) {
                 static int tooltip = 0;
                 static std::string filenametooltip;
                 // loop over list of files
@@ -1438,8 +1442,14 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 if ( ImGuiToolkit::InputCodeMultiline("Pipeline", &_description, fieldsize, &numlines) )
                     update_new_source = true;
 
-                // Local menu for list of examples
                 ImVec2 pos_bot = ImGui::GetCursorPos();
+                // Paste & go
+                ImGui::SetCursorPos( pos_bot + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -2.f * ImGui::GetFrameHeightWithSpacing()));
+                if ( ImGuiToolkit::IconButton(ICON_FA_PASTE, "Paste & go") ) {
+                    _description = ImGui::GetClipboardText();
+                    update_new_source = true;
+                }
+                // Local menu for list of examples
                 ImGui::SetCursorPos( pos_bot + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -ImGui::GetFrameHeightWithSpacing()));
                 if (ImGui::BeginCombo("##Examples", "Examples", ImGuiComboFlags_NoPreview | ImGuiComboFlags_HeightLarge))  {
                     ImGui::TextDisabled("Examples");
@@ -3223,10 +3233,11 @@ void Navigator::RenderMainPannelSettings()
         }
 
         if (ShmdataBroadcast::available()) {
+            std::string _shm_socket_path = Settings::application.shm_socket_path;
             std::string _shm_socket_file = Settings::application.shm_socket_path;
-            if (_shm_socket_file.empty() || !SystemToolkit::file_exists(_shm_socket_file))
-                _shm_socket_file = SystemToolkit::home_path();
-            _shm_socket_file = SystemToolkit::full_filename(_shm_socket_file, ".shm_vimix" + std::to_string(Settings::application.instance_id));
+            if (_shm_socket_path.empty() || !SystemToolkit::file_exists(_shm_socket_path))
+                _shm_socket_path = SystemToolkit::temp_path();
+            _shm_socket_file = SystemToolkit::full_filename(_shm_socket_path, "shm");
 
             char msg[256];
             if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
@@ -3248,19 +3259,40 @@ void Navigator::RenderMainPannelSettings()
             ImGui::SameLine(0);
             ImGui::SetCursorPosX(align_x);
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            char bufsocket[128] = "";
-            snprintf(bufsocket, 128, "%s", Settings::application.shm_socket_path.c_str());
-            ImGui::InputTextWithHint("##SHM path", SystemToolkit::home_path().c_str(), bufsocket, 128);
-            if (ImGui::IsItemDeactivatedAfterEdit()) {
-                Settings::application.shm_socket_path = bufsocket;
+            char bufsocket[256] = "";
+            snprintf(bufsocket, 256, "%s", _shm_socket_path.c_str());
+            // disable edition if SHM output is enabled
+            if (Outputs::manager().enabled( FrameGrabber::GRABBER_SHM )) {
+                ImGui::InputText("##SHM path read", bufsocket, 256, ImGuiInputTextFlags_ReadOnly);
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Disable Shared Memory streaming to edit the path.");
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::Text("SHM path");
+                if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
+                    ImGui::SetCursorPosX(align_x);
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    snprintf(bufsocket, 256, "%s", Settings::application.shm_method == 0 ? "shmsink" : "shmdatasink");
+                    ImGui::InputText("##SHM sink read", bufsocket, 256, ImGuiInputTextFlags_ReadOnly);
+                    if (ImGui::IsItemHovered())
+                        ImGuiToolkit::ToolTip("Disable Shared Memory streaming to edit the sink method.");
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    ImGui::Text("SHM sink");
+                }
             }
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::TextButton("SHM path"))
-                Settings::application.shm_socket_path = "";
-            if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
-                ImGui::SetCursorPosX(align_x);
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::Combo("SHM sink", &Settings::application.shm_method, "shmsink\0shmdatasink\0");
+            // enable edition if SHM output is disabled
+            else {
+                ImGui::InputTextWithHint("##SHM path", SystemToolkit::temp_path().c_str(), bufsocket, 256);
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    Settings::application.shm_socket_path = bufsocket;
+                }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton("SHM path"))
+                    Settings::application.shm_socket_path = "";
+                if (ShmdataBroadcast::available(ShmdataBroadcast::SHM_SHMDATASINK)) {
+                    ImGui::SetCursorPosX(align_x);
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::Combo("SHM sink", &Settings::application.shm_method, "shmsink\0shmdatasink\0");
+                }
             }
         }
         ImGuiToolkit::Spacing();
