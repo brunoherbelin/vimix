@@ -130,9 +130,9 @@ FilteringProgram::FilteringProgram(const std::string &name, const std::string &f
 }
 
 FilteringProgram::FilteringProgram(const FilteringProgram &other) :
-    name_(other.name_), filename_(other.filename_), code_(other.code_), 
+    name_(other.name_), filename_(other.filename_), code_(other.code_),
     two_pass_filter_(other.two_pass_filter_), parameters_(other.parameters_),
-    textures_(other.textures_)
+    ranges_(other.ranges_), textures_(other.textures_)
 {
 
 }
@@ -145,6 +145,8 @@ FilteringProgram& FilteringProgram::operator= (const FilteringProgram& other)
         this->code_ = other.code_;
         this->parameters_.clear();
         this->parameters_ = other.parameters_;
+        this->ranges_.clear();
+        this->ranges_ = other.ranges_;
         this->textures_.clear();
         this->textures_ = other.textures_;
         this->two_pass_filter_ = other.two_pass_filter_;
@@ -183,6 +185,15 @@ void FilteringProgram::removeParameter(const std::string &p)
 {
     if (hasParameter(p))
         parameters_.erase(p);
+}
+
+std::pair< float, float> FilteringProgram::getParameterRange(const std::string &p)
+{
+    std::pair< float, float> default_range(0.f, 1.f);
+    if (ranges_.find(p) != ranges_.end())
+        return ranges_[p];
+    else
+        return default_range;
 }
 
 bool FilteringProgram::hasTexture(const std::string &t)
@@ -502,6 +513,7 @@ FilteringProgram ImageFilter::program () const
 #define REGEX_VARIABLE_NAME "[a-zA-Z_][\\w]+"
 #define REGEX_UNIFORM_VALUE "(\\s*=\\s*[[:digit:]]+(\\.[[:digit:]]*)?)?\\s*\\;"
 #define REGEX_SAMPLER_DECLARATION "uniform\\s+sampler2D\\s+"
+#define REGEX_RANGE_COMMENT "\\/\\/\\s*range\\s*\\[\\s*([+-]?[[:digit:]]+(\\.[[:digit:]]*)?)\\s+([+-]?[[:digit:]]+(\\.[[:digit:]]*)?)\\s*\\]"
 
 void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string> *ret)
 {
@@ -567,6 +579,19 @@ void ImageFilter::setProgram(const FilteringProgram &f, std::promise<std::string
             }
             else
                 program_.setParameter(varname, 0.f);
+        }
+        // Check for range comment on the same line: // range [min max]
+        std::string line_suffix = found_uniform.suffix().str();
+        auto newline_pos = line_suffix.find('\n');
+        if (newline_pos != std::string::npos)
+            line_suffix = line_suffix.substr(0, newline_pos);
+        std::smatch found_range;
+        std::regex is_a_range(REGEX_RANGE_COMMENT);
+        if (std::regex_search(line_suffix, found_range, is_a_range)) {
+            float rmin = 0.f, rmax = 1.f;
+            BaseToolkit::is_a_value(found_range[1].str(), &rmin);
+            BaseToolkit::is_a_value(found_range[3].str(), &rmax);
+            program_.setParameterRange(varname, rmin, rmax);
         }
         // keep parsing
         glslcode = found_uniform.suffix().str();

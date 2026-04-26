@@ -26,6 +26,7 @@ class FilteringProgram
 
     // list of parameters : uniforms names and values
     std::map< std::string, float > parameters_;
+    std::map< std::string, std::pair<float, float> > ranges_;
 
     // list of texture inputs : uniform sampler2D names and source id
     std::map< std::string, uint64_t > textures_;
@@ -70,6 +71,9 @@ public:
     inline void setParameter(const std::string &p, float value) { parameters_[p] = value; }
     bool hasParameter(const std::string &p);
     void removeParameter(const std::string &p);
+
+    void setParameterRange(const std::string &p, float min, float max) { ranges_[p] = std::make_pair(min, max); }   
+    std::pair< float, float> getParameterRange(const std::string &p);
 
     // set the list of textures
     inline void setTextures(const std::map< std::string, uint64_t > &textures) { textures_ = textures; }

@@ -1143,21 +1143,27 @@ void ImGuiVisitor::visit (ResampleFilter& f)
     }
 }
 
-void list_parameters_(ImageFilter &f, std::ostringstream &oss)
+void ImGuiVisitor::list_parameters_(ImageFilter &f, std::ostringstream &oss, bool editrange)
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    std::map<std::string, float> filter_parameters = f.program().parameters();
+    FilteringProgram prog = f.program();
+    std::map<std::string, float> filter_parameters = prog.parameters();
     for (auto param = filter_parameters.rbegin(); param != filter_parameters.rend(); ++param)
     {
         ImGui::PushID( param->first.c_str() );
         float v = param->second;
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::SliderFloat( "##ImageFilterParameterEdit", &v, 0.f, 1.f, "%.2f")) {
+        auto range = prog.getParameterRange(param->first);
+        float rmin = range.first, rmax = range.second;
+        if (editrange)
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN - 1.6f * ImGui::GetTextLineHeightWithSpacing());
+        else
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGui::SliderFloat( "##ImageFilterParameterEdit", &v, rmin, rmax, "%.2f")) {
             f.setProgramParameter(param->first, v);
         }
         if (ImGui::IsItemHovered() && io.MouseWheel != 0.f ){
-            v = CLAMP( v + 0.01f * io.MouseWheel, 0.f, 1.f);
+            v = CLAMP( v + 0.01f * (rmax - rmin) * io.MouseWheel, rmin, rmax);
             f.setProgramParameter(param->first, v);
             oss << " " << param->first << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
@@ -1166,9 +1172,46 @@ void list_parameters_(ImageFilter &f, std::ostringstream &oss)
             oss << " " << param->first << " " << std::setprecision(3) <<param->second;
             Action::manager().store(oss.str());
         }
+        if (editrange) {
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGui::Button( "[ ]", ImVec2(1.6f * ImGui::GetTextLineHeight(), 0)) ) {
+                //
+                // Add '// range [ min max ]' to uniform declaration in shader code
+                //
+                // 1 get code
+                std::pair< std::string, std::string > code = prog.code();
+                std::string &glsl = code.first;
+
+                // 2 find uniform declaration for this parameter : "uniform float " + param->first
+                std::string decl_search = std::string("uniform float ") + param->first;
+                auto decl_pos = glsl.find(decl_search);
+                if (decl_pos != std::string::npos) {
+                    auto semi_pos = glsl.find(';', decl_pos);
+                    auto eol_pos  = glsl.find('\n', decl_pos);
+                    if (semi_pos != std::string::npos && (eol_pos == std::string::npos || semi_pos < eol_pos)) {
+                        // 4 add comment with range at the end of the line
+                        char range_comment[64];
+                        snprintf(range_comment, sizeof(range_comment), " // range [%.6g %.6g]", rmin, rmax);
+                        auto replace_start = semi_pos + 1;
+                        auto replace_end   = (eol_pos != std::string::npos) ? eol_pos : glsl.size();
+                        glsl.replace(replace_start, replace_end - replace_start, range_comment);
+                    }
+                }
+                // 3 set code with new comment
+                prog.setCode(code);
+                f.setProgram(prog);
+                // 4 show in GUI
+                UserInterface::manager().shadercontrol.setVisible(true);
+            }
+            if (ImGui::IsItemHovered()) {
+                char text_buf[512];
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "// range [%.6g  %.6g]\nEdit code to modify", rmin, rmax);
+                ImGuiToolkit::ToolTip(text_buf);
+            }
+        }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton( param->first.c_str() )) {
-            v = 0.5f;
+            v = (rmax - rmin) * 0.5f + rmin;
             f.setProgramParameter(param->first, v);
             oss << " " << param->first << " " << std::setprecision(3) << v;
             Action::manager().store(oss.str());
@@ -1480,7 +1523,7 @@ void ImGuiVisitor::visit (ImageFilter& f)
 
     // List of parameters & textures
     oss << "Custom ";
-    list_parameters_(f, oss);
+    list_parameters_(f, oss, true);
     list_textures_(f, oss);
 
 }

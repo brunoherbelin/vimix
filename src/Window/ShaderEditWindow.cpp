@@ -142,9 +142,8 @@ void ShaderEditWindow::setVisible(bool on)
 
     Settings::application.widget.shader_editor = on;
 
-    // reset current
-    current_ = nullptr;
-    _cs_id = 0;
+    // force refresh
+    Refresh();
 }
 
 bool ShaderEditWindow::Visible() const
