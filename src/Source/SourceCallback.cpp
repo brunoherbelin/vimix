@@ -1298,6 +1298,11 @@ void SetFilter::update(Source *s, float dt)
                     Log::Info("Filter Alpha: unknown operation '%s'", target_method_.c_str());
             } break;
             case FrameBufferFilter::FILTER_IMAGE: {
+                ImageFilter *__f = dynamic_cast<ImageFilter *>(clonesrc->filter());
+                if (__f == nullptr) {
+                    Log::Info("Filter Image: failed to get image filter");
+                    break;
+                }
                 // Open the file
                 std::ifstream file(target_method_);
                 // Check if the file is opened successfully
@@ -1309,11 +1314,14 @@ void SetFilter::update(Source *s, float dt)
                     prog.setName(target_method_);
                     prog.setCode({fileContent, ""});
                     // get alpha filter
-                    ImageFilter *__f = dynamic_cast<ImageFilter *>(clonesrc->filter());
                     __f->setProgram(prog);
                 }
-                else
-                    Log::Info("Filter Custom: can't read file '%s'", target_method_.c_str());
+                else {                    
+                    FilteringProgram prog;
+                    prog.setName( __f->program().name() );
+                    prog.setCode({target_method_, ""});
+                    __f->setProgram(prog);
+                }
                 // Close the file
                 file.close();
             } break;
