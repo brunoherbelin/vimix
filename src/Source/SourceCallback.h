@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <string>
+#include <future>
 #include <glm/glm.hpp>
 
 class Visitor;
@@ -51,7 +52,8 @@ public:
         CALLBACK_INVERT,
         CALLBACK_POSTERIZE,
         CALLBACK_FILTER,
-        CALLBACK_FILTER_UNIFORM,
+        CALLBACK_UNIFORM,
+        CALLBACK_CODE,
         CALLBACK_BLENDING,
         CALLBACK_INVALID
     } CallbackType;
@@ -508,7 +510,7 @@ public:
     void accept (Visitor& v) override;
 };
 
-class SetFilterUniform : public SourceCallback
+class SetUniform : public SourceCallback
 {
     std::string uniform_;
     float target_;
@@ -517,7 +519,7 @@ class SetFilterUniform : public SourceCallback
     class ImageFilter *imagefilter;
 
 public:
-    SetFilterUniform (const std::string &uniform = std::string(),
+    SetUniform (const std::string &uniform = std::string(),
                      float value = NAN, float ms = 0.f);
 
     float value () const { return target_; }
@@ -528,7 +530,25 @@ public:
     void update (Source *s, float) override;
     void multiply (float factor) override;
     SourceCallback *clone () const override;
-    CallbackType type () const override { return CALLBACK_FILTER_UNIFORM; }
+    CallbackType type () const override { return CALLBACK_UNIFORM; }
+    void accept (Visitor& v) override;
+};
+
+class SetCode : public SourceCallback
+{
+    std::string code_;
+    std::promise<std::string> *compilation_;
+    std::future<std::string>  compilation_return_;
+
+public:
+    SetCode (const std::string &code = std::string());
+
+    const std::string &code () const { return code_; }
+    void  setCode (const std::string &c) { code_ = c; }
+
+    void update (Source *s, float) override;
+    SourceCallback *clone () const override;
+    CallbackType type () const override { return CALLBACK_CODE; }
     void accept (Visitor& v) override;
 };
 

@@ -23,6 +23,7 @@
 #include "Source.h"
 #include "ImageProcessingShader.h"
 #include "CloneSource.h"
+#include "ShaderSource.h"
 #include "Filter/ImageFilter.h"
 #include "Filter/DelayFilter.h"
 #include "MediaSource.h"
@@ -1298,24 +1299,23 @@ void SetFilter::update(Source *s, float dt)
                     Log::Info("Filter Alpha: unknown operation '%s'", target_method_.c_str());
             } break;
             case FrameBufferFilter::FILTER_IMAGE: {
-                // Open the file
+                ImageFilter *__f = dynamic_cast<ImageFilter *>(clonesrc->filter());
+                if (__f == nullptr) {
+                    Log::Info("Filter Image: failed to get image filter");
+                    break;
+                }
+                FilteringProgram prog;
+                prog.setName( __f->program().name() );
+                // try to open a file
                 std::ifstream file(target_method_);
                 // Check if the file is opened successfully
                 if (file.is_open()) {
-                    // Read the content of the file into an std::string
-                    std::string fileContent((std::istreambuf_iterator<char>(file)),
-                                            std::istreambuf_iterator<char>());
-                    FilteringProgram prog;
-                    prog.setName(target_method_);
-                    prog.setCode({fileContent, ""});
-                    // get alpha filter
-                    ImageFilter *__f = dynamic_cast<ImageFilter *>(clonesrc->filter());
-                    __f->setProgram(prog);
+                    prog.setFilename(target_method_);
+                    __f->setProgram(prog);                
+                    file.close();
                 }
                 else
-                    Log::Info("Filter Custom: can't read file '%s'", target_method_.c_str());
-                // Close the file
-                file.close();
+                    Log::Info("Filter Image: failed to open file '%s'", target_method_.c_str());
             } break;
             default:
                 break;
@@ -1409,7 +1409,7 @@ void SetFilter::accept(Visitor& v)
     v.visit(*this);
 }
 
-SetFilterUniform::SetFilterUniform(const std::string &uniform, float value, float ms)
+SetUniform::SetUniform(const std::string &uniform, float value, float ms)
     : SourceCallback()
     , uniform_(uniform)
     , target_(value)
@@ -1419,12 +1419,13 @@ SetFilterUniform::SetFilterUniform(const std::string &uniform, float value, floa
     imagefilter = nullptr;
 }
 
-void SetFilterUniform::update(Source *s, float dt)
+void SetUniform::update(Source *s, float dt)
 {
     SourceCallback::update(s, dt);
     CloneSource *clonesrc = dynamic_cast<CloneSource *>(s);
+    ShaderSource *shadersrc = dynamic_cast<ShaderSource *>(s);
 
-    if (s->locked() || !clonesrc)
+    if (s->locked() || ( !clonesrc && !shadersrc ) )
         status_ = FINISHED;
 
 
@@ -1474,21 +1475,108 @@ void SetFilterUniform::update(Source *s, float dt)
 
 }
 
-void SetFilterUniform::multiply (float factor)
+void SetUniform::multiply (float factor)
 {
     target_ *= factor;
 }
 
-SourceCallback *SetFilterUniform::clone() const
+SourceCallback *SetUniform::clone() const
 {
-    return new SetFilterUniform(uniform_, target_, duration_);
+    return new SetUniform(uniform_, target_, duration_);
 }
 
-void SetFilterUniform::accept(Visitor& v)
+void SetUniform::accept(Visitor& v)
 {
     SourceCallback::accept(v);
     v.visit(*this);
 }
+
+SetCode::SetCode(const std::string &code) : SourceCallback(),
+    code_(code), compilation_(nullptr)
+{
+}
+
+void SetCode::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+    CloneSource *clonesrc = dynamic_cast<CloneSource *>(s);
+    ShaderSource *shadersrc = dynamic_cast<ShaderSource *>(s);
+
+    if (s->locked() || ( !clonesrc && !shadersrc ) )
+        status_ = FINISHED;
+
+    // update if there is an ongoing compilation
+    if (status_ == ACTIVE && compilation_ != nullptr ) {
+
+        static std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
+        if (compilation_return_.wait_for(timeout) == std::future_status::ready )
+        {
+            // get message returned from compilation
+            std::string status_ = compilation_return_.get();
+            Log::Info("setCode: %s", status_.c_str());
+
+            // end compilation promise
+            delete compilation_;
+            compilation_ = nullptr;
+
+            // done
+            status_ = FINISHED;
+        }
+    }
+
+    // apply when ready
+    if (status_ == READY) {        
+        // if there is an image filter in the source
+        ImageFilter *__f = nullptr;
+        if (clonesrc) 
+            __f = dynamic_cast<ImageFilter *>(clonesrc->filter());
+        else 
+            __f = dynamic_cast<ImageFilter *>(shadersrc->filter());
+        if (__f) {
+
+            // set code to the image filter and start compilation
+            FilteringProgram prog;
+            prog.setName( __f->program().name() );
+
+            // try to open a file
+            std::ifstream file(code_);
+            // Check if the file is opened successfully
+            if (file.is_open()) {
+                prog.setFilename(code_);
+            }
+            else {
+                prog.resetFilename();
+                prog.setCode({code_, ""});
+            }
+            file.close(); // close anyways
+
+            // compile new code
+            compilation_ = new std::promise<std::string>();
+            __f->setProgram(prog, compilation_);
+            compilation_return_ = compilation_->get_future();
+
+            // building
+            status_ = ACTIVE;
+        }
+        else {
+            Log::Info("setCode: failed to get image filter");
+            status_ = FINISHED;
+        }
+    }
+
+}
+
+SourceCallback *SetCode::clone() const
+{
+    return new SetCode(code_);
+}
+
+void SetCode::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
+
 
 SetBlending::SetBlending(const std::string &method)
     : SourceCallback()

@@ -77,6 +77,7 @@
 #define OSC_SOURCE_TEXANGLE    "/texture_angle"
 #define OSC_SOURCE_FILTER      "/filter"
 #define OSC_SOURCE_UNIFORM     "/uniform"
+#define OSC_SOURCE_CODE        "/code"
 #define OSC_SOURCE_BLENDING    "/blending"
 #define OSC_SOURCE_FLAG        "/flag"
 

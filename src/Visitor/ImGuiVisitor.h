@@ -11,6 +11,8 @@ class ImGuiVisitor: public Visitor
     InfoVisitor info;
     std::ostringstream oss;
 
+    void list_parameters_(class ImageFilter &f, std::ostringstream &oss, bool editrange = false);
+
 public:
     ImGuiVisitor();
     inline void reset () { info.reset(); }
