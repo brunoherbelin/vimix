@@ -100,6 +100,11 @@ public:
         : contents_( contents )
         , size_( ValidateSize( (osc_bundle_element_size_t)size ) ) {}
 
+#if !(defined(__LP64__) || defined(_LP64) || defined(__SIZEOF_POINTER__) && __SIZEOF_POINTER__ == 8)
+    ReceivedPacket( const char *contents, int size )
+        : contents_( contents )
+        , size_( ValidateSize( (osc_bundle_element_size_t)size ) ) {}
+#endif
 
     bool IsMessage() const { return !IsBundle(); }
     bool IsBundle() const;
