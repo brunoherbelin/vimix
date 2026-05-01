@@ -23,6 +23,7 @@
 #include "Source.h"
 #include "ImageProcessingShader.h"
 #include "CloneSource.h"
+#include "ShaderSource.h"
 #include "Filter/ImageFilter.h"
 #include "Filter/DelayFilter.h"
 #include "MediaSource.h"
@@ -1417,7 +1418,7 @@ void SetFilter::accept(Visitor& v)
     v.visit(*this);
 }
 
-SetFilterUniform::SetFilterUniform(const std::string &uniform, float value, float ms)
+SetUniform::SetUniform(const std::string &uniform, float value, float ms)
     : SourceCallback()
     , uniform_(uniform)
     , target_(value)
@@ -1427,12 +1428,13 @@ SetFilterUniform::SetFilterUniform(const std::string &uniform, float value, floa
     imagefilter = nullptr;
 }
 
-void SetFilterUniform::update(Source *s, float dt)
+void SetUniform::update(Source *s, float dt)
 {
     SourceCallback::update(s, dt);
     CloneSource *clonesrc = dynamic_cast<CloneSource *>(s);
+    ShaderSource *shadersrc = dynamic_cast<ShaderSource *>(s);
 
-    if (s->locked() || !clonesrc)
+    if (s->locked() || ( !clonesrc && !shadersrc ) )
         status_ = FINISHED;
 
 
@@ -1482,21 +1484,68 @@ void SetFilterUniform::update(Source *s, float dt)
 
 }
 
-void SetFilterUniform::multiply (float factor)
+void SetUniform::multiply (float factor)
 {
     target_ *= factor;
 }
 
-SourceCallback *SetFilterUniform::clone() const
+SourceCallback *SetUniform::clone() const
 {
-    return new SetFilterUniform(uniform_, target_, duration_);
+    return new SetUniform(uniform_, target_, duration_);
 }
 
-void SetFilterUniform::accept(Visitor& v)
+void SetUniform::accept(Visitor& v)
 {
     SourceCallback::accept(v);
     v.visit(*this);
 }
+
+SetCode::SetCode(const std::string &code) : SourceCallback(),
+    code_(code)
+{
+}
+
+void SetCode::update(Source *s, float dt)
+{
+    SourceCallback::update(s, dt);
+    CloneSource *clonesrc = dynamic_cast<CloneSource *>(s);
+    ShaderSource *shadersrc = dynamic_cast<ShaderSource *>(s);
+
+    if (s->locked() || ( !clonesrc && !shadersrc ) )
+        status_ = FINISHED;
+
+    // apply when ready
+    if (status_ == READY) {        
+        // if there is an image filter in the source
+        ImageFilter *__f = nullptr;
+        if (clonesrc) 
+            __f = dynamic_cast<ImageFilter *>(clonesrc->filter());
+        else 
+            __f = dynamic_cast<ImageFilter *>(shadersrc->filter());
+        if (__f) {
+            FilteringProgram prog;
+            prog.setName( __f->program().name() );
+            prog.setCode({code_, ""});
+            __f->setProgram(prog);
+        }
+        else
+            Log::Info("setCode: failed to get image filter");
+
+        status_ = FINISHED;
+    }
+}
+
+SourceCallback *SetCode::clone() const
+{
+    return new SetCode(code_);
+}
+
+void SetCode::accept(Visitor& v)
+{
+    SourceCallback::accept(v);
+    v.visit(*this);
+}
+
 
 SetBlending::SetBlending(const std::string &method)
     : SourceCallback()

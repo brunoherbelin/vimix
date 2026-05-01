@@ -1162,7 +1162,16 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             else
                 arguments >> t >> osc::EndMessage;
             if (str && uniform_value != NAN) {
-                target->call(new SetFilterUniform(std::string(str), uniform_value, t), true);
+                target->call(new SetUniform(std::string(str), uniform_value, t), true);
+            }
+        }
+        /// e.g. '/vimix/current/code s 'void mainImage(out vec4 o, in vec2 i) { o = vec4( i / iResolution.xy,1,1); }'
+        else if (attribute.compare(OSC_SOURCE_CODE) == 0) {
+            std::string code;
+            const char *str = nullptr;
+            arguments >> str >> osc::EndMessage;
+            if (str && strlen(str) > 0) {
+                target->call(new SetCode(std::string(str)), true);
             }
         }
         /// e.g. '/vimix/current/filter sf blur 0.5'
