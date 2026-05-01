@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <string>
+#include <future>
 #include <glm/glm.hpp>
 
 class Visitor;
@@ -536,6 +537,8 @@ public:
 class SetCode : public SourceCallback
 {
     std::string code_;
+    std::promise<std::string> *compilation_;
+    std::future<std::string>  compilation_return_;
 
 public:
     SetCode (const std::string &code = std::string());

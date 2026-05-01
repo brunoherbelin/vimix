@@ -1304,27 +1304,18 @@ void SetFilter::update(Source *s, float dt)
                     Log::Info("Filter Image: failed to get image filter");
                     break;
                 }
-                // Open the file
+                FilteringProgram prog;
+                prog.setName( __f->program().name() );
+                // try to open a file
                 std::ifstream file(target_method_);
                 // Check if the file is opened successfully
                 if (file.is_open()) {
-                    // Read the content of the file into an std::string
-                    std::string fileContent((std::istreambuf_iterator<char>(file)),
-                                            std::istreambuf_iterator<char>());
-                    FilteringProgram prog;
-                    prog.setName(target_method_);
-                    prog.setCode({fileContent, ""});
-                    // get alpha filter
-                    __f->setProgram(prog);
+                    prog.setFilename(target_method_);
+                    __f->setProgram(prog);                
+                    file.close();
                 }
-                else {                    
-                    FilteringProgram prog;
-                    prog.setName( __f->program().name() );
-                    prog.setCode({target_method_, ""});
-                    __f->setProgram(prog);
-                }
-                // Close the file
-                file.close();
+                else
+                    Log::Info("Filter Image: failed to open file '%s'", target_method_.c_str());
             } break;
             default:
                 break;
@@ -1501,7 +1492,7 @@ void SetUniform::accept(Visitor& v)
 }
 
 SetCode::SetCode(const std::string &code) : SourceCallback(),
-    code_(code)
+    code_(code), compilation_(nullptr)
 {
 }
 
@@ -1514,6 +1505,25 @@ void SetCode::update(Source *s, float dt)
     if (s->locked() || ( !clonesrc && !shadersrc ) )
         status_ = FINISHED;
 
+    // update if there is an ongoing compilation
+    if (status_ == ACTIVE && compilation_ != nullptr ) {
+
+        static std::chrono::milliseconds timeout = std::chrono::milliseconds(4);
+        if (compilation_return_.wait_for(timeout) == std::future_status::ready )
+        {
+            // get message returned from compilation
+            std::string status_ = compilation_return_.get();
+            Log::Info("setCode: %s", status_.c_str());
+
+            // end compilation promise
+            delete compilation_;
+            compilation_ = nullptr;
+
+            // done
+            status_ = FINISHED;
+        }
+    }
+
     // apply when ready
     if (status_ == READY) {        
         // if there is an image filter in the source
@@ -1523,16 +1533,37 @@ void SetCode::update(Source *s, float dt)
         else 
             __f = dynamic_cast<ImageFilter *>(shadersrc->filter());
         if (__f) {
+
+            // set code to the image filter and start compilation
             FilteringProgram prog;
             prog.setName( __f->program().name() );
-            prog.setCode({code_, ""});
-            __f->setProgram(prog);
-        }
-        else
-            Log::Info("setCode: failed to get image filter");
 
-        status_ = FINISHED;
+            // try to open a file
+            std::ifstream file(code_);
+            // Check if the file is opened successfully
+            if (file.is_open()) {
+                prog.setFilename(code_);
+            }
+            else {
+                prog.resetFilename();
+                prog.setCode({code_, ""});
+            }
+            file.close(); // close anyways
+
+            // compile new code
+            compilation_ = new std::promise<std::string>();
+            __f->setProgram(prog, compilation_);
+            compilation_return_ = compilation_->get_future();
+
+            // building
+            status_ = ACTIVE;
+        }
+        else {
+            Log::Info("setCode: failed to get image filter");
+            status_ = FINISHED;
+        }
     }
+
 }
 
 SourceCallback *SetCode::clone() const

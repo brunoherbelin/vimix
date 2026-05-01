@@ -1172,6 +1172,9 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             arguments >> str >> osc::EndMessage;
             if (str && strlen(str) > 0) {
                 target->call(new SetCode(std::string(str)), true);
+                // show and refresh source editor if source is currently selected
+                if (target == Mixer::manager().currentSource())
+                    UserInterface::manager().showSourceEditor(target);
             }
         }
         /// e.g. '/vimix/current/filter sf blur 0.5'

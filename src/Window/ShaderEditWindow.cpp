@@ -70,7 +70,7 @@ void saveEditorText(const std::string &filename)
 /// SHADER EDITOR
 ///
 ///
-ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), _cs_id(0), current_(nullptr), show_shader_inputs_(false)
+ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), _cs_id(0), current_(nullptr), show_shader_inputs_(false), compilation_(nullptr)
 {
     auto lang = TextEditor::LanguageDefinition::GLSL();
 
