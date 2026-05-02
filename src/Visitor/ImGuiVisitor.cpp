@@ -848,17 +848,19 @@ void ImGuiVisitor::visit (MediaSource& s)
         ImGui::SetCursorPos(botom);
 
         // because sometimes the error comes from gpu decoding
-        if ( Settings::application.render.gpu_decoding &&
-            SystemToolkit::file_exists(s.path()) &&
-            !s.mediaplayer()->softwareDecodingForced() )
-        {
-            // offer to reload the source without hardware decoding
-            if ( ImGui::Button( ICON_FA_REDO_ALT " Try again ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
-                // replace current source with one created with a flag forcing software decoding
-                Mixer::manager().replaceSource(Mixer::manager().currentSource(),
-                                               Mixer::manager().createSourceFile(s.path(), true));
-            }
+        // replace current source with one created with a flag forcing software decoding
+        bool try_software = false;
+        if (SystemToolkit::file_exists(s.path())) {
+            try_software = Settings::application.render.gpu_decoding && !s.mediaplayer()->softwareDecodingForced();
         }
+
+        // offer to reload the source 
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
+        if ( ImGui::Button( ICON_FA_REDO_ALT " Try again ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+            Mixer::manager().replaceSource(Mixer::manager().currentSource(),
+                                            Mixer::manager().createSourceFile(s.path(), try_software));
+        }
+        ImGui::PopStyleColor(1);
     }
 
 }

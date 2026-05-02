@@ -814,7 +814,7 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset
             if ( Mixer::manager().session()->failedSources().size() > 1 && 
                 Mixer::manager().session()->find(s) != Mixer::manager().session()->end() && s->failed()) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
-                if ( ImGui::Button( ICON_FA_UNDO_ALT " Retry all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
+                if ( ImGui::Button( ICON_FA_REDO_ALT " Retry all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
                     auto failedsources = Mixer::manager().session()->failedSources();
                     for (auto sit = failedsources.cbegin(); sit != failedsources.cend(); ++sit) {
                         Source *s = Mixer::manager().findSource( (*sit)->id() );
