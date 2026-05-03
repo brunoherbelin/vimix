@@ -593,18 +593,14 @@ void Navigator::Render()
             if ( selected_index < 0 ) {
                 showPannelSource(NAV_MENU);
             }
-            // most often, render current sources
-            else if ( selected_index == Mixer::manager().indexCurrentSource())
-                RenderSourcePannel(Mixer::manager().currentSource(), iconsize, reset_visitor);
-            // rarely its not the current source that is selected
             else {
-                SourceList::iterator cs = Mixer::manager().session()->at( selected_index );
-                if (cs != Mixer::manager().session()->end() )
-                    RenderSourcePannel(*cs, iconsize, reset_visitor);
-                else
-                    selected_index = -1;
+                // rarely its not the current source that is selected
+                if ( selected_index != Mixer::manager().indexCurrentSource())
+                    showPannelSource( Mixer::manager().indexCurrentSource() );
+                // render current sources
+                RenderSourcePannel(Mixer::manager().currentSource(), iconsize, reset_visitor);
+                reset_visitor = false;
             }
-            reset_visitor = false;
         }
     }
 
