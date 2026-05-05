@@ -61,6 +61,7 @@
 #include "Audio.h"
 #include "MousePointer.h"
 #include "Playlist.h"
+#include "Exporter.h"
 #include "VideoBroadcast.h"
 #include "ShmdataBroadcast.h"
 #include "SessionCreator.h"
@@ -2499,6 +2500,7 @@ void Navigator::RenderMainPannelPlaylist()
     static DialogToolkit::OpenManyFilesDialog selectSessions("Select vimix sessions",
                                                              VIMIX_FILE_TYPE,
                                                              VIMIX_FILE_PATTERN);
+    static DialogToolkit::OpenFolderDialog exportFolder("Export to Folder");
 
     //    static DialogToolkit::OpenPlaylistDialog openPlaylist("Open Playlist");
     //    static DialogToolkit::SavePlaylistDialog savePlaylist("Save Playlist");
@@ -2527,6 +2529,11 @@ void Navigator::RenderMainPannelPlaylist()
         Settings::application.recentFolders.push(customFolder.path());
         Settings::application.recentFolders.assign(customFolder.path());
         Settings::application.pannel_playlist_mode = 2;
+    }
+
+    // return from thread for export folder selection
+    if (exportFolder.closed() && !exportFolder.path().empty()){
+        Settings::application.recentExportFolder.path = exportFolder.path();
     }
 
     // load the list of session in playlist, only once when list changed
@@ -2585,6 +2592,7 @@ void Navigator::RenderMainPannelPlaylist()
     // icon to create new playlist
     //
     ImVec2 pos_top = ImGui::GetCursorPos();
+    ImVec2 pos_bottom = ImGui::GetCursorPos();
     ImVec2 pos_right = ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - ImGui::GetFrameHeight());
     ImGui::SetCursorPos( pos_right );
     if (ImGuiToolkit::IconButton( 13, 3, "Create playlist")) {
@@ -2677,6 +2685,7 @@ void Navigator::RenderMainPannelPlaylist()
 
             ImGui::ListBoxFooter();
         }
+        pos_bottom = ImGui::GetCursorPos();
         // cancel tooltip and mouse over on mouse exit
         if ( !ImGui::IsItemHovered())
             session_tooltip_ = 0;
@@ -2756,6 +2765,7 @@ void Navigator::RenderMainPannelPlaylist()
 
             ImGui::ListBoxFooter();
         }
+        pos_bottom = ImGui::GetCursorPos();
         // cancel tooltip and mouse over on mouse exit
         if ( !ImGui::IsItemHovered())
             session_tooltip_ = 0;
@@ -2820,6 +2830,7 @@ void Navigator::RenderMainPannelPlaylist()
 
             ImGui::ListBoxFooter();
         }
+        pos_bottom = ImGui::GetCursorPos();
         // cancel tooltip and mouse over on mouse exit
         if ( !ImGui::IsItemHovered())
             session_tooltip_ = 0;
@@ -2842,6 +2853,125 @@ void Navigator::RenderMainPannelPlaylist()
         ImGui::PopID();
 
     }
+
+    ImGui::SetCursorPos(pos_bottom);
+
+    // export to folder
+    static Exporter *exporter = nullptr;
+    static bool _exporting = false;
+    bool show_content = _exporting;
+    float w_height = (!show_content) ?
+                ImGui::GetFrameHeight() : (5.1f * ImGui::GetFrameHeightWithSpacing());
+    
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_PopupBg));
+    ImGui::BeginChild("export_child", ImVec2(0, w_height), 
+                            true, ImGuiWindowFlags_MenuBar);
+    if (ImGui::BeginMenuBar())
+    {
+        std::string title = "  Export";
+        if (show_content)
+            title.insert(0, ICON_FA_CHEVRON_DOWN " ");
+        else {
+            title.insert(0, ICON_FA_CHEVRON_RIGHT " ");
+            if (exporter != nullptr)
+                title += " (" + std::to_string((int)(100.0 * exporter->progress())) + "%)";
+        }
+
+        if ( ImGui::Selectable( title.c_str(), false, 
+                    (exporter != nullptr ? ImGuiSelectableFlags_Disabled : 0)) )
+            _exporting = !_exporting;
+        ImGui::EndMenuBar();
+    }
+
+    if (_exporting ) {
+
+        // check for completion
+        if (exporter != nullptr && exporter->finished()) {
+            if (exporter->success()) {
+                if (Settings::application.export_options[1]) {
+                    // add to recent folders and switch to it
+                    Settings::application.recentFolders.push(Settings::application.recentExportFolder.path);
+                    Settings::application.recentFolders.assign(Settings::application.recentExportFolder.path);
+                    Settings::application.pannel_playlist_mode = 2;
+                }
+                // notify success
+                Log::Notify("Export completed: %d file(s) copied to '%s'.",
+                            exporter->count(), Settings::application.recentExportFolder.path.c_str());
+            }
+            else
+                Log::Info("Export cancelled.");
+            delete exporter;
+            exporter = nullptr;
+        }
+
+        // path display + folder choose button
+        std::string label = BaseToolkit::truncated(Settings::application.recentExportFolder.path, 22);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGuiToolkit::InputText("##export_path", &label, ImGuiInputTextFlags_ReadOnly);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", Settings::application.recentExportFolder.path.c_str());
+        pos_bottom = ImGui::GetCursorPos();
+        ImGui::SameLine();
+        if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Choose destination folder") && exporter == nullptr)
+            exportFolder.open();
+
+        // copy media toggle
+        ImGui::SetCursorPos(pos_bottom);
+        ImGuiToolkit::ButtonSwitch("Copy media", &Settings::application.export_options[0],
+            "Also copy all media files referenced in the session files.", exporter == nullptr);
+        ImGuiToolkit::ButtonSwitch("Add to playlists", &Settings::application.export_options[1],
+            "After export, add the directory to the list above.", exporter == nullptr);
+
+        // export button or progress bar
+        if (exporter == nullptr) {
+            if (Settings::application.recentExportFolder.path.empty()){
+                ImGuiToolkit::ButtonDisabled(ICON_FA_SAVE "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+            }
+            else if (ImGui::Button(ICON_FA_SAVE "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
+                // build the full list of files to copy
+                std::list<std::string> all_files;
+                if (Settings::application.pannel_playlist_mode == 0)
+                    all_files = UserInterface::manager().favorites.paths();
+                else if (Settings::application.pannel_playlist_mode == 1)
+                    all_files = active_playlist.paths();
+                else {
+                    Playlist tmp;
+                    tmp.add(folder_session_files);
+                    all_files = tmp.paths();
+                }
+                // filter: session files always; media files only when copy_media is on
+                std::list<std::string> files_to_copy;
+                for (auto &f : all_files) {
+                    if (Settings::application.export_options[0] || SystemToolkit::has_extension(f, VIMIX_FILE_EXT))
+                        files_to_copy.push_back(f);
+                }
+                if (!files_to_copy.empty()) {
+                    exporter = new Exporter(files_to_copy, Settings::application.recentExportFolder.path);
+                    if (!exporter->start()) {
+                        Log::Warning("Export failed to start: %s", exporter->error().c_str());
+                        delete exporter;
+                        exporter = nullptr;
+                    }
+                }
+            }
+            ImGui::SameLine();
+            ImGuiToolkit::HelpToolTip("Export the playlist to a target folder.\n\n"
+                    ICON_FA_FOLDER_OPEN "  Choose a destination folder where to copy "
+                    "the session files of the playlist. "
+                    "Enable Copy media to also copy all referenced media files in the folder.");
+        } 
+        else {
+            float progress = exporter->progress();
+            ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN, 0),
+                               progress < (float)EPSILON ? "preparing..." : nullptr);
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_TIMES " Cancel"))
+                exporter->stop();
+        }
+    }
+
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
 
     //
     // Tooltip to show Session thumbnail

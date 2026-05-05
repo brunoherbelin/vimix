@@ -29,6 +29,9 @@ public:
     void remove (size_t index);
     void move   (size_t from_index, size_t to_index);
 
+    // list all paths referenced in the playlist
+    std::list<std::string> paths() const ;
+
 private:
 
     std::deque< std::string > path_;

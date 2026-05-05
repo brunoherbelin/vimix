@@ -177,6 +177,11 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     transcodeNode->SetAttribute("option_3", application.transcode_options[3]);
     applicationNode->InsertEndChild(transcodeNode);
 
+    XMLElement *exportNode = xmlDoc.NewElement( "Export" );
+    exportNode->SetAttribute("copy_media", application.export_options[0]);
+    exportNode->SetAttribute("create_playlist", application.export_options[1]);
+    applicationNode->InsertEndChild(exportNode);
+
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
@@ -309,6 +314,9 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
 
         // recent session folders
         recent->InsertEndChild( save_history(application.recentPlaylists, "Playlist", xmlDoc));
+
+        // recent export folder
+        recent->InsertEndChild( save_history(application.recentExportFolder, "ExportFolder", xmlDoc));
 
         // recent session folders
         recent->InsertEndChild( save_history(application.recentFolders, "Folder", xmlDoc));
@@ -528,6 +536,12 @@ void Settings::init(const std::string &filename)
                 transcodeNode->QueryBoolAttribute("option_1", &application.transcode_options[1]) ;
                 transcodeNode->QueryBoolAttribute("option_2", &application.transcode_options[2]) ;
                 transcodeNode->QueryBoolAttribute("option_3", &application.transcode_options[3]) ;
+            }
+
+            XMLElement * exportNode = applicationNode->FirstChildElement("Export");
+            if (exportNode != nullptr) {
+                exportNode->QueryBoolAttribute("copy_media", &application.export_options[0]) ;
+                exportNode->QueryBoolAttribute("create_playlist", &application.export_options[1]) ;
             }
 
             // text attributes
@@ -787,6 +801,9 @@ void Settings::init(const std::string &filename)
 
             // recent session playlist
             load_history(application.recentPlaylists, "Playlist", pElement);
+
+            // recent export folder
+            load_history(application.recentExportFolder, "ExportFolder", pElement);
 
             // recent session folders
             load_history(application.recentFolders, "Folder", pElement);

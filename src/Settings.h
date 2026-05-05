@@ -352,6 +352,7 @@ struct Application
     // recent files histories
     History recentSessions;
     History recentPlaylists;
+    History recentExportFolder;
     History recentFolders;
     History recentImport;
     History recentImportFolders;
@@ -371,6 +372,7 @@ struct Application
 
     // transcoding options
     bool transcode_options[4];
+    bool export_options[2];
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         total_runtime = 0;
@@ -408,6 +410,8 @@ struct Application
         transcode_options[1] = false;
         transcode_options[2] = false;
         transcode_options[3] = false;
+        export_options[0] = true;
+        export_options[1] = false;
         current_view = 1;
         current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);

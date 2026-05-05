@@ -21,6 +21,7 @@ set(VMIX_SRCS
     Connection.cpp
     ControlManager.cpp
     FrameBuffer.cpp
+    Exporter.cpp
     FrameGrabber.cpp
     FrameGrabbing.cpp
     Interpolator.cpp

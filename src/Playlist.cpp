@@ -18,9 +18,12 @@
 **/
 
 #include <algorithm>
+#include <set>
 
 #include <tinyxml2.h>
+#include "Log.h"
 #include "Toolkit/tinyxml2Toolkit.h"
+#include "Toolkit/SystemToolkit.h"
 using namespace tinyxml2;
 
 #include "Playlist.h"
@@ -161,3 +164,115 @@ void Playlist::move(size_t from_index, size_t to_index)
     }
 }
 
+// Forward declaration
+static void extractSessionPaths(const std::string &sessionFile,
+                                 std::list<std::string> &list,
+                                 std::set<std::string> &visited);
+
+static void scanSessionNode(XMLElement *sessionNode,
+                             const std::string &sessionFilePath,
+                             std::list<std::string> &list,
+                             std::set<std::string> &visited)
+{
+    for (XMLElement *sourceNode = sessionNode->FirstChildElement("Source");
+         sourceNode != nullptr;
+         sourceNode = sourceNode->NextSiblingElement("Source"))
+    {
+        const char *pType = sourceNode->Attribute("type");
+        if (!pType) continue;
+        const std::string type(pType);
+
+        if (type == "MediaSource") {
+            XMLElement *uriNode = sourceNode->FirstChildElement("uri");
+            if (uriNode) {
+                const char *text = uriNode->GetText();
+                if (text) {
+                    std::string path(text);
+                    if (!SystemToolkit::file_exists(path)) {
+                        const char *relative = nullptr;
+                        if (uriNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS && relative)
+                            path = SystemToolkit::path_absolute_from_path(relative, sessionFilePath);
+                    }
+                    if (SystemToolkit::file_exists(path) &&
+                        std::find(list.begin(), list.end(), path) == list.end())
+                        list.push_back(path);
+                }
+            }
+        }
+        else if (type == "SessionSource") {
+            XMLElement *pathNode = sourceNode->FirstChildElement("path");
+            if (pathNode) {
+                const char *text = pathNode->GetText();
+                if (text) {
+                    std::string path(text);
+                    if (!SystemToolkit::file_exists(path)) {
+                        const char *relative = nullptr;
+                        if (pathNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS && relative)
+                            path = SystemToolkit::path_absolute_from_path(relative, sessionFilePath);
+                    }
+                    if (SystemToolkit::file_exists(path)) {
+                        if (std::find(list.begin(), list.end(), path) == list.end())
+                            list.push_back(path);
+                        extractSessionPaths(path, list, visited);
+                    }
+                }
+            }
+        }
+        else if (type == "GroupSource") {
+            XMLElement *innerSession = sourceNode->FirstChildElement("Session");
+            if (innerSession)
+                scanSessionNode(innerSession, sessionFilePath, list, visited);
+        }
+        else if (type == "MultiFileSource") {
+            XMLElement *seqNode = sourceNode->FirstChildElement("Sequence");
+            if (seqNode) {
+                const char *text = seqNode->GetText();
+                if (text) {
+                    std::string location(text);
+                    std::string folder = SystemToolkit::path_filename(location);
+                    if (!SystemToolkit::path_directory(folder).empty()) {
+                        const char *codec = seqNode->Attribute("codec");
+                        std::string pattern = codec ? std::string("*.") + codec : "*";
+                        std::list<std::string> seqfiles =
+                            SystemToolkit::list_directory(folder, {pattern});
+                        for (auto &f : seqfiles) {
+                            if (std::find(list.begin(), list.end(), f) == list.end())
+                                list.push_back(f);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void extractSessionPaths(const std::string &sessionFile,
+                                 std::list<std::string> &list,
+                                 std::set<std::string> &visited)
+{
+    if (visited.count(sessionFile)) return;
+    if (!SystemToolkit::file_exists(sessionFile)) return;
+    visited.insert(sessionFile);
+
+    XMLDocument xmlDoc;
+    if (xmlDoc.LoadFile(sessionFile.c_str()) != XML_SUCCESS) return;
+
+    XMLElement *sessionNode = xmlDoc.FirstChildElement("Session");
+    if (!sessionNode) return;
+
+    scanSessionNode(sessionNode, SystemToolkit::path_filename(sessionFile), list, visited);
+}
+
+std::list<std::string> Playlist::paths() const {
+
+    std::list<std::string> list;
+    std::set<std::string> visited;
+
+    for (auto it = path_.cbegin(); it != path_.cend(); ++it) {
+        if (std::find(list.begin(), list.end(), *it) == list.end())
+            list.push_back(*it);
+        extractSessionPaths(*it, list, visited);
+    }
+
+    return list;
+}
