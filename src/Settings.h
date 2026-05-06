@@ -299,7 +299,7 @@ struct Application
 
     int  pannel_main_mode;
     int  pannel_playlist_mode;
-    bool pannel_session[3];
+    bool pannel_session[4];
     bool pannel_always_visible;
     bool pannel_settings[6];
 
@@ -400,6 +400,7 @@ struct Application
         pannel_session[0] = true;
         pannel_session[1] = false;
         pannel_session[2] = false;
+        pannel_session[3] = false;
         pannel_settings[0] = false;
         pannel_settings[1] = false;
         pannel_settings[2] = false;

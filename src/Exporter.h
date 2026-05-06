@@ -25,8 +25,10 @@
 #include <atomic>
 #include <future>
 
+#include "Playlist.h"
+
 /**
- * @brief Copies a list of files to a destination folder in a background thread.
+ * @brief Copies a playlist's files to a destination folder in a background thread.
  *
  * Follows the same start / stop / finished / success / progress pattern as
  * the Transcoder class so it can be driven from the UI in exactly the same way.
@@ -35,11 +37,12 @@ class Exporter
 {
 public:
     /**
-     * @brief Construct an Exporter for the given file list and destination.
-     * @param files       Absolute paths of files to copy.
+     * @brief Construct an Exporter for the given playlist and destination.
+     * @param playlist    Playlist whose referenced files are to be exported.
      * @param destination Absolute path of the destination folder.
+     * @param copy_media  If true, also copy media files; otherwise only session files.
      */
-    Exporter(const std::list<std::string> &files, const std::string &destination);
+    Exporter(const Playlist &playlist, const std::string &destination, bool copy_media);
 
     /**
      * @brief Destroy the Exporter.

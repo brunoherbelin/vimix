@@ -25,6 +25,7 @@
 
 #include "Log.h"
 #include "defines.h"
+#include "Playlist.h"
 #include "Toolkit/SystemToolkit.h"
 
 using namespace tinyxml2;
@@ -122,15 +123,19 @@ static void patchSessionFile(const std::string &dst_path,
 }
 
 
-Exporter::Exporter(const std::list<std::string> &files, const std::string &destination)
-    : files_(files)
-    , destination_(destination)
-    , total_((int)files.size())
+Exporter::Exporter(const Playlist &playlist, const std::string &destination, bool copy_media)
+    : destination_(destination)
     , done_(0)
     , cancel_(false)
     , finished_(false)
     , success_(false)
 {
+    const std::list<std::string> all_files = playlist.paths();
+    for (const auto &f : all_files) {
+        if (copy_media || SystemToolkit::has_extension(f, VIMIX_FILE_EXT))
+            files_.push_back(f);
+    }
+    total_ = (int)files_.size();
 }
 
 Exporter::~Exporter()
@@ -145,6 +150,11 @@ bool Exporter::start()
 {
     if (task_.valid()) {
         error_message_ = "Exporter already started.";
+        return false;
+    }
+
+    if (total_ == 0) {
+        error_message_ = "No files to export.";
         return false;
     }
 
