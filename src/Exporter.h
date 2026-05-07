@@ -47,6 +47,7 @@ public:
      *                      Falls back to the destination folder name when empty.
      */
     Exporter(const Playlist &playlist, const std::string &destination, bool copy_media,
+             bool discard_versions = false,
              bool compress = false, const std::string &archive_name = "");
 
     /**
@@ -114,6 +115,7 @@ private:
     std::list<std::string> files_;
     std::string            destination_;
     std::string            error_message_;
+    bool                   discard_versions_;
 
     int                   total_;
     std::atomic<int>      done_;

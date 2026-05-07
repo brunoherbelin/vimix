@@ -106,14 +106,29 @@ static void patchSessionNode(XMLElement *sessionNode,
                 }
             }
         }
+        else if (type == "CloneSource" || type == "ShaderSource") {
+            // <Filter filename="absolute_path" ...> — external .glsl shader file
+            XMLElement *filterNode = sourceNode->FirstChildElement("Filter");
+            if (filterNode) {
+                const char *filename = nullptr;
+                if (filterNode->QueryStringAttribute("filename", &filename) == XML_SUCCESS
+                    && filename != nullptr && filename[0] != '\0'
+                    && files_set.count(std::string(filename))) {
+                    const std::string fname = SystemToolkit::filename(filename);
+                    filterNode->SetAttribute("filename", (dest + PATH_SEP + fname).c_str());
+                }
+            }
+        }
     }
 }
 
 // Load a copied .mix file, patch all embedded file references, and save it back.
+// If discard_versions is true, the entire <Snapshots> section is removed.
 static void patchSessionFile(const std::string &dst_path,
                               const std::string &dest,
                               const std::set<std::string> &files_set,
-                              const std::set<std::string> &dirs_set)
+                              const std::set<std::string> &dirs_set,
+                              bool discard_versions)
 {
     XMLDocument xmlDoc;
     if (xmlDoc.LoadFile(dst_path.c_str()) != XML_SUCCESS) return;
@@ -123,13 +138,20 @@ static void patchSessionFile(const std::string &dst_path,
 
     patchSessionNode(sessionNode, dest, files_set, dirs_set);
 
+    if (discard_versions) {
+        XMLElement *snapshots = xmlDoc.FirstChildElement("Snapshots");
+        if (snapshots)
+            xmlDoc.DeleteChild(snapshots);
+    }
+
     xmlDoc.SaveFile(dst_path.c_str());
 }
 
 
 Exporter::Exporter(const Playlist &playlist, const std::string &destination, bool copy_media,
-                   bool compress, const std::string &archive_name)
+                   bool discard_versions, bool compress, const std::string &archive_name)
     : destination_(destination)
+    , discard_versions_(discard_versions)
     , done_(0)
     , cancel_(false)
     , finished_(false)
@@ -200,7 +222,7 @@ bool Exporter::start()
                 // After copying a session file, rewrite its internal paths so they
                 // point to files in the export folder instead of their original locations.
                 if (SystemToolkit::has_extension(src, VIMIX_FILE_EXT))
-                    patchSessionFile(dst, destination_, files_set, dirs_set);
+                    patchSessionFile(dst, destination_, files_set, dirs_set, discard_versions_);
             }
             catch (const std::filesystem::filesystem_error &e) {
                 Log::Warning("Exporter: Could not copy '%s': %s", src.c_str(), e.what());

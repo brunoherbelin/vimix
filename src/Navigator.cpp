@@ -2497,12 +2497,6 @@ void Navigator::RenderMainPannelSession()
         // check for completion
         if (exporter != nullptr && exporter->finished()) {
             if (exporter->success()) {
-                // open session if requested
-                if (Settings::application.export_options[2]) {
-                    std::string filename = Settings::application.recentExportFolder.path + "/" + SystemToolkit::filename(Mixer::manager().session()->filename());
-                    if (SystemToolkit::file_exists(filename))
-                        Mixer::manager().open(filename);
-                }
                 // notify success
                 Log::Notify("Export completed: %d file(s) copied to '%s'.",
                             exporter->count(), Settings::application.recentExportFolder.path.c_str());
@@ -2527,13 +2521,13 @@ void Navigator::RenderMainPannelSession()
         // copy media toggle
         ImGui::SetCursorPos(pos_bottom);
         ImGuiToolkit::ButtonSwitch("Copy media", &Settings::application.export_options[0],
-            "Also copy all media files referenced in the session files.", exporter == nullptr);
+            "Copy all media files referenced in the session file.", exporter == nullptr);
+        ImGuiToolkit::ButtonSwitch("Discard versions", &Settings::application.export_options[2],
+            "Do NOT copy versions in the exported session file.", exporter == nullptr);
 #ifdef VIMIX_USE_MINIZ
-        ImGuiToolkit::ButtonSwitch("Archive", &Settings::application.export_options[3],
-            "Pack all exported files into a ZIP archive.", exporter == nullptr);
+        ImGuiToolkit::ButtonSwitch("Archive", &Settings::application.export_options[1],
+            "Pack all files into a ZIP archive.", exporter == nullptr);
 #endif
-        ImGuiToolkit::ButtonSwitch("Open after export", &Settings::application.export_options[2],
-            "Open the exported session after export.", exporter == nullptr);
 
         // export button or progress bar
         if (exporter == nullptr) {
@@ -2551,7 +2545,8 @@ void Navigator::RenderMainPannelSession()
                 tmp.add(Mixer::manager().session()->filename());
                 exporter = new Exporter(tmp, Settings::application.recentExportFolder.path,
                                         Settings::application.export_options[0],
-                                        Settings::application.export_options[3],
+                                        Settings::application.export_options[2],
+                                        Settings::application.export_options[1],
                                         archive_name);
                 if (!exporter->start()) {
                     Log::Warning("Export failed to start: %s", exporter->error().c_str());
@@ -2979,12 +2974,6 @@ void Navigator::RenderMainPannelPlaylist()
         // check for completion
         if (playlist_exporter != nullptr && playlist_exporter->finished()) {
             if (playlist_exporter->success()) {
-                if (Settings::application.export_options[1]) {
-                    // add to recent folders and switch to it
-                    Settings::application.recentFolders.push(Settings::application.recentExportFolder.path);
-                    Settings::application.recentFolders.assign(Settings::application.recentExportFolder.path);
-                    Settings::application.pannel_playlist_mode = 2;
-                }
                 // notify success
                 Log::Notify("Export completed: %d file(s) copied to '%s'.",
                             playlist_exporter->count(), Settings::application.recentExportFolder.path.c_str());
@@ -3009,13 +2998,13 @@ void Navigator::RenderMainPannelPlaylist()
         // copy media toggle
         ImGui::SetCursorPos(pos_bottom);
         ImGuiToolkit::ButtonSwitch("Copy media", &Settings::application.export_options[0],
-            "Also copy all media files referenced in the session files.", playlist_exporter == nullptr);
+            "Copy all media files referenced in the session files.", playlist_exporter == nullptr);
+        ImGuiToolkit::ButtonSwitch("Discard versions", &Settings::application.export_options[2],
+            "Do NOT copy versions in the exported session files.", playlist_exporter == nullptr);
 #ifdef VIMIX_USE_MINIZ
-        ImGuiToolkit::ButtonSwitch("Archive", &Settings::application.export_options[3],
-            "Pack all exported files into a ZIP archive.", playlist_exporter == nullptr);
+        ImGuiToolkit::ButtonSwitch("Archive", &Settings::application.export_options[1],
+            "Pack all files into a ZIP archive.", playlist_exporter == nullptr);
 #endif
-        ImGuiToolkit::ButtonSwitch("Add to playlists", &Settings::application.export_options[1],
-            "After export, add the directory to the list above.", playlist_exporter == nullptr);
 
         // export button or progress bar
         if (playlist_exporter == nullptr) {
@@ -3038,7 +3027,8 @@ void Navigator::RenderMainPannelPlaylist()
                 }
                 playlist_exporter = new Exporter(tmp, Settings::application.recentExportFolder.path,
                                                   Settings::application.export_options[0],
-                                                  Settings::application.export_options[3],
+                                                  Settings::application.export_options[2],
+                                                  Settings::application.export_options[1],
                                                   archive_name);
                 if (!playlist_exporter->start()) {
                     Log::Warning("Export failed to start: %s", playlist_exporter->error().c_str());

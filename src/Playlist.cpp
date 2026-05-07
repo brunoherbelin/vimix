@@ -243,6 +243,21 @@ static void scanSessionNode(XMLElement *sessionNode,
                 }
             }
         }
+        else if (type == "CloneSource" || type == "ShaderSource") {
+            // Both source types embed a FilteringProgram whose external shader file
+            // is stored as the 'filename' attribute of the <Filter> child element.
+            XMLElement *filterNode = sourceNode->FirstChildElement("Filter");
+            if (filterNode) {
+                const char *filename = nullptr;
+                if (filterNode->QueryStringAttribute("filename", &filename) == XML_SUCCESS
+                    && filename != nullptr && filename[0] != '\0') {
+                    std::string path(filename);
+                    if (SystemToolkit::file_exists(path) &&
+                        std::find(list.begin(), list.end(), path) == list.end())
+                        list.push_back(path);
+                }
+            }
+        }
     }
 }
 

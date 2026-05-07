@@ -372,7 +372,7 @@ struct Application
 
     // transcoding options
     bool transcode_options[4];
-    bool export_options[4];
+    bool export_options[3];
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         total_runtime = 0;
@@ -414,7 +414,6 @@ struct Application
         export_options[0] = true;
         export_options[1] = false;
         export_options[2] = false;
-        export_options[3] = false;
         current_view = 1;
         current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
