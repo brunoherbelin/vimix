@@ -2007,6 +2007,7 @@ void Navigator::RenderMainPannelSession()
     if (ImGui::BeginCombo("##RecentSessions", sessions_current.c_str() )) {
         // list all sessions in recent list
         for(auto it = sessions_list.begin(); it != sessions_list.end(); ++it) {
+            ImGui::PushID(it->c_str());
             if (ImGui::Selectable( SystemToolkit::filename(*it).c_str() ) ) {
                 Mixer::manager().open( *it );
             }
@@ -2015,6 +2016,7 @@ void Navigator::RenderMainPannelSession()
                 ImGui::Text( "%s", (*it).c_str() );
                 ImGui::EndTooltip();
             }
+            ImGui::PopID();
         }
         ImGui::EndCombo();
     }
@@ -2521,12 +2523,12 @@ void Navigator::RenderMainPannelSession()
         // copy media toggle
         ImGui::SetCursorPos(pos_bottom);
         ImGuiToolkit::ButtonSwitch("Copy media", &Settings::application.export_options[0],
-            "Copy all media files referenced in the session file.", exporter == nullptr);
+            "Copy all media files referenced in the session file", exporter == nullptr);
         ImGuiToolkit::ButtonSwitch("Discard versions", &Settings::application.export_options[2],
-            "Do NOT copy versions in the exported session file.", exporter == nullptr);
+            "Do NOT copy versions in the exported session file", exporter == nullptr);
 #ifdef VIMIX_USE_MINIZ
         ImGuiToolkit::ButtonSwitch("Archive", &Settings::application.export_options[1],
-            "Pack all files into a ZIP archive.", exporter == nullptr);
+            "Pack all files into a ZIP archive", exporter == nullptr);
 #endif
 
         // export button or progress bar
@@ -2557,8 +2559,7 @@ void Navigator::RenderMainPannelSession()
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Export the session to a target folder.\n\n"
                     ICON_FA_FOLDER_OPEN "  Choose a destination folder where to save "
-                    "a copy of the session. "
-                    "Enable Copy media to also copy all referenced media files into the folder.");
+                    "a copy of the session. ");
         }
         else {
             float progress = exporter->progress();
@@ -2998,12 +2999,12 @@ void Navigator::RenderMainPannelPlaylist()
         // copy media toggle
         ImGui::SetCursorPos(pos_bottom);
         ImGuiToolkit::ButtonSwitch("Copy media", &Settings::application.export_options[0],
-            "Copy all media files referenced in the session files.", playlist_exporter == nullptr);
+            "Copy all media files referenced in the session files", playlist_exporter == nullptr);
         ImGuiToolkit::ButtonSwitch("Discard versions", &Settings::application.export_options[2],
-            "Do NOT copy versions in the exported session files.", playlist_exporter == nullptr);
+            "Do NOT copy versions in the exported session files", playlist_exporter == nullptr);
 #ifdef VIMIX_USE_MINIZ
         ImGuiToolkit::ButtonSwitch("Archive", &Settings::application.export_options[1],
-            "Pack all files into a ZIP archive.", playlist_exporter == nullptr);
+            "Pack all files into a ZIP archive", playlist_exporter == nullptr);
 #endif
 
         // export button or progress bar
@@ -3039,8 +3040,7 @@ void Navigator::RenderMainPannelPlaylist()
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Export the playlist to a target folder.\n\n"
                     ICON_FA_FOLDER_OPEN "  Choose a destination folder where to copy "
-                    "the session files of the playlist. "
-                    "Enable Copy media to also copy all referenced media files into the folder.");
+                    "the session files of the playlist. ");
         }
         else {
             float progress = playlist_exporter->progress();
