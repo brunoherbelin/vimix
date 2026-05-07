@@ -38,11 +38,16 @@ class Exporter
 public:
     /**
      * @brief Construct an Exporter for the given playlist and destination.
-     * @param playlist    Playlist whose referenced files are to be exported.
-     * @param destination Absolute path of the destination folder.
-     * @param copy_media  If true, also copy media files; otherwise only session files.
+     * @param playlist      Playlist whose referenced files are to be exported.
+     * @param destination   Absolute path of the destination folder.
+     * @param copy_media    If true, also copy media files; otherwise only session files.
+     * @param compress      If true (and VIMIX_USE_MINIZ is defined), pack all copied
+     *                      files into @p archive_name .zip and remove the flat copies.
+     * @param archive_name  Stem of the ZIP file (e.g. "myplaylist" → "myplaylist.zip").
+     *                      Falls back to the destination folder name when empty.
      */
-    Exporter(const Playlist &playlist, const std::string &destination, bool copy_media);
+    Exporter(const Playlist &playlist, const std::string &destination, bool copy_media,
+             bool compress = false, const std::string &archive_name = "");
 
     /**
      * @brief Destroy the Exporter.
@@ -94,6 +99,17 @@ public:
      */
     int count() const { return total_; }
 
+#ifdef VIMIX_USE_MINIZ
+    /**
+     * @brief True while the ZIP archive is being built (after all copies finish).
+     *
+     * When compress is active, progress() reports 0–0.5 during the copy phase
+     * and 0.5–1.0 during the compression phase.  Inspect this flag to show a
+     * "compressing…" overlay on the progress bar.
+     */
+    bool compressing() const { return compressing_.load(); }
+#endif
+
 private:
     std::list<std::string> files_;
     std::string            destination_;
@@ -106,6 +122,13 @@ private:
     std::atomic<bool>     success_;
 
     std::future<void>     task_;
+
+#ifdef VIMIX_USE_MINIZ
+    bool              compress_;
+    std::string       archive_name_;
+    std::atomic<bool> compressing_;
+    std::atomic<int>  compress_done_;
+#endif
 };
 
 #endif // EXPORTER_H

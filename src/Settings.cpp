@@ -181,6 +181,8 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     XMLElement *exportNode = xmlDoc.NewElement( "Export" );
     exportNode->SetAttribute("copy_media", application.export_options[0]);
     exportNode->SetAttribute("create_playlist", application.export_options[1]);
+    exportNode->SetAttribute("open_after", application.export_options[2]);
+    exportNode->SetAttribute("compress", application.export_options[3]);
     applicationNode->InsertEndChild(exportNode);
 
     pRoot->InsertEndChild(applicationNode);
@@ -544,6 +546,8 @@ void Settings::init(const std::string &filename)
             if (exportNode != nullptr) {
                 exportNode->QueryBoolAttribute("copy_media", &application.export_options[0]) ;
                 exportNode->QueryBoolAttribute("create_playlist", &application.export_options[1]) ;
+                exportNode->QueryBoolAttribute("open_after", &application.export_options[2]) ;
+                exportNode->QueryBoolAttribute("compress", &application.export_options[3]) ;
             }
 
             // text attributes

@@ -2528,12 +2528,16 @@ void Navigator::RenderMainPannelSession()
         ImGui::SetCursorPos(pos_bottom);
         ImGuiToolkit::ButtonSwitch("Copy media", &Settings::application.export_options[0],
             "Also copy all media files referenced in the session files.", exporter == nullptr);
+#ifdef VIMIX_USE_MINIZ
+        ImGuiToolkit::ButtonSwitch("Archive", &Settings::application.export_options[3],
+            "Pack all exported files into a ZIP archive.", exporter == nullptr);
+#endif
         ImGuiToolkit::ButtonSwitch("Open after export", &Settings::application.export_options[2],
             "Open the exported session after export.", exporter == nullptr);
 
         // export button or progress bar
         if (exporter == nullptr) {
-            // cannot export if no target folder or session file, 
+            // cannot export if no target folder or session file,
             // or if target folder is same than current session folder (avoid overwriting)
             if (Settings::application.recentExportFolder.path.empty() ||
                 Mixer::manager().session()->filename().empty() ||
@@ -2541,10 +2545,14 @@ void Navigator::RenderMainPannelSession()
                 ImGuiToolkit::ButtonDisabled(ICON_FA_SAVE "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0));
             }
             else if (ImGui::Button(ICON_FA_SAVE "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
+                const std::string archive_name =
+                    SystemToolkit::base_filename(Mixer::manager().session()->filename());
                 Playlist tmp;
                 tmp.add(Mixer::manager().session()->filename());
                 exporter = new Exporter(tmp, Settings::application.recentExportFolder.path,
-                                        Settings::application.export_options[0]);
+                                        Settings::application.export_options[0],
+                                        Settings::application.export_options[3],
+                                        archive_name);
                 if (!exporter->start()) {
                     Log::Warning("Export failed to start: %s", exporter->error().c_str());
                     delete exporter;
@@ -2556,11 +2564,16 @@ void Navigator::RenderMainPannelSession()
                     ICON_FA_FOLDER_OPEN "  Choose a destination folder where to save "
                     "a copy of the session. "
                     "Enable Copy media to also copy all referenced media files into the folder.");
-        } 
+        }
         else {
             float progress = exporter->progress();
-            ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN, 0),
-                            progress < (float)EPSILON ? "preparing..." : nullptr);
+#ifdef VIMIX_USE_MINIZ
+            const char *overlay = exporter->compressing() ? "compressing..."
+                                : progress < (float)EPSILON ? "preparing..." : nullptr;
+#else
+            const char *overlay = progress < (float)EPSILON ? "preparing..." : nullptr;
+#endif
+            ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN, 0), overlay);
             ImGui::SameLine();
             if (ImGui::Button(ICON_FA_TIMES " Cancel"))
                 exporter->stop();
@@ -2997,6 +3010,10 @@ void Navigator::RenderMainPannelPlaylist()
         ImGui::SetCursorPos(pos_bottom);
         ImGuiToolkit::ButtonSwitch("Copy media", &Settings::application.export_options[0],
             "Also copy all media files referenced in the session files.", playlist_exporter == nullptr);
+#ifdef VIMIX_USE_MINIZ
+        ImGuiToolkit::ButtonSwitch("Archive", &Settings::application.export_options[3],
+            "Pack all exported files into a ZIP archive.", playlist_exporter == nullptr);
+#endif
         ImGuiToolkit::ButtonSwitch("Add to playlists", &Settings::application.export_options[1],
             "After export, add the directory to the list above.", playlist_exporter == nullptr);
 
@@ -3007,14 +3024,22 @@ void Navigator::RenderMainPannelPlaylist()
             }
             else if (ImGui::Button(ICON_FA_SAVE "  Export all", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
                 Playlist tmp;
-                if (Settings::application.pannel_playlist_mode == 0)
+                std::string archive_name;
+                if (Settings::application.pannel_playlist_mode == 0) {
                     tmp = UserInterface::manager().favorites;
-                else if (Settings::application.pannel_playlist_mode == 1)
+                    archive_name = SystemToolkit::base_filename(
+                        UserInterface::manager().favorites.filename());
+                } else if (Settings::application.pannel_playlist_mode == 1) {
                     tmp = active_playlist;
-                else
+                    archive_name = SystemToolkit::base_filename(active_playlist.filename());
+                } else {
                     tmp.add(folder_session_files);
+                    archive_name = SystemToolkit::filename(Settings::application.recentFolders.path);
+                }
                 playlist_exporter = new Exporter(tmp, Settings::application.recentExportFolder.path,
-                                                  Settings::application.export_options[0]);
+                                                  Settings::application.export_options[0],
+                                                  Settings::application.export_options[3],
+                                                  archive_name);
                 if (!playlist_exporter->start()) {
                     Log::Warning("Export failed to start: %s", playlist_exporter->error().c_str());
                     delete playlist_exporter;
@@ -3026,11 +3051,16 @@ void Navigator::RenderMainPannelPlaylist()
                     ICON_FA_FOLDER_OPEN "  Choose a destination folder where to copy "
                     "the session files of the playlist. "
                     "Enable Copy media to also copy all referenced media files into the folder.");
-        } 
+        }
         else {
             float progress = playlist_exporter->progress();
-            ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN, 0),
-                               progress < (float)EPSILON ? "preparing..." : nullptr);
+#ifdef VIMIX_USE_MINIZ
+            const char *overlay = playlist_exporter->compressing() ? "compressing..."
+                                : progress < (float)EPSILON ? "preparing..." : nullptr;
+#else
+            const char *overlay = progress < (float)EPSILON ? "preparing..." : nullptr;
+#endif
+            ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN, 0), overlay);
             ImGui::SameLine();
             if (ImGui::Button(ICON_FA_TIMES " Cancel"))
                 playlist_exporter->stop();

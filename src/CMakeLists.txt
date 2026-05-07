@@ -249,6 +249,12 @@ if(AVAHI_FOUND)
     target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${AVAHI_LIBRARIES})
 endif()
 
+# miniz for ZIP compression (optional, present when submodule is initialised)
+if(MINIZ_LIBRARIES)
+    target_compile_definitions(${VMIX_BINARY} PUBLIC VIMIX_USE_MINIZ)
+    target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${MINIZ_LIBRARIES})
+endif()
+
 #####
 ##### DEFINE THE APPLICATION PACKAGING (OS specific)
 #####

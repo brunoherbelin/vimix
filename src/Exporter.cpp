@@ -23,6 +23,10 @@
 #include <filesystem>
 #include <tinyxml2.h>
 
+#ifdef VIMIX_USE_MINIZ
+#include <miniz.h>
+#endif
+
 #include "Log.h"
 #include "defines.h"
 #include "Playlist.h"
@@ -123,13 +127,24 @@ static void patchSessionFile(const std::string &dst_path,
 }
 
 
-Exporter::Exporter(const Playlist &playlist, const std::string &destination, bool copy_media)
+Exporter::Exporter(const Playlist &playlist, const std::string &destination, bool copy_media,
+                   bool compress, const std::string &archive_name)
     : destination_(destination)
     , done_(0)
     , cancel_(false)
     , finished_(false)
     , success_(false)
+#ifdef VIMIX_USE_MINIZ
+    , compress_(compress)
+    , archive_name_(archive_name)
+    , compressing_(false)
+    , compress_done_(0)
+#endif
 {
+#ifndef VIMIX_USE_MINIZ
+    (void)compress;
+    (void)archive_name;
+#endif
     const std::list<std::string> all_files = playlist.paths();
     for (const auto &f : all_files) {
         if (copy_media || SystemToolkit::has_extension(f, VIMIX_FILE_EXT))
@@ -193,6 +208,62 @@ bool Exporter::start()
             ++done_;
         }
         success_ = !cancel_ && (done_ == total_);
+
+#ifdef VIMIX_USE_MINIZ
+        if (success_ && compress_) {
+            compressing_ = true;
+
+            // Determine ZIP filename: use archive_name_ or fall back to the
+            // last path component of the destination folder.
+            std::string zip_stem = archive_name_;
+            if (zip_stem.empty()) {
+                std::string dest_copy = destination_;
+                if (!dest_copy.empty() && dest_copy.back() == PATH_SEP)
+                    dest_copy.pop_back();
+                zip_stem = SystemToolkit::filename(dest_copy);
+            }
+            if (zip_stem.empty())
+                zip_stem = "export";
+            const std::string zip_path = destination_ + PATH_SEP + zip_stem + ".zip";
+
+            mz_zip_archive zip;
+            memset(&zip, 0, sizeof(zip));
+
+            if (mz_zip_writer_init_file(&zip, zip_path.c_str(), 0)) {
+                bool zip_ok = true;
+                for (const auto &src : files_) {
+                    if (cancel_) { zip_ok = false; break; }
+                    const std::string entry_name = SystemToolkit::filename(src);
+                    const std::string dst = destination_ + PATH_SEP + entry_name;
+                    if (!mz_zip_writer_add_file(&zip, entry_name.c_str(), dst.c_str(),
+                                                nullptr, 0, MZ_BEST_COMPRESSION))
+                        Log::Warning("Exporter: Could not add '%s' to ZIP.", entry_name.c_str());
+                    ++compress_done_;
+                }
+                if (zip_ok) {
+                    mz_zip_writer_finalize_archive(&zip);
+                    mz_zip_writer_end(&zip);
+                    // Remove the flat copies — they are now inside the archive.
+                    for (const auto &src : files_) {
+                        const std::string dst = destination_ + PATH_SEP + SystemToolkit::filename(src);
+                        std::filesystem::remove(dst);
+                    }
+                    Log::Info("Exporter: Created ZIP '%s'.", zip_path.c_str());
+                } else {
+                    // Cancelled mid-zip: discard the partial archive.
+                    mz_zip_writer_end(&zip);
+                    std::filesystem::remove(zip_path);
+                    success_ = false;
+                }
+            } else {
+                error_message_ = "Failed to create ZIP: " + zip_path;
+                Log::Warning("Exporter: %s", error_message_.c_str());
+                success_ = false;
+            }
+            compressing_ = false;
+        }
+#endif
+
         finished_ = true;
     });
 
@@ -217,5 +288,9 @@ bool Exporter::success() const
 float Exporter::progress() const
 {
     if (total_ <= 0) return 0.f;
+#ifdef VIMIX_USE_MINIZ
+    if (compress_)
+        return (float)(done_.load() + compress_done_.load()) / (float)(2 * total_);
+#endif
     return (float)done_.load() / (float)total_;
 }

@@ -534,6 +534,22 @@ target_compile_definitions(OSCPACK
 message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack -- ${OSCPACK_INCLUDE_DIR}")
 
 
+#
+# miniz - ZIP compression (optional, enabled when submodule is present)
+# Uses miniz's own CMakeLists so generate_export_header() produces miniz_export.h
+#
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/miniz/CMakeLists.txt")
+    set(MINIZ_LIBRARIES miniz)
+    # BUILD_EXAMPLES/BUILD_TESTS/INSTALL_PROJECT default to OFF when miniz detects
+    # it is included as a subdirectory (MINIZ_STANDALONE_PROJECT = OFF).
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/miniz)
+    message(STATUS "Compiling 'miniz' ZIP compression from https://github.com/richgel999/miniz")
+else()
+    set(MINIZ_LIBRARIES "")
+    message(STATUS "miniz not found - ZIP compression disabled (run: git submodule update --init ext/miniz)")
+endif()
+
+
 #####
 ##### Ressources
 #####
