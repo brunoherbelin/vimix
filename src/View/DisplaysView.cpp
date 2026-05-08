@@ -19,7 +19,6 @@
 
 #include "IconsFontAwesome5.h"
 #include "imgui.h"
-#include "imgui_internal.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -590,8 +589,6 @@ void DisplaysView::draw()
     //
     {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGuiContext& g = *GImGui;
-
         // protected access to monitors list
         size_t monitor_index = 0;
         std::lock_guard<std::mutex> lock(Rendering::manager().getMonitorsMutex());
@@ -671,7 +668,7 @@ void DisplaysView::draw()
                 // WHITE BALANCE BUTTON
                 if (horizontal_layout_) {
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
-                    ImGui::SetCursorPosY(2.f * g.Style.FramePadding.y); // hack to align color button to text
+                    ImGui::SetCursorPosY(2.f * ImGui::GetStyle().FramePadding.y); // hack to align color button to text
                 }
                 
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
@@ -697,7 +694,7 @@ void DisplaysView::draw()
                 // COLOR ADJUSTMENT POPUP BUTTON
                 if (horizontal_layout_) {
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
-                    ImGui::SetCursorPosY(g.Style.FramePadding.y); // hack to re-align sliders button back
+                    ImGui::SetCursorPosY(ImGui::GetStyle().FramePadding.y); // hack to re-align sliders button back
                 }
 
                 if (ImGui::Button(ICON_FA_SLIDERS_H ICON_FA_SORT_DOWN )) {

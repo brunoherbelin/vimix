@@ -3,7 +3,6 @@
 // ImGui
 #include "IconsFontAwesome5.h"
 #include "Toolkit/ImGuiToolkit.h"
-#include "imgui_internal.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
