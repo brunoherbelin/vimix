@@ -998,7 +998,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             // combo to offer lists
             ImGui::Spacing();
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##SelectionNewMedia", BaseToolkit::truncated(Settings::application.recentImportFolders.path, 25).c_str() ))
+            if (ImGui::BeginCombo("##SelectionNewMedia", BaseToolkit::truncated(Settings::application.recentImportFolders.path, 23).c_str() ))
             {
                 // Mode MEDIA_RECENT : recent files
                 if (ImGui::Selectable( ICON_FA_LIST_OL IMGUI_LABEL_RECENT_FILES) ) {
@@ -1079,11 +1079,13 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             if (ImGui::ListBoxHeader(listboxname[new_media_mode], sourceMediaFiles.size(), CLAMP(sourceMediaFiles.size(), 4, max_items)) ) {
                 static int tooltip = 0;
                 static std::string filenametooltip;
+                float width = ImGui::GetContentRegionAvail().x;
                 // loop over list of files
                 for(auto it = sourceMediaFiles.begin(); it != sourceMediaFiles.end(); ++it) {
                     // build displayed file name
                     std::string filename = BaseToolkit::transliterate(*it);
-                    std::string label = BaseToolkit::truncated(SystemToolkit::filename(filename), 25);
+                    // std::string label = BaseToolkit::truncated(SystemToolkit::filename(filename), 23);
+                    std::string label = ImGuiToolkit::truncatedText(SystemToolkit::filename(filename), width);
                     // add selectable item to ListBox; open if clickec
                     if (ImGui::Selectable( label.c_str(), sourceMediaFileCurrent.compare(*it) == 0 )) {
                         // set new source preview
@@ -2517,7 +2519,7 @@ void Navigator::RenderMainPannelSession()
         }
 
         // path display + folder choose button
-        std::string label = BaseToolkit::truncated(Settings::application.recentExportFolder.path, 22);
+        std::string label = BaseToolkit::truncated(Settings::application.recentExportFolder.path, 23);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGuiToolkit::InputText("##export_path", &label, ImGuiInputTextFlags_ReadOnly);
         if (ImGui::IsItemHovered())
@@ -2758,10 +2760,12 @@ void Navigator::RenderMainPannelPlaylist()
 
                 // unique ID for item (filename can be at different index)
                 ImGui::PushID( session_file.c_str() );
+                float width = ImGui::GetContentRegionAvail().x;
+                std::string label = ImGuiToolkit::truncatedText(SystemToolkit::filename(session_file), width);
 
                 // item to select
                 ImGui::BeginGroup();
-                if (ImGui::Selectable( SystemToolkit::filename(session_file).c_str(), false,
+                if (ImGui::Selectable( label.c_str(), false,
                                        ImGuiSelectableFlags_AllowDoubleClick, item_size )) {
                     // trigger on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
@@ -2833,10 +2837,13 @@ void Navigator::RenderMainPannelPlaylist()
 
                 // unique ID for item (filename can be at different index)
                 ImGui::PushID( session_file.c_str() );
+                float width = ImGui::GetContentRegionAvail().x;
+                std::string label = ImGuiToolkit::truncatedText(SystemToolkit::filename(session_file), width);
+
 
                 // item to select
                 ImGui::BeginGroup();
-                if (ImGui::Selectable( SystemToolkit::filename(session_file).c_str(), false,
+                if (ImGui::Selectable( label.c_str(), false,
                                        ImGuiSelectableFlags_AllowDoubleClick, item_size )) {
                     // trigger on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
@@ -2926,8 +2933,12 @@ void Navigator::RenderMainPannelPlaylist()
 
             // list session files in folder
             for(auto it = folder_session_files.begin(); it != folder_session_files.end(); ++it) {
+                
+                float width = ImGui::GetContentRegionAvail().x;
+                std::string label = ImGuiToolkit::truncatedText(SystemToolkit::filename(*it), width);
+
                 // item to select
-                if (ImGui::Selectable( SystemToolkit::filename(*it).c_str(), false,
+                if (ImGui::Selectable( label.c_str(), false,
                                        ImGuiSelectableFlags_AllowDoubleClick, item_size )) {
                     // trigger on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
@@ -2993,7 +3004,7 @@ void Navigator::RenderMainPannelPlaylist()
         }
 
         // path display + folder choose button
-        std::string label = BaseToolkit::truncated(Settings::application.recentExportFolder.path, 22);
+        std::string label = BaseToolkit::truncated(Settings::application.recentExportFolder.path, 23);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGuiToolkit::InputText("##export_path", &label, ImGuiInputTextFlags_ReadOnly);
         if (ImGui::IsItemHovered())
