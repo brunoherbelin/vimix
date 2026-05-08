@@ -2521,7 +2521,9 @@ void Navigator::RenderMainPannelSession()
         // path display + folder choose button
         std::string label = BaseToolkit::truncated(Settings::application.recentExportFolder.path, 23);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGuiToolkit::InputText("##export_path", &label, ImGuiInputTextFlags_ReadOnly);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
+        ImGuiToolkit::InputText("##session_export_path", &label, ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopStyleColor();
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", Settings::application.recentExportFolder.path.c_str());
         ImVec2 pos_bottom = ImGui::GetCursorPos();
@@ -3006,7 +3008,10 @@ void Navigator::RenderMainPannelPlaylist()
         // path display + folder choose button
         std::string label = BaseToolkit::truncated(Settings::application.recentExportFolder.path, 23);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
         ImGuiToolkit::InputText("##export_path", &label, ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopStyleColor();
+
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", Settings::application.recentExportFolder.path.c_str());
         pos_bottom = ImGui::GetCursorPos();
@@ -3592,9 +3597,9 @@ void Navigator::RenderMainPannelSettings()
         const float w = IMGUI_RIGHT_ALIGN - ImGui::GetFrameHeightWithSpacing();
         ImGuiToolkit::ButtonOpenUrl( "Edit", Settings::application.control.osc_filename.c_str(), ImVec2(w, 0) );
         ImGui::SameLine(0, 6);
-        if ( ImGuiToolkit::IconButton(15, 12, "Reload") )
+        if ( ImGuiToolkit::IconButton(5, 15, "Reload") )
             Control::manager().init();
-        ImGui::SameLine();
+        ImGui::SameLine(0, 3);
         ImGui::Text("Translator");
         ImGuiToolkit::Spacing();
     }
@@ -3679,9 +3684,9 @@ void Navigator::RenderMainPannelSettings()
             gamepadmappingdialog.open();
         }
         ImGui::SameLine(0, 6);
-        if ( ImGuiToolkit::IconButton(15, 12, "Reload") )
+        if ( ImGuiToolkit::IconButton(5, 15, "Reload") )
             Control::manager().loadGamepadMappings();
-        ImGui::SameLine();
+        ImGui::SameLine(0, 3);
         if ( ImGuiToolkit::IconButton(ICON_FA_EXTERNAL_LINK_ALT, "Search online") )
             SystemToolkit::open("https://github.com/mdqinc/SDL_GameControllerDB");
 
