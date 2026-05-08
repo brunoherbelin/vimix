@@ -41,7 +41,14 @@
 #include "SystemToolkit.h"
 
 #include "ImGuiToolkit.h"
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnontrivial-memcall"
+#endif
 #include "imgui_internal.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 bool tooltips_enabled = true;
 unsigned int textureicons = 0;

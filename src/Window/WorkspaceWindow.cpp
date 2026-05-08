@@ -20,7 +20,14 @@
 
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnontrivial-memcall"
+#endif
 #include "imgui_internal.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 #include "defines.h"
 #include "WorkspaceWindow.h"

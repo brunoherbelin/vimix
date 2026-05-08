@@ -37,7 +37,14 @@
 // ImGui
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnontrivial-memcall"
+#endif
 #include "imgui_internal.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 

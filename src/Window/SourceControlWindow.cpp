@@ -31,7 +31,14 @@
 #include "Timeline.h"
 #include "gst/gstclock.h"
 #include "imgui.h"
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnontrivial-memcall"
+#endif
 #include "imgui_internal.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 #include "defines.h"
 #include "Log.h"

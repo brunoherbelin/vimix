@@ -486,6 +486,7 @@ set(IMGUI_SRCS
 add_library(IMGUI "${IMGUI_SRCS}")
 target_compile_definitions(IMGUI PRIVATE "IMGUI_IMPL_OPENGL_LOADER_GLAD")
 target_compile_definitions(IMGUI PRIVATE "IMGUI_USE_STB_SPRINTF")
+target_compile_options(IMGUI PRIVATE "-Wno-nontrivial-memcall")
 message(STATUS "Compiling 'Dear ImGui' from https://github.com/ocornut/imgui.git -- ${IMGUI_INCLUDE_DIRS}")
 
 #
