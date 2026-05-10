@@ -53,6 +53,7 @@
 #include "Resource.h"
 #include "ActionManager.h"
 #include "Mixer.h"
+#include "MediaPlayer.h"
 #include "Source/MediaSource.h"
 #include "Source/PatternSource.h"
 #include "Source/DeviceSource.h"
@@ -75,6 +76,7 @@
 #include "Window/WorkspaceWindow.h"
 #include "UserInterfaceManager.h"
 #include "FrameGrabbing.h"
+#include "Transcoder.h"
 
 #include "Navigator.h"
 
@@ -651,6 +653,112 @@ void Navigator::RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2
     }
 }
 
+bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
+{
+    static Transcoder *transcoder = nullptr;
+    static guint64 transcode_id = 0;
+    bool ret = false;
+
+    if (mp == nullptr || mp->isImage())
+        return ret;
+        
+    if (id != transcode_id && transcoder != nullptr) {
+        // if source changed while transcoding;
+        //    show a disabled transcoding panel
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));    
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.f,0.f,0.f,0.f));
+        ImGui::CollapsingHeader("Transcoding", ImGuiTreeNodeFlags_Bullet);
+        ImGui::PopStyleColor(3);
+        return ret;
+    }
+
+    // Transcoding panel
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
+    Settings::application.pannel_source[2] = ImGui::CollapsingHeader("Transcoding",
+                                                                      Settings::application.pannel_source[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    ImGui::PopStyleColor();
+
+    if (Settings::application.pannel_source[2]) {
+
+        // Transcoding options
+        ImGuiToolkit::ButtonSwitch( "Backward playback", &Settings::application.transcode_options[0],
+        "Optimize the video for backward playback by adding more keyframes.", transcoder == nullptr);
+        ImGuiToolkit::ButtonSwitch( "Animation content", &Settings::application.transcode_options[1],
+        "Optimize the video encoding for animation content (cartoons, "
+        "drawings, computer graphics) to preserve more details.", transcoder == nullptr);
+        ImGuiToolkit::ButtonSwitch( "Constant Quality", &Settings::application.transcode_options[2],
+        "Use Constant Quality encoding to preserve more visual details "
+        "(produces larger files).", transcoder == nullptr);
+        ImGuiToolkit::ButtonSwitch( "Remove audio", &Settings::application.transcode_options[3],
+        "Remove the audio track from the video during transcoding.", transcoder == nullptr);
+
+        // Start transcoding if not already started for current source
+        if (transcoder == nullptr) {
+            if (ImGui::Button(ICON_FA_COG " Re-encode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
+                transcode_id = id;
+                transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
+                TranscoderOptions transcode_options(Settings::application.transcode_options[0],
+                    Settings::application.transcode_options[1] ?  PsyTuning::ANIMATION : PsyTuning::NONE,
+                    Settings::application.transcode_options[2] ? 19 : -1,
+                    Settings::application.transcode_options[3]);
+                if (!transcoder->start(transcode_options)) {
+                    Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
+                    delete transcoder;
+                    transcoder = nullptr;
+                    transcode_id = 0;
+                }
+            }
+            ImGui::SameLine();
+            ImGuiToolkit::HelpToolTip("Re-encode the source video in MP4 "
+                    "(H.264 video @ 30fps + AAC audio) using the specified options.\n\n "
+                    ICON_FA_FILM "  The new file will replace the one in the source "
+                    "once the transcoding is successfully completed.\n\n"
+                    "The current file remains untouched.");
+        }
+
+        if (transcoder != nullptr) {
+            if (transcoder->finished()) {
+                if (transcoder->success()) {
+                    Log::Notify("Transcoding successful : %s", transcoder->outputFilename().c_str());
+                    // reload source with new file
+                    Source *src = Mixer::manager().findSource(transcode_id);
+                    if (src != nullptr)
+                        static_cast<MediaSource*>(src)->setPath( transcoder->outputFilename() );
+                    ret = true;
+                }
+                // all done in any case
+                delete transcoder;
+                transcoder = nullptr;
+                transcode_id = 0;
+            }
+            else {
+                float progress = transcoder->progress();
+                ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN,0), progress < EPSILON ? "working..." : nullptr);
+                ImGui::SameLine();
+                if (ImGui::Button( ICON_FA_TIMES " Cancel", ImVec2(0,0)) ||
+                    Mixer::manager().findSource(transcode_id) == nullptr ) {
+                    // cancel transcoding by user or source removed
+                    transcoder->stop();
+                }
+            }
+        }
+    }
+    else {
+        if (transcoder != nullptr && !transcoder->finished()) {
+            ImVec2 pos_tmp = ImGui::GetCursorPos();
+            ImVec2 space_size = ImGui::CalcTextSize(" Transcoding ", NULL);
+            space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y;
+            ImGui::SetCursorPos( pos_tmp + space_size );
+            ImGui::Text("( %d %% )", (int)(100.0 * transcoder->progress()));
+            ImGui::SetCursorPos( pos_tmp );
+        }
+    }
+
+    return ret;
+}
+
 // Source pannel : *s was checked before
 void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset)
 {
@@ -664,7 +772,9 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset
     ImGui::SetNextWindowBgAlpha( pannel_alpha_ ); // Transparent background
     if (ImGui::Begin("##navigatorSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
-        // TITLE
+        ///
+        /// TITLE
+        ///
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::SetCursorPosY(0.5f * (iconsize.y - ImGui::GetTextLineHeight()));
         ImGui::Text("Source");
@@ -686,87 +796,22 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset
             Mixer::manager().renameSource(s, sname);
         }
 
-        // Source pannel
+        ///
+        /// Source pannel
+        ///
         static ImGuiVisitor v;
         if (reset)
             v.reset();
         s->accept(v);
 
         ///
-        /// AUDIO PANEL if audio available on source
+        /// Transcoding panel for media player
         ///
-        if (Settings::application.accept_audio && s->audioFlags() & Source::Audio_available) {
-            ImGuiIO &io = ImGui::GetIO();
-
-            // test audio and read volume
-            bool audio_is_on = s->audioFlags() & Source::Audio_enabled;
-            int vol = audio_is_on ? (int) (s->audioVolumeFactor(Source::VOLUME_BASE) * 100.f) : -1;
-            std::string label = audio_is_on ? (vol > 50 ? ICON_FA_VOLUME_UP " %d%%"
-                                                        : ICON_FA_VOLUME_DOWN " %d%%")
-                                            : ICON_FA_VOLUME_MUTE " Disabled";
-            // VOLUME & on/off slider
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            bool volume_change = ImGui::SliderInt("##VolumeAudio", &vol, -1, 100, label.c_str());
-            if (ImGui::IsItemHovered()) {
-                if (io.MouseWheel != 0.f) {
-                    vol = CLAMP(vol + int(10.f * io.MouseWheel), 0, 100);
-                    volume_change = true;
-                } else if (!audio_is_on)
-                    ImGuiToolkit::ToolTip("Enabling audio will reload source.");
-            }
-            if (volume_change) {
-                if (vol < 0)
-                    s->setAudioEnabled(false);
-                else {
-                    s->setAudioEnabled(true);
-                    s->setAudioVolumeFactor(Source::VOLUME_BASE,
-                                            CLAMP((float) (vol) *0.01f, 0.f, 1.f));
-                }
-            }
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::TextButton("Audio")) {
-                s->setAudioEnabled(false);
-            }
-
-            // AUDIO MIXING menu
-            if (audio_is_on) {
-                ImGui::SameLine(0, 2 * IMGUI_SAME_LINE);
-                static uint counter_menu_timeout_2 = 0;
-                if (ImGuiToolkit::IconButton(6, 2)
-                    || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-                    counter_menu_timeout_2 = 0;
-                    ImGui::OpenPopup("MenuMixAudio");
-                }
-                if (ImGui::BeginPopup("MenuMixAudio")) {
-                    ImGui::TextDisabled("Multiply volume with:");
-                    Source::AudioVolumeMixing flags = s->audioVolumeMix();
-                    bool mix = flags & Source::Volume_mult_alpha;
-                    if (ImGui::MenuItem("Source alpha", NULL, &mix)) {
-                        if (mix)
-                            s->setAudioVolumeMix(flags | Source::Volume_mult_alpha);
-                        else
-                            s->setAudioVolumeMix(flags & ~Source::Volume_mult_alpha);
-                    }
-                    mix = flags & Source::Volume_mult_opacity;
-                    if (ImGui::MenuItem("Source fading", NULL, &mix)) {
-                        if (mix)
-                            s->setAudioVolumeMix(flags | Source::Volume_mult_opacity);
-                        else
-                            s->setAudioVolumeMix(flags & ~Source::Volume_mult_opacity);
-                    }
-                    mix = flags & Source::Volume_mult_session;
-                    if (ImGui::MenuItem("Output fading", NULL, &mix)) {
-                        if (mix)
-                            s->setAudioVolumeMix(flags | Source::Volume_mult_session);
-                        else
-                            s->setAudioVolumeMix(flags & ~Source::Volume_mult_session);
-                    }
-                    if (ImGui::IsWindowHovered())
-                        counter_menu_timeout_2 = 0;
-                    else if (++counter_menu_timeout_2 > 10)
-                        ImGui::CloseCurrentPopup();
-                    ImGui::EndPopup();
-                }
+        if (!s->failed()) {
+            MediaSource* ms = dynamic_cast<MediaSource*>(s);
+            if (ms != nullptr) {
+                if (renderTranscodingPanel(ms->id(), ms->mediaplayer())) 
+                    v.reset();
             }
         }
 

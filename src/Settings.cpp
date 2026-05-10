@@ -153,6 +153,9 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
     applicationNode->SetAttribute("pannel_main_mode", application.pannel_main_mode);
     applicationNode->SetAttribute("pannel_playlist_mode", application.pannel_playlist_mode);
+    applicationNode->SetAttribute("pannel_source_0", application.pannel_source[0]);
+    applicationNode->SetAttribute("pannel_source_1", application.pannel_source[1]);
+    applicationNode->SetAttribute("pannel_source_2", application.pannel_source[2]);
     applicationNode->SetAttribute("pannel_session_0", application.pannel_session[0]);
     applicationNode->SetAttribute("pannel_session_1", application.pannel_session[1]);
     applicationNode->SetAttribute("pannel_session_2", application.pannel_session[2]);
@@ -517,6 +520,9 @@ void Settings::init(const std::string &filename)
             applicationNode->QueryBoolAttribute("pannel_always_visible", &application.pannel_always_visible);
             applicationNode->QueryIntAttribute("pannel_main_mode", &application.pannel_main_mode);
             applicationNode->QueryIntAttribute("pannel_playlist_mode", &application.pannel_playlist_mode);
+            applicationNode->QueryBoolAttribute("pannel_source_0", &application.pannel_source[0]);
+            applicationNode->QueryBoolAttribute("pannel_source_1", &application.pannel_source[1]);
+            applicationNode->QueryBoolAttribute("pannel_source_2", &application.pannel_source[2]);
             applicationNode->QueryBoolAttribute("pannel_session_0", &application.pannel_session[0]);
             applicationNode->QueryBoolAttribute("pannel_session_1", &application.pannel_session[1]);
             applicationNode->QueryBoolAttribute("pannel_session_2", &application.pannel_session[2]);
