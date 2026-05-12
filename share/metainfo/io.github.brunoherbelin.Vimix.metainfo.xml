@@ -35,6 +35,12 @@
     <binary>vimix</binary>
   </provides>
   <releases>
+    <release version="0.9.1" date="2026-05-11">
+      <description>
+      <p>Version 0.9.1</p>
+      </description>
+      <url>https://github.com/brunoherbelin/vimix/releases/tag/0.9.1</url>
+    </release>
     <release version="0.9.0" date="2026-02-15">
       <description>
       <p>Version 0.9.0</p>
