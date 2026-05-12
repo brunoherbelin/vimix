@@ -1,24 +1,21 @@
 # Various Notes and reminders
 
-Copyright 2024 Bruno Herbelin
+Copyright 2026 Bruno Herbelin
 
 ## Publishing new a release
 
--   Update `share/metainfo/io.github.brunoherbelin.Vimix.metainfo.xml`Add a `<release>`, with date and version number
+-   Update `share/metainfo/io.github.brunoherbelin.Vimix.metainfo.xml`; add a `<release>`, with date and version number
     
 -   Update `snap/snapcraft.yaml`Change version string
     
 -   Git commit to Beta
     
--   Test the flatpack for Beta[https://github.com/brunoherbelin/vimix/tree/master/flatpak](https://github.com/brunoherbelin/vimix/tree/master/flatpak)
-
--   Check that flathub likes vimix; 
-
-    flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest  [path to]io.github.brunoherbelin.Vimix.json
+-   Test the [flatpack for Beta](https://github.com/brunoherbelin/vimix/tree/master/flatpak)
     
--   Test the snap for Beta (launch snapcraft from vimix base dir):
+-   Test the snap for Beta:
     
     ```bash
+    $ cd [vimix base dir]
     $ snap remove vimix
     $ snapcraft pack
     $ snap install ./vimix_0.X.Y_amd64.snap --devmode
@@ -31,7 +28,13 @@ Copyright 2024 Bruno Herbelin
     
 -   Create Release & Tag in [https://github.com/brunoherbelin/vimix](https://github.com/brunoherbelin/vimix). Document new features and major bugfixes
     
--   flathub : 
+-   Flathub publishing: 
+    -   Check that flathub likes vimix; 
+
+    ```bash
+    flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest  [path to]io.github.brunoherbelin.Vimix.json
+    ```
+
     -    Edit the Json on [https://github.com/flathub/io.github.brunoherbelin.Vimix](https://github.com/flathub/io.github.brunoherbelin.Vimix). 
     -    Set vimix git Tag and Commit 
     -    Merge pull-request after successful flathubbot compilation (delete branch)
@@ -101,17 +104,17 @@ The flatpak manifest for flathub is at [https://github.com/flathub/io.github.bru
 
 To build the vimix flatpak with code from local folder (debugging), change the following:
 
-    ```json
-    {    
-    "name": "vimix",    
-    "buildsystem": "cmake",    
-    "config-opts": [        "-DCMAKE_BUILD_TYPE=Release"    ],    
-    "sources": [        {        
-        "type":"dir",        
-        "path": "[your_development_dir]/vimix",        
-    }    ]
-    }
-    ```
+```json
+{    
+"name": "vimix",    
+"buildsystem": "cmake",    
+"config-opts": [        "-DCMAKE_BUILD_TYPE=Release"    ],    
+"sources": [        {        
+    "type":"dir",        
+    "path": "[your_development_dir]/vimix",        
+}    ]
+}
+```
 
 Run this to use the custom local desc
 
@@ -148,12 +151,12 @@ Linux perf command
 
 To generate memory usage plots in [massif format](https://valgrind.org/docs/manual/ms-manual.html):
 
-    ```bash
-    G_SLICE=always-malloc valgrind --tool=massif ./vimix
-    ```
+```bash
+G_SLICE=always-malloc valgrind --tool=massif ./vimix
+```
 
 To check for memory leaks:
 
-    ```bash
-    G_SLICE=always-malloc valgrind --leak-check=full --log-file=vimix_mem.txt ./vimix
-    ```
+```bash
+G_SLICE=always-malloc valgrind --leak-check=full --log-file=vimix_mem.txt ./vimix
+```
