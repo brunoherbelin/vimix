@@ -21,6 +21,7 @@ set(VMIX_SRCS
     Connection.cpp
     ControlManager.cpp
     FrameBuffer.cpp
+    Exporter.cpp
     FrameGrabber.cpp
     FrameGrabbing.cpp
     Interpolator.cpp
@@ -246,6 +247,12 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
 if(AVAHI_FOUND)
     target_include_directories(${VMIX_BINARY} PRIVATE ${AVAHI_INCLUDE_DIRS})
     target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${AVAHI_LIBRARIES})
+endif()
+
+# miniz for ZIP compression (optional, present when submodule is initialised)
+if(MINIZ_LIBRARIES)
+    target_compile_definitions(${VMIX_BINARY} PUBLIC VIMIX_USE_MINIZ)
+    target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${MINIZ_LIBRARIES})
 endif()
 
 #####

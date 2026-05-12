@@ -162,7 +162,7 @@ std::string BaseToolkit::truncated(const std::string& str, int N)
     std::string trunc = str;
     int l = str.size();
     if ( l > N ) {
-        trunc = std::string("...") + str.substr( l - N + 3 );
+        trunc = std::string("\uF141 ") + str.substr( l - N + 2 );
     }
     return trunc;
 }

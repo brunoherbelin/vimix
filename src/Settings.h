@@ -299,9 +299,10 @@ struct Application
 
     int  pannel_main_mode;
     int  pannel_playlist_mode;
-    bool pannel_session[3];
+    bool pannel_session[4];
     bool pannel_always_visible;
     bool pannel_settings[6];
+    bool pannel_source[3];
 
     // connection settings
     bool accept_connections;
@@ -352,6 +353,7 @@ struct Application
     // recent files histories
     History recentSessions;
     History recentPlaylists;
+    History recentExportFolder;
     History recentFolders;
     History recentImport;
     History recentImportFolders;
@@ -371,6 +373,7 @@ struct Application
 
     // transcoding options
     bool transcode_options[4];
+    bool export_options[3];
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
         total_runtime = 0;
@@ -398,16 +401,23 @@ struct Application
         pannel_session[0] = true;
         pannel_session[1] = false;
         pannel_session[2] = false;
+        pannel_session[3] = false;
         pannel_settings[0] = false;
         pannel_settings[1] = false;
         pannel_settings[2] = false;
         pannel_settings[3] = false;
         pannel_settings[4] = false;
         pannel_settings[5] = false;
+        pannel_source[0] = true;
+        pannel_source[1] = true;
+        pannel_source[2] = true;
         transcode_options[0] = true;
         transcode_options[1] = false;
         transcode_options[2] = false;
         transcode_options[3] = false;
+        export_options[0] = true;
+        export_options[1] = false;
+        export_options[2] = false;
         current_view = 1;
         current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);

@@ -41,7 +41,14 @@
 #include "SystemToolkit.h"
 
 #include "ImGuiToolkit.h"
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnontrivial-memcall"
+#endif
 #include "imgui_internal.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 bool tooltips_enabled = true;
 unsigned int textureicons = 0;
@@ -1771,6 +1778,39 @@ std::string wrapp(const std::string &input, size_t per_line)
     }
 
     return text;
+}
+
+std::string ImGuiToolkit::truncatedText(const std::string &text, float width)
+{
+    const char *begin = text.c_str();
+    const char *end   = begin + text.size();
+    float text_width  = ImGui::CalcTextSize(begin, end).x;
+
+    if (text_width <= width)
+        return text;
+
+    static const char ellipsis[] = " \uF141 "; // HORIZONTAL ELLIPSIS
+    float ellipsis_width = ImGui::CalcTextSize(ellipsis).x;
+    float available = width - ellipsis_width;
+
+    if (available <= 0.f)
+        return ellipsis;
+
+    // Measure each half independently and use proportional scaling 
+    const char *mid = begin + 2 * text.size() / 3;
+    float first_w   = ImGui::CalcTextSize(begin, mid).x;
+    float second_w  = ImGui::CalcTextSize(mid,   end).x;
+
+    size_t prefix_len = (first_w  > 0.f) ? (size_t)(available * 0.66f / first_w  * (mid - begin)) : 0;
+    size_t suffix_len = (second_w > 0.f) ? (size_t)(available * 0.34f / second_w * (end - mid))   : 0;
+
+    prefix_len = std::min(prefix_len, (size_t)(mid - begin));
+    suffix_len = std::min(suffix_len, (size_t)(end - mid));
+
+    if (ImGui::CalcTextSize(begin, begin + prefix_len).x < available * 0.66f)
+        prefix_len++;
+
+    return std::string(begin, begin + prefix_len) + ellipsis + std::string(end - suffix_len, end);
 }
 
 bool ImGuiToolkit::InputCodeMultiline(const char* label, std::string *str, const ImVec2& size, int *numline)

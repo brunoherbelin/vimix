@@ -16,6 +16,8 @@
         "--device=shm",
         "--device=all",
         "--filesystem=home",
+        "--filesystem=/run/media",
+        "--filesystem=/media",
         "--filesystem=xdg-run/vimix:create",
         "--persist=.config/vimix",
         "--talk-name=org.gtk.vfs.*",

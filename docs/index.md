@@ -7,7 +7,7 @@ shape for producing live graphics during concerts and VJ-ing sessions.
 Video mapping can be configured for projection on all connected monitors.
 The output can also be live streamed (SRT, shared memory) or recorded.
 
-![screenshot_vimix](https://github.com/brunoherbelin/vimix/blob/22653d5367e296f977c75e3717cb5e9065c6e09f/docs/vimix_screenshot.png)
+![screenshot_vimix](https://github.com/brunoherbelin/vimix/blob/22653d5367e296f977c75e3717cb5e9065c6e09f/docs/vimix_screenshot.png?raw=true)
 
 Check the [User Manual](https://github.com/brunoherbelin/vimix/wiki/User-manual) or [demo videos](https://vimeo.com/vimix) to discover vimix.
 Watch this selection of [videos by Jean Detheux](https://vimeo.com/showcase/7871359) or [video tutorials](https://github.com/brunoherbelin/vimix/wiki/Video-tutorials) to see what vimix can do.

@@ -101,6 +101,12 @@ MediaPlayer::~MediaPlayer()
 {
     close();
 
+    // cleanup opengl texture
+    if (textureindex_) {
+        glDeleteTextures(1, &textureindex_);
+        textureindex_ = 0;
+    }
+
 #ifdef MEDIA_PLAYER_DEBUG
     g_printerr("MediaPlayer %s deleted\n", std::to_string(id_).c_str());
 #endif
@@ -409,9 +415,8 @@ void MediaPlayer::execute_open()
     g_signal_connect ( G_OBJECT (pipeline_), "element-setup", G_CALLBACK (callback_element_setup), this);
 
     // Get and modify playbin flags
-    gint flags;
     // ENABLE ONLY VIDEO, NOT AUDIO AND TEXT SUBTITLES
-    flags = GST_PLAY_FLAG_VIDEO;
+    gint flags = GST_PLAY_FLAG_VIDEO;
     if (media_.hasaudio && audio_enabled_)
         flags |= GST_PLAY_FLAG_AUDIO;
     // ENABLE DEINTERLACING
@@ -463,28 +468,29 @@ void MediaPlayer::execute_open()
         return;
     }
 
-    // instruct the sink to send samples synched in time
-    gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
-
-    // Configure appsink caps
-    GstCaps *caps = nullptr;
-
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
     if (force_software_decoding_ || media_.isimage)
         use_gl_memory_ = false; // disable GLMemory for images to avoid issues with some plugins
+    else
+        // follow user preference for GLMemory usage
+        use_gl_memory_ = Settings::application.render.gst_glmemory_context;
 
     // Try to create glsinkbin to automatically handle GL upload and conversion
-    GstElement *glsinkbin = gst_element_factory_make("glsinkbin", "glsink");
-    if (!glsinkbin) {
-        use_gl_memory_ = false;
-        Log::Info("MediaPlayer %s failed to get glsinkbin for %s decoder.", std::to_string(id_).c_str(), decoderName().c_str());
+    GstElement *glsinkbin = nullptr;
+    if (use_gl_memory_) {
+        glsinkbin = gst_element_factory_make("glsinkbin", "glsink");
+        if (!glsinkbin) {
+            // if glsinkbin is not available, fallback to system memory 
+            use_gl_memory_ = false;
+            Log::Info("MediaPlayer %s failed to get glsinkbin for %s decoder.", std::to_string(id_).c_str(), decoderName().c_str());
+        }
     }
 
-    // When using glsinkbin, appsink must accept GLMemory caps
-    if (use_gl_memory_) {
+    // Configure appsink caps
+    if (glsinkbin) {
         // Create caps that accept BOTH GLMemory and system memory
         // This allows glsinkbin to link properly
-        caps = gst_caps_new_simple("video/x-raw",
+        GstCaps *caps = gst_caps_new_simple("video/x-raw",
                                    "format", G_TYPE_STRING, "RGBA",
                                    "width",  G_TYPE_INT, media_.width,
                                    "height", G_TYPE_INT, media_.height,
@@ -496,30 +502,43 @@ void MediaPlayer::execute_open()
                                                 "width",  G_TYPE_INT, media_.width,
                                                 "height", G_TYPE_INT, media_.height,
                                                NULL);
-        GstCapsFeatures *gl_features = gst_caps_features_new("memory:GLMemory", NULL);
-        gst_caps_set_features(gl_caps, 0, gl_features);
+        gst_caps_set_features(gl_caps, 0, gst_caps_features_new("memory:GLMemory", NULL));
 
         // Append GLMemory caps as preferred option
         gst_caps_append(gl_caps, caps);
-        caps = gl_caps;
+        gst_caps_unref (caps);
+        gst_app_sink_set_caps (GST_APP_SINK(sink), gl_caps);
+        gst_caps_unref (gl_caps);
+
+        // glsinkbin wraps our appsink and automatically inserts:
+        // - glupload (for GLMemory)
+        // - glcolorconvert (for NV12/I420 -> RGBA conversion in shaders)
+        g_object_set(G_OBJECT(glsinkbin), "sink", sink, NULL);
+        // set playbin sink though glsinkbin wrapper 
+        g_object_set ( G_OBJECT (pipeline_), "video-sink", glsinkbin, NULL);
     }
     else
 #endif
     {
         // Standard CPU caps with dimensions
-        caps = gst_caps_new_simple("video/x-raw",
+        GstCaps *caps = gst_caps_new_simple("video/x-raw",
                                    "format", G_TYPE_STRING, "RGBA",
                                    "width",  G_TYPE_INT, media_.width,
                                    "height", G_TYPE_INT, media_.height,
-                                   NULL);
-    }
+                                    NULL);
+        gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
+        gst_caps_unref (caps);
 
-    gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
-    gst_caps_unref (caps);
+        // set playbin sink direct appsink when not using glsinkbin
+        g_object_set ( G_OBJECT (pipeline_), "video-sink", sink, NULL);
+    }
 
     // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
     gst_app_sink_set_max_buffers( GST_APP_SINK(sink), 5);
     gst_app_sink_set_drop (GST_APP_SINK(sink), true);
+
+    // instruct the sink to send samples synched in time
+    gst_base_sink_set_sync (GST_BASE_SINK(sink), true);
 
     // set message handler for the pipeline's bus
     bus_ = gst_element_get_bus(pipeline_);
@@ -544,22 +563,6 @@ void MediaPlayer::execute_open()
     }
     gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
     gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
-
-    // Wrap appsink with glsinkbin for automatic GLMemory handling
-    GstElement *video_sink = sink;  // Default to appsink
-
-#ifdef USE_GST_OPENGL_SYNC_HANDLER
-    if (use_gl_memory_) {
-        // glsinkbin wraps our appsink and automatically inserts:
-        // - glupload (for GLMemory)
-        // - glcolorconvert (for NV12/I420 -> RGBA conversion in shaders)
-        g_object_set(G_OBJECT(glsinkbin), "sink", sink, NULL);
-        video_sink = glsinkbin;
-    }
-#endif
-
-    // set playbin sink (either glsinkbin wrapper or direct appsink)
-    g_object_set ( G_OBJECT (pipeline_), "video-sink", video_sink, NULL);
 
     // set to desired state (PLAY or PAUSE)
     GstStateChangeReturn ret = gst_element_set_state (GST_ELEMENT(pipeline_), desired_state_);
@@ -857,6 +860,8 @@ void MediaPlayer::close()
     rate_ = 1.0;
     rate_change_ = RATE_CHANGE_NONE;
     position_ = GST_CLOCK_TIME_NONE;
+    video_filter_ = "";
+    video_filter_available_ = true;
 
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_VFRAME; i++) {
@@ -880,16 +885,10 @@ void MediaPlayer::close()
         bus_ = nullptr;
     }
 
-    // cleanup opengl texture
-    if (textureindex_) {
-        glDeleteTextures(1, &textureindex_);
-        textureindex_ = 0;
-    }
-
     // cleanup picture buffer
     if (pbo_[0]) {
         glDeleteBuffers(2, pbo_);
-        pbo_[0] = 0;
+        pbo_[0] = pbo_[1] = 0;
         pbo_size_ = 0;
     }
 }
@@ -1311,17 +1310,16 @@ void MediaPlayer::fill_texture(guint index)
         // (this also fills the texture with frame at index)
         init_texture(index);
     }
-    else if (!isImage()) {
+    else if (!isImage() && frame_[index].buffer) {
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
         // Try GLMemory fast path first (zero-copy GPU texture)
-        if (use_gl_memory_ && frame_[index].buffer) {
+        if (use_gl_memory_) {
             GstMemory *mem = gst_buffer_peek_memory(frame_[index].buffer, 0);
 
             if (mem && gst_is_gl_memory(mem)) {
                 // FAST PATH: Direct GL texture extraction from GStreamer
-                GstGLMemory *gl_mem = (GstGLMemory*) mem;
-                guint gst_tex_id = gst_gl_memory_get_texture_id(gl_mem);
+                guint gst_tex_id = gst_gl_memory_get_texture_id((GstGLMemory*) mem);
 
                 if (gst_tex_id > 0) {
                     // Use FBO to copy from GStreamer's texture to our texture

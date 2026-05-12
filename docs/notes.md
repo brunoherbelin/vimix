@@ -1,20 +1,21 @@
 # Various Notes and reminders
 
-Copyright 2024 Bruno Herbelin
+Copyright 2026 Bruno Herbelin
 
 ## Publishing new a release
 
--   Update `share/metainfo/io.github.brunoherbelin.Vimix.metainfo.xml`Add a `<release>`, with date and version number
+-   Update `share/metainfo/io.github.brunoherbelin.Vimix.metainfo.xml`; add a `<release>`, with date and version number
     
 -   Update `snap/snapcraft.yaml`Change version string
     
 -   Git commit to Beta
     
--   Test the flatpack for Beta[https://github.com/brunoherbelin/vimix/tree/master/flatpak](https://github.com/brunoherbelin/vimix/tree/master/flatpak)
+-   Test the [flatpack for Beta](https://github.com/brunoherbelin/vimix/tree/master/flatpak)
     
--   Test the snap for Beta (launch snapcraft from vimix base dir):
+-   Test the snap for Beta:
     
     ```bash
+    $ cd [vimix base dir]
     $ snap remove vimix
     $ snapcraft pack
     $ snap install ./vimix_0.X.Y_amd64.snap --devmode
@@ -27,7 +28,13 @@ Copyright 2024 Bruno Herbelin
     
 -   Create Release & Tag in [https://github.com/brunoherbelin/vimix](https://github.com/brunoherbelin/vimix). Document new features and major bugfixes
     
--   flathub : 
+-   Flathub publishing: 
+    -   Check that flathub likes vimix; 
+
+    ```bash
+    flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest  [path to]io.github.brunoherbelin.Vimix.json
+    ```
+
     -    Edit the Json on [https://github.com/flathub/io.github.brunoherbelin.Vimix](https://github.com/flathub/io.github.brunoherbelin.Vimix). 
     -    Set vimix git Tag and Commit 
     -    Merge pull-request after successful flathubbot compilation (delete branch)
@@ -38,17 +45,16 @@ Copyright 2024 Bruno Herbelin
 
 -   Settings are saved in `/Users/[username]/Library/Application Support/vimix`Instructions to reset in finder, do "Go to folder" (shift+command+G),enter `/Users/[username]/Library/Application Support/vimix` and delete the folder 'vimix'
     
--   Generate and sign package
+-   Automatically generate and sign package (if Developer ID Application provided in CMake variable)
     
-    -   `cd build`
-        
-        `cpack`
-        
-        `cd ..`
-        
-        `cmake --build build --target notarize`
-        
--   POST INSTALL DMG SIGNING AND NOTARIZATION (done by --target notarize)
+    ```bash
+    $ cd build
+    $ cpack
+    $ cd ..
+    $ cmake --build build --target notarize
+    ```
+    
+-   Manual POST INSTALL DMG SIGNING AND NOTARIZATION (done by --target notarize)
     
 
 1.  SIGN DMG
@@ -99,7 +105,15 @@ The flatpak manifest for flathub is at [https://github.com/flathub/io.github.bru
 To build the vimix flatpak with code from local folder (debugging), change the following:
 
 ```json
-{    "name": "vimix",    "buildsystem": "cmake",    "config-opts": [        "-DCMAKE_BUILD_TYPE=Release"    ],    "sources": [        {        "type":"dir",        "path": "[your_development_dir]/vimix",        }    ]}
+{    
+"name": "vimix",    
+"buildsystem": "cmake",    
+"config-opts": [        "-DCMAKE_BUILD_TYPE=Release"    ],    
+"sources": [        {        
+    "type":"dir",        
+    "path": "[your_development_dir]/vimix",        
+}    ]
+}
 ```
 
 Run this to use the custom local desc

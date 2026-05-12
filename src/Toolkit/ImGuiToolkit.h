@@ -82,6 +82,8 @@ namespace ImGuiToolkit
     bool InputCodeMultiline(const char* label, std::string *str, const ImVec2& size = ImVec2(0, 0), int *numline = NULL);
     void CodeMultiline(const char* label, const std::string &str, float width);
 
+    std::string truncatedText(const std::string &text, float width);
+
     // accent color of UI
     typedef enum {
         ACCENT_BLUE =0,

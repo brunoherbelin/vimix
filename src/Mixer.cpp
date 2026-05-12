@@ -197,6 +197,8 @@ void Mixer::update()
             deleteSource(candidate_sources_.front().second);
             // rename new source with previous name
             candidate_sources_.front().first->setName(previous_name);
+            // re-calculate current source index as it was changed by the deletion and insertion
+            current_source_index_ = session_->index(current_source_);
         }
 
         candidate_sources_.pop_front();

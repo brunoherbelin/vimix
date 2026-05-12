@@ -29,6 +29,12 @@ public:
     void remove (size_t index);
     void move   (size_t from_index, size_t to_index);
 
+    // list all paths referenced in the playlist
+    std::list<std::string> paths() const ;
+
+    // return the file path this playlist was loaded from (empty if unsaved)
+    std::string filename() const { return filename_; }
+
 private:
 
     std::deque< std::string > path_;

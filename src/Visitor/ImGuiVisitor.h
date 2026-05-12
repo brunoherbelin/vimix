@@ -12,6 +12,7 @@ class ImGuiVisitor: public Visitor
     std::ostringstream oss;
 
     void list_parameters_(class ImageFilter &f, std::ostringstream &oss, bool editrange = false);
+    void renderAudioPanel(class MediaSource &s);
 
 public:
     ImGuiVisitor();

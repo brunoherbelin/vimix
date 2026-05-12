@@ -27,7 +27,14 @@
 #include "IconsFontAwesome5.h"
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnontrivial-memcall"
+#endif
 #include "imgui_internal.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 #include "defines.h"
 #include "Settings.h"
@@ -46,6 +53,7 @@
 #include "Resource.h"
 #include "ActionManager.h"
 #include "Mixer.h"
+#include "MediaPlayer.h"
 #include "Source/MediaSource.h"
 #include "Source/PatternSource.h"
 #include "Source/DeviceSource.h"
@@ -61,12 +69,14 @@
 #include "Audio.h"
 #include "MousePointer.h"
 #include "Playlist.h"
+#include "Exporter.h"
 #include "VideoBroadcast.h"
 #include "ShmdataBroadcast.h"
 #include "SessionCreator.h"
 #include "Window/WorkspaceWindow.h"
 #include "UserInterfaceManager.h"
 #include "FrameGrabbing.h"
+#include "Transcoder.h"
 
 #include "Navigator.h"
 
@@ -593,18 +603,14 @@ void Navigator::Render()
             if ( selected_index < 0 ) {
                 showPannelSource(NAV_MENU);
             }
-            // most often, render current sources
-            else if ( selected_index == Mixer::manager().indexCurrentSource())
-                RenderSourcePannel(Mixer::manager().currentSource(), iconsize, reset_visitor);
-            // rarely its not the current source that is selected
             else {
-                SourceList::iterator cs = Mixer::manager().session()->at( selected_index );
-                if (cs != Mixer::manager().session()->end() )
-                    RenderSourcePannel(*cs, iconsize, reset_visitor);
-                else
-                    selected_index = -1;
+                // rarely its not the current source that is selected
+                if ( selected_index != Mixer::manager().indexCurrentSource())
+                    showPannelSource( Mixer::manager().indexCurrentSource() );
+                // render current sources
+                RenderSourcePannel(Mixer::manager().currentSource(), iconsize, reset_visitor);
+                reset_visitor = false;
             }
-            reset_visitor = false;
         }
     }
 
@@ -647,6 +653,112 @@ void Navigator::RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2
     }
 }
 
+bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
+{
+    static Transcoder *transcoder = nullptr;
+    static guint64 transcode_id = 0;
+    bool ret = false;
+
+    if (mp == nullptr || mp->isImage())
+        return ret;
+        
+    if (id != transcode_id && transcoder != nullptr) {
+        // if source changed while transcoding;
+        //    show a disabled transcoding panel
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));    
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.f,0.f,0.f,0.f));
+        ImGui::CollapsingHeader("Transcoding", ImGuiTreeNodeFlags_Bullet);
+        ImGui::PopStyleColor(3);
+        return ret;
+    }
+
+    // Transcoding panel
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
+    Settings::application.pannel_source[2] = ImGui::CollapsingHeader("Transcoding",
+                                                                      Settings::application.pannel_source[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    ImGui::PopStyleColor();
+
+    if (Settings::application.pannel_source[2]) {
+
+        // Transcoding options
+        ImGuiToolkit::ButtonSwitch( "Backward playback", &Settings::application.transcode_options[0],
+        "Optimize the video for backward playback by adding more keyframes.", transcoder == nullptr);
+        ImGuiToolkit::ButtonSwitch( "Animation content", &Settings::application.transcode_options[1],
+        "Optimize the video encoding for animation content (cartoons, "
+        "drawings, computer graphics) to preserve more details.", transcoder == nullptr);
+        ImGuiToolkit::ButtonSwitch( "Constant Quality", &Settings::application.transcode_options[2],
+        "Use Constant Quality encoding to preserve more visual details "
+        "(produces larger files).", transcoder == nullptr);
+        ImGuiToolkit::ButtonSwitch( "Remove audio", &Settings::application.transcode_options[3],
+        "Remove the audio track from the video during transcoding.", transcoder == nullptr);
+
+        // Start transcoding if not already started for current source
+        if (transcoder == nullptr) {
+            if (ImGui::Button(ICON_FA_COG " Re-encode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
+                transcode_id = id;
+                transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
+                TranscoderOptions transcode_options(Settings::application.transcode_options[0],
+                    Settings::application.transcode_options[1] ?  PsyTuning::ANIMATION : PsyTuning::NONE,
+                    Settings::application.transcode_options[2] ? 19 : -1,
+                    Settings::application.transcode_options[3]);
+                if (!transcoder->start(transcode_options)) {
+                    Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
+                    delete transcoder;
+                    transcoder = nullptr;
+                    transcode_id = 0;
+                }
+            }
+            ImGui::SameLine();
+            ImGuiToolkit::HelpToolTip("Re-encode the source video in MP4 "
+                    "(H.264 video @ 30fps + AAC audio) using the specified options.\n\n "
+                    ICON_FA_FILM "  The new file will replace the one in the source "
+                    "once the transcoding is successfully completed.\n\n"
+                    "The current file remains untouched.");
+        }
+
+        if (transcoder != nullptr) {
+            if (transcoder->finished()) {
+                if (transcoder->success()) {
+                    Log::Notify("Transcoding successful : %s", transcoder->outputFilename().c_str());
+                    // reload source with new file
+                    Source *src = Mixer::manager().findSource(transcode_id);
+                    if (src != nullptr)
+                        static_cast<MediaSource*>(src)->setPath( transcoder->outputFilename() );
+                    ret = true;
+                }
+                // all done in any case
+                delete transcoder;
+                transcoder = nullptr;
+                transcode_id = 0;
+            }
+            else {
+                float progress = transcoder->progress();
+                ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN,0), progress < EPSILON ? "working..." : nullptr);
+                ImGui::SameLine();
+                if (ImGui::Button( ICON_FA_TIMES " Cancel", ImVec2(0,0)) ||
+                    Mixer::manager().findSource(transcode_id) == nullptr ) {
+                    // cancel transcoding by user or source removed
+                    transcoder->stop();
+                }
+            }
+        }
+    }
+    else {
+        if (transcoder != nullptr && !transcoder->finished()) {
+            ImVec2 pos_tmp = ImGui::GetCursorPos();
+            ImVec2 space_size = ImGui::CalcTextSize(" Transcoding ", NULL);
+            space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y;
+            ImGui::SetCursorPos( pos_tmp + space_size );
+            ImGui::Text("( %d %% )", (int)(100.0 * transcoder->progress()));
+            ImGui::SetCursorPos( pos_tmp );
+        }
+    }
+
+    return ret;
+}
+
 // Source pannel : *s was checked before
 void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset)
 {
@@ -660,7 +772,9 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset
     ImGui::SetNextWindowBgAlpha( pannel_alpha_ ); // Transparent background
     if (ImGui::Begin("##navigatorSource", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
-        // TITLE
+        ///
+        /// TITLE
+        ///
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         ImGui::SetCursorPosY(0.5f * (iconsize.y - ImGui::GetTextLineHeight()));
         ImGui::Text("Source");
@@ -682,87 +796,22 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset
             Mixer::manager().renameSource(s, sname);
         }
 
-        // Source pannel
+        ///
+        /// Source pannel
+        ///
         static ImGuiVisitor v;
         if (reset)
             v.reset();
         s->accept(v);
 
         ///
-        /// AUDIO PANEL if audio available on source
+        /// Transcoding panel for media player
         ///
-        if (Settings::application.accept_audio && s->audioFlags() & Source::Audio_available) {
-            ImGuiIO &io = ImGui::GetIO();
-
-            // test audio and read volume
-            bool audio_is_on = s->audioFlags() & Source::Audio_enabled;
-            int vol = audio_is_on ? (int) (s->audioVolumeFactor(Source::VOLUME_BASE) * 100.f) : -1;
-            std::string label = audio_is_on ? (vol > 50 ? ICON_FA_VOLUME_UP " %d%%"
-                                                        : ICON_FA_VOLUME_DOWN " %d%%")
-                                            : ICON_FA_VOLUME_MUTE " Disabled";
-            // VOLUME & on/off slider
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            bool volume_change = ImGui::SliderInt("##VolumeAudio", &vol, -1, 100, label.c_str());
-            if (ImGui::IsItemHovered()) {
-                if (io.MouseWheel != 0.f) {
-                    vol = CLAMP(vol + int(10.f * io.MouseWheel), 0, 100);
-                    volume_change = true;
-                } else if (!audio_is_on)
-                    ImGuiToolkit::ToolTip("Enabling audio will reload source.");
-            }
-            if (volume_change) {
-                if (vol < 0)
-                    s->setAudioEnabled(false);
-                else {
-                    s->setAudioEnabled(true);
-                    s->setAudioVolumeFactor(Source::VOLUME_BASE,
-                                            CLAMP((float) (vol) *0.01f, 0.f, 1.f));
-                }
-            }
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::TextButton("Audio")) {
-                s->setAudioEnabled(false);
-            }
-
-            // AUDIO MIXING menu
-            if (audio_is_on) {
-                ImGui::SameLine(0, 2 * IMGUI_SAME_LINE);
-                static uint counter_menu_timeout_2 = 0;
-                if (ImGuiToolkit::IconButton(6, 2)
-                    || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-                    counter_menu_timeout_2 = 0;
-                    ImGui::OpenPopup("MenuMixAudio");
-                }
-                if (ImGui::BeginPopup("MenuMixAudio")) {
-                    ImGui::TextDisabled("Multiply volume with:");
-                    Source::AudioVolumeMixing flags = s->audioVolumeMix();
-                    bool mix = flags & Source::Volume_mult_alpha;
-                    if (ImGui::MenuItem("Source alpha", NULL, &mix)) {
-                        if (mix)
-                            s->setAudioVolumeMix(flags | Source::Volume_mult_alpha);
-                        else
-                            s->setAudioVolumeMix(flags & ~Source::Volume_mult_alpha);
-                    }
-                    mix = flags & Source::Volume_mult_opacity;
-                    if (ImGui::MenuItem("Source fading", NULL, &mix)) {
-                        if (mix)
-                            s->setAudioVolumeMix(flags | Source::Volume_mult_opacity);
-                        else
-                            s->setAudioVolumeMix(flags & ~Source::Volume_mult_opacity);
-                    }
-                    mix = flags & Source::Volume_mult_session;
-                    if (ImGui::MenuItem("Output fading", NULL, &mix)) {
-                        if (mix)
-                            s->setAudioVolumeMix(flags | Source::Volume_mult_session);
-                        else
-                            s->setAudioVolumeMix(flags & ~Source::Volume_mult_session);
-                    }
-                    if (ImGui::IsWindowHovered())
-                        counter_menu_timeout_2 = 0;
-                    else if (++counter_menu_timeout_2 > 10)
-                        ImGui::CloseCurrentPopup();
-                    ImGui::EndPopup();
-                }
+        if (!s->failed()) {
+            MediaSource* ms = dynamic_cast<MediaSource*>(s);
+            if (ms != nullptr) {
+                if (renderTranscodingPanel(ms->id(), ms->mediaplayer())) 
+                    v.reset();
             }
         }
 
@@ -814,7 +863,7 @@ void Navigator::RenderSourcePannel(Source *s, const ImVec2 &iconsize, bool reset
             if ( Mixer::manager().session()->failedSources().size() > 1 && 
                 Mixer::manager().session()->find(s) != Mixer::manager().session()->end() && s->failed()) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
-                if ( ImGui::Button( ICON_FA_UNDO_ALT " Retry all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
+                if ( ImGui::Button( ICON_FA_REDO_ALT " Retry all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
                     auto failedsources = Mixer::manager().session()->failedSources();
                     for (auto sit = failedsources.cbegin(); sit != failedsources.cend(); ++sit) {
                         Source *s = Mixer::manager().findSource( (*sit)->id() );
@@ -994,7 +1043,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             // combo to offer lists
             ImGui::Spacing();
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##SelectionNewMedia", BaseToolkit::truncated(Settings::application.recentImportFolders.path, 25).c_str() ))
+            if (ImGui::BeginCombo("##SelectionNewMedia", BaseToolkit::truncated(Settings::application.recentImportFolders.path, 23).c_str() ))
             {
                 // Mode MEDIA_RECENT : recent files
                 if (ImGui::Selectable( ICON_FA_LIST_OL IMGUI_LABEL_RECENT_FILES) ) {
@@ -1075,11 +1124,13 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             if (ImGui::ListBoxHeader(listboxname[new_media_mode], sourceMediaFiles.size(), CLAMP(sourceMediaFiles.size(), 4, max_items)) ) {
                 static int tooltip = 0;
                 static std::string filenametooltip;
+                float width = ImGui::GetContentRegionAvail().x;
                 // loop over list of files
                 for(auto it = sourceMediaFiles.begin(); it != sourceMediaFiles.end(); ++it) {
                     // build displayed file name
                     std::string filename = BaseToolkit::transliterate(*it);
-                    std::string label = BaseToolkit::truncated(SystemToolkit::filename(filename), 25);
+                    // std::string label = BaseToolkit::truncated(SystemToolkit::filename(filename), 23);
+                    std::string label = ImGuiToolkit::truncatedText(SystemToolkit::filename(filename), width);
                     // add selectable item to ListBox; open if clickec
                     if (ImGui::Selectable( label.c_str(), sourceMediaFileCurrent.compare(*it) == 0 )) {
                         // set new source preview
@@ -2010,6 +2061,7 @@ void Navigator::RenderMainPannelSession()
     if (ImGui::BeginCombo("##RecentSessions", sessions_current.c_str() )) {
         // list all sessions in recent list
         for(auto it = sessions_list.begin(); it != sessions_list.end(); ++it) {
+            ImGui::PushID(it->c_str());
             if (ImGui::Selectable( SystemToolkit::filename(*it).c_str() ) ) {
                 Mixer::manager().open( *it );
             }
@@ -2018,6 +2070,7 @@ void Navigator::RenderMainPannelSession()
                 ImGui::Text( "%s", (*it).c_str() );
                 ImGui::EndTooltip();
             }
+            ImGui::PopID();
         }
         ImGui::EndCombo();
     }
@@ -2483,6 +2536,112 @@ void Navigator::RenderMainPannelSession()
         }
     }
 
+    //
+    // EXPORT
+    //    
+    static DialogToolkit::OpenFolderDialog exportFolder("Export to Folder");
+    // return from thread for export folder selection
+    if (exportFolder.closed() && !exportFolder.path().empty()){
+        Settings::application.recentExportFolder.path = exportFolder.path();
+    }
+
+    static Exporter *exporter = nullptr;
+    Settings::application.pannel_session[3] = ImGui::CollapsingHeader("Export",
+                                                                      Settings::application.pannel_session[3] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    if (Settings::application.pannel_session[3]) {
+
+        // check for completion
+        if (exporter != nullptr && exporter->finished()) {
+            if (exporter->success()) {
+                // notify success
+                Log::Notify("Export completed: %d file(s) copied to '%s'.",
+                            exporter->count(), Settings::application.recentExportFolder.path.c_str());
+            }
+            else
+                Log::Info("Export cancelled.");
+            delete exporter;
+            exporter = nullptr;
+        }
+
+        // path display + folder choose button
+        std::string label = BaseToolkit::truncated(Settings::application.recentExportFolder.path, 23);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
+        ImGuiToolkit::InputText("##session_export_path", &label, ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", Settings::application.recentExportFolder.path.c_str());
+        ImVec2 pos_bottom = ImGui::GetCursorPos();
+        ImGui::SameLine();
+        if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Choose destination folder") && exporter == nullptr)
+            exportFolder.open();
+
+        // copy media toggle
+        ImGui::SetCursorPos(pos_bottom);
+        ImGuiToolkit::ButtonSwitch("Copy media", &Settings::application.export_options[0],
+            "Copy all media files referenced in the session file", exporter == nullptr);
+        ImGuiToolkit::ButtonSwitch("Discard versions", &Settings::application.export_options[2],
+            "Do NOT copy versions in the exported session file", exporter == nullptr);
+#ifdef VIMIX_USE_MINIZ
+        ImGuiToolkit::ButtonSwitch("Archive", &Settings::application.export_options[1],
+            "Pack all files into a ZIP archive", exporter == nullptr);
+#endif
+
+        // export button or progress bar
+        if (exporter == nullptr) {
+            // cannot export if no target folder or session file,
+            // or if target folder is same than current session folder (avoid overwriting)
+            if (Settings::application.recentExportFolder.path.empty() ||
+                Mixer::manager().session()->filename().empty() ||
+                SystemToolkit::path_filename(Mixer::manager().session()->filename()) == Settings::application.recentExportFolder.path + PATH_SEP) {
+                ImGuiToolkit::ButtonDisabled(ICON_FA_SAVE "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+            }
+            else if (ImGui::Button(ICON_FA_SAVE "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
+                const std::string archive_name =
+                    SystemToolkit::base_filename(Mixer::manager().session()->filename());
+                Playlist tmp;
+                tmp.add(Mixer::manager().session()->filename());
+                exporter = new Exporter(tmp, Settings::application.recentExportFolder.path,
+                                        Settings::application.export_options[0],
+                                        Settings::application.export_options[2],
+                                        Settings::application.export_options[1],
+                                        archive_name);
+                if (!exporter->start()) {
+                    Log::Warning("Export failed to start: %s", exporter->error().c_str());
+                    delete exporter;
+                    exporter = nullptr;
+                }
+            }
+            ImGui::SameLine();
+            ImGuiToolkit::HelpToolTip("Export the session to a target folder.\n\n"
+                    ICON_FA_FOLDER_OPEN "  Choose a destination folder where to save "
+                    "a copy of the session. ");
+        }
+        else {
+            float progress = exporter->progress();
+#ifdef VIMIX_USE_MINIZ
+            const char *overlay = exporter->compressing() ? "compressing..."
+                                : progress < (float)EPSILON ? "preparing..." : nullptr;
+#else
+            const char *overlay = progress < (float)EPSILON ? "preparing..." : nullptr;
+#endif
+            ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN, 0), overlay);
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_TIMES " Cancel"))
+                exporter->stop();
+        }
+    }
+    else {
+        if (exporter != nullptr && !exporter->finished()) {
+            ImVec2 pos_tmp = ImGui::GetCursorPos();
+            ImVec2 space_size = ImGui::CalcTextSize(" Export ", NULL);
+            space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y;
+            ImGui::SetCursorPos( pos_tmp + space_size );
+            ImGui::Text("( %d %% )", (int)(100.0 * exporter->progress()));
+            ImGui::SetCursorPos( pos_tmp );
+        }
+    }
     ImGui::PopStyleColor(1);
 }
 
@@ -2503,6 +2662,7 @@ void Navigator::RenderMainPannelPlaylist()
     static DialogToolkit::OpenManyFilesDialog selectSessions("Select vimix sessions",
                                                              VIMIX_FILE_TYPE,
                                                              VIMIX_FILE_PATTERN);
+    static DialogToolkit::OpenFolderDialog exportFolder("Export to Folder");
 
     //    static DialogToolkit::OpenPlaylistDialog openPlaylist("Open Playlist");
     //    static DialogToolkit::SavePlaylistDialog savePlaylist("Save Playlist");
@@ -2531,6 +2691,11 @@ void Navigator::RenderMainPannelPlaylist()
         Settings::application.recentFolders.push(customFolder.path());
         Settings::application.recentFolders.assign(customFolder.path());
         Settings::application.pannel_playlist_mode = 2;
+    }
+
+    // return from thread for export folder selection
+    if (exportFolder.closed() && !exportFolder.path().empty()){
+        Settings::application.recentExportFolder.path = exportFolder.path();
     }
 
     // load the list of session in playlist, only once when list changed
@@ -2589,6 +2754,7 @@ void Navigator::RenderMainPannelPlaylist()
     // icon to create new playlist
     //
     ImVec2 pos_top = ImGui::GetCursorPos();
+    ImVec2 pos_bottom = ImGui::GetCursorPos();
     ImVec2 pos_right = ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - ImGui::GetFrameHeight());
     ImGui::SetCursorPos( pos_right );
     if (ImGuiToolkit::IconButton( 13, 3, "Create playlist")) {
@@ -2641,10 +2807,12 @@ void Navigator::RenderMainPannelPlaylist()
 
                 // unique ID for item (filename can be at different index)
                 ImGui::PushID( session_file.c_str() );
+                float width = ImGui::GetContentRegionAvail().x;
+                std::string label = ImGuiToolkit::truncatedText(SystemToolkit::filename(session_file), width);
 
                 // item to select
                 ImGui::BeginGroup();
-                if (ImGui::Selectable( SystemToolkit::filename(session_file).c_str(), false,
+                if (ImGui::Selectable( label.c_str(), false,
                                        ImGuiSelectableFlags_AllowDoubleClick, item_size )) {
                     // trigger on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
@@ -2681,6 +2849,7 @@ void Navigator::RenderMainPannelPlaylist()
 
             ImGui::ListBoxFooter();
         }
+        pos_bottom = ImGui::GetCursorPos();
         // cancel tooltip and mouse over on mouse exit
         if ( !ImGui::IsItemHovered())
             session_tooltip_ = 0;
@@ -2715,10 +2884,13 @@ void Navigator::RenderMainPannelPlaylist()
 
                 // unique ID for item (filename can be at different index)
                 ImGui::PushID( session_file.c_str() );
+                float width = ImGui::GetContentRegionAvail().x;
+                std::string label = ImGuiToolkit::truncatedText(SystemToolkit::filename(session_file), width);
+
 
                 // item to select
                 ImGui::BeginGroup();
-                if (ImGui::Selectable( SystemToolkit::filename(session_file).c_str(), false,
+                if (ImGui::Selectable( label.c_str(), false,
                                        ImGuiSelectableFlags_AllowDoubleClick, item_size )) {
                     // trigger on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
@@ -2760,6 +2932,7 @@ void Navigator::RenderMainPannelPlaylist()
 
             ImGui::ListBoxFooter();
         }
+        pos_bottom = ImGui::GetCursorPos();
         // cancel tooltip and mouse over on mouse exit
         if ( !ImGui::IsItemHovered())
             session_tooltip_ = 0;
@@ -2807,8 +2980,12 @@ void Navigator::RenderMainPannelPlaylist()
 
             // list session files in folder
             for(auto it = folder_session_files.begin(); it != folder_session_files.end(); ++it) {
+                
+                float width = ImGui::GetContentRegionAvail().x;
+                std::string label = ImGuiToolkit::truncatedText(SystemToolkit::filename(*it), width);
+
                 // item to select
-                if (ImGui::Selectable( SystemToolkit::filename(*it).c_str(), false,
+                if (ImGui::Selectable( label.c_str(), false,
                                        ImGuiSelectableFlags_AllowDoubleClick, item_size )) {
                     // trigger on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
@@ -2824,6 +3001,7 @@ void Navigator::RenderMainPannelPlaylist()
 
             ImGui::ListBoxFooter();
         }
+        pos_bottom = ImGui::GetCursorPos();
         // cancel tooltip and mouse over on mouse exit
         if ( !ImGui::IsItemHovered())
             session_tooltip_ = 0;
@@ -2846,6 +3024,119 @@ void Navigator::RenderMainPannelPlaylist()
         ImGui::PopID();
 
     }
+
+    ImGui::SetCursorPos(pos_bottom);
+
+    // export all to folder
+    static Exporter *playlist_exporter = nullptr;
+    static bool _playlist_exporting = false;
+
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
+    _playlist_exporting = ImGui::CollapsingHeader("Export",
+        _playlist_exporting ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    
+    if (_playlist_exporting ) {
+
+        // check for completion
+        if (playlist_exporter != nullptr && playlist_exporter->finished()) {
+            if (playlist_exporter->success()) {
+                // notify success
+                Log::Notify("Export completed: %d file(s) copied to '%s'.",
+                            playlist_exporter->count(), Settings::application.recentExportFolder.path.c_str());
+            }
+            else
+                Log::Info("Export cancelled.");
+            delete playlist_exporter;
+            playlist_exporter = nullptr;
+        }
+
+        // path display + folder choose button
+        std::string label = BaseToolkit::truncated(Settings::application.recentExportFolder.path, 23);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
+        ImGuiToolkit::InputText("##export_path", &label, ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopStyleColor();
+
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", Settings::application.recentExportFolder.path.c_str());
+        pos_bottom = ImGui::GetCursorPos();
+        ImGui::SameLine();
+        if (ImGuiToolkit::IconButton(ICON_FA_FOLDER_OPEN, "Choose destination folder") && playlist_exporter == nullptr)
+            exportFolder.open();
+
+        // copy media toggle
+        ImGui::SetCursorPos(pos_bottom);
+        ImGuiToolkit::ButtonSwitch("Copy media", &Settings::application.export_options[0],
+            "Copy all media files referenced in the session files", playlist_exporter == nullptr);
+        ImGuiToolkit::ButtonSwitch("Discard versions", &Settings::application.export_options[2],
+            "Do NOT copy versions in the exported session files", playlist_exporter == nullptr);
+#ifdef VIMIX_USE_MINIZ
+        ImGuiToolkit::ButtonSwitch("Archive", &Settings::application.export_options[1],
+            "Pack all files into a ZIP archive", playlist_exporter == nullptr);
+#endif
+
+        // export button or progress bar
+        if (playlist_exporter == nullptr) {
+            if (Settings::application.recentExportFolder.path.empty()){
+                ImGuiToolkit::ButtonDisabled(ICON_FA_SAVE "  Export all", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+            }
+            else if (ImGui::Button(ICON_FA_SAVE "  Export all", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
+                Playlist tmp;
+                std::string archive_name;
+                if (Settings::application.pannel_playlist_mode == 0) {
+                    tmp = UserInterface::manager().favorites;
+                    archive_name = SystemToolkit::base_filename(
+                        UserInterface::manager().favorites.filename());
+                } else if (Settings::application.pannel_playlist_mode == 1) {
+                    tmp = active_playlist;
+                    archive_name = SystemToolkit::base_filename(active_playlist.filename());
+                } else {
+                    tmp.add(folder_session_files);
+                    archive_name = SystemToolkit::filename(Settings::application.recentFolders.path);
+                }
+                playlist_exporter = new Exporter(tmp, Settings::application.recentExportFolder.path,
+                                                  Settings::application.export_options[0],
+                                                  Settings::application.export_options[2],
+                                                  Settings::application.export_options[1],
+                                                  archive_name);
+                if (!playlist_exporter->start()) {
+                    Log::Warning("Export failed to start: %s", playlist_exporter->error().c_str());
+                    delete playlist_exporter;
+                    playlist_exporter = nullptr;
+                }
+            }
+            ImGui::SameLine();
+            ImGuiToolkit::HelpToolTip("Export the playlist to a target folder.\n\n"
+                    ICON_FA_FOLDER_OPEN "  Choose a destination folder where to copy "
+                    "the session files of the playlist. ");
+        }
+        else {
+            float progress = playlist_exporter->progress();
+#ifdef VIMIX_USE_MINIZ
+            const char *overlay = playlist_exporter->compressing() ? "compressing..."
+                                : progress < (float)EPSILON ? "preparing..." : nullptr;
+#else
+            const char *overlay = progress < (float)EPSILON ? "preparing..." : nullptr;
+#endif
+            ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN, 0), overlay);
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_TIMES " Cancel"))
+                playlist_exporter->stop();
+        }
+    }
+    else {
+        if (playlist_exporter != nullptr && !playlist_exporter->finished()) {
+            ImVec2 pos_tmp = ImGui::GetCursorPos();
+            ImVec2 space_size = ImGui::CalcTextSize(" Export ", NULL);
+            space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y;
+            ImGui::SetCursorPos( pos_tmp + space_size );
+            ImGui::Text("( %d %% )", (int)(100.0 * playlist_exporter->progress()));
+            ImGui::SetCursorPos( pos_tmp );
+        }
+    }
+
+    ImGui::PopStyleColor();
 
     //
     // Tooltip to show Session thumbnail
@@ -3351,9 +3642,9 @@ void Navigator::RenderMainPannelSettings()
         const float w = IMGUI_RIGHT_ALIGN - ImGui::GetFrameHeightWithSpacing();
         ImGuiToolkit::ButtonOpenUrl( "Edit", Settings::application.control.osc_filename.c_str(), ImVec2(w, 0) );
         ImGui::SameLine(0, 6);
-        if ( ImGuiToolkit::IconButton(15, 12, "Reload") )
+        if ( ImGuiToolkit::IconButton(5, 15, "Reload") )
             Control::manager().init();
-        ImGui::SameLine();
+        ImGui::SameLine(0, 3);
         ImGui::Text("Translator");
         ImGuiToolkit::Spacing();
     }
@@ -3438,9 +3729,9 @@ void Navigator::RenderMainPannelSettings()
             gamepadmappingdialog.open();
         }
         ImGui::SameLine(0, 6);
-        if ( ImGuiToolkit::IconButton(15, 12, "Reload") )
+        if ( ImGuiToolkit::IconButton(5, 15, "Reload") )
             Control::manager().loadGamepadMappings();
-        ImGui::SameLine();
+        ImGui::SameLine(0, 3);
         if ( ImGuiToolkit::IconButton(ICON_FA_EXTERNAL_LINK_ALT, "Search online") )
             SystemToolkit::open("https://github.com/mdqinc/SDL_GameControllerDB");
 

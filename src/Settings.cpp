@@ -153,9 +153,13 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("accept_connections", application.accept_connections);
     applicationNode->SetAttribute("pannel_main_mode", application.pannel_main_mode);
     applicationNode->SetAttribute("pannel_playlist_mode", application.pannel_playlist_mode);
+    applicationNode->SetAttribute("pannel_source_0", application.pannel_source[0]);
+    applicationNode->SetAttribute("pannel_source_1", application.pannel_source[1]);
+    applicationNode->SetAttribute("pannel_source_2", application.pannel_source[2]);
     applicationNode->SetAttribute("pannel_session_0", application.pannel_session[0]);
     applicationNode->SetAttribute("pannel_session_1", application.pannel_session[1]);
     applicationNode->SetAttribute("pannel_session_2", application.pannel_session[2]);
+    applicationNode->SetAttribute("pannel_session_3", application.pannel_session[3]);
     applicationNode->SetAttribute("pannel_settings_0", application.pannel_settings[0]);
     applicationNode->SetAttribute("pannel_settings_1", application.pannel_settings[1]);
     applicationNode->SetAttribute("pannel_settings_2", application.pannel_settings[2]);
@@ -176,6 +180,12 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     transcodeNode->SetAttribute("option_2", application.transcode_options[2]);
     transcodeNode->SetAttribute("option_3", application.transcode_options[3]);
     applicationNode->InsertEndChild(transcodeNode);
+
+    XMLElement *exportNode = xmlDoc.NewElement( "Export" );
+    exportNode->SetAttribute("copy_media", application.export_options[0]);
+    exportNode->SetAttribute("archive", application.export_options[1]);
+    exportNode->SetAttribute("discard_versions", application.export_options[2]);
+    applicationNode->InsertEndChild(exportNode);
 
     pRoot->InsertEndChild(applicationNode);
 
@@ -309,6 +319,9 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
 
         // recent session folders
         recent->InsertEndChild( save_history(application.recentPlaylists, "Playlist", xmlDoc));
+
+        // recent export folder
+        recent->InsertEndChild( save_history(application.recentExportFolder, "ExportFolder", xmlDoc));
 
         // recent session folders
         recent->InsertEndChild( save_history(application.recentFolders, "Folder", xmlDoc));
@@ -507,9 +520,13 @@ void Settings::init(const std::string &filename)
             applicationNode->QueryBoolAttribute("pannel_always_visible", &application.pannel_always_visible);
             applicationNode->QueryIntAttribute("pannel_main_mode", &application.pannel_main_mode);
             applicationNode->QueryIntAttribute("pannel_playlist_mode", &application.pannel_playlist_mode);
+            applicationNode->QueryBoolAttribute("pannel_source_0", &application.pannel_source[0]);
+            applicationNode->QueryBoolAttribute("pannel_source_1", &application.pannel_source[1]);
+            applicationNode->QueryBoolAttribute("pannel_source_2", &application.pannel_source[2]);
             applicationNode->QueryBoolAttribute("pannel_session_0", &application.pannel_session[0]);
             applicationNode->QueryBoolAttribute("pannel_session_1", &application.pannel_session[1]);
             applicationNode->QueryBoolAttribute("pannel_session_2", &application.pannel_session[2]);
+            applicationNode->QueryBoolAttribute("pannel_session_3", &application.pannel_session[3]);
             applicationNode->QueryBoolAttribute("pannel_settings_0", &application.pannel_settings[0]);
             applicationNode->QueryBoolAttribute("pannel_settings_1", &application.pannel_settings[1]);
             applicationNode->QueryBoolAttribute("pannel_settings_2", &application.pannel_settings[2]);
@@ -528,6 +545,13 @@ void Settings::init(const std::string &filename)
                 transcodeNode->QueryBoolAttribute("option_1", &application.transcode_options[1]) ;
                 transcodeNode->QueryBoolAttribute("option_2", &application.transcode_options[2]) ;
                 transcodeNode->QueryBoolAttribute("option_3", &application.transcode_options[3]) ;
+            }
+
+            XMLElement * exportNode = applicationNode->FirstChildElement("Export");
+            if (exportNode != nullptr) {
+                exportNode->QueryBoolAttribute("copy_media", &application.export_options[0]) ;
+                exportNode->QueryBoolAttribute("archive", &application.export_options[1]) ;
+                exportNode->QueryBoolAttribute("discard_versions", &application.export_options[2]) ;
             }
 
             // text attributes
@@ -787,6 +811,9 @@ void Settings::init(const std::string &filename)
 
             // recent session playlist
             load_history(application.recentPlaylists, "Playlist", pElement);
+
+            // recent export folder
+            load_history(application.recentExportFolder, "ExportFolder", pElement);
 
             // recent session folders
             load_history(application.recentFolders, "Folder", pElement);
