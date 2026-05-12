@@ -11,6 +11,10 @@ Copyright 2024 Bruno Herbelin
 -   Git commit to Beta
     
 -   Test the flatpack for Beta[https://github.com/brunoherbelin/vimix/tree/master/flatpak](https://github.com/brunoherbelin/vimix/tree/master/flatpak)
+
+-   Check that flathub likes vimix; 
+
+    flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest  [path to]io.github.brunoherbelin.Vimix.json
     
 -   Test the snap for Beta (launch snapcraft from vimix base dir):
     
@@ -38,17 +42,16 @@ Copyright 2024 Bruno Herbelin
 
 -   Settings are saved in `/Users/[username]/Library/Application Support/vimix`Instructions to reset in finder, do "Go to folder" (shift+command+G),enter `/Users/[username]/Library/Application Support/vimix` and delete the folder 'vimix'
     
--   Generate and sign package
+-   Automatically generate and sign package (if Developer ID Application provided in CMake variable)
     
-    -   `cd build`
-        
-        `cpack`
-        
-        `cd ..`
-        
-        `cmake --build build --target notarize`
-        
--   POST INSTALL DMG SIGNING AND NOTARIZATION (done by --target notarize)
+    ```bash
+    $ cd build
+    $ cpack
+    $ cd ..
+    $ cmake --build build --target notarize
+    ```
+    
+-   Manual POST INSTALL DMG SIGNING AND NOTARIZATION (done by --target notarize)
     
 
 1.  SIGN DMG
@@ -98,9 +101,17 @@ The flatpak manifest for flathub is at [https://github.com/flathub/io.github.bru
 
 To build the vimix flatpak with code from local folder (debugging), change the following:
 
-```json
-{    "name": "vimix",    "buildsystem": "cmake",    "config-opts": [        "-DCMAKE_BUILD_TYPE=Release"    ],    "sources": [        {        "type":"dir",        "path": "[your_development_dir]/vimix",        }    ]}
-```
+    ```json
+    {    
+    "name": "vimix",    
+    "buildsystem": "cmake",    
+    "config-opts": [        "-DCMAKE_BUILD_TYPE=Release"    ],    
+    "sources": [        {        
+        "type":"dir",        
+        "path": "[your_development_dir]/vimix",        
+    }    ]
+    }
+    ```
 
 Run this to use the custom local desc
 
@@ -137,12 +148,12 @@ Linux perf command
 
 To generate memory usage plots in [massif format](https://valgrind.org/docs/manual/ms-manual.html):
 
-```bash
-G_SLICE=always-malloc valgrind --tool=massif ./vimix
-```
+    ```bash
+    G_SLICE=always-malloc valgrind --tool=massif ./vimix
+    ```
 
 To check for memory leaks:
 
-```bash
-G_SLICE=always-malloc valgrind --leak-check=full --log-file=vimix_mem.txt ./vimix
-```
+    ```bash
+    G_SLICE=always-malloc valgrind --leak-check=full --log-file=vimix_mem.txt ./vimix
+    ```
