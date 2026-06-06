@@ -160,9 +160,25 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
             Log::Warning("MediaPlayer Error creating discoverer instance: %s\n", err->message);
         }
         else {
-            // disable GPU decoding plugins to avoid conflicts during discovery
-            // GstToolkit::enable_gpu_decoding_plugins(false);
-            //// TODO : implement this properly as this disables GPU decoding globally
+            // Force software decoding inside the discoverer's pipeline;
+            // Walk up the chain from the source element to find the uridecodebin and set
+            // force-sw-decoders, so GPU decoders are not instantiated during discovery.
+            g_signal_connect(discoverer, "source-setup",
+                G_CALLBACK(+[](GstDiscoverer *, GstElement *source, gpointer) {
+                    GstObject *obj = GST_OBJECT(gst_object_ref(GST_OBJECT(source)));
+                    while (obj) {
+                        GstObject *parent = gst_object_get_parent(obj);
+                        gst_object_unref(obj);
+                        obj = parent;
+                        if (!obj || !GST_IS_ELEMENT(obj)) break;
+                        if (g_object_class_find_property(G_OBJECT_GET_CLASS(obj), "force-sw-decoders")) {
+                            g_object_set(obj, "force-sw-decoders", TRUE, NULL);
+                            break;
+                        }
+                    }
+                    if (obj) gst_object_unref(obj);
+                }),
+                NULL);
 
             GstDiscovererInfo *info = NULL;
             info = gst_discoverer_discover_uri (discoverer, uri.c_str(), &err);
@@ -270,9 +286,6 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
 
             g_object_unref( discoverer );
 
-            // restore GPU decoding plugins state
-            // GstToolkit::enable_gpu_decoding_plugins(Settings::application.render.gpu_decoding);
-
         }
 
         g_clear_error (&err);
@@ -290,6 +303,164 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
 #endif
     // return the info
     return video_stream_info;
+}
+
+MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_ptr<std::atomic<bool>> cancelled)
+{
+    MediaEvaluation eval;
+
+    if (!SystemToolkit::file_exists(gst_uri_get_location(uri.c_str()))) {
+        eval.log = "No such file";
+        return eval;
+    }
+
+    // probe data filled by the GStreamer streaming thread; safe to read after pipeline stops
+    struct ProbeData {
+        guint64 frame_count = 0;
+        guint64 keyframe_count = 0;
+        guint64 last_keyframe_frame = 0;
+        guint discontinuity_count = 0;
+        guint corrupted_count = 0;
+        GstClockTime pts_first = GST_CLOCK_TIME_NONE;
+        GstClockTime pts_last = GST_CLOCK_TIME_NONE;
+        std::vector<GstClockTime> keyframe_pts;
+        std::vector<guint64> gop_sizes;
+        std::atomic<bool> decoder_probed{false};
+    } probe_data;
+
+    // headless pipeline: decode at max speed, never sync to clock
+    std::string desc = "uridecodebin uri=" + uri + " ! videoconvert ! fakesink name=sink sync=false";
+    GError *error = NULL;
+    GstElement *pipeline = gst_parse_launch(desc.c_str(), &error);
+    if (error != NULL || pipeline == NULL) {
+        eval.log = error ? std::string(error->message) : "Pipeline construction failed";
+        g_clear_error(&error);
+        return eval;
+    }
+    g_clear_error(&error);
+
+    // Probe the video DECODER'S SINK PAD (encoded input), not the decoded output.
+    // GST_BUFFER_FLAG_DELTA_UNIT is cleared by decoders on all output frames;
+    // it is only reliable on encoded buffers flowing into the decoder.
+    // deep-element-added fires when uridecodebin autoplugs the decoder element.
+    g_signal_connect(pipeline, "deep-element-added",
+        G_CALLBACK(+[](GstBin *, GstBin *, GstElement *element, gpointer ud) {
+            ProbeData *d = static_cast<ProbeData *>(ud);
+
+            // Identify the first video decoder added to the pipeline
+            GstElementFactory *factory = gst_element_get_factory(element);
+            if (!factory) return;
+            if (!gst_element_factory_list_is_type(factory,
+                    GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO))
+                return;
+            // atomic swap: ensure only the first video decoder is probed
+            if (d->decoder_probed.exchange(true)) return;
+
+            GstPad *sinkpad = gst_element_get_static_pad(element, "sink");
+            if (!sinkpad) return;
+
+            gst_pad_add_probe(sinkpad, GST_PAD_PROBE_TYPE_BUFFER,
+                [](GstPad *, GstPadProbeInfo *info, gpointer user_data) -> GstPadProbeReturn {
+                    ProbeData *d = static_cast<ProbeData *>(user_data);
+                    GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
+                    d->frame_count++;
+                    if (!GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_DELTA_UNIT)) {
+                        if (d->keyframe_count > 0)
+                            d->gop_sizes.push_back(d->frame_count - d->last_keyframe_frame);
+                        d->last_keyframe_frame = d->frame_count;
+                        d->keyframe_count++;
+                        if (d->keyframe_pts.size() < MAX_KEYFRAME_STORED)
+                            d->keyframe_pts.push_back(buf->pts);
+                    }
+                    if (GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_DISCONT))
+                        d->discontinuity_count++;
+                    if (GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_CORRUPTED))
+                        d->corrupted_count++;
+                    if (d->pts_first == GST_CLOCK_TIME_NONE && GST_CLOCK_TIME_IS_VALID(buf->pts))
+                        d->pts_first = buf->pts;
+                    if (GST_CLOCK_TIME_IS_VALID(buf->pts))
+                        d->pts_last = buf->pts;
+                    return GST_PAD_PROBE_OK;
+                },
+                d, NULL);
+            gst_object_unref(sinkpad);
+        }),
+        &probe_data);
+
+    // run pipeline, polling in 200 ms chunks to allow cancellation
+    GstBus *bus = gst_element_get_bus(pipeline);
+    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+
+    bool cancelled_flag = false;
+    bool error_flag = false;
+    GstClockTime elapsed = 0;
+    const GstClockTime chunk = 200 * GST_MSECOND;
+    const GstClockTime timeout_ns = (GstClockTime)EVALUATE_TIMEOUT * GST_SECOND;
+
+    while (elapsed < timeout_ns) {
+        if (cancelled && cancelled->load()) {
+            cancelled_flag = true;
+            break;
+        }
+        GstMessage *msg = gst_bus_timed_pop_filtered(bus, chunk,
+            (GstMessageType)(GST_MESSAGE_EOS | GST_MESSAGE_ERROR));
+        if (msg) {
+            if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
+                GError *err = NULL;
+                gst_message_parse_error(msg, &err, NULL);
+                eval.log = err ? std::string(err->message) : "Pipeline error";
+                g_clear_error(&err);
+                error_flag = true;
+            }
+            gst_message_unref(msg);
+            break;
+        }
+        elapsed += chunk;
+    }
+
+    // stop pipeline synchronously so streaming threads exit before we read probe_data
+    gst_element_set_state(pipeline, GST_STATE_NULL);
+    gst_element_get_state(pipeline, NULL, NULL, GST_SECOND);
+    gst_object_unref(bus);
+    gst_object_unref(pipeline);
+
+    if (cancelled_flag) {
+        eval.log = "Cancelled";
+        return eval;
+    }
+    if (elapsed >= timeout_ns && eval.log.empty())
+        eval.log = "Evaluation timed out (partial results)";
+
+    // fill evaluation from probe data (pipeline fully stopped, no concurrent access)
+    eval.frame_count        = probe_data.frame_count;
+    eval.keyframe_count     = probe_data.keyframe_count;
+    eval.keyframe_pts       = std::move(probe_data.keyframe_pts);
+    eval.pts_first          = probe_data.pts_first;
+    eval.pts_last           = probe_data.pts_last;
+    eval.discontinuity_count = probe_data.discontinuity_count;
+    eval.corrupted_count    = probe_data.corrupted_count;
+
+    if (!probe_data.gop_sizes.empty()) {
+        guint64 min_g = probe_data.gop_sizes[0];
+        guint64 max_g = probe_data.gop_sizes[0];
+        guint64 sum   = 0;
+        for (guint64 g : probe_data.gop_sizes) {
+            if (g < min_g) min_g = g;
+            if (g > max_g) max_g = g;
+            sum += g;
+        }
+        eval.gop_size_min     = (guint)min_g;
+        eval.gop_size_max     = (guint)max_g;
+        eval.gop_size_average = (double)sum / (double)probe_data.gop_sizes.size();
+    }
+
+    eval.valid = (eval.frame_count > 0) && !error_flag;
+    return eval;
+}
+
+MediaEvaluation MediaPlayer::evaluation() const
+{
+    return evaluation_;
 }
 
 void MediaPlayer::open (const std::string & filename, const std::string &uri)
@@ -313,6 +484,10 @@ void MediaPlayer::open (const std::string & filename, const std::string &uri)
     // start URI discovering thread:
     discoverer_ = std::async( MediaPlayer::UriDiscoverer, uri_);
     // wait for discoverer to finish in the future (test in update)
+
+    // start async evaluation for video files
+    evaluator_cancel_ = std::make_shared<std::atomic<bool>>(false);
+    evaluator_ = std::async(MediaPlayer::UriEvaluator, uri_, evaluator_cancel_);
 
 //    // debug without thread
 //    media_ = MediaPlayer::UriDiscoverer(uri_);
@@ -340,9 +515,6 @@ GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer 
 {
     // only handle error messages
     if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR && ptr != nullptr) {
-        // register failure in source
-        reinterpret_cast<MediaPlayer *>(ptr)->failed_ = true;
-
         // inform user
         GError *error;
         gst_message_parse_error(msg, &error, NULL);
@@ -350,6 +522,10 @@ GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer 
                          std::to_string(reinterpret_cast<MediaPlayer*>(ptr)->id()).c_str(),
                          error->message);
         g_error_free(error);
+
+        // register failure in source
+        reinterpret_cast<MediaPlayer *>(ptr)->close();  
+        reinterpret_cast<MediaPlayer *>(ptr)->failed_ = true;
     }
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
     // setup OpenGL contexts for GStreamer elements from global Rendering opengl 
@@ -847,8 +1023,21 @@ void MediaPlayer::close()
         if (discoverer_.valid())
             if ( discoverer_.wait_for(std::chrono::seconds(DISCOVER_TIMOUT)) == std::future_status::timeout )
                  failed_ = true;
+        // cancel evaluator if it was started before execute_open failed
+        if (evaluator_.valid()) {
+            if (evaluator_cancel_)
+                evaluator_cancel_->store(true);
+            evaluator_.wait();
+        }
         // nothing else to change
         return;
+    }
+
+    // cancel evaluator if still running
+    if (evaluator_.valid()) {
+        if (evaluator_cancel_)
+            evaluator_cancel_->store(true);
+        evaluator_.wait();
     }
 
     // un-ready the media player
@@ -1437,6 +1626,21 @@ void MediaPlayer::update()
         }
         // wait next frame to display
         return;
+    }
+
+    // collect evaluation result when ready (non-blocking)
+    if (evaluator_.valid()) {
+        if (evaluator_.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+            evaluation_ = evaluator_.get();
+            if (evaluation_.valid)
+                Log::Info("MediaPlayer %s Evaluated: %lu frames, %lu keyframes, GOP %d-%d avg %.1f (%s)",
+                          std::to_string(id_).c_str(),
+                          evaluation_.frame_count, evaluation_.keyframe_count,
+                          evaluation_.gop_size_min, evaluation_.gop_size_max,
+                          evaluation_.gop_size_average, evaluation_.log.c_str());
+            else if (!evaluation_.log.empty())
+                Log::Warning("MediaPlayer %s Evaluation: %s", std::to_string(id_).c_str(), evaluation_.log.c_str());
+        }
     }
 
     // prevent unnecessary updates: disabled or already filled image
