@@ -101,6 +101,13 @@ MediaPlayer::~MediaPlayer()
 {
     close();
 
+    // cancel evaluator if still running
+    if (evaluator_.valid()) {
+        if (evaluator_cancel_)
+            evaluator_cancel_->store(true);
+        evaluator_.wait();
+    }
+
     // cleanup opengl texture
     if (textureindex_) {
         glDeleteTextures(1, &textureindex_);
@@ -314,86 +321,107 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
         return eval;
     }
 
-    // probe data filled by the GStreamer streaming thread; safe to read after pipeline stops
+    // probe data filled by the GStreamer streaming thread
     struct ProbeData {
         guint64 frame_count = 0;
         guint64 keyframe_count = 0;
         guint64 last_keyframe_frame = 0;
         guint discontinuity_count = 0;
         guint corrupted_count = 0;
+        gint error_code = 0;
         GstClockTime pts_first = GST_CLOCK_TIME_NONE;
         GstClockTime pts_last = GST_CLOCK_TIME_NONE;
         std::vector<GstClockTime> keyframe_pts;
         std::vector<guint64> gop_sizes;
-        std::atomic<bool> decoder_probed{false};
     } probe_data;
 
-    // headless pipeline: decode at max speed, never sync to clock
-    std::string desc = "uridecodebin uri=" + uri + " ! videoconvert ! fakesink name=sink sync=false";
-    GError *error = NULL;
-    GstElement *pipeline = gst_parse_launch(desc.c_str(), &error);
-    if (error != NULL || pipeline == NULL) {
-        eval.log = error ? std::string(error->message) : "Pipeline construction failed";
-        g_clear_error(&error);
+    // Context for the pad-added callback
+    struct PadContext {
+        GstElement *pipeline;
+        ProbeData *data;
+        std::atomic<bool> video_probed{false};
+    } pad_ctx = { nullptr, &probe_data };
+
+    // Build pipeline : filesrc (raw bytes) -> parsebin (demux+parse, no decoding).
+    // Parsers set GST_BUFFER_FLAG_DELTA_UNIT on encoded
+    // packets, giving fast and accurate keyframe detection without decoding
+    GstElement *pipeline = gst_pipeline_new("evaluator");
+    GstElement *filesrc  = gst_element_factory_make("filesrc",  "src");
+    GstElement *parsebin = gst_element_factory_make("parsebin", "pb");
+    if (!pipeline || !filesrc || !parsebin) {
+        eval.log = "Failed to create pipeline elements";
+        if (pipeline) gst_object_unref(pipeline);
+        if (filesrc)  gst_object_unref(filesrc);
+        if (parsebin) gst_object_unref(parsebin);
         return eval;
     }
-    g_clear_error(&error);
+    gchar *path = gst_uri_get_location(uri.c_str());
+    g_object_set(filesrc, "location", path, NULL);
+    g_free(path);
+    gst_bin_add_many(GST_BIN(pipeline), filesrc, parsebin, NULL);
+    gst_element_link(filesrc, parsebin);
+    pad_ctx.pipeline = pipeline;
 
-    // Probe the video DECODER'S SINK PAD (encoded input), not the decoded output.
-    // GST_BUFFER_FLAG_DELTA_UNIT is cleared by decoders on all output frames;
-    // it is only reliable on encoded buffers flowing into the decoder.
-    // deep-element-added fires when uridecodebin autoplugs the decoder element.
-    g_signal_connect(pipeline, "deep-element-added",
-        G_CALLBACK(+[](GstBin *, GstBin *, GstElement *element, gpointer ud) {
-            ProbeData *d = static_cast<ProbeData *>(ud);
+    // parsebin exposes one dynamic pad per stream; connect all pads to fakesinks (avoid
+    // unlinked-pad errors) and install the buffer probe on the first video pad.
+    g_signal_connect(parsebin, "pad-added",
+        G_CALLBACK(+[](GstElement *, GstPad *pad, gpointer ud) {
+            PadContext *ctx = static_cast<PadContext *>(ud);
 
-            // Identify the first video decoder added to the pipeline
-            GstElementFactory *factory = gst_element_get_factory(element);
-            if (!factory) return;
-            if (!gst_element_factory_list_is_type(factory,
-                    GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO))
-                return;
-            // atomic swap: ensure only the first video decoder is probed
-            if (d->decoder_probed.exchange(true)) return;
+            // Install the probe that gets video buffers (BEFORE linking the pad).
+            if (!ctx->video_probed) {
+                GstCaps *caps = gst_pad_get_current_caps(pad);
+                if (!caps) caps = gst_pad_query_caps(pad, NULL);
+                if (caps) {
+                    bool is_video = g_str_has_prefix(
+                        gst_structure_get_name(gst_caps_get_structure(caps, 0)), "video/");
+                    gst_caps_unref(caps);
+                    if (is_video) {
+                        ctx->video_probed.exchange(true);
+                        ctx->data->error_code = gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER,
+                        [](GstPad *, GstPadProbeInfo *info, gpointer user_data) -> GstPadProbeReturn {
+                            ProbeData *d = static_cast<ProbeData *>(user_data);
+                            GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
+                            d->frame_count++;
+                            if (!GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_DELTA_UNIT)) {
+                                if (d->keyframe_count > 0)
+                                    d->gop_sizes.push_back(d->frame_count - d->last_keyframe_frame);
+                                d->last_keyframe_frame = d->frame_count;
+                                d->keyframe_count++;
+                                if (d->keyframe_pts.size() < MAX_KEYFRAME_STORED)
+                                    d->keyframe_pts.push_back(buf->pts);
+                            }
+                            if (GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_DISCONT))
+                                d->discontinuity_count++;
+                            if (GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_CORRUPTED))
+                                d->corrupted_count++;
+                            if (d->pts_first == GST_CLOCK_TIME_NONE && GST_CLOCK_TIME_IS_VALID(buf->pts))
+                                d->pts_first = buf->pts;
+                            if (GST_CLOCK_TIME_IS_VALID(buf->pts))
+                                d->pts_last = buf->pts;
+                            return GST_PAD_PROBE_OK;
+                        },
+                        ctx->data, NULL);
+                    } // if (is_video)
+                }  // if (caps)
+            }  // if (!video_probed)
 
-            GstPad *sinkpad = gst_element_get_static_pad(element, "sink");
-            if (!sinkpad) return;
-
-            gst_pad_add_probe(sinkpad, GST_PAD_PROBE_TYPE_BUFFER,
-                [](GstPad *, GstPadProbeInfo *info, gpointer user_data) -> GstPadProbeReturn {
-                    ProbeData *d = static_cast<ProbeData *>(user_data);
-                    GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
-                    d->frame_count++;
-                    if (!GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_DELTA_UNIT)) {
-                        if (d->keyframe_count > 0)
-                            d->gop_sizes.push_back(d->frame_count - d->last_keyframe_frame);
-                        d->last_keyframe_frame = d->frame_count;
-                        d->keyframe_count++;
-                        if (d->keyframe_pts.size() < MAX_KEYFRAME_STORED)
-                            d->keyframe_pts.push_back(buf->pts);
-                    }
-                    if (GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_DISCONT))
-                        d->discontinuity_count++;
-                    if (GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_CORRUPTED))
-                        d->corrupted_count++;
-                    if (d->pts_first == GST_CLOCK_TIME_NONE && GST_CLOCK_TIME_IS_VALID(buf->pts))
-                        d->pts_first = buf->pts;
-                    if (GST_CLOCK_TIME_IS_VALID(buf->pts))
-                        d->pts_last = buf->pts;
-                    return GST_PAD_PROBE_OK;
-                },
-                d, NULL);
+            GstElement *fakesink = gst_element_factory_make("fakesink", NULL);
+            g_object_set(fakesink, "sync", FALSE, "async", FALSE, NULL);
+            gst_bin_add(GST_BIN(ctx->pipeline), fakesink);
+            gst_element_sync_state_with_parent(fakesink);
+            GstPad *sinkpad = gst_element_get_static_pad(fakesink, "sink");
+            gst_pad_link(pad, sinkpad);
             gst_object_unref(sinkpad);
         }),
-        &probe_data);
+        &pad_ctx);
 
     // run pipeline, polling in 200 ms chunks to allow cancellation
     GstBus *bus = gst_element_get_bus(pipeline);
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
     bool cancelled_flag = false;
-    bool error_flag = false;
-    GstClockTime elapsed = 0;
+    GstClockTime elapsed = 0; 
     const GstClockTime chunk = 200 * GST_MSECOND;
     const GstClockTime timeout_ns = (GstClockTime)EVALUATE_TIMEOUT * GST_SECOND;
 
@@ -410,7 +438,6 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
                 gst_message_parse_error(msg, &err, NULL);
                 eval.log = err ? std::string(err->message) : "Pipeline error";
                 g_clear_error(&err);
-                error_flag = true;
             }
             gst_message_unref(msg);
             break;
@@ -424,12 +451,15 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
     gst_object_unref(bus);
     gst_object_unref(pipeline);
 
+    // process is done
+    eval.done = true;
+
     if (cancelled_flag) {
         eval.log = "Cancelled";
         return eval;
     }
     if (elapsed >= timeout_ns && eval.log.empty())
-        eval.log = "Evaluation timed out (partial results)";
+        eval.log = "Evaluation incomplete";
 
     // fill evaluation from probe data (pipeline fully stopped, no concurrent access)
     eval.frame_count        = probe_data.frame_count;
@@ -437,24 +467,20 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
     eval.keyframe_pts       = std::move(probe_data.keyframe_pts);
     eval.pts_first          = probe_data.pts_first;
     eval.pts_last           = probe_data.pts_last;
-    eval.discontinuity_count = probe_data.discontinuity_count;
+    eval.discontinuity_count = probe_data.discontinuity_count == 0 ? 0 : probe_data.discontinuity_count - 1; 
     eval.corrupted_count    = probe_data.corrupted_count;
 
     if (!probe_data.gop_sizes.empty()) {
         guint64 min_g = probe_data.gop_sizes[0];
         guint64 max_g = probe_data.gop_sizes[0];
-        guint64 sum   = 0;
         for (guint64 g : probe_data.gop_sizes) {
             if (g < min_g) min_g = g;
             if (g > max_g) max_g = g;
-            sum += g;
         }
         eval.gop_size_min     = (guint)min_g;
         eval.gop_size_max     = (guint)max_g;
-        eval.gop_size_average = (double)sum / (double)probe_data.gop_sizes.size();
     }
 
-    eval.valid = (eval.frame_count > 0) && !error_flag;
     return eval;
 }
 
@@ -1023,21 +1049,8 @@ void MediaPlayer::close()
         if (discoverer_.valid())
             if ( discoverer_.wait_for(std::chrono::seconds(DISCOVER_TIMOUT)) == std::future_status::timeout )
                  failed_ = true;
-        // cancel evaluator if it was started before execute_open failed
-        if (evaluator_.valid()) {
-            if (evaluator_cancel_)
-                evaluator_cancel_->store(true);
-            evaluator_.wait();
-        }
         // nothing else to change
         return;
-    }
-
-    // cancel evaluator if still running
-    if (evaluator_.valid()) {
-        if (evaluator_cancel_)
-            evaluator_cancel_->store(true);
-        evaluator_.wait();
     }
 
     // un-ready the media player
@@ -1632,14 +1645,20 @@ void MediaPlayer::update()
     if (evaluator_.valid()) {
         if (evaluator_.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
             evaluation_ = evaluator_.get();
-            if (evaluation_.valid)
-                Log::Info("MediaPlayer %s Evaluated: %lu frames, %lu keyframes, GOP %d-%d avg %.1f (%s)",
+            if (evaluation_.done) {
+                if (!evaluation_.log.empty())
+                    Log::Warning("MediaPlayer %s Evaluation: %s", std::to_string(id_).c_str(), evaluation_.log.c_str());
+                else {
+                    Log::Info("MediaPlayer %s Evaluation: %lu frames, %lu keyframes, GOP %d-%d",
                           std::to_string(id_).c_str(),
                           evaluation_.frame_count, evaluation_.keyframe_count,
-                          evaluation_.gop_size_min, evaluation_.gop_size_max,
-                          evaluation_.gop_size_average, evaluation_.log.c_str());
-            else if (!evaluation_.log.empty())
-                Log::Warning("MediaPlayer %s Evaluation: %s", std::to_string(id_).c_str(), evaluation_.log.c_str());
+                          evaluation_.gop_size_min, evaluation_.gop_size_max);
+                    // adjust timeline to media frames range 
+                    timeline_.setFirst(evaluation_.pts_first);
+                    timeline_.setLast(evaluation_.pts_last);
+                }
+            } 
+             
         }
     }
 

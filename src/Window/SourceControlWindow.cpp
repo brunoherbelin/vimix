@@ -2407,6 +2407,14 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             current_loop = (int) mediaplayer_active_->loop();
             if ( ImGuiToolkit::IconMultistate(icons_loop, &current_loop, tooltips_loop) )
                 mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );
+            // disable bounce mode if GOP size is invalid
+            if (current_loop ==  (int) MediaPlayer::LOOP_BIDIRECTIONAL && mediaplayer_active_->evaluation().done && 
+                (mediaplayer_active_->evaluation().gop_size_min < 1 || 
+                mediaplayer_active_->evaluation().gop_size_max < 1 ) )
+            {      
+                current_loop++;   
+                mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );
+            }
 
             // speed slider
             ImGui::SameLine(0, h_space_);
@@ -2488,10 +2496,19 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             oss << ": Play forward";
             Action::manager().store(oss.str());
         }
-        if (ImGuiToolkit::MenuItemIcon(9,0, "Play backward", nullptr, current_play_speed<0)) {
-            mediaplayer_active_->setPlaySpeed( - ABS(mediaplayer_active_->playSpeed()) );
-            oss << ": Play backward";
-            Action::manager().store(oss.str());
+        // Enable backward play only if GOP size is valid
+        if (mediaplayer_active_->evaluation().done && 
+            mediaplayer_active_->evaluation().gop_size_min > 0 && 
+            mediaplayer_active_->evaluation().gop_size_max > 0)
+        {            
+            if (ImGuiToolkit::MenuItemIcon(9,0, "Play backward", nullptr, current_play_speed<0)) {
+                mediaplayer_active_->setPlaySpeed( - ABS(mediaplayer_active_->playSpeed()) );
+                oss << ": Play backward";
+                Action::manager().store(oss.str());
+            }
+        } 
+        else {
+            ImGuiToolkit::MenuItemIcon(9,0, "Play backward", nullptr, false, false);
         }
         if (ImGuiToolkit::MenuItemIcon(19,15, "Reset speed")) {
             mediaplayer_active_->setPlaySpeed(1.0);

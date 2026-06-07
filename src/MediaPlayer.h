@@ -23,7 +23,7 @@ class Visitor;
 #define MIN_PLAY_SPEED 0.1
 #define N_VFRAME 10
 #define DISCOVER_TIMOUT 15
-#define EVALUATE_TIMEOUT 120
+#define EVALUATE_TIMEOUT 5
 #define MAX_KEYFRAME_STORED 10000
 
 struct MediaInfo {
@@ -64,7 +64,7 @@ struct MediaInfo {
 
 struct MediaEvaluation {
 
-    bool valid;
+    bool done;
     std::string log;
 
     // Frame-level timing & structure
@@ -75,7 +75,6 @@ struct MediaEvaluation {
     // GOP size distribution (in frames between consecutive keyframes)
     guint gop_size_min;
     guint gop_size_max;
-    double gop_size_average;
 
     // PTS range
     GstClockTime pts_first;
@@ -86,12 +85,11 @@ struct MediaEvaluation {
     guint corrupted_count;
 
     MediaEvaluation() {
-        valid = false;
+        done = false;
         frame_count = 0;
         keyframe_count = 0;
         gop_size_min = 0;
         gop_size_max = 0;
-        gop_size_average = 0.0;
         pts_first = GST_CLOCK_TIME_NONE;
         pts_last = GST_CLOCK_TIME_NONE;
         discontinuity_count = 0;
