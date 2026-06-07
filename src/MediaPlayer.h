@@ -80,6 +80,9 @@ struct MediaEvaluation {
     GstClockTime pts_first;
     GstClockTime pts_last;
 
+    // B-frame presence (DTS ≠ PTS implies reordering, i.e. B-frames)
+    bool has_bframes;
+
     // Stream health indicators
     guint discontinuity_count;
     guint corrupted_count;
@@ -92,6 +95,7 @@ struct MediaEvaluation {
         gop_size_max = 0;
         pts_first = GST_CLOCK_TIME_NONE;
         pts_last = GST_CLOCK_TIME_NONE;
+        has_bframes = false;
         discontinuity_count = 0;
         corrupted_count = 0;
     }

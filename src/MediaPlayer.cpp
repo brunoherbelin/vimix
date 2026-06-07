@@ -329,6 +329,7 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
         guint discontinuity_count = 0;
         guint corrupted_count = 0;
         gint error_code = 0;
+        bool has_bframes = false;
         GstClockTime pts_first = GST_CLOCK_TIME_NONE;
         GstClockTime pts_last = GST_CLOCK_TIME_NONE;
         std::vector<GstClockTime> keyframe_pts;
@@ -391,6 +392,11 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
                                 if (d->keyframe_pts.size() < MAX_KEYFRAME_STORED)
                                     d->keyframe_pts.push_back(buf->pts);
                             }
+                            if (!d->has_bframes &&
+                                    GST_CLOCK_TIME_IS_VALID(buf->dts) &&
+                                    GST_CLOCK_TIME_IS_VALID(buf->pts) &&
+                                    buf->dts != buf->pts)
+                                d->has_bframes = true;
                             if (GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_DISCONT))
                                 d->discontinuity_count++;
                             if (GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_CORRUPTED))
@@ -467,7 +473,8 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
     eval.keyframe_pts       = std::move(probe_data.keyframe_pts);
     eval.pts_first          = probe_data.pts_first;
     eval.pts_last           = probe_data.pts_last;
-    eval.discontinuity_count = probe_data.discontinuity_count == 0 ? 0 : probe_data.discontinuity_count - 1; 
+    eval.has_bframes        = probe_data.has_bframes;
+    eval.discontinuity_count = probe_data.discontinuity_count == 0 ? 0 : probe_data.discontinuity_count - 1;
     eval.corrupted_count    = probe_data.corrupted_count;
 
     if (!probe_data.gop_sizes.empty()) {
@@ -1648,10 +1655,11 @@ void MediaPlayer::update()
                 if (!evaluation_.log.empty())
                     Log::Warning("MediaPlayer %s Evaluation: %s", std::to_string(id_).c_str(), evaluation_.log.c_str());
                 else {
-                    Log::Info("MediaPlayer %s Evaluation: %lu frames, %lu keyframes, GOP %d-%d",
+                    Log::Info("MediaPlayer %s Evaluation: %lu frames, %lu keyframes, GOP %d-%d, B-frames %d",
                           std::to_string(id_).c_str(),
                           evaluation_.frame_count, evaluation_.keyframe_count,
-                          evaluation_.gop_size_min, evaluation_.gop_size_max);
+                          evaluation_.gop_size_min, evaluation_.gop_size_max,
+                          evaluation_.has_bframes ? 1 : 0);
                     // adjust timeline to media frames range 
                     timeline_.setFirst(evaluation_.pts_first);
                     timeline_.setLast(evaluation_.pts_last);

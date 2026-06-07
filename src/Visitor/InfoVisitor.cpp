@@ -110,7 +110,7 @@ void InfoVisitor::visit(MediaPlayer &mp)
                             oss << " (1 every " << mp.evaluation().gop_size_max << " frames, ";
                         if (mp.evaluation().gop_size_max < 1 )
                             oss << "cannot play backward)";
-                        else if (mp.evaluation().gop_size_max * mp.height() > 35000 )
+                        else if (mp.evaluation().gop_size_max * mp.height() > 35000 || mp.evaluation().has_bframes)
                             oss << "hard to play backward)";
                         else
                             oss << "can play backward)";
@@ -125,7 +125,7 @@ void InfoVisitor::visit(MediaPlayer &mp)
                 }
                 else {
                     static const char* animation[] = { ICON_FA_HOURGLASS_START,ICON_FA_HOURGLASS_HALF,ICON_FA_HOURGLASS_END,ICON_FA_HOURGLASS };
-                    oss << ", Keyframes:  " << animation[(g_get_monotonic_time() / 300000) % 4];
+                    oss << " " << animation[(g_get_monotonic_time() / 300000) % 4];
                 }
             }
         }
