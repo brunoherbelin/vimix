@@ -633,6 +633,7 @@ void MediaPlayer::execute_open()
 
     // hack to compensate for lack of PTS in gif animations
     if (media_.codec_name.compare("image/gst-libav-gif") == 0) {
+        media_.codec_name = "GIF";
         video_filter_ = "videorate rate=1.0";
         video_filter_available_ = false;
     }
@@ -1062,8 +1063,6 @@ void MediaPlayer::close()
     rate_ = 1.0;
     rate_change_ = RATE_CHANGE_NONE;
     position_ = GST_CLOCK_TIME_NONE;
-    video_filter_ = "";
-    video_filter_available_ = true;
 
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_VFRAME; i++) {
