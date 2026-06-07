@@ -96,32 +96,31 @@ void InfoVisitor::visit(MediaPlayer &mp)
     else {
         if (brief_) {
             oss << SystemToolkit::filename(mp.filename()) << std::endl;
-            oss << mp.media().codec_name.substr(0, mp.media().codec_name.find_first_of(" (,")) << ", ";
+            oss << mp.media().codec_name.substr(0, mp.media().codec_name.find_first_of("(,")) << ", ";
             oss << mp.width() << " x " << mp.height();
             if (!mp.singleFrame() && mp.frameRate() > 0.)
                 oss << ", " << std::fixed << std::setprecision(1) << mp.frameRate() << " fps";
             if (!mp.media().isimage) {
                 if (mp.evaluation().done) {
-                    if (mp.evaluation().log.empty()) {
-                        oss << ", Keyframes: " << mp.evaluation().keyframe_count;
-                        oss << " / " << mp.evaluation().frame_count;
+                    if (mp.evaluation().log.empty() && mp.evaluation().keyframe_count > 0) {
+                        oss << ", " << mp.evaluation().keyframe_count << " keyframes";
                         if (mp.evaluation().gop_size_max - mp.evaluation().gop_size_min > 1)
-                            oss << " (1 key every " << mp.evaluation().gop_size_min << "-" << mp.evaluation().gop_size_max << " frames, ";
+                            oss << " (1 every " << mp.evaluation().gop_size_min << "-" << mp.evaluation().gop_size_max << " frames, ";
                         else                            
-                            oss << " (1 key every " << mp.evaluation().gop_size_max << " frames, ";
+                            oss << " (1 every " << mp.evaluation().gop_size_max << " frames, ";
                         if (mp.evaluation().gop_size_max < 1 )
-                            oss << "NO backward playback)";
+                            oss << "cannot play backward)";
                         else if (mp.evaluation().gop_size_max * mp.height() > 35000 )
-                            oss << "bad backward playback)";
+                            oss << "hard to play backward)";
                         else
-                            oss << "OK backward playback)";
+                            oss << "can play backward)";
                         if (mp.evaluation().discontinuity_count > 0 )
                             oss << ", " << mp.evaluation().discontinuity_count << " discontinuities";
                         if (mp.evaluation().corrupted_count > 0 )
                             oss << ", " << mp.evaluation().corrupted_count << " corrupted frames";
                     } 
                     else {
-                        oss << ", " << mp.evaluation().log;
+                        oss << " " << mp.evaluation().log;
                     }
                 }
                 else {
@@ -133,7 +132,7 @@ void InfoVisitor::visit(MediaPlayer &mp)
         else {
             oss << mp.filename() << std::endl;
             oss << mp.media().codec_name << std::endl;
-            oss << mp.width() << " x " << mp.height() ;
+            oss << mp.width() << " x " << mp.height() << " px";
             if (!mp.singleFrame() && mp.frameRate() > 0.)
                 oss << ", " << std::fixed << std::setprecision(1) << mp.frameRate() << " fps";
         }
