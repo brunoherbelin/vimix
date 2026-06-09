@@ -3027,12 +3027,13 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         const ImVec2 area = ImGui::GetContentRegionAvail();
         static uint _status = 0;  // 0:unknown, 1:ok, 2:error
         static std::string _status_message = "";
-        static std::vector< std::pair< std::string, std::string> > _examples = { {"Primary color", "frei0r-filter-primaries" },
+        static std::vector< std::pair< std::string, std::string> > _examples = { 
+                                                                                 {"Thermal", "coloreffects preset=heat"},
+                                                                                 {"Afterimage", "streaktv"},
+                                                                                 {"Primary color", "frei0r-filter-primaries" },
                                                                                  {"Histogram", "frei0r-filter-levels"},
                                                                                  {"Emboss", "frei0r-filter-emboss"},
-                                                                                 {"Denoise", "frei0r-filter-hqdn3d spatial=0.05 temporal=0.1"},
-                                                                                 {"Thermal", "coloreffects preset=heat"},
-                                                                                 {"Afterimage", "streaktv"}
+                                                                                 {"Denoise", "frei0r-filter-hqdn3d spatial=0.05 temporal=0.1"}
                                                                                };
         static ImVec2 fieldsize(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 70);
         static int numlines = 0;
