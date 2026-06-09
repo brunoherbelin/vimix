@@ -1744,8 +1744,12 @@ void Mixer::close(bool smooth)
         // attach the SessionSource to the transition view
         transition_.attach(ts);
     }
-    else
+    else {
         set( new Session );
+
+        // switch Mixing view 
+        setView(View::MIXING);
+    }
 
     // closing session : filename at font in history should not be reloaded
     Settings::application.recentSessions.front_is_valid = false;
