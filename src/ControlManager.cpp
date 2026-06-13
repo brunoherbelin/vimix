@@ -1247,7 +1247,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             target->call( new SetBlending(blend_mode), true);
         }
         /// e.g. '/vimix/name/sync' or '/vimix/name/info'
-        else if ( attribute.compare(OSC_SYNC) == 0 || attribute.compare(OSC_INFO) == 0) {
+        else if ( attribute.compare(OSC_SYNC) == 0 || attribute.compare(OSC_GET) == 0) {
             // this will require to send feedback status about source
             send_feedback = true;
         }

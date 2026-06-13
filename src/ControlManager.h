@@ -13,6 +13,7 @@
 #include "ip/UdpSocket.h"
 
 #define OSC_SYNC               "/sync"
+#define OSC_GET                "/get"
 
 #define OSC_INFO               "/info"
 #define OSC_INFO_LOG           "/log"
