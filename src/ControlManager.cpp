@@ -1536,6 +1536,18 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
             address += OSC_SOURCE_NAME;
             p << osc::BeginMessage( address.c_str() ) << _s->name().c_str() << osc::EndMessage;
         }
+        else if (attr.compare("index") == 0) {
+            address += "/index";
+            SourceList::iterator it = Mixer::manager().session()->find(_s);
+            if (it != Mixer::manager().session()->end()) {
+                int sourceIndex = Mixer::manager().session()->index(it);
+                p << osc::BeginMessage( address.c_str() ) << sourceIndex << osc::EndMessage;
+            }
+        }
+        else if (attr.compare("failed") == 0) {
+            address += "/failed";
+            p << osc::BeginMessage( address.c_str() ) << (_s->failed() ? 1.f : 0.f) << osc::EndMessage;
+        }
         else if (attr.compare("lock") == 0) {
             address += OSC_SOURCE_LOCK;
             p << osc::BeginMessage( address.c_str() ) << (_s->locked() ? 1.f : 0.f) << osc::EndMessage;
@@ -1589,10 +1601,21 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
             }
             p << osc::BeginMessage( address.c_str() ) << v << osc::EndMessage;
         }
+        else if (attr.compare("uri") == 0) {
+            address += "/uri";
+            if (_ms) {
+                std::string v = _ms->mediaplayer()->uri();
+                p << osc::BeginMessage( address.c_str() ) << v.c_str() << osc::EndMessage;
+            }
+        }
         else if (attr.compare("speed") == 0) {
             address += OSC_SOURCE_SPEED;
             float v = _ms ? (float)_ms->mediaplayer()->playSpeed() : 1.f;
             p << osc::BeginMessage( address.c_str() ) << v << osc::EndMessage;
+        }
+        else if (attr.compare("correction") == 0) {
+            address += OSC_SOURCE_CORRECTION;
+            p << osc::BeginMessage( address.c_str() ) << (_s->imageProcessingEnabled() ? 1.f : 0.f) << osc::EndMessage;
         }
         else if (attr.compare("brightness") == 0) {
             address += OSC_SOURCE_BRIGHTNESS;
