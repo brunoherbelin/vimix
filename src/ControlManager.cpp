@@ -1048,26 +1048,24 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/gamma f 1.0'
         else if ( attribute.compare(OSC_SOURCE_GAMMA) == 0) {
-            glm::vec4 g = target->processingShader()->gamma;
             float val = 0.f, t = 0.f;
             arguments >> val;
             if (arguments.Eos())
                 arguments >> osc::EndMessage;
             else
                 arguments >> t >> osc::EndMessage;
-            g.w = powf(10.f, val);
-            target->call( new SetGamma( g, t ), true );
+            target->call( new SetGammaValue( powf(10.f, val), t ), true );
         }
         /// e.g. '/vimix/current/color fff 1.0 0.5 0.9'
         else if ( attribute.compare(OSC_SOURCE_COLOR) == 0) {
-            glm::vec4 g = target->processingShader()->gamma;
+            glm::vec3 g = glm::vec3(1.f);
             float t = 0.f;
             arguments >> g.x >> g.y >> g.z;
             if (arguments.Eos())
                 arguments >> osc::EndMessage;
             else
                 arguments >> t >> osc::EndMessage;
-            target->call( new SetGamma( g, t ), true );
+            target->call( new SetGammaColor( g, t ), true );
         }
         /// e.g. '/vimix/current/invert f 1'
         else if ( attribute.compare(OSC_SOURCE_INVERT) == 0) {

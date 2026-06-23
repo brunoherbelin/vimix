@@ -6,6 +6,8 @@
 #include <future>
 #include <glm/glm.hpp>
 
+#include <Scene/Scene.h>
+
 class Visitor;
 class Source;
 class ImageProcessingShader;
@@ -44,6 +46,8 @@ public:
         CALLBACK_RESETGEO,
         CALLBACK_LOCK,
         CALLBACK_GAMMA,
+        CALLBACK_GAMMA_VALUE,
+        CALLBACK_GAMMA_COLOR,
         CALLBACK_BRIGHTNESS,
         CALLBACK_CONTRAST,
         CALLBACK_SATURATION,
@@ -475,6 +479,20 @@ public:
     SourceCallback *reverse(Source *s) const override;
     CallbackType type () const override { return CALLBACK_GAMMA; }
     void accept (Visitor& v) override;
+};
+
+class SetGammaValue : public SetGamma
+{
+public:
+    SetGammaValue (float g = 0.f, float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_GAMMA_VALUE; }
+};
+
+class SetGammaColor : public SetGamma
+{
+public:
+    SetGammaColor (glm::vec3 c = glm::vec3(1.f), float ms = 0.f, bool revert = false);
+    CallbackType type () const override { return CALLBACK_GAMMA_COLOR; }
 };
 
 class SetFilter : public SourceCallback

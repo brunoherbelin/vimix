@@ -1139,7 +1139,17 @@ void SetPosterize::writeValue(Source *s, float val)
 SetGamma::SetGamma(glm::vec4 g, float ms, bool revert) : SourceCallback( revert),
     duration_(ms), start_(glm::vec4()), target_(g)
 {
-    start_ = glm::clamp(start_, glm::vec4(0.f), glm::vec4(10.f));
+}
+
+SetGammaValue::SetGammaValue(float g, float ms, bool revert) : 
+               SetGamma( glm::vec4(-1.f, -1.f, -1.f, glm::clamp(g, 0.1f, 10.f)  ), ms, revert)
+
+{
+}
+
+SetGammaColor::SetGammaColor(glm::vec3 c, float ms, bool revert) : 
+               SetGamma( glm::vec4(glm::clamp(c, glm::vec3(0.f), glm::vec3(1.f)), -1.f), ms, revert)
+{
 }
 
 void SetGamma::update(Source *s, float dt)
@@ -1163,15 +1173,40 @@ void SetGamma::update(Source *s, float dt)
 
         // time-out or instantaneous
         if ( !(ABS(duration_) > 0.f) || progress > duration_ ) {
-            // apply target
-            s->processingShader()->gamma = target_;
+            // apply target color if target w is negative, otherwise apply target gamma
+            if (target_.w < 0.f) {
+                s->processingShader()->gamma.x = target_.x;
+                s->processingShader()->gamma.y = target_.y;
+                s->processingShader()->gamma.z = target_.z;
+            }
+            else {
+                // clamp value to avoid invalid gamma values
+                target_.w = glm::clamp(target_.w, 0.1f, 10.f);
+                // apply only gamma value if target color is negative
+                if (target_.x < 0.f || target_.y < 0.f || target_.z < 0.f) 
+                    s->processingShader()->gamma.w = target_.w;
+                // general case, apply target gamma color and value
+                else
+                    s->processingShader()->gamma = target_;
+            }
             // done
             status_ = FINISHED;
         }
         // perform iteration of interpolation
         else {
-            // apply calculated intermediate
-            s->processingShader()->gamma = glm::mix(start_, target_, progress/duration_);
+            // apply calculated intermediate (as above but for mixed values)
+            if (target_.w < 0.f) {
+                s->processingShader()->gamma.x = glm::mix(start_.x, target_.x, progress/duration_);
+                s->processingShader()->gamma.y = glm::mix(start_.y, target_.y, progress/duration_);
+                s->processingShader()->gamma.z = glm::mix(start_.z, target_.z, progress/duration_);
+            }
+            else {
+                target_.w = glm::clamp(target_.w, 0.1f, 10.f);
+                if (target_.x < 0.f || target_.y < 0.f || target_.z < 0.f) 
+                    s->processingShader()->gamma.w = glm::mix(start_.w, target_.w, progress/duration_);
+                else
+                    s->processingShader()->gamma = glm::mix(start_, target_, progress/duration_);
+            }
         }
     }
 }
