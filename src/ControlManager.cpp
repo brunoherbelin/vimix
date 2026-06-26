@@ -40,6 +40,8 @@
 #include "Mixer.h"
 #include "Source/Source.h"
 #include "Source/TextSource.h"
+#include "Source/MediaSource.h"
+#include "MediaPlayer.h"
 #include "Source/SourceCallback.h"
 #include "ImageProcessingShader.h"
 #include "ActionManager.h"
@@ -143,7 +145,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     // apply attributes
                     if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
                         // and send back feedback if needed
-                        Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                        Control::manager().sendSourceAttibutes(remoteEndpoint, m.ArgumentStream(),  OSC_CURRENT);
                 }
             }
             // Selection sources target: apply attribute to all sources of the selection
@@ -153,7 +155,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     // apply attributes
                     if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
                         // and send back feedback if needed
-                        Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                        Control::manager().sendSourceAttibutes(remoteEndpoint, m.ArgumentStream(),  OSC_CURRENT);
                 }
             }
             // Current source target: apply attribute to the current sources
@@ -196,7 +198,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     // apply attributes to current source
                     if ( Control::manager().receiveSourceAttribute( Mixer::manager().currentSource(), attribute, m.ArgumentStream()) )
                         // and send back feedback if needed
-                        Control::manager().sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+                        Control::manager().sendSourceAttibutes(remoteEndpoint, m.ArgumentStream(), OSC_CURRENT);
                 }
             }
             // Batch sources target: apply attribute to all sources in the Batch
@@ -233,7 +235,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                             // apply attributes to source
                             if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
                                 // and send back feedback if needed
-                                Control::manager().sendSourceAttibutes(remoteEndpoint, target, s);
+                                Control::manager().sendSourceAttibutes(remoteEndpoint, m.ArgumentStream(), target, s);
                         }
                         else
                             Log::Info(CONTROL_OSC_MSG "No source at ID %s targetted by %s.", num.c_str(), sender);
@@ -258,7 +260,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                         // apply attributes to source
                         if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
                             // and send back feedback if needed
-                            Control::manager().sendSourceAttibutes(remoteEndpoint, target, s);
+                            Control::manager().sendSourceAttibutes(remoteEndpoint, m.ArgumentStream(), target, s);
                     }
                     else
                         Log::Info(CONTROL_OSC_MSG "Unknown target '%s' requested by %s.", target.c_str(), sender);
@@ -1046,26 +1048,24 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
         }
         /// e.g. '/vimix/current/gamma f 1.0'
         else if ( attribute.compare(OSC_SOURCE_GAMMA) == 0) {
-            glm::vec4 g = target->processingShader()->gamma;
             float val = 0.f, t = 0.f;
             arguments >> val;
             if (arguments.Eos())
                 arguments >> osc::EndMessage;
             else
                 arguments >> t >> osc::EndMessage;
-            g.w = powf(10.f, val);
-            target->call( new SetGamma( g, t ), true );
+            target->call( new SetGammaValue( powf(10.f, val), t ), true );
         }
         /// e.g. '/vimix/current/color fff 1.0 0.5 0.9'
         else if ( attribute.compare(OSC_SOURCE_COLOR) == 0) {
-            glm::vec4 g = target->processingShader()->gamma;
+            glm::vec3 g = glm::vec3(1.f);
             float t = 0.f;
             arguments >> g.x >> g.y >> g.z;
             if (arguments.Eos())
                 arguments >> osc::EndMessage;
             else
                 arguments >> t >> osc::EndMessage;
-            target->call( new SetGamma( g, t ), true );
+            target->call( new SetGammaColor( g, t ), true );
         }
         /// e.g. '/vimix/current/invert f 1'
         else if ( attribute.compare(OSC_SOURCE_INVERT) == 0) {
@@ -1244,8 +1244,8 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             // operate on source
             target->call( new SetBlending(blend_mode), true);
         }
-        /// e.g. '/vimix/name/sync'
-        else if ( attribute.compare(OSC_SYNC) == 0) {
+        /// e.g. '/vimix/name/sync' or '/vimix/name/info'
+        else if ( attribute.compare(OSC_SYNC) == 0 || attribute.compare(OSC_GET) == 0) {
             // this will require to send feedback status about source
             send_feedback = true;
         }
@@ -1476,27 +1476,43 @@ void Control::receiveStreamAttribute(const std::string &attribute,
 
 }
 
-void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::string target, Source *s)
+void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, 
+                                    osc::ReceivedMessageArgumentStream arguments,
+                                    std::string target, Source *s)
 {
-    // default values
-    std::string name = "";
-    float lock = 0.f;
-    float play = 0.f;
-    float depth = 0.f;
-    float alpha = 0.f;
-
     // get source or current source
     Source *_s = s;
     if ( target.compare(OSC_CURRENT) == 0 )
         _s = Mixer::manager().currentSource();
 
-    // fill values if the source is valid
-    if (_s!=nullptr) {
-        name  = _s->name();
-        lock  = _s->locked() ? 1.f : 0.f;
-        play  = _s->playing() ? 1.f : 0.f;
-        depth = _s->depth();
-        alpha = _s->alpha(true);
+    // ignore if no source 
+    if (!_s) 
+        return;
+
+    // MediaSource cast, needed for playback-only attributes (seek, speed)
+    MediaSource *_ms = dynamic_cast<MediaSource *>(_s);
+
+    // read arguments list of string
+    std::vector<std::string> attributes;    
+    while ( !arguments.Eos()) {
+        try {
+            // try to get a string
+            const char *label = nullptr;
+            arguments >> label ;
+            // if no exception, add to list of attributes to send
+            attributes.push_back(label);
+        }
+        catch (osc::WrongArgumentTypeException &) {
+        }
+    }
+
+    // if no attribute is given, send default list of attributes 
+    if (attributes.size() == 0) {
+        attributes.push_back("name");
+        attributes.push_back("lock");
+        attributes.push_back("play");
+        attributes.push_back("depth");
+        attributes.push_back("alpha");
     }
 
     // build socket to send message to indicated endpoint
@@ -1506,25 +1522,156 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::str
     char buffer[IP_MTU_SIZE];
     osc::OutboundPacketStream p( buffer, IP_MTU_SIZE );
 
-    // create bundle
     p.Clear();
     p << osc::BeginBundle();
 
-    /// name
-    std::string address = std::string(OSC_PREFIX) + target + OSC_SOURCE_NAME;
-    p << osc::BeginMessage( address.c_str() ) << name.c_str() << osc::EndMessage;
-    /// Play status
-    address = std::string(OSC_PREFIX) + target + OSC_SOURCE_LOCK;
-    p << osc::BeginMessage( address.c_str() ) << lock << osc::EndMessage;
-    /// Play status
-    address = std::string(OSC_PREFIX) + target + OSC_SOURCE_PLAY;
-    p << osc::BeginMessage( address.c_str() ) << play << osc::EndMessage;
-    /// Depth
-    address = std::string(OSC_PREFIX) + target + OSC_SOURCE_DEPTH;
-    p << osc::BeginMessage( address.c_str() ) << depth << osc::EndMessage;
-    /// Alpha
-    address = std::string(OSC_PREFIX) + target + OSC_SOURCE_ALPHA;
-    p << osc::BeginMessage( address.c_str() ) << alpha << osc::EndMessage;
+    for (const std::string &attr : attributes) {
+
+        // message always starts with '/vimix/' + target 
+        std::string address = std::string(OSC_PREFIX) + target;
+
+        if (attr.compare("name") == 0) {
+            address += OSC_SOURCE_NAME;
+            p << osc::BeginMessage( address.c_str() ) << _s->name().c_str() << osc::EndMessage;
+        }
+        else if (attr.compare("index") == 0) {
+            address += "/index";
+            SourceList::iterator it = Mixer::manager().session()->find(_s);
+            if (it != Mixer::manager().session()->end()) {
+                int sourceIndex = Mixer::manager().session()->index(it);
+                p << osc::BeginMessage( address.c_str() ) << sourceIndex << osc::EndMessage;
+            }
+        }
+        else if (attr.compare("failed") == 0) {
+            address += "/failed";
+            p << osc::BeginMessage( address.c_str() ) << (_s->failed() ? 1.f : 0.f) << osc::EndMessage;
+        }
+        else if (attr.compare("lock") == 0) {
+            address += OSC_SOURCE_LOCK;
+            p << osc::BeginMessage( address.c_str() ) << (_s->locked() ? 1.f : 0.f) << osc::EndMessage;
+        }
+        else if (attr.compare("play") == 0) {
+            address += OSC_SOURCE_PLAY;
+            p << osc::BeginMessage( address.c_str() ) << (_s->playing() ? 1.f : 0.f) << osc::EndMessage;
+        }
+        else if (attr.compare("pause") == 0) {
+            address += OSC_SOURCE_PAUSE;
+            p << osc::BeginMessage( address.c_str() ) << (_s->playing() ? 0.f : 1.f) << osc::EndMessage;
+        }
+        else if (attr.compare("alpha") == 0) {
+            address += OSC_SOURCE_ALPHA;
+            p << osc::BeginMessage( address.c_str() ) << _s->alpha(true) << osc::EndMessage;
+        }
+        else if (attr.compare("transparency") == 0) {
+            address += OSC_SOURCE_TRANSPARENCY;
+            p << osc::BeginMessage( address.c_str() ) << 1.f - _s->alpha(false) << osc::EndMessage;
+        }
+        else if (attr.compare("depth") == 0) {
+            address += OSC_SOURCE_DEPTH;
+            p << osc::BeginMessage( address.c_str() ) << _s->depth() << osc::EndMessage;
+        }
+        else if (attr.compare("position") == 0) {
+            address += OSC_SOURCE_POSITION;
+            p << osc::BeginMessage( address.c_str() )
+              << _s->group(View::GEOMETRY)->translation_.x
+              << _s->group(View::GEOMETRY)->translation_.y
+              << osc::EndMessage;
+        }
+        else if (attr.compare("size") == 0) {
+            address += OSC_SOURCE_SIZE;
+            p << osc::BeginMessage( address.c_str() )
+              << _s->group(View::GEOMETRY)->scale_.x
+              << _s->group(View::GEOMETRY)->scale_.y
+              << osc::EndMessage;
+        }
+        else if (attr.compare("angle") == 0) {
+            address += OSC_SOURCE_ANGLE;
+            p << osc::BeginMessage( address.c_str() ) << _s->group(View::GEOMETRY)->rotation_.z << osc::EndMessage;
+        }
+        else if (attr.compare("seek") == 0) {
+            address += OSC_SOURCE_SEEK;
+            float v = 0.f;
+            if (_ms) {
+                GstClockTime dur = _ms->mediaplayer()->timeline()->duration();
+                GstClockTime pos = _ms->mediaplayer()->position();
+                if (GST_CLOCK_TIME_IS_VALID(dur) && dur > 0)
+                    v = (float)((double)pos / (double)dur);
+            }
+            p << osc::BeginMessage( address.c_str() ) << v << osc::EndMessage;
+        }
+        else if (attr.compare("uri") == 0) {
+            address += "/uri";
+            if (_ms) {
+                std::string v = _ms->mediaplayer()->uri();
+                p << osc::BeginMessage( address.c_str() ) << v.c_str() << osc::EndMessage;
+            }
+        }
+        else if (attr.compare("speed") == 0) {
+            address += OSC_SOURCE_SPEED;
+            float v = _ms ? (float)_ms->mediaplayer()->playSpeed() : 1.f;
+            p << osc::BeginMessage( address.c_str() ) << v << osc::EndMessage;
+        }
+        else if (attr.compare("correction") == 0) {
+            address += OSC_SOURCE_CORRECTION;
+            p << osc::BeginMessage( address.c_str() ) << (_s->imageProcessingEnabled() ? 1.f : 0.f) << osc::EndMessage;
+        }
+        else if (attr.compare("brightness") == 0) {
+            address += OSC_SOURCE_BRIGHTNESS;
+            p << osc::BeginMessage( address.c_str() ) << _s->processingShader()->brightness << osc::EndMessage;
+        }
+        else if (attr.compare("contrast") == 0) {
+            address += OSC_SOURCE_CONTRAST;
+            p << osc::BeginMessage( address.c_str() ) << _s->processingShader()->contrast << osc::EndMessage;
+        }
+        else if (attr.compare("saturation") == 0) {
+            address += OSC_SOURCE_SATURATION;
+            p << osc::BeginMessage( address.c_str() ) << _s->processingShader()->saturation << osc::EndMessage;
+        }
+        else if (attr.compare("hue") == 0) {
+            address += OSC_SOURCE_HUE;
+            p << osc::BeginMessage( address.c_str() ) << _s->processingShader()->hueshift << osc::EndMessage;
+        }
+        else if (attr.compare("threshold") == 0) {
+            address += OSC_SOURCE_THRESHOLD;
+            p << osc::BeginMessage( address.c_str() ) << _s->processingShader()->threshold << osc::EndMessage;
+        }
+        else if (attr.compare("gamma") == 0) {
+            address += OSC_SOURCE_GAMMA;
+            // encode as log10 to match the setter convention: val = log10(gamma.w)
+            p << osc::BeginMessage( address.c_str() ) << log10f(_s->processingShader()->gamma.w) << osc::EndMessage;
+        }
+        else if (attr.compare("color") == 0) {
+            address += OSC_SOURCE_COLOR;
+            p << osc::BeginMessage( address.c_str() )
+              << _s->processingShader()->gamma.x
+              << _s->processingShader()->gamma.y
+              << _s->processingShader()->gamma.z
+              << osc::EndMessage;
+        }
+        else if (attr.compare("posterize") == 0) {
+            address += OSC_SOURCE_POSTERIZE;
+            p << osc::BeginMessage( address.c_str() ) << (float)_s->processingShader()->nbColors << osc::EndMessage;
+        }
+        else if (attr.compare("invert") == 0) {
+            address += OSC_SOURCE_INVERT;
+            p << osc::BeginMessage( address.c_str() ) << (float)_s->processingShader()->invert << osc::EndMessage;
+        }
+        else if (attr.compare("corner") == 0) {
+            address += OSC_SOURCE_CORNER;
+            // inverse of the setter: corners[i] = data_[j].component -/+ 1
+            const Group *g = _s->group(View::GEOMETRY);
+            p << osc::BeginMessage( address.c_str() )
+              << g->data_[0].x - 1.f << g->data_[0].y - 1.f
+              << g->data_[1].x - 1.f << g->data_[1].y + 1.f
+              << g->data_[2].x + 1.f << g->data_[2].y - 1.f
+              << g->data_[3].x + 1.f << g->data_[3].y + 1.f
+              << osc::EndMessage;
+        }
+        else if (attr.compare("blending") == 0) {
+            address += OSC_SOURCE_BLENDING;
+            p << osc::BeginMessage( address.c_str() ) << (osc::int32)_s->blendingShader()->blending << osc::EndMessage;
+        }
+    }
 
     // send bundle
     p << osc::EndBundle;
@@ -1535,7 +1682,7 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, std::str
 void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::ReceivedMessageArgumentStream arguments)
 {
     // always start to send status of current source
-    sendSourceAttibutes(remoteEndpoint, OSC_CURRENT);
+    sendSourceAttibutes(remoteEndpoint, arguments, OSC_CURRENT);
 
     //  (if an argument is given, it indicates the number of sources to update)
     float N = Mixer::manager().numSource();

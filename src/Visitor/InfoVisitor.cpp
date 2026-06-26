@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <ostream>
 #include <vector>
 #include <sstream>
 #include <iomanip>
@@ -27,6 +28,7 @@
 #include <glm/gtc/matrix_access.hpp>
 
 
+#include "IconsFontAwesome5.h"
 #include "Scene/Scene.h"
 #include "MediaPlayer.h"
 #include "Source/MediaSource.h"
@@ -94,15 +96,43 @@ void InfoVisitor::visit(MediaPlayer &mp)
     else {
         if (brief_) {
             oss << SystemToolkit::filename(mp.filename()) << std::endl;
-            oss << mp.media().codec_name.substr(0, mp.media().codec_name.find_first_of(" (,")) << ", ";
+            oss << mp.media().codec_name.substr(0, mp.media().codec_name.find_first_of("(,")) << ", ";
             oss << mp.width() << " x " << mp.height();
             if (!mp.singleFrame() && mp.frameRate() > 0.)
-                oss << ", " << std::fixed << std::setprecision(0) << mp.frameRate() << " fps";
+                oss << ", " << std::fixed << std::setprecision(1) << mp.frameRate() << " fps";
+            if (!mp.media().isimage) {
+                if (mp.evaluation().done) {
+                    if (mp.evaluation().log.empty() && mp.evaluation().keyframe_count > 0) {
+                        oss << ", " << mp.evaluation().keyframe_count << " keyframes";
+                        if (mp.evaluation().gop_size_max - mp.evaluation().gop_size_min > 1)
+                            oss << " (1 every " << mp.evaluation().gop_size_min << "-" << mp.evaluation().gop_size_max << " frames, ";
+                        else                            
+                            oss << " (1 every " << mp.evaluation().gop_size_max << " frames, ";
+                        if (mp.evaluation().gop_size_max < 1 )
+                            oss << "cannot play backward)";
+                        else if (mp.evaluation().gop_size_max * mp.height() > 35000 || mp.evaluation().has_bframes)
+                            oss << "hard to play backward)";
+                        else
+                            oss << "can play backward)";
+                        if (mp.evaluation().discontinuity_count > 0 )
+                            oss << ", " << mp.evaluation().discontinuity_count << " discontinuities";
+                        if (mp.evaluation().corrupted_count > 0 )
+                            oss << ", " << mp.evaluation().corrupted_count << " corrupted frames";
+                    } 
+                    else {
+                        oss << " " << mp.evaluation().log;
+                    }
+                }
+                else {
+                    static const char* animation[] = { ICON_FA_HOURGLASS_START,ICON_FA_HOURGLASS_HALF,ICON_FA_HOURGLASS_END,ICON_FA_HOURGLASS };
+                    oss << " " << animation[(g_get_monotonic_time() / 300000) % 4];
+                }
+            }
         }
         else {
             oss << mp.filename() << std::endl;
             oss << mp.media().codec_name << std::endl;
-            oss << mp.width() << " x " << mp.height() ;
+            oss << mp.width() << " x " << mp.height() << " px";
             if (!mp.singleFrame() && mp.frameRate() > 0.)
                 oss << ", " << std::fixed << std::setprecision(1) << mp.frameRate() << " fps";
         }
@@ -111,7 +141,7 @@ void InfoVisitor::visit(MediaPlayer &mp)
     information_ = oss.str();
 
     // remember
-    if ( mp.isOpen() )
+    if ( mp.isOpen() && ( mp.evaluation().done || mp.media().isimage ) )
         current_id_ = mp.id();
 }
 
@@ -130,13 +160,9 @@ void InfoVisitor::visit(Stream &n)
 
 void InfoVisitor::visit (MediaSource& s)
 {
-    if (current_id_ == s.id())
-        return;
 
     s.mediaplayer()->accept(*this);
 
-    if (s.ready())
-        current_id_ = s.id();
 }
 
 void InfoVisitor::visit (SessionFileSource& s)

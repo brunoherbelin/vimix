@@ -2,8 +2,11 @@
 #define __GST_MEDIA_PLAYER_H_
 
 #include <string>
+#include <vector>
 #include <mutex>
 #include <future>
+#include <memory>
+#include <atomic>
 
 // GStreamer
 #include <gst/pbutils/gstdiscoverer.h>
@@ -20,6 +23,8 @@ class Visitor;
 #define MIN_PLAY_SPEED 0.1
 #define N_VFRAME 10
 #define DISCOVER_TIMOUT 15
+#define EVALUATE_TIMEOUT 5
+#define MAX_KEYFRAME_STORED 10000
 
 struct MediaInfo {
 
@@ -54,6 +59,45 @@ struct MediaInfo {
         dt  = GST_CLOCK_TIME_NONE;
         end = GST_CLOCK_TIME_NONE;
         log = "";
+    }
+};
+
+struct MediaEvaluation {
+
+    bool done;
+    std::string log;
+
+    // Frame-level timing & structure
+    guint64 frame_count;
+    guint64 keyframe_count;
+    std::vector<GstClockTime> keyframe_pts;  // capped at MAX_KEYFRAME_STORED
+
+    // GOP size distribution (in frames between consecutive keyframes)
+    guint gop_size_min;
+    guint gop_size_max;
+
+    // PTS range
+    GstClockTime pts_first;
+    GstClockTime pts_last;
+
+    // B-frame presence (DTS ≠ PTS implies reordering, i.e. B-frames)
+    bool has_bframes;
+
+    // Stream health indicators
+    guint discontinuity_count;
+    guint corrupted_count;
+
+    MediaEvaluation() {
+        done = false;
+        frame_count = 0;
+        keyframe_count = 0;
+        gop_size_min = 0;
+        gop_size_max = 0;
+        pts_first = GST_CLOCK_TIME_NONE;
+        pts_last = GST_CLOCK_TIME_NONE;
+        has_bframes = false;
+        discontinuity_count = 0;
+        corrupted_count = 0;
     }
 };
 
@@ -314,6 +358,12 @@ public:
     static MediaInfo UriDiscoverer(const std::string &uri);
     std::string log() const { return media_.log; }
 
+    /**
+     * Evaluator: headless pipeline scan filling MediaEvaluation
+     * */
+    static MediaEvaluation UriEvaluator(const std::string &uri, std::shared_ptr<std::atomic<bool>> cancelled);
+    MediaEvaluation evaluation() const;
+
 
 private:
 
@@ -329,6 +379,11 @@ private:
     FadingMode fading_mode_;
     std::future<MediaInfo> discoverer_;
     bool audio_enabled_;
+
+    // async evaluation
+    MediaEvaluation evaluation_;
+    std::future<MediaEvaluation> evaluator_;
+    std::shared_ptr<std::atomic<bool>> evaluator_cancel_;
 
     // GST & Play status
     GstClockTime position_;

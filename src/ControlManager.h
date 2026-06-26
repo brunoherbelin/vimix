@@ -13,6 +13,7 @@
 #include "ip/UdpSocket.h"
 
 #define OSC_SYNC               "/sync"
+#define OSC_GET                "/get"
 
 #define OSC_INFO               "/info"
 #define OSC_INFO_LOG           "/log"
@@ -172,7 +173,8 @@ protected:
     void receiveMultitouchAttribute(const std::string &attribute,
                                     osc::ReceivedMessageArgumentStream arguments);
     void sendSourceAttibutes(const IpEndpointName& remoteEndpoint,
-                             std::string target, Source *s = nullptr);
+                                    osc::ReceivedMessageArgumentStream arguments,
+                                    std::string target, Source *s = nullptr);
     void sendSourcesStatus(const IpEndpointName& remoteEndpoint,
                            osc::ReceivedMessageArgumentStream arguments);
     void sendBatchStatus(const IpEndpointName& remoteEndpoint);

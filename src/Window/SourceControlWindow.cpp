@@ -2407,6 +2407,14 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             current_loop = (int) mediaplayer_active_->loop();
             if ( ImGuiToolkit::IconMultistate(icons_loop, &current_loop, tooltips_loop) )
                 mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );
+            // disable bounce mode if GOP size is invalid
+            if (current_loop ==  (int) MediaPlayer::LOOP_BIDIRECTIONAL && mediaplayer_active_->evaluation().done && 
+                (mediaplayer_active_->evaluation().gop_size_min < 1 || 
+                mediaplayer_active_->evaluation().gop_size_max < 1 ) )
+            {      
+                current_loop++;   
+                mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );
+            }
 
             // speed slider
             ImGui::SameLine(0, h_space_);
@@ -2488,10 +2496,19 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             oss << ": Play forward";
             Action::manager().store(oss.str());
         }
-        if (ImGuiToolkit::MenuItemIcon(9,0, "Play backward", nullptr, current_play_speed<0)) {
-            mediaplayer_active_->setPlaySpeed( - ABS(mediaplayer_active_->playSpeed()) );
-            oss << ": Play backward";
-            Action::manager().store(oss.str());
+        // Enable backward play only if GOP size is valid
+        if (mediaplayer_active_->evaluation().done && 
+            mediaplayer_active_->evaluation().gop_size_min > 0 && 
+            mediaplayer_active_->evaluation().gop_size_max > 0)
+        {            
+            if (ImGuiToolkit::MenuItemIcon(9,0, "Play backward", nullptr, current_play_speed<0)) {
+                mediaplayer_active_->setPlaySpeed( - ABS(mediaplayer_active_->playSpeed()) );
+                oss << ": Play backward";
+                Action::manager().store(oss.str());
+            }
+        } 
+        else {
+            ImGuiToolkit::MenuItemIcon(9,0, "Play backward", nullptr, false, false);
         }
         if (ImGuiToolkit::MenuItemIcon(19,15, "Reset speed")) {
             mediaplayer_active_->setPlaySpeed(1.0);
@@ -3010,12 +3027,13 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         const ImVec2 area = ImGui::GetContentRegionAvail();
         static uint _status = 0;  // 0:unknown, 1:ok, 2:error
         static std::string _status_message = "";
-        static std::vector< std::pair< std::string, std::string> > _examples = { {"Primary color", "frei0r-filter-primaries" },
+        static std::vector< std::pair< std::string, std::string> > _examples = { 
+                                                                                 {"Thermal", "coloreffects preset=heat"},
+                                                                                 {"Afterimage", "streaktv"},
+                                                                                 {"Primary color", "frei0r-filter-primaries" },
                                                                                  {"Histogram", "frei0r-filter-levels"},
                                                                                  {"Emboss", "frei0r-filter-emboss"},
-                                                                                 {"Denoise", "frei0r-filter-hqdn3d spatial=0.05 temporal=0.1"},
-                                                                                 {"Thermal", "coloreffects preset=heat"},
-                                                                                 {"Afterimage", "streaktv"}
+                                                                                 {"Denoise", "frei0r-filter-hqdn3d spatial=0.05 temporal=0.1"}
                                                                                };
         static ImVec2 fieldsize(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 70);
         static int numlines = 0;

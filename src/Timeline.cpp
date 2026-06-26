@@ -81,6 +81,8 @@ Timeline& Timeline::operator = (const Timeline& b)
             this->step_ = b.step_;
         if (b.first_ != GST_CLOCK_TIME_NONE)
             this->first_ = b.first_;
+        if (b.last_ != GST_CLOCK_TIME_NONE)
+            this->last_ = b.last_;
         this->gaps_ = b.gaps_;
         this->gaps_array_need_update_ = b.gaps_array_need_update_;
         memcpy( this->gapsArray_, b.gapsArray_, MAX_TIMELINE_ARRAY * sizeof(float));
@@ -99,6 +101,7 @@ void Timeline::reset()
     timing_.reset();
     timing_.begin = 0;
     first_ = GST_CLOCK_TIME_NONE;
+    last_ = GST_CLOCK_TIME_NONE;
     step_ = GST_CLOCK_TIME_NONE;
 
     clearGaps();
@@ -113,12 +116,19 @@ bool Timeline::is_valid() const
 
 void Timeline::setFirst(GstClockTime first)
 {
-    first_ = first;
+    if (first != GST_CLOCK_TIME_NONE && first > 0)
+        first_ = first;
 }
 
 void Timeline::setEnd(GstClockTime end)
 {
     timing_.end = end;
+}
+
+void Timeline::setLast(GstClockTime last)
+{
+    if (last != GST_CLOCK_TIME_NONE && last > 0)
+        last_ = last;
 }
 
 void Timeline::setStep(GstClockTime dt)

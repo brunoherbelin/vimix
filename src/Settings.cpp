@@ -392,6 +392,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     XMLElement *controlConfNode = xmlDoc.NewElement( "Control" );
     controlConfNode->SetAttribute("osc_port_receive", application.control.osc_port_receive);
     controlConfNode->SetAttribute("osc_port_send", application.control.osc_port_send);
+    pRoot->InsertEndChild(controlConfNode);
 
     // First save : create filename
     if (settingsFilename.empty())

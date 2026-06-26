@@ -683,15 +683,15 @@ bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
 
         // Transcoding options
         ImGuiToolkit::ButtonSwitch( "Backward playback", &Settings::application.transcode_options[0],
-        "Optimize the video for backward playback by adding more keyframes.", transcoder == nullptr);
+        "Optimize for backward playback (1 keyframe every 15-30 frames).", transcoder == nullptr);
         ImGuiToolkit::ButtonSwitch( "Animation content", &Settings::application.transcode_options[1],
-        "Optimize the video encoding for animation content (cartoons, "
+        "Optimize image encoding for animation content (cartoons, "
         "drawings, computer graphics) to preserve more details.", transcoder == nullptr);
         ImGuiToolkit::ButtonSwitch( "Constant Quality", &Settings::application.transcode_options[2],
         "Use Constant Quality encoding to preserve more visual details "
-        "(produces larger files).", transcoder == nullptr);
+        "(might produce larger files).", transcoder == nullptr);
         ImGuiToolkit::ButtonSwitch( "Remove audio", &Settings::application.transcode_options[3],
-        "Remove the audio track from the video during transcoding.", transcoder == nullptr);
+        "Remove audio tracks from the video.", transcoder == nullptr);
 
         // Start transcoding if not already started for current source
         if (transcoder == nullptr) {

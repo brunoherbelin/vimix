@@ -212,6 +212,14 @@ bool Exporter::start()
     for (const auto &f : files_)
         dirs_set.insert(SystemToolkit::path_filename(f));
 
+    // error if one of the dirs_set is the same as the destination (can't patch sequence references in that case)
+    if (dirs_set.count(destination_) > 0) {
+        error_message_ = "Cannot export: destination folder is the same as a the session or a source folder.";
+        success_ = false;
+        finished_ = true;
+        return false;
+    }
+
     task_ = std::async(std::launch::async, [this, files_set, dirs_set]() {
         for (const auto &src : files_) {
             if (cancel_) break;

@@ -116,6 +116,7 @@ public:
 
     // global properties of the timeline
     void setEnd(GstClockTime end);
+    void setLast(GstClockTime end);
     void setStep(GstClockTime dt);
     void setFirst(GstClockTime first);
     void setTiming(TimeInterval interval, GstClockTime step = GST_CLOCK_TIME_NONE);
@@ -125,9 +126,9 @@ public:
     inline GstClockTime end() const { return timing_.end; }
     inline GstClockTime duration() const { return timing_.duration(); }
     inline GstClockTime first() const { return first_; }
-    inline GstClockTime last() const { return timing_.end - step_; }
+    inline GstClockTime last() const { return last_ != GST_CLOCK_TIME_NONE ? last_ : timing_.end - step_; }
     inline GstClockTime step() const { return step_; }
-    inline size_t numFrames() const { if (step_) return duration() / step_; else return 1; }
+    inline size_t numFrames() const { if (step_) return end() / step_; else return 1; }
     inline TimeInterval interval() const { return timing_; }
     GstClockTime next(GstClockTime time) const;
     GstClockTime previous(GstClockTime time) const;
@@ -203,6 +204,7 @@ private:
     // global information on the timeline
     TimeInterval timing_;
     GstClockTime first_;
+    GstClockTime last_;
     GstClockTime step_;
 
     // main data structure containing list of gaps in the timeline

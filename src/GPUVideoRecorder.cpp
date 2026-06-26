@@ -108,7 +108,7 @@ std::string GPUVideoRecorder::buildPipeline(Profile profile, GstCaps *write_caps
             break;
         case NVENC_H265_HQ:
             pipeline += "nvh265enc rc-mode=constqp qp-const=18 ! "
-                       "video/x-h265, profile=main-10 ! h265parse ! ";
+                       "video/x-h265, profile=main ! h265parse ! ";
             break;
         case VAAPI_H264_REALTIME:
             pipeline += "vaapih264enc rate-control=cqp init-qp=26 ! "
@@ -615,8 +615,8 @@ GstBusSyncReply GPUVideoRecorder::bus_sync_handler(GstBus *, GstMessage *msg, gp
         Log::Warning("GPU Video Recording : Error %s", error->message);
         g_error_free(error);
 
-        if (grabber)
-            grabber->active_ = false;
+        if (grabber) 
+            grabber->finished_ = true;
     }
 
     // Handle EOS
