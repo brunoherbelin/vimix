@@ -163,6 +163,7 @@ bool Transcoder::start(const TranscoderOptions& options)
     guint source_video_bitrate = 0;
     guint source_audio_bitrate = 0;
     bool has_audio = false;
+    bool source_interlaced = false;
     GstClockTime duration = GST_CLOCK_TIME_NONE;
     guint frame_height = 0;
 
@@ -192,6 +193,9 @@ bool Transcoder::start(const TranscoderOptions& options)
                 source_video_bitrate = gst_discoverer_video_info_get_max_bitrate(vinfo);
             }
             frame_height = gst_discoverer_video_info_get_height(vinfo);
+            source_interlaced = gst_discoverer_video_info_is_interlaced(vinfo);
+            if (source_interlaced)
+                Log::Info("Transcoder: Source video is interlaced, deinterlacing will be applied");
             gst_discoverer_stream_info_list_free(video_streams);
         } else {
             Log::Warning("Transcoder: No video stream detected");
@@ -380,6 +384,27 @@ bool Transcoder::start(const TranscoderOptions& options)
 
     // transcoder should try to avoid reencoding streams where reencoding is not strictly needed
     gst_transcoder_set_avoid_reencoding(transcoder, true);
+
+    // If the source is interlaced, request deinterlacing. 
+    // set 'video-filter' property of transcoder to a deinterlace element via
+    // 'deep-element-added' (before the transcoder starts changing its state).
+    if (source_interlaced) {
+        GstElement *pipeline = gst_transcoder_get_pipeline(transcoder);
+        if (pipeline) {
+            g_signal_connect(pipeline, "deep-element-added",
+                              G_CALLBACK(+[](GstBin *, GstBin *, GstElement *element, gpointer) {
+                GstElementFactory *factory = gst_element_get_factory(element);
+                if (factory && g_strcmp0(GST_OBJECT_NAME(factory), "transcodebin") == 0) {
+                    GstElement *deinterlace = gst_element_factory_make("deinterlace", nullptr);
+                    if (deinterlace)
+                        g_object_set(element, "video-filter", deinterlace, NULL);
+                    else
+                        Log::Warning("Transcoder: Failed to create deinterlace element");
+                }
+            }), nullptr);
+            gst_object_unref(pipeline);
+        }
+    }
 
     // Connect to transcoder signals
     GstTranscoderSignalAdapter *transcoder_signal = gst_transcoder_get_sync_signal_adapter (transcoder);
