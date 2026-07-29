@@ -21,7 +21,7 @@ public:
     ~OutputWindow();
 
     // initialization
-    bool init(GLFWmonitor *monitor, GLFWwindow *share);
+    bool init(GLFWmonitor *monitor, GLFWwindow *share, glm::ivec4 geom);
     void terminate();
     inline bool isInitialized() const { return initialized_; }
 
@@ -57,6 +57,7 @@ private:
     bool initialized_;
 
     // Drawing of framebuffer
+    glm::ivec4 geometry_; // position and size of window in framebuffer coordinates
     GlmToolkit::RenderingAttrib window_attributes_;        
     OutputWindowSurface *surface_;
 

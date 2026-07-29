@@ -580,10 +580,15 @@ glm::vec3 Rendering::monitorsResolution()
 {
     std::lock_guard<std::mutex> lock(monitors_mutex_);
 
-    glm::vec3 resolution(0, 0, 0);
+    glm::vec3 position(0.f, 0.f, 0.f);
+    glm::vec3 resolution(0.f, 0.f, 0.f);
     for (const auto& monitor : monitors_) {
+        position.x = std::min(position.x, (float) monitor.geometry.x); // get negative position if any monitor is on the left of main monitor
+        position.y = std::min(position.y, (float) monitor.geometry.y);
         resolution.x = std::max(resolution.x, (float) (monitor.geometry.x + monitor.geometry.z) );
         resolution.y = std::max(resolution.y, (float) (monitor.geometry.y + monitor.geometry.w) );
+        resolution.x += ABS(position.x);
+        resolution.y += ABS(position.y);
     }
     resolution.z = 0; 
     return resolution;
@@ -657,7 +662,7 @@ void Rendering::drawOutputWindows()
         }
         // if output is active but not initialized, initialize it
         else if (it->output.isActive() && !it->output.isInitialized()) {
-            it->output.init(it->monitor, Rendering::manager().mainWindow().window());
+            it->output.init(it->monitor, Rendering::manager().mainWindow().window(), it->geometry);
         }
         // if output is not active but initialized, terminate it
         else if (!it->output.isActive() && it->output.isInitialized()) {
@@ -682,6 +687,16 @@ void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
         int count_monitors = 0;
         GLFWmonitor** monitors = glfwGetMonitors(&count_monitors);
 
+        // correction of monitor geometry; find topleft coordinate of all monitors
+        glm::ivec2 topleft;
+        topleft.x = topleft.y =  std::numeric_limits<int>::max();
+        for (int i = 0; i < count_monitors;  i++) {
+            int x = 0, y = 0;
+            glfwGetMonitorPos(monitors[i], &x, &y);
+            topleft.x = MIN(topleft.x, x);
+            topleft.y = MIN(topleft.y, y);
+        }
+
         // Fill list of monitors of rendering manager
         for (int i = 0; i < count_monitors;  i++) {
             // fill monitor structure
@@ -689,7 +704,8 @@ void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
             glfwGetMonitorPos(monitors[i], &x, &y);
             const GLFWvidmode *vm = glfwGetVideoMode(monitors[i]);
             std::string n = glfwGetMonitorName(monitors[i]);
-            glm::ivec4 geometry(x, y, vm->width, vm->height);
+            // set geometry relative to topleft of all monitors
+            glm::ivec4 geometry(x - topleft.x, y - topleft.y, vm->width, vm->height);
             // add to list
             Rendering::manager().monitors_.push_back(Monitor(monitors[i], n, geometry));
             // add to settings if not already present

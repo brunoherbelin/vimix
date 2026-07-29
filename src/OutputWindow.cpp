@@ -73,7 +73,7 @@ OutputWindow::~OutputWindow()
 
 uint OutputWindow::num_active_outputs = 0;
 
-bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
+bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share, glm::ivec4 geom)
 {
     if (initialized_ || !monitor)
         return false;
@@ -125,6 +125,9 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share)
         return false;
     }
 #endif
+
+    // keep geometry  
+    geometry_ = geom;
 
     // set rendering area
     window_attributes_.viewport.x = mode->width;
@@ -271,30 +274,30 @@ bool OutputWindow::draw(FrameBuffer *fb)
                 shader_->iNodes = glm::zero<glm::mat4>();
         }
 
-        // render the framebuffer texture to the output window
-        int x = 0, y = 0, w = fb->resolution().x, h = fb->resolution().y;
+        // draw surface on output window
+        // using the orthographic projection adapted to window position and size (vertical flip)
+        glm::mat4 projection = glm::ortho(float(geometry_.x), float(geometry_.z),
+                                         float(geometry_.w), float(geometry_.y),
+                                         -1.f, 1.f);
 
         // if test pattern requested, set its texture
         if (show_pattern_) {
             pattern_->update();
             surface_->setTextureIndex(pattern_->texture());
+            // change projection to match framebuffer resolution (vertical flip)
+            projection = glm::ortho(0.f, fb->resolution().x,
+                                    fb->resolution().y, 0.f,
+                                    -1.f, 1.f);
         }
         // otherwise render the framebuffer
         else {
             surface_->setTextureIndex(fb->texture());
-            // project only the part of framebuffer visible in the window
-            glfwGetWindowPos(window_, &x, &y);
-            glfwGetWindowSize(window_, &w, &h);
         }
 
         // draw texture on surface
         surface_->update(0.f);
 
         // draw surface on output window
-        // using the orthographic projection adapted to window position and size (vertical flip)
-        glm::mat4 projection = glm::ortho(float(x), float(x+w),
-                                         float(y+h), float(y),
-                                         -1.f, 1.f);
         surface_->draw(glm::identity<glm::mat4>(), projection);
 
         // done drawing (unload shader from this glcontext)
