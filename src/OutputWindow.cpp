@@ -276,8 +276,8 @@ bool OutputWindow::draw(FrameBuffer *fb)
 
         // draw surface on output window
         // using the orthographic projection adapted to window position and size (vertical flip)
-        glm::mat4 projection = glm::ortho(float(geometry_.x), float(geometry_.z),
-                                         float(geometry_.w), float(geometry_.y),
+        glm::mat4 projection = glm::ortho(float(geometry_.x), float(geometry_.x + geometry_.z),
+                                         float(geometry_.y + geometry_.w), float(geometry_.y),
                                          -1.f, 1.f);
 
         // if test pattern requested, set its texture
