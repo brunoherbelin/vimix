@@ -72,6 +72,17 @@ typedef std::set<PipelineConfig, better_config_comparator> PipelineConfigSet;
 
 PipelineConfigSet getPipelineConfigs(const std::string &src_description);
 
+// Download url to dest with GStreamer (souphttpsrc follows the HTTPS
+// redirects), via a .part file renamed only on success so an interrupted
+// run never leaves a truncated file behind. Throws std::runtime_error on
+// failure.
+void download_file(const std::string &url, const std::string &dest);
+
+// Functional probe of a GStreamer encoder: 
+// Encodes one tiny test frame end-to-end and checks for EOS.
+// Returns true if the encoder works, false otherwise.
+bool encoder_works(const char *enc);
+
 }
 
 #endif // __GSTGUI_TOOLKIT_H_

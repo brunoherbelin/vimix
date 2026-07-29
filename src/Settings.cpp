@@ -243,6 +243,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     XMLElement *SequenceNode = xmlDoc.NewElement( "Sequence" );
     SequenceNode->SetAttribute("profile", application.image_sequence.profile);
     SequenceNode->SetAttribute("framerate", application.image_sequence.framerate_mode);
+    SequenceNode->SetAttribute("buffering", application.image_sequence.buffering_mode);
     pRoot->InsertEndChild(SequenceNode);
 
     // Transition
@@ -636,6 +637,7 @@ void Settings::init(const std::string &filename)
         if (sequencenode != nullptr) {
             sequencenode->QueryIntAttribute("profile", &application.image_sequence.profile);
             sequencenode->QueryIntAttribute("framerate", &application.image_sequence.framerate_mode);
+            sequencenode->QueryIntAttribute("buffering", &application.image_sequence.buffering_mode);
         }
 
         // Source

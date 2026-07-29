@@ -20,7 +20,10 @@
 
 #include <sstream>
 #include <iomanip>
+#include <filesystem>
+
 using namespace std;
+namespace fs = std::filesystem;
 
 #include <gst/gl/gl.h>
 
@@ -465,4 +468,82 @@ GstToolkit::PipelineConfigSet GstToolkit::getPipelineConfigs(const std::string &
     gst_object_unref (pipeline_);
 
     return configs;
+}
+
+
+void GstToolkit::download_file(const std::string &url, const std::string &dest)
+{
+    fs::path d(dest);
+    if (d.has_parent_path())
+        fs::create_directories(d.parent_path());
+    std::string part = dest + ".part";
+
+    fprintf(stderr, "Downloading %s to %s.", url.c_str(), dest.c_str());
+    std::string desc = "curlhttpsrc location=\"" + url +
+                       "\" ! filesink location=\"" + part + "\"";
+    GError *err = nullptr;
+    GstElement *pipe = gst_parse_launch(desc.c_str(), &err);
+    if (!pipe) {
+        std::string msg = err ? err->message : "unknown";
+        if (err) g_error_free(err);
+        throw std::runtime_error("gst_parse_launch: " + msg);
+    }
+    gst_element_set_state(pipe, GST_STATE_PLAYING);
+
+    GstBus *bus = gst_element_get_bus(pipe);
+    GstMessage *msg = gst_bus_timed_pop_filtered(bus, GST_CLOCK_TIME_NONE,
+        (GstMessageType)(GST_MESSAGE_EOS | GST_MESSAGE_ERROR));
+    bool ok = GST_MESSAGE_TYPE(msg) == GST_MESSAGE_EOS;
+    std::string what;
+    if (!ok) {
+        GError *e = nullptr;
+        gst_message_parse_error(msg, &e, nullptr);
+        what = e ? e->message : "unknown";
+        if (e) g_error_free(e);
+    }
+    gst_message_unref(msg);
+    gst_object_unref(bus);
+    gst_element_set_state(pipe, GST_STATE_NULL);
+    gst_object_unref(pipe);
+
+    if (!ok) {
+        fs::remove(part);
+        throw std::runtime_error("download failed: " + what);
+    }
+    fs::rename(part, dest);
+    fprintf(stderr, "saved %s (%.1f MB)\n", dest.c_str(),
+            fs::file_size(dest) / 1e6);
+}
+
+bool GstToolkit::encoder_works(const char *enc)
+{
+    GstElementFactory *f = gst_element_factory_find(enc);
+    if (!f)
+        return false;
+    gst_object_unref(f);
+
+    // 320x240: comfortably above hardware encoders' minimum frame sizes
+    // (NVENC rejects tiny frames), still instant to encode
+    std::string desc =
+        "videotestsrc num-buffers=1 ! video/x-raw,width=320,height=240 ! "
+        "videoconvert ! " + std::string(enc) + " ! fakesink";
+    GError *err = nullptr;
+    GstElement *pipe = gst_parse_launch(desc.c_str(), &err);
+    if (!pipe) {
+        if (err) g_error_free(err);
+        return false;
+    }
+    gst_element_set_state(pipe, GST_STATE_PLAYING);
+    GstBus *bus = gst_element_get_bus(pipe);
+    GstMessage *msg = gst_bus_timed_pop_filtered(bus, 5 * GST_SECOND,
+        (GstMessageType)(GST_MESSAGE_EOS | GST_MESSAGE_ERROR));
+    bool ok = msg && GST_MESSAGE_TYPE(msg) == GST_MESSAGE_EOS;
+    if (msg)
+        gst_message_unref(msg);
+    gst_object_unref(bus);
+    gst_element_set_state(pipe, GST_STATE_NULL);
+    gst_object_unref(pipe);
+    if (!ok)
+        fprintf(stderr, "encoder %s not usable, trying next\n", enc);
+    return ok;
 }

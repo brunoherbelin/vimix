@@ -57,6 +57,7 @@ set(VMIX_SRCS
     Transcoder.cpp
     UserInterfaceManager.cpp
     VideoBroadcast.cpp
+    MultiFileRifeEncoder.cpp
     
     # Filter/ folder
     Filter/DelayFilter.cpp
@@ -254,6 +255,18 @@ if(MINIZ_LIBRARIES)
     target_compile_definitions(${VMIX_BINARY} PUBLIC VIMIX_USE_MINIZ)
     target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${MINIZ_LIBRARIES})
 endif()
+
+# ncnn for RIFE frame interpolation (optional, present when submodule is initialised)
+if(RIFE_WITH_NCNN) 
+    target_sources(${VMIX_BINARY}  PRIVATE
+        ${RIFE_NCNN_DIR}/rife.cpp
+        ${RIFE_NCNN_DIR}/warp.cpp)
+    add_dependencies(${VMIX_BINARY} generate-spirv)
+    target_include_directories(${VMIX_BINARY} PRIVATE ${RIFE_NCNN_INCLUDE_DIRS})
+    target_compile_definitions(${VMIX_BINARY} PRIVATE HAVE_NCNN)
+    target_link_libraries(${VMIX_BINARY} PRIVATE ncnn)
+endif()
+
 
 #####
 ##### DEFINE THE APPLICATION PACKAGING (OS specific)

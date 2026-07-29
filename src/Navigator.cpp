@@ -66,6 +66,7 @@
 #include "ControlManager.h"
 #include "Recorder.h"
 #include "MultiFileRecorder.h"
+#include "MultiFileRifeEncoder.h"
 #include "Audio.h"
 #include "MousePointer.h"
 #include "Playlist.h"
@@ -1221,7 +1222,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                                                           IMAGES_FILES_TYPE,
                                                                           IMAGES_FILES_PATTERN);
             static MultiFileSequence _numbered_sequence;
-            static MultiFileRecorder _video_recorder;
+            // static MultiFileRecorder _video_recorder;
+            static MultiFileRifeEncoder _rife_encoder;
             static int codec_id = -1;
 
             ImGui::Text("Image sequence");
@@ -1343,57 +1345,75 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // if video encoding codec selected
                 if ( codec_id >= 0 )
                 {
+                    // set number of intermediate frames to generate between each image (for video encoding)
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::SliderInt("##Interpolate", &Settings::application.image_sequence.buffering_mode, 0, 31, "%d intermediate frames");
+                    ImGui::SameLine();
+                    ImGuiToolkit::Indication("Use an AI model to interpolate between images; "
+                                              "Intermediate frames are generated with Real-time Intermediate Flow Estimation (RIFE).\n\n"
+                                              ICON_FA_MINUS_CIRCLE "  Set to 0 to disable interpolation.\n",
+                                            ICON_FA_MAGIC);
+ 
                     // Offer to create video from sequence
                     ImGui::NewLine();
                     if ( ImGui::Button( ICON_FA_FILM " Encode video", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
-                        // start video recorder
-                        _video_recorder.setFiles( sourceSequenceFiles );
-                        _video_recorder.setFramerate( Settings::application.image_sequence.framerate_mode );
-                        _video_recorder.setProfile( (VideoRecorder::Profile) Settings::application.image_sequence.profile );
-                        _video_recorder.start();
+                        RifeOptions options;
+                        options.fps = Settings::application.image_sequence.framerate_mode;
+                        options.mid = Settings::application.image_sequence.buffering_mode;
+                        options.profile = (VideoRecorder::Profile) Settings::application.image_sequence.profile;
+                        _rife_encoder.setFiles( sourceSequenceFiles );
+                        _rife_encoder.start(options);
                         // open dialog
                         ImGui::OpenPopup(LABEL_VIDEO_SEQUENCE);
                     }
                 }
 
                 // video recorder finished: inform and open pannel to import video source from recent recordings
-                if ( _video_recorder.finished() ) {
+                if ( _rife_encoder.finished() ) {
+
+                    _rife_encoder.reset();
+
                     // video recorder failed if it does not return a valid filename
-                    if ( _video_recorder.filename().empty() )
-                        Log::Warning("Failed to generate an image sequence.");
+                    if ( !_rife_encoder.success() || _rife_encoder.filename().empty() )
+                        Log::Warning("Failed to generate an image sequence (%s).", _rife_encoder.message().c_str() );
                     else {
-                        Log::Notify("Image sequence saved to %s.", _video_recorder.filename().c_str());
+
+                        // save path location if valid
+                        std::string uri = GstToolkit::filename_to_uri(_rife_encoder.filename());
+                        MediaInfo media = MediaPlayer::UriDiscoverer(uri);
+                        if (media.valid && !media.isimage)
+                            Settings::application.recentRecordings.push(_rife_encoder.filename());
+                        else
+                            Settings::application.recentRecordings.remove(_rife_encoder.filename());
+
+                        Log::Notify("Image sequence saved to %s.", _rife_encoder.filename().c_str());
                         // open the file as new recording
-                        //   if (Settings::application.recentRecordings.load_at_start)
-                        UserInterface::manager().navigator.setNewMedia(Navigator::MEDIA_RECORDING, _video_recorder.filename());
+                        setNewMedia(Navigator::MEDIA_RECORDING, _rife_encoder.filename());
                     }
                 }
                 else if (ImGui::BeginPopupModal(LABEL_VIDEO_SEQUENCE, NULL, ImGuiWindowFlags_NoResize))
                 {
                     ImGui::Spacing();
-                    ImGui::Text("Please wait while the video is being encoded :\n");
+                    ImGui::Text("Please wait while the video is being encoded :             \n");
+                    ImGui::Text("%s\n", _rife_encoder.message().c_str());
 
-                    ImGui::Text("Resolution :");ImGui::SameLine(150);
-                    ImGui::Text("%d x %d", _video_recorder.width(), _video_recorder.height() );
                     ImGui::Text("Framerate :");ImGui::SameLine(150);
-                    ImGui::Text("%d fps", _video_recorder.framerate() );
+                    ImGui::Text("%d fps", Settings::application.image_sequence.framerate_mode );
                     ImGui::Text("Codec :");ImGui::SameLine(150);
-                    ImGui::Text("%s", VideoRecorder::profile_name[ _video_recorder.profile() ] );
+                    ImGui::Text("%s", VideoRecorder::profile_name[ Settings::application.image_sequence.profile ] );
                     ImGui::Text("Frames :");ImGui::SameLine(150);
-                    ImGui::Text("%lu / %lu", (unsigned long)_video_recorder.numFrames(),
-                                (unsigned long)_video_recorder.files().size() );
+                    ImGui::Text("%lu", (unsigned long)_rife_encoder.numFrames());
 
                     ImGui::Spacing();
-                    ImGui::ProgressBar(_video_recorder.progress());
+                    ImGui::ProgressBar(_rife_encoder.progress());
 
                     ImGui::Spacing();
                     ImGui::Spacing();
                     if (ImGui::Button(ICON_FA_TIMES " Cancel",ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-                        _video_recorder.cancel();
+                        _rife_encoder.stop();
 
                     ImGui::EndPopup();
                 }
-
             }
             // single file selected
             else if (sourceSequenceFiles.size() > 0) {

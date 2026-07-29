@@ -191,7 +191,10 @@ option(USE_GST_OPENGL_SYNC_HANDLER "Enable GStreamer OpenGL sync handler" ON)
 if(USE_GST_OPENGL_SYNC_HANDLER AND NOT APPLE)
     add_definitions(-DUSE_GST_OPENGL_SYNC_HANDLER)
 endif()
-# add_definitions(-DUSE_GL_BUFFER_SUBDATA)
+
+# NCNN and ONNX Runtime are optional 
+option(RIFE_WITH_NCNN "Enable RIFE with ncnn/Vulkan GPU backend" ON)
+option(RIFE_WITH_ONNX "Enable RIFE with ONNX Runtime CPU backend" ON)
 
 #####
 ##### Dependencies
@@ -437,7 +440,7 @@ if(UNIX)
             HINTS ${SHMDATA_LIBRARY_DIRS}/gstreamer-1.0
         )
         if(GSTREAMER_SHMDATA_LIBRARY)
-            add_definitions(-DGSTREAMER_SHMDATA_PLUGIN=\"${GSTREAMER_SHMDATA_LIBRARY}\")
+            add_definitions(-DGSTREAMER_SHMDATA_PLUGIN="${GSTREAMER_SHMDATA_LIBRARY}")
         endif()
 
         macro_log_feature(GSTREAMER_SHMDATA_LIBRARY "GStreamerPluginShmdata" "Plugin to share any flow" "https://gitlab.com/sat-mtl/tools/shmdata" FALSE)
@@ -548,6 +551,118 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/miniz/CMakeLists.txt")
 else()
     set(MINIZ_LIBRARIES "")
     message(STATUS "miniz not found - ZIP compression disabled (run: git submodule update --init ext/miniz)")
+endif()
+
+#
+# NCNN Vulkan GPU backend. 
+# Neural network inference framework, developed by Tencent, that utilizes 
+# the Vulkan API for hardware-accelerated GPU computing.
+# Used by RIFE frame interpolator and Real-ESRGAN upscaler. 
+# The script setup-ext.sh runs automatically on first configure.
+#
+if(RIFE_WITH_NCNN)
+  find_package(Vulkan QUIET)
+  if(NOT Vulkan_FOUND)
+    set(RIFE_WITH_NCNN OFF)
+  endif()
+endif()
+
+if(RIFE_WITH_NCNN)
+  set(RIFE_NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/rife-ncnn-vulkan/src)
+  set(RIFE_NCNN_INCLUDE_DIRS ${RIFE_NCNN_DIR} ${CMAKE_CURRENT_BINARY_DIR}) 
+  set(NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/ncnn)
+  if(NOT EXISTS ${RIFE_NCNN_DIR}/rife.cpp
+     OR NOT EXISTS ${NCNN_DIR}/CMakeLists.txt
+     OR NOT EXISTS ${NCNN_DIR}/glslang/CMakeLists.txt)
+    message(STATUS "Fetching extra sources (cmake/setup-ext.sh) ...")
+    execute_process(
+      COMMAND ${CMAKE_SOURCE_DIR}/cmake/setup-ext.sh
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      RESULT_VARIABLE EXT_SETUP_RESULT)
+    if(NOT EXT_SETUP_RESULT EQUAL 0)
+      message(WARNING "cmake/setup-ext.sh failed (git + network needed "
+                      "on first configure) — building without RifeNCNN")
+      set(RIFE_WITH_NCNN OFF)
+    endif()
+  endif()
+endif()
+
+if(RIFE_WITH_NCNN)
+  find_package(Threads REQUIRED)
+
+  # ncnn build configuration (mirrors rife-ncnn-vulkan/src/CMakeLists.txt).
+  # NCNN_VULKAN_ONLINE_SPIRV: shaders are embedded as source and compiled
+  # at runtime, so no glslangValidator is needed at build time.
+  set(NCNN_VULKAN ON CACHE BOOL "" FORCE)
+  set(NCNN_VULKAN_ONLINE_SPIRV ON CACHE BOOL "" FORCE)
+  # ncnn defaults to -fno-exceptions/-fno-rtti and propagates them to
+  # consumers; our code and the ONNX Runtime C++ API rely on exceptions
+  set(NCNN_DISABLE_EXCEPTION OFF CACHE BOOL "" FORCE)
+  set(NCNN_DISABLE_RTTI OFF CACHE BOOL "" FORCE)
+  set(NCNN_INSTALL_SDK OFF CACHE BOOL "" FORCE)
+  set(NCNN_BUILD_BENCHMARK OFF CACHE BOOL "" FORCE)
+  set(NCNN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(NCNN_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+  set(NCNN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(NCNN_PIXEL_ROTATE OFF CACHE BOOL "" FORCE)
+  set(NCNN_PIXEL_AFFINE OFF CACHE BOOL "" FORCE)
+  set(NCNN_PIXEL_DRAWING OFF CACHE BOOL "" FORCE)
+  set(NCNN_INT8 OFF CACHE BOOL "" FORCE)
+
+  # Build only the ncnn layers needed by RIFE models 
+  file(STRINGS ${RIFE_NCNN_DIR}/CMakeLists.txt _rife_layer_opts
+       REGEX "option\\(WITH_LAYER_")
+  foreach(_line IN LISTS _rife_layer_opts)
+    if(_line MATCHES "WITH_LAYER_([a-z0-9_]+) \"\" (ON|OFF)")
+      set(WITH_LAYER_${CMAKE_MATCH_1} ${CMAKE_MATCH_2} CACHE BOOL "" FORCE)
+    endif()
+  endforeach()
+
+  # The pinned ncnn/glslang declare cmake_minimum_required versions older
+  # than 3.5, which CMake >= 4 rejects; treat them as 3.5 
+  if(NOT DEFINED CMAKE_POLICY_VERSION_MINIMUM)
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+  endif()
+  add_subdirectory(${NCNN_DIR} ncnn EXCLUDE_FROM_ALL)
+  unset(CMAKE_POLICY_VERSION_MINIMUM)
+
+  # Compute shaders -> C headers (.comp.hex.h), same mechanism as upstream.
+  macro(rife_add_shader SHADER_SRC)
+    get_filename_component(SHADER_SRC_NAME_WE ${SHADER_SRC} NAME_WE)
+    set(SHADER_COMP_HEADER ${CMAKE_CURRENT_BINARY_DIR}/${SHADER_SRC_NAME_WE}.comp.hex.h)
+    add_custom_command(
+      OUTPUT ${SHADER_COMP_HEADER}
+      COMMAND ${CMAKE_COMMAND}
+        -DSHADER_SRC=${RIFE_NCNN_DIR}/${SHADER_SRC}
+        -DSHADER_COMP_HEADER=${SHADER_COMP_HEADER}
+        -P "${RIFE_NCNN_DIR}/generate_shader_comp_header.cmake"
+      DEPENDS ${RIFE_NCNN_DIR}/${SHADER_SRC}
+      COMMENT "Preprocessing shader source ${SHADER_SRC_NAME_WE}.comp"
+      VERBATIM)
+    set_source_files_properties(${SHADER_COMP_HEADER} PROPERTIES GENERATED TRUE)
+    list(APPEND SHADER_SPV_HEX_FILES ${SHADER_COMP_HEADER})
+  endmacro()
+
+  rife_add_shader(rife_preproc.comp)
+  rife_add_shader(rife_postproc.comp)
+  rife_add_shader(rife_preproc_tta.comp)
+  rife_add_shader(rife_postproc_tta.comp)
+  rife_add_shader(rife_flow_tta_avg.comp)
+  rife_add_shader(rife_v2_flow_tta_avg.comp)
+  rife_add_shader(rife_v4_flow_tta_avg.comp)
+  rife_add_shader(rife_flow_tta_temporal_avg.comp)
+  rife_add_shader(rife_v2_flow_tta_temporal_avg.comp)
+  rife_add_shader(rife_v4_flow_tta_temporal_avg.comp)
+  rife_add_shader(rife_out_tta_temporal_avg.comp)
+  rife_add_shader(rife_v4_timestep.comp)
+  rife_add_shader(rife_v4_timestep_tta.comp)
+  rife_add_shader(warp.comp)
+  rife_add_shader(warp_pack4.comp)
+  rife_add_shader(warp_pack8.comp)
+
+  add_custom_target(generate-spirv DEPENDS ${SHADER_SPV_HEX_FILES})
+
+
 endif()
 
 
