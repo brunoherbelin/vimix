@@ -742,7 +742,7 @@ float Source::alpha(bool allow_negative) const
 
 bool Source::visible() const
 {
-    return blendingShader()->color.a > 0.f;
+    return blendingShader()->color.a > - EPSILON;
 }
 
 
