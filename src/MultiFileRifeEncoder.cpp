@@ -573,7 +573,7 @@ void MultiFileRifeEncoder::run(RifeOptions options)
         // choose the inference backend (downloads its model on first use)
         std::unique_ptr<RifeBackend> rife;
         if (mid > 0) {
-            message_ = "Downloading AI Model (" + options.model + ")";
+            message_ = "Initializing AI Model (" + options.model + ")";
             rife = make_backend(options.backend, options.model);
             if (dynamic_cast<RifeDummy *>(rife.get())) {
                 Log::Warning("ImageSequence: no interpolation backend available, "

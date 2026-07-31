@@ -1222,9 +1222,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                                                           IMAGES_FILES_TYPE,
                                                                           IMAGES_FILES_PATTERN);
             static MultiFileSequence _numbered_sequence;
-            // static MultiFileRecorder _video_recorder;
             static MultiFileRifeEncoder _rife_encoder;
-            static int codec_id = -1;
+            // static int codec_id = -1;
 
             ImGui::Text("Image sequence");
 
@@ -1254,9 +1253,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 _numbered_sequence = MultiFileSequence(sourceSequenceFiles);
 
                 // automatically create a MultiFile Source if possible
-                if (_numbered_sequence.valid()) {
-                    // always come back to propose image sequence when possible
-                    codec_id = -1;
+                if (_numbered_sequence.valid() && Settings::application.image_sequence.profile < 0) {
+                    // propose image sequence if requested and possible
                     // show source preview available if possible
                     std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
                     new_source_preview_
@@ -1264,7 +1262,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                                                           Settings::application.image_sequence.framerate_mode),
                                    label);
                 } else
-                    codec_id = Settings::application.image_sequence.profile;
+                    Settings::application.image_sequence.profile = 0; // default to H264 video encoding
             }
 
             // multiple files selected
@@ -1275,38 +1273,24 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // show info sequence
                 ImGuiTextBuffer info;
                 ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-                info.appendf("%d %s", (int) sourceSequenceFiles.size(), _numbered_sequence.codec.c_str());
+                info.appendf("%d %s files", (int) sourceSequenceFiles.size(), _numbered_sequence.codec.c_str());
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::InputText("Images", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputText("Selection", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
                 ImGui::PopStyleColor(1);
-
-                // set framerate
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::SliderInt("Framerate", &Settings::application.image_sequence.framerate_mode, 1, 30, "%d fps");
-                if (ImGui::IsItemDeactivatedAfterEdit()){
-                    if (new_source_preview_.filled()) {
-                        std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
-                        new_source_preview_
-                            .setSource(Mixer::manager().createSourceMultifile(
-                                           sourceSequenceFiles,
-                                           Settings::application.image_sequence.framerate_mode),
-                                       label);
-                    }
-                }
 
                 // select CODEC: decide for gst sequence (codec_id = -1) or encoding a video
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                std::string codec_current = codec_id < 0 ? ICON_FA_SORT_NUMERIC_DOWN " Numbered images"
-                                                         : std::string(ICON_FA_FILM " ") + VideoRecorder::profile_name[codec_id];
+                std::string codec_current = Settings::application.image_sequence.profile < 0 ? ICON_FA_SORT_NUMERIC_DOWN " Numbered images"
+                                                         : std::string(ICON_FA_FILM " ") + VideoRecorder::profile_name[Settings::application.image_sequence.profile];
                 if (ImGui::BeginCombo("##CodecSequence", codec_current.c_str())) {
                     // special case; if possible, offer to create an image sequence gst source
                     if (ImGui::Selectable( ICON_FA_SORT_NUMERIC_DOWN " Numbered images",
-                                          codec_id < 0,
+                                          Settings::application.image_sequence.profile < 0,
                                           _numbered_sequence.valid()
                                               ? ImGuiSelectableFlags_None
                                               : ImGuiSelectableFlags_Disabled)) {
                         // select id of image sequence
-                        codec_id = -1;
+                        Settings::application.image_sequence.profile = -1;
                         // Open source preview for image sequence
                         if (_numbered_sequence.valid()) {
                             std::string label = BaseToolkit::transliterate(
@@ -1321,9 +1305,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     // always offer to encode a video
                     for (int i = VideoRecorder::H264_STANDARD; i < VideoRecorder::VP8; ++i) {
                         std::string label = std::string(ICON_FA_FILM " ") + VideoRecorder::profile_name[i];
-                        if (ImGui::Selectable(label.c_str(), codec_id == i)) {
+                        if (ImGui::Selectable(label.c_str(), Settings::application.image_sequence.profile == i)) {
                             // select id of video encoding codec
-                            codec_id = i;
                             Settings::application.image_sequence.profile = i;
                             // close source preview (no image sequence)
                             new_source_preview_.setSource();
@@ -1342,12 +1325,30 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                               "it is not possible to create a sequence source.\n\n"
                                               ICON_FA_FILM " Instead, choose a codec to encode a video with the selected images and create a video source.");
 
+                // set framerate
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGui::SliderInt("Framerate", &Settings::application.image_sequence.framerate_mode, 1, 30, "%d fps");
+                if (ImGui::IsItemDeactivatedAfterEdit()){
+                    if (new_source_preview_.filled()) {
+                        std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
+                        new_source_preview_
+                            .setSource(Mixer::manager().createSourceMultifile(
+                                           sourceSequenceFiles,
+                                           Settings::application.image_sequence.framerate_mode),
+                                       label);
+                    }
+                }
+
                 // if video encoding codec selected
-                if ( codec_id >= 0 )
+                if ( Settings::application.image_sequence.profile >= 0 )
                 {
                     // set number of intermediate frames to generate between each image (for video encoding)
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::SliderInt("##Interpolate", &Settings::application.image_sequence.buffering_mode, 0, 31, "%d intermediate frames");
+                    static int num = 0;
+                    Settings::application.image_sequence.buffering_mode = pow(2, num)-1;
+                    char buf[64];
+                    ImFormatString(buf, IM_ARRAYSIZE(buf), "%d  intermediate frames", Settings::application.image_sequence.buffering_mode);
+                    ImGui::SliderInt("##Interpolate", &num, 0, 5, buf);
                     ImGui::SameLine();
                     ImGuiToolkit::Indication("Use an AI model to interpolate between images; "
                                               "Intermediate frames are generated with Real-time Intermediate Flow Estimation (RIFE).\n\n"
@@ -1371,6 +1372,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // video recorder finished: inform and open pannel to import video source from recent recordings
                 if ( _rife_encoder.finished() ) {
 
+                    // reset encoder to be ready for next encoding
                     _rife_encoder.reset();
 
                     // video recorder failed if it does not return a valid filename
@@ -1423,8 +1425,6 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // done with sequence
                 sourceSequenceFiles.clear();
             }
-
-
         }
         // Generated patterns Source creator
         else if (Settings::application.source.new_type == SOURCE_GENERATED){
