@@ -626,6 +626,11 @@ if(RIFE_WITH_NCNN)
   add_subdirectory(${NCNN_DIR} ncnn EXCLUDE_FROM_ALL)
   unset(CMAKE_POLICY_VERSION_MINIMUM)
 
+  # ncnn is third-party code; silence its (harmless) unused-variable warnings
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(ncnn PRIVATE -Wno-unused-variable)
+  endif()
+
   # Compute shaders -> C headers (.comp.hex.h), same mechanism as upstream.
   macro(rife_add_shader SHADER_SRC)
     get_filename_component(SHADER_SRC_NAME_WE ${SHADER_SRC} NAME_WE)
@@ -662,7 +667,40 @@ if(RIFE_WITH_NCNN)
 
   add_custom_target(generate-spirv DEPENDS ${SHADER_SPV_HEX_FILES})
 
+  # Static library bundling the RIFE ncnn sources and their generated shader
+  # headers, linked into the application instead of compiled inline.
+  add_library(NCNNRIFE STATIC
+      ${RIFE_NCNN_DIR}/rife.cpp
+      ${RIFE_NCNN_DIR}/warp.cpp)
+  add_dependencies(NCNNRIFE generate-spirv)
+  target_include_directories(NCNNRIFE PUBLIC ${RIFE_NCNN_INCLUDE_DIRS})
+  target_compile_definitions(NCNNRIFE PUBLIC HAVE_NCNN)
+  target_link_libraries(NCNNRIFE PUBLIC ncnn)
 
+endif()
+
+# ONNX backend for Accelerated machine learning inference by Microsoft.
+# Used by RIFE frame interpolator as CPU fallback.
+# Search for system-installed package 
+if(RIFE_WITH_ONNX)
+  set(ORT_ROOT "" CACHE PATH "Extra prefix to search for ONNX Runtime")
+
+  find_path(ORT_INCLUDE_DIR onnxruntime_cxx_api.h
+    HINTS ${ORT_ROOT}/include
+    PATH_SUFFIXES onnxruntime)
+  find_library(ORT_LIBRARY onnxruntime HINTS ${ORT_ROOT}/lib)
+
+  if(ORT_INCLUDE_DIR AND ORT_LIBRARY)
+    add_library(onnxruntime::onnxruntime SHARED IMPORTED)
+    set_target_properties(onnxruntime::onnxruntime PROPERTIES
+      IMPORTED_LOCATION "${ORT_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${ORT_INCLUDE_DIR}")
+  else()
+    find_package(onnxruntime CONFIG QUIET HINTS ${ORT_ROOT})
+    if(NOT onnxruntime_FOUND)
+      set(RIFE_WITH_ONNX OFF)
+    endif()
+  endif()
 endif()
 
 
