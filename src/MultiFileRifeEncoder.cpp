@@ -372,9 +372,10 @@ std::unique_ptr<RifeBackend> make_backend(const std::string &backend,
             std::string  path = SystemToolkit::full_filename(SystemToolkit::settings_path(), kNcnnModelDir);
             rife = std::make_unique<RifeNCNN>(path);
         } catch (const std::exception &e) {
-            if (backend == "ncnn")
+            if (backend == "ncnn") {
                 throw;
-            Log::Warning("Image Sequence: ncnn backend unavailable (%s)\n", e.what());
+                Log::Warning("Image Sequence: ncnn backend unavailable (%s)\n", e.what());
+            }
         }
     }
 #else

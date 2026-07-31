@@ -1344,7 +1344,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 {
                     // set number of intermediate frames to generate between each image (for video encoding)
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    static int num = 0;
+                    static int num = sqrt((float)Settings::application.image_sequence.buffering_mode + 1.f);
                     Settings::application.image_sequence.buffering_mode = pow(2, num)-1;
                     char buf[64];
                     ImFormatString(buf, IM_ARRAYSIZE(buf), "%d  intermediate frames", Settings::application.image_sequence.buffering_mode);
