@@ -30,18 +30,15 @@ struct RifeOptions {
     int fps;              ///< output framerate
     VideoRecorder::Profile profile;  /// output profile (H.264/H.265/ProRes/VP8)
     std::string backend;  ///< "auto" | "ncnn" | "onnx"
-    std::string model;    ///< ONNX model path (onnx backend only)
 
     RifeOptions(int mid = 1,
                 int fps = 30,
                 VideoRecorder::Profile profile = VideoRecorder::H264_STANDARD,
-                const std::string &backend = "auto",
-                const std::string &model = "models/RIFE_fp32.onnx")
+                const std::string &backend = "auto")
         : mid(mid)
         , fps(fps)
         , profile(profile)
         , backend(backend)
-        , model(model)
     {}
 };
 

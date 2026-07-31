@@ -1359,6 +1359,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     ImGui::NewLine();
                     if ( ImGui::Button( ICON_FA_FILM " Encode video", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
                         RifeOptions options;
+                        // options.backend = "onnx";
                         options.fps = Settings::application.image_sequence.framerate_mode;
                         options.mid = Settings::application.image_sequence.buffering_mode;
                         options.profile = (VideoRecorder::Profile) Settings::application.image_sequence.profile;
@@ -1404,7 +1405,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     ImGui::Text("Codec :");ImGui::SameLine(150);
                     ImGui::Text("%s", VideoRecorder::profile_name[ Settings::application.image_sequence.profile ] );
                     ImGui::Text("Frames :");ImGui::SameLine(150);
-                    ImGui::Text("%lu", (unsigned long)_rife_encoder.numFrames());
+                    ImGui::Text("%lu (%lu originals)", (unsigned long)_rife_encoder.numFrames(), (unsigned long)_rife_encoder.files().size() ) ;
 
                     ImGui::Spacing();
                     ImGui::ProgressBar(_rife_encoder.progress());

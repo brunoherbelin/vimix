@@ -12,6 +12,8 @@
 
 #ifdef HAVE_ONNX
 #include <onnxruntime_cxx_api.h>
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 #include <algorithm>
@@ -113,7 +115,7 @@ Frame decode_image(const std::string &path, int w, int h)
     gchar *quoted = g_strescape(path.c_str(), nullptr);
     std::string desc = "filesrc location=\"" + std::string(quoted) +
                        "\" ! decodebin ! videoconvert ! videoscale add-borders=true ! "
-                       "video/x-raw,format=RGB,pixel-aspect-ratio=1/1";
+                       "video/x-raw,format=RGB,colorimetry=(string)sRGB,pixel-aspect-ratio=1/1";
     g_free(quoted);
     if (w > 0)
         desc += ",width=" + std::to_string(w) + ",height=" + std::to_string(h);
@@ -127,6 +129,9 @@ Frame decode_image(const std::string &path, int w, int h)
         throw std::runtime_error("gst_parse_launch: " + msg);
     }
     GstElement *sink = gst_bin_get_by_name(GST_BIN(pipe), "sink");
+
+    // Mute video-info category warnings while the pipeline negotiates and decodes.
+    GstToolkit::GstCategoryHush hush("video-info", GST_LEVEL_ERROR);
     gst_element_set_state(pipe, GST_STATE_PLAYING);
 
     GstSample *sample = gst_app_sink_pull_sample(GST_APP_SINK(sink));
@@ -183,28 +188,6 @@ const char *kNcnnModelDir = "models/rife-v4.6";
 const char *kNcnnModelBaseUrl =
     "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/20221029/models/rife-v4.6/";
 
-// Make sure the ONNX model file exists; fetch the default one from
-// Hugging Face if missing.
-void ensure_onnx_model()
-{
-    std::string  _path = SystemToolkit::full_filename(SystemToolkit::settings_path(), kOnnxModel);
-    if (fs::exists(_path))
-        return;
-    GstToolkit::download_file(kOnnxModelUrl, _path);
-}
-
-// Make sure the ncnn model files exist; fetch any missing one from the
-// pinned rife-ncnn-vulkan repository tag.
-void ensure_ncnn_model()
-{
-    std::string  _path = SystemToolkit::full_filename(SystemToolkit::settings_path(), kNcnnModelDir);
-
-    for (const char *name : {"flownet.param", "flownet.bin"}) {
-        std::string dest = SystemToolkit::full_filename(_path, name);
-        if (!fs::exists(dest))
-            GstToolkit::download_file(std::string(kNcnnModelBaseUrl) + name, dest);
-    }
-}
 
 // ---------------------------------------------------- inference backends
 
@@ -303,16 +286,22 @@ private:
 // tensors. Model contract (FuryTMP/RIFE_fp32): input float32 [1,6,H,W] NCHW
 // in 0..1 (channels 0-2 frame A, 3-5 frame B); output [1,3,H,W] at t=0.5
 // only, hence bisection in the driver.
+// 
 class RifeONNX : public RifeBackend {
 public:
     explicit RifeONNX(const std::string &model_path)
-        // Ort::Env is the library-wide context (logger + thread pools);
-        // it must outlive the session, which member order guarantees.
-        : env_(ORT_LOGGING_LEVEL_WARNING, "gst-rife")
     {
+        // Registration warnings fire while the schema registry is first
+        // populated below (Env/Session creation); suppress that stderr noise.
+        SystemToolkit::StderrSilencer hush;
+
         Ort::SessionOptions opts;
         opts.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
-        session_ = std::make_unique<Ort::Session>(env_, model_path.c_str(), opts);
+        // Ort::Env is the library-wide context (logger + thread pools); it must
+        // outlive the session, which member declaration/destruction order
+        // guarantees (env_ declared before session_, destroyed after it).
+        env_ = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "gst-rife");
+        session_ = std::make_unique<Ort::Session>(*env_, model_path.c_str(), opts);
 
         // inputs/outputs are addressed by name; query instead of hard-coding
         Ort::AllocatorWithDefaultOptions alloc;
@@ -350,7 +339,7 @@ public:
     }
 
 private:
-    Ort::Env env_;
+    std::unique_ptr<Ort::Env> env_;
     std::unique_ptr<Ort::Session> session_;
     std::string in_name_, out_name_;
 };
@@ -360,17 +349,26 @@ private:
 // fallback; either can be forced. Backends not compiled in (HAVE_NCNN/
 // HAVE_ONNX) can neither be probed nor forced. Returns RifeDummy — no
 // interpolation — when nothing is available.
-std::unique_ptr<RifeBackend> make_backend(const std::string &backend,
-                                          const std::string &model)
+std::unique_ptr<RifeBackend> make_backend(const std::string &backend, std::string *message = nullptr)
 {
     std::unique_ptr<RifeBackend> rife;
 
 #ifdef HAVE_NCNN
     if (backend != "onnx") {
         try {
-            ensure_ncnn_model();
-            std::string  path = SystemToolkit::full_filename(SystemToolkit::settings_path(), kNcnnModelDir);
-            rife = std::make_unique<RifeNCNN>(path);
+            // Make sure the ncnn model files exist; fetch any missing one from the
+            // pinned rife-ncnn-vulkan repository tag.
+            std::string  _path = SystemToolkit::full_filename(SystemToolkit::settings_path(), kNcnnModelDir);
+            for (const char *name : {"flownet.param", "flownet.bin"}) {
+                std::string dest = SystemToolkit::full_filename(_path, name);
+                if (!fs::exists(dest)) {
+                    (*message) = "Downloading NCNN RIFE GPU model...";
+                    GstToolkit::download_file(std::string(kNcnnModelBaseUrl) + name, dest);
+                }
+            }
+            // initialize the RIFE inference backend (Vulkan GPU)
+            (*message) = "Using NCNN RIFE model on Vulkan GPU ";
+            rife = std::make_unique<RifeNCNN>(_path);
         } catch (const std::exception &e) {
             if (backend == "ncnn") {
                 throw;
@@ -385,9 +383,15 @@ std::unique_ptr<RifeBackend> make_backend(const std::string &backend,
 
 #ifdef HAVE_ONNX
     if (!rife && backend != "ncnn") {
-        ensure_onnx_model();
-        std::string  path = SystemToolkit::full_filename(SystemToolkit::settings_path(), kOnnxModel);
-        rife = std::make_unique<RifeONNX>(path);
+        // Make sure the ONNX model file exists; fetch the default one from Hugging Face if missing.
+        std::string  _path = SystemToolkit::full_filename(SystemToolkit::settings_path(), kOnnxModel);
+        if (!fs::exists(_path)) {
+            (*message) = "Downloading ONNX RIFE CPU model...";
+            GstToolkit::download_file(kOnnxModelUrl, _path);
+        }
+        // initialize the RIFE inference backend (ONNX Runtime CPU)
+        (*message) = "Using ONNX RIFE model on CPU";
+        rife = std::make_unique<RifeONNX>(_path);
     }
 #else
     (void)model;
@@ -574,8 +578,8 @@ void MultiFileRifeEncoder::run(RifeOptions options)
         // choose the inference backend (downloads its model on first use)
         std::unique_ptr<RifeBackend> rife;
         if (mid > 0) {
-            message_ = "Initializing AI Model (" + options.model + ")";
-            rife = make_backend(options.backend, options.model);
+            message_ = "Initializing AI Model...";
+            rife = make_backend(options.backend, &message_);
             if (dynamic_cast<RifeDummy *>(rife.get())) {
                 Log::Warning("ImageSequence: no interpolation backend available, "
                              "encoding images only");
@@ -584,8 +588,10 @@ void MultiFileRifeEncoder::run(RifeOptions options)
                 Log::Info("ImageSequence: inference: %s", rife->describe());
             }
         }
-        if (mid == 0)
+        if (mid == 0) {
             Log::Info("ImageSequence: interpolation disabled (mid = 0)");
+            message_ = "";
+        }
 
         // interpolation mode: recursive t=0.5 bisection when mid = 2^k - 1
         // (smoother — RIFE predicts the midpoint best), else evenly spaced
@@ -648,7 +654,6 @@ void MultiFileRifeEncoder::run(RifeOptions options)
 
         // push one RGB frame into the encoder (restore row alignment; PTS
         // drives the output framerate)
-        message_ = "";
         int fps = options.fps;
         auto push = [&](const Frame &f) {
             GstBuffer *buf = gst_buffer_new_allocate(nullptr, vinfo.size, nullptr);

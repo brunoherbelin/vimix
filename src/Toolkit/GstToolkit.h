@@ -83,6 +83,22 @@ void download_file(const std::string &url, const std::string &dest);
 // Returns true if the encoder works, false otherwise.
 bool encoder_works(const char *enc);
 
+// Raises a GStreamer debug category's threshold for its lifetime, restoring it
+// on destruction. Used to mute one chatty, benign category around a call
+// without touching global logging or any other category.
+class GstCategoryHush {
+public:
+    GstCategoryHush(const char *category, GstDebugLevel level) : name_(category)
+    {
+        gst_debug_set_threshold_for_name(category, level);
+    }
+    ~GstCategoryHush() { gst_debug_unset_threshold_for_name(name_); }
+    GstCategoryHush(const GstCategoryHush &) = delete;
+    GstCategoryHush &operator=(const GstCategoryHush &) = delete;
+private:
+    const char *name_;
+};
+
 }
 
 #endif // __GSTGUI_TOOLKIT_H_
