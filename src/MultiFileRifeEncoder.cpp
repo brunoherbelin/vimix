@@ -394,7 +394,6 @@ std::unique_ptr<RifeBackend> make_backend(const std::string &backend, std::strin
         rife = std::make_unique<RifeONNX>(_path);
     }
 #else
-    (void)model;
     if (backend == "onnx")
         throw std::runtime_error("this build has no onnx backend");
 #endif
