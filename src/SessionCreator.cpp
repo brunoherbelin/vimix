@@ -1077,6 +1077,7 @@ void SessionLoader::visit (Source& s)
     bool p = true;
     sourceNode->QueryBoolAttribute("play", &p);
     s.call( new Play(p, session_) );
+    // s.call( new RePlay() );
     bool replay = false;
     sourceNode->QueryBoolAttribute("replay_on_deactivate", &replay);
     s.setReplayOnDeactivate(replay);
