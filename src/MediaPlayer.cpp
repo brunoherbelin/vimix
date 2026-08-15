@@ -1249,11 +1249,11 @@ void MediaPlayer::execute_play_command(bool on)
 void MediaPlayer::play(bool on)
 {
     // ignore if disabled, and cannot play a single frame
-    if (!enabled_ || pending_ || singleFrame())
+    if (singleFrame())
         return;
 
     // Metronome
-    if (metro_sync_ > Metronome::SYNC_NONE) {
+    if (metro_sync_ && !pending_) {
         // busy with this delayed action
         pending_ = true;
 
@@ -1300,7 +1300,7 @@ void MediaPlayer::setLoop(MediaPlayer::LoopMode mode)
 
 void MediaPlayer::rewind(bool force)
 {
-    if (!enabled_ || !media_.seekable || pending_)
+    if (!enabled_ || !media_.seekable)
         return;
 
     // playing forward, loop to begin;
@@ -1312,7 +1312,7 @@ void MediaPlayer::rewind(bool force)
     GstClockTime target = (rate_ > 0.0) ? timeline_.next(0) : timeline_.previous(timeline_.last());
 
     // Metronome
-    if (metro_sync_) {
+    if (metro_sync_ && !pending_) {
         // busy with this delayed action
         pending_ = true;
         // delayed execution function
@@ -1333,7 +1333,7 @@ void MediaPlayer::rewind(bool force)
 void MediaPlayer::step(uint milisecond)
 {
     // useful only when Paused
-    if (!enabled_ || isPlaying() || pending_)
+    if (!enabled_ || isPlaying())
         return;
 
     if ( ( rate_ < 0.0 && position_ <= timeline_.next(0)  )
@@ -1346,7 +1346,7 @@ void MediaPlayer::step(uint milisecond)
         GstEvent *stepevent = gst_event_new_step (GST_FORMAT_TIME, milisecond, ABS(rate_), TRUE,  FALSE);
 
         // Metronome
-        if (metro_sync_) {
+        if (metro_sync_ && !pending_) {
             // busy with this delayed action
             pending_ = true;
             // delayed execution function
