@@ -576,6 +576,8 @@ void MultiFileRifeEncoder::run(RifeOptions options)
 
         // choose the inference backend (downloads its model on first use)
         std::unique_ptr<RifeBackend> rife;
+
+#if defined(HAVE_NCNN) || defined(HAVE_ONNX)
         if (mid > 0) {
             message_ = "Initializing AI Model...";
             rife = make_backend(options.backend, &message_);
@@ -587,8 +589,13 @@ void MultiFileRifeEncoder::run(RifeOptions options)
                 Log::Info("ImageSequence: inference: %s", rife->describe());
             }
         }
+#else
+        rife = std::make_unique<RifeDummy>();
+        mid = 0;
+#endif
+
         if (mid == 0) {
-            Log::Info("ImageSequence: interpolation disabled (mid = 0)");
+            Log::Info("ImageSequence: encoding sequence with given images");
             message_ = "";
         }
 

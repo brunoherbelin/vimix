@@ -1342,6 +1342,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // if video encoding codec selected
                 if ( Settings::application.image_sequence.profile >= 0 )
                 {
+
+#if defined(HAVE_NCNN) || defined(HAVE_ONNX)
                     // set number of intermediate frames to generate between each image (for video encoding)
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     static int num = sqrt((float)Settings::application.image_sequence.buffering_mode + 1.f);
@@ -1350,11 +1352,20 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     ImFormatString(buf, IM_ARRAYSIZE(buf), "%d  intermediate frames", Settings::application.image_sequence.buffering_mode);
                     ImGui::SliderInt("##Interpolate", &num, 0, 5, buf);
                     ImGui::SameLine();
-                    ImGuiToolkit::Indication("Use an AI model to interpolate between images; "
-                                              "Intermediate frames are generated with Real-time Intermediate Flow Estimation (RIFE).\n\n"
-                                              ICON_FA_MINUS_CIRCLE "  Set to 0 to disable interpolation.\n",
+#if defined(HAVE_NCNN)
+                    ImGuiToolkit::Indication("Use Real-time Intermediate Flow Estimation (RIFE), an AI-based "
+                                            "algorithm to generates smooth intermediate frames, "
+                                            "powered by NCNN backend on GPU (Vulkan).\n\n"
+                                            ICON_FA_MINUS_CIRCLE "  Set to 0 to disable interpolation.\n",
                                             ICON_FA_MAGIC);
- 
+#else
+                    ImGuiToolkit::Indication("Use Real-time Intermediate Flow Estimation (RIFE), an AI-based "
+                                            "algorithm to generates smooth intermediate frames, "
+                                            "powered by ONNX backend on CPU.\n\n"
+                                            ICON_FA_MINUS_CIRCLE "  Set to 0 to disable interpolation.\n",
+                                            ICON_FA_MAGIC);
+#endif
+#endif
                     // Offer to create video from sequence
                     ImGui::NewLine();
                     if ( ImGui::Button( ICON_FA_FILM " Encode video", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {

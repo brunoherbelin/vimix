@@ -193,8 +193,8 @@ if(USE_GST_OPENGL_SYNC_HANDLER AND NOT APPLE)
 endif()
 
 # NCNN and ONNX Runtime are optional 
-option(RIFE_WITH_NCNN "Enable RIFE with ncnn/Vulkan GPU backend" ON)
-option(RIFE_WITH_ONNX "Enable RIFE with ONNX Runtime CPU backend" ON)
+option(USE_NCNN "Enable ncnn/Vulkan GPU backend" ON)
+option(USE_ONNX "Enable ONNX Runtime CPU backend" ON)
 
 #####
 ##### Dependencies
@@ -448,6 +448,32 @@ if(UNIX)
 
 endif(UNIX)
 
+# ONNX backend for Accelerated machine learning inference by Microsoft.
+# Used by RIFE frame interpolator as CPU fallback.
+# Search for system-installed package 
+if(USE_ONNX)
+  set(ORT_ROOT "" CACHE PATH "Extra prefix to search for ONNX Runtime")
+
+  find_path(ORT_INCLUDE_DIR onnxruntime_cxx_api.h
+    HINTS ${ORT_ROOT}/include
+    PATH_SUFFIXES onnxruntime)
+  find_library(ORT_LIBRARY onnxruntime HINTS ${ORT_ROOT}/lib)
+
+  if(ORT_INCLUDE_DIR AND ORT_LIBRARY)
+    add_library(onnxruntime::onnxruntime SHARED IMPORTED)
+    set_target_properties(onnxruntime::onnxruntime PROPERTIES
+      IMPORTED_LOCATION "${ORT_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${ORT_INCLUDE_DIR}")
+  else()
+    find_package(onnxruntime CONFIG QUIET HINTS ${ORT_ROOT})
+    if(NOT onnxruntime_FOUND)
+      set(USE_ONNX OFF)
+    endif()
+  endif()
+    
+  macro_log_feature(USE_ONNX "ONNX" "Backend for Accelerated machine learning inference" "https://onnxruntime.ai/" TRUE)
+
+endif()
 
 # show message about found libs
 macro_display_feature_log()
@@ -544,9 +570,12 @@ message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack
 #
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/miniz/CMakeLists.txt")
     set(MINIZ_LIBRARIES miniz)
+    # temporarily disable warning of CMake version 
+    set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
     # BUILD_EXAMPLES/BUILD_TESTS/INSTALL_PROJECT default to OFF when miniz detects
     # it is included as a subdirectory (MINIZ_STANDALONE_PROJECT = OFF).
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/miniz)
+    set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)
     message(STATUS "Compiling 'miniz' ZIP compression from https://github.com/richgel999/miniz")
 else()
     set(MINIZ_LIBRARIES "")
@@ -560,14 +589,14 @@ endif()
 # Used by RIFE frame interpolator and Real-ESRGAN upscaler. 
 # The script setup-ext.sh runs automatically on first configure.
 #
-if(RIFE_WITH_NCNN)
+if(USE_NCNN)
   find_package(Vulkan QUIET)
   if(NOT Vulkan_FOUND)
-    set(RIFE_WITH_NCNN OFF)
+    set(USE_NCNN OFF)
   endif()
 endif()
 
-if(RIFE_WITH_NCNN)
+if(USE_NCNN)
   set(RIFE_NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/rife-ncnn-vulkan/src)
   set(RIFE_NCNN_INCLUDE_DIRS ${RIFE_NCNN_DIR} ${CMAKE_CURRENT_BINARY_DIR}) 
   set(NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/ncnn)
@@ -582,13 +611,14 @@ if(RIFE_WITH_NCNN)
     if(NOT EXT_SETUP_RESULT EQUAL 0)
       message(WARNING "cmake/setup-ext.sh failed (git + network needed "
                       "on first configure) — building without RifeNCNN")
-      set(RIFE_WITH_NCNN OFF)
+      set(USE_NCNN OFF)
     endif()
   endif()
 endif()
 
-if(RIFE_WITH_NCNN)
+if(USE_NCNN)
   find_package(Threads REQUIRED)
+  message(STATUS "Compiling 'NCNN' Neural network inference for Vulkan GPU from https://github.com/Tencent/ncnn -- ${NCNN_DIR}")
 
   # ncnn build configuration (mirrors rife-ncnn-vulkan/src/CMakeLists.txt).
   # NCNN_VULKAN_ONLINE_SPIRV: shaders are embedded as source and compiled
@@ -618,12 +648,13 @@ if(RIFE_WITH_NCNN)
     endif()
   endforeach()
 
-  # The pinned ncnn/glslang declare cmake_minimum_required versions older
-  # than 3.5, which CMake >= 4 rejects; treat them as 3.5 
+  # The pinned ncnn/glslang declare cmake_minimum_required versions older than the one we use, so silence the warning.
   if(NOT DEFINED CMAKE_POLICY_VERSION_MINIMUM)
     set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
   endif()
+  set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
   add_subdirectory(${NCNN_DIR} ncnn EXCLUDE_FROM_ALL)
+  set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)
   unset(CMAKE_POLICY_VERSION_MINIMUM)
 
   # ncnn is third-party code; silence its (harmless) unused-variable warnings
@@ -679,29 +710,6 @@ if(RIFE_WITH_NCNN)
 
 endif()
 
-# ONNX backend for Accelerated machine learning inference by Microsoft.
-# Used by RIFE frame interpolator as CPU fallback.
-# Search for system-installed package 
-if(RIFE_WITH_ONNX)
-  set(ORT_ROOT "" CACHE PATH "Extra prefix to search for ONNX Runtime")
-
-  find_path(ORT_INCLUDE_DIR onnxruntime_cxx_api.h
-    HINTS ${ORT_ROOT}/include
-    PATH_SUFFIXES onnxruntime)
-  find_library(ORT_LIBRARY onnxruntime HINTS ${ORT_ROOT}/lib)
-
-  if(ORT_INCLUDE_DIR AND ORT_LIBRARY)
-    add_library(onnxruntime::onnxruntime SHARED IMPORTED)
-    set_target_properties(onnxruntime::onnxruntime PROPERTIES
-      IMPORTED_LOCATION "${ORT_LIBRARY}"
-      INTERFACE_INCLUDE_DIRECTORIES "${ORT_INCLUDE_DIR}")
-  else()
-    find_package(onnxruntime CONFIG QUIET HINTS ${ORT_ROOT})
-    if(NOT onnxruntime_FOUND)
-      set(RIFE_WITH_ONNX OFF)
-    endif()
-  endif()
-endif()
 
 
 #####
