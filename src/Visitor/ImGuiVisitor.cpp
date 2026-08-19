@@ -788,7 +788,50 @@ void ImGuiVisitor::visit (MediaSource& s)
                 ImGuiToolkit::Indication(desc.c_str(),16,16);
             }
 
+            // Information on keyframes and GOP size, and tooltip on backward playback and errors
             ImGui::SetCursorPos(botom);
+            ImGuiTextBuffer info;
+            ImGuiTextBuffer tooltip;
+            if (mp->evaluation().done) {
+                if (mp->evaluation().log.empty() && mp->evaluation().keyframe_count > 0) {
+
+                    // information on keyframes and GOP size
+                    info.appendf("%d", (int) mp->evaluation().keyframe_count);
+                    if (mp->evaluation().gop_size_max - mp->evaluation().gop_size_min > 1)
+                        info.appendf(" (1 every %d-%d frames)", (int) mp->evaluation().gop_size_min, (int) mp->evaluation().gop_size_max);
+                    else                            
+                        info.appendf(" (1 every %d frames)", (int) mp->evaluation().gop_size_max);
+                    
+                    // tooltip on backward playback and errors
+                    if (mp->evaluation().gop_size_max < 1 )
+                        tooltip.appendf(ICON_FA_MINUS_CIRCLE " Cannot play backward");
+                    else if (mp->evaluation().gop_size_max * mp->height() > 35000 || mp->evaluation().has_bframes) 
+                        tooltip.appendf(ICON_FA_EXCLAMATION_TRIANGLE " Difficult to play backward");
+                    else
+                        tooltip.appendf(ICON_FA_CHECK " Ok to play backward");
+                    if (mp->evaluation().discontinuity_count > 0 )
+                        tooltip.appendf(", %d discontinuities", mp->evaluation().discontinuity_count);
+                    if (mp->evaluation().corrupted_count > 0 )
+                        tooltip.appendf(", %d corruptions", mp->evaluation().corrupted_count);
+                } 
+                else {
+                    info.appendf("%s", mp->evaluation().log.c_str());
+                    tooltip.appendf("%s", mp->evaluation().log.c_str());
+                }
+            }
+            else {
+                static const char* animation[] = { ICON_FA_HOURGLASS_START,ICON_FA_HOURGLASS_HALF,ICON_FA_HOURGLASS_END,ICON_FA_HOURGLASS };
+                info.appendf("  %s", animation[(g_get_monotonic_time() / 300000) % 4]);
+            }
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            ImGui::InputText("Keyframes", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopStyleColor(1);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text( "%s", tooltip.c_str() );
+                ImGui::EndTooltip();
+            }
 
             // Selector for Hardware or software decoding, if available
             if ( Settings::application.render.gpu_decoding ) {
