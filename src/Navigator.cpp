@@ -65,7 +65,6 @@
 #include "Connection.h"
 #include "ControlManager.h"
 #include "Recorder.h"
-#include "MultiFileRecorder.h"
 #include "MultiFileRifeEncoder.h"
 #include "Audio.h"
 #include "MousePointer.h"

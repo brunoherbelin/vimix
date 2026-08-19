@@ -1,47 +1,37 @@
-#include "OutputWindow.h"
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/video/video.h>
 
 #ifdef HAVE_NCNN
-// rife-ncnn-vulkan (ext/rife-ncnn-vulkan/src) + ncnn
+// rife-ncnn-vulkan in ext/rife-ncnn-vulkan/src
 #include "rife.h"
 #include "gpu.h"
 #endif
 
 #ifdef HAVE_ONNX
 #include <onnxruntime_cxx_api.h>
-#include <fcntl.h>
-#include <unistd.h>
 #endif
 
-#include <algorithm>
-#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
-#include <functional>
-#include <memory>
 #include <stdexcept>
-#include <sys/stat.h>
 #include <thread>
 #include <vector>
 
 #include "Log.h"
+#include "Settings.h"
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/BaseToolkit.h"
 #include "Toolkit/SystemToolkit.h"
-#include "Settings.h"
 
 #include "MultiFileRifeEncoder.h"
 
 
 namespace fs = std::filesystem;
 
-// Everything below is internal to the encoder: the frame type, image I/O,
-// model provisioning, the inference backends and the interpolation drivers
-// are not part of the public interface.
+// Everything below is internal to the encoder
 namespace {
 
 // ---------------------------------------------------------------- frames
@@ -82,23 +72,6 @@ Frame rgb8_to_frame(const unsigned char *rgb, int w, int h)
 }
 
 // ------------------------------------------------------------ image input
-
-bool has_image_ext(const fs::path &p)
-{
-    std::string e = p.extension().string();
-    std::transform(e.begin(), e.end(), e.begin(), ::tolower);
-    return e == ".jpg" || e == ".jpeg" || e == ".png";
-}
-
-std::vector<fs::path> list_images(const fs::path &dir)
-{
-    std::vector<fs::path> files;
-    for (const auto &entry : fs::directory_iterator(dir))
-        if (entry.is_regular_file() && has_image_ext(entry.path()))
-            files.push_back(entry.path());
-    std::sort(files.begin(), files.end());
-    return files;
-}
 
 // Decode one image file to RGB with GStreamer, scaling to w x h
 // (pass 0,0 to keep the image's own size).
@@ -465,9 +438,8 @@ std::string MultiFileRifeEncoder::generateOutputFilename(const std::list<std::st
         base += "image";
 
     std::string output = base + "_rife.mov";
-    struct stat buffer;
     int counter = 1;
-    while (stat(output.c_str(), &buffer) == 0) {
+    while ( SystemToolkit::file_exists(output ) ) {
         output = base + "_rife_" + std::to_string(counter) + ".mov";
         counter++;
     }
@@ -527,11 +499,8 @@ void MultiFileRifeEncoder::stop()
         worker_.join();
 
     if (!success_ && !output_filename_.empty()) {
-        struct stat buffer;
-        if (stat(output_filename_.c_str(), &buffer) == 0 &&
-            remove(output_filename_.c_str()) == 0)
-            Log::Info("removed incomplete output file %s\n",
-                    output_filename_.c_str());
+        if (SystemToolkit::remove_file(output_filename_))
+            Log::Info("removed incomplete output file %s\n", output_filename_.c_str());
     }
 }
 
