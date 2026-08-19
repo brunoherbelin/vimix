@@ -39,10 +39,10 @@ const char* GPUVideoRecorder::profile_name[GPUVideoRecorder::PROFILE_COUNT] = {
     "NVIDIA H264 (HQ)",
     "NVIDIA H265 (Realtime)",
     "NVIDIA H265 (HQ)",
-    "VAAPI H264 (Realtime)",
-    "VAAPI H264 (HQ)",
-    "VAAPI H265 (Realtime)",
-    "VAAPI H265 (HQ)"
+    "VA-API H264 (Realtime)",
+    "VA-API H264 (HQ)",
+    "VA-API H265 (Realtime)",
+    "VA-API H265 (HQ)"
 };
 
 const char* GPUVideoRecorder::profile_encoder[GPUVideoRecorder::PROFILE_COUNT] = {
@@ -50,10 +50,10 @@ const char* GPUVideoRecorder::profile_encoder[GPUVideoRecorder::PROFILE_COUNT] =
     "nvh264enc",
     "nvh265enc",
     "nvh265enc",
-    "vaapih264enc",
-    "vaapih264enc",
-    "vaapih265enc",
-    "vaapih265enc"
+    "vah264enc",
+    "vah264enc",
+    "vah265enc",
+    "vah265enc"
 };
 
 const gint GPUVideoRecorder::framerate_preset[3] = { 15, 25, 30 };
@@ -111,19 +111,19 @@ std::string GPUVideoRecorder::buildPipeline(Profile profile, GstCaps *write_caps
                        "video/x-h265, profile=main ! h265parse ! ";
             break;
         case VAAPI_H264_REALTIME:
-            pipeline += "vaapih264enc rate-control=cqp init-qp=26 ! "
+            pipeline += "vah264enc rate-control=cqp qpi=26 qpp=30  key-int-max=60 ! "
                        "video/x-h264, profile=main ! h264parse ! ";
             break;
         case VAAPI_H264_HQ:
-            pipeline += "vaapih264enc rate-control=cqp init-qp=16 ! "
+            pipeline += "vah264enc rate-control=cqp qpi=16 qpp=20  key-int-max=30 ! "
                        "video/x-h264, profile=high ! h264parse ! ";
             break;
         case VAAPI_H265_REALTIME:
-            pipeline += "vaapih265enc rate-control=cqp init-qp=26 ! "
+            pipeline += "vah265enc rate-control=cqp qpi=26 qpp=30  key-int-max=60 ! "
                        "video/x-h265, profile=main ! h265parse ! ";
             break;
         case VAAPI_H265_HQ:
-            pipeline += "vaapih265enc rate-control=cqp init-qp=16 ! "
+            pipeline += "vah265enc rate-control=cqp qpi=16 qpp=20  key-int-max=30 ! "
                        "video/x-h265, profile=high ! h265parse ! ";
             break;
         default:
@@ -187,7 +187,7 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
 
             // test if hardware encoder is available
             if (!isEncoderAvailable(profile_)) {
-                return("GPU Video Recording : No GPU Encoder available (nvdec or vaapi).");
+                return("GPU Video Recording : No GPU Encoder available (nvdec or va-api).");
             }
         }
     } 

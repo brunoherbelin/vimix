@@ -48,8 +48,8 @@ std::vector< std::string > srt_sink_alternatives_ {
 };
 
 std::vector< std::pair<std::string, std::string> > srt_encoder_alternatives_ {
-    {"nvh264enc", "nvh264enc zerolatency=true rc-mode=cbr-ld-hq bitrate=4000 ! "},
-    {"vaapih264enc", "vaapih264enc rate-control=cqp init-qp=26 ! "},
+    {"nvh264enc", "nvh264enc zerolatency=true rc-mode=cbr-ld-hq bitrate=6000 ! "},
+    {"vah264enc", "vah264enc rate-control=cbr bitrate=6000 target-usage=4 key-int-max=60 b-frames=0 aud=true cabac=true ! "},
     {"vtenc_h264_hw", "vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! "},
     {"x264enc", "x264enc tune=zerolatency ! "}
 };
@@ -133,7 +133,7 @@ std::string VideoBroadcast::init(GstCaps *read_caps, GstCaps *write_caps)
     // Use glupload + glcolorconvert for hardware encoders
     // This uploads system memory to GPU and does color conversion in GPU shader
     if (srt_encoder_.find("nvh264enc") != std::string::npos ||
-        srt_encoder_.find("vaapih264enc") != std::string::npos) {
+        srt_encoder_.find("vah264enc") != std::string::npos) {
         // glupload: system memory → GLMemory (in GStreamer's thread)
         // glcolorconvert: GPU color conversion (RGBA → NV12 for VAAPI, passthrough for NVIDIA)
         description += "glupload ! glcolorconvert ! gltransformation ! capsfilter name=capf ! ";
