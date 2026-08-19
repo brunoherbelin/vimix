@@ -273,21 +273,21 @@ std::vector<std::string> nvidia_profile_description {
 };
 
 std::vector<std::string> vaapi_encoder = {
-    "vaapih264enc",
-    "vaapih264enc",
-    "vaapih265enc",
-    "vaapih265enc",
+    "vah264enc",
+    "vah264enc",
+    "vah265enc",
+    "vah265enc",
     "", "", "", ""
 };
 
 std::vector<std::string> vaapi_profile_description {
 
-    // Control vaapih264enc encoder
-    "vaapih264enc rate-control=cqp init-qp=26 ! video/x-h264, profile=(string)main ! h264parse ! ",
-    "vaapih264enc rate-control=cqp init-qp=14 quality-level=4 keyframe-period=0 max-bframes=2 ! video/x-h264, profile=(string)high ! h264parse ! ",
-    // Control vaapih265enc encoder
-    "vaapih265enc ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "vaapih265enc rate-control=cqp init-qp=14 quality-level=4 keyframe-period=0 max-bframes=2 ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
+    // Control vah264enc encoder
+    "vah264enc rate-control=cqp qpi=26 qpp=30 target-usage=2 key-int-max=60 ! video/x-h264, profile=(string)main ! h264parse ! ",
+    "vah264enc rate-control=cqp qpi=20 qpp=22 key-int-max=30 ! video/x-h264, profile=(string)high ! h264parse ! ",
+    // Control vah265enc encoder
+    "vah265enc rate-control=cqp qpi=26 qpp=30 target-usage=2 key-int-max=60 ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "vah265enc rate-control=cqp qpi=20 qpp=22 key-int-max=30 ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
     "", "", "", ""
 };
 

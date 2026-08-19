@@ -111,19 +111,19 @@ std::string GPUVideoRecorder::buildPipeline(Profile profile, GstCaps *write_caps
                        "video/x-h265, profile=main ! h265parse ! ";
             break;
         case VAAPI_H264_REALTIME:
-            pipeline += "vah264enc rate-control=cqp qpi=26 qpp=30  key-int-max=60 ! "
+            pipeline += "vah264enc rate-control=cqp qpi=26 qpp=30 target-usage=2 key-int-max=60 ! "
                        "video/x-h264, profile=main ! h264parse ! ";
             break;
         case VAAPI_H264_HQ:
-            pipeline += "vah264enc rate-control=cqp qpi=16 qpp=20  key-int-max=30 ! "
+            pipeline += "vah264enc rate-control=cqp qpi=20 qpp=22 key-int-max=30 ! "
                        "video/x-h264, profile=high ! h264parse ! ";
             break;
         case VAAPI_H265_REALTIME:
-            pipeline += "vah265enc rate-control=cqp qpi=26 qpp=30  key-int-max=60 ! "
+            pipeline += "vah265enc rate-control=cqp qpi=26 qpp=30 target-usage=2 key-int-max=60 ! "
                        "video/x-h265, profile=main ! h265parse ! ";
             break;
         case VAAPI_H265_HQ:
-            pipeline += "vah265enc rate-control=cqp qpi=16 qpp=20  key-int-max=30 ! "
+            pipeline += "vah265enc rate-control=cqp qpi=20 qpp=22 key-int-max=30 ! "
                        "video/x-h265, profile=high ! h265parse ! ";
             break;
         default:
