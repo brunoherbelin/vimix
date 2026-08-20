@@ -105,7 +105,8 @@ if(UNIX)
         set(CPACK_GENERATOR DragNDrop)
         set(CPACK_BINARY_DRAGNDROP ON)
 
-        set(USE_NCNN OFF CACHE BOOL "Disable NCNN with Vulkan GPU backend on macOS (not supported)")
+        # NCNN Vulkan GPU backend is not supported on macOS
+        set(USE_NCNN OFF)
 
         # Apple ID code signing
         set(APPLE_CODESIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/osx/entitlements.plist")
