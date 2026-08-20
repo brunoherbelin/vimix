@@ -335,7 +335,7 @@ std::unique_ptr<RifeBackend> make_backend(const std::string &backend, std::strin
             for (const char *name : {"flownet.param", "flownet.bin"}) {
                 std::string dest = SystemToolkit::full_filename(_path, name);
                 if (!fs::exists(dest)) {
-                    (*message) = "Downloading NCNN RIFE GPU model...";
+                    (*message) = "Downloading NCNN RIFE model...";
                     GstToolkit::download_file(std::string(kNcnnModelBaseUrl) + name, dest);
                 }
             }
@@ -347,6 +347,10 @@ std::unique_ptr<RifeBackend> make_backend(const std::string &backend, std::strin
                 throw;
                 Log::Warning("Image Sequence: ncnn backend unavailable (%s)\n", e.what());
             }
+#ifndef HAVE_ONNX
+            else
+                Log::Info("Image Sequence: ncnn backend unavailable (%s)\n", e.what());
+#endif            
         }
     }
 #else
@@ -359,11 +363,11 @@ std::unique_ptr<RifeBackend> make_backend(const std::string &backend, std::strin
         // Make sure the ONNX model file exists; fetch the default one from Hugging Face if missing.
         std::string  _path = SystemToolkit::full_filename(SystemToolkit::settings_path(), kOnnxModel);
         if (!fs::exists(_path)) {
-            (*message) = "Downloading ONNX RIFE CPU model...";
+            (*message) = "Downloading ONNX RIFE model...";
             GstToolkit::download_file(kOnnxModelUrl, _path);
         }
         // initialize the RIFE inference backend (ONNX Runtime CPU)
-        (*message) = "Using ONNX RIFE model on CPU";
+        (*message) = "Using ONNX RIFE model";
         rife = std::make_unique<RifeONNX>(_path);
     }
 #else

@@ -80,6 +80,10 @@ include(MacroFindGStreamerLibrary)
 set(BUILD_STATIC_LIBS ON)
 set(CMAKE_INCLUDE_CURRENTDIR ON)
 
+# NCNN and ONNX Runtime are optional 
+option(USE_NCNN "Enable NCNN with Vulkan GPU backend" ON)
+option(USE_ONNX "Enable ONNX Runtime backend" ON)
+
 if(UNIX)
     if (APPLE)
         add_definitions(-DAPPLE)
@@ -100,6 +104,8 @@ if(UNIX)
         set(CPACK_SYSTEM_NAME  "OSX_${CMAKE_OSX_DEPLOYMENT_TARGET}_${CMAKE_OSX_ARCHITECTURES}")
         set(CPACK_GENERATOR DragNDrop)
         set(CPACK_BINARY_DRAGNDROP ON)
+
+        set(USE_NCNN OFF CACHE BOOL "Disable NCNN with Vulkan GPU backend on macOS (not supported)")
 
         # Apple ID code signing
         set(APPLE_CODESIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/osx/entitlements.plist")
@@ -192,9 +198,6 @@ if(USE_GST_OPENGL_SYNC_HANDLER AND NOT APPLE)
     add_definitions(-DUSE_GST_OPENGL_SYNC_HANDLER)
 endif()
 
-# NCNN and ONNX Runtime are optional 
-option(USE_NCNN "Enable ncnn/Vulkan GPU backend" ON)
-option(USE_ONNX "Enable ONNX Runtime CPU backend" ON)
 
 #####
 ##### Dependencies
@@ -329,7 +332,7 @@ else ()
 endif()
 
 if (GLM_FOUND)
-    macro_log_feature(GLM_FOUND "GLM" "OpenGL mathematics" "https://glm.g-truc.net" TRUE)
+    macro_log_feature(GLM_FOUND "GLM" "OpenGL mathematics" "https://glm.g-truc.net" FALSE)
 else ()
     set(GLM_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
@@ -350,7 +353,7 @@ else ()
 endif()
 
 if (TINYXML2_FOUND)
-    macro_log_feature(TINYXML2_FOUND "TinyXML2" "TinyXML2 library" "https://github.com/leethomason/tinyxml2.git" TRUE)
+    macro_log_feature(TINYXML2_FOUND "TinyXML2" "TinyXML2 library" "https://github.com/leethomason/tinyxml2.git" FALSE)
 else ()
     set(TINYXML2_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2)
     set(TINYXML2_LIBRARIES TINYXML2)
@@ -374,7 +377,7 @@ else ()
 endif()
 
 if (STB_FOUND)
-    macro_log_feature(STB_FOUND "STB" "single-file image and audio processing" "https://github.com/nothings/stb" TRUE)
+    macro_log_feature(STB_FOUND "STB" "single-file image and audio processing" "https://github.com/nothings/stb" FALSE)
 else ()
     set(STB_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/stb)
     message(STATUS "Including 'STB' single-file image and audio processing from https://github.com/nothings/stb -- ${STB_INCLUDE_DIRS}")
@@ -390,7 +393,7 @@ include_directories(
 find_package(AbletonLink QUIET)
 
 if (AbletonLink_FOUND)
-    macro_log_feature(AbletonLink_FOUND "AbletonLink" "Ableton Link synchronizer" "https://github.com/Ableton/link" TRUE)
+    macro_log_feature(AbletonLink_FOUND "AbletonLink" "Ableton Link synchronizer" "https://github.com/Ableton/link" FALSE)
 else ()
     include(${CMAKE_CURRENT_SOURCE_DIR}/ext/link/AbletonLinkConfig.cmake)
     message(STATUS "Compiling 'Ableton Link' from https://github.com/Ableton/link -- ${CMAKE_CURRENT_SOURCE_DIR}/ext/link")
@@ -471,12 +474,9 @@ if(USE_ONNX)
     endif()
   endif()
     
-  macro_log_feature(USE_ONNX "ONNX" "Backend for Accelerated machine learning inference" "https://onnxruntime.ai/" TRUE)
+  macro_log_feature(USE_ONNX "ONNX" "Backend for Accelerated machine learning inference" "https://onnxruntime.ai/" FALSE)
 
 endif()
-
-# show message about found libs
-macro_display_feature_log()
 
 #####
 ##### Locally built libraries
@@ -581,6 +581,11 @@ else()
     set(MINIZ_LIBRARIES "")
     message(STATUS "miniz not found - ZIP compression disabled (run: git submodule update --init ext/miniz)")
 endif()
+
+#
+# show synthetic table about found packages
+#
+macro_display_feature_log()
 
 #
 # NCNN Vulkan GPU backend. 
