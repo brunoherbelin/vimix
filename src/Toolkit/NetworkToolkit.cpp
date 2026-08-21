@@ -97,7 +97,7 @@ const char* NetworkToolkit::stream_protocol_label[NetworkToolkit::DEFAULT] = {
 const std::vector<std::string> NetworkToolkit::stream_send_pipeline {
     "video/x-raw, format=RGB,  framerate=30/1 ! queue max-size-buffers=10 ! rtpvrawpay ! application/x-rtp,sampling=RGB ! udpsink name=sink",
     "video/x-raw, format=NV12, framerate=30/1 ! queue max-size-buffers=10 ! jpegenc ! rtpjpegpay ! udpsink name=sink",
-    "video/x-raw, format=NV12, framerate=30/1 ! queue max-size-buffers=10 ! x264enc tune=\"zerolatency\" pass=4 quantizer=22 speed-preset=2 ! h264parse ! rtph264pay aggregate-mode=1 ! udpsink name=sink",
+    "video/x-raw, format=NV12, framerate=30/1 ! queue max-size-buffers=10 ! x264enc pass=qual quantizer=22 speed-preset=veryfast ! h264parse config-interval=-1 ! rtph264pay aggregate-mode=1 ! udpsink name=sink",
     "video/x-raw, format=RGB,  framerate=30/1 ! queue max-size-buffers=10 ! shmsink buffer-time=-1 wait-for-connection=true name=sink"
 };
 
@@ -111,9 +111,9 @@ const std::vector<std::string> NetworkToolkit::stream_receive_pipeline {
 const std::vector< std::pair<std::string, std::string> > NetworkToolkit::stream_h264_send_pipeline {
 //    {"vtenc_h264_hw", "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! rtph264pay aggregate-mode=1 ! udpsink name=sink"},
     {"nvh264enc",     "queue max-size-buffers=10 ! "
-        "nvh264enc zerolatency=true rc-mode=cbr-ld-hq bitrate=6000 ! video/x-h264, profile=(string)main ! h264parse config-interval=-1 ! rtph264pay aggregate-mode=1 ! udpsink name=sink"},
+        "nvh264enc preset=p4 rc-mode=cbr-ld-hq bitrate=6000 ! video/x-h264, profile=(string)main ! h264parse config-interval=-1 ! rtph264pay aggregate-mode=1 ! udpsink name=sink"},
     {"vah264enc",  "queue max-size-buffers=10 ! "
-        "vah264enc rate-control=cbr bitrate=6000 target-usage=4 key-int-max=60 b-frames=0 aud=true cabac=true ! video/x-h264, profile=(string)main ! h264parse config-interval=-1 ! rtph264pay aggregate-mode=1 ! udpsink name=sink"}
+        "vah264enc rate-control=cbr bitrate=6000 target-usage=2 b-frames=0 aud=true cabac=true ! video/x-h264, profile=(string)main ! h264parse config-interval=-1 ! rtph264pay aggregate-mode=1 ! udpsink name=sink"}
 };
 
 bool initialized_ = false;

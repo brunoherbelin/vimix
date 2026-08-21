@@ -166,7 +166,7 @@ std::vector<std::string> VideoRecorder::profile_description {
     "x264enc pass=qual quantizer=20 speed-preset=veryfast bframes=2 key-int-max=30 bitrate=25000 ! video/x-h264, profile=(string)main ! h264parse ! ",
     "x264enc pass=qual quantizer=18 speed-preset=medium bframes=3 key-int-max=30 bitrate=50000 ! video/x-h264, profile=(string)high ! h264parse ! ",
     "x265enc speed-preset=superfast tune=0 key-int-max=30 option-string=\"crf=20:vbv-maxrate=25000:vbv-bufsize=25000\" ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "x265enc speed-preset=medium tune=0 key-int-max=30 option-string=\"crf=18:vbv-maxrate=50000:vbv-bufsize=50000\" ! video/x-h265, profile=(string)high ! h265parse ! ",
+    "x265enc speed-preset=medium tune=0 key-int-max=30 option-string=\"crf=18:vbv-maxrate=50000:vbv-bufsize=50000\" ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
     "avenc_prores_ks pass=quant quantizer=8 profile=standard quant-mat=default threads=0 vendor=apl0 ! ",
     "avenc_prores_ks pass=quant quantizer=4 profile=hq quant-mat=default threads=0 vendor=apl0 ! ",
     "vp9enc end-usage=cq cq-level=24 target-bitrate=25000000 \

@@ -609,7 +609,9 @@ void MultiFileRifeEncoder::run(RifeOptions options)
         // revert to software encoder
         else
             desc += VideoRecorder::profile_description[options.profile];
-
+#ifndef NDEBUG
+        Log::Info("ImageSequence: encoding pipeline '%s'", desc.c_str());
+#endif
         // qt muxer in .mov file
         desc += "qtmux ! filesink location=\"" + output_filename_ + "\"";
 
@@ -680,6 +682,7 @@ void MultiFileRifeEncoder::run(RifeOptions options)
             throw std::runtime_error("encoding stopped by user");
 
         // -------- finalize: EOS and wait for the muxer to write its index
+        message_ = "Saving output file...";
         gst_app_src_end_of_stream(GST_APP_SRC(src));
         GstBus *bus = gst_element_get_bus(enc_pipe);
         GstMessage *msg = gst_bus_timed_pop_filtered(bus, GST_CLOCK_TIME_NONE,

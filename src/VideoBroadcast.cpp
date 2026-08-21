@@ -48,10 +48,10 @@ std::vector< std::string > srt_sink_alternatives_ {
 };
 
 std::vector< std::pair<std::string, std::string> > srt_encoder_alternatives_ {
-    {"nvh264enc", "nvh264enc zerolatency=true rc-mode=cbr-ld-hq bitrate=6000 ! "},
-    {"vah264enc", "vah264enc rate-control=cbr bitrate=6000 target-usage=4 key-int-max=60 b-frames=0 aud=true cabac=true ! "},
+    {"nvh264enc", "nvh264enc preset=p4 rc-mode=cbr-ld-hq bitrate=6000 ! "},
+    {"vah264enc", "vah264enc target-usage=2 rate-control=cbr bitrate=6000 b-frames=0 aud=true cabac=true ! "},
     {"vtenc_h264_hw", "vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! "},
-    {"x264enc", "x264enc tune=zerolatency ! "}
+    {"x264enc", "x264enc pass=qual quantizer=22 speed-preset=veryfast ! "}
 };
 
 bool VideoBroadcast::available()
