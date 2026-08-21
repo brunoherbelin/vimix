@@ -85,6 +85,15 @@ bool GPUVideoRecorder::isEncoderAvailable(Profile profile)
         return false;
     if (!GstToolkit::has_feature("gltransformation"))
         return false;
+
+    // VA-API encoders need the GLMemory to VAMemory bridge 
+    if (profile > NVENC_H265_HQ) {
+        if (!GstToolkit::has_feature("gldownload"))
+            return false;
+        if (!GstToolkit::has_feature("vapostproc"))
+            return false;
+    }
+
     return GstToolkit::has_feature(profile_encoder[profile]);
 }
 
@@ -92,39 +101,47 @@ std::string GPUVideoRecorder::buildPipeline(Profile profile, GstCaps *write_caps
 {
     std::string pipeline = "appsrc name=src ! glcolorconvert name=glclcvt ! gltransformation ! capsfilter name=capf ! ";
 
+    // GLMemory to VAMemory bridge.
+    // The VA-API encoders (vah264enc, vah265enc) take video/x-raw(memory:VAMemory) 
+    // - gldownload takes the frame out of the (shared) GL context : it exports a DMABuf when the
+    //   GL platform supports it (Mesa), and falls back to system memory otherwise (e.g. NVIDIA, but then vaapi is not used).
+    // - vapostproc puts it into a VA surface and performs the RGBA to NV12 conversion on the VA
+    //   hardware; this is significantly faster than converting to NV12 in GL before download.
+    const std::string va_memory = "gldownload ! vapostproc ! video/x-raw(memory:VAMemory) ! ";
+
     // Build encoder-specific pipeline
     switch (profile) {
         case NVENC_H264_REALTIME:
-            pipeline += "nvh264enc rc-mode=constqp zerolatency=true ! "
+            pipeline += "nvh264enc rc-mode=constqp preset=p4 bframes=2 gop-size=30 qp-const-i=23 qp-const-p=25 qp-const-b=27 ! "
                        "video/x-h264, profile=main ! h264parse ! ";
             break;
         case NVENC_H264_HQ:
-            pipeline += "nvh264enc rc-mode=constqp qp-const=18 ! "
+            pipeline += "nvh264enc rc-mode=constqp preset=p6 bframes=3 rc-lookahead=16 b-adapt=true gop-size=30 ! "
                        "video/x-h264, profile=high ! h264parse ! ";
             break;
         case NVENC_H265_REALTIME:
-            pipeline += "nvh265enc rc-mode=constqp zerolatency=true ! "
+            pipeline += "nvh265enc rc-mode=constqp preset=p4 bframes=2 gop-size=30 qp-const-i=23 qp-const-p=25 qp-const-b=27 ! "
                        "video/x-h265, profile=main ! h265parse ! ";
             break;
         case NVENC_H265_HQ:
-            pipeline += "nvh265enc rc-mode=constqp qp-const=18 ! "
+            pipeline += "nvh265enc rc-mode=constqp preset=p6 bframes=3 rc-lookahead=16 b-adapt=true gop-size=30 qp-const-i=21 qp-const-p=23 qp-const-b=25 ! "
                        "video/x-h265, profile=main ! h265parse ! ";
             break;
         case VAAPI_H264_REALTIME:
-            pipeline += "vah264enc rate-control=cqp qpi=26 qpp=30 target-usage=2 key-int-max=60 ! "
+            pipeline += va_memory + "vah264enc rate-control=cqp target-usage=2 key-int-max=30 qpi=24 qpp=26 qpb=28 ! "
                        "video/x-h264, profile=main ! h264parse ! ";
             break;
         case VAAPI_H264_HQ:
-            pipeline += "vah264enc rate-control=cqp qpi=20 qpp=22 key-int-max=30 ! "
+            pipeline += va_memory + "vah264enc rate-control=cqp target-usage=4 key-int-max=30 qpi=22 qpp=24 qpb=26 ! "
                        "video/x-h264, profile=high ! h264parse ! ";
             break;
         case VAAPI_H265_REALTIME:
-            pipeline += "vah265enc rate-control=cqp qpi=26 qpp=30 target-usage=2 key-int-max=60 ! "
-                       "video/x-h265, profile=main ! h265parse ! ";
+            pipeline += va_memory + "vah265enc rate-control=cqp target-usage=2 key-int-max=30 qpi=25 qpp=27 qpb=29 ! "
+                       "video/x-h265 ! h265parse ! ";
             break;
         case VAAPI_H265_HQ:
-            pipeline += "vah265enc rate-control=cqp qpi=20 qpp=22 key-int-max=30 ! "
-                       "video/x-h265, profile=high ! h265parse ! ";
+            pipeline += va_memory + "vah265enc rate-control=cqp target-usage=2 key-int-max=30 qpi=23 qpp=25 qpb=27 ! "
+                       "video/x-h265 ! h265parse ! ";
             break;
         default:
             break;

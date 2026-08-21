@@ -157,7 +157,7 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
     MediaInfo video_stream_info;
 
     // if uri is valid
-    if ( SystemToolkit::file_exists( gst_uri_get_location(uri.c_str()) ) ) {
+    if ( !uri.empty() && SystemToolkit::file_exists( gst_uri_get_location(uri.c_str()) ) ) {
 
         GError *err = NULL;
         GstDiscoverer *discoverer = gst_discoverer_new (DISCOVER_TIMOUT * GST_SECOND, &err);

@@ -147,90 +147,30 @@ const char* VideoRecorder::profile_name[VideoRecorder::DEFAULT] = {
     "H265 (HQ)",
     "ProRes (Realtime)",
     "ProRes (HQ)",
-    "WebM VP8 (Realtime)",
+    "WebM VP9 (Realtime)",
     "Multiple JPEG"
 };
 
-const std::vector<std::string> x265enc_options {
-    // Control x265 encoder quality :
-    // NB: apparently x265 only accepts I420 format :(
-    // speed-preset
-    //    superfast (2)
-    //    veryfast (3)
-    //    faster (4)
-    //    fast (5)
-    // Tune
-    //   psnr (1)
-    //   ssim (2) DEFAULT
-    //   grain (3)
-    //   zerolatency (4)  Encoder latency is removed
-    //   fastdecode (5)
-    //   animation (6) optimize the encode quality for animation content without impacting the encode speed
-    // crf Quality-controlled variable bitrate [0 51]
-    //   default 28
-    //   24 for x265 should be visually transparent; anything lower will probably just waste file size
-    "x265enc tune=\"zerolatency\" speed-preset=2 option-string=\"crf=24\" ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "x265enc tune=\"zerolatency\" speed-preset=5 option-string=\"crf=12\" ! video/x-h265, profile=(string)main ! h265parse ! "
-};
+
+// There are two profiles of encoding: RT and HQ
+// RT : "Real-time", Should encode live at 60 fps a 1080p video ; quality is at the highest considering this constraint.
+// HQ : "High Quality", Should encode a 1080p video with visually lossless quality; encoding speed is less a constraint, but should still be live at 30fps
+// 
+// For each profile, several encoders are available, depending on the platform and the hardware acceleration available. 
+// The user can select the encoder to use in the settings. Typically videos are encoded in H264 or H265
+// Usual sofware encoders are x264 and x265. Fallback h264 encoder is openh264 if x264 is not available.
+// If available, hardware accelerated encoders are used: NVENC (NVIDIA) or VAAPI (Intel/AMD) deoending on the platform and the GPU. 
+// On MacOS, VideoToolbox is used for encoding.
 
 std::vector<std::string> VideoRecorder::profile_description {
-    // Control x264 encoder quality :
-    // pass
-    //    quant (4) – Constant Quantizer
-    //    qual  (5) – Constant Quality
-    // quantizer
-    //   The total range is from 0 to 51, where 0 is lossless, 18 can be considered ‘visually lossless’,
-    //   and 51 is terrible quality. A sane range is 18-26, and the default is 23.
-    // speed-preset
-    //    ultrafast (1)
-    //    superfast (2)
-    //    veryfast (3)
-    //    faster (4)
-    //    fast (5)
-    "x264enc tune=\"zerolatency\" pass=4 quantizer=22 speed-preset=2 ! video/x-h264, profile=baseline ! h264parse ! ",
-    "x264enc tune=\"zerolatency\" pass=4 quantizer=18 speed-preset=3 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
-    // Control vah265enc encoder quality :
-    //   target-usage : The target usage to control and balance the encoding speed/quality
-    //                  The lower value has better quality but slower speed, the higher value has faster speed but lower quality.
-    //                  Unsigned Integer. Range: 1 - 7 Default: 4 
-    //   max-qp       : Maximum quantizer value for each frame
-    //                  Unsigned Integer. Range: 0 - 51 Default: 51 
-    //   rate-control : The desired rate control mode for the encoder
-    //                            (2): cbr              - Constant Bitrate
-    //                            (4): vbr              - Variable Bitrate
-    //                            (16): cqp              - Constant Quantizer
-    "vah265enc rate-control=\"cqp\" target-usage=5 ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "vah265enc rate-control=\"cqp\" max-qp=18  target-usage=2 ! video/x-h265, profile=(string)main ! h265parse ! ",
-    // Apple ProRes encoding parameters
-    //  pass
-    //      cbr (0) – Constant Bitrate Encoding
-    //      quant (2) – Constant Quantizer
-    //      pass1 (512) – VBR Encoding - Pass 1
-    //  profile
-    //      0 ‘proxy’    45Mbps YUV 4:2:2
-    //      1 ‘lt’       102Mbps YUV 4:2:2
-    //      2 ‘standard’ 147Mbps YUV 4:2:2
-    //      3 ‘hq’       220Mbps YUV 4:2:2
-    //      4 ‘4444’     330Mbps YUVA 4:4:4:4
-    //  quant-mat
-    //      -1 auto
-    //      0  proxy
-    //      2  lt
-    //      3  standard
-    //      4  hq
-    //      6  default
-    "avenc_prores_ks pass=2 bits_per_mb=8000 profile=2 quant-mat=6 quantizer=8 ! ",
-    "avenc_prores_ks pass=2 bits_per_mb=8000 profile=4 quant-mat=6 quantizer=4 ! ",
-    // VP8 WebM encoding
-    //  deadline per frame (usec)
-    //      0=best,
-    //      1=realtime
-    // see https://www.webmproject.org/docs/encoder-parameters/
-    //        "vp8enc end-usage=cbr deadline=1 cpu-used=8 threads=4 target-bitrate=400000 undershoot=95 "
-    //        "buffer-size=6000 buffer-initial-size=4000 buffer-optimal-size=5000 "
-    //        "keyframe-max-dist=999999 min-quantizer=4 max-quantizer=50 ! ",
-    "vp8enc end-usage=vbr deadline=1 cpu-used=8 threads=4 target-bitrate=400000 keyframe-max-dist=360 "
-           "token-partitions=2 static-threshold=1000 min-quantizer=4 max-quantizer=20 ! ",
+    "x264enc pass=qual quantizer=20 speed-preset=veryfast bframes=2 key-int-max=30 bitrate=25000 ! video/x-h264, profile=(string)main ! h264parse ! ",
+    "x264enc pass=qual quantizer=18 speed-preset=medium bframes=3 key-int-max=30 bitrate=50000 ! video/x-h264, profile=(string)high ! h264parse ! ",
+    "x265enc speed-preset=superfast tune=0 key-int-max=30 option-string=\"crf=20:vbv-maxrate=25000:vbv-bufsize=25000\" ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "x265enc speed-preset=medium tune=0 key-int-max=30 option-string=\"crf=18:vbv-maxrate=50000:vbv-bufsize=50000\" ! video/x-h265, profile=(string)high ! h265parse ! ",
+    "avenc_prores_ks pass=quant quantizer=8 profile=standard quant-mat=default threads=0 vendor=apl0 ! ",
+    "avenc_prores_ks pass=quant quantizer=4 profile=hq quant-mat=default threads=0 vendor=apl0 ! ",
+    "vp9enc end-usage=cq cq-level=24 target-bitrate=25000000 \
+         deadline=1 cpu-used=6 lag-in-frames=0 keyframe-max-dist=30 threads=4 row-mt=true tile-columns=2 ! ",
     // JPEG encoding
     "jpegenc idct-method=float ! "
 };
@@ -248,28 +188,19 @@ std::vector<std::string> nvidia_encoder = {
     "nvh264enc",
     "nvh265enc",
     "nvh265enc",
-    "", "", "", ""
+    "", "", "", 
+    "nvjpegenc"
 };
 
 std::vector<std::string> nvidia_profile_description {
-    // qp-const  Constant quantizer (-1 = from NVENC preset)
-    //            Range: -1 - 51 Default: -1
-    // rc-mode Rate Control Mode
-    //    (0): default          - Default
-    //    (1): constqp          - Constant Quantization
-    //    (2): cbr              - Constant Bit Rate
-    //    (3): vbr              - Variable Bit Rate
-    //    (4): vbr-minqp        - Variable Bit Rate (with minimum quantization parameter, DEPRECATED)
-    //    (5): cbr-ld-hq        - Low-Delay CBR, High Quality
-    //    (6): cbr-hq           - CBR, High Quality (slower)
-    //    (7): vbr-hq           - VBR, High Quality (slower)
-    // Control nvh264enc encoder
-    "nvh264enc rc-mode=1 zerolatency=true ! video/x-h264, profile=(string)main ! h264parse ! ",
-    "nvh264enc rc-mode=1 qp-const=18 ! video/x-h264, profile=(string)high-4:4:4 ! h264parse ! ",
-    // Control nvh265enc encoder
-    "nvh265enc rc-mode=1 zerolatency=true ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "nvh265enc rc-mode=1 qp-const=18 ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "", "", "", ""
+    // nvh264enc encoder
+    "nvh264enc rc-mode=constqp preset=p4 bframes=2 gop-size=30 qp-const-i=23 qp-const-p=25 qp-const-b=27 ! video/x-h264, profile=(string)main ! h264parse ! ",
+    "nvh264enc rc-mode=constqp preset=p6 bframes=3 rc-lookahead=16 b-adapt=true gop-size=30 ! video/x-h264, profile=(string)high ! h264parse ! ",
+    // nvh265enc encoder
+    "nvh265enc rc-mode=constqp preset=p4 bframes=2 gop-size=30 qp-const-i=23 qp-const-p=25 qp-const-b=27 ! video/x-h265, profile=(string)main ! h265parse ! ",
+    "nvh265enc rc-mode=constqp preset=p6 bframes=3 rc-lookahead=16 b-adapt=true gop-size=30 qp-const-i=21 qp-const-p=23 qp-const-b=25 ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
+    "", "", "", 
+    "nvjpegenc quality=85 ! "
 };
 
 std::vector<std::string> vaapi_encoder = {
@@ -277,18 +208,19 @@ std::vector<std::string> vaapi_encoder = {
     "vah264enc",
     "vah265enc",
     "vah265enc",
-    "", "", "", ""
+    "", "", "", 
+    "vajpegenc"
 };
 
 std::vector<std::string> vaapi_profile_description {
-
-    // Control vah264enc encoder
-    "vah264enc rate-control=cqp qpi=26 qpp=30 target-usage=2 key-int-max=60 ! video/x-h264, profile=(string)main ! h264parse ! ",
-    "vah264enc rate-control=cqp qpi=20 qpp=22 key-int-max=30 ! video/x-h264, profile=(string)high ! h264parse ! ",
-    // Control vah265enc encoder
-    "vah265enc rate-control=cqp qpi=26 qpp=30 target-usage=2 key-int-max=60 ! video/x-h265, profile=(string)main ! h265parse ! ",
-    "vah265enc rate-control=cqp qpi=20 qpp=22 key-int-max=30 ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
-    "", "", "", ""
+    // vah264enc encoder
+    "vah264enc rate-control=cqp target-usage=2 key-int-max=30 qpi=24 qpp=26 qpb=28 ! video/x-h264 ! h264parse ! ",
+    "vah264enc rate-control=cqp target-usage=4 key-int-max=30 qpi=22 qpp=24 qpb=26 ! video/x-h264 ! h264parse ! ",
+    // vah265enc encoder
+    "vah265enc rate-control=cqp target-usage=2 key-int-max=30 qpi=25 qpp=27 qpb=29 ! video/x-h265 ! h265parse ! ",
+    "vah265enc rate-control=cqp target-usage=2 key-int-max=30 qpi=23 qpp=25 qpb=27 ! video/x-h265 ! h265parse ! ",
+    "", "", "", 
+    "vajpegenc quality=85 ! "
 };
 
 #elif GST_GL_HAVE_PLATFORM_CGL
@@ -348,9 +280,24 @@ VideoRecorder::VideoRecorder(const std::string &basename) : FrameGrabber(), base
     }
 #endif 
 
-    if (GstToolkit::has_feature("x265enc")) {
-        profile_description[2] = x265enc_options[0];
-        profile_description[3] = x265enc_options[1];
+    if (!GstToolkit::has_feature("x264enc")) {
+        // fallback if x264 is not available
+        if (GstToolkit::has_feature("openh264enc")) {
+            profile_description[0] = "openh264enc rate-control=quality qp-min=27 qp-max=27 gop-size=30 complexity=low "
+                "slice-mode=auto multi-thread=0 enable-frame-skip=false ! video/x-h264 ! h264parse ! ";
+            profile_description[1] = "openh264enc rate-control=quality qp-min=25 qp-max=25 gop-size=30 complexity=medium "
+                "slice-mode=auto multi-thread=0 enable-frame-skip=false ! video/x-h264 ! h264parse ! ";
+        }
+        // disable h264 encoders if none available
+        else {
+            profile_description[0] = "";
+            profile_description[1] = "";
+        }
+    }
+    // disable h265 encoders if not available
+    if (!GstToolkit::has_feature("x265enc")) {
+        profile_description[2] = "";
+        profile_description[3] = "";
     }
 
 }
@@ -402,7 +349,7 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
 #endif
     {
         // CPU path: use regular videoconvert
-        description += "videoconvert ! videoscale ! capsfilter name=capf ! ";
+        description += "videoconvert n-threads=0 ! videoscale ! capsfilter name=capf ! ";
     }
 
     description += "queue ! ";
