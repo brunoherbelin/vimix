@@ -544,8 +544,8 @@ void MultiFileRifeEncoder::run(RifeOptions options)
         if (files_.size() < 2)
             throw std::runtime_error("need at least 2 images selected");
         int mid = options.mid;
-        Log::Info("ImageSequence: %zu images, %d intermediate frame(s) per pair, %d fps",
-                files_.size(), mid, options.fps);
+        Log::Info("ImageSequence: %zu images, %d intermediate frame(s) per pair, %d fps, %s",
+                files_.size(), mid, options.fps, options.loop ? "loop" : "no loop");
 
         // choose the inference backend (downloads its model on first use)
         std::unique_ptr<RifeBackend> rife;
@@ -587,6 +587,16 @@ void MultiFileRifeEncoder::run(RifeOptions options)
             Log::Info("ImageSequence: interpolation: %s",
                     bisect_depth ? "recursive bisection (t=0.5)"
                                  : "evenly spaced timesteps");
+        }
+
+        // if loop, add first frame at the end to interpolate between last and first
+        if (options.loop == 1) {
+            files_.push_back(files_.front());
+        } 
+        else if (options.loop ==2 ) {
+            std::list<std::string> reverse_files = files_;
+            reverse_files.reverse();
+            files_.insert(files_.end(), reverse_files.begin(), reverse_files.end());
         }
 
         // first image fixes the geometry (rounded even for the encoders)
@@ -669,13 +679,16 @@ void MultiFileRifeEncoder::run(RifeOptions options)
         // for (size_t i = 1; i < files_.size() && !abort_; i++) {
         for (auto i = files_.begin(); i != files_.end() && !abort_; ++i) {
             Frame cur = decode_image(*i, w, h);
-            if (mid > 0) {
+            // interpolate mid frames between prev and cur, starting after first frame
+            if (mid > 0 && i != files_.begin()) {
                 if (bisect_depth)
                     emit_bisect(*rife, prev, cur, bisect_depth, push);
                 else
                     emit_timesteps(*rife, prev, cur, mid, push);
             }
-            push(cur);
+            // do not push the last frame if looping, because the first frame is already pushed at the start
+            if ( std::next(i) != files_.end() || options.loop == 0 ) 
+                push(cur);
             prev = std::move(cur);
         }
         if (abort_)

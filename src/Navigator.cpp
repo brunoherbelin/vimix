@@ -1365,11 +1365,14 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                             ICON_FA_MAGIC);
 #endif
 #endif
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    ImGui::Combo("Loop", &Settings::application.image_sequence.priority_mode, 
+                        "None\0Rewind\0Mirror\0");
                     // Offer to create video from sequence
                     ImGui::NewLine();
                     if ( ImGui::Button( ICON_FA_FILM " Encode video", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
                         RifeOptions options;
-                        // options.backend = "onnx";
+                        options.loop = Settings::application.image_sequence.priority_mode;
                         options.fps = Settings::application.image_sequence.framerate_mode;
                         options.mid = Settings::application.image_sequence.buffering_mode;
                         options.profile = (VideoRecorder::Profile) Settings::application.image_sequence.profile;

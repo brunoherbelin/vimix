@@ -28,15 +28,18 @@
 struct RifeOptions {
     int mid;              ///< intermediate frames per image pair (0 = none)
     int fps;              ///< output framerate
+    int loop;
     VideoRecorder::Profile profile;  /// output profile (H.264/H.265/ProRes/VP8)
     std::string backend;  ///< "auto" | "ncnn" | "onnx"
 
     RifeOptions(int mid = 1,
                 int fps = 30,
+                int loop = 0,
                 VideoRecorder::Profile profile = VideoRecorder::H264_STANDARD,
                 const std::string &backend = "auto")
         : mid(mid)
         , fps(fps)
+        , loop(loop)
         , profile(profile)
         , backend(backend)
     {}
