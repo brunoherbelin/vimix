@@ -73,7 +73,7 @@ GstPadProbeReturn limit_jpeg_frames_probe(GstPad *pad, GstPadProbeInfo *info, gp
 
     (*count)++;
     if (*count == (guint64) Transcoder::MAX_JPEG_FRAMES) {
-        Log::Info("Transcoder: reached maximum of %d images, stopping", Transcoder::MAX_JPEG_FRAMES);
+        Log::Warning("Transcoder: reached maximum of %d images; stopping.", Transcoder::MAX_JPEG_FRAMES);
         gst_pad_push_event(pad, gst_event_new_eos());
     }
 
@@ -120,18 +120,9 @@ std::string Transcoder::generateOutputFilename(const std::string& input, const T
         base = input;
     }
 
-    // Build suffix based on transcoder options
-    std::string suffix = "";
-    if (options.force_keyframes)
-        suffix += "_bidir";
-    if (options.force_no_audio)
-        suffix += "_noaudio";
-    if (suffix.empty())
-        suffix = "_transcoded";
-
     // JPEG_MULTI produces a folder of numbered images, not a single file
     if (options.profile == GstToolkit::JPEG_MULTI) {
-        std::string folder = base + suffix;
+        std::string folder = base;
         std::string output = folder;
         struct stat buffer;
         int counter = 1;
@@ -141,6 +132,13 @@ std::string Transcoder::generateOutputFilename(const std::string& input, const T
         }
         return output;
     }
+        
+    // Build suffix based on transcoder options
+    std::string suffix = "";
+    if (options.force_keyframes)
+        suffix += "_bidir";
+    if (options.force_no_audio)
+        suffix += "_noaudio";
 
     // WebM container for VPX (vp9enc), QuickTime container otherwise,
     // matching VideoRecorder's convention (Recorder.cpp)

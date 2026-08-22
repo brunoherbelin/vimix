@@ -25,6 +25,7 @@
 #include <GLFW/glfw3.h>
 
 #include "IconsFontAwesome5.h"
+#include "Toolkit/GstToolkit.h"
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #if defined(__clang__)
@@ -691,25 +692,28 @@ bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton("Codec"))
             Settings::application.transcode_options[1] = 0;
+        ImGui::Spacing();
         // Keyframes
         bool force_keyframes = Settings::application.transcode_options[0] != 0;
         ImGuiToolkit::ButtonSwitch( "Backward playback", &force_keyframes,
-        "Optimize for backward playback (1 keyframe every 15-30 frames).", transcoder == nullptr);
+        "Optimize for backward playback", transcoder == nullptr);
         Settings::application.transcode_options[0] = force_keyframes ? 1 : 0;
         // audio
         bool force_no_audio = Settings::application.transcode_options[2] != 0;
         ImGuiToolkit::ButtonSwitch( "Remove audio", &force_no_audio,
-        "Remove audio tracks from the video.", transcoder == nullptr);
+        "Remove audio tracks", transcoder == nullptr);
         Settings::application.transcode_options[2] = force_no_audio ? 1 : 0;
 
         // Start transcoding if not already started for current source
         if (transcoder == nullptr) {
-            if (ImGui::Button(ICON_FA_COG " Re-encode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
+            if (ImGui::Button(ICON_FA_COG " Transcode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
                 transcode_id = id;
                 transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
-                TranscoderOptions transcode_options(force_keyframes,
+                TranscoderOptions transcode_options(
                     static_cast<GstToolkit::Profile>(Settings::application.transcode_options[1]),
-                    force_no_audio);
+                    force_keyframes,
+                    force_no_audio
+                );
                 if (!transcoder->start(transcode_options)) {
                     Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
                     delete transcoder;
@@ -720,8 +724,8 @@ bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Re-encode the source video using the specified codec and options.\n\n "
                     ICON_FA_FILM "  The new file will replace the one in the source "
-                    "once the transcoding is successfully completed.\n\n"
-                    "The current file remains untouched.");
+                    "once transcoding is successfully completed.\n\n"
+                    "The current file remains unchanged.");
         }
 
         if (transcoder != nullptr) {
@@ -730,8 +734,18 @@ bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
                     Log::Notify("Transcoding successful : %s", transcoder->outputFilename().c_str());
                     // reload source with new file
                     Source *src = Mixer::manager().findSource(transcode_id);
-                    if (src != nullptr)
-                        static_cast<MediaSource*>(src)->setPath( transcoder->outputFilename() );
+                    if (src != nullptr) {
+                        // create MultiFile source from generated jpeg
+                        if (Settings::application.transcode_options[1] == GstToolkit::JPEG_MULTI) {
+                            std::list<std::string> files = SystemToolkit::list_directory(transcoder->outputFilename(), {"*.jpg", "*.jpeg", "*.png"});
+                            Source *mfs = Mixer::manager().createSourceMultifile(files, 30);
+                            // replace source in session by new multifile source
+                            Mixer::manager().replaceSource(src, mfs);
+                        }
+                        // General case; change path of current media source
+                        else 
+                            static_cast<MediaSource*>(src)->setPath( transcoder->outputFilename() );
+                    }
                     ret = true;
                 }
                 // all done in any case

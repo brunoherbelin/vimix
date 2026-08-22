@@ -11,19 +11,19 @@
  * @brief Configuration options for transcoding
  */
 struct TranscoderOptions {
-    bool force_keyframes;         ///< Force keyframe at every second (for easier seeking/editing)
     GstToolkit::Profile profile;  ///< Encoding profile (quality/codec settings)
+    bool force_keyframes;         ///< Force keyframe at every second (for easier seeking/editing)
     bool force_no_audio;          ///< Force removal of audio stream (create video-only output)
 
     /**
      * @brief Default constructor with sensible defaults
      */
-    TranscoderOptions(bool force_keyframes = true
-                    , GstToolkit::Profile profile = GstToolkit::H264_RT
-                    , bool force_no_audio = false)
-        : force_keyframes(force_keyframes)
+    TranscoderOptions(GstToolkit::Profile profile = GstToolkit::H264_RT
+                    , bool keyframes = false
+                    , bool no_audio = false)
+        : force_keyframes(keyframes)
         , profile(profile)
-        , force_no_audio(force_no_audio)
+        , force_no_audio(no_audio)
     {}
 };
 
@@ -40,7 +40,7 @@ public:
     // Safety cap on the number of images produced when transcoding to
     // GstToolkit::JPEG_MULTI, so a long source video can't silently create
     // thousands of files.
-    static constexpr int MAX_JPEG_FRAMES = 200;
+    static constexpr int MAX_JPEG_FRAMES = 600;
 
     /**
      * @brief Construct a new Transcoder

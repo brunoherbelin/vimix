@@ -69,6 +69,11 @@ MultiFileSequence::MultiFileSequence(const std::list<std::string> &list_files)
     }
 }
 
+MultiFileSequence::MultiFileSequence(const std::string &path)
+    : MultiFileSequence( SystemToolkit::list_directory(path, {"*.jpg", "*.jpeg", "*.png"}) )
+{
+}
+
 bool MultiFileSequence::valid() const
 {
     return !( location.empty() || codec.empty() || width < 1 || height < 1 || max == min);
