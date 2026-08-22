@@ -2235,6 +2235,14 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     static std::vector< std::string > tooltips_flags = { " Bookmark", " Stop Flag", " Blackout Flag" };
 
     double current_play_speed = mediaplayer_active_->playSpeed();
+    // backward playback validity: false means the GOP size is invalid (no
+    // usable keyframe structure to seek to and decode forward from)
+    bool can_play_backward = mediaplayer_active_->evaluation().done &&
+            GstToolkit::canPlayBackward(mediaplayer_active_->evaluation().has_bframes,
+                mediaplayer_active_->width(), mediaplayer_active_->height(),
+                mediaplayer_active_->evaluation().keyframe_count,
+                mediaplayer_active_->evaluation().gop_size_min,
+                mediaplayer_active_->evaluation().gop_size_max) > 0.f;
     static uint counter_menu_timeout = 0;
     const ImVec2 scrollwindow = ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
                                  2.f * timeline_height_ + scrollbar_ );
@@ -2410,11 +2418,9 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             if ( ImGuiToolkit::IconMultistate(icons_loop, &current_loop, tooltips_loop) )
                 mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );
             // disable bounce mode if GOP size is invalid
-            if (current_loop ==  (int) MediaPlayer::LOOP_BIDIRECTIONAL && mediaplayer_active_->evaluation().done && 
-                (mediaplayer_active_->evaluation().gop_size_min < 1 || 
-                mediaplayer_active_->evaluation().gop_size_max < 1 ) )
-            {      
-                current_loop++;   
+            if (current_loop ==  (int) MediaPlayer::LOOP_BIDIRECTIONAL && !can_play_backward)
+            {
+                current_loop++;
                 mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );
             }
 
@@ -2499,10 +2505,8 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             Action::manager().store(oss.str());
         }
         // Enable backward play only if GOP size is valid
-        if (mediaplayer_active_->evaluation().done && 
-            mediaplayer_active_->evaluation().gop_size_min > 0 && 
-            mediaplayer_active_->evaluation().gop_size_max > 0)
-        {            
+        if (can_play_backward)
+        {
             if (ImGuiToolkit::MenuItemIcon(9,0, "Play backward", nullptr, current_play_speed<0)) {
                 mediaplayer_active_->setPlaySpeed( - ABS(mediaplayer_active_->playSpeed()) );
                 oss << ": Play backward";

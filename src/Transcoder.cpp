@@ -26,41 +26,9 @@
 #include <filesystem>
 #include <glib.h>
 #include <cctype>
-#include <cmath>
 #include <cstring>
 
 namespace {
-
-// Estimate a tighter keyframe interval than a profile's default (usually 30
-// frames, ~1s at 30fps) for smoother backward playback.
-//
-// vimix plays backward by seeking to the keyframe preceding the target frame
-// and decoding forward to it, so the decode cost of showing one frame in
-// reverse scales with the keyframe interval. That decode cost, in turn,
-// scales with how many pixels there are to decode per frame and how
-// expensive the codec itself is to decode (H.265/VP9 cost noticeably more
-// per pixel than H.264 on a typical software decoder). This is a static
-// estimate from those two factors -- not a benchmark -- so computing it adds
-// no overhead to the transcode itself; it only shrinks the interval, never
-// grows it past the profile's own default.
-int backward_playback_keyframe_interval(GstToolkit::Profile profile, int width, int height)
-{
-    const int default_interval = 30;                // profile default, ~1s @ 30fps
-    const int min_interval = 8;                      // floor: avoid bloating file size / encode time
-    const double reference_pixels = 1920.0 * 1080.0; // 1080p as the "interval unchanged" point
-
-    double codec_factor = 1.0; // H.264: reference decode cost
-    if (profile == GstToolkit::H265_RT || profile == GstToolkit::H265_HQ)
-        codec_factor = 0.6;    // H.265 decode is markedly heavier per pixel
-    else if (profile == GstToolkit::VPX_RT)
-        codec_factor = 0.5;    // VP9 software decode is heavier still
-
-    double pixels = (double) MAX(1, width) * (double) MAX(1, height);
-    double resolution_factor = MIN(1.0, reference_pixels / pixels);
-
-    int interval = (int) std::lround(default_interval * codec_factor * resolution_factor);
-    return CLAMP(interval, min_interval, default_interval);
-}
 
 // Look for a keyframe-interval property in a GstToolkit encoding pipeline
 // fragment -- "key-int-max=" (x264enc/x265enc/vah264enc/vah265enc),
@@ -286,7 +254,7 @@ bool Transcoder::start(const TranscoderOptions& options)
     // Tighten the keyframe interval for smoother backward playback (no-op
     // for ProRes/JPEG, which are already all-intra)
     if (options.force_keyframes) {
-        int interval = backward_playback_keyframe_interval(options.profile, (int) frame_width, (int) frame_height);
+        int interval = GstToolkit::getPlayBackwardGop(options.profile, (int) frame_width, (int) frame_height);
         std::string patched = apply_keyframe_interval(video_encoder, interval);
         if (patched != video_encoder)
             Log::Info("Transcoder: keyframe interval set to %d frames for backward playback", interval);

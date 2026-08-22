@@ -41,6 +41,7 @@
 #include "Scene/Primitives.h"
 //#include "ImageShader.h"
 #include "ImageProcessingShader.h"
+#include "Toolkit/GstToolkit.h"
 #include "MediaPlayer.h"
 #include "Source/MediaSource.h"
 #include "Source/CloneSource.h"
@@ -803,12 +804,15 @@ void ImGuiVisitor::visit (MediaSource& s)
                         info.appendf(" (1 every %d frames)", (int) mp->evaluation().gop_size_max);
                     
                     // tooltip on backward playback and errors
-                    if (mp->evaluation().gop_size_max < 1 )
+                    float backward_score = GstToolkit::canPlayBackward(mp->evaluation().has_bframes,
+                                mp->width(), mp->height(), mp->evaluation().keyframe_count,
+                                mp->evaluation().gop_size_min, mp->evaluation().gop_size_max);
+                    if (backward_score <= 0.f)
                         tooltip.appendf(ICON_FA_MINUS_CIRCLE " Cannot play backward");
-                    else if (mp->evaluation().gop_size_max * mp->height() > 35000 || mp->evaluation().has_bframes) 
-                        tooltip.appendf(ICON_FA_EXCLAMATION_TRIANGLE " Difficult to play backward");
+                    else if (backward_score < 1.f)
+                        tooltip.appendf(ICON_FA_EXCLAMATION_TRIANGLE " Unstable backward playback");
                     else
-                        tooltip.appendf(ICON_FA_CHECK " Ok to play backward");
+                        tooltip.appendf(ICON_FA_CHECK " Smooth backward playback");
                     if (mp->evaluation().discontinuity_count > 0 )
                         tooltip.appendf(", %d discontinuities", mp->evaluation().discontinuity_count);
                     if (mp->evaluation().corrupted_count > 0 )

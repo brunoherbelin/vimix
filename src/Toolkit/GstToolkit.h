@@ -59,6 +59,18 @@ std::string getEncodingPipeline(Profile p);
 // this platform/GPU.
 std::string getHardwareEncodingPipeline(Profile p);
 
+// Keyframe interval (in frames) for smooth backward playback of video
+// encoded with the given profile at the given frame size. 
+// This is a static estimate from those factors, not a benchmark.
+// Default interval is 30 per second.
+int getPlayBackwardGop(Profile profile, int width, int height);
+
+// Score, from 0.f (cannot play backward at all) to 1.f (comfortably
+// smooth), for how well a stream with the given actual keyframe structure
+// (in frames) can be played backward at the given frame size. 
+float canPlayBackward(bool has_bframes, int width, int height,
+                       guint keyframe_count, guint gop_size_min, guint gop_size_max);
+
 
 struct PipelineConfig {
     gint width;

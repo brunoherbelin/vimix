@@ -22,6 +22,7 @@
 #include <iomanip>
 #include <filesystem>
 #include <vector>
+#include <cmath>
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -385,6 +386,45 @@ string GstToolkit::getHardwareEncodingPipeline(GstToolkit::Profile p)
         return "";
 
     return hw.pipeline[p];
+}
+
+int GstToolkit::getPlayBackwardGop(GstToolkit::Profile profile, int width, int height)
+{
+    const int default_interval = 30;                 // profile default, ~1s @ 30fps
+    const int min_interval = 8;                      // floor: avoid bloating file size / encode time
+    const double reference_pixels = 1920.0 * 1080.0; // 1080p as the "interval unchanged" point
+
+    double codec_factor = 1.0; // H.264: reference decode cost
+    if (profile == GstToolkit::H265_RT || profile == GstToolkit::H265_HQ)
+        codec_factor = 0.6;    // H.265 decode is markedly heavier per pixel
+    else if (profile == GstToolkit::VPX_RT)
+        codec_factor = 0.5;    // VP9 software decode is heavier still
+
+    double pixels = (double) MAX(1, width) * (double) MAX(1, height);
+    double resolution_factor = MIN(1.0, reference_pixels / pixels);
+
+    int interval = (int) std::lround(default_interval * codec_factor * resolution_factor);
+    return CLAMP(interval, min_interval, default_interval);
+}
+
+float GstToolkit::canPlayBackward(bool has_bframes, int width, int height,
+                                   guint keyframe_count, guint gop_size_min, guint gop_size_max)
+{
+    // no usable keyframe/GOP data at all: backward playback needs a
+    // keyframe to seek to and re-decode forward from
+    if (keyframe_count < 1 || gop_size_min < 1 || gop_size_max < 1)
+        return 0.f;
+
+    GstToolkit::Profile profile = has_bframes ? GstToolkit::H265_RT : GstToolkit::H264_RT;
+    int target = getPlayBackwardGop(profile, width, height);
+
+    // worst-case GOP within budget: comfortably smooth
+    if ((int) gop_size_max <= target)
+        return 1.f;
+
+    // beyond budget: score falls off smoothly as the worst-case reverse
+    // decode cost grows past what's comfortable at this resolution/codec
+    return CLAMP((float) target / (float) gop_size_max, 0.f, 1.f);
 }
 
 
