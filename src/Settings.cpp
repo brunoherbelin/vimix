@@ -178,7 +178,6 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     transcodeNode->SetAttribute("option_0", application.transcode_options[0]);
     transcodeNode->SetAttribute("option_1", application.transcode_options[1]);
     transcodeNode->SetAttribute("option_2", application.transcode_options[2]);
-    transcodeNode->SetAttribute("option_3", application.transcode_options[3]);
     applicationNode->InsertEndChild(transcodeNode);
 
     XMLElement *exportNode = xmlDoc.NewElement( "Export" );
@@ -543,10 +542,9 @@ void Settings::init(const std::string &filename)
 
             XMLElement * transcodeNode = applicationNode->FirstChildElement("Transcode");
             if (transcodeNode != nullptr) {
-                transcodeNode->QueryBoolAttribute("option_0", &application.transcode_options[0]) ;
-                transcodeNode->QueryBoolAttribute("option_1", &application.transcode_options[1]) ;
-                transcodeNode->QueryBoolAttribute("option_2", &application.transcode_options[2]) ;
-                transcodeNode->QueryBoolAttribute("option_3", &application.transcode_options[3]) ;
+                transcodeNode->QueryIntAttribute("option_0", &application.transcode_options[0]) ;
+                transcodeNode->QueryIntAttribute("option_1", &application.transcode_options[1]) ;
+                transcodeNode->QueryIntAttribute("option_2", &application.transcode_options[2]) ;
             }
 
             XMLElement * exportNode = applicationNode->FirstChildElement("Export");

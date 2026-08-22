@@ -682,26 +682,34 @@ bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
     if (Settings::application.pannel_source[2]) {
 
         // Transcoding options
-        ImGuiToolkit::ButtonSwitch( "Backward playback", &Settings::application.transcode_options[0],
+        // Codec
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::Combo("##CodecTranscode",
+                     &Settings::application.transcode_options[1],
+                     GstToolkit::profile_name,
+                     IM_ARRAYSIZE(GstToolkit::profile_name));
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Codec"))
+            Settings::application.transcode_options[1] = 0;
+        // Keyframes
+        bool force_keyframes = Settings::application.transcode_options[0] != 0;
+        ImGuiToolkit::ButtonSwitch( "Backward playback", &force_keyframes,
         "Optimize for backward playback (1 keyframe every 15-30 frames).", transcoder == nullptr);
-        ImGuiToolkit::ButtonSwitch( "Animation content", &Settings::application.transcode_options[1],
-        "Optimize image encoding for animation content (cartoons, "
-        "drawings, computer graphics) to preserve more details.", transcoder == nullptr);
-        ImGuiToolkit::ButtonSwitch( "Constant Quality", &Settings::application.transcode_options[2],
-        "Use Constant Quality encoding to preserve more visual details "
-        "(might produce larger files).", transcoder == nullptr);
-        ImGuiToolkit::ButtonSwitch( "Remove audio", &Settings::application.transcode_options[3],
+        Settings::application.transcode_options[0] = force_keyframes ? 1 : 0;
+        // audio
+        bool force_no_audio = Settings::application.transcode_options[2] != 0;
+        ImGuiToolkit::ButtonSwitch( "Remove audio", &force_no_audio,
         "Remove audio tracks from the video.", transcoder == nullptr);
+        Settings::application.transcode_options[2] = force_no_audio ? 1 : 0;
 
         // Start transcoding if not already started for current source
         if (transcoder == nullptr) {
             if (ImGui::Button(ICON_FA_COG " Re-encode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
                 transcode_id = id;
                 transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
-                TranscoderOptions transcode_options(Settings::application.transcode_options[0],
-                    Settings::application.transcode_options[1] ?  PsyTuning::ANIMATION : PsyTuning::NONE,
-                    Settings::application.transcode_options[2] ? 19 : -1,
-                    Settings::application.transcode_options[3]);
+                TranscoderOptions transcode_options(force_keyframes,
+                    static_cast<GstToolkit::Profile>(Settings::application.transcode_options[1]),
+                    force_no_audio);
                 if (!transcoder->start(transcode_options)) {
                     Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
                     delete transcoder;
@@ -710,8 +718,7 @@ bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
                 }
             }
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Re-encode the source video in MP4 "
-                    "(H.264 video @ 30fps + AAC audio) using the specified options.\n\n "
+            ImGuiToolkit::HelpToolTip("Re-encode the source video using the specified codec and options.\n\n "
                     ICON_FA_FILM "  The new file will replace the one in the source "
                     "once the transcoding is successfully completed.\n\n"
                     "The current file remains untouched.");

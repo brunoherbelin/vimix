@@ -8,7 +8,6 @@
 #include <gst/app/gstappsrc.h>
 
 #include "FrameGrabber.h"
-#include "Toolkit/GstToolkit.h"
 
 class PNGRecorder : public FrameGrabber
 {

@@ -371,8 +371,8 @@ struct Application
     // gamepad support
     std::string gamepad_mapping_filename;
 
-    // transcoding options
-    bool transcode_options[4];
+    // transcoding options: [0] force_keyframes, [1] GstToolkit::Profile, [2] force_no_audio
+    int transcode_options[3];
     bool export_options[3];
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
@@ -411,10 +411,9 @@ struct Application
         pannel_source[0] = true;
         pannel_source[1] = true;
         pannel_source[2] = true;
-        transcode_options[0] = true;
-        transcode_options[1] = false;
-        transcode_options[2] = false;
-        transcode_options[3] = false;
+        transcode_options[0] = 1;  // force_keyframes
+        transcode_options[1] = 0;  // GstToolkit::H264_RT
+        transcode_options[2] = 0;  // force_no_audio
         export_options[0] = true;
         export_options[1] = false;
         export_options[2] = false;
