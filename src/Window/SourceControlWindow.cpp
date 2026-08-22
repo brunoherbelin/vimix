@@ -510,11 +510,13 @@ void SourceControlWindow::Render()
                 ImGui::EndMenu();
             }
 
-            ImGui::Separator();
-            if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect", nullptr,
-                                           !mediaplayer_active_->videoEffect().empty(),
-                                           mediaplayer_active_->videoEffectAvailable()) )
-                mediaplayer_edit_pipeline_ = true;
+            if ( !mediaplayer_active_->isImage()) {
+                ImGui::Separator();
+                if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect", nullptr,
+                                            !mediaplayer_active_->videoEffect().empty(),
+                                            mediaplayer_active_->videoEffectAvailable()) )
+                    mediaplayer_edit_pipeline_ = true;
+            }
 
             ImGui::EndMenu();
         }
@@ -921,7 +923,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
     ImRect slider_bbox( timeline_bbox.GetTL() + ImVec2(-cursor_width + 2.f, cursor_width + 4.f ), timeline_bbox.GetBR() + ImVec2( cursor_width - 2.f, 0.f ) );
 
     // units conversion: from time to float (calculation made with higher precision first)
-    float time_ = static_cast<float> ( static_cast<double>(*time - tl->begin()) / static_cast<double>(tl->duration()) );
+    float time_ = static_cast<float> ( static_cast<double>(*time) / static_cast<double>(tl->duration()) );
 
     //
     // GET INPUT 
