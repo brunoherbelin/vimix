@@ -1,7 +1,6 @@
 #ifndef RECORDER_H
 #define RECORDER_H
 
-#include <vector>
 #include <string>
 
 
@@ -9,6 +8,7 @@
 #include <gst/app/gstappsrc.h>
 
 #include "FrameGrabber.h"
+#include "Toolkit/GstToolkit.h"
 
 class PNGRecorder : public FrameGrabber
 {
@@ -39,22 +39,6 @@ class VideoRecorder : public FrameGrabber
     void terminate() override;
 
 public:
-
-    typedef enum {
-        H264_STANDARD = 0,
-        H264_HQ,
-        H265_REALTIME,
-        H265_ANIMATION,
-        PRORES_STANDARD,
-        PRORES_HQ,
-        VP8,
-        JPEG_MULTI,
-        DEFAULT
-    } Profile;
-    static const char*   profile_name[DEFAULT];
-    static std::vector<std::string> profile_description;
-    static std::vector<std::string> hardware_encoder;
-    static std::vector<std::string> hardware_profile_description;
 
     static const char*   buffering_preset_name[6];
     static const guint64 buffering_preset_value[6];

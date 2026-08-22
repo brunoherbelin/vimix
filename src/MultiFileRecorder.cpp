@@ -5,6 +5,7 @@
 #include <gst/video/video.h>
 
 #include "Log.h"
+#include "FrameGrabber.h"
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/BaseToolkit.h"
 #include "Toolkit/SystemToolkit.h"
@@ -19,7 +20,7 @@ MultiFileRecorder::MultiFileRecorder() :
     cancel_(false), endofstream_(false), accept_buffer_(false), progress_(0.f)
 {
     // default profile
-    profile_ = VideoRecorder::H264_STANDARD;
+    profile_ = GstToolkit::H264_RT;
 
     // default fps and frame duration
     setFramerate(15);
@@ -40,12 +41,12 @@ void MultiFileRecorder::setFramerate (int fps)
     frame_duration_ = gst_util_uint64_scale_int (1, GST_SECOND, fps_);
 }
 
-void MultiFileRecorder::setProfile (VideoRecorder::Profile p)
+void MultiFileRecorder::setProfile (GstToolkit::Profile p)
 {
-    if (p < VideoRecorder::VP8)
+    if (p < GstToolkit::VPX_RT)
         profile_ = p;
     else
-        profile_ = VideoRecorder::H264_STANDARD;
+        profile_ = GstToolkit::H264_RT;
 }
 
 // appsrc needs data and we should start sending
@@ -157,15 +158,15 @@ bool MultiFileRecorder::start_record (const std::string &video_filename)
     std::string description = "appsrc name=src ! queue ! videoconvert ! videoscale ! ";
 
     // test for a hardware accelerated encoder
-    if (Settings::application.render.gpu_decoding && (int) VideoRecorder::hardware_encoder.size() > 0 &&
-        GstToolkit::has_feature(VideoRecorder::hardware_encoder[profile_]) ) {
+    std::string hardware_pipeline = GstToolkit::getHardwareEncodingPipeline(profile_);
+    if (Settings::application.render.gpu_decoding && !hardware_pipeline.empty()) {
 
-        description += VideoRecorder::hardware_profile_description[Settings::application.image_sequence.profile];
-        Log::Info("MultiFileRecorder use hardware accelerated encoder (%s)", VideoRecorder::hardware_encoder[profile_].c_str());
+        description += hardware_pipeline;
+        Log::Info("MultiFileRecorder use hardware accelerated encoder (%s)", hardware_pipeline.c_str());
     }
     // revert to software encoder
     else
-        description += VideoRecorder::profile_description[profile_];
+        description += GstToolkit::getEncodingPipeline(profile_);
 
     // qt muxer in .mov file
     description += "qtmux ! filesink name=sink";

@@ -10,7 +10,7 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 
-#include "Recorder.h"
+#include "Toolkit/GstToolkit.h"
 
 class MultiFileRecorder
 {
@@ -22,8 +22,8 @@ public:
     void setFramerate (int fps);
     inline int framerate () const { return fps_; }
 
-    void setProfile (VideoRecorder::Profile p);
-    inline VideoRecorder::Profile profile () const { return profile_; }
+    void setProfile (GstToolkit::Profile p);
+    inline GstToolkit::Profile profile () const { return profile_; }
 
     inline void setFiles (std::list<std::string> list) { files_ = list; }
     inline std::list<std::string> files () const { return files_; }
@@ -55,7 +55,7 @@ private:
 
     // video properties
     std::string filename_;
-    VideoRecorder::Profile profile_;
+    GstToolkit::Profile profile_;
     int fps_;
     int width_;
     int height_;

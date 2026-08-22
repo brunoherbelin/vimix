@@ -32,6 +32,34 @@ bool has_feature (const std::string &name);
 bool enable_feature (const std::string &name, bool enable);
 
 
+// Video encoding profiles used for recording / exporting video
+typedef enum {
+    H264_RT = 0,
+    H264_HQ,
+    H265_RT,
+    H265_HQ,
+    PRORES_RT,
+    PRORES_HQ,
+    VPX_RT,
+    JPEG_MULTI,
+    DEFAULT
+} Profile;
+
+extern const char* profile_name[DEFAULT];
+
+// gst pipeline fragment (encoder ! parser ! , e.g. "x264enc ... ! h264parse ! ")
+// for the given profile, using whichever software encoder is actually
+// installed: falls back from x264enc/x265enc to openh264enc, or returns an
+// empty string if no software encoder is available for that profile.
+std::string getEncodingPipeline(Profile p);
+
+// Hardware-accelerated equivalent of getEncodingPipeline(): NVENC or VAAPI
+// on Linux, VideoToolbox on macOS (detected once and cached). Returns an
+// empty string if no hardware encoder is available for that profile on
+// this platform/GPU.
+std::string getHardwareEncodingPipeline(Profile p);
+
+
 struct PipelineConfig {
     gint width;
     gint height;

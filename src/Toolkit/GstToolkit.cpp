@@ -21,6 +21,7 @@
 #include <sstream>
 #include <iomanip>
 #include <filesystem>
+#include <vector>
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -203,6 +204,187 @@ bool GstToolkit::has_feature (const string &name)
 
     gst_object_unref (elem);
     return true;
+}
+
+
+const char* GstToolkit::profile_name[GstToolkit::DEFAULT] = {
+    "H264 (Real-time)",
+    "H264 (Quality)",
+    "H265 (Real-time)",
+    "H265 (Quality)",
+    "ProRes (Realtime)",
+    "ProRes (Quality)",
+    "VP9  (Realtime)",
+    "Multiple JPEG"
+};
+
+namespace {
+
+// There are two profiles of encoding: RT and HQ
+// RT : "Real-time", Should encode live at 60 fps a 1080p video ; quality is at the highest considering this constraint.
+// HQ : "High Quality", Should encode a 1080p video with visually lossless quality; encoding speed is less a constraint, but should still be live at 30fps
+//
+// For each profile, several encoders are available, depending on the platform and the hardware acceleration available.
+// The user can select the encoder to use in the settings. Typically videos are encoded in H264 or H265
+// Usual sofware encoders are x264 and x265. Fallback h264 encoder is openh264 if x264 is not available.
+// If available, hardware accelerated encoders are used: NVENC (NVIDIA) or VAAPI (Intel/AMD) deoending on the platform and the GPU.
+// On MacOS, VideoToolbox is used for encoding.
+
+// Software encoder gst pipeline fragment for each profile, computed once
+// (magic static) to reflect the codecs actually installed on this system.
+const std::vector<std::string> &software_profile_description()
+{
+    static const std::vector<std::string> table = [] {
+        std::vector<std::string> t {
+            "x264enc pass=qual quantizer=20 speed-preset=veryfast bframes=2 key-int-max=30 bitrate=25000 ! video/x-h264, profile=(string)main ! h264parse ! ",
+            "x264enc pass=qual quantizer=18 speed-preset=medium bframes=3 key-int-max=30 bitrate=50000 ! video/x-h264, profile=(string)high ! h264parse ! ",
+            "x265enc speed-preset=superfast tune=0 key-int-max=30 option-string=\"crf=20:vbv-maxrate=25000:vbv-bufsize=25000\" ! video/x-h265, profile=(string)main ! h265parse ! ",
+            "x265enc speed-preset=medium tune=0 key-int-max=30 option-string=\"crf=18:vbv-maxrate=50000:vbv-bufsize=50000\" ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
+            "avenc_prores_ks pass=quant quantizer=8 profile=standard quant-mat=default threads=0 vendor=apl0 ! ",
+            "avenc_prores_ks pass=quant quantizer=4 profile=hq quant-mat=default threads=0 vendor=apl0 ! ",
+            "vp9enc end-usage=cq cq-level=24 target-bitrate=25000000 \
+                 deadline=1 cpu-used=6 lag-in-frames=0 keyframe-max-dist=30 threads=4 row-mt=true tile-columns=2 ! ",
+            // JPEG encoding
+            "jpegenc idct-method=float ! "
+        };
+
+        if (!GstToolkit::has_feature("x264enc")) {
+            // fallback if x264 is not available
+            if (GstToolkit::has_feature("openh264enc")) {
+                t[GstToolkit::H264_RT] = "openh264enc rate-control=quality qp-min=27 qp-max=27 gop-size=30 complexity=low "
+                    "slice-mode=auto multi-thread=0 enable-frame-skip=false ! video/x-h264 ! h264parse ! ";
+                t[GstToolkit::H264_HQ] = "openh264enc rate-control=quality qp-min=25 qp-max=25 gop-size=30 complexity=medium "
+                    "slice-mode=auto multi-thread=0 enable-frame-skip=false ! video/x-h264 ! h264parse ! ";
+            }
+            // disable h264 encoders if none available
+            else {
+                t[GstToolkit::H264_RT] = "";
+                t[GstToolkit::H264_HQ] = "";
+            }
+        }
+        // disable h265 encoders if not available
+        if (!GstToolkit::has_feature("x265enc")) {
+            t[GstToolkit::H265_RT] = "";
+            t[GstToolkit::H265_HQ] = "";
+        }
+
+        return t;
+    }();
+
+    return table;
+}
+
+// gst element feature name to test with has_feature(), and corresponding
+// pipeline fragment, per profile, for the hardware encoder available on
+// this platform (empty if none).
+struct HardwareEncoderTable {
+    std::vector<std::string> feature;
+    std::vector<std::string> pipeline;
+};
+
+const HardwareEncoderTable &hardware_encoder_table()
+{
+    static const HardwareEncoderTable table = [] {
+        HardwareEncoderTable r;
+
+#if GST_GL_HAVE_PLATFORM_GLX
+        // under GLX (Linux), gstreamer might have nvidia or vaapi encoders
+        static const std::vector<std::string> nvidia_encoder = {
+            "nvh264enc",
+            "nvh264enc",
+            "nvh265enc",
+            "nvh265enc",
+            "", "", "",
+            "nvjpegenc"
+        };
+        static const std::vector<std::string> nvidia_profile_description = {
+            // nvh264enc encoder
+            "nvh264enc rc-mode=constqp preset=p4 bframes=2 gop-size=30 qp-const-i=23 qp-const-p=25 qp-const-b=27 ! video/x-h264, profile=(string)main ! h264parse ! ",
+            "nvh264enc rc-mode=constqp preset=p6 bframes=3 rc-lookahead=16 b-adapt=true gop-size=30 ! video/x-h264, profile=(string)high ! h264parse ! ",
+            // nvh265enc encoder
+            "nvh265enc rc-mode=constqp preset=p4 bframes=2 gop-size=30 qp-const-i=23 qp-const-p=25 qp-const-b=27 ! video/x-h265, profile=(string)main ! h265parse ! ",
+            "nvh265enc rc-mode=constqp preset=p6 bframes=3 rc-lookahead=16 b-adapt=true gop-size=30 qp-const-i=21 qp-const-p=23 qp-const-b=25 ! video/x-h265, profile=(string)main ! h265parse ! ",
+            "", "", "",
+            "nvjpegenc quality=85 ! "
+        };
+        static const std::vector<std::string> vaapi_encoder = {
+            "vah264enc",
+            "vah264enc",
+            "vah265enc",
+            "vah265enc",
+            "", "", "",
+            "vajpegenc"
+        };
+        static const std::vector<std::string> vaapi_profile_description = {
+            // vah264enc encoder
+            "vah264enc rate-control=cqp target-usage=2 key-int-max=30 qpi=24 qpp=26 qpb=28 ! video/x-h264 ! h264parse ! ",
+            "vah264enc rate-control=cqp target-usage=4 key-int-max=30 qpi=22 qpp=24 qpb=26 ! video/x-h264 ! h264parse ! ",
+            // vah265enc encoder
+            "vah265enc rate-control=cqp target-usage=2 key-int-max=30 qpi=25 qpp=27 qpb=29 ! video/x-h265 ! h265parse ! ",
+            "vah265enc rate-control=cqp target-usage=2 key-int-max=30 qpi=23 qpp=25 qpb=27 ! video/x-h265 ! h265parse ! ",
+            "", "", "",
+            "vajpegenc quality=85 ! "
+        };
+
+        // test nvidia encoder
+        if (GstToolkit::has_feature(nvidia_encoder[0])) {
+            // consider that if first nvidia encoder is valid, all others should also be available
+            r.feature = nvidia_encoder;
+            r.pipeline = nvidia_profile_description;
+        }
+        // test vaapi encoder
+        else if (GstToolkit::has_feature(vaapi_encoder[0])) {
+            r.feature = vaapi_encoder;
+            r.pipeline = vaapi_profile_description;
+        }
+#elif GST_GL_HAVE_PLATFORM_CGL
+        // under CGL (Mac), gstreamer might have the VideoToolbox
+        r.feature = {
+            "vtenc_h264_hw",
+            "vtenc_h264_hw",
+            "vtenc_h265_hw",
+            "vtenc_h265_hw",
+            "vtenc_prores",
+            "vtenc_prores",
+            "", ""
+        };
+        r.pipeline = {
+            // Control vtenc_h264_hw encoder
+            "vtenc_h264_hw realtime=1 allow-frame-reordering=0 quality=0.5 ! h264parse ! ",
+            "vtenc_h264_hw realtime=1 allow-frame-reordering=0 quality=0.9 ! h264parse ! ",
+            "vtenc_h265_hw realtime=1 allow-frame-reordering=0 quality=0.5 ! h265parse ! ",
+            "vtenc_h265_hw realtime=1 allow-frame-reordering=0 quality=0.9 ! h265parse ! ",
+            "vtenc_prores  realtime=1 allow-frame-reordering=0 quality=0.4 ! ",
+            "vtenc_prores  realtime=1 allow-frame-reordering=0 quality=0.9 ! ",
+            "", ""
+        };
+        // in other platforms, no hardware encoder
+#endif
+        return r;
+    }();
+
+    return table;
+}
+
+} // namespace
+
+string GstToolkit::getEncodingPipeline(GstToolkit::Profile p)
+{
+    if (p < 0 || p >= GstToolkit::DEFAULT)
+        return "";
+    return software_profile_description()[p];
+}
+
+string GstToolkit::getHardwareEncodingPipeline(GstToolkit::Profile p)
+{
+    if (p < 0 || p >= GstToolkit::DEFAULT)
+        return "";
+
+    const HardwareEncoderTable &hw = hardware_encoder_table();
+    if ((size_t) p >= hw.feature.size() || !GstToolkit::has_feature(hw.feature[p]))
+        return "";
+
+    return hw.pipeline[p];
 }
 
 

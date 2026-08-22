@@ -611,14 +611,14 @@ void MultiFileRifeEncoder::run(RifeOptions options)
         std::string desc = "appsrc name=src format=time ! queue ! videoconvert ! videoscale ! ";
 
         // test for a hardware accelerated encoder
-        if (Settings::application.render.gpu_decoding && (int) VideoRecorder::hardware_encoder.size() > 0 &&
-            GstToolkit::has_feature(VideoRecorder::hardware_encoder[options.profile]) ) {
+        std::string hardware_pipeline = GstToolkit::getHardwareEncodingPipeline(options.profile);
+        if (Settings::application.render.gpu_decoding && !hardware_pipeline.empty()) {
 
-            desc += VideoRecorder::hardware_profile_description[Settings::application.image_sequence.profile];
+            desc += hardware_pipeline;
         }
         // revert to software encoder
         else
-            desc += VideoRecorder::profile_description[options.profile];
+            desc += GstToolkit::getEncodingPipeline(options.profile);
 #ifndef NDEBUG
         Log::Info("ImageSequence: encoding pipeline '%s'", desc.c_str());
 #endif

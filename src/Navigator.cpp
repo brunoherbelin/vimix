@@ -1280,7 +1280,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // select CODEC: decide for gst sequence (codec_id = -1) or encoding a video
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 std::string codec_current = Settings::application.image_sequence.profile < 0 ? ICON_FA_SORT_NUMERIC_DOWN " Numbered images"
-                                                         : std::string(ICON_FA_FILM " ") + VideoRecorder::profile_name[Settings::application.image_sequence.profile];
+                                                         : std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[Settings::application.image_sequence.profile];
                 if (ImGui::BeginCombo("##CodecSequence", codec_current.c_str())) {
                     // special case; if possible, offer to create an image sequence gst source
                     if (ImGui::Selectable( ICON_FA_SORT_NUMERIC_DOWN " Numbered images",
@@ -1302,8 +1302,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                         }
                     }
                     // always offer to encode a video
-                    for (int i = VideoRecorder::H264_STANDARD; i < VideoRecorder::VP8; ++i) {
-                        std::string label = std::string(ICON_FA_FILM " ") + VideoRecorder::profile_name[i];
+                    for (int i = GstToolkit::H264_RT; i < GstToolkit::VPX_RT; ++i) {
+                        std::string label = std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[i];
                         if (ImGui::Selectable(label.c_str(), Settings::application.image_sequence.profile == i)) {
                             // select id of video encoding codec
                             Settings::application.image_sequence.profile = i;
@@ -1375,7 +1375,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                         options.loop = Settings::application.image_sequence.priority_mode;
                         options.fps = Settings::application.image_sequence.framerate_mode;
                         options.mid = Settings::application.image_sequence.buffering_mode;
-                        options.profile = (VideoRecorder::Profile) Settings::application.image_sequence.profile;
+                        options.profile = (GstToolkit::Profile) Settings::application.image_sequence.profile;
                         _rife_encoder.setFiles( sourceSequenceFiles );
                         _rife_encoder.start(options);
                         // open dialog
@@ -1416,7 +1416,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     ImGui::Text("Framerate :");ImGui::SameLine(150);
                     ImGui::Text("%d fps", Settings::application.image_sequence.framerate_mode );
                     ImGui::Text("Codec :");ImGui::SameLine(150);
-                    ImGui::Text("%s", VideoRecorder::profile_name[ Settings::application.image_sequence.profile ] );
+                    ImGui::Text("%s", GstToolkit::profile_name[ Settings::application.image_sequence.profile ] );
                     ImGui::Text("Frames :");ImGui::SameLine(150);
                     ImGui::Text("%lu (%lu originals)", (unsigned long)_rife_encoder.numFrames(), (unsigned long)_rife_encoder.files().size() ) ;
 
@@ -3396,8 +3396,8 @@ void Navigator::RenderMainPannelSettings()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGui::Combo("##Codec",
                      &Settings::application.record.profile,
-                     VideoRecorder::profile_name,
-                     IM_ARRAYSIZE(VideoRecorder::profile_name));
+                     GstToolkit::profile_name,
+                     IM_ARRAYSIZE(GstToolkit::profile_name));
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton("Codec"))
             Settings::application.record.profile = 0;

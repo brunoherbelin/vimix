@@ -20,7 +20,7 @@
 #include <string>
 #include <thread>
 
-#include "Recorder.h"
+#include "Toolkit/GstToolkit.h"
 
 /**
  * @brief Configuration options for RIFE encoding
@@ -29,13 +29,13 @@ struct RifeOptions {
     int mid;              ///< intermediate frames per image pair (0 = none)
     int fps;              ///< output framerate
     int loop;
-    VideoRecorder::Profile profile;  /// output profile (H.264/H.265/ProRes/VP8)
+    GstToolkit::Profile profile;  /// output profile (H.264/H.265/ProRes/VPX_RT)
     std::string backend;  ///< "auto" | "ncnn" | "onnx"
 
     RifeOptions(int mid = 1,
                 int fps = 30,
                 int loop = 0,
-                VideoRecorder::Profile profile = VideoRecorder::H264_STANDARD,
+                GstToolkit::Profile profile = GstToolkit::H264_RT,
                 const std::string &backend = "auto")
         : mid(mid)
         , fps(fps)
