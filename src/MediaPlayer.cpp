@@ -312,6 +312,19 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
     return video_stream_info;
 }
 
+// Convert a raw buffer PTS to stream time using the active segment, undoing
+// the shift a container's edit list applies to compensate for encoder B-frame reorder delay 
+// Positions before segment.start are still treated as invalid: those are the
+// buffered priming frames the edit list exists to trim from playback.
+static GstClockTime segment_stream_time(const GstSegment *segment, GstClockTime pts)
+{
+    if (segment == nullptr || segment->format != GST_FORMAT_TIME || !GST_CLOCK_TIME_IS_VALID(pts))
+        return pts;
+    if (pts < segment->start)
+        return GST_CLOCK_TIME_NONE;
+    return (GstClockTime) ((pts - segment->start) * ABS(segment->applied_rate) + segment->time);
+}
+
 MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_ptr<std::atomic<bool>> cancelled)
 {
     MediaEvaluation eval;
@@ -334,7 +347,10 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
         GstClockTime pts_last = GST_CLOCK_TIME_NONE;
         std::vector<GstClockTime> keyframe_pts;
         std::vector<guint64> gop_sizes;
+        // segment reported by qtdemux/parsebin: needed to convert raw buffer PTS into stream time
+        GstSegment segment;
     } probe_data;
+    gst_segment_init(&probe_data.segment, GST_FORMAT_UNDEFINED);
 
     // Context for the pad-added callback
     struct PadContext {
@@ -379,18 +395,32 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
                     gst_caps_unref(caps);
                     if (is_video) {
                         ctx->video_probed.exchange(true);
-                        ctx->data->error_code = gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER,
+                        ctx->data->error_code = gst_pad_add_probe(pad,
+                        (GstPadProbeType)(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM),
                         [](GstPad *, GstPadProbeInfo *info, gpointer user_data) -> GstPadProbeReturn {
                             ProbeData *d = static_cast<ProbeData *>(user_data);
+                            // track the segment (carries the edit-list correction
+                            // qtdemux applies for encoder B-frame reorder delay)
+                            if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM) {
+                                GstEvent *event = GST_PAD_PROBE_INFO_EVENT(info);
+                                if (GST_EVENT_TYPE(event) == GST_EVENT_SEGMENT) {
+                                    const GstSegment *s = nullptr;
+                                    gst_event_parse_segment(event, &s);
+                                    d->segment = *s;
+                                }
+                                return GST_PAD_PROBE_OK;
+                            }
                             GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
                             d->frame_count++;
+                            // convert to stream time using the active segment, so an edit list doesn't offset it
+                            GstClockTime pts = segment_stream_time(&d->segment, GST_BUFFER_DTS_OR_PTS(buf));
                             if (!GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_DELTA_UNIT)) {
                                 if (d->keyframe_count > 0)
                                     d->gop_sizes.push_back(d->frame_count - d->last_keyframe_frame);
                                 d->last_keyframe_frame = d->frame_count;
                                 d->keyframe_count++;
                                 if (d->keyframe_pts.size() < MAX_KEYFRAME_STORED)
-                                    d->keyframe_pts.push_back(buf->pts);
+                                    d->keyframe_pts.push_back(pts);
                             }
                             if (!d->has_bframes &&
                                     GST_CLOCK_TIME_IS_VALID(buf->dts) &&
@@ -401,10 +431,10 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
                                 d->discontinuity_count++;
                             if (GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_CORRUPTED))
                                 d->corrupted_count++;
-                            if (d->pts_first == GST_CLOCK_TIME_NONE && GST_CLOCK_TIME_IS_VALID(buf->pts))
-                                d->pts_first = buf->pts;
-                            if (GST_CLOCK_TIME_IS_VALID(buf->pts))
-                                d->pts_last = buf->pts;
+                            if (d->pts_first == GST_CLOCK_TIME_NONE && GST_CLOCK_TIME_IS_VALID(pts))
+                                d->pts_first = pts;
+                            if (GST_CLOCK_TIME_IS_VALID(pts))
+                                d->pts_last = pts;
                             return GST_PAD_PROBE_OK;
                         },
                         ctx->data, NULL);
@@ -1745,8 +1775,9 @@ void MediaPlayer::update()
     else if (position_ != GST_CLOCK_TIME_NONE) {
         // manage timeline:
         TimeInterval gap;
-        // ensure we remain within the begin to end range
-        if (position_ > timeline_.last() || position_ < timeline_.first()) {
+        // ensure we remain within the first to last range
+        if (( timeline_.last()  != GST_CLOCK_TIME_NONE && position_ > timeline_.last()) || 
+            ( timeline_.first() != GST_CLOCK_TIME_NONE && position_ < timeline_.first()) ) {
             need_loop = true;
         }
         // test if position falls into a gap
@@ -2020,7 +2051,7 @@ double MediaPlayer::updateFrameRate() const
 
 // CALLBACKS
 
-bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
+bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status, const GstSegment *segment)
 {
     // Do NOT overwrite an unread EOS
     if ( frame_[write_index_].status == EOS )
@@ -2047,16 +2078,18 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
         // indicate to update loop that buffer is new
         frame_[write_index_].is_new = true;
 
+        // Convert raw buffer PTS to stream time using the sample's segment;
+        // fall back to the raw PTS if the buffer falls outside the segment
+        GstClockTime pts = segment_stream_time(segment, GST_BUFFER_DTS_OR_PTS(buf));
+        if (!GST_CLOCK_TIME_IS_VALID(pts)) 
+            pts = buf->pts;
+
         // set presentation time stamp
-        frame_[write_index_].position = buf->pts;
+        frame_[write_index_].position = pts;
 
         // set the start position (i.e. pts of first frame we got)
-        if (timeline_.first() == GST_CLOCK_TIME_NONE) {
-            timeline_.setFirst(buf->pts);
-            // add a gap to show that before
-            if (buf->pts > 0 && !timeline_.gapAt( buf->pts ))
-                timeline_.addGap(0, buf->pts);
-        }
+        if (timeline_.first() == GST_CLOCK_TIME_NONE)
+            timeline_.setFirst( pts );
 
     }
     // else; null buffer for EOS: give a position
@@ -2126,7 +2159,7 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
 #endif
 
             // fill frame from buffer
-            if ( !m->fill_frame(buf, MediaPlayer::PREROLL) )
+            if ( !m->fill_frame(buf, MediaPlayer::PREROLL, gst_sample_get_segment(sample)) )
                 ret = GST_FLOW_ERROR;
             // loop negative rate: emulate an EOS
             else if (m->playSpeed() < 0.f && !(buf->pts > 0) ) {
@@ -2161,7 +2194,7 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
             GstBuffer *buf = gst_sample_get_buffer (sample) ;
 
             // fill frame with buffer
-            if ( !m->fill_frame(buf, MediaPlayer::SAMPLE) )
+            if ( !m->fill_frame(buf, MediaPlayer::SAMPLE, gst_sample_get_segment(sample)) )
                 ret = GST_FLOW_ERROR;
             // loop negative rate: emulate an EOS
             else if (m->playSpeed() < 0.f && !(buf->pts > 0) ) {

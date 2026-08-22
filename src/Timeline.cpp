@@ -116,8 +116,15 @@ bool Timeline::is_valid() const
 
 void Timeline::setFirst(GstClockTime first)
 {
-    if (first != GST_CLOCK_TIME_NONE && first > 0)
-        first_ = first;
+    if (first == GST_CLOCK_TIME_NONE)
+        return;
+
+    first_ = first;
+
+    // add a gap to show that before
+    if (first_ > 0 && !gapAt(first_))
+        addGap(0, first_);
+    
 }
 
 void Timeline::setEnd(GstClockTime end)
