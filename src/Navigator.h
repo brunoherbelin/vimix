@@ -25,6 +25,7 @@ public:
     void Render(float width);
     bool ready() const;
     inline bool filled() const { return source_ != nullptr; }
+    std::string label() const { return label_; }
 };
 
 class Thumbnail

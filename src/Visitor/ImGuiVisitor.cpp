@@ -639,21 +639,22 @@ void ImGuiVisitor::visit (Source& s)
     ImGui::PopStyleColor();
     ImGui::EndChild();
 
-    // Source specific icon to the right of Header
-    ImVec2 pos_bot = ImGui::GetCursorPos();
-    ImGui::SetCursorPos( ImVec2( pos_top.x + preview_width + IMGUI_SAME_LINE, pos_top.y + ImGui::GetStyle().ItemSpacing.y));
-    if (ImGuiToolkit::IconButton(s.icon().x, s.icon().y) ) {
-        UserInterface::manager().showSourceEditor(&s);
+    if (!Settings::application.pannel_source[1]) {
+        // Source specific icon to the right of Header
+        ImVec2 pos_bot = ImGui::GetCursorPos();
+        ImGui::SetCursorPos( ImVec2( pos_top.x + preview_width + IMGUI_SAME_LINE, pos_top.y + ImGui::GetStyle().ItemSpacing.y));
+        if (ImGuiToolkit::IconButton(s.icon().x, s.icon().y) ) {
+            UserInterface::manager().showSourceEditor(&s);
+        }
+        // Source specific tooltip on hover
+        if (ImGui::IsItemHovered()) {
+            InfoVisitor info;
+            info.setExtendedStringMode();
+            s.accept(info);
+            ImGuiToolkit::ToolTip(info.str().c_str());
+        }
+        ImGui::SetCursorPos(pos_bot);   
     }
-    // Source specific tooltip on hover
-    if (ImGui::IsItemHovered()) {
-        InfoVisitor info;
-        info.setExtendedStringMode();
-        s.accept(info);
-        ImGuiToolkit::ToolTip(info.str().c_str());
-    }
-    ImGui::SetCursorPos(pos_bot);   
-
 }
 
 

@@ -696,17 +696,19 @@ bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
         // Keyframes
         bool force_keyframes = Settings::application.transcode_options[0] != 0;
         ImGuiToolkit::ButtonSwitch( "Backward playback", &force_keyframes,
-        "Optimize for backward playback", transcoder == nullptr);
+        "Optimize for backward playback by adding keyframes", 
+        transcoder == nullptr && Settings::application.transcode_options[1] != GstToolkit::JPEG_MULTI);
         Settings::application.transcode_options[0] = force_keyframes ? 1 : 0;
         // audio
         bool force_no_audio = Settings::application.transcode_options[2] != 0;
         ImGuiToolkit::ButtonSwitch( "Remove audio", &force_no_audio,
-        "Remove audio tracks", transcoder == nullptr);
+        "Do not include audio tracks in produced video", 
+        transcoder == nullptr && Settings::application.transcode_options[1] != GstToolkit::JPEG_MULTI);
         Settings::application.transcode_options[2] = force_no_audio ? 1 : 0;
 
         // Start transcoding if not already started for current source
         if (transcoder == nullptr) {
-            if (ImGui::Button(ICON_FA_COG " Transcode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
+            if (ImGui::Button(ICON_FA_COGS " Transcode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
                 transcode_id = id;
                 transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
                 TranscoderOptions transcode_options(
@@ -724,8 +726,8 @@ bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Re-encode the source video using the specified codec and options.\n\n "
                     ICON_FA_FILM "  The new file will replace the one in the source "
-                    "once transcoding is successfully completed.\n\n"
-                    "The current file remains unchanged.");
+                    "once transcoding is successfully completed. "
+                    "The current file is left unchanged.");
         }
 
         if (transcoder != nullptr) {
@@ -1470,9 +1472,21 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             bool update_new_source = false;
 
             ImGui::Text("Patterns & generated graphics");
+            
+            std::string current_pattern;
+            if (generated_type == 2 && pattern_type < (int) Pattern::count())
+                current_pattern = Pattern::get(pattern_type).label;
+            else if (generated_type == 1)
+                current_pattern = "Text";
+            else if (generated_type == 3)
+                current_pattern = "Custom shader";
+            else if (generated_type == 0)
+                current_pattern = "Custom gstreamer";
+            else
+                current_pattern = "Select";
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##Pattern", "Select", ImGuiComboFlags_HeightLarge))
+            if (ImGui::BeginCombo("##Pattern", current_pattern.c_str(), ImGuiComboFlags_HeightLarge))
             {
                 if ( ImGuiToolkit::BeginMenuIcon(ICON_SOURCE_PATTERN, "Static patterns"))
                 {
@@ -1531,7 +1545,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             // Indication
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Create a source with patterns or graphics generated algorithmically. "
-                                      "Entering text or a custom gstreamer pipeline is also possible.");
+                                      "Displaying text, a custom gstreamer pipeline or a custom shader is also possible.");
 
             ImGui::Spacing();
             if (generated_type == 0) {
@@ -1691,14 +1705,6 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // resolution
                 if (pattern_type >= 0) {
 
-                    static char dummy_str[1024];
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    pattern_descriptor pattern = Pattern::get(pattern_type);
-                    snprintf(dummy_str, 1024, "%s", pattern.label.c_str());
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-                    ImGui::InputText("Pattern", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                    ImGui::PopStyleColor(1);
-
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     if (ImGui::Combo("Ratio", &Settings::application.source.ratio,
                                      GlmToolkit::aspect_ratio_names, IM_ARRAYSIZE(GlmToolkit::aspect_ratio_names) ) )
@@ -1721,9 +1727,24 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
         else if (Settings::application.source.new_type == SOURCE_CONNECTED){
 
             ImGui::Text("Input devices & streams");
+            
+            std::string current_connection;
+            if (custom_type == 0)
+                current_connection = "Display Loopback";
+            else if (custom_type == 1)
+                current_connection = "Screen capture";
+            else if (custom_type == 2)
+                current_connection = "SRT Broadcast";
+            else if (custom_type == 3) {
+                current_connection = "Device";
+                if (new_source_preview_.filled())
+                    current_connection = new_source_preview_.label();
+            }
+            else
+                current_connection = "Select";
 
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::BeginCombo("##ExternalConnected", "Select "))
+            if (ImGui::BeginCombo("##ExternalConnected", current_connection.c_str(), ImGuiComboFlags_HeightLarge))
             {
                 // 1. Loopback source
                 if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_RENDER, "Display Loopback", false) ) {
@@ -1748,7 +1769,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 for (int d = 0; d < Device::manager().numDevices(); ++d){
                     std::string namedev = Device::manager().name(d);
                     if (ImGui::Selectable( namedev.c_str() )) {
-                        custom_type = -1;
+                        custom_type = 3;
                         new_source_preview_.setSource( Mixer::manager().createSourceDevice(namedev), namedev);
                     }
                 }
@@ -1757,7 +1778,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 for (int d = 1; d < Connection::manager().numHosts(); ++d){
                     std::string namehost = Connection::manager().info(d).name;
                     if (ImGui::Selectable( namehost.c_str() )) {
-                        custom_type = -1;
+                        custom_type = 3;
                         new_source_preview_.setSource( Mixer::manager().createSourceNetwork(namehost), namehost);
                     }
                 }
@@ -1771,7 +1792,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             ImGuiToolkit::HelpToolTip("Create a source capturing video streams from connected devices or machines;\n"
                                       ICON_FA_CARET_RIGHT " vimix display loopback\n"
                                       ICON_FA_CARET_RIGHT " screen capture\n"
-                                      ICON_FA_CARET_RIGHT " broadcasted with SRT over network.\n"
+                                      ICON_FA_CARET_RIGHT " network SRT broadcast.\n"
                                       "For connected devices;\n"
                                       ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                       ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network.");
@@ -1790,15 +1811,6 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 static std::string port_ = Settings::application.recentSRT.hosts.empty() ? Settings::application.recentSRT.default_host.second : Settings::application.recentSRT.hosts.front().second;
                 static std::regex ipv4("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])");
                 static std::regex numport("([0-9]){4,6}");
-
-                ImGui::NewLine();
-                ImGuiToolkit::Icon(ICON_SOURCE_SRT);
-                ImGui::SameLine();
-                ImGui::Text("SRT broadcast");
-                ImGui::SameLine();
-                ImGui::SetCursorPosX(pos.x);
-                ImGuiToolkit::HelpToolTip("Set the IP and Port for connecting with Secure Reliable Transport (SRT) "
-                    "protocol to a video broadcaster that is waiting for connections (listener mode).");
 
                 // Entry field for IP
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1868,13 +1880,14 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 
             if (custom_type==1) {
 
-                ImGui::NewLine();
-                ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN);
-                ImGui::SameLine();
-                ImGui::Text("Screen Capture");
+                std::string current_screen;
+                if (new_source_preview_.filled())
+                    current_screen = new_source_preview_.label();
+                else
+                    current_screen = "Select";
 
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                if (ImGui::BeginCombo("##ScreenCaptureSelect", "Select window", ImGuiComboFlags_HeightLarge))
+                if (ImGui::BeginCombo("##ScreenCaptureSelect", current_screen.c_str(), ImGuiComboFlags_HeightLarge))
                 {
                     for (int d = 0; d < ScreenCapture::manager().numWindow(); ++d){
                         std::string namewin = ScreenCapture::manager().name(d);
@@ -1887,26 +1900,29 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // indication
                 ImGui::SameLine();
                 ImGui::SetCursorPosX(pos.x);
-                ImGuiToolkit::HelpToolTip("Create a source capturing the screen or other windows.\n"
+                ImGui::Text("Window");
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Create a source capturing the screen or other windows.\n"
                                           "The choice is limited by constraints of the operating system.");
             }
 
             if (custom_type==0) {
 
-                ImGui::NewLine();
-                ImGuiToolkit::Icon(ICON_SOURCE_RENDER);
-                ImGui::SameLine();
-                ImGui::Text("Display Loopback");
+                std::string current_loopback;
+                if (new_source_preview_.filled())
+                    current_loopback = new_source_preview_.label();
+                else
+                    current_loopback = "Select";
 
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                if (ImGui::BeginCombo("##LoopbackSelect", "Select mode", ImGuiComboFlags_HeightLarge))
+                if (ImGui::BeginCombo("##LoopbackSelect", current_loopback.c_str(), ImGuiComboFlags_HeightLarge))
                 {
                     for (auto item = RenderSource::ProvenanceMethod.cbegin(); item != RenderSource::ProvenanceMethod.cend(); ++item) {
                         if (ImGuiToolkit::SelectableIcon(std::get<0>(*item),
                                                         std::get<1>(*item ),
                                                         std::get<2>(*item).c_str(), false)) {
                             new_source_preview_.setSource( Mixer::manager().createSourceRender(
-                                std::distance(RenderSource::ProvenanceMethod.cbegin(), item)), "Loopback");
+                                std::distance(RenderSource::ProvenanceMethod.cbegin(), item)), std::get<2>(*item));
                         }
                     }
                     ImGui::EndCombo();
@@ -1914,7 +1930,9 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 // indication
                 ImGui::SameLine();
                 ImGui::SetCursorPosX(pos.x);
-                ImGuiToolkit::HelpToolTip("Create a source capturing the vimix display output (loopback).\n"
+                ImGui::Text("Mode");
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Create a source capturing the vimix display output (loopback).\n"
                                           ICON_FA_CARET_RIGHT " Recursive: capture everything shown on the screen, including the loopback source itself.\n"
                                           ICON_FA_CARET_RIGHT " Entire scene: capture everything shown on the screen, excluding the loopback source.\n"
                                           ICON_FA_CARET_RIGHT " Local scene: capture the section of the scene behind the loopback source.\n"
@@ -2668,9 +2686,9 @@ void Navigator::RenderMainPannelSession()
                 }
             }
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Export the session to a target folder.\n\n"
+            ImGuiToolkit::HelpToolTip("Export the session to a target folder or archive.\n\n"
                     ICON_FA_FOLDER_OPEN "  Choose a destination folder where to save "
-                    "a copy of the session. ");
+                    "a complete copy of the session. ");
         }
         else {
             float progress = exporter->progress();
