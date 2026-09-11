@@ -569,7 +569,7 @@ void ImGuiVisitor::visit (Source& s)
         // context menu for image processing
         if (ImGui::BeginPopup( "MenuImageProcessing" ))
         {
-            if (ImGui::MenuItem("Enabled", NULL, &on)) {
+            if (ImGui::MenuItem("Enable", NULL, &on)) {
                 oss << ( on ? "Enable Color correction" : "Disable Color correction");
                 Action::manager().store(oss.str());
                 s.setImageProcessingEnabled(on);
