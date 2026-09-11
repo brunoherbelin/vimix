@@ -995,16 +995,6 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             clearNewPannel();
         }
         ImGui::NextColumn();
-        // static int _previous_new_type = Settings::application.source.new_type;
-        // if (source_to_replace == nullptr) {
-        //     if (ImGuiToolkit::SelectableIcon( ICON_SOURCE_GROUP, "##SOURCE_BUNDLE", selected_type[SOURCE_BUNDLE],
-        //         iconsize, ImGuiDir_Right)) {
-        //         _previous_new_type = Settings::application.source.new_type;
-        //         Settings::application.source.new_type = SOURCE_BUNDLE;
-        //         ImGui::OpenPopup("SOURCE_BUNDLE_MENU");            
-        //         clearNewPannel();
-        //     }
-        // }
         if (ImGuiToolkit::SelectableIcon( ICON_SOURCE_GROUP, "##SOURCE_BUNDLE", selected_type[SOURCE_BUNDLE], iconsize)) {
             Settings::application.source.new_type = SOURCE_BUNDLE;
             clearNewPannel();
@@ -1014,14 +1004,6 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
         ImGui::PopStyleVar();
         ImGui::PopFont();
 
-        // // Menu popup for SOURCE_BUNDLE
-        // if (ImGui::BeginPopup("SOURCE_BUNDLE_MENU")) {
-        //     UserInterface::manager().showMenuBundle();
-        //     ImGui::EndPopup();
-        // }
-        // // restore previous type after closing popup
-        // if (Settings::application.source.new_type == SOURCE_BUNDLE && !ImGui::IsPopupOpen("SOURCE_BUNDLE_MENU")) 
-        //     Settings::application.source.new_type = _previous_new_type;
 
         // Edit menu
         ImGui::SetCursorPosY(2.f * width_ - style.WindowPadding.x);
@@ -1948,40 +1930,32 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             
             ImGui::Text("Bundle of sources");
             
+            Source *source_hovered_ = nullptr;
 
-        std::string source_hovered_ = "";
-        static uint source_tooltip_ = 0;
-        ++source_tooltip_;
-        static std::vector<std::string> sources_names_ = {"<source_name 0>", "<source_name 1>", "<source_name 2>", "<source_name 3>", "<source_name 4>", "<source_name 5>", "<source_name 6>"};
-        static std::list<std::string> sources_selected_;
-
+            Session *session = Mixer::manager().session();
+            SourceList sources = session->getDepthSortedList();
 
             const ImGuiStyle& style = ImGui::GetStyle();
             const ImVec2 list_size = ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN -2.f * style.WindowPadding.x,
                                7.f * (ImGui::GetTextLineHeightWithSpacing() + style.FramePadding.y ) + style.FramePadding.y);
             ImVec2 item_size = ImVec2( list_size.x -2.f * style.FramePadding.x, ImGui::GetTextLineHeightWithSpacing());
-
-
-            size_t index_max = sources_names_.size();
-            size_t index_to_select = index_max;
             item_size.x -= ImGui::GetTextLineHeight() + style.ItemSpacing.x ;
-            item_size.x -= index_max > 6 ? style.ScrollbarSize : 0.f;
+            item_size.x -= session->size() > 6 ? style.ScrollbarSize : 0.f;
 
             // display list
+            ImVec2 pos_top = ImGui::GetCursorPos();
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ImGui::ListBoxHeader("##Playlist", list_size) ) {
+            if (ImGui::ListBoxHeader("##SourcesBundle", list_size) ) {
 
-                // list sources
-                for (size_t index = 0; index < index_max; ++index) {
+                // list sources of the session
+                for (auto it = sources.begin(); it != sources.end(); ++it) {
 
-                    // get name of source at index
-                    std::string source_name = sources_names_[index];
+                    Source *s = *it;
 
-                    // unique ID for item (filename can be at different index)
-                    ImGui::PushID( source_name.c_str() );
+                    // unique ID for item (names can change)
+                    ImGui::PushID( std::to_string(s->id()).c_str() );
                     float width = ImGui::GetContentRegionAvail().x;
-                    std::string label = ImGuiToolkit::truncatedText(source_name, width);
-
+                    std::string label = ImGuiToolkit::truncatedText(std::string(s->initials()) + " - " + s->name(), width);
 
                     // item to select
                     ImGui::BeginGroup();
@@ -1991,48 +1965,88 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     }
                     ImGui::SameLine();
 
-                    if (std::find(sources_selected_.begin(), sources_selected_.end(), source_name) != sources_selected_.end()) {
+                    if (Mixer::selection().contains(s)) {
                         if ( ImGuiToolkit::IconButton( 14, 1, "Select") )
-                            sources_selected_.erase(std::remove(sources_selected_.begin(), sources_selected_.end(), source_name), sources_selected_.end());
+                            Mixer::selection().remove(s);
                     }
                     else {
                         if ( ImGuiToolkit::IconButton( 1, 5, "Select") )
-                            sources_selected_.push_back(source_name);
+                            Mixer::selection().add(s);
                     }
                     ImGui::EndGroup();
                     ImGui::PopID();
 
                     // what item is hovered for tooltip
                     if (ImGui::IsItemHovered())
-                        source_hovered_ = source_name;
+                        source_hovered_ = s;
 
                 }
 
                 ImGui::ListBoxFooter();
             }
-            // pos_bottom = ImGui::GetCursorPos();
 
-            // cancel tooltip and mouse over on mouse exit
-            if ( !ImGui::IsItemHovered())
-                source_tooltip_ = 0;
+            // test possibility to create bundle
+            bool can_create_bundle = false;
+            // Selection of multiple sources
+            if (Mixer::manager().selection().size() > 1) {
+                can_create_bundle = Mixer::manager().selectionCanBeGroupped();
+                Mixer::manager().unsetCurrentSource();
+            }
+            // Single source selected
+            else if (Mixer::manager().selection().size() > 0){
+                Mixer::manager().setCurrentSource(*Mixer::manager().selection().begin());
+                // Check if the current source can be grouped
+                bool is_bundle = Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_GROUP);
+                bool is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_CLONE);
+                can_create_bundle = !is_bundle && !is_clone;   
+            }
+            else 
+                Mixer::manager().unsetCurrentSource();
+            
+            if (can_create_bundle) {
+                // Indicator of the selection
+                ImGui::NewLine();
+                ImGuiToolkit::Icon(ICON_SOURCE_GROUP);
+                ImGui::SameLine();
+                ImGui::Text("Bundle of %d source%c", 
+                    (int) Mixer::manager().selection().size(), 
+                    Mixer::manager().selection().size() > 1 ? 's' : ' ');
 
-            // Select
-            if ( index_to_select < index_max ) {
-
-                
+                // Validate button
+                ImGui::NewLine();
+                if (ImGui::Button( ICON_FA_CHECK "  Ok", ImVec2(pannel_width_ - padding_width_, 0)) ) {
+                    Mixer::manager().groupSelection();
+                    // close NEW pannel
+                    UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+                }
             }
 
-            // Right side of the list : close and save
-            // ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y));
-            
+            // Right side of the bundle list icon : select all / none
+            ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + style.ItemSpacing.y));
+            if ( ImGuiToolkit::IconButton( ICON_FA_CHECK_DOUBLE, "Select all ")) {
+                Mixer::selection().set(sources);
+            }
+            ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN + ImGui::GetFrameHeightWithSpacing(), pos_top.y + style.ItemSpacing.y));
+            if ( ImGuiToolkit::IconButton( 12, 14, "Clear selection")) {
+                Mixer::manager().unsetCurrentSource();
+                Mixer::selection().clear();                 
+            }
+
+            // help indicator bundle list
+            pos_top.y += list_size.y;
+            ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y -  ImGui::GetFrameHeightWithSpacing()));
+            ImGuiToolkit::HelpToolTip("Select one or multiple sources to be bundled.\n\n"
+                                    ICON_FA_LAYER_GROUP "  The list is sorted by layer, from back to front. "
+                                                        "A bundle can only regroup sources that are consecutive in layer.\n"
+                                    ICON_FA_CARET_RIGHT ICON_FA_CARET_RIGHT ICON_FA_CARET_RIGHT " Sources and their clones cannot be separated.\n"
+                                    ICON_FA_CUBE  "  A bundle cannot be bundled on its own.\n"
+                                );
 
         }
 
-
-        ImGui::NewLine();
-
         // if a new source was added
         if (new_source_preview_.filled()) {
+            ImGui::NewLine();
             // show preview
             new_source_preview_.Render(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
             // ask to import the source in the mixer
@@ -2047,7 +2061,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     Mixer::manager().addSource(s);
                 s->replay();
                 // close NEW pannel
-                togglePannelNew();
+                UserInterface::manager().showPannel(  Mixer::manager().numSource() );
                 // open shader editor if requested
                 if (request_open_shader_editor) {
                     Settings::application.widget.shader_editor = true;
