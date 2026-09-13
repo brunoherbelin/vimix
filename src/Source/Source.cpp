@@ -742,7 +742,8 @@ float Source::alpha(bool allow_negative) const
 
 bool Source::visible() const
 {
-    return blendingShader()->color.a > - EPSILON;
+    float dist = glm::length( glm::vec2(group(View::MIXING)->translation_) );
+    return dist < 1.f + EPSILON;
 }
 
 
