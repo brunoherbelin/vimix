@@ -101,6 +101,7 @@ protected:
     int  target_view_navigator;
     unsigned int screenshot_step;
     bool pending_save_on_exit;
+    std::string pending_delete_file;
     typedef enum { PREVIEW_NONE = 0, PREVIEW_OUTPUT, PREVIEW_SOURCE } PreviewMode;
     PreviewMode show_preview;
 

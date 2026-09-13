@@ -974,6 +974,51 @@ void UserInterface::NewFrame()
         }
     }
 
+    // popup to confirm deletion of session file
+    if (!pending_delete_file.empty()) {
+        if (!ImGui::IsPopupOpen(MENU_DELETE_FILE)) {
+            if ( !SystemToolkit::file_exists(pending_delete_file) )                
+                pending_delete_file.clear();
+            else 
+                ImGui::OpenPopup(MENU_DELETE_FILE);
+        }
+        if (ImGui::BeginPopupModal(MENU_DELETE_FILE, NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            if ( !SystemToolkit::file_exists(pending_delete_file) ) {                
+                pending_delete_file.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::Spacing();
+            ImGui::Text("Delete this file ?\n\n");
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            ImGui::Text("%s", pending_delete_file.c_str());
+            ImGui::PopFont();
+            ImGui::Text("\nThis cannot be undone. ");
+            ImGui::Spacing();
+            if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))
+                     || ImGui::IsKeyPressed(GLFW_KEY_ESCAPE) ) {
+                pending_delete_file.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+            if (ImGui::Button(MENU_DELETE_FILE, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+                // close the session if it is the file to delete
+                if (Mixer::manager().session()->filename() == pending_delete_file)
+                    Mixer::manager().close();
+                // delete the file from disk
+                if (SystemToolkit::remove_file(pending_delete_file))
+                    Log::Notify("Deleted session file %s", pending_delete_file.c_str());
+                else
+                    Log::Error("Failed to delete session file %s", pending_delete_file.c_str());
+                pending_delete_file.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PopStyleColor(1);
+            ImGui::Spacing();
+            ImGui::EndPopup();
+        }
+    }
+
 }
 
 void UserInterface::Render()
@@ -1311,16 +1356,9 @@ void UserInterface::showMenuFile()
     if (ImGui::MenuItem( MENU_SAVEAS_FILE, SHORTCUT_SAVEAS_FILE))
         selectSaveFilename();
 
-    if (ImGui::MenuItem( MENU_DELETE_FILE, nullptr, false, currentfileopen)) {
-        Mixer::manager().close();
-        // delete the file from disk
-        if ( !currentfilename.empty() && SystemToolkit::file_exists(currentfilename) ) {
-            if (SystemToolkit::remove_file(currentfilename))
-                Log::Notify("Deleted session file %s", currentfilename.c_str());     
-            else
-                Log::Error("Failed to delete session file %s", currentfilename.c_str());
-        }
-    }
+    // DELETE (after confirmation dialog)
+    if (ImGui::MenuItem( MENU_DELETE_FILE, nullptr, false, currentfileopen))
+        pending_delete_file = currentfilename;
 
     ImGui::MenuItem( MENU_SAVE_ON_EXIT, nullptr, &Settings::application.recentSessions.save_on_exit);
 
