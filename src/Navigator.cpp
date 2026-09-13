@@ -3248,13 +3248,20 @@ void Navigator::RenderMainPannelPlaylist()
             if (active_playlist.size() > 0) {
                 static std::map< std::string, std::set<std::string> > resolutions;
                 static std::map< std::string, std::chrono::system_clock::time_point > dates;
+                static std::list< std::string > missing;
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + style.ItemSpacing.y + ImGui::GetFrameHeightWithSpacing()));
-                if ( ImGuiToolkit::IconButton( 0, 5, "Removal selection")) {
+                if ( ImGuiToolkit::IconButton( 0, 5, "Remove sessions")) {
                     // list resolutions and dates of all sessions of active_playlist
                     resolutions.clear();
                     dates.clear();
+                    missing.clear();
                     for (size_t index = 0; index < active_playlist.size(); ++index) {
                         std::string filename = active_playlist.at(index);
+                        // list missing files separately
+                        if (!SystemToolkit::file_exists(filename)) {
+                            missing.push_back(filename);
+                            continue;
+                        }
                         SessionInformation info = SessionCreator::info(filename);
                         resolutions[info.resolution].insert(filename);
                         dates[filename] = info.date;
@@ -3297,6 +3304,16 @@ void Navigator::RenderMainPannelPlaylist()
                             }
                             active_playlist.save();
                         }
+                    }
+
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Remove missing files");
+                    std::string label = "Missing files (" + std::to_string(missing.size()) + ")";
+                    if (ImGui::Selectable(label.c_str(), false, missing.empty() ? ImGuiSelectableFlags_Disabled : ImGuiSelectableFlags_None)) {
+                        for (auto it = missing.begin(); it != missing.end(); ++it) {
+                            active_playlist.remove(*it);
+                        }
+                        active_playlist.save();
                     }
 
                     ImGui::EndPopup();
