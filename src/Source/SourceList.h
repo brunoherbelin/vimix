@@ -17,10 +17,12 @@ typedef std::set<Source *> SourceListUnique;
 SourceList playable_only (const SourceList &list);
 SourceList valid_only    (const SourceList &list);
 SourceList active_only   (const SourceList &list);
+SourceList visible_only  (const SourceList &list);
 SourceList depth_sorted  (const SourceList &list);
 SourceList mixing_sorted (const SourceList &list, glm::vec2 center = glm::vec2(0.f, 0.f));
 SourceList intersect     (const SourceList &first, const SourceList &second);
 SourceList join          (const SourceList &first, const SourceList &second);
+SourceList joinClones    (const SourceList &list) ;
 
 typedef enum {
     SOURCELIST_DISTINCT = 0,

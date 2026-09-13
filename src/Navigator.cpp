@@ -1990,7 +1990,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             // Selection of multiple sources
             if (Mixer::manager().selection().size() > 1) {
                 can_create_bundle = Mixer::manager().selectionCanBeGroupped();
-                Mixer::manager().unsetCurrentSource();
+                // Mixer::manager().unsetCurrentSource();
             }
             // Single source selected
             else if (Mixer::manager().selection().size() > 0){
@@ -2023,9 +2023,14 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 
             // Right side of the bundle list icon : select all / none
             ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + style.ItemSpacing.y));
-            if ( ImGuiToolkit::IconButton( ICON_FA_CHECK_DOUBLE, "Select all ")) {
+            if ( ImGuiToolkit::IconButton( 13, 1, "Select all ")) {
                 Mixer::selection().set(sources);
             }
+            ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + style.ItemSpacing.y + ImGui::GetFrameHeightWithSpacing()));
+            if ( ImGuiToolkit::IconButton( 8, 1, "Select visible")) {
+                SourceList visible = joinClones ( visible_only(sources) );
+                Mixer::selection().set(visible);          
+            }            
             ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN + ImGui::GetFrameHeightWithSpacing(), pos_top.y + style.ItemSpacing.y));
             if ( ImGuiToolkit::IconButton( 12, 14, "Clear selection")) {
                 Mixer::manager().unsetCurrentSource();
@@ -2037,7 +2042,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
             ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y -  ImGui::GetFrameHeightWithSpacing()));
             ImGuiToolkit::HelpToolTip("Select one or multiple sources to be bundled.\n\n"
                                     ICON_FA_LAYER_GROUP "  The list is sorted by layer, from back to front. "
-                                                        "A bundle can only regroup sources that are consecutive in layer.\n"
+                                                        "A bundle can only regroup sources that are visible and consecutive in layer.\n"
                                     ICON_FA_CARET_RIGHT ICON_FA_CARET_RIGHT ICON_FA_CARET_RIGHT " Sources and their clones cannot be separated.\n"
                                     ICON_FA_CUBE  "  A bundle cannot be bundled on its own.\n"
                                 );

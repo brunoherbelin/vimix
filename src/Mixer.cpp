@@ -830,14 +830,18 @@ bool Mixer::selectionCanBeGroupped () const
     SourceList::iterator  it = selection().begin();
     float depth_first = (*it)->depth();
     for (; it != selection().end(); ++it) {
+
         // test if selection is contiguous in layer (i.e. not interrupted)
         SourceList::iterator inter = manager().session()->find(depth_first, (*it)->depth());
         if ( inter != manager().session()->end() && !selection().contains(*inter)){
-            // CANNOT group: there is a source in the session that
-            // - is between two selected sources (in depth)
-            // - is not part of the selection
-            ret = false;
-            break;
+            if ( (*inter)->visible() ) {
+                // CANNOT group: there is a source in the session that
+                // - is visible
+                // - is between two selected sources (in depth)
+                // - is not part of the selection
+                ret = false;
+                break;
+            }
         }
         // test if the source is a clone
         CloneSource *_cs = dynamic_cast<CloneSource *>(*it);
