@@ -1311,6 +1311,17 @@ void UserInterface::showMenuFile()
     if (ImGui::MenuItem( MENU_SAVEAS_FILE, SHORTCUT_SAVEAS_FILE))
         selectSaveFilename();
 
+    if (ImGui::MenuItem( MENU_DELETE_FILE, nullptr, false, currentfileopen)) {
+        Mixer::manager().close();
+        // delete the file from disk
+        if ( !currentfilename.empty() && SystemToolkit::file_exists(currentfilename) ) {
+            if (SystemToolkit::remove_file(currentfilename))
+                Log::Notify("Deleted session file %s", currentfilename.c_str());     
+            else
+                Log::Error("Failed to delete session file %s", currentfilename.c_str());
+        }
+    }
+
     ImGui::MenuItem( MENU_SAVE_ON_EXIT, nullptr, &Settings::application.recentSessions.save_on_exit);
 
     // QUIT
