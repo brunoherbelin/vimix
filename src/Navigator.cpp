@@ -2850,6 +2850,7 @@ void Navigator::RenderMainPannelPlaylist()
     static Playlist playlist_edit;
     static std::string playlist_edit_name;
     static int playlist_edit_action = 0; // 0 = none, 1 = save, 2 = rename, 3 = delete
+    static std::string playlist_name_str;
 
     //    static DialogToolkit::OpenPlaylistDialog openPlaylist("Open Playlist");
     //    static DialogToolkit::SavePlaylistDialog savePlaylist("Save Playlist");
@@ -2905,8 +2906,10 @@ void Navigator::RenderMainPannelPlaylist()
     }
 
     // Make sure to reset the edit action if the user clicks outside the playlist panel
-    if ( !ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) )
+    if ( !ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ) {
+        playlist_name_str.clear();
         playlist_edit_action = 0;
+    }
 
     //
     // Show combo box of quick selection of recent playlist / directory
@@ -2972,7 +2975,6 @@ void Navigator::RenderMainPannelPlaylist()
     // Show string edit to set the name and save a playlist
     //
     else if (playlist_edit_action < 3) {
-        static std::string playlist_name_str = "";
 
         // initial name of playlist to edit
         if (playlist_name_str.empty()) 
@@ -2984,16 +2986,23 @@ void Navigator::RenderMainPannelPlaylist()
             ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor::HSV(0.0f, 0.6f, 0.4f));
         else 
             ImGui::PushStyleColor(ImGuiCol_FrameBg, style.Colors[ImGuiCol_FrameBg]);
-        
         // Edit name of playlist
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGuiToolkit::InputText("##RenamePlaylist", &playlist_name_str, ImGuiInputTextFlags_CharsNoBlank);
-
+        bool changed = ImGuiToolkit::InputText("##RenamePlaylist", &playlist_name_str, 
+            ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_EnterReturnsTrue);
         ImGui::PopStyleColor();
 
+        // Cancel button
+        ImGui::SameLine(0, ImGui::GetTextLineHeightWithSpacing() + IMGUI_SAME_LINE / 2.f);      
+        if (ImGui::Button(ICON_FA_TIMES)) {
+            // discard
+            playlist_edit_action = 0;
+            playlist_name_str.clear();
+        }
         // Validate button
-        ImGui::SameLine(0, ImGui::GetTextLineHeightWithSpacing() + IMGUI_SAME_LINE / 2.f);     
-        if (ImGui::IsItemDeactivatedAfterEdit() || ImGui::Button(ICON_FA_CHECK)) {
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f); 
+        changed |= ImGui::Button(ICON_FA_CHECK);
+        if (changed) {
 
             // Rename request: delete file
             if (playlist_edit_action == 2){
@@ -3017,13 +3026,6 @@ void Navigator::RenderMainPannelPlaylist()
             playlist_edit_action = 0;
             playlist_name_str.clear();
         }  
-        // Cancel button
-        ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f);      
-        if (ImGui::Button(ICON_FA_TIMES)) {
-            // discard
-            playlist_edit_action = 0;
-            playlist_name_str.clear();
-        }
     }
     //
     // Show name and confirm delete of a playlist
@@ -3036,9 +3038,13 @@ void Navigator::RenderMainPannelPlaylist()
         ImGuiToolkit::InputText("##DeletePlaylist", &playlist_header, ImGuiInputTextFlags_ReadOnly);
         ImGui::PopStyleColor(1);
 
-        // Validate button
+        // Cancel button 
         ImGui::SameLine(0, ImGui::GetTextLineHeightWithSpacing() + IMGUI_SAME_LINE / 2.f);      
-        if (ImGui::Button(ICON_FA_TRASH)) {
+        if (ImGui::Button(ICON_FA_TIMES)) 
+            playlist_edit_action = 0;
+        // Validate button
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f);      
+        if (ImGui::Button(ICON_FA_TRASH_ALT)) {
             // delete the file
             SystemToolkit::remove_file(Settings::application.recentPlaylists.path);
             // remove from the list
@@ -3051,10 +3057,6 @@ void Navigator::RenderMainPannelPlaylist()
             Settings::application.recentPlaylists.changed = true;
             playlist_edit_action = 0;
         }  
-        // Cancel button 
-        ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f);      
-        if (ImGui::Button(ICON_FA_TIMES)) 
-            playlist_edit_action = 0;
     }
 
     ImVec2 pos_top = ImGui::GetCursorPos();
@@ -3237,11 +3239,72 @@ void Navigator::RenderMainPannelPlaylist()
             active_playlist.save();
         }
 
-        // Right side of the list icon to add sessions to the playlist
-        ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN - 4, pos_top.y + style.ItemSpacing.y));
-        if ( playlist_edit_action == 0 && ImGuiToolkit::IconButton( 18, 4, "Add sessions")) {
-            selectSessions.open();
+        if ( playlist_edit_action == 0 ) {
+            // Right side of the list icon to add sessions to the playlist
+            ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + style.ItemSpacing.y));
+            if (ImGuiToolkit::IconButton( 18, 4, "Add sessions")) {
+                selectSessions.open();
+            }
+            if (active_playlist.size() > 0) {
+                static std::map< std::string, std::set<std::string> > resolutions;
+                static std::map< std::string, std::chrono::system_clock::time_point > dates;
+                ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + style.ItemSpacing.y + ImGui::GetFrameHeightWithSpacing()));
+                if ( ImGuiToolkit::IconButton( 0, 5, "Removal selection")) {
+                    // list resolutions and dates of all sessions of active_playlist
+                    resolutions.clear();
+                    dates.clear();
+                    for (size_t index = 0; index < active_playlist.size(); ++index) {
+                        std::string filename = active_playlist.at(index);
+                        SessionInformation info = SessionCreator::info(filename);
+                        resolutions[info.resolution].insert(filename);
+                        dates[filename] = info.date;
+                    }
+                    // show popup menu to select sessions to remove
+                    ImGui::OpenPopup( "menu_playlist_selection" );
+                }
+                if (ImGui::BeginPopup("menu_playlist_selection")) {
+
+                    ImGui::TextDisabled("Remove by resolution");
+                    for (auto it = resolutions.begin(); it != resolutions.end(); ++it) {
+                        std::string label = it->first + " (" + std::to_string(it->second.size()) + ")";
+                        if (ImGui::Selectable(label.c_str())) {
+                            for (auto it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+                                active_playlist.remove(*it2);
+                            }
+                            active_playlist.save();
+                        }
+                    }
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Remove by date");
+                    static const std::vector< std::pair<std::string, std::chrono::hours> > ages = {
+                        { "Older than 1 year",  std::chrono::hours(8766) },  // 365.25 days
+                        { "Older than 1 month", std::chrono::hours(730) },   // 365.25 / 12 days
+                        { "Older than 1 week",  std::chrono::hours(168) },
+                        { "Older than 1 day",   std::chrono::hours(24) }
+                    };
+                    const auto now = std::chrono::system_clock::now();
+                    for (auto it = ages.begin(); it != ages.end(); ++it) {
+                        // list sessions older than this age
+                        std::list<std::string> older;
+                        for (auto it2 = dates.begin(); it2 != dates.end(); ++it2) {
+                            if (now - it2->second > it->second)
+                                older.push_back(it2->first);
+                        }
+                        std::string label = it->first + " (" + std::to_string(older.size()) + ")";
+                        if (ImGui::Selectable(label.c_str(), false, older.empty() ? ImGuiSelectableFlags_Disabled : ImGuiSelectableFlags_None)) {
+                            for (auto it2 = older.begin(); it2 != older.end(); ++it2) {
+                                active_playlist.remove(*it2);
+                            }
+                            active_playlist.save();
+                        }
+                    }
+
+                    ImGui::EndPopup();
+                }
+
+            }
         }
+
 
         // return from thread for sessions multiple selection
         if (selectSessions.closed() && !selectSessions.files().empty()) {
@@ -3472,9 +3535,10 @@ void Navigator::RenderMainPannelPlaylist()
     // help indicator
     pos_top.y += list_size.y;
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-    ImGuiToolkit::HelpToolTip("Double-clic on a filename to open the session.\n\n"
-                              ICON_FA_ARROW_CIRCLE_RIGHT "  enable Smooth transition "
-                                                         "to perform a cross fading with the current session.");
+    ImGuiToolkit::HelpToolTip("Double-clic on a filename to open the session.\n\n "
+                              ICON_FA_ARROWS_ALT_V   "   Drag to reorder the sessions in the playlist.\n"
+                              ICON_FA_ARROW_CIRCLE_RIGHT "  With Smooth transition enabled,"
+                                                         " the session will open with a cross fade or a fade to black.");
 
     // toggle button for smooth transition
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - ImGui::GetFrameHeightWithSpacing()) );
