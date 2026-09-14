@@ -235,6 +235,15 @@ bool Transcoder::start(const TranscoderOptions& options)
 
     g_object_unref(discoverer);
 
+    // verify the profile can encode the resolution of the source video
+    error_message_ = GstToolkit::unsupportedResolution(options.profile, (int) frame_width, (int) frame_height,
+                                                       Settings::application.render.gpu_decoding);
+    if (!error_message_.empty()) {
+        Log::Warning("Transcoder: %s", error_message_.c_str());
+        g_free(src_uri);
+        return false;
+    }
+
     // Pick the encoding pipeline fragment for the chosen profile: hardware
     // accelerated if available and enabled, software otherwise
     std::string video_encoder = GstToolkit::getHardwareEncodingPipeline(options.profile);

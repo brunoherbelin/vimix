@@ -607,6 +607,12 @@ void MultiFileRifeEncoder::run(RifeOptions options)
 
         total_frames_ = (int)files_.size() + (int)(files_.size() - 1) * mid;
 
+        // verify the profile can encode the resolution of the images
+        std::string unsupported = GstToolkit::unsupportedResolution(options.profile, w, h,
+                                                                    Settings::application.render.gpu_decoding);
+        if (!unsupported.empty())
+            throw std::runtime_error(unsupported);
+
         // create a gstreamer pipeline
         std::string desc = "appsrc name=src format=time ! queue ! videoconvert ! videoscale ! ";
 

@@ -654,6 +654,58 @@ void Navigator::RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2
     }
 }
 
+// If the encoder of the given profile cannot encode this resolution (e.g.
+// GPU encoders limited to 4096 x 4096 for H264), select the closest profile
+// which can instead.
+// Silent (can be called every frame); returns true if the profile was changed.
+bool ValidateCodecResolution(int *profile, int width, int height)
+{
+    if ( *profile < GstToolkit::H264_RT || *profile >= GstToolkit::DEFAULT )
+        return false;
+
+    const GstToolkit::Profile alternative =
+        GstToolkit::alternativeProfile((GstToolkit::Profile) *profile, width, height,
+                                       Settings::application.render.gpu_decoding);
+    if ( alternative == *profile )
+        return false;
+
+    *profile = alternative;
+
+    return true;
+}
+
+// Combo box to select an encoding profile, disabling the profiles whose
+// encoder cannot encode the given resolution, and selecting an alternative
+// profile instead of a profile which cannot.
+// Returns true only if the user selected a profile (as ImGui::Combo does).
+bool ComboCodec(const char *label, int *profile, int width, int height)
+{
+    bool ret = false;
+
+    // make sure the current profile is valid for this resolution
+    if ( *profile < GstToolkit::H264_RT || *profile >= GstToolkit::DEFAULT )
+        *profile = GstToolkit::H264_RT;
+    ValidateCodecResolution(profile, width, height);
+
+    if (ImGui::BeginCombo(label, GstToolkit::profile_name[*profile])) {
+        for (int i = GstToolkit::H264_RT; i < GstToolkit::DEFAULT; ++i) {
+            const bool supported = GstToolkit::supportsResolution((GstToolkit::Profile) i, width, height,
+                                                                 Settings::application.render.gpu_decoding);
+            if (ImGui::Selectable( GstToolkit::profile_name[i], *profile == i,
+                                   supported ? ImGuiSelectableFlags_None : ImGuiSelectableFlags_Disabled )) {
+                *profile = i;
+                ret = true;
+            }
+            if (!supported && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGuiToolkit::ToolTip( GstToolkit::unsupportedResolution((GstToolkit::Profile) i, width, height,
+                                       Settings::application.render.gpu_decoding).c_str() );
+        }
+        ImGui::EndCombo();
+    }
+
+    return ret;
+}
+
 bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
 {
     static Transcoder *transcoder = nullptr;
@@ -682,28 +734,36 @@ bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
 
     if (Settings::application.pannel_source[2]) {
 
+        // transcoding is done at the resolution of the source video: the user
+        // preference is kept, but H265 is used locally if H264 cannot encode it
+        const int source_width = (int) mp->width();
+        const int source_height = (int) mp->height();
+        int transcode_profile = Settings::application.transcode_options[1];
+
         // Transcoding options
         // Codec
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("##CodecTranscode",
-                     &Settings::application.transcode_options[1],
-                     GstToolkit::profile_name,
-                     IM_ARRAYSIZE(GstToolkit::profile_name));
+        if (ComboCodec("##CodecTranscode", &transcode_profile, source_width, source_height))
+            // the user selected a codec: change the preference
+            Settings::application.transcode_options[1] = transcode_profile;
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (ImGuiToolkit::TextButton("Codec"))
-            Settings::application.transcode_options[1] = 0;
+        if (ImGuiToolkit::TextButton("Codec")) {
+            Settings::application.transcode_options[1] = GstToolkit::H264_RT;
+            transcode_profile = GstToolkit::H264_RT;
+            ValidateCodecResolution(&transcode_profile, source_width, source_height);
+        }
         ImGui::Spacing();
         // Keyframes
         bool force_keyframes = Settings::application.transcode_options[0] != 0;
         ImGuiToolkit::ButtonSwitch( "Backward playback", &force_keyframes,
         "Optimize for backward playback by adding keyframes", 
-        transcoder == nullptr && Settings::application.transcode_options[1] != GstToolkit::JPEG_MULTI);
+        transcoder == nullptr && transcode_profile != GstToolkit::JPEG_MULTI);
         Settings::application.transcode_options[0] = force_keyframes ? 1 : 0;
         // audio
         bool force_no_audio = Settings::application.transcode_options[2] != 0;
         ImGuiToolkit::ButtonSwitch( "Remove audio", &force_no_audio,
         "Do not include audio tracks in produced video", 
-        transcoder == nullptr && Settings::application.transcode_options[1] != GstToolkit::JPEG_MULTI);
+        transcoder == nullptr && transcode_profile != GstToolkit::JPEG_MULTI);
         Settings::application.transcode_options[2] = force_no_audio ? 1 : 0;
 
         // Start transcoding if not already started for current source
@@ -712,7 +772,7 @@ bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
                 transcode_id = id;
                 transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
                 TranscoderOptions transcode_options(
-                    static_cast<GstToolkit::Profile>(Settings::application.transcode_options[1]),
+                    static_cast<GstToolkit::Profile>(transcode_profile),
                     force_keyframes,
                     force_no_audio
                 );
@@ -738,7 +798,7 @@ bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
                     Source *src = Mixer::manager().findSource(transcode_id);
                     if (src != nullptr) {
                         // create MultiFile source from generated jpeg
-                        if (Settings::application.transcode_options[1] == GstToolkit::JPEG_MULTI) {
+                        if (transcoder->isImageSequence()) {
                             std::list<std::string> files = SystemToolkit::list_directory(transcoder->outputFilename(), {"*.jpg", "*.jpeg", "*.png"});
                             Source *mfs = Mixer::manager().createSourceMultifile(files, 30);
                             // replace source in session by new multifile source
@@ -1286,6 +1346,13 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                 ImGui::InputText("Selection", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
                 ImGui::PopStyleColor(1);
 
+                // encoding is done at the resolution of the images, rounded even
+                const int sequence_width = (int) (_numbered_sequence.width & ~1);
+                const int sequence_height = (int) (_numbered_sequence.height & ~1);
+                if (Settings::application.image_sequence.profile >= 0)
+                    ValidateCodecResolution(&Settings::application.image_sequence.profile,
+                                            sequence_width, sequence_height);
+
                 // select CODEC: decide for gst sequence (codec_id = -1) or encoding a video
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 std::string codec_current = Settings::application.image_sequence.profile < 0 ? ICON_FA_SORT_NUMERIC_DOWN " Numbered images"
@@ -1313,12 +1380,20 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     // always offer to encode a video
                     for (int i = GstToolkit::H264_RT; i < GstToolkit::VPX_RT; ++i) {
                         std::string label = std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[i];
-                        if (ImGui::Selectable(label.c_str(), Settings::application.image_sequence.profile == i)) {
+                        const bool supported = GstToolkit::supportsResolution((GstToolkit::Profile) i,
+                                                                             sequence_width, sequence_height,
+                                                                             Settings::application.render.gpu_decoding);
+                        if (ImGui::Selectable(label.c_str(), Settings::application.image_sequence.profile == i,
+                                              supported ? ImGuiSelectableFlags_None : ImGuiSelectableFlags_Disabled)) {
                             // select id of video encoding codec
                             Settings::application.image_sequence.profile = i;
                             // close source preview (no image sequence)
                             new_source_preview_.setSource();
                         }
+                        if (!supported && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                            ImGuiToolkit::ToolTip( GstToolkit::unsupportedResolution((GstToolkit::Profile) i,
+                                                   sequence_width, sequence_height,
+                                                   Settings::application.render.gpu_decoding).c_str() );
                     }
                     ImGui::EndCombo();
                 }
@@ -3709,16 +3784,23 @@ void Navigator::RenderMainPannelSettings()
 
     if (Settings::application.pannel_settings[0]){
 
+        // recording is done at the resolution of the session output
+        glm::ivec2 output_resolution(0, 0);
+        const FrameBuffer *output_frame = Mixer::manager().session()->frame();
+        if (output_frame)
+            output_resolution = glm::ivec2(output_frame->resolution());
+
         // select Encoder codec
         ImGui::SetCursorPosX(align_x);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("##Codec",
-                     &Settings::application.record.profile,
-                     GstToolkit::profile_name,
-                     IM_ARRAYSIZE(GstToolkit::profile_name));
+        ComboCodec("##Codec", &Settings::application.record.profile,
+                   output_resolution.x, output_resolution.y);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (ImGuiToolkit::TextButton("Codec"))
-            Settings::application.record.profile = 0;
+        if (ImGuiToolkit::TextButton("Codec")) {
+            Settings::application.record.profile = GstToolkit::H264_RT;
+            ValidateCodecResolution(&Settings::application.record.profile,
+                                    output_resolution.x, output_resolution.y);
+        }
 
         // select FPS
         ImGui::SetCursorPosX(align_x);

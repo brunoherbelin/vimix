@@ -181,6 +181,18 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     GstToolkit::Profile profile = (GstToolkit::Profile) Settings::application.record.profile;
     std::string hardware_pipeline = GstToolkit::getHardwareEncodingPipeline(profile);
 
+    // verify the profile can encode the resolution of the session
+    int frame_width = 0, frame_height = 0;
+    GstStructure *frame_structure = gst_caps_get_structure(write_caps_, 0);
+    if (frame_structure) {
+        gst_structure_get_int(frame_structure, "width", &frame_width);
+        gst_structure_get_int(frame_structure, "height", &frame_height);
+    }
+    std::string unsupported = GstToolkit::unsupportedResolution(profile, frame_width, frame_height,
+                                                                Settings::application.render.gpu_decoding);
+    if (!unsupported.empty())
+        return std::string("Video Recording : ") + unsupported;
+
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! ";
 

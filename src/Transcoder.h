@@ -109,6 +109,12 @@ public:
      */
     const std::string& error() const { return error_message_; }
 
+    /**
+     * @brief Check if the output is an image sequence
+     * @return true if the output is a sequence of images, false otherwise
+     */
+    bool isImageSequence() const { return is_image_sequence_; }
+
 private:
     // Generate output filename (or, for JPEG_MULTI, output folder + pattern)
     // from input filename and options

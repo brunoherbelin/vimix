@@ -59,6 +59,25 @@ std::string getEncodingPipeline(Profile p);
 // this platform/GPU.
 std::string getHardwareEncodingPipeline(Profile p);
 
+// Maximum frame width and height accepted by the encoder used for the given
+// profile, read from the caps of the gstreamer element (zero if it imposes no
+// limit). Hardware encoders are typically limited (e.g. 4096 x 4096 for NVENC
+// H264) whereas software encoders are not. Queried once per element.
+void encoderMaxFrameSize(Profile p, bool hardware, int *width, int *height);
+
+// Test if the encoder used for the given profile can encode frames of this
+// size. A width or height of zero means the resolution is unknown: supported.
+bool supportsResolution(Profile p, int width, int height, bool hardware);
+
+// Profile closest to the given one which can encode frames of this size:
+// the given profile if it can, else its H265 equivalent if it can, else the
+// first profile which can, else the given profile.
+Profile alternativeProfile(Profile p, int width, int height, bool hardware);
+
+// Empty string if the resolution is supported, or an explanatory error
+// message (naming the encoder, its limit and an alternative profile).
+std::string unsupportedResolution(Profile p, int width, int height, bool hardware);
+
 // Keyframe interval (in frames) for smooth backward playback of video
 // encoded with the given profile at the given frame size. 
 // This is a static estimate from those factors, not a benchmark.

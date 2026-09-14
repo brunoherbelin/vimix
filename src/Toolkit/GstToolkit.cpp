@@ -22,6 +22,8 @@
 #include <iomanip>
 #include <filesystem>
 #include <vector>
+#include <map>
+#include <mutex>
 #include <cmath>
 
 using namespace std;
@@ -386,6 +388,139 @@ string GstToolkit::getHardwareEncodingPipeline(GstToolkit::Profile p)
         return "";
 
     return hw.pipeline[p];
+}
+
+namespace {
+
+// Name of the gstreamer element encoding the given profile: the first word
+// of the pipeline fragment (e.g. "nvh264enc" in "nvh264enc rc-mode=...").
+// Hardware encoder if requested and available, software encoder otherwise.
+std::string encoder_element(GstToolkit::Profile profile, bool hardware)
+{
+    std::string pipeline;
+    if (hardware)
+        pipeline = GstToolkit::getHardwareEncodingPipeline(profile);
+    if (pipeline.empty())
+        pipeline = GstToolkit::getEncodingPipeline(profile);
+
+    return pipeline.substr(0, pipeline.find(' '));
+}
+
+// Maximum frame width and height accepted by a gstreamer element, from the
+// caps of its sink pad template (zero if unlimited or element unknown).
+// The nvcodec and va plugins build these caps by asking the device, so the
+// values are those of the GPU of this machine. Queried once per element.
+std::pair<int, int> element_max_frame_size(const std::string &element)
+{
+    static std::map<std::string, std::pair<int, int> > cache;
+    static std::mutex cache_access;
+
+    if (element.empty())
+        return std::pair<int, int>(0, 0);
+
+    const std::lock_guard<std::mutex> lock(cache_access);
+
+    auto known = cache.find(element);
+    if (known != cache.end())
+        return known->second;
+
+    std::pair<int, int> maxsize(0, 0);
+    GstElementFactory *factory = gst_element_factory_find( element.c_str() );
+    if (factory) {
+        const GList *templates = gst_element_factory_get_static_pad_templates(factory);
+        for (const GList *t = templates; t != nullptr; t = t->next) {
+            GstStaticPadTemplate *padtemplate = (GstStaticPadTemplate *) t->data;
+            // only the input of the encoder is relevant
+            if (padtemplate->direction != GST_PAD_SINK)
+                continue;
+            GstCaps *caps = gst_static_pad_template_get_caps(padtemplate);
+            for (guint i = 0; i < gst_caps_get_size(caps); ++i) {
+                const GstStructure *s = gst_caps_get_structure(caps, i);
+                // keep the largest frame size accepted by any of the caps
+                // (a range of sizes, or a single fixed size)
+                const GValue *w = gst_structure_get_value(s, "width");
+                if (w && GST_VALUE_HOLDS_INT_RANGE(w))
+                    maxsize.first = MAX(maxsize.first, gst_value_get_int_range_max(w));
+                else if (w && G_VALUE_HOLDS_INT(w))
+                    maxsize.first = MAX(maxsize.first, g_value_get_int(w));
+                const GValue *h = gst_structure_get_value(s, "height");
+                if (h && GST_VALUE_HOLDS_INT_RANGE(h))
+                    maxsize.second = MAX(maxsize.second, gst_value_get_int_range_max(h));
+                else if (h && G_VALUE_HOLDS_INT(h))
+                    maxsize.second = MAX(maxsize.second, g_value_get_int(h));
+            }
+            gst_caps_unref(caps);
+        }
+        gst_object_unref(factory);
+    }
+
+    cache[element] = maxsize;
+    return maxsize;
+}
+
+}
+
+void GstToolkit::encoderMaxFrameSize(GstToolkit::Profile profile, bool hardware, int *width, int *height)
+{
+    const std::pair<int, int> maxsize = element_max_frame_size( encoder_element(profile, hardware) );
+
+    if (width)
+        *width = maxsize.first;
+    if (height)
+        *height = maxsize.second;
+}
+
+bool GstToolkit::supportsResolution(GstToolkit::Profile profile, int width, int height, bool hardware)
+{
+    const std::pair<int, int> maxsize = element_max_frame_size( encoder_element(profile, hardware) );
+
+    // zero means no limit declared by the encoder
+    if (maxsize.first > 0 && width > maxsize.first)
+        return false;
+    if (maxsize.second > 0 && height > maxsize.second)
+        return false;
+
+    return true;
+}
+
+GstToolkit::Profile GstToolkit::alternativeProfile(GstToolkit::Profile profile, int width, int height, bool hardware)
+{
+    if ( supportsResolution(profile, width, height, hardware) )
+        return profile;
+
+    // prefer the H265 equivalent of the given profile
+    const GstToolkit::Profile equivalent = (profile == GstToolkit::H264_HQ) ? GstToolkit::H265_HQ : GstToolkit::H265_RT;
+    if ( profile != equivalent && supportsResolution(equivalent, width, height, hardware) )
+        return equivalent;
+
+    // else, the first profile which can encode this resolution
+    for (int p = GstToolkit::H264_RT; p < GstToolkit::DEFAULT; ++p) {
+        if ( supportsResolution((GstToolkit::Profile) p, width, height, hardware) )
+            return (GstToolkit::Profile) p;
+    }
+
+    return profile;
+}
+
+std::string GstToolkit::unsupportedResolution(GstToolkit::Profile profile, int width, int height, bool hardware)
+{
+    if ( supportsResolution(profile, width, height, hardware) )
+        return std::string();
+
+    const std::string element = encoder_element(profile, hardware);
+    const std::pair<int, int> maxsize = element_max_frame_size(element);
+
+    std::ostringstream msg;
+    msg << profile_name[profile] << " cannot encode " << width << " x " << height
+        << " because the encoder " << element << " is limited to "
+        << maxsize.first << " x " << maxsize.second << ".";
+
+    // suggest another profile if one can encode this resolution
+    const GstToolkit::Profile alternative = alternativeProfile(profile, width, height, hardware);
+    if (alternative != profile)
+        msg << " Select " << profile_name[alternative] << " instead.";
+
+    return msg.str();
 }
 
 int GstToolkit::getPlayBackwardGop(GstToolkit::Profile profile, int width, int height)

@@ -170,6 +170,10 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     if (width_ <= 0 || height_ <= 0) {
         return "GPU Video Recording : Invalid video dimensions in caps";
     }
+    // verify the profile can encode the resolution of the session
+    std::string unsupported = GstToolkit::unsupportedResolution(encoder_, width_, height_, true);
+    if (!unsupported.empty())
+        return std::string("GPU Video Recording : ") + unsupported;
     // specify recorder framerate in the given caps
     GstCaps *tmp = gst_caps_copy( read_caps );
     GValue v = G_VALUE_INIT;
