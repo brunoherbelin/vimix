@@ -1329,7 +1329,8 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                         .setSource(Mixer::manager().createSourceMultifile(sourceSequenceFiles,
                                                                           Settings::application.image_sequence.framerate_mode),
                                    label);
-                } else
+                } 
+                else if (Settings::application.image_sequence.profile < 0)
                     Settings::application.image_sequence.profile = 0; // default to H264 video encoding
             }
 
@@ -1338,17 +1339,29 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 
                 ImGui::Spacing();
 
-                // show info sequence
-                ImGuiTextBuffer info;
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-                info.appendf("%d %s files", (int) sourceSequenceFiles.size(), _numbered_sequence.codec.c_str());
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::InputText("Selection", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
-                ImGui::PopStyleColor(1);
-
                 // encoding is done at the resolution of the images, rounded even
                 const int sequence_width = (int) (_numbered_sequence.width & ~1);
                 const int sequence_height = (int) (_numbered_sequence.height & ~1);
+
+                // show info sequence
+                ImGuiTextBuffer info;
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                info.appendf("%d %s (%d x %d)", 
+                    (int) sourceSequenceFiles.size(), 
+                    _numbered_sequence.codec.c_str(),
+                    sequence_width,
+                    sequence_height);
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGui::InputText("##SequenceSelection", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+                ImGui::PopStyleColor(1);
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton("Selection")) {
+                    sourceSequenceFiles.clear();
+                    new_source_preview_.setSource();
+                    _numbered_sequence = MultiFileSequence();
+                }
+
+                // encoding profile validation; ensure it supports the resolution of the images
                 if (Settings::application.image_sequence.profile >= 0)
                     ValidateCodecResolution(&Settings::application.image_sequence.profile,
                                             sequence_width, sequence_height);
@@ -1410,7 +1423,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 
                 // set framerate
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::SliderInt("Framerate", &Settings::application.image_sequence.framerate_mode, 1, 30, "%d fps");
+                ImGui::SliderInt("##SequenceFramerate", &Settings::application.image_sequence.framerate_mode, 1, 30, "%d fps");
                 if (ImGui::IsItemDeactivatedAfterEdit()){
                     if (new_source_preview_.filled()) {
                         std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
@@ -1420,6 +1433,10 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                                            Settings::application.image_sequence.framerate_mode),
                                        label);
                     }
+                }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton("Framerate")) {
+                    Settings::application.image_sequence.framerate_mode = 25;
                 }
 
                 // if video encoding codec selected
@@ -1450,8 +1467,12 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
 #endif
 #endif
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::Combo("Loop", &Settings::application.image_sequence.priority_mode, 
+                    ImGui::Combo("##SequenceLoop", &Settings::application.image_sequence.priority_mode, 
                         "None\0Rewind\0Mirror\0");
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    if (ImGuiToolkit::TextButton("Loop")) {
+                        Settings::application.image_sequence.priority_mode = 0;
+                    }
                     // Offer to create video from sequence
                     ImGui::NewLine();
                     if ( ImGui::Button( ICON_FA_FILM " Encode video", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
