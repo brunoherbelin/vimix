@@ -273,7 +273,7 @@
 #define LABEL_PLAYER_TIMELINE_ADD    "Add timeline"
 #define LABEL_EDIT_FADING     ICON_FA_RANDOM "  Edit timeline fading"
 #define LABEL_EDIT_GAPS       ICON_FA_CUT "  Cut timeline"
-#define LABEL_VIDEO_SEQUENCE  "  Encode an image sequence"
+#define LABEL_VIDEO_SEQUENCE  ICON_FA_FILM "  Encode an image sequence"
 #define DIALOG_TIMELINE_DURATION    ICON_FA_HOURGLASS_HALF " Set timeline duration"
 #define DIALOG_GST_EFFECT     "Gstreamer Video effect"
 #define LABEL_SHADER_EMBEDDED ICON_FA_FILE_ALT "  Embedded code"

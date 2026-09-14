@@ -1427,7 +1427,7 @@ void Navigator::RenderNewPannel(const ImVec2 &iconsize)
                     ImGui::Text("Codec :");ImGui::SameLine(150);
                     ImGui::Text("%s", GstToolkit::profile_name[ Settings::application.image_sequence.profile ] );
                     ImGui::Text("Frames :");ImGui::SameLine(150);
-                    ImGui::Text("%lu (%lu originals)", (unsigned long)_rife_encoder.numFrames(), (unsigned long)_rife_encoder.files().size() ) ;
+                    ImGui::Text("%lu (%lu key frames)", (unsigned long)_rife_encoder.numFrames(), (unsigned long)_rife_encoder.files().size() ) ;
 
                     ImGui::Spacing();
                     ImGui::ProgressBar(_rife_encoder.progress());
