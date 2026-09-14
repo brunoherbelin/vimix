@@ -3262,7 +3262,7 @@ void Navigator::RenderMainPannelPlaylist()
                             missing.push_back(filename);
                             continue;
                         }
-                        SessionInformation info = SessionCreator::info(filename);
+                        SessionInformation info = SessionCreator::info(filename, false);
                         resolutions[info.resolution].insert(filename);
                         dates[filename] = info.date;
                     }
