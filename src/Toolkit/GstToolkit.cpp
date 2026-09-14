@@ -351,12 +351,12 @@ const HardwareEncoderTable &hardware_encoder_table()
         };
         r.pipeline = {
             // Control vtenc_h264_hw encoder
-            "vtenc_h264_hw realtime=1 allow-frame-reordering=0 quality=0.5 ! h264parse ! ",
-            "vtenc_h264_hw realtime=1 allow-frame-reordering=0 quality=0.9 ! h264parse ! ",
-            "vtenc_h265_hw realtime=1 allow-frame-reordering=0 quality=0.5 ! h265parse ! ",
-            "vtenc_h265_hw realtime=1 allow-frame-reordering=0 quality=0.9 ! h265parse ! ",
-            "vtenc_prores  realtime=1 allow-frame-reordering=0 quality=0.4 ! ",
-            "vtenc_prores  realtime=1 allow-frame-reordering=0 quality=0.9 ! ",
+            "vtenc_h264_hw realtime=1 quality=0.5 ! h264parse ! ",
+            "vtenc_h264_hw realtime=1 quality=0.9 ! h264parse ! ",
+            "vtenc_h265_hw realtime=1 quality=0.5 ! h265parse ! ",
+            "vtenc_h265_hw realtime=1 quality=0.9 ! h265parse ! ",
+            "vtenc_prores  realtime=1 quality=0.4 ! ",
+            "vtenc_prores  realtime=1 quality=0.9 ! ",
             "", ""
         };
         // in other platforms, no hardware encoder
