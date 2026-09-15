@@ -1046,5 +1046,23 @@ set(CPACK_STRIP_FILES TRUE)
 add_subdirectory(src)
 
 
+#####
+##### Clean the build
+#####
+
+# The generator already provides the standard 'clean' target, which removes
+# the files produced by the build (e.g. "ninja clean" or "make clean").
+# 'distclean' goes further: it empties the build directory, cmake cache
+# included, so the next build is configured from scratch.
+add_custom_target(distclean
+    COMMAND ${CMAKE_COMMAND}
+            -DBUILD_DIR=${CMAKE_BINARY_DIR}
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/DistClean.cmake
+    COMMENT "Removing all build files and cmake configuration from ${CMAKE_BINARY_DIR}"
+    VERBATIM
+)
+
+
 # To Create a package, run "cpack"
 include(CPack)
