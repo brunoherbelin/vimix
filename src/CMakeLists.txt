@@ -33,7 +33,6 @@ set(VMIX_SRCS
     MixingGroup.cpp
     MousePointer.cpp
     MultiFileRecorder.cpp
-    Navigator.cpp
     OutputWindow.cpp
     Overlay.cpp
     Playlist.cpp
@@ -122,6 +121,18 @@ set(VMIX_SRCS
     Visitor/SearchVisitor.cpp
     Visitor/SessionVisitor.cpp
     
+    # Navigator/ folder
+    Navigator/Navigator.cpp
+    Navigator/NavigatorCodec.cpp
+    Navigator/NavigatorInternal.cpp
+    Navigator/NavigatorPanel.cpp
+    Navigator/NavigatorWidgets.cpp
+    Navigator/NewSourcePanel.cpp
+    Navigator/PlaylistPanel.cpp
+    Navigator/SessionPanel.cpp
+    Navigator/SourcePanel.cpp
+    Navigator/SettingsPanel.cpp
+
     # Window/ folder
     Window/InputMappingWindow.cpp
     Window/OutputPreviewWindow.cpp

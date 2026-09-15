@@ -17,7 +17,7 @@
 #include "Window/InputMappingWindow.h"
 #include "Window/ShaderEditWindow.h"
 #include "Playlist.h"
-#include "Navigator.h"
+#include "Navigator/Navigator.h"
 
 
 struct ImVec2;
@@ -39,6 +39,9 @@ class UserInterface
 {
     friend class ImGuiVisitor;
     friend class Navigator;
+    friend class SessionPanel;
+    friend class PlaylistPanel;
+    friend class SettingsPanel;
     friend class OutputPreviewWindow;
     friend class SourceControlWindow;
 
@@ -83,6 +86,10 @@ public:
 
     void StartScreenshot();
 
+    // Favorites and playlists (used by the Navigator panels)
+    Playlist favorites;
+    std::string playlists_path;
+
 protected:
 
     // internal
@@ -113,10 +120,6 @@ protected:
     DialogToolkit::OpenFileDialog *configimportdialog;
     DialogToolkit::SaveFileDialog *configexportdialog;
     DialogToolkit::yesCancelDialog *resetconfirmdialog;
-
-    // Favorites and playlists
-    Playlist favorites;
-    std::string playlists_path;
 
     // objects and windows
     Navigator navigator;
