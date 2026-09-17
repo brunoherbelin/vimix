@@ -30,6 +30,7 @@
 #include "Log.h"
 
 #include "MultiFileSource.h"
+#include "IconsVimixImage.h"
 
 // example test gstreamer pipelines
 //
@@ -275,7 +276,7 @@ MultiFile *MultiFileSource::multifile () const
 
 glm::ivec2 MultiFileSource::icon () const
 {
-    return glm::ivec2(ICON_SOURCE_SEQUENCE);
+    return glm::ivec2(ICON_VI_SOURCE_SEQUENCE);
 }
 
 std::string MultiFileSource::info() const

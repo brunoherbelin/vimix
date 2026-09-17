@@ -22,6 +22,7 @@
 #include "imgui_internal.h"
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Toolkit/GstToolkit.h"
 #include "Metronome.h"
@@ -84,7 +85,7 @@ void TimerMetronomeWindow::Render()
     if (ImGui::BeginMenuBar())
     {
         // Close and widget menu
-        if (ImGuiToolkit::IconButton(4,16))
+        if (ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET))
             Settings::application.widget.timer = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_TIMER))
         {
@@ -241,7 +242,7 @@ void TimerMetronomeWindow::Render()
             }
             // restart icon
             ImGui::SetCursorScreenPos(circle_top_left);
-            if (ImGuiToolkit::IconButton(9, 13)) {
+            if (ImGuiToolkit::IconButton(ICON_VI_METRONOME_RESTART)) {
                 Metronome::manager().restart();
             }
         }
@@ -249,7 +250,7 @@ void TimerMetronomeWindow::Render()
         // Network indicator, if link enabled
         if (Settings::application.timer.link_enabled) {
             ImGui::SetCursorScreenPos(circle_botom_right);
-            ImGuiToolkit::Icon(16, 5, np > 0);
+            ImGuiToolkit::Icon(ICON_VI_LINK_PEERS, np > 0);
             if (ImGui::IsItemHovered()){
                 snprintf(text_buf, 24, np < 1 ? "Ableton Link\nNo peer" : "Ableton Link\n%d peer%c", np, np < 2 ? ' ' : 's' );
                 ImGuiToolkit::ToolTip(text_buf);
@@ -311,7 +312,7 @@ void TimerMetronomeWindow::Render()
 
         // reset icon
         ImGui::SetCursorScreenPos(circle_top_left);
-        if (ImGuiToolkit::IconButton(8, 13))
+        if (ImGuiToolkit::IconButton(ICON_VI_TIMER_RESET))
             start_time_ = start_time_hand_ = time_; // reset timers
 
         // TODO : pause ?

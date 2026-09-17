@@ -24,6 +24,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Log.h"
 #include "FrameBuffer.h"
 #include "Resource.h"
@@ -425,7 +426,7 @@ void SessionFileSource::accept(Visitor& v)
 
 glm::ivec2 SessionFileSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_SESSION);
+    return glm::ivec2(ICON_VI_SOURCE_SESSION);
 }
 
 std::string SessionFileSource::info() const
@@ -540,7 +541,7 @@ void SessionGroupSource::accept(Visitor& v)
 
 glm::ivec2 SessionGroupSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_GROUP);
+    return glm::ivec2(ICON_VI_SOURCE_GROUP);
 }
 
 std::string SessionGroupSource::info() const

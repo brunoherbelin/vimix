@@ -26,6 +26,7 @@
 
 #include "Settings.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Log.h"
 #include "FrameBuffer.h"
 #include "Scene/Decorations.h"
@@ -326,7 +327,7 @@ void CanvasSource::accept(Visitor& v)
 
 glm::ivec2 CanvasSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE); // TODO NEW ICON SOURCE_CANVAS
+    return glm::ivec2(ICON_VI_SOURCE); // TODO NEW ICON SOURCE_CANVAS
 }
 
 std::string CanvasSource::info() const

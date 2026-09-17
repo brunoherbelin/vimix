@@ -35,6 +35,7 @@
 #include "imgui_internal.h"
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Source/Source.h"
 #include "Mixer.h"
@@ -130,7 +131,7 @@ Target InputMappingWindow::ComboSelectTarget(const Target &current)
 
 uint InputMappingWindow::ComboSelectCallback(uint current, bool imageprocessing, bool ismediaplayer)
 {
-    const char* callback_names[24] = { "Select",
+    const char* callback_names[25] = { "Select",
                                        ICON_FA_BULLSEYE "  Alpha",
                                        ICON_FA_BULLSEYE "  Loom",
                                        ICON_FA_OBJECT_UNGROUP "  Geometry",
@@ -146,14 +147,15 @@ uint InputMappingWindow::ComboSelectCallback(uint current, bool imageprocessing,
                                        "  None",
                                        "  None",
                                        "  None",
+                                       "  None",
+                                       "  None",
                                        ICON_FA_PALETTE "  Gamma",
                                        ICON_FA_PALETTE "  Brightness",
                                        ICON_FA_PALETTE "  Contrast",
                                        ICON_FA_PALETTE "  Saturation",
                                        ICON_FA_PALETTE "  Hue",
                                        ICON_FA_PALETTE "  Threshold",
-                                       ICON_FA_PALETTE "  Invert",
-                                       "  None"
+                                       ICON_FA_PALETTE "  Invert"
     };
 
     if (!ismediaplayer && current > SourceCallback::CALLBACK_PLAY && current <= SourceCallback::CALLBACK_FLAG) 
@@ -255,7 +257,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
     static const char *press_tooltip[3] = {"Key Press\nApply value on key press",
                               "Key Down\nApply value on key down,\nrevert on key up",
                               "Repeat\nMaintain key down to repeat and iterate" };
-    static std::vector< std::pair<int,int> > speed_icon = { {18,15}, {17,15}, {16,15}, {15,15}, {14,15} };
+    static std::vector< std::pair<int,int> > speed_icon = { {ICON_VI_SPEED_FASTEST}, {ICON_VI_SPEED_FAST}, {ICON_VI_SPEED_SMOOTH}, {ICON_VI_SPEED_SLOW}, {ICON_VI_SPEED_SLOWEST} };
     static std::vector< std::string > speed_tooltip = { "Fastest\n0 ms", "Fast\n60 ms", "Smooth\n120 ms", "Slow\n240 ms", "Slowest\n500 ms" };
     static std::vector< float > speed_values = { 0.f, 60.f, 120.f, 240.f, 500.f };
 
@@ -265,7 +267,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         SetAlpha *edited = static_cast<SetAlpha*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
 
         ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
@@ -281,12 +283,12 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Alpha value to set if the source is\nvisible (1.0), transparent (0.0),\nor innactive (-1.0)", 18, 12);
+        testButton(edited, target, "Alpha value to set if the source is\nvisible (1.0), transparent (0.0),\nor innactive (-1.0)", ICON_VI_ALPHA);
     }
         break;
     case SourceCallback::CALLBACK_LOOM:
     {
-        ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
+        ImGuiToolkit::Indication(press_tooltip[2], ICON_VI_KEY_REPEAT);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         Loom *edited = static_cast<Loom*>(callback);
         float val = edited->value();
@@ -294,7 +296,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         if (ImGui::SliderFloat("##CALLBACK_LOOM", &val, -1.f, 1.f, "%.2f", 2.f))
             edited->setValue(val);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Increment alpha to make the source more visible (>0) or more transparent (<0)", 19, 12);
+        testButton(edited, target, "Increment alpha to make the source more visible (>0) or more transparent (<0)", ICON_VI_ALPHA_INCREMENT);
     }
         break;
     case SourceCallback::CALLBACK_GEOMETRY:
@@ -302,7 +304,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         SetGeometry *edited = static_cast<SetGeometry*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
 
         ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
@@ -349,7 +351,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             }
 
             ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-            testButton(edited, target, "Capture source geometry to restore it later (position, scale and rotation).", 1, 16);
+            testButton(edited, target, "Capture source geometry to restore it later (position, scale and rotation).", ICON_VI_TRANSFORM_RESET);
         }
         else {
 
@@ -361,7 +363,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
 
     case SourceCallback::CALLBACK_GRAB:
     {
-        ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
+        ImGuiToolkit::Indication(press_tooltip[2], ICON_VI_KEY_REPEAT);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         Grab *edited = static_cast<Grab*>(callback);
         float val[2] = {edited->value().x, edited->value().y};
@@ -369,13 +371,13 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         if (ImGui::SliderFloat2("##CALLBACK_GRAB", val, -2.f, 2.f, "%.2f"))
             edited->setValue( glm::vec2(val[0], val[1]));
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Increment vector (x,y) to move the source horizontally and vertically.", 6, 15);
+        testButton(edited, target, "Increment vector (x,y) to move the source horizontally and vertically.", ICON_VI_POSITION_RESET);
     }
         break;
 
     case SourceCallback::CALLBACK_RESIZE:
     {
-        ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
+        ImGuiToolkit::Indication(press_tooltip[2], ICON_VI_KEY_REPEAT);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         Resize *edited = static_cast<Resize*>(callback);
         float val[2] = {edited->value().x, edited->value().y};
@@ -383,14 +385,14 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         if (ImGui::SliderFloat2("##CALLBACK_RESIZE", val, -2.f, 2.f, "%.2f"))
             edited->setValue( glm::vec2(val[0], val[1]));
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Increment vector (x,y) to scale the source horizontally and vertically.", 2, 15);
+        testButton(edited, target, "Increment vector (x,y) to scale the source horizontally and vertically.", ICON_VI_SCALE_INCREMENT);
 
     }
         break;
 
     case SourceCallback::CALLBACK_TURN:
     {
-        ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
+        ImGuiToolkit::Indication(press_tooltip[2], ICON_VI_KEY_REPEAT);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
         Turn *edited = static_cast<Turn*>(callback);
         float val = edited->value();
@@ -399,7 +401,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val );
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
-        testButton(edited, target, "Rotation speed (\u00B0/s) to turn the source clockwise (>0) or counterclockwise (<0)", 18, 9);
+        testButton(edited, target, "Rotation speed (\u00B0/s) to turn the source clockwise (>0) or counterclockwise (<0)", ICON_VI_ANGLE);
     }
         break;
 
@@ -408,7 +410,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         SetDepth *edited = static_cast<SetDepth*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
 
         ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
@@ -424,7 +426,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Depth value to place the source front (12) or back (0) in the scene.", 11, 16);
+        testButton(edited, target, "Depth value to place the source front (12) or back (0) in the scene.", ICON_VI_LAYERS_CENTRAL);
     }
         break;
 
@@ -433,7 +435,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         Play *edited = static_cast<Play*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
 
@@ -442,7 +444,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         if (ImGui::SliderInt("##CALLBACK_PLAY", &val, 0, 1, "Pause  |   Play "))
             edited->setValue(val>0);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Play or pause the source.", 12, 7);
+        testButton(edited, target, "Play or pause the source.", ICON_VI_PLAY);
     }
         break;
 
@@ -451,7 +453,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         PlaySpeed *edited = static_cast<PlaySpeed*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
 
         ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
@@ -467,7 +469,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Factor to multiply the playback speed of a video source.", 0, 12);
+        testButton(edited, target, "Factor to multiply the playback speed of a video source.", ICON_VI_DURATION_FASTER_SLOWER);
     }
         break;
 
@@ -475,7 +477,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
     {
         PlayFastForward *edited = static_cast<PlayFastForward*>(callback);
 
-        ImGuiToolkit::Indication(press_tooltip[2], 18, 5);
+        ImGuiToolkit::Indication(press_tooltip[2], ICON_VI_KEY_REPEAT);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
 
         int val = (int) edited->value();
@@ -485,7 +487,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue( MAX(1, val) );
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Step increment (in miliseconds) to jump fast-forward in a video source.", 13, 7);
+        testButton(edited, target, "Step increment (in miliseconds) to jump fast-forward in a video source.", ICON_VI_SEEK_STEP);
     }
         break;
 
@@ -494,7 +496,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         Seek *edited = static_cast<Seek*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
         
         // Text input field for MM:SS:MS seek target time
@@ -516,7 +518,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         }
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
-        testButton(edited, target, "Target time (HH:MM:SS.MS) to set where to jump to in a video source.", 15, 7);
+        testButton(edited, target, "Target time (HH:MM:SS.MS) to set where to jump to in a video source.", ICON_VI_TIME_TARGET);
     }
         break;
 
@@ -524,7 +526,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
     {
         Flag *edited = static_cast<Flag*>(callback);
 
-        ImGuiToolkit::Indication(press_tooltip[0], 2, 13);
+        ImGuiToolkit::Indication(press_tooltip[0], ICON_VI_KEY_PRESS);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
 
         int max = -1;
@@ -541,7 +543,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val );
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
-        testButton(edited, target, "Flag to jump to in a video source.", 11, 6);
+        testButton(edited, target, "Flag to jump to in a video source.", ICON_VI_FLAG_BOOKMARK);
 
     }
         break;
@@ -551,7 +553,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         SetBrightness *edited = static_cast<SetBrightness*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
 
         ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
@@ -567,7 +569,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Brightness for color correction.", 5, 16);
+        testButton(edited, target, "Brightness for color correction.", ICON_VI_BRIGHTNESS);
     }
         break;
 
@@ -576,7 +578,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         SetContrast *edited = static_cast<SetContrast*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
 
         ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
@@ -592,7 +594,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Contrast for color correction.", 5, 16);
+        testButton(edited, target, "Contrast for color correction.", ICON_VI_CONTRAST);
     }
         break;
 
@@ -601,7 +603,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         SetSaturation *edited = static_cast<SetSaturation*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
 
         ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
@@ -617,7 +619,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Saturation for color correction.", 9, 16);
+        testButton(edited, target, "Saturation for color correction.", ICON_VI_COLOR_SATURATION);
     }
         break;
 
@@ -626,7 +628,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         SetHue *edited = static_cast<SetHue*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
 
         ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
@@ -642,7 +644,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Hue shift for color correction.", 3, 4);
+        testButton(edited, target, "Hue shift for color correction.", ICON_VI_COLOR_HUE);
     }
         break;
 
@@ -651,7 +653,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         SetThreshold *edited = static_cast<SetThreshold*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
 
         ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
@@ -667,7 +669,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 3);
-        testButton(edited, target, "Threshold for color correction.", 5, 4);
+        testButton(edited, target, "Threshold for color correction.", ICON_VI_COLOR_THRESHOLD);
     }
         break;
 
@@ -676,7 +678,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         SetGamma *edited = static_cast<SetGamma*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
 
         ClosestIndex d = std::for_each(speed_values.begin(), speed_values.end(), ClosestIndex(edited->duration()));
@@ -695,7 +697,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
             edited->setValue(val);
 
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Set Gamma color correction.", 6, 4);
+        testButton(edited, target, "Set Gamma color correction.", ICON_VI_COLOR_GAMMA);
     }
         break;
 
@@ -704,7 +706,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         SetInvert *edited = static_cast<SetInvert*>(callback);
 
         bool bd = edited->bidirectional();
-        if ( ImGuiToolkit::IconToggle(2, 13, 3, 13, &bd, press_tooltip ) )
+        if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
 
@@ -713,7 +715,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         if (ImGui::Combo("##CALLBACK_INVERT", &val, "None\0Color RGB\0Luminance\0"))
             edited->setValue( (float) val);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
-        testButton(edited, target, "Invert mode for color correction.", 4, 4);
+        testButton(edited, target, "Invert mode for color correction.", ICON_VI_COLOR_INVERT);
     }
         break;
 
@@ -752,7 +754,7 @@ void InputMappingWindow::Render()
     if (ImGui::BeginMenuBar())
     {
         // Close and widget menu
-        if (ImGuiToolkit::IconButton(4,16))
+        if (ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET))
             Settings::application.widget.inputs = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_INPUT_MAPPING))
         {
@@ -801,20 +803,20 @@ void InputMappingWindow::Render()
                 // remove all source callback of this input
                 S->deleteInputCallbacks(current_input_);
 
-            if (ImGuiToolkit::BeginMenuIcon(4, 13, "Metronome",
+            if (ImGuiToolkit::BeginMenuIcon(ICON_VI_METRONOME, "Metronome",
                                  S->inputAssigned(current_input_) && Settings::application.mapping.mode < 4 ))
             {
                 Metronome::Synchronicity sync = S->inputSynchrony(current_input_);
                 bool active = sync == Metronome::SYNC_NONE;
-                if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", NULL, active )){
+                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SYNC_NONE, " Not synchronized", NULL, active )){
                     S->setInputSynchrony(current_input_, Metronome::SYNC_NONE);
                 }
                 active = sync == Metronome::SYNC_BEAT;
-                if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", NULL, active )){
+                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SYNC_BEAT, " Sync to beat", NULL, active )){
                     S->setInputSynchrony(current_input_, Metronome::SYNC_BEAT);
                 }
                 active = sync == Metronome::SYNC_PHASE;
-                if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", NULL, active )){
+                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SYNC_PHASE, " Sync to phase", NULL, active )){
                     S->setInputSynchrony(current_input_, Metronome::SYNC_PHASE);
                 }
                 ImGui::EndMenu();

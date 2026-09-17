@@ -27,6 +27,7 @@
 #include "Log.h"
 
 #include "MediaSource.h"
+#include "IconsVimixImage.h"
 
 MediaSource::MediaSource(uint64_t id) : Source(id), path_("")
 {
@@ -67,9 +68,9 @@ MediaPlayer *MediaSource::mediaplayer() const
 glm::ivec2 MediaSource::icon() const
 {
     if (mediaplayer_->isImage())
-        return glm::ivec2(ICON_SOURCE_IMAGE);
+        return glm::ivec2(ICON_VI_SOURCE_IMAGE);
     else
-        return glm::ivec2(ICON_SOURCE_VIDEO);
+        return glm::ivec2(ICON_VI_SOURCE_VIDEO);
 }
 
 std::string MediaSource::info() const

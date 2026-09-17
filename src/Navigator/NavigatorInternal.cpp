@@ -18,6 +18,7 @@
 **/
 
 #include "NavigatorInternal.h"
+#include "IconsVimixImage.h"
 
-std::vector< std::pair<int, int> > icons_ordering_files = { {2,12}, {3,12}, {4,12}, {5,12} };
+std::vector< std::pair<int, int> > icons_ordering_files = { {ICON_VI_ORDER_ALPHABETICAL}, {ICON_VI_ORDER_ALPHABETICAL_INVERT}, {ICON_VI_ORDER_OLDEST_FIRST}, {ICON_VI_ORDER_NEWEST_FIRST} };
 std::vector< std::string > tooltips_ordering_files = { "Alphabetical", "Invert alphabetical", "Older files first", "Recent files first" };

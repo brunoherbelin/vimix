@@ -19,11 +19,13 @@
 
 #include <cstddef>
 #include <string>
+#include <utility>
 
 #include "NavigatorInternal.h"
 
 #include "IconsFontAwesome5.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Toolkit/ImGuiToolkit.h"
 #include "View/View.h"
@@ -264,7 +266,7 @@ void Navigator::Render()
         if (Settings::application.current_view != View::TRANSITION) {
 
             // the vimix icon for menu
-            if (ImGuiToolkit::SelectableIcon(2, 16, "", selected_button[NAV_MENU], iconsize)) {
+            if (ImGuiToolkit::SelectableIcon(ICON_VI_VIMIX_LOGO, "", selected_button[NAV_MENU], iconsize)) {
                 selected_button[NAV_MENU] = true;
                 applyButtonSelection(NAV_MENU);
             }
@@ -410,7 +412,7 @@ void Navigator::Render()
             view_options_timeout = 0;
         }
 
-        if (ImGuiToolkit::SelectableIcon(ICON_WORKSPACE, "", selected_view[View::LAYER], iconsize))
+        if (ImGuiToolkit::SelectableIcon(ICON_VI_LAYERS, "", selected_view[View::LAYER], iconsize))
         {
             Settings::application.current_view = View::LAYER;
             UserInterface::manager().setView(View::LAYER);
@@ -437,8 +439,8 @@ void Navigator::Render()
             view_options_timeout = 0;
         }
 
-        int j = Settings::application.render.disabled ? 8 : 7;
-        if (ImGuiToolkit::SelectableIcon(10, j, "", selected_view[View::DISPLAYS], iconsize))
+        std::pair<int, int> icon_index = Settings::application.render.disabled ? std::make_pair(ICON_VI_DISPLAYS_DISABLED) : std::make_pair(ICON_VI_DISPLAYS);
+        if (ImGuiToolkit::SelectableIcon(icon_index.first, icon_index.second, "", selected_view[View::DISPLAYS], iconsize))
         {
             UserInterface::manager().setView(View::DISPLAYS);
             Settings::application.current_view = View::DISPLAYS;
@@ -591,7 +593,7 @@ void Navigator::RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2
         ImGui::SetCursorPosY( ImGui::GetCursorPosY() + g.Style.WindowPadding.y * 0.5f );
 
         // reset zoom
-        if (ImGuiToolkit::IconButton(8,7)) {
+        if (ImGuiToolkit::IconButton(ICON_VI_ZOOM_RESET)) {
             Mixer::manager().view((View::Mode)Settings::application.current_view)->recenter();
         }
 
@@ -713,7 +715,7 @@ bool Navigator::RenderMousePointerSelector(const ImVec2 &size)
         else {
             // toggle proportional grid
             const char *tooltip_lock[2] = {"Square grid", "Aspect-ratio grid"};
-            if ( ImGuiToolkit::IconToggle(19, 2, 18, 2, &Settings::application.proportional_grid, tooltip_lock) )
+            if ( ImGuiToolkit::IconToggle(ICON_VI_GRID_SQUARE, ICON_VI_GRID_ASPECT_RATIO, &Settings::application.proportional_grid, tooltip_lock) )
                 View::need_deep_update_++;
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             // slider of 5 text values
@@ -772,8 +774,8 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
         ImGui::Text("Parameters");
 
         static std::vector< std::tuple<int, int, std::string> > profile_fading = {
-            {0, 8, "Cross fading"},
-            {9, 8, "Fade to black"}
+            {ICON_VI_TRANSITION_CROSS_FADE, "Cross fading"},
+            {ICON_VI_TRANSITION_FADE_BLACK, "Fade to black"}
         };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         int tmp = Settings::application.transition.cross_fade ? 0 : 1;
@@ -784,8 +786,8 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
             Settings::application.transition.cross_fade = true;
 
         static std::vector< std::tuple<int, int, std::string> > profile_options = {
-            {11, 12, "Linear"},
-            {10, 12, "Quadratic"}
+            {ICON_VI_TRANSITION_LINEAR, "Linear"},
+            {ICON_VI_TRANSITION_QUADRATIC, "Quadratic"}
         };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         tmp = Settings::application.transition.profile ? 1 : 0;
@@ -854,13 +856,13 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
         ImGui::Columns(5, NULL, false);
         bool selected_panel_mode[5] = {0};
         selected_panel_mode[pannel_main_mode_] = true;
-        if (ImGuiToolkit::SelectableIcon( 7, 1, "##SESSION_FILE", selected_panel_mode[0], iconsize))
+        if (ImGuiToolkit::SelectableIcon( ICON_VI_PANNEL_SESSION, "##SESSION_FILE", selected_panel_mode[0], iconsize))
             Settings::application.pannel_main_mode = pannel_main_mode_ = 0;
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon( 4, 8, "##SESSION_PLAYLIST", selected_panel_mode[1], iconsize))
+        if (ImGuiToolkit::SelectableIcon( ICON_VI_PANNEL_PLAYLIST, "##SESSION_PLAYLIST", selected_panel_mode[1], iconsize))
             Settings::application.pannel_main_mode = pannel_main_mode_ = 1;
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon( 13, 5, "##SETTINGS", selected_panel_mode[2], iconsize))
+        if (ImGuiToolkit::SelectableIcon( ICON_VI_PANNEL_SETTINGS, "##SETTINGS", selected_panel_mode[2], iconsize))
             pannel_main_mode_ = 2;
         ImGui::Columns(1);
         ImGui::PopStyleVar();

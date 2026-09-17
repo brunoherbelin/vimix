@@ -43,6 +43,7 @@ std::string gst_plugin_vidcap = "ximagesrc show-pointer=false";
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
 #include <xcb/xproto.h>
+#include "IconsVimixImage.h"
 int X11_error_handler(Display *d, XErrorEvent *e);
 std::map<unsigned long, std::string> getListX11Windows();
 
@@ -504,7 +505,7 @@ Source::Failure ScreenCaptureSource::failed() const
 
 glm::ivec2 ScreenCaptureSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_DEVICE_SCREEN);
+    return glm::ivec2(ICON_VI_SOURCE_DEVICE_SCREEN);
 }
 
 std::string ScreenCaptureSource::info() const

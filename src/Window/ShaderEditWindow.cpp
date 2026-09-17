@@ -13,6 +13,7 @@
 TextEditor _editor;
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Mixer.h"
 #include "Toolkit/SystemToolkit.h"
@@ -254,7 +255,7 @@ void ShaderEditWindow::Render()
     if (ImGui::BeginMenuBar())
     {
         // Close and widget menu
-        if (ImGuiToolkit::IconButton(4,16))
+        if (ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET))
             Settings::application.widget.shader_editor = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_SHADEREDITOR))
         {

@@ -36,6 +36,7 @@
 #include <glm/gtx/vector_angle.hpp>
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Mixer.h"
 #include "Settings.h"
 #include "Scene/Scene.h"
@@ -373,9 +374,9 @@ void popup_adjustment_color(Settings::MonitorConfig &conf) {
     if (ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip("Color Temperature, in Kelvin");
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGuiToolkit::Indication("Contrast", 2, 1);
+    ImGuiToolkit::Indication("Contrast", ICON_VI_CONTRAST);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGuiToolkit::Indication("Brightness", 4, 1 );
+    ImGuiToolkit::Indication("Brightness", ICON_VI_BRIGHTNESS);
 
     // Slider Temperature K
     ImGui::VSliderFloat("##Temperatureslider", ImVec2(30,260), &conf.whitebalance.w, 0.0, 1.0, "");
@@ -406,9 +407,9 @@ void popup_adjustment_color(Settings::MonitorConfig &conf) {
     ImGui::Text("  " ICON_FA_THERMOMETER_EMPTY  "  ");
     ImGui::PopStyleColor(1);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGuiToolkit::Icon(1, 1, false);
+    ImGuiToolkit::Icon(ICON_VI_CONTRAST_LOW, false);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
-    ImGuiToolkit::Icon(3, 1, false);
+    ImGuiToolkit::Icon(ICON_VI_BRIGHTNESS_LOW, false);
 
     ImGui::PopFont();
 }
@@ -662,7 +663,7 @@ void DisplaysView::draw()
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
                 static bool show_test_pattern = false;  
                 show_test_pattern = monitor.output.isShowPattern();
-                if ( ImGuiToolkit::ButtonIconToggle(11,1, &show_test_pattern, "Test pattern") )
+                if ( ImGuiToolkit::ButtonIconToggle(ICON_VI_TEST_PATTERN, &show_test_pattern, "Test pattern") )
                     monitor.output.setShowPattern(show_test_pattern);
 
                 // WHITE BALANCE BUTTON

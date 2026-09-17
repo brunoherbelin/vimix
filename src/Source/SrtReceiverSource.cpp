@@ -22,6 +22,7 @@
 #include "Visitor/Visitor.h"
 
 #include "SrtReceiverSource.h"
+#include "IconsVimixImage.h"
 
 
 // gst-launch-1.0 rtspsrc location=rtsp://192.168.0.19:5500/camera ! decodebin !  videoconvert  ! autovideosink
@@ -83,7 +84,7 @@ void SrtReceiverSource::accept(Visitor& v)
 
 glm::ivec2 SrtReceiverSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_SRT);
+    return glm::ivec2(ICON_VI_SOURCE_SRT);
 }
 
 std::string SrtReceiverSource::info() const

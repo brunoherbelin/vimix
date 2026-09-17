@@ -35,6 +35,7 @@
 #endif
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Log.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Settings.h"
@@ -246,7 +247,7 @@ void OutputPreviewWindow::Render()
         // menu (no title bar)
         if (ImGui::BeginMenuBar())
         {
-            if (ImGuiToolkit::IconButton(4,16))
+            if (ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET))
                 Settings::application.widget.preview = false;
 
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
@@ -357,7 +358,7 @@ void OutputPreviewWindow::Render()
 
                     // offer to open config panel from here for more options
                     ImGui::SameLine(combo_width, IMGUI_SAME_LINE);
-                    if (ImGuiToolkit::IconButton(13, 5, "Settings")) {
+                    if (ImGuiToolkit::IconButton(ICON_VI_PANNEL_SETTINGS, "Settings")) {
                         Settings::application.pannel_settings[0] = true;
                         UserInterface::manager().navigator.showConfig();
                     }
@@ -391,7 +392,7 @@ void OutputPreviewWindow::Render()
                     // offer to open folder location
                     ImVec2 draw_pos = ImGui::GetCursorPos();
                     ImGui::SetCursorPos(draw_pos + ImVec2(combo_width + 3.f * ImGui::GetTextLineHeight(), -ImGui::GetFrameHeight()) );
-                    if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+                    if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
                         SystemToolkit::open(Settings::application.record.path);
                     ImGui::SetCursorPos(draw_pos);
 
@@ -419,7 +420,7 @@ void OutputPreviewWindow::Render()
 
                 ImGui::EndMenu();
             }
-            if (ImGuiToolkit::BeginMenuIcon(19, 11, "Stream"))
+            if (ImGuiToolkit::BeginMenuIcon(ICON_VI_STREAM, "Stream"))
             {
                 // Stream sharing menu
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));

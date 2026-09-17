@@ -26,6 +26,7 @@
 
 #include "IconsFontAwesome5.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Log.h"
 #include "Audio.h"
@@ -161,7 +162,7 @@ void SettingsPanel::Render()
                                     VideoRecorder::buffering_preset_name[Settings::application.record.buffering_mode],
                     (unsigned long)nb, output->width(), output->height(),
                     (float)nb / (float) VideoRecorder::framerate_preset_value[Settings::application.record.framerate_mode] );
-            ImGuiToolkit::Indication(buf, 4, 6);
+            ImGuiToolkit::Indication(buf, ICON_VI_BUFFER);
             ImGui::SameLine(0);
         }
 
@@ -415,7 +416,7 @@ void SettingsPanel::Render()
         const float w = IMGUI_RIGHT_ALIGN - ImGui::GetFrameHeightWithSpacing();
         ImGuiToolkit::ButtonOpenUrl( "Edit", Settings::application.control.osc_filename.c_str(), ImVec2(w, 0) );
         ImGui::SameLine(0, 6);
-        if ( ImGuiToolkit::IconButton(5, 15, "Reload") )
+        if ( ImGuiToolkit::IconButton(ICON_VI_RELOAD, "Reload") )
             Control::manager().init();
         ImGui::SameLine(0, 3);
         ImGui::Text("Translator");
@@ -502,7 +503,7 @@ void SettingsPanel::Render()
             gamepadmappingdialog.open();
         }
         ImGui::SameLine(0, 6);
-        if ( ImGuiToolkit::IconButton(5, 15, "Reload") )
+        if ( ImGuiToolkit::IconButton(ICON_VI_RELOAD, "Reload") )
             Control::manager().loadGamepadMappings();
         ImGui::SameLine(0, 3);
         if ( ImGuiToolkit::IconButton(ICON_FA_EXTERNAL_LINK_ALT, "Search online") )
@@ -533,8 +534,9 @@ void SettingsPanel::Render()
         static bool audio = Settings::application.accept_audio;
         bool change = false;
         // hardware support deserves more explanation
+        std::pair<int, int> icon_index = gpu ? std::make_pair(ICON_VI_GPU) : std::make_pair(ICON_VI_GPU_OFF);
         ImGuiToolkit::Indication("If enabled, tries to find a platform adapted hardware-accelerated "
-                                 "driver to decode (read) or encode (record) videos.", gpu ? 13 : 14, 2);
+                                 "driver to decode (read) or encode (record) videos.", icon_index.first, icon_index.second);
         ImGui::SameLine(0);
         if (Settings::application.render.gpu_decoding_available)
             change |= ImGuiToolkit::ButtonSwitch( "Hardware en/decoding", &gpu);

@@ -24,6 +24,7 @@
 
 #include "Log.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Resource.h"
 #include "Scene/Decorations.h"
 #include "Visitor/Visitor.h"
@@ -245,7 +246,7 @@ void CloneSource::accept(Visitor& v)
 
 glm::ivec2 CloneSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_CLONE);
+    return glm::ivec2(ICON_VI_SOURCE_CLONE);
 }
 
 std::string CloneSource::info() const

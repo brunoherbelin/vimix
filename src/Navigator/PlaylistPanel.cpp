@@ -27,6 +27,7 @@
 
 #include "IconsFontAwesome5.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Log.h"
 #include "Mixer.h"
@@ -82,7 +83,7 @@ void PlaylistPanel::Render()
 
     //    ImGui::SameLine();
     //    ImGui::SetCursorPosX( pannel_width_ IMGUI_RIGHT_ALIGN);
-    //    if ( ImGuiToolkit::IconButton( 16, 3, "Create playlist")) {
+    //    if ( ImGuiToolkit::IconButton( ICON_VI_PLAYLIST_CREATE, "Create playlist")) {
     //        savePlaylist.open();
     //    }
     //    if (savePlaylist.closed() && !savePlaylist.path().empty()) {
@@ -138,13 +139,13 @@ void PlaylistPanel::Render()
         if (ImGui::BeginCombo("##SelectionPlaylist", playlist_header.c_str(), ImGuiComboFlags_HeightLarge )) {
 
             // Mode 0 : Favorite playlist
-            if (ImGuiToolkit::SelectableIcon( 16, 4, "Favorites", false) ) {
+            if (ImGuiToolkit::SelectableIcon( ICON_VI_FAVORITES, "Favorites", false) ) {
                 Settings::application.pannel_playlist_mode = 0;
             }
             // Mode 1 : Playlists
             for(auto playlistname = Settings::application.recentPlaylists.filenames.begin();
                 playlistname != Settings::application.recentPlaylists.filenames.end(); playlistname++) {
-                if (ImGuiToolkit::SelectableIcon( 12, 3, SystemToolkit::base_filename( *playlistname ).c_str(), false )) {
+                if (ImGuiToolkit::SelectableIcon( ICON_VI_PLAYLIST, SystemToolkit::base_filename( *playlistname ).c_str(), false )) {
                     // remember which path was selected
                     Settings::application.recentPlaylists.assign(*playlistname);
                     // set mode
@@ -154,7 +155,7 @@ void PlaylistPanel::Render()
             // Mode 2 : known folders
             for(auto foldername = Settings::application.recentFolders.filenames.begin();
                 foldername != Settings::application.recentFolders.filenames.end(); foldername++) {
-                if (ImGuiToolkit::SelectableIcon( 6, 5, BaseToolkit::truncated( *foldername, 40).c_str(), false) ) {
+                if (ImGuiToolkit::SelectableIcon( ICON_VI_FOLDER, BaseToolkit::truncated( *foldername, 40).c_str(), false) ) {
                     // remember which path was selected
                     Settings::application.recentFolders.assign(*foldername);
                     // set mode
@@ -164,7 +165,7 @@ void PlaylistPanel::Render()
 
             // NEW playlist or directory
             ImGui::Separator();
-            if (ImGuiToolkit::SelectableIcon( 13, 3, "New Playlist", false )) {
+            if (ImGuiToolkit::SelectableIcon( ICON_VI_PLAYLIST_NEW, "New Playlist", false )) {
                 // create empty playlist and default name to start rename
                 playlist_edit_name = "MyPlaylist";
                 playlist_edit.clear();
@@ -173,7 +174,7 @@ void PlaylistPanel::Render()
                 active_playlist.clear();
                 Settings::application.pannel_playlist_mode = 1;
             }
-            if (ImGuiToolkit::SelectableIcon( 5, 5, "Add Directory list", false )) {
+            if (ImGuiToolkit::SelectableIcon( ICON_VI_FOLDER_ADD, "Add Directory list", false )) {
                 customFolder.open();
             }
 
@@ -184,7 +185,7 @@ void PlaylistPanel::Render()
         // icon menu playlist
         //
         ImGui::SameLine(0, IMGUI_SAME_LINE );      
-        if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+        if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             counter_menu_timeout=0;
             ImGui::OpenPopup( "menu_playlist_popup" );
         }
@@ -333,10 +334,10 @@ void PlaylistPanel::Render()
                 }
                 ImGui::SameLine();
                 if (ImGui::IsItemActive()) {
-                    ImGuiToolkit::IconButton( 8, 15 );
+                    ImGuiToolkit::IconButton( ICON_VI_DRAG_HANDLE);
                 }
                 else {
-                    if ( ImGuiToolkit::IconButton( 19, 4, "Remove") )
+                    if ( ImGuiToolkit::IconButton( ICON_VI_REMOVE, "Remove") )
                         index_to_remove = index;
                 }
                 ImGui::EndGroup();
@@ -416,10 +417,10 @@ void PlaylistPanel::Render()
                 }
                 ImGui::SameLine();
                 if (ImGui::IsItemActive()) {
-                    ImGuiToolkit::IconButton( 8, 15 );
+                    ImGuiToolkit::IconButton( ICON_VI_DRAG_HANDLE);
                 }
                 else {
-                    if ( ImGuiToolkit::IconButton( 19, 4, "Remove") )
+                    if ( ImGuiToolkit::IconButton( ICON_VI_REMOVE, "Remove") )
                         index_to_remove = index;
                 }
                 ImGui::EndGroup();
@@ -460,7 +461,7 @@ void PlaylistPanel::Render()
         if ( playlist_edit_action == 0 ) {
             // Right side of the list icon to add sessions to the playlist
             ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + style.ItemSpacing.y));
-            if (ImGuiToolkit::IconButton( 18, 4, "Add sessions")) {
+            if (ImGuiToolkit::IconButton( ICON_VI_ADD, "Add sessions")) {
                 selectSessions.open();
             }
             if (active_playlist.size() > 0) {
@@ -468,7 +469,7 @@ void PlaylistPanel::Render()
                 static std::map< std::string, std::chrono::system_clock::time_point > dates;
                 static std::list< std::string > missing;
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + style.ItemSpacing.y + ImGui::GetFrameHeightWithSpacing()));
-                if ( ImGuiToolkit::IconButton( 0, 5, "Remove sessions")) {
+                if ( ImGuiToolkit::IconButton( ICON_VI_MULTIPLE_REMOVE, "Remove sessions")) {
                     // list resolutions and dates of all sessions of active_playlist
                     resolutions.clear();
                     dates.clear();
@@ -784,9 +785,9 @@ void PlaylistPanel::Render()
         const char *tooltip[2] = {"Fade to black", "Cross fading"};
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (Mixer::manager().session()->fading() > 0.01)
-            ImGuiToolkit::Icon(9, 8, false);
+            ImGuiToolkit::Icon(ICON_VI_TRANSITION_FADE_BLACK, false);
         else
-            ImGuiToolkit::IconToggle(9, 8, 0, 8, &Settings::application.transition.cross_fade, tooltip );
+            ImGuiToolkit::IconToggle(ICON_VI_TRANSITION_FADE_BLACK, ICON_VI_TRANSITION_CROSS_FADE, &Settings::application.transition.cross_fade, tooltip );
     }
 
     //

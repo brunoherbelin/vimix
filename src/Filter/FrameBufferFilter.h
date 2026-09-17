@@ -9,15 +9,6 @@
 class Visitor;
 class FrameBuffer;
 
-#define ICON_FILTER_NONE 7, 11
-#define ICON_FILTER_DELAY 10, 15
-#define ICON_FILTER_RESAMPLE 1, 10
-#define ICON_FILTER_BLUR 0, 9
-#define ICON_FILTER_SHARPEN 2, 1
-#define ICON_FILTER_SMOOTH 14, 8
-#define ICON_FILTER_EDGE 16, 8
-#define ICON_FILTER_ALPHA 13, 4
-#define ICON_FILTER_IMAGE 1, 4
 
 class FrameBufferFilter
 {

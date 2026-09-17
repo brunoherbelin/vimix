@@ -26,6 +26,7 @@
 
 #include "IconsFontAwesome5.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Log.h"
 #include "Mixer.h"
@@ -133,27 +134,27 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
         ImGui::Columns(5, NULL, false);
         bool selected_type[5] = {0};
         selected_type[Settings::application.source.new_type] = true;
-        if (ImGuiToolkit::SelectableIcon( 2, 5, "##SOURCE_FILE", selected_type[SOURCE_FILE], iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( ICON_VI_OPEN_FILE, "##SOURCE_FILE", selected_type[SOURCE_FILE], iconsize)) {
             Settings::application.source.new_type = SOURCE_FILE;
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon( ICON_SOURCE_SEQUENCE, "##SOURCE_SEQUENCE", selected_type[SOURCE_SEQUENCE], iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( ICON_VI_SOURCE_SEQUENCE, "##SOURCE_SEQUENCE", selected_type[SOURCE_SEQUENCE], iconsize)) {
             Settings::application.source.new_type = SOURCE_SEQUENCE;
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon( 10, 9, "##SOURCE_CONNECTED", selected_type[SOURCE_CONNECTED], iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( ICON_VI_NEW_SOURCE_CONNECTED, "##SOURCE_CONNECTED", selected_type[SOURCE_CONNECTED], iconsize)) {
             Settings::application.source.new_type = SOURCE_CONNECTED;
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon( ICON_SOURCE_PATTERN, "##SOURCE_GENERATED", selected_type[SOURCE_GENERATED], iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( ICON_VI_SOURCE_PATTERN, "##SOURCE_GENERATED", selected_type[SOURCE_GENERATED], iconsize)) {
             Settings::application.source.new_type = SOURCE_GENERATED;
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon( ICON_SOURCE_GROUP, "##SOURCE_BUNDLE", selected_type[SOURCE_BUNDLE], iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( ICON_VI_SOURCE_GROUP, "##SOURCE_BUNDLE", selected_type[SOURCE_BUNDLE], iconsize)) {
             Settings::application.source.new_type = SOURCE_BUNDLE;
             clearNewPannel();
         }
@@ -329,7 +330,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             if (new_media_mode == MEDIA_RECORDING) {
                 // Clear list
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y) );
-                if (ImGuiToolkit::IconButton( 12, 14, "Clear list")) {
+                if (ImGuiToolkit::IconButton( ICON_VI_CLEAR_LIST, "Clear list")) {
                     Settings::application.recentRecordings.filenames.clear();
                     Settings::application.recentRecordings.front_is_valid = false;
                     setNewMedia(MEDIA_RECORDING);
@@ -354,7 +355,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                 ImGui::PushID("##new_media_directory_actions");
                 // close list
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y) );
-                if (ImGuiToolkit::IconButton( 4, 5, "Close directory")) {
+                if (ImGuiToolkit::IconButton( ICON_VI_FOLDER_CLOSE, "Close directory")) {
                     Settings::application.recentImportFolders.filenames.remove(Settings::application.recentImportFolders.path);
                     if (Settings::application.recentImportFolders.filenames.empty())
                         // revert mode RECENT
@@ -371,7 +372,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             else if ( new_media_mode == MEDIA_RECENT ) {
                 // Clear list
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y) );
-                if (ImGuiToolkit::IconButton( 12, 14, "Clear list")) {
+                if (ImGuiToolkit::IconButton( ICON_VI_CLEAR_LIST, "Clear list")) {
                     Settings::application.recentImport.filenames.clear();
                     Settings::application.recentImport.front_is_valid = false;
                     setNewMedia(MEDIA_RECENT);
@@ -668,7 +669,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             if (ImGui::BeginCombo("##Pattern", current_pattern.c_str(), ImGuiComboFlags_HeightLarge))
             {
-                if ( ImGuiToolkit::BeginMenuIcon(ICON_SOURCE_PATTERN, "Static patterns"))
+                if ( ImGuiToolkit::BeginMenuIcon(ICON_VI_SOURCE_PATTERN, "Static patterns"))
                 {
                     for (int p = 0; p < (int) Pattern::count(); ++p) {
                         pattern_descriptor pattern = Pattern::get(p);
@@ -682,7 +683,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                     }
                     ImGui::EndMenu();
                 }
-                if ( ImGuiToolkit::BeginMenuIcon(ICON_SOURCE_PATTERN, "Animated patterns"))
+                if ( ImGuiToolkit::BeginMenuIcon(ICON_VI_SOURCE_PATTERN, "Animated patterns"))
                 {
                     for (int p = 0; p < (int) Pattern::count(); ++p) {
                         pattern_descriptor pattern = Pattern::get(p);
@@ -696,19 +697,19 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                     }
                     ImGui::EndMenu();
                 }
-                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_TEXT, "Text", false) )
+                if ( ImGuiToolkit::SelectableIcon(ICON_VI_SOURCE_TEXT, "Text", false) )
                 {
                     update_new_source = true;
                     generated_type = 1;
                     pattern_type = -1;
                 }
-                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_SHADER, "Custom shader", false) )
+                if ( ImGuiToolkit::SelectableIcon(ICON_VI_SOURCE_SHADER, "Custom shader", false) )
                 {
                     update_new_source = true;
                     generated_type = 3;
                     pattern_type = -1;
                 }
-                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_GSTREAMER, "Custom gstreamer", false) )
+                if ( ImGuiToolkit::SelectableIcon(ICON_VI_SOURCE_GSTREAMER, "Custom gstreamer", false) )
                 {
                     update_new_source = true;
                     generated_type = 0;
@@ -927,19 +928,19 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             if (ImGui::BeginCombo("##ExternalConnected", current_connection.c_str(), ImGuiComboFlags_HeightLarge))
             {
                 // 1. Loopback source
-                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_RENDER, "Display Loopback", false) ) {
+                if ( ImGuiToolkit::SelectableIcon(ICON_VI_SOURCE_RENDER, "Display Loopback", false) ) {
                     custom_type = 0;
                     new_source_preview_.setSource();
                 }
 
                 // 2. Screen capture (open selector)
-                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_DEVICE_SCREEN, "Screen capture", false) ) {
+                if ( ImGuiToolkit::SelectableIcon(ICON_VI_SOURCE_DEVICE_SCREEN, "Screen capture", false) ) {
                     custom_type = 1;
                     new_source_preview_.setSource();
                 }
 
                 // 3. Network connected SRT
-                if ( ImGuiToolkit::SelectableIcon(ICON_SOURCE_SRT, "SRT Broadcast", false) ) {
+                if ( ImGuiToolkit::SelectableIcon(ICON_VI_SOURCE_SRT, "SRT Broadcast", false) ) {
                     custom_type = 2;
                     new_source_preview_.setSource();
                 }
@@ -977,7 +978,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                                       ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
                                       ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network.");
             ImGui::SameLine();
-            if (ImGuiToolkit::IconButton(5, 15, "Reload list")) {
+            if (ImGuiToolkit::IconButton(ICON_VI_RELOAD, "Reload list")) {
                 Device::manager().reload();
                 clearNewPannel();
             }
@@ -1160,11 +1161,11 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                     ImGui::SameLine();
 
                     if (Mixer::selection().contains(s)) {
-                        if ( ImGuiToolkit::IconButton( 14, 1, "Select") )
+                        if ( ImGuiToolkit::IconButton( ICON_VI_SELECT_REMOVE, "Select") )
                             Mixer::selection().remove(s);
                     }
                     else {
-                        if ( ImGuiToolkit::IconButton( 1, 5, "Select") )
+                        if ( ImGuiToolkit::IconButton( ICON_VI_SELECT_ADD, "Select") )
                             Mixer::selection().add(s);
                     }
                     ImGui::EndGroup();
@@ -1190,8 +1191,8 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             else if (Mixer::manager().selection().size() > 0){
                 Mixer::manager().setCurrentSource(*Mixer::manager().selection().begin());
                 // Check if the current source can be grouped
-                bool is_bundle = Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_GROUP);
-                bool is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_CLONE);
+                bool is_bundle = Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_GROUP);
+                bool is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_CLONE);
                 can_create_bundle = !is_bundle && !is_clone;   
             }
             else 
@@ -1200,7 +1201,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             if (can_create_bundle) {
                 // Indicator of the selection
                 ImGui::NewLine();
-                ImGuiToolkit::Icon(ICON_SOURCE_GROUP);
+                ImGuiToolkit::Icon(ICON_VI_SOURCE_GROUP);
                 ImGui::SameLine();
                 ImGui::Text("Bundle of %d source%c", 
                     (int) Mixer::manager().selection().size(), 
@@ -1217,16 +1218,16 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
 
             // Right side of the bundle list icon : select all / none
             ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + style.ItemSpacing.y));
-            if ( ImGuiToolkit::IconButton( 13, 1, "Select all ")) {
+            if ( ImGuiToolkit::IconButton( ICON_VI_SELECT_ALL, "Select all ")) {
                 Mixer::selection().set(sources);
             }
             ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + style.ItemSpacing.y + ImGui::GetFrameHeightWithSpacing()));
-            if ( ImGuiToolkit::IconButton( 8, 1, "Select visible")) {
+            if ( ImGuiToolkit::IconButton( ICON_VI_SELECT_VISIBLE, "Select visible")) {
                 SourceList visible = joinClones ( visible_only(sources) );
                 Mixer::selection().set(visible);          
             }            
             ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN + ImGui::GetFrameHeightWithSpacing(), pos_top.y + style.ItemSpacing.y));
-            if ( ImGuiToolkit::IconButton( 12, 14, "Clear selection")) {
+            if ( ImGuiToolkit::IconButton( ICON_VI_CLEAR_LIST, "Clear selection")) {
                 Mixer::manager().unsetCurrentSource();
                 Mixer::selection().clear();                 
             }

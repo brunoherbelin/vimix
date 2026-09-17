@@ -37,6 +37,7 @@
 
 #include "Log.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Scene/Scene.h"
 #include "Scene/Primitives.h"
 //#include "ImageShader.h"
@@ -91,7 +92,7 @@ void ImGuiVisitor::visit(Group &n)
     // MODEL VIEW
     ImGui::PushID(std::to_string(n.id()).c_str());
 
-    if (ImGuiToolkit::ButtonIcon(1, 16)) {
+    if (ImGuiToolkit::ButtonIcon(ICON_VI_TRANSFORM_RESET)) {
         n.translation_.x = 0.f;
         n.translation_.y = 0.f;
         n.rotation_.z = 0.f;
@@ -102,7 +103,7 @@ void ImGuiVisitor::visit(Group &n)
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Geometry");
 
-    if (ImGuiToolkit::ButtonIcon(6, 15)) {
+    if (ImGuiToolkit::ButtonIcon(ICON_VI_POSITION_RESET)) {
         n.translation_.x = 0.f;
         n.translation_.y = 0.f;
         Action::manager().store("Position 0.0, 0.0");
@@ -119,7 +120,7 @@ void ImGuiVisitor::visit(Group &n)
         oss << "Position " << std::setprecision(3) << n.translation_.x << ", " << n.translation_.y;
         Action::manager().store(oss.str());
     }
-    if (ImGuiToolkit::ButtonIcon(3, 15))  {
+    if (ImGuiToolkit::ButtonIcon(ICON_VI_SCALE_RESET))  {
         n.scale_.x = 1.f;
         n.scale_.y = 1.f;
         Action::manager().store("Scale 1.0 x 1.0");
@@ -137,7 +138,7 @@ void ImGuiVisitor::visit(Group &n)
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::ButtonIcon(18, 9)){
+    if (ImGuiToolkit::ButtonIcon(ICON_VI_ANGLE)){
         n.rotation_.z = 0.f;
         Action::manager().store("Angle 0.0");
     }
@@ -196,7 +197,7 @@ void ImGuiVisitor::visit(Shader &n)
     ImGui::PushID(std::to_string(n.id()).c_str());
 
     // Base color
-//    if (ImGuiToolkit::ButtonIcon(10, 2)) {
+//    if (ImGuiToolkit::ButtonIcon(ICON_VI_COLOR)) {
 //        n.blending = Shader::BLEND_OPACITY;
 //        n.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 //    }
@@ -514,7 +515,7 @@ void ImGuiVisitor::visit (Source& s)
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
         static const char *tooltip[2] = {"Unlocked", "Locked"};
         bool l = s.locked();
-        if (ImGuiToolkit::IconToggle(15, 6, 17, 6, &l, tooltip ) ) {
+        if (ImGuiToolkit::IconToggle(ICON_VI_UNLOCKED, ICON_VI_LOCKED, &l, tooltip ) ) {
             s.setLocked(l);
             if (l) {
                 Mixer::selection().clear();
@@ -552,7 +553,7 @@ void ImGuiVisitor::visit (Source& s)
         static uint counter_menu_timeout = 0;
         ImVec2 pos_bot = ImGui::GetCursorPos();
         ImGui::SetCursorPos( ImVec2( pos.x + preview_width + IMGUI_SAME_LINE, pos.y + preview_height + ImGui::GetStyle().ItemSpacing.y));
-        if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+        if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             counter_menu_timeout=0;
             ImGui::OpenPopup( "MenuImageProcessing" );
         }
@@ -700,7 +701,7 @@ void ImGuiVisitor::renderAudioPanel(MediaSource &s)
         if (audio_is_on) {
             ImGui::SameLine(0, 2 * IMGUI_SAME_LINE);
             static uint counter_menu_timeout_2 = 0;
-            if (ImGuiToolkit::IconButton(6, 2)
+            if (ImGuiToolkit::IconButton(ICON_VI_MENU_AUDIO)
                 || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
                 counter_menu_timeout_2 = 0;
                 ImGui::OpenPopup("MenuMixAudio");
@@ -774,7 +775,7 @@ void ImGuiVisitor::visit (MediaSource& s)
             top.x += ImGui::GetFrameHeight();
         }
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+        if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
 
         MediaPlayer *mp = s.mediaplayer();
@@ -787,7 +788,7 @@ void ImGuiVisitor::visit (MediaSource& s)
                 std::string desc = mp->videoEffect();
                 desc = desc.substr(0, desc.find_first_of(' '));
                 desc = "Has gstreamer effect '" + desc + "'";
-                ImGuiToolkit::Indication(desc.c_str(),16,16);
+                ImGuiToolkit::Indication(desc.c_str(), ICON_VI_SOURCE_GSTREAMER);
             }
 
             // Information on keyframes and GOP size, and tooltip on backward playback and errors
@@ -871,7 +872,7 @@ void ImGuiVisitor::visit (MediaSource& s)
             }
             else {
                 // info of software only decoding if disabled
-                ImGuiToolkit::Icon(14,2,false);
+                ImGuiToolkit::Icon(ICON_VI_HARDWARE_DECODING_OFF,false);
                 ImGui::SameLine();
                 ImGui::TextDisabled("Hardware decoding disabled");
             }
@@ -1013,7 +1014,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         }
 
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+        if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
 
     }
@@ -1165,7 +1166,7 @@ void ImGuiVisitor::visit (DelayFilter& f)
 {
     ImGuiIO& io = ImGui::GetIO();
 
-//    if (ImGuiToolkit::IconButton(ICON_FILTER_DELAY)) {
+//    if (ImGuiToolkit::IconButton(ICON_VI_FILTER_DELAY)) {
 //        f.setDelay(0.f);
 //        Action::manager().store("Delay 0 s");
 //    }
@@ -1848,7 +1849,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
 
         // icon to show gstreamer properties
         ImGui::SetCursorPos(top);
-        ImGuiToolkit::Icon(16, 16, false);
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_GSTREAMER, false);
         if (ImGui::IsItemHovered()) {
             int index = Device::manager().index( s.device() );
             std::string prop = Device::manager().properties( index );
@@ -2064,7 +2065,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
 
     // offer to open file browser at location
     ImGui::SetCursorPos(top);
-    if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+    if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
         SystemToolkit::open(SystemToolkit::path_filename( s.sequence().location ));
 
     ImGui::SetCursorPos(botom);
@@ -2291,7 +2292,7 @@ void ImGuiVisitor::visit(TextSource &s)
         }
         botom = ImGui::GetCursorPos();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (ImGuiToolkit::IconButton(1, 13, "Pango font description"))
+        if (ImGuiToolkit::IconButton(ICON_VI_FONT, "Pango font description"))
             SystemToolkit::open("https://docs.gtk.org/Pango/type_func.FontDescription.from_string.html");
         ImGui::SetCursorPos(botom);
 
@@ -2359,19 +2360,19 @@ void ImGuiVisitor::visit(TextSource &s)
             _x += IMGUI_SAME_LINE + g.Style.FramePadding.x;
             ImGui::SetCursorPosX(_x);
         }
-        if (ImGuiToolkit::ButtonIconToggle(17, 16, &on, "Left"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_LEFT, &on, "Left"))
             tc->setHorizontalAlignment(0);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 1;
-        if (ImGuiToolkit::ButtonIconToggle(18, 16, &on, "Center"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_CENTER_H, &on, "Center"))
             tc->setHorizontalAlignment(1);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 2;
-        if (ImGuiToolkit::ButtonIconToggle(19, 16, &on, "Right"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_RIGHT, &on, "Right"))
             tc->setHorizontalAlignment(2);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 3;
-        if (ImGuiToolkit::ButtonIconToggle(6, 10, &on, "Absolute"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_ABSOLUTE_H, &on, "Absolute"))
             tc->setHorizontalAlignment(3);
         if (var != tc->horizontalAlignment()){
             oss << "Change h-align";
@@ -2423,19 +2424,19 @@ void ImGuiVisitor::visit(TextSource &s)
             _x += IMGUI_SAME_LINE + g.Style.FramePadding.x;
              ImGui::SetCursorPosX(_x);
         }
-        if (ImGuiToolkit::ButtonIconToggle(1, 17, &on, "Bottom"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_BOTTOM, &on, "Bottom"))
             tc->setVerticalAlignment(0);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 2;
-        if (ImGuiToolkit::ButtonIconToggle(3, 17, &on, "Center"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_CENTER_V, &on, "Center"))
             tc->setVerticalAlignment(2);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 1;
-        if (ImGuiToolkit::ButtonIconToggle(2, 17, &on, "Top"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_TOP, &on, "Top"))
             tc->setVerticalAlignment(1);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 3;
-        if (ImGuiToolkit::ButtonIconToggle(3, 10, &on, "Absolute"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_ABSOLUTE_V, &on, "Absolute"))
             tc->setVerticalAlignment(3);
         if (var != tc->verticalAlignment()){
             oss << "Change v-align";

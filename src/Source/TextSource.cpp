@@ -27,6 +27,7 @@
 #include "Log.h"
 
 #include "TextSource.h"
+#include "IconsVimixImage.h"
 
 /// filesrc location=/home/bh/vimix/test.srt ! subparse ! txt.
 /// videotestsrc pattern=black background-color=0x00000000 ! video/x-raw,width=1280,height=768,framerate=24/1 !
@@ -399,7 +400,7 @@ void TextSource::accept(Visitor& v)
 
 glm::ivec2 TextSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_TEXT);
+    return glm::ivec2(ICON_VI_SOURCE_TEXT);
 }
 
 std::string TextSource::info() const

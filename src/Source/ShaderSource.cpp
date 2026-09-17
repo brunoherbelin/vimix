@@ -30,6 +30,7 @@
 #include "Filter/DelayFilter.h"
 
 #include "ShaderSource.h"
+#include "IconsVimixImage.h"
 
 ShaderSource::ShaderSource(uint64_t id) : Source(id), paused_(false), filter_(nullptr)
 {
@@ -197,7 +198,7 @@ void ShaderSource::accept(Visitor& v)
 
 glm::ivec2 ShaderSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_SHADER);
+    return glm::ivec2(ICON_VI_SOURCE_SHADER);
 }
 
 std::string ShaderSource::info() const

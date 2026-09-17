@@ -22,6 +22,7 @@
 #include "NavigatorInternal.h"
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Mixer.h"
 #include "FrameBuffer.h"
@@ -105,7 +106,7 @@ void SourcePreview::Render(float width)
                 if (!mouseover) {
                     ImVec2 pos = ImGui::GetCursorPos();
                     ImGui::SetCursorPos(pos + preview_size * ImVec2(0.5f, -0.6f));
-                    ImGuiToolkit::Icon(12,7);
+                    ImGuiToolkit::Icon(ICON_VI_PLAY);
                     ImGui::SetCursorPos(pos);
                 }
             }

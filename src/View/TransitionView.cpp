@@ -29,6 +29,7 @@
 
 #include "Mixer.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Source/SessionSource.h"
 #include "Visitor/DrawVisitor.h"
@@ -235,14 +236,14 @@ void TransitionView::draw()
                 // toggle transition mode
                 ImGui::SetCursorScreenPos(ImVec2(pos_tran.x - 60.f, pos_tran.y +2.f));
                 const char *tooltip[2] = {"Fade to black", "Cross fading"};
-                if (ImGuiToolkit::IconToggle(9, 8, 0, 8,
+                if (ImGuiToolkit::IconToggle(ICON_VI_TRANSITION_FADE_BLACK, ICON_VI_TRANSITION_CROSS_FADE,
                                              &transition_cross_fade,
                                              tooltip))
                     Settings::application.transition.cross_fade = transition_cross_fade;
 
                 ImGui::SetCursorScreenPos(ImVec2(pos_tran.x + 10.f, pos_tran.y + 2.f));
                 const char *_tooltip[2] = {"Linear", "Quadratic"};
-                ImGuiToolkit::IconToggle(11, 12, 10, 12, &Settings::application.transition.profile, _tooltip );
+                ImGuiToolkit::IconToggle(ICON_VI_TRANSITION_LINEAR, ICON_VI_TRANSITION_QUADRATIC, &Settings::application.transition.profile, _tooltip );
 
                 //  Duration slider (adjusted width)
                 const float width = (pos_play.x - pos_canl.x) / 5.0;

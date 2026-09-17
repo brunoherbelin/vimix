@@ -24,6 +24,7 @@
 
 #include "IconsFontAwesome5.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Log.h"
 #include "Mixer.h"
@@ -100,7 +101,7 @@ void SessionPanel::Render()
 ////        if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save as"))
 ////            UserInterface::manager().saveOrSaveAs();
 ////    } else {
-////        if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+////        if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
 ////            SystemToolkit::open(SystemToolkit::path_filename(Mixer::manager().session()->filename()));
 ////    }
 
@@ -130,12 +131,12 @@ void SessionPanel::Render()
         // if session is in favorites
         if ( UserInterface::manager().favorites.has( Mixer::manager().session()->filename() ) > 0 ) {
             // offer to remove from favorites
-            if ( ImGuiToolkit::IconButton( 15, 4 , "Remove from favorites")) {
+            if ( ImGuiToolkit::IconButton( ICON_VI_FAVORITE_REMOVE, "Remove from favorites")) {
                 UserInterface::manager().favorites.remove( Mixer::manager().session()->filename() );
             }
         }
         // else session is not in favorites, offer to add
-        else if ( ImGuiToolkit::IconButton( 16, 4 , "Add to favorites")) {
+        else if ( ImGuiToolkit::IconButton( ICON_VI_FAVORITES, "Add to favorites")) {
             UserInterface::manager().favorites.add( Mixer::manager().session()->filename() );
         }
 
@@ -154,7 +155,7 @@ void SessionPanel::Render()
         static FrameBufferImage *_thumbnail = nullptr;
         bool _user_thumbnail = Mixer::manager().session()->thumbnail() != nullptr;
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
-        if (ImGuiToolkit::IconToggle(2, 8, 7, 8, &_user_thumbnail)) {
+        if (ImGuiToolkit::IconToggle(ICON_VI_THUMBNAIL_AUTOMATIC, ICON_VI_THUMBNAIL_CUSTOM, &_user_thumbnail)) {
             if (_user_thumbnail)
                 Mixer::manager().session()->setThumbnail();
             else {
@@ -415,7 +416,7 @@ void SessionPanel::Render()
             UserInterface::manager().saveOrSaveAs(true);
         if (!snapshots.empty()) {
             ImGui::SameLine();
-            if (ImGuiToolkit::IconButton( 12, 14, "Clear list"))
+            if (ImGuiToolkit::IconButton( ICON_VI_CLEAR_LIST, "Clear list"))
                 Action::manager().clearSnapshots();
         }
 

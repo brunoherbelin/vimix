@@ -25,6 +25,7 @@
 using namespace std;
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Toolkit/ImGuiToolkit.h"
 #include "Toolkit/DialogToolkit.h"
 #include "Log.h"
@@ -114,7 +115,7 @@ struct AppLog
         ImGui::SameLine();
         Filter.Draw("Filter", IMGUI_RIGHT_ALIGN);
         ImGui::SameLine();
-        if (ImGuiToolkit::ButtonIcon(12, 14))
+        if (ImGuiToolkit::ButtonIcon(ICON_VI_CLEAR_LIST))
             Filter.Clear();
 
         ImGui::Separator();
@@ -291,7 +292,7 @@ void Log::Render(bool *showWarnings)
             ImGui::OpenPopup("Warning");
         if (ImGui::BeginPopupModal("Warning", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
-            ImGuiToolkit::Icon(7, 14);
+            ImGuiToolkit::Icon(ICON_VI_WARNING);
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::SetNextItemWidth(width);
             std::string msg = std::to_string(warnings.size()) + " problem" + (warnings.size() > 1 ? "s" : "");

@@ -25,6 +25,7 @@
 #include <glm/matrix.hpp>
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Log.h"
 #include "FrameBuffer.h"
 #include "Scene/Decorations.h"
@@ -38,10 +39,10 @@
 #include "RenderSource.h"
 
 std::vector< std::tuple<int, int, std::string> > RenderSource::ProvenanceMethod = {
-    { 16, 12, "Recursive" }, 
+    { ICON_VI_RENDER_RECURSIVE, "Recursive" }, 
     { 17, 5, "Entire scene", }, 
-    { 17, 12, "Local scene" },
-    { 2, 10, "Canvas" }
+    { ICON_VI_RENDER_LOCAL_SCENE, "Local scene" },
+    { ICON_VI_RENDER_CANVAS, "Canvas" }
 };
 
 RenderSource::RenderSource(uint64_t id) : Source(id), session_(nullptr), runtime_(0), rendered_output_(nullptr),
@@ -258,7 +259,7 @@ void RenderSource::accept(Visitor& v)
 
 glm::ivec2 RenderSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_RENDER);
+    return glm::ivec2(ICON_VI_SOURCE_RENDER);
 }
 
 std::string RenderSource::info() const

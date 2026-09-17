@@ -31,6 +31,7 @@
 #include "Visitor/Visitor.h"
 
 #include "DeviceSource.h"
+#include "IconsVimixImage.h"
 
 #ifndef NDEBUG
 #define DEVICE_DEBUG
@@ -600,7 +601,7 @@ Source::Failure DeviceSource::failed() const
 
 glm::ivec2 DeviceSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_DEVICE);
+    return glm::ivec2(ICON_VI_SOURCE_DEVICE);
 }
 
 std::string DeviceSource::info() const

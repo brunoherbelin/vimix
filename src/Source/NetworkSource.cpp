@@ -36,6 +36,7 @@
 #include "Log.h"
 
 #include "NetworkSource.h"
+#include "IconsVimixImage.h"
 
 #ifndef NDEBUG
 #define NETWORK_DEBUG
@@ -350,7 +351,7 @@ void NetworkSource::accept(Visitor& v)
 
 glm::ivec2 NetworkSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_NETWORK);
+    return glm::ivec2(ICON_VI_SOURCE_NETWORK);
 }
 
 std::string NetworkSource::info() const
