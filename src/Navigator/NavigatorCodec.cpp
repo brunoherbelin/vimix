@@ -21,6 +21,7 @@
 #include "NavigatorInternal.h"
 
 #include "Settings.h"
+#include "Upscaler.h"
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/ImGuiToolkit.h"
 
@@ -72,6 +73,49 @@ bool ComboCodec(const char *label, int *profile, int width, int height)
             if (!supported && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
                 ImGuiToolkit::ToolTip( GstToolkit::unsupportedResolution((GstToolkit::Profile) i, width, height,
                                        Settings::application.render.gpu_decoding).c_str() );
+        }
+        ImGui::EndCombo();
+    }
+
+    return ret;
+}
+
+
+// Combo box to select a Real-ESRGAN upscaling model, showing only the models
+// fast enough to run on every frame of a video, and disabling those whose
+// upscaled resolution the encoder of the given profile could not accept: the
+// factor comes with the model, so a x4 model on a HD source demands 8K from
+// the encoder. The selection is a model name rather than an index, so that
+// reordering the catalogue never silently changes a stored preference.
+// Returns true only if the user selected a model (as ImGui::Combo does).
+bool ComboUpscaler(const char *label, std::string *model, int width, int height, int profile)
+{
+    bool ret = false;
+
+    // an unknown name (an older setting, a model since removed) reads as no
+    // upscaling, which is also what an empty preference means
+    const UpscalerModel &current = Upscaler::model(*model);
+    *model = current.name;
+
+    if (ImGui::BeginCombo(label, current.name)) {
+        for (const UpscalerModel &m : Upscaler::models()) {
+            // the heavy networks take seconds per frame: they belong to
+            // single image upscaling, not to a video stream
+            if (!m.video)
+                continue;
+
+            const std::string unsupported =
+                GstToolkit::unsupportedResolution((GstToolkit::Profile) profile,
+                                                  width * m.factor, height * m.factor,
+                                                  Settings::application.render.gpu_decoding);
+            if (ImGui::Selectable(m.name, *model == m.name,
+                                  unsupported.empty() ? ImGuiSelectableFlags_None
+                                                      : ImGuiSelectableFlags_Disabled)) {
+                *model = m.name;
+                ret = true;
+            }
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGuiToolkit::ToolTip(unsupported.empty() ? m.description : unsupported.c_str());
         }
         ImGui::EndCombo();
     }

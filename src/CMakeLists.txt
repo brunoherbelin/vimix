@@ -54,6 +54,7 @@ set(VMIX_SRCS
     TabletInput.cpp
     Timeline.cpp
     Transcoder.cpp
+    Upscaler.cpp
     UserInterfaceManager.cpp
     VideoBroadcast.cpp
     MultiFileRifeEncoder.cpp
@@ -96,6 +97,7 @@ set(VMIX_SRCS
     Toolkit/GlmToolkit.cpp
     Toolkit/GstToolkit.cpp
     Toolkit/ImGuiToolkit.cpp
+    Toolkit/NcnnToolkit.cpp
     Toolkit/NetworkToolkit.cpp
     Toolkit/SystemToolkit.cpp
     Toolkit/tinyxml2Toolkit.cpp
@@ -267,9 +269,10 @@ if(MINIZ_LIBRARIES)
     target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${MINIZ_LIBRARIES})
 endif()
 
-# ncnn for RIFE frame interpolation (optional, present when submodule is initialised)
+# ncnn for RIFE frame interpolation and Real-ESRGAN upscaling
+# (optional, present when the ext/ sources were fetched)
 if(USE_NCNN)
-    target_link_libraries(${VMIX_BINARY} PRIVATE NCNNRIFE)
+    target_link_libraries(${VMIX_BINARY} PRIVATE NCNNRIFE NCNNUPSCALE)
 endif()
 
 # ONNX for RIFE frame interpolation (optional, present when submodule is initialised)

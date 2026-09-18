@@ -373,6 +373,8 @@ struct Application
 
     // transcoding options: [0] force_keyframes, [1] GstToolkit::Profile, [2] force_no_audio
     int transcode_options[3];
+    // name of the selected UpscalerModel (Upscaler::NONE for no upscaling)
+    std::string transcode_upscaler;
     bool export_options[3];
 
     Application() : fresh_start(false), instance_id(0), name(APP_NAME), executable(APP_NAME) {
@@ -414,6 +416,7 @@ struct Application
         transcode_options[0] = 1;  // force_keyframes
         transcode_options[1] = 0;  // GstToolkit::H264_RT
         transcode_options[2] = 0;  // force_no_audio
+        transcode_upscaler = "";   // no upscaling (Upscaler::NONE)
         export_options[0] = true;
         export_options[1] = false;
         export_options[2] = false;

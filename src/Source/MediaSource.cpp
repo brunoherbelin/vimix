@@ -51,6 +51,12 @@ void MediaSource::setPath(const std::string &p)
     // open gstreamer
     mediaplayer_->open(path_);
 
+    // reset frame buffer; not always needed but necessary when replacing mediaplayer with another of different size
+    if ( renderbuffer_ != nullptr ) {
+        delete renderbuffer_;
+        renderbuffer_ = nullptr;
+    }
+
     // will be ready after init and one frame rendered
     ready_ = false;
 }

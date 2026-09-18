@@ -19,6 +19,8 @@
 #ifndef NAVIGATORCODEC_H
 #define NAVIGATORCODEC_H
 
+#include <string>
+
 // Selection of a video encoding profile in the Navigator pannels:
 // the encoders have different limitations (e.g. GPU H264 is limited to 4K),
 // tested with GstToolkit to disable or replace a profile.
@@ -31,5 +33,12 @@ bool ValidateCodecResolution(int *profile, int width, int height);
 // encoder cannot encode the given resolution.
 // Returns true only if the user selected a profile (as ImGui::Combo does).
 bool ComboCodec(const char *label, int *profile, int width, int height);
+
+// Combo box to select a Real-ESRGAN upscaling model by name, listing only
+// the models fast enough for video and disabling those whose upscaled
+// resolution the given profile could not encode (the model fixes the
+// factor, so a x4 model on a HD source asks for 8K out of the encoder).
+// Returns true only if the user selected a model (as ImGui::Combo does).
+bool ComboUpscaler(const char *label, std::string *model, int width, int height, int profile);
 
 #endif /* NAVIGATORCODEC_H */

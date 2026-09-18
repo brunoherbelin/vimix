@@ -30,6 +30,7 @@
 #include "ActionManager.h"
 #include "MediaPlayer.h"
 #include "Transcoder.h"
+#include "Upscaler.h"
 #include "Source/MediaSource.h"
 #include "Source/SourceCallback.h"
 #include "Toolkit/SystemToolkit.h"
@@ -88,6 +89,21 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
             transcode_profile = GstToolkit::H264_RT;
             ValidateCodecResolution(&transcode_profile, source_width, source_height);
         }
+        // Upscaling model, offered only when this build has the ncnn Vulkan
+        // backend which performs the inference
+        std::string transcode_upscaler = Settings::application.transcode_upscaler;
+        if (Upscaler::available()) {
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ComboUpscaler("##UpscalerTranscode", &transcode_upscaler, source_width, source_height,
+                              transcode_profile))
+                // the user selected a model: change the preference
+                Settings::application.transcode_upscaler = transcode_upscaler;
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton("Upscale"))
+                Settings::application.transcode_upscaler = transcode_upscaler = Upscaler::NONE;
+        }
+        const int upscale_factor = Upscaler::model(transcode_upscaler).factor;
+
         ImGui::Spacing();
         // Keyframes
         bool force_keyframes = Settings::application.transcode_options[0] != 0;
@@ -95,12 +111,15 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
         "Optimize for backward playback by adding keyframes", 
         transcoder == nullptr && transcode_profile != GstToolkit::JPEG_MULTI);
         Settings::application.transcode_options[0] = force_keyframes ? 1 : 0;
-        // audio
-        bool force_no_audio = Settings::application.transcode_options[2] != 0;
+        // audio: upscaling splits the pipeline around the GPU inference,
+        // which no audio stream can cross, so the switch is forced on
+        bool force_no_audio = Settings::application.transcode_options[2] != 0 || upscale_factor > 1;
         ImGuiToolkit::ButtonSwitch( "Remove audio", &force_no_audio,
-        "Do not include audio tracks in produced video", 
-        transcoder == nullptr && transcode_profile != GstToolkit::JPEG_MULTI);
-        Settings::application.transcode_options[2] = force_no_audio ? 1 : 0;
+        upscale_factor > 1 ? "Audio tracks cannot be kept when upscaling"
+                           : "Do not include audio tracks in produced video",
+        transcoder == nullptr && transcode_profile != GstToolkit::JPEG_MULTI && upscale_factor < 2);
+        if (upscale_factor < 2)
+            Settings::application.transcode_options[2] = force_no_audio ? 1 : 0;
 
         // Start transcoding if not already started for current source
         if (transcoder == nullptr) {
@@ -110,7 +129,8 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
                 TranscoderOptions transcode_options(
                     static_cast<GstToolkit::Profile>(transcode_profile),
                     force_keyframes,
-                    force_no_audio
+                    force_no_audio,
+                    transcode_upscaler
                 );
                 if (!transcoder->start(transcode_options)) {
                     Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
@@ -123,7 +143,10 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
             ImGuiToolkit::HelpToolTip("Re-encode the source video using the specified codec and options.\n\n "
                     ICON_FA_FILM "  The new file will replace the one in the source "
                     "once transcoding is successfully completed. "
-                    "The current file is left unchanged.");
+                    "The current file is left unchanged.\n\n "
+                    ICON_FA_MAGIC "  An upscaling model enlarges every frame with a neural "
+                    "network on the GPU. This is much slower than plain transcoding, and "
+                    "the audio track is not kept.");
         }
 
         if (transcoder != nullptr) {
@@ -146,6 +169,10 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
                     }
                     ret = true;
                 }
+                else
+                    // upscaling reports its failures asynchronously: this is
+                    // the only place the user would ever hear about them
+                    Log::Warning("Transcoding failed : %s", transcoder->error().c_str());
                 // all done in any case
                 delete transcoder;
                 transcoder = nullptr;
@@ -153,7 +180,13 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
             }
             else {
                 float progress = transcoder->progress();
-                ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN,0), progress < EPSILON ? "working..." : nullptr);
+                // the status tells about the long preliminary steps of
+                // upscaling (fetching the model, initializing the GPU)
+                std::string status = transcoder->status();
+                if (status.empty() && progress < EPSILON)
+                    status = "working...";
+                ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN,0),
+                                   status.empty() ? nullptr : status.c_str());
                 ImGui::SameLine();
                 if (ImGui::Button( ICON_FA_TIMES " Cancel", ImVec2(0,0)) ||
                     Mixer::manager().findSource(transcode_id) == nullptr ) {

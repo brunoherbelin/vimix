@@ -24,6 +24,7 @@
 #include "Settings.h"
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/BaseToolkit.h"
+#include "Toolkit/NcnnToolkit.h"
 #include "Toolkit/SystemToolkit.h"
 
 #include "MultiFileRifeEncoder.h"
@@ -196,21 +197,10 @@ class RifeNCNN : public RifeBackend {
 public:
     explicit RifeNCNN(const std::string &modeldir)
     {
-        {
-            // ncnn prints a GPU enumeration to stderr here; hide it
-            SystemToolkit::StderrSilencer silence;
-            ncnn::create_gpu_instance();
-        }
-        if (ncnn::get_gpu_count() == 0) {
-            ncnn::destroy_gpu_instance();
-            throw std::runtime_error("no Vulkan device available");
-        }
-        int gpuid = ncnn::get_default_gpu_index();
-        desc_ = "Vulkan GPU (" +
-                std::string(ncnn::get_gpu_info(gpuid).device_name()) + ")";
+        desc_ = "Vulkan GPU (" + gpu_.name() + ")";
 
         int threads = std::max(1u, std::thread::hardware_concurrency() / 2);
-        rife_ = std::make_unique<RIFE>(gpuid,
+        rife_ = std::make_unique<RIFE>(gpu_.index(),
                                        /*tta_mode=*/false,
                                        /*tta_temporal_mode=*/false,
                                        /*uhd_mode=*/false,
@@ -224,7 +214,6 @@ public:
     ~RifeNCNN() override
     {
         rife_.reset();
-        ncnn::destroy_gpu_instance();
     }
 
     const char *describe() const override { return desc_.c_str(); }
@@ -246,6 +235,11 @@ public:
     }
 
 private:
+    // The shared Vulkan instance, declared before the network built on it so
+    // that it is released only once that network is destroyed. Reference
+    // counted: the Real-ESRGAN upscaler of the Transcoder can be running on
+    // the same instance at the same time.
+    NcnnToolkit::GpuInstance gpu_;
     std::unique_ptr<RIFE> rife_;
     std::string desc_;
 };

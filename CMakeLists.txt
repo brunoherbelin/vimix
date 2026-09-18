@@ -600,8 +600,11 @@ endif()
 if(USE_NCNN)
   set(RIFE_NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/rife-ncnn-vulkan/src)
   set(RIFE_NCNN_INCLUDE_DIRS ${RIFE_NCNN_DIR} ${CMAKE_CURRENT_BINARY_DIR}) 
+  set(ESRGAN_NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/realesrgan-ncnn-vulkan/src)
+  set(ESRGAN_NCNN_INCLUDE_DIRS ${ESRGAN_NCNN_DIR} ${CMAKE_CURRENT_BINARY_DIR})
   set(NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/ncnn)
   if(NOT EXISTS ${RIFE_NCNN_DIR}/rife.cpp
+     OR NOT EXISTS ${ESRGAN_NCNN_DIR}/realesrgan.cpp
      OR NOT EXISTS ${NCNN_DIR}/CMakeLists.txt
      OR NOT EXISTS ${NCNN_DIR}/glslang/CMakeLists.txt)
     message(STATUS "Fetching extra sources (cmake/setup-ext.sh) ...")
@@ -611,7 +614,7 @@ if(USE_NCNN)
       RESULT_VARIABLE EXT_SETUP_RESULT)
     if(NOT EXT_SETUP_RESULT EQUAL 0)
       message(WARNING "cmake/setup-ext.sh failed (git + network needed "
-                      "on first configure) — building without RifeNCNN")
+                      "on first configure) — building without RifeNCNN/UpscaleNCNN")
       set(USE_NCNN OFF)
     endif()
   endif()
@@ -640,14 +643,29 @@ if(USE_NCNN)
   set(NCNN_PIXEL_DRAWING OFF CACHE BOOL "" FORCE)
   set(NCNN_INT8 OFF CACHE BOOL "" FORCE)
 
-  # Build only the ncnn layers needed by RIFE models 
-  file(STRINGS ${RIFE_NCNN_DIR}/CMakeLists.txt _rife_layer_opts
-       REGEX "option\\(WITH_LAYER_")
-  foreach(_line IN LISTS _rife_layer_opts)
+  # Build only the ncnn layers needed by the models we run: adopt the
+  # per-layer option lists curated in the vendored CMakeLists (so they stay
+  # in sync with the pinned commits), keeping a layer ON as soon as either
+  # RIFE or Real-ESRGAN asks for it.
+  set(_layer_opts "")
+  foreach(_ncnn_user_dir ${RIFE_NCNN_DIR} ${ESRGAN_NCNN_DIR})
+    file(STRINGS ${_ncnn_user_dir}/CMakeLists.txt _opts REGEX "option\\(WITH_LAYER_")
+    list(APPEND _layer_opts ${_opts})
+  endforeach()
+  foreach(_line IN LISTS _layer_opts)
     if(_line MATCHES "WITH_LAYER_([a-z0-9_]+) \"\" (ON|OFF)")
-      set(WITH_LAYER_${CMAKE_MATCH_1} ${CMAKE_MATCH_2} CACHE BOOL "" FORCE)
+      if(${CMAKE_MATCH_2} OR NOT DEFINED WITH_LAYER_${CMAKE_MATCH_1})
+        set(WITH_LAYER_${CMAKE_MATCH_1} ${CMAKE_MATCH_2} CACHE BOOL "" FORCE)
+      endif()
     endif()
   endforeach()
+
+  # RIFE compiles its shaders at runtime (NCNN_VULKAN_ONLINE_SPIRV), but
+  # Real-ESRGAN #includes them as precompiled SPIR-V, which needs the
+  # glslangValidator binary. ncnn declares ENABLE_GLSLANG_BINARIES with
+  # option(), so setting it here takes precedence: the tool is built from
+  # the vendored glslang, no system glslang-tools package needed.
+  set(ENABLE_GLSLANG_BINARIES ON CACHE BOOL "" FORCE)
 
   # The pinned ncnn/glslang declare cmake_minimum_required versions older than the one we use, so silence the warning.
   if(NOT DEFINED CMAKE_POLICY_VERSION_MINIMUM)
@@ -697,6 +715,34 @@ if(USE_NCNN)
   rife_add_shader(warp_pack4.comp)
   rife_add_shader(warp_pack8.comp)
 
+  # Real-ESRGAN compute shaders -> SPIR-V hex headers, in the three ncnn
+  # storage variants (base / fp16s / int8s) realesrgan.cpp #includes.
+  macro(esrgan_add_shader SHADER_SRC)
+    get_filename_component(SHADER_SRC_NAME_WE ${SHADER_SRC} NAME_WE)
+    foreach(_v "" "_fp16s" "_int8s")
+      set(_out ${CMAKE_CURRENT_BINARY_DIR}/${SHADER_SRC_NAME_WE}${_v}.spv.hex.h)
+      set(_defs "")
+      if(_v STREQUAL "_fp16s")
+        set(_defs -DNCNN_fp16_storage=1)
+      elseif(_v STREQUAL "_int8s")
+        set(_defs -DNCNN_fp16_storage=1 -DNCNN_int8_storage=1)
+      endif()
+      add_custom_command(
+        OUTPUT ${_out}
+        COMMAND $<TARGET_FILE:glslangValidator> ${_defs} -V -s -x -o ${_out} ${ESRGAN_NCNN_DIR}/${SHADER_SRC}
+        DEPENDS ${ESRGAN_NCNN_DIR}/${SHADER_SRC} glslangValidator
+        COMMENT "Building SPIR-V module ${SHADER_SRC_NAME_WE}${_v}.spv"
+        VERBATIM)
+      set_source_files_properties(${_out} PROPERTIES GENERATED TRUE)
+      list(APPEND SHADER_SPV_HEX_FILES ${_out})
+    endforeach()
+  endmacro()
+
+  esrgan_add_shader(realesrgan_preproc.comp)
+  esrgan_add_shader(realesrgan_postproc.comp)
+  esrgan_add_shader(realesrgan_preproc_tta.comp)
+  esrgan_add_shader(realesrgan_postproc_tta.comp)
+
   add_custom_target(generate-spirv DEPENDS ${SHADER_SPV_HEX_FILES})
 
   # Static library bundling the RIFE ncnn sources and their generated shader
@@ -708,6 +754,13 @@ if(USE_NCNN)
   target_include_directories(NCNNRIFE PUBLIC ${RIFE_NCNN_INCLUDE_DIRS})
   target_compile_definitions(NCNNRIFE PUBLIC HAVE_NCNN)
   target_link_libraries(NCNNRIFE PUBLIC ncnn)
+
+  # Same for the Real-ESRGAN upscaler.
+  add_library(NCNNUPSCALE STATIC ${ESRGAN_NCNN_DIR}/realesrgan.cpp)
+  add_dependencies(NCNNUPSCALE generate-spirv)
+  target_include_directories(NCNNUPSCALE PUBLIC ${ESRGAN_NCNN_INCLUDE_DIRS})
+  target_compile_definitions(NCNNUPSCALE PUBLIC HAVE_NCNN)
+  target_link_libraries(NCNNUPSCALE PUBLIC ncnn)
 
 endif()
 

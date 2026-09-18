@@ -20,15 +20,45 @@
 #include "Transcoder.h"
 #include "Log.h"
 #include "Settings.h"
+#include "Upscaler.h"
 #include "Toolkit/SystemToolkit.h"
 
 #include <sys/stat.h>
+#include <chrono>
 #include <filesystem>
 #include <glib.h>
+#include <gst/app/gstappsink.h>
+#include <gst/app/gstappsrc.h>
+#include <gst/video/video.h>
+#include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <stdexcept>
+#include <vector>
 
 namespace {
+
+// Upscaling only: how many frames the appsink and appsrc queues may hold.
+// Small on purpose, an upscaled frame being several times the size of a
+// source frame (4K x4 is 100MB of RGB).
+constexpr int UPSCALE_QUEUE_LENGTH = 4;
+
+// Upscaling only: stall watchdog. Once a per-frame baseline is known (from
+// the first frames), give up if a frame takes more than STALL_TIMEOUT_FACTOR
+// times that baseline, but never sooner than STALL_MIN_TIMEOUT_MS. This
+// catches an encoder which cannot keep up or cannot handle the resolution
+// (a hardware encoder past its limits): it would otherwise block the worker
+// forever on a push (appsrc block=true). Until the baseline is known,
+// STALL_INITIAL_TIMEOUT_MS is a coarse safety net covering model loading.
+constexpr int STALL_TIMEOUT_FACTOR = 3;
+constexpr long long STALL_MIN_TIMEOUT_MS = 30000;
+constexpr long long STALL_INITIAL_TIMEOUT_MS = 300000;
+
+long long now_ms()
+{
+    return (long long) std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+}
 
 // Look for a keyframe-interval property in a GstToolkit encoding pipeline
 // fragment -- "key-int-max=" (x264enc/x265enc/vah264enc/vah265enc),
@@ -86,16 +116,26 @@ Transcoder::Transcoder(const std::string& input_filename)
     : input_filename_(input_filename)
     , pipeline_(nullptr)
     , bus_(nullptr)
-    , started_(false)
     , is_image_sequence_(false)
+    , started_(false)
     , finished_(false)
     , success_(false)
+    , abort_(false)
+    , duration_(-1)
+    , position_(0)
+    , upscale_factor_(1)
 {
     // Output filename will be generated in start() based on options
 }
 
 Transcoder::~Transcoder()
 {
+    // an upscaling worker still running must be stopped and joined before
+    // the members it uses are destroyed
+    stop();
+    if (worker_.joinable())
+        worker_.join();
+
     if (pipeline_) {
         gst_element_set_state(pipeline_, GST_STATE_NULL);
         gst_object_unref(pipeline_);
@@ -105,6 +145,30 @@ Transcoder::~Transcoder()
         gst_object_unref(bus_);
         bus_ = nullptr;
     }
+}
+
+void Transcoder::setError(const std::string &message)
+{
+    std::lock_guard<std::mutex> lock(message_mutex_);
+    error_message_ = message;
+}
+
+void Transcoder::setStatus(const std::string &message)
+{
+    std::lock_guard<std::mutex> lock(message_mutex_);
+    status_message_ = message;
+}
+
+std::string Transcoder::error() const
+{
+    std::lock_guard<std::mutex> lock(message_mutex_);
+    return error_message_;
+}
+
+std::string Transcoder::status() const
+{
+    std::lock_guard<std::mutex> lock(message_mutex_);
+    return status_message_;
 }
 
 std::string Transcoder::generateOutputFilename(const std::string& input, const TranscoderOptions& options)
@@ -135,6 +199,9 @@ std::string Transcoder::generateOutputFilename(const std::string& input, const T
         
     // Build suffix based on transcoder options
     std::string suffix = "";
+    const int factor = Upscaler::model(options.upscaler).factor;
+    if (factor > 1)
+        suffix += "_upscaled_x" + std::to_string(factor);
     if (options.force_keyframes)
         suffix += "_bidir";
     if (options.force_no_audio)
@@ -158,11 +225,16 @@ std::string Transcoder::generateOutputFilename(const std::string& input, const T
 bool Transcoder::start(const TranscoderOptions& options)
 {
     if (started_) {
-        error_message_ = "Transcoder already started";
+        setError("Transcoder already started");
         return false;
     }
 
     is_image_sequence_ = (options.profile == GstToolkit::JPEG_MULTI);
+
+    // Resolve the upscaling model: an unknown name, or a build without the
+    // ncnn Vulkan backend, simply means no upscaling
+    const UpscalerModel &upscaler = Upscaler::model(options.upscaler);
+    upscale_factor_ = (Upscaler::available() && upscaler.factor > 1) ? upscaler.factor : 1;
 
     // Generate output filename (or folder, for JPEG_MULTI) based on options
     output_filename_ = generateOutputFilename(input_filename_, options);
@@ -170,8 +242,8 @@ bool Transcoder::start(const TranscoderOptions& options)
     // Check if input file exists
     struct stat buffer;
     if (stat(input_filename_.c_str(), &buffer) != 0) {
-        error_message_ = "Input file does not exist: " + input_filename_;
-        Log::Warning("Transcoder: %s", error_message_.c_str());
+        setError("Input file does not exist: " + input_filename_);
+        Log::Warning("Transcoder: Input file does not exist: %s", input_filename_.c_str());
         return false;
     }
 
@@ -183,15 +255,15 @@ bool Transcoder::start(const TranscoderOptions& options)
     // stream (no more bitrate matching: profiles are fixed-quality)
     gchar *src_uri = gst_filename_to_uri(input_filename_.c_str(), nullptr);
     if (!src_uri) {
-        error_message_ = "Failed to create URI from filename";
-        Log::Warning("Transcoder: %s", error_message_.c_str());
+        setError("Failed to create URI from filename");
+        Log::Warning("Transcoder: Failed to create URI from filename");
         return false;
     }
 
     GstDiscoverer *discoverer = gst_discoverer_new(10 * GST_SECOND, nullptr);
     if (!discoverer) {
-        error_message_ = "Failed to create discoverer";
-        Log::Warning("Transcoder: %s", error_message_.c_str());
+        setError("Failed to create discoverer");
+        Log::Warning("Transcoder: Failed to create discoverer");
         g_free(src_uri);
         return false;
     }
@@ -235,11 +307,19 @@ bool Transcoder::start(const TranscoderOptions& options)
 
     g_object_unref(discoverer);
 
-    // verify the profile can encode the resolution of the source video
-    error_message_ = GstToolkit::unsupportedResolution(options.profile, (int) frame_width, (int) frame_height,
-                                                       Settings::application.render.gpu_decoding);
-    if (!error_message_.empty()) {
-        Log::Warning("Transcoder: %s", error_message_.c_str());
+    // Upscaling multiplies the frame size: everything downstream (the
+    // resolution check, the keyframe interval, the encoder caps) works on
+    // the size of the frames actually handed to the encoder
+    const int frame_out_width = (int) frame_width * upscale_factor_;
+    const int frame_out_height = (int) frame_height * upscale_factor_;
+
+    // verify the profile can encode the resolution of the produced video
+    const std::string unsupported =
+        GstToolkit::unsupportedResolution(options.profile, frame_out_width, frame_out_height,
+                                          Settings::application.render.gpu_decoding);
+    if (!unsupported.empty()) {
+        setError(unsupported);
+        Log::Warning("Transcoder: %s", unsupported.c_str());
         g_free(src_uri);
         return false;
     }
@@ -252,8 +332,8 @@ bool Transcoder::start(const TranscoderOptions& options)
         video_encoder = GstToolkit::getEncodingPipeline(options.profile);
 
     if (video_encoder.empty()) {
-        error_message_ = std::string("No encoder available for profile ") + GstToolkit::profile_name[options.profile];
-        Log::Warning("Transcoder: %s", error_message_.c_str());
+        setError(std::string("No encoder available for profile ") + GstToolkit::profile_name[options.profile]);
+        Log::Warning("Transcoder: No encoder available for profile %s", GstToolkit::profile_name[options.profile]);
         g_free(src_uri);
         return false;
     }
@@ -261,11 +341,44 @@ bool Transcoder::start(const TranscoderOptions& options)
     // Tighten the keyframe interval for smoother backward playback (no-op
     // for ProRes/JPEG, which are already all-intra)
     if (options.force_keyframes) {
-        int interval = GstToolkit::getPlayBackwardGop(options.profile, (int) frame_width, (int) frame_height);
+        int interval = GstToolkit::getPlayBackwardGop(options.profile, frame_out_width, frame_out_height);
         std::string patched = apply_keyframe_interval(video_encoder, interval);
         if (patched != video_encoder)
             Log::Info("Transcoder: keyframe interval set to %d frames for backward playback", interval);
         video_encoder = patched;
+    }
+
+    // The numbered JPEG sequence goes into a folder of its own, created up
+    // front so that a failure is reported before anything else is attempted
+    if (is_image_sequence_ && !SystemToolkit::create_directory(output_filename_)) {
+        setError("Failed to create output folder " + output_filename_);
+        Log::Warning("Transcoder: Failed to create output folder %s", output_filename_.c_str());
+        g_free(src_uri);
+        return false;
+    }
+
+    // Upscaling: Real-ESRGAN inference cannot live inside a gstreamer
+    // pipeline, so decoding and encoding become two pipelines joined by the
+    // worker thread of runUpscale(). Only the decoding side can be described
+    // here; the encoding side needs the actual frame size, which is known
+    // only once the first frame has been decoded. Audio cannot cross that
+    // appsink / appsrc boundary, so the output is video only.
+    if (upscale_factor_ > 1) {
+        decode_desc_ = "uridecodebin uri=\"" + std::string(src_uri) + "\" name=dec dec. ! queue ! ";
+        if (source_interlaced)
+            decode_desc_ += "deinterlace method=2 ! ";
+        decode_desc_ += "videoconvert ! video/x-raw,format=RGB ! appsink name=sink";
+        video_encoder_ = video_encoder;
+        g_free(src_uri);
+
+        if (has_audio)
+            Log::Info("Transcoder: Audio track dropped (not supported when upscaling)");
+        Log::Info("Transcoder: Upscaling x%d with model '%s', encoding %d x %d frames",
+                  upscale_factor_, upscaler.name, frame_out_width, frame_out_height);
+
+        started_ = true;
+        worker_ = std::thread(&Transcoder::runUpscale, this, options);
+        return true;
     }
 
     // Build the gstreamer pipeline: uridecodebin feeds a video branch
@@ -285,11 +398,6 @@ bool Transcoder::start(const TranscoderOptions& options)
 
     if (is_image_sequence_) {
         // numbered JPEG sequence: no muxer/audio, capped by the pad probe below
-        if (!SystemToolkit::create_directory(output_filename_)) {
-            error_message_ = "Failed to create output folder " + output_filename_;
-            Log::Warning("Transcoder: %s", error_message_.c_str());
-            return false;
-        }
         std::string pattern = SystemToolkit::full_filename(output_filename_, "%05d.jpg");
         description += "multifilesink name=sink location=\"" + pattern + "\"";
     }
@@ -317,8 +425,8 @@ bool Transcoder::start(const TranscoderOptions& options)
     GError *error = nullptr;
     pipeline_ = gst_parse_launch(description.c_str(), &error);
     if (error != nullptr) {
-        error_message_ = std::string("Could not construct pipeline: ") + error->message;
-        Log::Warning("Transcoder: %s", error_message_.c_str());
+        setError(std::string("Could not construct pipeline: ") + error->message);
+        Log::Warning("Transcoder: Could not construct pipeline: %s", error->message);
         g_clear_error(&error);
         return false;
     }
@@ -342,8 +450,8 @@ bool Transcoder::start(const TranscoderOptions& options)
 
     GstStateChangeReturn ret = gst_element_set_state(pipeline_, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        error_message_ = "Failed to start transcoding pipeline";
-        Log::Warning("Transcoder: %s", error_message_.c_str());
+        setError("Failed to start transcoding pipeline");
+        Log::Warning("Transcoder: Failed to start transcoding pipeline");
         return false;
     }
 
@@ -362,8 +470,9 @@ void Transcoder::pollBus()
         if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
             GError *err = nullptr;
             gst_message_parse_error(msg, &err, nullptr);
-            error_message_ = std::string("Transcoding error: ") + (err ? err->message : "unknown");
-            Log::Warning("Transcoder: %s", error_message_.c_str());
+            const std::string what = std::string("Transcoding error: ") + (err ? err->message : "unknown");
+            setError(what);
+            Log::Warning("Transcoder: %s", what.c_str());
             if (err)
                 g_error_free(err);
             finished_ = true;
@@ -393,9 +502,22 @@ void Transcoder::stop()
     if (pipeline_)
         gst_element_set_state(pipeline_, GST_STATE_NULL);
 
+    // Upscaling: ask the worker to give up and wait for it. It checks
+    // abort_ once per frame, so this blocks for at most the inference time
+    // of the frame in flight.
+    abort_ = true;
+    if (worker_.joinable())
+        worker_.join();
+
+    // the worker may have completed just before it noticed the abort: its
+    // output is whole, there is nothing to interrupt nor to remove
+    if (success_)
+        return;
+
     finished_ = true;
     success_ = false;
-    error_message_ = "Transcoding stopped by user";
+    setError("Transcoding stopped by user");
+    setStatus("");
 
     Log::Info("Transcoder: Interrupted transcoding");
 
@@ -442,6 +564,15 @@ double Transcoder::progress()
     if (finished_)
         return 1.0;
 
+    // Upscaling: there is no pipeline to query, the worker publishes the
+    // timestamp of the last frame it decoded instead
+    if (upscale_factor_ > 1) {
+        const gint64 dur = duration_, pos = position_;
+        if (dur > 0 && pos >= 0)
+            return std::min(1.0, static_cast<double>(pos) / static_cast<double>(dur));
+        return 0.0;
+    }
+
     if (!pipeline_)
         return 0.0;
 
@@ -453,4 +584,259 @@ double Transcoder::progress()
     }
 
     return 0.0;
+}
+
+// Background upscaling: decode -> Real-ESRGAN -> encode.
+//
+// The source is decoded to packed RGB by one pipeline ending in an appsink,
+// every frame is enlarged on the GPU, and the result is pushed into a second
+// pipeline starting with an appsrc and ending in the profile's encoder. Both
+// ends are bounded (appsink max-buffers, appsrc max-bytes with block=true)
+// so that the fastest stage waits for the slowest instead of accumulating
+// frames in memory, the inference being orders of magnitude slower than
+// either decoding or encoding.
+void Transcoder::runUpscale(TranscoderOptions options)
+{
+    GstElement *dec_pipe = nullptr, *enc_pipe = nullptr;
+    GstElement *sink = nullptr, *src = nullptr;
+    GstSample *sample = nullptr;
+    int frames = 0;
+
+    // the watchdog below is armed before any pipeline exists and disarmed
+    // on every exit path, hence the flags declared here
+    std::atomic<long long> last_progress{ now_ms() };
+    std::atomic<long long> budget_ms{ STALL_INITIAL_TIMEOUT_MS };
+    std::atomic<bool> stalled{ false };
+    std::atomic<bool> watchdog_stop{ false };
+
+    // A frame which takes far longer than the ones before it means the
+    // encoder is stuck: tear both pipelines down to unblock the push and
+    // abort. Without this the worker would block forever and stop() with it.
+    std::thread watchdog([&] {
+        while (!watchdog_stop.load()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            const long long budget = budget_ms.load();
+            if (budget > 0 && now_ms() - last_progress.load() > budget) {
+                stalled = true;
+                abort_ = true;
+                if (enc_pipe) gst_element_set_state(enc_pipe, GST_STATE_NULL);
+                if (dec_pipe) gst_element_set_state(dec_pipe, GST_STATE_NULL);
+                break;
+            }
+        }
+    });
+    struct WatchdogGuard {
+        std::atomic<bool> &stop;
+        std::thread &thread;
+        ~WatchdogGuard() { stop = true; if (thread.joinable()) thread.join(); }
+    } watchdog_guard{ watchdog_stop, watchdog };
+
+    const std::string stall_message =
+        "Encoding stalled (no progress for too long): the encoder most likely cannot "
+        "handle this resolution on this machine. Try a smaller upscaling factor or "
+        "another codec.";
+
+    try {
+        // Loading the model downloads its files on first use and initializes
+        // Vulkan: seconds during which no frame is produced yet
+        setStatus("Preparing upscaling model...");
+        Upscaler::Engine upscaler( Upscaler::model(options.upscaler) );
+        Log::Info("Transcoder: upscaling with %s", upscaler.describe().c_str());
+        setStatus("");
+
+        if (abort_)
+            throw std::runtime_error("Transcoding stopped by user");
+
+        // -------- decoding side: source -> packed RGB frames
+        GError *err = nullptr;
+#ifndef NDEBUG
+        Log::Info("Transcoder: decoding pipeline '%s'", decode_desc_.c_str());
+#endif
+        dec_pipe = gst_parse_launch(decode_desc_.c_str(), &err);
+        if (!dec_pipe) {
+            const std::string what = err ? err->message : "unknown";
+            if (err) g_error_free(err);
+            throw std::runtime_error("Could not construct decoding pipeline: " + what);
+        }
+        sink = gst_bin_get_by_name(GST_BIN(dec_pipe), "sink");
+
+        // bounded queue, and never drop: every frame must be encoded
+        g_object_set(sink, "sync", FALSE, "drop", FALSE,
+                     "max-buffers", UPSCALE_QUEUE_LENGTH, nullptr);
+        gst_element_set_state(dec_pipe, GST_STATE_PLAYING);
+
+        // the first frame gives the actual geometry and framerate
+        sample = gst_app_sink_pull_sample(GST_APP_SINK(sink));
+        if (!sample)
+            throw std::runtime_error("No video stream in " + input_filename_);
+
+        GstVideoInfo in_info;
+        gst_video_info_from_caps(&in_info, gst_sample_get_caps(sample));
+        const int w = GST_VIDEO_INFO_WIDTH(&in_info);
+        const int h = GST_VIDEO_INFO_HEIGHT(&in_info);
+        int fps_n = GST_VIDEO_INFO_FPS_N(&in_info);
+        int fps_d = GST_VIDEO_INFO_FPS_D(&in_info);
+        if (fps_n <= 0) { fps_n = 30; fps_d = 1; }
+        const int ow = w * upscale_factor_;
+        const int oh = h * upscale_factor_;
+
+        gint64 dur = 0;
+        if (gst_element_query_duration(dec_pipe, GST_FORMAT_TIME, &dur))
+            duration_ = dur;
+
+        // -------- encoding side: upscaled RGB frames -> the chosen profile
+        // The encoders need even dimensions, which an odd source size times
+        // an odd factor does not give: videoscale trims that last pixel.
+        std::string desc = "appsrc name=src format=time ! queue ! videoconvert ! videoscale ! "
+                           "video/x-raw,width=" + std::to_string(ow & ~1) +
+                           ",height=" + std::to_string(oh & ~1) + " ! ";
+        desc += video_encoder_;
+        if (is_image_sequence_)
+            desc += "multifilesink name=encsink location=\"" +
+                    SystemToolkit::full_filename(output_filename_, "%05d.jpg") + "\"";
+        else
+            desc += std::string((options.profile == GstToolkit::VPX_RT) ? "webmmux" : "qtmux") +
+                    " name=mux ! filesink name=encsink location=\"" + output_filename_ + "\"";
+#ifndef NDEBUG
+        Log::Info("Transcoder: encoding pipeline '%s'", desc.c_str());
+#endif
+        enc_pipe = gst_parse_launch(desc.c_str(), &err);
+        if (!enc_pipe) {
+            const std::string what = err ? err->message : "unknown";
+            if (err) g_error_free(err);
+            throw std::runtime_error("Could not construct encoding pipeline: " + what);
+        }
+        src = gst_bin_get_by_name(GST_BIN(enc_pipe), "src");
+
+        GstVideoInfo out_info;
+        gst_video_info_set_format(&out_info, GST_VIDEO_FORMAT_RGB, ow, oh);
+        out_info.fps_n = fps_n;
+        out_info.fps_d = fps_d;
+        GstCaps *out_caps = gst_video_info_to_caps(&out_info);
+        g_object_set(src, "caps", out_caps, nullptr);
+        gst_caps_unref(out_caps);
+        // block=true with a budget of a few frames applies backpressure, so
+        // pushed frames cannot pile up if the encoder lags behind
+        g_object_set(src, "block", TRUE,
+                     "max-bytes", (guint64) out_info.size * UPSCALE_QUEUE_LENGTH, nullptr);
+        gst_element_set_state(enc_pipe, GST_STATE_PLAYING);
+
+        // -------- frame loop
+        std::vector<unsigned char> in_rgb((size_t) w * h * 3);
+        std::vector<unsigned char> out_rgb((size_t) ow * oh * 3);
+
+        while (sample && !abort_) {
+
+            // decoded frame -> tightly packed RGB (rows may be padded)
+            GstVideoInfo sample_info;
+            gst_video_info_from_caps(&sample_info, gst_sample_get_caps(sample));
+            GstVideoFrame vframe;
+            gst_video_frame_map(&vframe, &sample_info, gst_sample_get_buffer(sample), GST_MAP_READ);
+            const guint8 *pixels = (const guint8 *) GST_VIDEO_FRAME_PLANE_DATA(&vframe, 0);
+            const int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&vframe, 0);
+            for (int y = 0; y < h; y++)
+                memcpy(&in_rgb[(size_t) y * w * 3], pixels + (size_t) y * stride, (size_t) w * 3);
+            const GstClockTime pts = GST_BUFFER_PTS(gst_sample_get_buffer(sample));
+            gst_video_frame_unmap(&vframe);
+            gst_sample_unref(sample);
+            sample = nullptr;
+
+            // the expensive part: Real-ESRGAN on the GPU
+            upscaler.process(in_rgb.data(), w, h, out_rgb.data());
+
+            // push the upscaled frame (restoring the encoder's row alignment)
+            GstBuffer *buf = gst_buffer_new_allocate(nullptr, out_info.size, nullptr);
+            gst_buffer_add_video_meta(buf, GST_VIDEO_FRAME_FLAG_NONE, GST_VIDEO_FORMAT_RGB, ow, oh);
+            GstMapInfo map;
+            gst_buffer_map(buf, &map, GST_MAP_WRITE);
+            const int ostride = GST_VIDEO_INFO_PLANE_STRIDE(&out_info, 0);
+            for (int y = 0; y < oh; y++)
+                memcpy(map.data + (size_t) y * ostride, &out_rgb[(size_t) y * ow * 3], (size_t) ow * 3);
+            gst_buffer_unmap(buf, &map);
+
+            GST_BUFFER_PTS(buf) = gst_util_uint64_scale(frames, GST_SECOND * fps_d, fps_n);
+            GST_BUFFER_DURATION(buf) = gst_util_uint64_scale(1, GST_SECOND * fps_d, fps_n);
+            frames++;
+            if (gst_app_src_push_buffer(GST_APP_SRC(src), buf) != GST_FLOW_OK)
+                throw std::runtime_error(stalled ? stall_message
+                                                 : "Failed to push frame to the encoder");
+
+            // the frame completed: record progress and, from the first
+            // couple of frames, arm the watchdog on that baseline
+            const long long tnow = now_ms();
+            const long long frame_ms = tnow - last_progress.load();
+            last_progress = tnow;
+            if (frames <= 2)
+                budget_ms = std::max<long long>(STALL_TIMEOUT_FACTOR * frame_ms, STALL_MIN_TIMEOUT_MS);
+
+            if (GST_CLOCK_TIME_IS_VALID(pts))
+                position_ = pts;
+
+            // same safety cap as the pad probe of the non-upscaled path
+            if (is_image_sequence_ && frames >= MAX_JPEG_FRAMES) {
+                Log::Warning("Transcoder: reached maximum of %d images; stopping.", MAX_JPEG_FRAMES);
+                break;
+            }
+
+            sample = gst_app_sink_pull_sample(GST_APP_SINK(sink));
+        }
+        if (sample) {
+            gst_sample_unref(sample);
+            sample = nullptr;
+        }
+
+        if (abort_)
+            throw std::runtime_error(stalled ? stall_message : "Transcoding stopped by user");
+
+        // -------- finalize: end of stream, and let the muxer write its index
+        gst_app_src_end_of_stream(GST_APP_SRC(src));
+        GstBus *bus = gst_element_get_bus(enc_pipe);
+        GstMessage *msg = gst_bus_timed_pop_filtered(bus, GST_CLOCK_TIME_NONE,
+                              (GstMessageType)(GST_MESSAGE_EOS | GST_MESSAGE_ERROR));
+        const bool eos = msg && GST_MESSAGE_TYPE(msg) == GST_MESSAGE_EOS;
+        if (!eos) {
+            GError *e = nullptr;
+            if (msg)
+                gst_message_parse_error(msg, &e, nullptr);
+            const std::string what = e ? e->message : "unknown";
+            if (e) g_error_free(e);
+            if (msg) gst_message_unref(msg);
+            gst_object_unref(bus);
+            throw std::runtime_error("Encoding error: " + what);
+        }
+        gst_message_unref(msg);
+        gst_object_unref(bus);
+
+        Log::Info("Transcoder: transcoding of '%s' completed (%d frames upscaled)",
+                  output_filename_.c_str(), frames);
+        success_ = true;
+    }
+    catch (const std::exception &e) {
+        setError(e.what());
+        setStatus("");
+        Log::Warning("Transcoder: %s", e.what());
+        success_ = false;
+        if (sample)
+            gst_sample_unref(sample);
+    }
+
+    // The watchdog holds a reference to both pipelines: it has to be stopped
+    // and joined before they are freed below. The guard above only covers an
+    // exception escaping this function altogether.
+    watchdog_stop = true;
+    if (watchdog.joinable())
+        watchdog.join();
+
+    if (dec_pipe) {
+        gst_element_set_state(dec_pipe, GST_STATE_NULL);
+        if (sink) gst_object_unref(sink);
+        gst_object_unref(dec_pipe);
+    }
+    if (enc_pipe) {
+        gst_element_set_state(enc_pipe, GST_STATE_NULL);
+        if (src) gst_object_unref(src);
+        gst_object_unref(enc_pipe);
+    }
+
+    finished_ = true;
 }

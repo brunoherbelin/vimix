@@ -1113,6 +1113,12 @@ void MediaPlayer::close()
     }
     write_index_ = 0;
     last_index_ = 0;
+    
+    // cleanup opengl texture
+    if (textureindex_) {
+        glDeleteTextures(1, &textureindex_);
+        textureindex_ = 0;
+    }
 
     // clean up GST
     if (pipeline_ != nullptr) {

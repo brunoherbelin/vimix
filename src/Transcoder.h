@@ -1,11 +1,15 @@
 #ifndef TRANSCODER_H
 #define TRANSCODER_H
 
+#include <atomic>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <gst/gst.h>
 #include <gst/pbutils/pbutils.h>
 
 #include "Toolkit/GstToolkit.h"
+#include "Upscaler.h"
 
 /**
  * @brief Configuration options for transcoding
@@ -14,16 +18,19 @@ struct TranscoderOptions {
     GstToolkit::Profile profile;  ///< Encoding profile (quality/codec settings)
     bool force_keyframes;         ///< Force keyframe at every second (for easier seeking/editing)
     bool force_no_audio;          ///< Force removal of audio stream (create video-only output)
+    std::string upscaler;         ///< Name of an UpscalerModel; Upscaler::NONE for no upscaling
 
     /**
      * @brief Default constructor with sensible defaults
      */
     TranscoderOptions(GstToolkit::Profile profile = GstToolkit::H264_RT
                     , bool keyframes = false
-                    , bool no_audio = false)
-        : force_keyframes(keyframes)
-        , profile(profile)
+                    , bool no_audio = false
+                    , const std::string &upscaler = Upscaler::NONE)
+        : profile(profile)
+        , force_keyframes(keyframes)
         , force_no_audio(no_audio)
+        , upscaler(upscaler)
     {}
 };
 
@@ -33,6 +40,13 @@ struct TranscoderOptions {
  * Re-encodes a video file using one of GstToolkit's encoding profiles.
  * Each instance handles transcoding of a single input file to an output file
  * (or, for GstToolkit::JPEG_MULTI, a numbered sequence of still images).
+ *
+ * When TranscoderOptions names an upscaling model, every frame is enlarged
+ * on the GPU with Real-ESRGAN (ncnn / Vulkan) before being encoded. That
+ * inference cannot live inside a gstreamer pipeline, so this mode splits
+ * decoding and encoding into two pipelines joined by a worker thread, and
+ * the output is video only (any audio stream is dropped). Either way the
+ * class is driven identically: start(), then poll finished() / progress().
  */
 class Transcoder
 {
@@ -59,8 +73,12 @@ public:
 
     /**
      * @brief Start the transcoding process with optional configuration
-     * @param options Transcoding options (keyframes, tuning, etc.)
+     * @param options Transcoding options (profile, keyframes, upscaling, etc.)
      * @return true if transcoding started successfully, false otherwise
+     *
+     * When upscaling, the work happens in a background thread: a true here
+     * only means the options are valid and the file could be opened, and a
+     * later failure is reported through finished() / success() / error().
      */
     bool start(const TranscoderOptions& options = TranscoderOptions());
 
@@ -107,7 +125,17 @@ public:
      * @brief Get error message if transcoding failed
      * @return const std::string& Error message, empty if no error
      */
-    const std::string& error() const { return error_message_; }
+    std::string error() const;
+
+    /**
+     * @brief Get a short description of what is going on right now
+     * @return std::string Status message, empty when simply transcoding
+     *
+     * Used to tell the user about the long preliminary steps of upscaling
+     * (downloading the model, initializing the GPU) before any frame is
+     * produced and progress() starts to move.
+     */
+    std::string status() const;
 
     /**
      * @brief Check if the output is an image sequence
@@ -124,17 +152,37 @@ private:
     // finished_/success_/error_message_ accordingly
     void pollBus();
 
+    // Background upscaling: decode -> Real-ESRGAN -> encode, run in worker_
+    void runUpscale(TranscoderOptions options);
+
+    // Record the outcome of the worker (thread safe)
+    void setError(const std::string &message);
+    void setStatus(const std::string &message);
+
     std::string input_filename_;
     std::string output_filename_;
+
+    // written by the worker thread, read by the UI thread
+    mutable std::mutex message_mutex_;
     std::string error_message_;
+    std::string status_message_;
 
     GstElement *pipeline_;
     GstBus *bus_;
 
-    bool started_;
     bool is_image_sequence_;  // true for GstToolkit::JPEG_MULTI (numbered images, not a muxed file)
-    bool finished_;
-    bool success_;
+    std::atomic<bool> started_;
+    std::atomic<bool> finished_;
+    std::atomic<bool> success_;
+
+    // upscaling mode only: worker thread and the progress it publishes
+    std::thread worker_;
+    std::atomic<bool> abort_;
+    std::atomic<gint64> duration_;
+    std::atomic<gint64> position_;
+    std::string decode_desc_;     // source -> RGB frames, built in start()
+    std::string video_encoder_;   // encoder fragment for the profile, chosen in start()
+    int upscale_factor_;          // 1 when not upscaling
 };
 
 #endif // TRANSCODER_H
