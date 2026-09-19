@@ -81,33 +81,93 @@ bool ComboCodec(const char *label, int *profile, int width, int height)
 }
 
 
-// Combo box to select a Real-ESRGAN upscaling model, showing only the models
-// fast enough to run on every frame of a video, and disabling those whose
-// upscaled resolution the encoder of the given profile could not accept: the
-// factor comes with the model, so a x4 model on a HD source demands 8K from
-// the encoder. The selection is a model name rather than an index, so that
-// reordering the catalogue never silently changes a stored preference.
-// Returns true only if the user selected a model (as ImGui::Combo does).
-bool ComboUpscaler(const char *label, std::string *model, int width, int height, int profile)
+// Combo box to select a still image format, disabling a format whose encoder
+// is not installed on this system (webpenc lives in gst-plugins-bad and can
+// be absent) and one which could not hold the given resolution.
+// Returns true only if the user selected a format (as ImGui::Combo does).
+bool ComboImageFormat(const char *label, int *format, int width, int height)
 {
     bool ret = false;
 
-    // an unknown name (an older setting, a model since removed) reads as no
-    // upscaling, which is also what an empty preference means
-    const UpscalerModel &current = Upscaler::model(*model);
-    *model = current.name;
+    // make sure the current format is valid
+    if ( *format < GstToolkit::IMAGE_PNG || *format >= GstToolkit::IMAGE_INVALID )
+        *format = GstToolkit::IMAGE_PNG;
 
-    if (ImGui::BeginCombo(label, current.name)) {
+    if (ImGui::BeginCombo(label, GstToolkit::image_name[*format])) {
+        for (int i = GstToolkit::IMAGE_PNG; i < GstToolkit::IMAGE_INVALID; ++i) {
+            const GstToolkit::Image image = (GstToolkit::Image) i;
+
+            // an absent encoder and a resolution the format cannot hold both
+            // disable the entry; explain which, in the tooltip
+            std::string unavailable;
+            if (GstToolkit::getImageEncodingPipeline(image).empty())
+                unavailable = std::string(GstToolkit::image_name[i]) +
+                              " is not available: its encoder is not installed on this system.";
+            else
+                unavailable = GstToolkit::unsupportedImageResolution(image, width, height);
+
+            if (ImGui::Selectable( GstToolkit::image_name[i], *format == i,
+                                   unavailable.empty() ? ImGuiSelectableFlags_None
+                                                       : ImGuiSelectableFlags_Disabled )) {
+                *format = i;
+                ret = true;
+            }
+            if (!unavailable.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGuiToolkit::ToolTip( unavailable.c_str() );
+        }
+        ImGui::EndCombo();
+    }
+
+    return ret;
+}
+
+
+// Which models are worth offering for what is being encoded. A video needs
+// a network fast enough to run on every one of its frames, which rules the
+// heavy ones out. An image instead needs a network which handles an alpha
+// channel correctly, because a still can carry transparency and several of
+// the models return noise rather than a flattened image when given one --
+// the per-model measurements are recorded in Upscaler.cpp. Speed does not
+// disqualify a model here: seconds of inference is a fine price for the one
+// frame of an image.
+static bool suitableUpscaler(const UpscalerModel &m, bool is_image)
+{
+    return is_image ? m.alpha : m.video;
+}
+
+// Combo box to select a Real-ESRGAN upscaling model, disabling those whose
+// upscaled resolution the target codec could not accept: the factor comes
+// with the model, so a x4 model on a HD source demands 8K from the encoder.
+// The selection is a model name rather than an index, so that reordering the
+// catalogue never silently changes a stored preference.
+// Returns true only if the user selected a model (as ImGui::Combo does).
+bool ComboUpscaler(const char *label, std::string *model, int width, int height,
+                   const TranscoderCodec &codec)
+{
+    bool ret = false;
+
+    const bool is_image = std::holds_alternative<GstToolkit::Image>(codec);
+
+    // an unknown name (an older setting, a model since removed) reads as no
+    // upscaling, which is also what an empty preference means. A model which
+    // is valid but not suitable here -- the preference was last set on the
+    // other kind of source -- reads the same way, so that it can never reach
+    // the Transcoder just because it was left selected.
+    const UpscalerModel &current = Upscaler::model(*model);
+    *model = suitableUpscaler(current, is_image) ? current.name : Upscaler::NONE;
+
+    if (ImGui::BeginCombo(label, model->c_str())) {
         for (const UpscalerModel &m : Upscaler::models()) {
-            // the heavy networks take seconds per frame: they belong to
-            // single image upscaling, not to a video stream
-            if (!m.video)
+            if (!suitableUpscaler(m, is_image))
                 continue;
 
+            const int w = width * m.factor;
+            const int h = height * m.factor;
             const std::string unsupported =
-                GstToolkit::unsupportedResolution((GstToolkit::Profile) profile,
-                                                  width * m.factor, height * m.factor,
-                                                  Settings::application.render.gpu_decoding);
+                is_image
+                    ? GstToolkit::unsupportedImageResolution(std::get<GstToolkit::Image>(codec), w, h)
+                    : GstToolkit::unsupportedResolution(std::get<GstToolkit::Profile>(codec), w, h,
+                                                        Settings::application.render.gpu_decoding);
             if (ImGui::Selectable(m.name, *model == m.name,
                                   unsupported.empty() ? ImGuiSelectableFlags_None
                                                       : ImGuiSelectableFlags_Disabled)) {

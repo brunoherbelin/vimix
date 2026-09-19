@@ -373,6 +373,10 @@ struct Application
 
     // transcoding options: [0] force_keyframes, [1] GstToolkit::Profile, [2] force_no_audio
     int transcode_options[3];
+    // GstToolkit::Image format for transcoding a still image; kept apart from
+    // transcode_options[1] so that switching between an image source and a
+    // video source does not make one selection overwrite the other
+    int transcode_image_format;
     // name of the selected UpscalerModel (Upscaler::NONE for no upscaling)
     std::string transcode_upscaler;
     bool export_options[3];
@@ -416,6 +420,7 @@ struct Application
         transcode_options[0] = 1;  // force_keyframes
         transcode_options[1] = 0;  // GstToolkit::H264_RT
         transcode_options[2] = 0;  // force_no_audio
+        transcode_image_format = 0; // GstToolkit::IMAGE_PNG
         transcode_upscaler = "";   // no upscaling (Upscaler::NONE)
         export_options[0] = true;
         export_options[1] = false;

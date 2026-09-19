@@ -21,6 +21,8 @@
 
 #include <string>
 
+#include "Transcoder.h"
+
 // Selection of a video encoding profile in the Navigator pannels:
 // the encoders have different limitations (e.g. GPU H264 is limited to 4K),
 // tested with GstToolkit to disable or replace a profile.
@@ -34,11 +36,19 @@ bool ValidateCodecResolution(int *profile, int width, int height);
 // Returns true only if the user selected a profile (as ImGui::Combo does).
 bool ComboCodec(const char *label, int *profile, int width, int height);
 
-// Combo box to select a Real-ESRGAN upscaling model by name, listing only
-// the models fast enough for video and disabling those whose upscaled
-// resolution the given profile could not encode (the model fixes the
-// factor, so a x4 model on a HD source asks for 8K out of the encoder).
+// Combo box to select a still image format, disabling the formats whose
+// encoder is not installed, or which could not hold the given resolution.
+// Returns true only if the user selected a format (as ImGui::Combo does).
+bool ComboImageFormat(const char *label, int *format, int width, int height);
+
+// Combo box to select a Real-ESRGAN upscaling model by name, disabling those
+// whose upscaled resolution the target codec could not encode (the model
+// fixes the factor, so a x4 model on a HD source asks for 8K out of the
+// encoder). The codec also decides which models are listed: encoding a video
+// hides the heavy networks, which take seconds per frame, while encoding a
+// single image offers all of them -- that cost is paid once.
 // Returns true only if the user selected a model (as ImGui::Combo does).
-bool ComboUpscaler(const char *label, std::string *model, int width, int height, int profile);
+bool ComboUpscaler(const char *label, std::string *model, int width, int height,
+                   const TranscoderCodec &codec);
 
 #endif /* NAVIGATORCODEC_H */

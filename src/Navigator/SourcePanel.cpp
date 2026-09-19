@@ -43,15 +43,112 @@
 #include "NavigatorCodec.h"
 #include "SourcePanel.h"
 
+// Transcoding options for a video source: codec, upscaling model, keyframes
+// and audio. Fills `options` with what the user has selected; `enabled` is
+// false while a transcoding is running, which freezes the switches.
+static void renderTranscodingPanelVideo(MediaPlayer *mp, bool enabled, TranscoderOptions &options)
+{
+    // transcoding is done at the resolution of the source video: the user
+    // preference is kept, but H265 is used locally if H264 cannot encode it
+    const int source_width = (int) mp->width();
+    const int source_height = (int) mp->height();
+    int transcode_profile = Settings::application.transcode_options[1];
+
+    // Codec
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if (ComboCodec("##CodecTranscode", &transcode_profile, source_width, source_height))
+        // the user selected a codec: change the preference
+        Settings::application.transcode_options[1] = transcode_profile;
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Codec")) {
+        Settings::application.transcode_options[1] = GstToolkit::H264_RT;
+        transcode_profile = GstToolkit::H264_RT;
+        ValidateCodecResolution(&transcode_profile, source_width, source_height);
+    }
+
+    // Upscaling model, offered only when this build has the ncnn Vulkan
+    // backend which performs the inference
+    std::string transcode_upscaler = Settings::application.transcode_upscaler;
+    if (Upscaler::available()) {
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ComboUpscaler("##UpscalerTranscode", &transcode_upscaler, source_width, source_height,
+                          static_cast<GstToolkit::Profile>(transcode_profile)))
+            // the user selected a model: change the preference
+            Settings::application.transcode_upscaler = transcode_upscaler;
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Upscale"))
+            Settings::application.transcode_upscaler = transcode_upscaler = Upscaler::NONE;
+    }
+    const int upscale_factor = Upscaler::model(transcode_upscaler).factor;
+
+    ImGui::Spacing();
+    // Keyframes
+    bool force_keyframes = Settings::application.transcode_options[0] != 0;
+    ImGuiToolkit::ButtonSwitch( "Backward playback", &force_keyframes,
+    "Optimize for backward playback by adding keyframes",
+    enabled && transcode_profile != GstToolkit::JPEG_MULTI);
+    Settings::application.transcode_options[0] = force_keyframes ? 1 : 0;
+    // audio: upscaling splits the pipeline around the GPU inference,
+    // which no audio stream can cross, so the switch is forced on
+    bool force_no_audio = Settings::application.transcode_options[2] != 0 || upscale_factor > 1;
+    ImGuiToolkit::ButtonSwitch( "Remove audio", &force_no_audio,
+    upscale_factor > 1 ? "Audio tracks cannot be kept when upscaling"
+                       : "Do not include audio tracks in produced video",
+    enabled && transcode_profile != GstToolkit::JPEG_MULTI && upscale_factor < 2);
+    if (upscale_factor < 2)
+        Settings::application.transcode_options[2] = force_no_audio ? 1 : 0;
+
+    options = TranscoderOptions( static_cast<GstToolkit::Profile>(transcode_profile),
+                                 force_keyframes, force_no_audio, transcode_upscaler );
+}
+
+// Transcoding options for a still image source: format and upscaling model.
+// Keyframes, audio and backward playback have no meaning for one image and
+// are not shown.
+static void renderTranscodingPanelImage(MediaPlayer *mp, bool, TranscoderOptions &options)
+{
+    const int source_width = (int) mp->width();
+    const int source_height = (int) mp->height();
+    int transcode_format = Settings::application.transcode_image_format;
+
+    // Image format
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    if (ComboImageFormat("##FormatTranscode", &transcode_format, source_width, source_height))
+        // the user selected a format: change the preference
+        Settings::application.transcode_image_format = transcode_format;
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Format")) {
+        Settings::application.transcode_image_format = GstToolkit::IMAGE_PNG;
+        transcode_format = GstToolkit::IMAGE_PNG;
+    }
+
+    // Upscaling model. Every model is offered here, including the heavy
+    // networks hidden from the video panel: seconds per frame is a fine
+    // price to pay for the single frame of an image.
+    std::string transcode_upscaler = Settings::application.transcode_upscaler;
+    if (Upscaler::available()) {
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ComboUpscaler("##UpscalerTranscode", &transcode_upscaler, source_width, source_height,
+                          static_cast<GstToolkit::Image>(transcode_format)))
+            Settings::application.transcode_upscaler = transcode_upscaler;
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Upscale"))
+            Settings::application.transcode_upscaler = transcode_upscaler = Upscaler::NONE;
+    }
+
+    options = TranscoderOptions( static_cast<GstToolkit::Image>(transcode_format),
+                                 transcode_upscaler );
+}
+
 static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
 {
     static Transcoder *transcoder = nullptr;
     static guint64 transcode_id = 0;
     bool ret = false;
 
-    if (mp == nullptr || mp->isImage())
+    if (mp == nullptr)
         return ret;
-        
+
     if (id != transcode_id && transcoder != nullptr) {
         // if source changed while transcoding;
         //    show a disabled transcoding panel
@@ -71,67 +168,19 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
 
     if (Settings::application.pannel_source[2]) {
 
-        // transcoding is done at the resolution of the source video: the user
-        // preference is kept, but H265 is used locally if H264 cannot encode it
-        const int source_width = (int) mp->width();
-        const int source_height = (int) mp->height();
-        int transcode_profile = Settings::application.transcode_options[1];
-
-        // Transcoding options
-        // Codec
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ComboCodec("##CodecTranscode", &transcode_profile, source_width, source_height))
-            // the user selected a codec: change the preference
-            Settings::application.transcode_options[1] = transcode_profile;
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (ImGuiToolkit::TextButton("Codec")) {
-            Settings::application.transcode_options[1] = GstToolkit::H264_RT;
-            transcode_profile = GstToolkit::H264_RT;
-            ValidateCodecResolution(&transcode_profile, source_width, source_height);
-        }
-        // Upscaling model, offered only when this build has the ncnn Vulkan
-        // backend which performs the inference
-        std::string transcode_upscaler = Settings::application.transcode_upscaler;
-        if (Upscaler::available()) {
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            if (ComboUpscaler("##UpscalerTranscode", &transcode_upscaler, source_width, source_height,
-                              transcode_profile))
-                // the user selected a model: change the preference
-                Settings::application.transcode_upscaler = transcode_upscaler;
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::TextButton("Upscale"))
-                Settings::application.transcode_upscaler = transcode_upscaler = Upscaler::NONE;
-        }
-        const int upscale_factor = Upscaler::model(transcode_upscaler).factor;
-
-        ImGui::Spacing();
-        // Keyframes
-        bool force_keyframes = Settings::application.transcode_options[0] != 0;
-        ImGuiToolkit::ButtonSwitch( "Backward playback", &force_keyframes,
-        "Optimize for backward playback by adding keyframes", 
-        transcoder == nullptr && transcode_profile != GstToolkit::JPEG_MULTI);
-        Settings::application.transcode_options[0] = force_keyframes ? 1 : 0;
-        // audio: upscaling splits the pipeline around the GPU inference,
-        // which no audio stream can cross, so the switch is forced on
-        bool force_no_audio = Settings::application.transcode_options[2] != 0 || upscale_factor > 1;
-        ImGuiToolkit::ButtonSwitch( "Remove audio", &force_no_audio,
-        upscale_factor > 1 ? "Audio tracks cannot be kept when upscaling"
-                           : "Do not include audio tracks in produced video",
-        transcoder == nullptr && transcode_profile != GstToolkit::JPEG_MULTI && upscale_factor < 2);
-        if (upscale_factor < 2)
-            Settings::application.transcode_options[2] = force_no_audio ? 1 : 0;
+        // A still image is re-encoded to another image format, a video to a
+        // codec: only the options differ, everything around them is common.
+        TranscoderOptions transcode_options;
+        if (mp->isImage())
+            renderTranscodingPanelImage(mp, transcoder == nullptr, transcode_options);
+        else
+            renderTranscodingPanelVideo(mp, transcoder == nullptr, transcode_options);
 
         // Start transcoding if not already started for current source
         if (transcoder == nullptr) {
             if (ImGui::Button(ICON_FA_COGS " Transcode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
                 transcode_id = id;
                 transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
-                TranscoderOptions transcode_options(
-                    static_cast<GstToolkit::Profile>(transcode_profile),
-                    force_keyframes,
-                    force_no_audio,
-                    transcode_upscaler
-                );
                 if (!transcoder->start(transcode_options)) {
                     Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
                     delete transcoder;
@@ -140,13 +189,22 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
                 }
             }
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Re-encode the source video using the specified codec and options.\n\n "
-                    ICON_FA_FILM "  The new file will replace the one in the source "
-                    "once transcoding is successfully completed. "
-                    "The current file is left unchanged.\n\n "
-                    ICON_FA_MAGIC "  An upscaling model enlarges every frame with a neural "
-                    "network on the GPU. This is much slower than plain transcoding, and "
-                    "the audio track is not kept.");
+            if (mp->isImage())
+                ImGuiToolkit::HelpToolTip("Re-encode the source image in the specified format.\n\n "
+                        ICON_FA_FILM "  The new file will replace the one in the source "
+                        "once transcoding is successfully completed. "
+                        "The current file is left unchanged.\n\n "
+                        ICON_FA_MAGIC "  An upscaling model enlarges the image with a neural "
+                        "network on the GPU. Every model is offered here: the slowest ones "
+                        "give the best result, and only have one frame to process.");
+            else
+                ImGuiToolkit::HelpToolTip("Re-encode the source video using the specified codec and options.\n\n "
+                        ICON_FA_FILM "  The new file will replace the one in the source "
+                        "once transcoding is successfully completed. "
+                        "The current file is left unchanged.\n\n "
+                        ICON_FA_MAGIC "  An upscaling model enlarges every frame with a neural "
+                        "network on the GPU. This is much slower than plain transcoding, and "
+                        "the audio track is not kept.");
         }
 
         if (transcoder != nullptr) {

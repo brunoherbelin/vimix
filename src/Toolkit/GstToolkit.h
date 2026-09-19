@@ -78,6 +78,45 @@ Profile alternativeProfile(Profile p, int width, int height, bool hardware);
 // message (naming the encoder, its limit and an alternative profile).
 std::string unsupportedResolution(Profile p, int width, int height, bool hardware);
 
+
+// Still image encoding formats, used to transcode a single image (as opposed
+// to the Profile enum above, which encodes a stream of frames). Kept separate
+// from Profile so that neither can be passed where the other is expected, and
+// so that helpers iterating the video profiles (alternativeProfile) never
+// stray into still formats.
+typedef enum {
+    IMAGE_PNG = 0,
+    IMAGE_JPEG,
+    IMAGE_WEBP,
+    IMAGE_INVALID
+} Image;
+
+extern const char* image_name[IMAGE_INVALID];
+
+// gst pipeline fragment (encoder ! , e.g. "pngenc compression-level=9 ! ") for
+// the given still format, or an empty string when its encoder is not installed
+// on this system. Probed once, as getEncodingPipeline() does for video.
+std::string getImageEncodingPipeline(Image i);
+
+// Filename extension for the given still format, without the dot ("png").
+const char* imageFileExtension(Image i);
+
+// True if the given still format can store an alpha channel. JPEG cannot,
+// so transparency is dropped when encoding to it; PNG and WEBP can, and a
+// source carrying alpha should be kept in RGBA all the way to the encoder.
+bool imageSupportsAlpha(Image i);
+
+// Test if the given still format can hold an image of this size. Unlike the
+// video encoders, these declare unbounded caps (width/height up to INT_MAX)
+// while the file formats themselves are limited, so the limits come from a
+// table rather than from the element. A width or height of zero means the
+// resolution is unknown: supported.
+bool supportsImageResolution(Image i, int width, int height);
+
+// Empty string if the resolution fits the format, or an explanatory error
+// message naming the format, its limit and a format which would fit.
+std::string unsupportedImageResolution(Image i, int width, int height);
+
 // Keyframe interval (in frames) for smooth backward playback of video
 // encoded with the given profile at the given frame size. 
 // This is a static estimate from those factors, not a benchmark.

@@ -38,6 +38,7 @@ struct UpscalerModel {
     const char *bin;         ///< ncnn .bin filename in the model repository
     int factor;              ///< upscaling factor (1 = none, else 2, 3 or 4)
     bool video;              ///< fast enough to run on every frame of a video
+    bool alpha;              ///< produces a correct image from an RGBA source
 };
 
 namespace Upscaler
@@ -53,7 +54,8 @@ extern const char *NONE;
  *
  * Enumerate this to build a UI; select one by its @c name. Models with
  * @c video false are far too slow to run on a video stream and should only
- * be offered for single images.
+ * be offered for single images. Models with @c alpha false must never be
+ * given a transparent image: see the note on that field in Upscaler.cpp.
  */
 const std::vector<UpscalerModel> &models();
 
@@ -94,12 +96,19 @@ public:
 
     /**
      * @brief Upscale one frame
-     * @param in Tightly packed interleaved RGB, w x h
-     * @param out Tightly packed interleaved RGB, (w x factor) x (h x factor)
+     * @param in Tightly packed interleaved pixels, w x h
+     * @param out Tightly packed interleaved pixels, (w x factor) x (h x factor)
+     * @param channels 3 for RGB, 4 for RGBA
+     *
+     * With 4 channels the network still sees only the colour: the alpha is
+     * split off and enlarged by a bicubic interpolation instead. A hard
+     * transparency edge therefore comes out smoothly interpolated rather
+     * than sharpened, which is the intended behaviour -- the model has no
+     * business inventing detail in a matte.
      *
      * Throws std::runtime_error if the inference fails.
      */
-    void process(const unsigned char *in, int w, int h, unsigned char *out);
+    void process(const unsigned char *in, int w, int h, unsigned char *out, int channels = 3);
 
     /**
      * @brief Description of the device and tiling used, for logging

@@ -523,6 +523,116 @@ std::string GstToolkit::unsupportedResolution(GstToolkit::Profile profile, int w
     return msg.str();
 }
 
+
+// ---------------------------------------------------------- still images
+
+const char* GstToolkit::image_name[GstToolkit::IMAGE_INVALID] = {
+    "PNG  (lossless)",
+    "JPEG (quality)",
+    "WEBP (compressed)"
+};
+
+namespace {
+
+// Encoder element and pipeline fragment per still format, plus the maximum
+// dimension the *file format* accepts. The elements all advertise unbounded
+// caps (width/height up to INT_MAX), so unlike the video encoders their real
+// limits cannot be read back with element_max_frame_size(): PNG stores its
+// dimensions as 32 bit integers, JPEG as 16 bit (65535), and WEBP's bitstream
+// caps both axes at 16383 -- reachable by upscaling a 4096 pixel photo x4.
+struct ImageEncoder {
+    const char *element;
+    const char *pipeline;
+    const char *extension;
+    int max_size;
+    bool alpha;     // the file format can store an alpha channel
+};
+
+const ImageEncoder kImageEncoders[GstToolkit::IMAGE_INVALID] = {
+    { "pngenc",  "pngenc compression-level=9 ! ",            "png",  0,     true  },
+    { "jpegenc", "jpegenc quality=95 idct-method=float ! ",  "jpg",  65535, false },
+    { "webpenc", "webpenc lossless=false quality=90 speed=4 ! ", "webp", 16383, true }
+};
+
+bool valid_image(GstToolkit::Image i)
+{
+    return i >= GstToolkit::IMAGE_PNG && i < GstToolkit::IMAGE_INVALID;
+}
+
+// Still format closest to the given one which can hold an image of this size:
+// the given format if it can, else the first format which can.
+GstToolkit::Image alternative_image(GstToolkit::Image image, int width, int height)
+{
+    if ( GstToolkit::supportsImageResolution(image, width, height) )
+        return image;
+
+    for (int i = GstToolkit::IMAGE_PNG; i < GstToolkit::IMAGE_INVALID; ++i) {
+        if ( GstToolkit::supportsImageResolution((GstToolkit::Image) i, width, height) )
+            return (GstToolkit::Image) i;
+    }
+
+    return image;
+}
+
+}
+
+std::string GstToolkit::getImageEncodingPipeline(GstToolkit::Image image)
+{
+    if (!valid_image(image))
+        return std::string();
+
+    // an encoder can be missing (webpenc lives in gst-plugins-bad); report no
+    // pipeline rather than building one which would fail at gst_parse_launch
+    if (!GstToolkit::has_feature(kImageEncoders[image].element))
+        return std::string();
+
+    return kImageEncoders[image].pipeline;
+}
+
+const char* GstToolkit::imageFileExtension(GstToolkit::Image image)
+{
+    return valid_image(image) ? kImageEncoders[image].extension : "png";
+}
+
+bool GstToolkit::imageSupportsAlpha(GstToolkit::Image image)
+{
+    return valid_image(image) && kImageEncoders[image].alpha;
+}
+
+bool GstToolkit::supportsImageResolution(GstToolkit::Image image, int width, int height)
+{
+    if (!valid_image(image))
+        return false;
+
+    // zero means no limit for this format, or an unknown resolution
+    const int max_size = kImageEncoders[image].max_size;
+    if (max_size > 0 && (width > max_size || height > max_size))
+        return false;
+
+    return true;
+}
+
+std::string GstToolkit::unsupportedImageResolution(GstToolkit::Image image, int width, int height)
+{
+    if ( supportsImageResolution(image, width, height) )
+        return std::string();
+
+    if (!valid_image(image))
+        return std::string("Unknown image format.");
+
+    std::ostringstream msg;
+    msg << image_name[image] << " cannot store " << width << " x " << height
+        << " because the format is limited to " << kImageEncoders[image].max_size
+        << " pixels in each direction.";
+
+    // suggest another format if one can hold this resolution
+    const GstToolkit::Image alternative = alternative_image(image, width, height);
+    if (alternative != image)
+        msg << " Select " << image_name[alternative] << " instead.";
+
+    return msg.str();
+}
+
 int GstToolkit::getPlayBackwardGop(GstToolkit::Profile profile, int width, int height)
 {
     const int default_interval = 30;                 // profile default, ~1s @ 30fps

@@ -45,38 +45,54 @@ const char *kModelBaseUrl =
 
 // Curated from github.com/upscayl/custom-models (the pinned commit above).
 // To add a model, list its exact .param/.bin filenames from the repository
-// and its upscale factor; set video false unless it is fast enough to run
-// on every frame of a video stream (the heavy networks below take seconds
-// per frame, which only makes sense for a single image).
+// and its upscale factor, then measure the two capability flags -- neither
+// can be guessed from the size or the architecture:
+//
+//   video  fast enough to run on every frame of a video stream. The 33MB and
+//          66MB networks take seconds per frame, which only makes sense for
+//          a single image.
+//
+//   alpha  produces a correct image from an RGBA source. Real-ESRGAN accepts
+//          a 4 channel input and routes the transparency around the network,
+//          enlarging it bicubically, but that path is broken for several of
+//          these models: they return noise in *both* colour and alpha, not
+//          merely a flattened image. Measured on a test image with an alpha
+//          ramp; the failures are reproducible and are not explained by the
+//          architecture (realesr-animevideov3 x4 is correct while the x2 and
+//          x3 of the same family are not). Never offer a model with this
+//          false for an image which may carry transparency.
 const std::vector<UpscalerModel> kModels = {
     { "No upscale",
       "Transcode at the resolution of the source video",
-      nullptr, nullptr, 1, true },
+      nullptr, nullptr, 1, true, true },
     { "ESRGAN Anime x2",
       "Real-ESRGAN anime video v3, x2 - fast, tuned for animation - 1.2MB",
-      "realesr-animevideov3-x2.param", "realesr-animevideov3-x2.bin", 2, true },
+      "realesr-animevideov3-x2.param", "realesr-animevideov3-x2.bin", 2, true, false },
     { "ESRGAN Anime x3",
       "Real-ESRGAN anime video v3, x3 - fast, tuned for animation - 1.2MB",
-      "realesr-animevideov3-x3.param", "realesr-animevideov3-x3.bin", 3, true },
+      "realesr-animevideov3-x3.param", "realesr-animevideov3-x3.bin", 3, true, false },
     { "ESRGAN Anime x4",
       "Real-ESRGAN anime video v3, x4 - fast, tuned for animation - 1.2MB",
-      "realesr-animevideov3-x4.param", "realesr-animevideov3-x4.bin", 4, true },
+      "realesr-animevideov3-x4.param", "realesr-animevideov3-x4.bin", 4, true, true },
     { "ESRGAN General x4",
       "Real-ESRGAN general v3, x4 - fast, tuned for photo & video - 2.4MB",
-      "RealESRGAN_General_x4_v3.param", "RealESRGAN_General_x4_v3.bin", 4, true },
+      "RealESRGAN_General_x4_v3.param", "RealESRGAN_General_x4_v3.bin", 4, true, false },
     { "ESRGAN Deep x4",
       "Real-ESRGAN Wide Deep Network v3, x4 - fast, tuned for synthetic images - 2.4MB",
-      "RealESRGAN_General_WDN_x4_v3.param", "RealESRGAN_General_WDN_x4_v3.bin", 4, true },
+      "RealESRGAN_General_WDN_x4_v3.param", "RealESRGAN_General_WDN_x4_v3.bin", 4, true, false },
+    { "LSDIR Compact x4",
+      "LSDIR Compact C3, x4 - fast, general purpose, keeps transparency - 1.2MB",
+      "4xLSDIRCompactC3.param", "4xLSDIRCompactC3.bin", 4, false, true },
     { "Nomos8k x4",
       "Nomos8k SC, x4 - slow, tuned for sharp photographic detail - 33MB",
-      "4xNomos8kSC.param", "4xNomos8kSC.bin", 4, false },
+      "4xNomos8kSC.param", "4xNomos8kSC.bin", 4, false, true },
     { "NMKD Superscale x4",
       "NMKD Superscale SP, x4 - slow, tuned for clean real-world images - 66MB",
       "4x_NMKD-Superscale-SP_178000_G.param",
-      "4x_NMKD-Superscale-SP_178000_G.bin", 4, false },
+      "4x_NMKD-Superscale-SP_178000_G.bin", 4, false, true },
     { "NMKD Siax x4",
       "NMKD Siax, x4 - slow, general purpose for web images - 66MB",
-      "4x_NMKD-Siax_200k.param", "4x_NMKD-Siax_200k.bin", 4, false }
+      "4x_NMKD-Siax_200k.param", "4x_NMKD-Siax_200k.bin", 4, false, true }
 };
 
 // Local folder holding the downloaded model files
@@ -172,15 +188,21 @@ Upscaler::Engine::~Engine()
 {
 }
 
-void Upscaler::Engine::process(const unsigned char *in, int w, int h, unsigned char *out)
+void Upscaler::Engine::process(const unsigned char *in, int w, int h, unsigned char *out,
+                               int channels)
 {
+    if (channels != 3 && channels != 4)
+        throw std::runtime_error("unsupported number of channels: " + std::to_string(channels));
+
     const int factor = impl_->esrgan_.scale;
 
-    // ncnn::Mat views over the interleaved RGB u8 buffers, elemsize =
-    // elempack = 3: the pre/postprocessing shaders do the u8 <-> float
-    // conversion on the GPU (as in upstream main.cpp)
-    ncnn::Mat in_mat(w, h, (void *) in, (size_t) 3, 3);
-    ncnn::Mat out_mat(w * factor, h * factor, (void *) out, (size_t) 3, 3);
+    // ncnn::Mat views over the interleaved u8 buffers, elemsize = elempack =
+    // the number of channels: the pre/postprocessing shaders do the u8 <->
+    // float conversion on the GPU (as in upstream main.cpp). With 4 channels
+    // Real-ESRGAN routes the alpha around the network and enlarges it with
+    // the bicubic layers built by load().
+    ncnn::Mat in_mat(w, h, (void *) in, (size_t) channels, channels);
+    ncnn::Mat out_mat(w * factor, h * factor, (void *) out, (size_t) channels, channels);
 
     // Real-ESRGAN prints a per-tile progress percentage to stderr, which
     // restarts on every frame; suppress it (Transcoder reports progress)
@@ -209,7 +231,7 @@ Upscaler::Engine::~Engine()
 {
 }
 
-void Upscaler::Engine::process(const unsigned char *, int, int, unsigned char *)
+void Upscaler::Engine::process(const unsigned char *, int, int, unsigned char *, int)
 {
 }
 

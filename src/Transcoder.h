@@ -5,6 +5,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <variant>
 #include <gst/gst.h>
 #include <gst/pbutils/pbutils.h>
 
@@ -12,26 +13,67 @@
 #include "Upscaler.h"
 
 /**
+ * @brief What to encode the output with: a video profile or a still format
+ *
+ * A tagged union rather than two fields: the two are mutually exclusive, and
+ * which one is meant is exactly what tells the Transcoder whether it handles
+ * a stream of frames or a single image. std::holds_alternative() answers that
+ * question, and a mistaken access throws instead of silently reinterpreting
+ * one enum as the other.
+ */
+typedef std::variant<GstToolkit::Profile, GstToolkit::Image> TranscoderCodec;
+
+/**
  * @brief Configuration options for transcoding
+ *
+ * The video-only options (keyframes, audio) are meaningless for a still image
+ * and are left at their defaults by the image constructor, so that neither
+ * caller can pass a setting which does not apply to what it is encoding.
  */
 struct TranscoderOptions {
-    GstToolkit::Profile profile;  ///< Encoding profile (quality/codec settings)
+    TranscoderCodec codec;        ///< Video profile, or still image format
     bool force_keyframes;         ///< Force keyframe at every second (for easier seeking/editing)
     bool force_no_audio;          ///< Force removal of audio stream (create video-only output)
     std::string upscaler;         ///< Name of an UpscalerModel; Upscaler::NONE for no upscaling
 
     /**
-     * @brief Default constructor with sensible defaults
+     * @brief Options to transcode a video, with sensible defaults
      */
     TranscoderOptions(GstToolkit::Profile profile = GstToolkit::H264_RT
                     , bool keyframes = false
                     , bool no_audio = false
                     , const std::string &upscaler = Upscaler::NONE)
-        : profile(profile)
+        : codec(profile)
         , force_keyframes(keyframes)
         , force_no_audio(no_audio)
         , upscaler(upscaler)
     {}
+
+    /**
+     * @brief Options to transcode a single still image
+     */
+    TranscoderOptions(GstToolkit::Image format
+                    , const std::string &upscaler = Upscaler::NONE)
+        : codec(format)
+        , force_keyframes(false)
+        , force_no_audio(true)
+        , upscaler(upscaler)
+    {}
+
+    /**
+     * @brief True when the output is a single still image
+     */
+    bool isImage() const { return std::holds_alternative<GstToolkit::Image>(codec); }
+
+    /**
+     * @brief The video profile; only valid when isImage() is false
+     */
+    GstToolkit::Profile profile() const { return std::get<GstToolkit::Profile>(codec); }
+
+    /**
+     * @brief The still image format; only valid when isImage() is true
+     */
+    GstToolkit::Image format() const { return std::get<GstToolkit::Image>(codec); }
 };
 
 /**
@@ -40,6 +82,11 @@ struct TranscoderOptions {
  * Re-encodes a video file using one of GstToolkit's encoding profiles.
  * Each instance handles transcoding of a single input file to an output file
  * (or, for GstToolkit::JPEG_MULTI, a numbered sequence of still images).
+ *
+ * A still image source is re-encoded instead to one of GstToolkit's image
+ * formats, selected by giving TranscoderOptions a GstToolkit::Image: the
+ * pipeline is the same one frame shorter, without muxer, audio branch or
+ * keyframe tuning.
  *
  * When TranscoderOptions names an upscaling model, every frame is enlarged
  * on the GPU with Real-ESRGAN (ncnn / Vulkan) before being encoded. That
@@ -155,6 +202,10 @@ private:
     // Background upscaling: decode -> Real-ESRGAN -> encode, run in worker_
     void runUpscale(TranscoderOptions options);
 
+    // Delete the output file (or folder) left behind by a transcoding which
+    // did not run to completion
+    void removeIncompleteOutput();
+
     // Record the outcome of the worker (thread safe)
     void setError(const std::string &message);
     void setStatus(const std::string &message);
@@ -171,6 +222,7 @@ private:
     GstBus *bus_;
 
     bool is_image_sequence_;  // true for GstToolkit::JPEG_MULTI (numbered images, not a muxed file)
+    bool is_still_image_;     // true when encoding one image to a GstToolkit::Image format
     std::atomic<bool> started_;
     std::atomic<bool> finished_;
     std::atomic<bool> success_;
