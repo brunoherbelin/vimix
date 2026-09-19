@@ -6,13 +6,13 @@
 #ifdef HAVE_NCNN
 // rife-ncnn-vulkan in ext/rife-ncnn-vulkan/src
 #include "rife.h"
-#include "gpu.h"
 #endif
 
 #ifdef HAVE_ONNX
 #include <onnxruntime_cxx_api.h>
 #endif
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -151,9 +151,19 @@ Frame decode_image(const std::string &path, int w, int h)
 
 // ---------------------------------------------------------- model download
 
-const char *kOnnxModel = "models/RIFE_fp32.onnx";
+// The ONNX model to run. RifeONNX reads the shape of the model's input at
+// load and feeds it accordingly
+// const char *kOnnxModel = "models/RIFE_fp32.onnx";
+// const char *kOnnxModelUrl =
+//     "https://huggingface.co/FuryTMP/RIFE_fp32/resolve/main/RIFE_fp32.onnx";
+
+// const char *kOnnxModel = "models/rife_v4.25_v2.onnx";
+// const char *kOnnxModelUrl =
+//     "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/rife_v4.25_v2.onnx";
+
+const char *kOnnxModel = "models/rife_v4.25_lite_v2.onnx";
 const char *kOnnxModelUrl =
-    "https://huggingface.co/FuryTMP/RIFE_fp32/resolve/main/RIFE_fp32.onnx";
+    "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/rife_v4.25_lite_v2.onnx";
 
 // ncnn models are platform-independent data (.param = text graph
 // description, .bin = raw weights), identical in every release artifact —
@@ -169,10 +179,11 @@ class RifeBackend {
 public:
     virtual ~RifeBackend() = default;
     virtual const char *describe() const = 0;
-    // frame at time t (0..1) between a and b; t=0.5 always supported,
-    // other values only if arbitrary_t() is true
+    // frame at time t (0..1) between a and b. The driver only ever asks for
+    // the midpoint: every RIFE generation predicts t=0.5, while only v4 and
+    // later accept another value, and bisecting to t=0.5 gives the smoother
+    // result anyway.
     virtual Frame at(const Frame &a, const Frame &b, float t) = 0;
-    virtual bool arbitrary_t() const = 0;
 };
 
 // Pass-through "backend" used when no inference backend is built or usable:
@@ -180,7 +191,6 @@ public:
 class RifeDummy : public RifeBackend {
 public:
     const char *describe() const override { return "none (no interpolation)"; }
-    bool arbitrary_t() const override { return true; }
     Frame at(const Frame &a, const Frame &, float) override { return a; }
 };
 
@@ -217,7 +227,6 @@ public:
     }
 
     const char *describe() const override { return desc_.c_str(); }
-    bool arbitrary_t() const override { return true; }
 
     Frame at(const Frame &a, const Frame &b, float t) override
     {
@@ -250,10 +259,24 @@ private:
 //
 // CPU-only fallback. An .onnx file is a serialized compute graph; ONNX
 // Runtime loads it once into a session and runs it by feeding/collecting
-// tensors. Model contract (FuryTMP/RIFE_fp32): input float32 [1,6,H,W] NCHW
-// in 0..1 (channels 0-2 frame A, 3-5 frame B); output [1,3,H,W] at t=0.5
-// only, hence bisection in the driver.
-// 
+// tensors.
+//
+// Model contract: one float32 NCHW input [1, C, H, W] holding planar RGB in
+// 0..1, and one output [1, 3, H, W] with the interpolated frame. C says
+// which generation of RIFE the file is, and is the only thing that differs
+// between the models in circulation:
+//
+//   C = 6   the two frames only (channels 0-2 frame A, 3-5 frame B). RIFE up
+//           to v3, e.g. the default FuryTMP/RIFE_fp32. Always predicts the
+//           midpoint; the timestep cannot be chosen.
+//   C = 7   the two frames plus the interpolation timestep broadcast over a
+//           whole plane. RIFE v4 and later, e.g. the rife_v4.x_lite exports.
+//
+// The count is read from the model at load, so swapping kOnnxModel for a
+// newer file is all that is needed to adopt it -- no code change here. A
+// model which leaves the dimension symbolic says nothing, so it is taken to
+// be the 6 of the historical default.
+//
 class RifeONNX : public RifeBackend {
 public:
     explicit RifeONNX(const std::string &model_path)
@@ -274,22 +297,50 @@ public:
         Ort::AllocatorWithDefaultOptions alloc;
         in_name_ = session_->GetInputNameAllocated(0, alloc).get();
         out_name_ = session_->GetOutputNameAllocated(0, alloc).get();
+
+        // A model wanting more than the one tensor we feed cannot be driven
+        // from here: say so now, by name, rather than letting Run() fail
+        // later with an internal error about a missing input.
+        if (session_->GetInputCount() != 1) {
+            std::string names;
+            for (size_t i = 1; i < session_->GetInputCount(); ++i)
+                names += (names.empty() ? "" : ", ") +
+                         std::string(session_->GetInputNameAllocated(i, alloc).get());
+            throw std::runtime_error("unsupported ONNX model: it expects " +
+                                     std::to_string(session_->GetInputCount()) +
+                                     " inputs (extra: " + names + "), but only a single "
+                                     "image tensor is provided");
+        }
+
+        // how many channels this particular model wants (see above)
+        const std::vector<int64_t> shape =
+            session_->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo().GetShape();
+        channels_ = (shape.size() == 4 && shape[1] > 0) ? (int) shape[1] : 6;
+        if (channels_ != 6 && channels_ != 7)
+            throw std::runtime_error("unsupported ONNX model: its input takes " +
+                                     std::to_string(channels_) +
+                                     " channels, expected 6 (RIFE v3 and older) "
+                                     "or 7 (RIFE v4 and newer)");
+
+        desc_ = "CPU (onnxruntime, " + std::to_string(channels_) + " channel model)";
     }
 
-    const char *describe() const override { return "CPU (onnxruntime)"; }
-    bool arbitrary_t() const override { return false; }
+    const char *describe() const override { return desc_.c_str(); }
 
-    Frame at(const Frame &a, const Frame &b, float) override
+    Frame at(const Frame &a, const Frame &b, float t) override
     {
-        // build [1,6,H,W]: frame A's planes then frame B's
-        size_t plane3 = a.chw.size();
-        std::vector<float> input(2 * plane3);
+        // build [1,C,H,W]: frame A's planes, then frame B's, then -- for a
+        // v4 model -- the timestep spread over one more plane
+        const size_t plane3 = a.chw.size();
+        std::vector<float> input((size_t) channels_ * (plane3 / 3));
         std::copy(a.chw.begin(), a.chw.end(), input.begin());
         std::copy(b.chw.begin(), b.chw.end(), input.begin() + plane3);
+        if (channels_ == 7)
+            std::fill(input.begin() + 2 * plane3, input.end(), t);
 
         // CreateTensor with a pointer is a view over `input` (no copy);
         // `input` must outlive Run()
-        int64_t shape[4] = {1, 6, a.h, a.w};
+        int64_t shape[4] = {1, channels_, a.h, a.w};
         Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
         Ort::Value in = Ort::Value::CreateTensor<float>(mem, input.data(), input.size(), shape, 4);
 
@@ -308,7 +359,8 @@ public:
 private:
     std::unique_ptr<Ort::Env> env_;
     std::unique_ptr<Ort::Session> session_;
-    std::string in_name_, out_name_;
+    std::string in_name_, out_name_, desc_;
+    int channels_ = 6;
 };
 #endif // HAVE_ONNX
 
@@ -380,7 +432,8 @@ using FrameSink = std::function<void(const Frame &)>;
 
 // Emit the 2^depth - 1 intermediate frames between a and b, in temporal
 // order, by recursive t=0.5 bisection: an in-order traversal of a binary
-// tree. Preferred whenever --mid = 2^k - 1 (RIFE predicts the midpoint best).
+// tree. This is the only interpolation mode: RIFE predicts the midpoint
+// best, and it is the one timestep every model supports.
 void emit_bisect(RifeBackend &rife, const Frame &a, const Frame &b,
                  int depth, const FrameSink &push)
 {
@@ -390,15 +443,6 @@ void emit_bisect(RifeBackend &rife, const Frame &a, const Frame &b,
     emit_bisect(rife, a, m, depth - 1, push);
     push(m);
     emit_bisect(rife, m, b, depth - 1, push);
-}
-
-// Emit mid intermediate frames at evenly spaced timesteps (arbitrary-t
-// backends only).
-void emit_timesteps(RifeBackend &rife, const Frame &a, const Frame &b,
-                    int mid, const FrameSink &push)
-{
-    for (int i = 1; i <= mid; i++)
-        push(rife.at(a, b, (float)i / (mid + 1)));
 }
 
 guint8 to_u8(float v)
@@ -566,21 +610,15 @@ void MultiFileRifeEncoder::run(RifeOptions options)
             message_ = "";
         }
 
-        // interpolation mode: recursive t=0.5 bisection when mid = 2^k - 1
-        // (smoother — RIFE predicts the midpoint best), else evenly spaced
-        // timesteps (needs an arbitrary-t backend)
+        // Interpolation is always recursive bisection
         int bisect_depth = 0;
         if (mid > 0) {
             while ((1 << bisect_depth) - 1 < mid) bisect_depth++;
-            if ((1 << bisect_depth) - 1 != mid) {
-                bisect_depth = 0;
-                if (!rife->arbitrary_t())
-                    throw std::runtime_error("mid must be 2^k - 1 (1, 3, 7, ...) "
-                                             "with the onnx backend");
-            }
-            Log::Info("ImageSequence: interpolation: %s",
-                    bisect_depth ? "recursive bisection (t=0.5)"
-                                 : "evenly spaced timesteps");
+            if ((1 << bisect_depth) - 1 != mid)
+                throw std::runtime_error("number of intermediate frames must be "
+                                         "2^k - 1 (1, 3, 7, ...)");
+            Log::Info("ImageSequence: interpolation: recursive bisection, depth %d",
+                      bisect_depth);
         }
 
         // if loop, add first frame at the end to interpolate between last and first
@@ -680,12 +718,8 @@ void MultiFileRifeEncoder::run(RifeOptions options)
         for (auto i = files_.begin(); i != files_.end() && !abort_; ++i) {
             Frame cur = decode_image(*i, w, h);
             // interpolate mid frames between prev and cur, starting after first frame
-            if (mid > 0 && i != files_.begin()) {
-                if (bisect_depth)
-                    emit_bisect(*rife, prev, cur, bisect_depth, push);
-                else
-                    emit_timesteps(*rife, prev, cur, mid, push);
-            }
+            if (mid > 0 && i != files_.begin())
+                emit_bisect(*rife, prev, cur, bisect_depth, push);
             // do not push the last frame if looping, because the first frame is already pushed at the start
             if ( std::next(i) != files_.end() || options.loop == 0 ) 
                 push(cur);
