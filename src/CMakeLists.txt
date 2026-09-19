@@ -99,6 +99,7 @@ set(VMIX_SRCS
     Toolkit/ImGuiToolkit.cpp
     Toolkit/NcnnToolkit.cpp
     Toolkit/NetworkToolkit.cpp
+    Toolkit/OnnxToolkit.cpp
     Toolkit/SystemToolkit.cpp
     Toolkit/tinyxml2Toolkit.cpp
     

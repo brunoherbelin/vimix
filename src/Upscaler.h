@@ -24,18 +24,22 @@
 #include <vector>
 
 /**
- * @brief A selectable Real-ESRGAN upscaling model (ncnn / Vulkan)
+ * @brief A selectable upscaling model
  *
  * The upscale factor is a property of the model, not a separate setting:
- * each entry fixes the .param/.bin files to fetch and the resolution
- * multiplier the network applies. The first entry of Upscaler::models() is
- * the pass-through model (factor 1, no files): selecting it does nothing.
+ * each entry fixes the file(s) to fetch and the resolution multiplier the
+ * network applies. The first entry of Upscaler::models() is the pass-through
+ * model (factor 1, no files): selecting it does nothing.
+ *
+ * Which models are listed depends on the backend that will run them, so an
+ * entry never has to say which backend it belongs to -- see
+ * Upscaler::models().
  */
 struct UpscalerModel {
     const char *name;        ///< short name, used to select and to store the model
     const char *description; ///< human readable info, shown as a tooltip
-    const char *param;       ///< ncnn .param filename in the model repository
-    const char *bin;         ///< ncnn .bin filename in the model repository
+    const char *file;        ///< ncnn .param graph, or the .onnx model
+    const char *weights;     ///< ncnn .bin weights; nullptr for a single file ONNX model
     int factor;              ///< upscaling factor (1 = none, else 2, 3 or 4)
     bool video;              ///< fast enough to run on every frame of a video
     bool alpha;              ///< produces a correct image from an RGBA source
@@ -56,6 +60,11 @@ extern const char *NONE;
  * @c video false are far too slow to run on a video stream and should only
  * be offered for single images. Models with @c alpha false must never be
  * given a transparent image: see the note on that field in Upscaler.cpp.
+ *
+ * The list depends on which backend this machine can run: the ncnn networks
+ * when a Vulkan device is there, otherwise the ONNX ones, which need only a
+ * CPU. The two families are different files with different names, so the
+ * selection offered legitimately differs from one machine to another.
  */
 const std::vector<UpscalerModel> &models();
 
@@ -65,29 +74,32 @@ const std::vector<UpscalerModel> &models();
 const UpscalerModel &model(const std::string &name);
 
 /**
- * @brief True when this build has the ncnn / Vulkan backend compiled in
+ * @brief True when this machine can run one of the upscaling backends
  *
- * A false here means no upscaling can be performed: the selection should
- * not even be offered. It does not guarantee a usable Vulkan device; that
- * is only known when an Engine is constructed.
+ * A false here means no upscaling can be performed at all and the selection
+ * should not be offered. Unlike a build-time check this accounts for a
+ * Vulkan device being absent at runtime, in which case the ONNX backend
+ * takes over.
  */
 bool available();
 
 /**
- * @brief Real-ESRGAN inference engine for one model, on the Vulkan GPU
+ * @brief Inference engine for one upscaling model
  *
- * Constructing it downloads the model files on first use (needs network
- * once), acquires the shared ncnn Vulkan instance and loads the network;
- * every step throws std::runtime_error on failure. Not thread safe: one
- * engine belongs to the thread which created it.
+ * Runs the model on whichever backend this machine offers: Real-ESRGAN on
+ * the Vulkan GPU through ncnn, or the ONNX Runtime on the CPU. Constructing
+ * it downloads the model files on first use (needs network once) and loads
+ * the network; every step throws std::runtime_error on failure. Not thread
+ * safe: one engine belongs to the thread which created it.
  */
 class Engine
 {
 public:
     /**
-     * @brief Load a model on the default Vulkan device
+     * @brief Load a model on the backend this machine offers
      * @param model One of Upscaler::models(), with a factor above 1
-     * @param tilesize GPU tile size, 0 to derive it from the VRAM budget
+     * @param tilesize Tile size in pixels, 0 to derive it from the memory
+     *        budget of the backend (VRAM for ncnn, RAM for ONNX)
      */
     explicit Engine(const UpscalerModel &model, int tilesize = 0);
     ~Engine();
@@ -101,7 +113,8 @@ public:
      * @param channels 3 for RGB, 4 for RGBA
      *
      * With 4 channels the network still sees only the colour: the alpha is
-     * split off and enlarged by a bicubic interpolation instead. A hard
+     * split off and enlarged by interpolation instead (bicubic on ncnn,
+     * bilinear on ONNX). A hard
      * transparency edge therefore comes out smoothly interpolated rather
      * than sharpened, which is the intended behaviour -- the model has no
      * business inventing detail in a matte.

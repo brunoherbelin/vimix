@@ -8,14 +8,11 @@
 #include "rife.h"
 #endif
 
-#ifdef HAVE_ONNX
-#include <onnxruntime_cxx_api.h>
-#endif
-
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <functional>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -25,6 +22,7 @@
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/BaseToolkit.h"
 #include "Toolkit/NcnnToolkit.h"
+#include "Toolkit/OnnxToolkit.h"
 #include "Toolkit/SystemToolkit.h"
 
 #include "MultiFileRifeEncoder.h"
@@ -35,8 +33,7 @@ namespace fs = std::filesystem;
 // Everything below is internal to the encoder
 namespace {
 
-// ---------------------------------------------------------------- frames
-
+// Frames
 // Planar float RGB, values 0..1, layout [3][h][w] (matches ONNX tensors).
 struct Frame {
     int w = 0, h = 0;
@@ -72,8 +69,7 @@ Frame rgb8_to_frame(const unsigned char *rgb, int w, int h)
     return f;
 }
 
-// ------------------------------------------------------------ image input
-
+// Image input
 // Decode one image file to RGB with GStreamer, scaling to w x h
 // (pass 0,0 to keep the image's own size).
 //
@@ -149,10 +145,10 @@ Frame decode_image(const std::string &path, int w, int h)
     return f;
 }
 
-// ---------------------------------------------------------- model download
-
+// Model download
 // The ONNX model to run. RifeONNX reads the shape of the model's input at
 // load and feeds it accordingly
+
 // const char *kOnnxModel = "models/RIFE_fp32.onnx";
 // const char *kOnnxModelUrl =
 //     "https://huggingface.co/FuryTMP/RIFE_fp32/resolve/main/RIFE_fp32.onnx";
@@ -255,7 +251,7 @@ private:
 #endif // HAVE_NCNN
 
 #ifdef HAVE_ONNX
-// ------------------------------------------------ inference: ONNX Runtime
+// ONNX Runtime
 //
 // CPU-only fallback. An .onnx file is a serialized compute graph; ONNX
 // Runtime loads it once into a session and runs it by feeding/collecting
@@ -280,41 +276,18 @@ private:
 class RifeONNX : public RifeBackend {
 public:
     explicit RifeONNX(const std::string &model_path)
+        : session_(model_path)
     {
-        // Registration warnings fire while the schema registry is first
-        // populated below (Env/Session creation); suppress that stderr noise.
-        SystemToolkit::StderrSilencer hush;
-
-        Ort::SessionOptions opts;
-        opts.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
-        // Ort::Env is the library-wide context (logger + thread pools); it must
-        // outlive the session, which member declaration/destruction order
-        // guarantees (env_ declared before session_, destroyed after it).
-        env_ = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "gst-rife");
-        session_ = std::make_unique<Ort::Session>(*env_, model_path.c_str(), opts);
-
-        // inputs/outputs are addressed by name; query instead of hard-coding
-        Ort::AllocatorWithDefaultOptions alloc;
-        in_name_ = session_->GetInputNameAllocated(0, alloc).get();
-        out_name_ = session_->GetOutputNameAllocated(0, alloc).get();
-
         // A model wanting more than the one tensor we feed cannot be driven
-        // from here: say so now, by name, rather than letting Run() fail
-        // later with an internal error about a missing input.
-        if (session_->GetInputCount() != 1) {
-            std::string names;
-            for (size_t i = 1; i < session_->GetInputCount(); ++i)
-                names += (names.empty() ? "" : ", ") +
-                         std::string(session_->GetInputNameAllocated(i, alloc).get());
+        // from here: say so now rather than letting the inference fail later
+        // with an internal error about a missing input.
+        if (session_.inputCount() != 1)
             throw std::runtime_error("unsupported ONNX model: it expects " +
-                                     std::to_string(session_->GetInputCount()) +
-                                     " inputs (extra: " + names + "), but only a single "
-                                     "image tensor is provided");
-        }
+                                     std::to_string(session_.inputCount()) +
+                                     " inputs, but only a single image tensor is provided");
 
         // how many channels this particular model wants (see above)
-        const std::vector<int64_t> shape =
-            session_->GetInputTypeInfo(0).GetTensorTypeAndShapeInfo().GetShape();
+        const std::vector<int64_t> shape = session_.inputShape();
         channels_ = (shape.size() == 4 && shape[1] > 0) ? (int) shape[1] : 6;
         if (channels_ != 6 && channels_ != 7)
             throw std::runtime_error("unsupported ONNX model: its input takes " +
@@ -322,7 +295,8 @@ public:
                                      " channels, expected 6 (RIFE v3 and older) "
                                      "or 7 (RIFE v4 and newer)");
 
-        desc_ = "CPU (onnxruntime, " + std::to_string(channels_) + " channel model)";
+        desc_ = session_.describe() + " (onnxruntime, " +
+                std::to_string(channels_) + " channel model)";
     }
 
     const char *describe() const override { return desc_.c_str(); }
@@ -338,28 +312,19 @@ public:
         if (channels_ == 7)
             std::fill(input.begin() + 2 * plane3, input.end(), t);
 
-        // CreateTensor with a pointer is a view over `input` (no copy);
-        // `input` must outlive Run()
-        int64_t shape[4] = {1, channels_, a.h, a.w};
-        Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-        Ort::Value in = Ort::Value::CreateTensor<float>(mem, input.data(), input.size(), shape, 4);
-
-        const char *ins[] = {in_name_.c_str()};
-        const char *outs[] = {out_name_.c_str()};
-        auto result = session_->Run(Ort::RunOptions{nullptr}, ins, &in, 1, outs, 1);
+        const std::vector<float> out =
+            session_.run(input.data(), { 1, channels_, a.h, a.w });
 
         Frame m;
         m.w = a.w;
         m.h = a.h;
-        const float *out = result[0].GetTensorData<float>();
-        m.chw.assign(out, out + plane3);
+        m.chw.assign(out.begin(), out.begin() + plane3);
         return m;
     }
 
 private:
-    std::unique_ptr<Ort::Env> env_;
-    std::unique_ptr<Ort::Session> session_;
-    std::string in_name_, out_name_, desc_;
+    OnnxToolkit::Session session_;
+    std::string desc_;
     int channels_ = 6;
 };
 #endif // HAVE_ONNX
@@ -499,11 +464,11 @@ bool MultiFileRifeEncoder::start(const RifeOptions &options)
         return false;
     }
     if (options.mid < 0) {
-        message_ = "invalid --mid";
+        message_ = "invalid mid";
         return false;
     }
     if (options.fps <= 0) {
-        message_ = "invalid --fps";
+        message_ = "invalid fps";
         return false;
     }
     if (options.backend != "auto" && options.backend != "ncnn" &&
