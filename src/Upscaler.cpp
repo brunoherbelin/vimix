@@ -62,7 +62,7 @@ const char *kModelBaseUrl =
 //          x3 of the same family are not). Never offer a model with this
 //          false for an image which may carry transparency.
 const std::vector<UpscalerModel> kModels = {
-    { "No upscale",
+    { "None",
       "Transcode at the resolution of the source video",
       nullptr, nullptr, 1, true, true },
     { "ESRGAN Anime x2",
@@ -82,7 +82,7 @@ const std::vector<UpscalerModel> kModels = {
       "RealESRGAN_General_WDN_x4_v3.param", "RealESRGAN_General_WDN_x4_v3.bin", 4, true, false },
     { "LSDIR Compact x4",
       "LSDIR Compact C3, x4 - fast, general purpose, keeps transparency - 1.2MB",
-      "4xLSDIRCompactC3.param", "4xLSDIRCompactC3.bin", 4, false, true },
+      "4xLSDIRCompactC3.param", "4xLSDIRCompactC3.bin", 4, true, true },
     { "Nomos8k x4",
       "Nomos8k SC, x4 - slow, tuned for sharp photographic detail - 33MB",
       "4xNomos8kSC.param", "4xNomos8kSC.bin", 4, false, true },

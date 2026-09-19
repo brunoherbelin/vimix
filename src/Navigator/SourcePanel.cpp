@@ -190,27 +190,27 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
             }
             ImGui::SameLine();
             if (mp->isImage())
-                ImGuiToolkit::HelpToolTip("Re-encode the source image in the specified format.\n\n "
+                ImGuiToolkit::HelpToolTip("Re-encode the source image in the specified format and options.\n\n "
                         ICON_FA_FILM "  The new file will replace the one in the source "
                         "once transcoding is successfully completed. "
                         "The current file is left unchanged.\n\n "
-                        ICON_FA_MAGIC "  An upscaling model enlarges the image with a neural "
-                        "network on the GPU. Every model is offered here: the slowest ones "
-                        "give the best result, and only have one frame to process.");
+                        ICON_FA_MAGIC "  Upscale will enlarge the image with a neural "
+                        "network model. Models are downloaded on first run. "
+                        "Largest and slowest ones give the best result.");
             else
                 ImGuiToolkit::HelpToolTip("Re-encode the source video using the specified codec and options.\n\n "
                         ICON_FA_FILM "  The new file will replace the one in the source "
                         "once transcoding is successfully completed. "
                         "The current file is left unchanged.\n\n "
-                        ICON_FA_MAGIC "  An upscaling model enlarges every frame with a neural "
-                        "network on the GPU. This is much slower than plain transcoding, and "
-                        "the audio track is not kept.");
+                        ICON_FA_MAGIC "  Upscale will enlarge every frame with a neural "
+                        "network model. Models are downloaded on first run. "
+                        "Process can be very slow for high resolution. Audio track is not kept.");
         }
 
         if (transcoder != nullptr) {
             if (transcoder->finished()) {
                 if (transcoder->success()) {
-                    Log::Notify("Transcoding successful : %s", transcoder->outputFilename().c_str());
+                    Log::Notify("Transcoding successful: %s", transcoder->outputFilename().c_str());
                     // reload source with new file
                     Source *src = Mixer::manager().findSource(transcode_id);
                     if (src != nullptr) {
@@ -228,9 +228,7 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
                     ret = true;
                 }
                 else
-                    // upscaling reports its failures asynchronously: this is
-                    // the only place the user would ever hear about them
-                    Log::Warning("Transcoding failed : %s", transcoder->error().c_str());
+                    Log::Warning("Transcoding interrupted (%s)", transcoder->error().c_str());
                 // all done in any case
                 delete transcoder;
                 transcoder = nullptr;
@@ -242,7 +240,7 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
                 // upscaling (fetching the model, initializing the GPU)
                 std::string status = transcoder->status();
                 if (status.empty() && progress < EPSILON)
-                    status = "working...";
+                    status = " Working...";
                 ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN,0),
                                    status.empty() ? nullptr : status.c_str());
                 ImGui::SameLine();

@@ -17,9 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-
-#include "NavigatorInternal.h"
-
 #include "Settings.h"
 #include "Upscaler.h"
 #include "Toolkit/GstToolkit.h"

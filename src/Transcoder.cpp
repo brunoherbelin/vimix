@@ -21,8 +21,10 @@
 #include "Log.h"
 #include "Settings.h"
 #include "Upscaler.h"
+#include "IconsFontAwesome5.h"
 #include "Toolkit/SystemToolkit.h"
 
+#include <string>
 #include <sys/stat.h>
 #include <chrono>
 #include <filesystem>
@@ -62,13 +64,13 @@ long long now_ms()
 
 // Look for a keyframe-interval property in a GstToolkit encoding pipeline
 // fragment -- "key-int-max=" (x264enc/x265enc/vah264enc/vah265enc),
-// "gop-size=" (nvh264enc/nvh265enc/openh264enc), or "keyframe-max-dist="
-// (vp9enc) -- and replace its value with `interval`. A no-op when none of
-// those are present, which is correct for ProRes/JPEG: both are all-intra
+// "gop-size=" (nvh264enc/nvh265enc/openh264enc),  "keyframe-max-dist="
+// (vp9enc), or "max-keyframe-interval=" (vtenc_) -- and replace its value with `interval`. 
+// A no-op when none of those are present (ProRes/JPEG): both are all-intra
 // already, so there is nothing to tighten.
 std::string apply_keyframe_interval(const std::string &pipeline, int interval)
 {
-    static const char *properties[] = { "key-int-max=", "gop-size=", "keyframe-max-dist=" };
+    static const char *properties[] = { "key-int-max=", "gop-size=", "keyframe-max-dist=", "max-keyframe-interval=" };
 
     for (const char *prop : properties) {
         size_t pos = pipeline.find(prop);
@@ -169,6 +171,12 @@ std::string Transcoder::error() const
 std::string Transcoder::status() const
 {
     std::lock_guard<std::mutex> lock(message_mutex_);
+
+    // prefix with animation if the status is non-empty
+    static const char* animation[] = { ICON_FA_HOURGLASS_START,ICON_FA_HOURGLASS_HALF,ICON_FA_HOURGLASS_END,ICON_FA_HOURGLASS };
+    if (!status_message_.empty())
+        return std::string(animation[(g_get_monotonic_time() / 300000) % 4]) + " " + status_message_;
+
     return status_message_;
 }
 
@@ -584,17 +592,9 @@ void Transcoder::stop()
     if (!started_ || finished_)
         return;
 
-    // Upscaling: the worker only checks abort_ between frames, and one call
-    // to the inference is atomic from here. For a video that is a single
-    // frame, but for a still image that one call is the whole job and can
-    // run for minutes, so waiting for it would freeze the user interface for
-    // just as long. Ask the worker to give up and return immediately: it
-    // publishes finished_ and removes its own incomplete output as it
-    // unwinds, and the destructor is what joins it.
     if (upscale_factor_ > 1) {
         abort_ = true;
         setStatus("Cancelling...");
-        Log::Info("Transcoder: Interrupting transcoding");
         return;
     }
 
@@ -603,10 +603,8 @@ void Transcoder::stop()
 
     finished_ = true;
     success_ = false;
-    setError("Transcoding stopped by user");
+    setError("Cancelled by user");
     setStatus("");
-
-    Log::Info("Transcoder: Interrupted transcoding");
 
     removeIncompleteOutput();
 }
@@ -714,7 +712,7 @@ void Transcoder::runUpscale(TranscoderOptions options)
     try {
         // Loading the model downloads its files on first use and initializes
         // Vulkan: seconds during which no frame is produced yet
-        setStatus("Preparing upscaling model...");
+        setStatus("Preparing model...");
         Upscaler::Engine upscaler( Upscaler::model(options.upscaler) );
         Log::Info("Transcoder: upscaling with %s", upscaler.describe().c_str());
         // A single image has no duration, so progress() cannot move: the
@@ -723,7 +721,7 @@ void Transcoder::runUpscale(TranscoderOptions options)
         setStatus(is_still_image_ ? "Upscaling image..." : "");
 
         if (abort_)
-            throw std::runtime_error("Transcoding stopped by user");
+            throw std::runtime_error("Cancelled by user");
 
         // -------- decoding side: source -> packed RGB frames
         GError *err = nullptr;
@@ -763,8 +761,6 @@ void Transcoder::runUpscale(TranscoderOptions options)
         // store it, and the whole path below follows that choice.
         const GstVideoFormat pixel_format = GST_VIDEO_INFO_FORMAT(&in_info);
         const int channels = (pixel_format == GST_VIDEO_FORMAT_RGBA) ? 4 : 3;
-        if (channels > 3)
-            Log::Info("Transcoder: source has an alpha channel, kept through upscaling");
 
         gint64 dur = 0;
         if (gst_element_query_duration(dec_pipe, GST_FORMAT_TIME, &dur))
@@ -885,7 +881,7 @@ void Transcoder::runUpscale(TranscoderOptions options)
         }
 
         if (abort_)
-            throw std::runtime_error(stalled ? stall_message : "Transcoding stopped by user");
+            throw std::runtime_error(stalled ? stall_message : "Cancelled by user");
 
         // -------- finalize: end of stream, and let the muxer write its index
         gst_app_src_end_of_stream(GST_APP_SRC(src));
@@ -901,7 +897,7 @@ void Transcoder::runUpscale(TranscoderOptions options)
             if (e) g_error_free(e);
             if (msg) gst_message_unref(msg);
             gst_object_unref(bus);
-            throw std::runtime_error("Encoding error: " + what);
+            throw std::runtime_error("Transcoder error: " + what);
         }
         gst_message_unref(msg);
         gst_object_unref(bus);
