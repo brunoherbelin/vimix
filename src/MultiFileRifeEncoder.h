@@ -1,6 +1,7 @@
 /*
- * MultiFileRifeEncoder — turn a folder of images into an H.264/MP4 video,
- * generating intermediate frames with a pre-trained Real-Time Intermediate 
+ * MultiFileRifeEncoder — turn a folder of images into a video (or a numbered
+ * JPEG sequence, with the JPEG_MULTI profile),
+ * generating intermediate frames with a pre-trained Real-Time Intermediate
  * Flow Estimation frame-interpolation model on the GPU (ncnn/Vulkan) or 
  * CPU (ONNX Runtime).
  *
@@ -29,7 +30,7 @@ struct RifeOptions {
     int mid;              ///< intermediate frames per image pair (0 = none)
     int fps;              ///< output framerate
     int loop;
-    GstToolkit::Profile profile;  /// output profile (H.264/H.265/ProRes/VPX_RT)
+    GstToolkit::Profile profile;  /// output profile (H.264/H.265/ProRes/VPX_RT/JPEG_MULTI)
     std::string backend;  ///< "auto" | "ncnn" | "onnx"
 
     RifeOptions(int mid = 1,
@@ -49,8 +50,8 @@ struct RifeOptions {
  * @brief Frame-interpolating video encoder using GStreamer and RIFE
  *
  * Reads a folder of images (JPEG/PNG) with GStreamer, generates intermediate
- * frames with RIFE, and encodes the result to H.264/MP4. Each instance
- * handles a single input folder to an output file.
+ * frames with RIFE, and encodes the result with the selected profile. Each
+ * instance handles a single input folder to an output file (or folder).
  */
 class MultiFileRifeEncoder
 {
@@ -58,8 +59,10 @@ public:
     /**
      * @brief Construct a new encoder
      *
-     * The output filename is generated in start() as "<input_dir>_rife.mp4",
-     * ensuring it doesn't overwrite existing files.
+     * The output name is generated in start() as "<input_dir>_rife" plus the
+     * extension of the container selected by the profile (".mov", ".webm", or
+     * none for the JPEG_MULTI folder), ensuring it doesn't overwrite existing
+     * files.
      */
     MultiFileRifeEncoder();
 
@@ -127,8 +130,11 @@ public:
     const std::string &message() const { return message_; }
 
 private:
-    // Generate output filename from input dir (suffix "_rife.mp4")
-    static std::string generateOutputFilename(const std::list<std::string> & files);
+    // Generate output name from input dir (suffix "_rife"), with the
+    // extension of the container the profile is muxed into: ".webm" for
+    // VPX_RT, ".mov" for the rest, and none for JPEG_MULTI (a folder)
+    static std::string generateOutputFilename(const std::list<std::string> & files,
+                                              GstToolkit::Profile profile);
 
     // Background processing loop (decode -> RIFE -> encode)
     void run(RifeOptions options);

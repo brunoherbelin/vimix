@@ -245,8 +245,7 @@ const std::vector<std::string> &software_profile_description()
             "x265enc speed-preset=medium tune=0 key-int-max=30 option-string=\"crf=18:vbv-maxrate=50000:vbv-bufsize=50000\" ! video/x-h265, profile=(string)main-444 ! h265parse ! ",
             "avenc_prores_ks pass=quant quantizer=8 profile=standard quant-mat=default threads=0 vendor=apl0 ! ",
             "avenc_prores_ks pass=quant quantizer=4 profile=hq quant-mat=default threads=0 vendor=apl0 ! ",
-            "vp9enc end-usage=cq cq-level=24 target-bitrate=25000000 \
-                 deadline=1 cpu-used=6 lag-in-frames=0 keyframe-max-dist=30 threads=4 row-mt=true tile-columns=2 ! ",
+            "vp9enc end-usage=cq cq-level=24 target-bitrate=25000000 deadline=1 cpu-used=6 lag-in-frames=0 keyframe-max-dist=30 threads=4 row-mt=true tile-columns=2 ! ",
             // JPEG encoding
             "jpegenc idct-method=float ! "
         };

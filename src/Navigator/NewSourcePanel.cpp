@@ -469,7 +469,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 std::string codec_current = Settings::application.image_sequence.profile < 0 ? ICON_FA_SORT_NUMERIC_DOWN " Numbered images"
                                                          : std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[Settings::application.image_sequence.profile];
-                if (ImGui::BeginCombo("##CodecSequence", codec_current.c_str())) {
+                if (ImGui::BeginCombo("##CodecSequence", codec_current.c_str(), ImGuiComboFlags_HeightLarge)) {
                     // special case; if possible, offer to create an image sequence gst source
                     if (ImGui::Selectable( ICON_FA_SORT_NUMERIC_DOWN " Numbered images",
                                           Settings::application.image_sequence.profile < 0,
@@ -490,8 +490,9 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                         }
                     }
                     // always offer to encode a video
-                    for (int i = GstToolkit::H264_RT; i < GstToolkit::VPX_RT; ++i) {
-                        std::string label = std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[i];
+                    for (int i = GstToolkit::H264_RT; i < GstToolkit::DEFAULT; ++i) {
+                        std::string icon = (i==GstToolkit::JPEG_MULTI) ? std::string(ICON_FA_IMAGES " ") : std::string(ICON_FA_FILM " ");
+                        std::string label = icon + GstToolkit::profile_name[i];
                         const bool supported = GstToolkit::supportsResolution((GstToolkit::Profile) i,
                                                                              sequence_width, sequence_height,
                                                                              Settings::application.render.gpu_decoding);
@@ -511,14 +512,10 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                 }
                 // Indication
                 ImGui::SameLine();
-                if (_numbered_sequence.valid())
-                    ImGuiToolkit::HelpToolTip(ICON_FA_SORT_NUMERIC_DOWN " Selected images are numbered consecutively; "
-                                              "an image sequence source can be created.\n\n"
-                                              ICON_FA_FILM " Alternatively, choose a codec to encode a video with the selected images and create a video source.");
-                else
-                    ImGuiToolkit::HelpToolTip(ICON_FA_SORT_NUMERIC_DOWN " Selected images are NOT numbered consecutively; "
-                                              "it is not possible to create a sequence source.\n\n"
-                                              ICON_FA_FILM " Instead, choose a codec to encode a video with the selected images and create a video source.");
+                ImGuiToolkit::HelpToolTip(ICON_FA_SORT_NUMERIC_DOWN " Create an image sequence from the selected images; "
+                                              "possible only if the selected images are numbered consecutively.\n\n"
+                                              ICON_FA_FILM " Encode a video with the selected images and create a video source.\n\n"
+                                              ICON_FA_IMAGES " Produce a sequence of consecutively numbered images (JPEG) in a subfolder.");
 
                 // set framerate
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -545,10 +542,14 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
 #if defined(HAVE_NCNN) || defined(HAVE_ONNX)
                     // set number of intermediate frames to generate between each image (for video encoding)
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    static int num = sqrt((float)Settings::application.image_sequence.buffering_mode + 1.f);
+                    // slider position num maps to 2^num -1 intermediate frames;
+                    // restore it from the saved value with the inverse (log2)
+                    static int num = CLAMP( (int) log2f(
+                        (float) Settings::application.image_sequence.buffering_mode + 1.f), 0, 5);
                     Settings::application.image_sequence.buffering_mode = pow(2, num)-1;
                     char buf[64];
-                    ImFormatString(buf, IM_ARRAYSIZE(buf), "%d  intermediate frames", Settings::application.image_sequence.buffering_mode);
+                    ImFormatString(buf, IM_ARRAYSIZE(buf), "%d  intermediate frames", 
+                                    Settings::application.image_sequence.buffering_mode);
                     ImGui::SliderInt("##Interpolate", &num, 0, 5, buf);
                     ImGui::SameLine();
 #if defined(HAVE_NCNN)
@@ -574,7 +575,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                     }
                     // Offer to create video from sequence
                     ImGui::NewLine();
-                    if ( ImGui::Button( ICON_FA_FILM " Encode video", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+                    if ( ImGui::Button( ICON_FA_COGS "  Encode", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
                         RifeOptions options;
                         options.loop = Settings::application.image_sequence.priority_mode;
                         options.fps = Settings::application.image_sequence.framerate_mode;
@@ -596,6 +597,25 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                     // video recorder failed if it does not return a valid filename
                     if ( !_rife_encoder.success() || _rife_encoder.filename().empty() )
                         Log::Warning("Failed to generate an image sequence (%s).", _rife_encoder.message().c_str() );
+                    // JPEG_MULTI produced a folder of numbered images, not a video file
+                    else if (Settings::application.image_sequence.profile == GstToolkit::JPEG_MULTI) {
+
+                        sourceSequenceFiles = SystemToolkit::list_directory(_rife_encoder.filename(), {"*.jpg", "*.jpeg", "*.png"});
+                        _numbered_sequence = MultiFileSequence(sourceSequenceFiles);
+
+                        if (_numbered_sequence.valid()) {
+                            // propose image sequence if possible
+                            // show source preview available if possible
+                            std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
+                            new_source_preview_
+                                .setSource(Mixer::manager().createSourceMultifile(sourceSequenceFiles,
+                                                                                Settings::application.image_sequence.framerate_mode),
+                                        label);
+                            // select id of image sequence
+                            Settings::application.image_sequence.profile = -1;
+                        } 
+
+                    }
                     else {
 
                         // save path location if valid

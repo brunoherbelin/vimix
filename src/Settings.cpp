@@ -244,7 +244,8 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     XMLElement *SequenceNode = xmlDoc.NewElement( "Sequence" );
     SequenceNode->SetAttribute("profile", application.image_sequence.profile);
     SequenceNode->SetAttribute("framerate", application.image_sequence.framerate_mode);
-    SequenceNode->SetAttribute("buffering", application.image_sequence.buffering_mode);
+    SequenceNode->SetAttribute("rife_mode", application.image_sequence.buffering_mode);
+    SequenceNode->SetAttribute("loop_mode", application.image_sequence.priority_mode);
     pRoot->InsertEndChild(SequenceNode);
 
     // Transition
@@ -636,12 +637,13 @@ void Settings::init(const std::string &filename)
                 application.record.audio_device = "";
         }
 
-        // Record
+        // Sequence
         XMLElement * sequencenode = pRoot->FirstChildElement("Sequence");
         if (sequencenode != nullptr) {
             sequencenode->QueryIntAttribute("profile", &application.image_sequence.profile);
             sequencenode->QueryIntAttribute("framerate", &application.image_sequence.framerate_mode);
-            sequencenode->QueryIntAttribute("buffering", &application.image_sequence.buffering_mode);
+            sequencenode->QueryIntAttribute("rife_mode", &application.image_sequence.buffering_mode);
+            sequencenode->QueryIntAttribute("loop_mode", &application.image_sequence.priority_mode);
         }
 
         // Source

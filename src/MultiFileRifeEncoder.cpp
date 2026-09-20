@@ -437,17 +437,27 @@ MultiFileRifeEncoder::~MultiFileRifeEncoder()
         worker_.join();
 }
 
-std::string MultiFileRifeEncoder::generateOutputFilename(const std::list<std::string> &files)
+std::string MultiFileRifeEncoder::generateOutputFilename(const std::list<std::string> &files,
+                                                         GstToolkit::Profile profile)
 {
     std::string base = std::string();
     base = BaseToolkit::common_prefix (files);
     if (!SystemToolkit::path_directory(base).empty())
         base += "image";
 
-    std::string output = base + "_rife.mov";
+    // JPEG_MULTI produces a folder of numbered images, not a single file.
+    // Otherwise WebM container for VPX (vp9enc) and QuickTime for the rest,
+    // matching VideoRecorder's convention (Recorder.cpp)
+    std::string extension;
+    if (profile == GstToolkit::VPX_RT)
+        extension = ".webm";
+    else if (profile != GstToolkit::JPEG_MULTI)
+        extension = ".mov";
+
+    std::string output = base + "_rife" + extension;
     int counter = 1;
     while ( SystemToolkit::file_exists(output ) ) {
-        output = base + "_rife_" + std::to_string(counter) + ".mov";
+        output = base + "_rife_" + std::to_string(counter) + extension;
         counter++;
     }
     return output;
@@ -477,7 +487,7 @@ bool MultiFileRifeEncoder::start(const RifeOptions &options)
         return false;
     }
 
-    output_filename_ = generateOutputFilename(files_);
+    output_filename_ = generateOutputFilename(files_, options.profile);
 
     started_ = true;
     finished_ = false;
@@ -506,7 +516,15 @@ void MultiFileRifeEncoder::stop()
         worker_.join();
 
     if (!success_ && !output_filename_.empty()) {
-        if (SystemToolkit::remove_file(output_filename_))
+        // JPEG_MULTI wrote a folder of images: remove_file() cannot delete a
+        // directory, so discard the whole tree (as Transcoder does)
+        std::error_code ec;
+        if (std::filesystem::is_directory(output_filename_, ec)) {
+            std::filesystem::remove_all(output_filename_, ec);
+            if (!ec)
+                Log::Info("removed incomplete output folder %s\n", output_filename_.c_str());
+        }
+        else if (SystemToolkit::remove_file(output_filename_))
             Log::Info("removed incomplete output file %s\n", output_filename_.c_str());
     }
 }
@@ -622,11 +640,24 @@ void MultiFileRifeEncoder::run(RifeOptions options)
         // revert to software encoder
         else
             desc += GstToolkit::getEncodingPipeline(options.profile);
+
+        if (options.profile == GstToolkit::JPEG_MULTI) {
+            // numbered JPEG sequence: no muxer, into a folder of its own,
+            // created up front so a failure is reported before encoding
+            if (!SystemToolkit::create_directory(output_filename_))
+                throw std::runtime_error("Failed to create output folder " + output_filename_);
+            desc += "multifilesink location=\"" +
+                    SystemToolkit::full_filename(output_filename_, "%05d.jpg") + "\"";
+        }
+        else {
+            // WebM container for VPX (vp9enc, which qtmux refuses because it
+            // does not announce chroma-format), QuickTime for the rest
+            desc += std::string(options.profile == GstToolkit::VPX_RT ? "webmmux" : "qtmux") +
+                    " ! filesink location=\"" + output_filename_ + "\"";
+        }
 #ifndef NDEBUG
         Log::Info("ImageSequence: encoding pipeline '%s'", desc.c_str());
 #endif
-        // qt muxer in .mov file
-        desc += "qtmux ! filesink location=\"" + output_filename_ + "\"";
 
         GError *err = nullptr;
         enc_pipe = gst_parse_launch(desc.c_str(), &err);
