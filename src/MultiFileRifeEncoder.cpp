@@ -149,22 +149,22 @@ Frame decode_image(const std::string &path, int w, int h)
 // The ONNX model to run. RifeONNX reads the shape of the model's input at
 // load and feeds it accordingly
 
-// const char *kOnnxModel = "models/RIFE_fp32.onnx";
+// const char *kOnnxModel = "models/onnx/RIFE_fp32.onnx";
 // const char *kOnnxModelUrl =
 //     "https://huggingface.co/FuryTMP/RIFE_fp32/resolve/main/RIFE_fp32.onnx";
 
-// const char *kOnnxModel = "models/rife_v4.25_v2.onnx";
+// const char *kOnnxModel = "models/onnx/rife_v4.25_v2.onnx";
 // const char *kOnnxModelUrl =
 //     "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/rife_v4.25_v2.onnx";
 
-const char *kOnnxModel = "models/rife_v4.25_lite_v2.onnx";
+const char *kOnnxModel = "models/onnx/rife_v4.17_lite_v2.onnx";
 const char *kOnnxModelUrl =
-    "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/rife_v4.25_lite_v2.onnx";
+    "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/rife_v4.17_lite_v2.onnx";
 
 // ncnn models are platform-independent data (.param = text graph
 // description, .bin = raw weights), identical in every release artifact —
 // so fetch the two files directly, pinned to the release tag.
-const char *kNcnnModelDir = "models/rife-v4.6";
+const char *kNcnnModelDir = "models/ncnn/rife-v4.6";
 const char *kNcnnModelBaseUrl =
     "https://raw.githubusercontent.com/nihui/rife-ncnn-vulkan/20221029/models/rife-v4.6/";
 

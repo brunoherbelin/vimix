@@ -47,7 +47,7 @@ namespace {
 // The pass-through entry heads both catalogues and is what Upscaler::NONE
 // names; spelled once so the three can never disagree.
 const char *kNone = "None";
-const char *kNcnnModelDir = "models/realesrgan";
+const char *kNcnnModelDir = "models/ncnn";
 const char *kNcnnModelBaseUrl =
     "https://raw.githubusercontent.com/upscayl/custom-models/"
     "4b6d2cfa59c7442af115dfc6e50fd8d7d40b96ef/models/";
@@ -123,7 +123,7 @@ const std::vector<UpscalerModel> kNcnnModels = {
 // cost is a constant rather than a rate: 4xNomos2_realplksr_dysample_256
 // takes exactly 256x256 and holds 0.7 GB per tile whatever the image.
 //
-const char *kOnnxModelDir = "models/upscale";
+const char *kOnnxModelDir = "models/onnx";
 const char *kOnnxModelBaseUrl =
     "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/";
 
