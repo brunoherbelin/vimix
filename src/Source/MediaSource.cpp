@@ -43,6 +43,11 @@ MediaSource::~MediaSource()
 
 void MediaSource::setPath(const std::string &p)
 {
+    // a media player can be opened only once: do not pretend to change the path
+    // of a source already openned (use Mixer::replaceSource instead)
+    if ( mediaplayer_->isOpen() )
+        return;
+
     path_ = p;
 
     // prepare audio flag before openning
@@ -50,12 +55,6 @@ void MediaSource::setPath(const std::string &p)
 
     // open gstreamer
     mediaplayer_->open(path_);
-
-    // reset frame buffer; not always needed but necessary when replacing mediaplayer with another of different size
-    if ( renderbuffer_ != nullptr ) {
-        delete renderbuffer_;
-        renderbuffer_ = nullptr;
-    }
 
     // will be ready after init and one frame rendered
     ready_ = false;

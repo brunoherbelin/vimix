@@ -190,17 +190,17 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
             }
             ImGui::SameLine();
             if (mp->isImage())
-                ImGuiToolkit::HelpToolTip("Re-encode the source image in the specified format and options.\n\n "
-                        ICON_FA_FILM "  The new file will replace the one in the source "
-                        "once transcoding is successfully completed. "
+                ImGuiToolkit::HelpToolTip("Re-encode the source image file in the specified format and options.\n\n "
+                        ICON_FA_IMAGE "  The new file (same folder) will replace the one in the source "
+                        "once transcoding is successful. "
                         "The current file is left unchanged.\n\n "
                         ICON_FA_MAGIC "  Upscale will enlarge the image with a neural "
                         "network model. Models are downloaded on first run. "
                         "Largest and slowest ones give the best result.");
             else
-                ImGuiToolkit::HelpToolTip("Re-encode the source video using the specified codec and options.\n\n "
-                        ICON_FA_FILM "  The new file will replace the one in the source "
-                        "once transcoding is successfully completed. "
+                ImGuiToolkit::HelpToolTip("Re-encode the source video file using the specified codec and options.\n\n "
+                        ICON_FA_FILM "  The new file (same folder) will replace the one in the source "
+                        "once transcoding is successful. "
                         "The current file is left unchanged.\n\n "
                         ICON_FA_MAGIC "  Upscale will enlarge every frame with a neural "
                         "network model. Models are downloaded on first run. "
@@ -221,9 +221,11 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
                             // replace source in session by new multifile source
                             Mixer::manager().replaceSource(src, mfs);
                         }
-                        // General case; change path of current media source
-                        else 
-                            static_cast<MediaSource*>(src)->setPath( transcoder->outputFilename() );
+                        // General case; replace source in session by new media source
+                        else {
+                            Source *ms = Mixer::manager().createSourceFile(transcoder->outputFilename());
+                            Mixer::manager().replaceSource(src, ms);
+                        }
                     }
                     ret = true;
                 }

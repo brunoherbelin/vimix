@@ -114,6 +114,13 @@ MediaPlayer::~MediaPlayer()
         textureindex_ = 0;
     }
 
+    // cleanup picture buffer
+    if (pbo_[0]) {
+        glDeleteBuffers(2, pbo_);
+        pbo_[0] = pbo_[1] = 0;
+        pbo_size_ = 0;
+    }
+
 #ifdef MEDIA_PLAYER_DEBUG
     g_printerr("MediaPlayer %s deleted\n", std::to_string(id_).c_str());
 #endif
@@ -528,6 +535,10 @@ MediaEvaluation MediaPlayer::evaluation() const
 
 void MediaPlayer::open (const std::string & filename, const std::string &uri)
 {
+    // Cannot be opened with another file if already open or discovering
+    if (isOpen() || discoverer_.valid())
+        return;
+
     // set path
     filename_ = BaseToolkit::transliterate( filename );
 
@@ -539,10 +550,6 @@ void MediaPlayer::open (const std::string & filename, const std::string &uri)
 
     if (uri_.empty())
         failed_ = true;
-
-    // close before re-openning
-    if (isOpen())
-        close();
 
     // start URI discovering thread:
     discoverer_ = std::async( MediaPlayer::UriDiscoverer, uri_);
@@ -1100,6 +1107,7 @@ void MediaPlayer::close()
     rate_ = 1.0;
     rate_change_ = RATE_CHANGE_NONE;
     position_ = GST_CLOCK_TIME_NONE;
+    decoder_name_ = "";
 
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_VFRAME; i++) {
@@ -1113,12 +1121,6 @@ void MediaPlayer::close()
     }
     write_index_ = 0;
     last_index_ = 0;
-    
-    // cleanup opengl texture
-    if (textureindex_) {
-        glDeleteTextures(1, &textureindex_);
-        textureindex_ = 0;
-    }
 
     // clean up GST
     if (pipeline_ != nullptr) {
@@ -1127,13 +1129,6 @@ void MediaPlayer::close()
         // immediately invalidate access for other methods
         pipeline_ = nullptr;
         bus_ = nullptr;
-    }
-
-    // cleanup picture buffer
-    if (pbo_[0]) {
-        glDeleteBuffers(2, pbo_);
-        pbo_[0] = pbo_[1] = 0;
-        pbo_size_ = 0;
     }
 }
 
