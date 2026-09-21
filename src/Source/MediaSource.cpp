@@ -228,10 +228,8 @@ void MediaSource::render()
     if ( renderbuffer_ == nullptr )
         init();
     else {
-        // render the media player into frame buffer
-        // NB: this also applies the color correction shader
-        renderbuffer_->begin();
         // apply fading
+        // NB: done even if the frame buffer is not available, to keep audio in sync
         float __f = mediaplayer_->currentTimelineFading();
         setAudioVolumeFactor(Source::VOLUME_OPACITY, __f);
         if (mediaplayer_->timelineFadingMode() != MediaPlayer::FADING_ALPHA) {
@@ -242,8 +240,13 @@ void MediaSource::render()
             // alpha fading
             texturesurface_->shader()->color = glm::vec4( glm::vec3(1.f), __f);
         }
-        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
-        renderbuffer_->end();
+
+        // render the media player into frame buffer
+        // NB: this also applies the color correction shader
+        if ( renderbuffer_->begin() ) {
+            texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+            renderbuffer_->end();
+        }
         ready_ = true;
     }
 }

@@ -35,6 +35,7 @@
 #include "Audio.h"
 #include "VideoBroadcast.h"
 #include "FrameGrabbing.h"
+#include "FrameBuffer.h"
 
 #if defined(APPLE)
 extern "C"{
@@ -276,6 +277,11 @@ int main(int argc, char *argv[])
     ///
     Mixer::manager().terminate();
     Canvas::manager().terminate();
+
+#ifdef FRAMEBUFFER_DEBUG
+    /// report frame buffers not deleted (while the GL context is still alive)
+    FrameBuffer::dumpRegistry();
+#endif
 
     ///
     /// RENDERING TERMINATE

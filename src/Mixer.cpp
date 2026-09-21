@@ -105,8 +105,8 @@ void Mixer::update()
         if (sessionImporters_.back().wait_for(timeout_) == std::future_status::ready ) {
             if (sessionImporters_.back().valid()) {
                 // get the session loaded by this loader
+                // NB: merge() takes ownership and deletes the session
                 merge( sessionImporters_.back().get() );
-                // FIXME: shouldn't we delete the imported session?
             }
             // done with this session loader
             sessionImporters_.pop_back();
@@ -1548,6 +1548,11 @@ void Mixer::merge(Session *session)
         attachSource(s);
     }
 
+    // the imported session is now empty: delete it (this frees its frame buffers)
+    // NB: has to be done before re-creating the mixing groups below, because deleting
+    //     the former mixing groups resets the mixing group of the sources we just moved
+    delete session;
+
     // recreate groups in current session_
     for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
         session_->link( *git, mixing_.scene.fg() );
@@ -1580,6 +1585,10 @@ void Mixer::merge(SessionSource *source)
     std::ostringstream info;
     info << source->name().c_str() << ": expanded to " << session->size() << " sources";
 
+    // remember groups and input callbacks before emptying the session
+    std::list<SourceList> allgroups;
+    Session::MapInputSourceCallback tmpcallbacks;
+
     // import sources of the session (if not empty)
     if ( !session->empty() ) {
 
@@ -1606,11 +1615,11 @@ void Mixer::merge(SessionSource *source)
         }
 
         // remember groups before emptying the session
-        std::list<SourceList> allgroups = session->getMixingGroups();
+        allgroups = session->getMixingGroups();
 
         // remember input callbacks before emptying the session
-        Session::MapInputSourceCallback tmpcallbacks = session->copyInputCallbackMap();
-        
+        tmpcallbacks = session->copyInputCallbackMap();
+
         // prepare for selection of imported sources
         Mixer::selection().clear();
 
@@ -1647,17 +1656,22 @@ void Mixer::merge(SessionSource *source)
             Mixer::selection().add(s);
         }
 
-        // recreate groups in current session_
-        for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
-            session_->link( *git, mixing_.scene.fg() );
-
-        // restore input callbacks
-        session_->importInputCallbacks( tmpcallbacks );
-
         // needs to update !
         ++View::need_deep_update_;
 
     }
+
+    // the detached session is now empty: delete it (this frees its frame buffers)
+    // NB: has to be done before re-creating the mixing groups below, because deleting
+    //     the former mixing groups resets the mixing group of the sources we just moved
+    delete session;
+
+    // recreate groups in current session_
+    for (auto git = allgroups.begin(); git != allgroups.end(); ++git)
+        session_->link( *git, mixing_.scene.fg() );
+
+    // restore input callbacks
+    session_->importInputCallbacks( tmpcallbacks );
 
     // imported source itself should be removed
     detachSource(source);
@@ -1784,9 +1798,25 @@ void Mixer::terminate()
            || ++deadline < 10)
         update();
 
-    // all finished, we can clear the back session we just added
-    delete back_session_;
-    back_session_ = nullptr;
+    // all finished, we can clear the sessions
+    // NB: update() calls swap(), which moves the former front session to garbage_
+    //     and resets back_session_ to nullptr
+    if (back_session_ != nullptr) {
+        delete back_session_;
+        back_session_ = nullptr;
+    }
+
+    // delete the front session (it owns the output frame buffer)
+    if (session_ != nullptr) {
+        delete session_;
+        session_ = nullptr;
+    }
+
+    // empty the garbage collector (it is emptied one element per update())
+    while ( !garbage_.empty() ) {
+        delete garbage_.back();
+        garbage_.pop_back();
+    }
 }
 
 void Mixer::set(Session *s)

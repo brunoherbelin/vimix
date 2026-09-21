@@ -1325,10 +1325,16 @@ void UserInterface::showMenuFile()
     }
     else {
         // Custom width and height
+        // NB: kept within what the GPU can allocate
+        const int max_size = (int) FrameBuffer::maxResolution().x;
         ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
         ImGui::InputInt("Width", &Settings::application.render.custom_width, 100, 500);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            Settings::application.render.custom_width = CLAMP(Settings::application.render.custom_width, FRAMEBUFFER_MIN_SIZE, max_size);
         ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
         ImGui::InputInt("Height", &Settings::application.render.custom_height, 100, 500);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            Settings::application.render.custom_height = CLAMP(Settings::application.render.custom_height, FRAMEBUFFER_MIN_SIZE, max_size);
     }
 
     // FILE OPEN AND SAVE

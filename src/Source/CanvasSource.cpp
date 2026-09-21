@@ -125,10 +125,11 @@ void CanvasSurface::render ()
         // // ensure correct output texture is displayed (could have changed if canvas framebuffer changed)
         // texturesurface_->setTextureIndex( Canvas::manager().framebuffer_->texture() );
 
-        // render 
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::inverse( GlmToolkit::transform(translation, rotation, scale) ), projection);
-        renderbuffer_->end();
+        // render
+        if ( renderbuffer_->begin() ) {
+            texturesurface_->draw(glm::inverse( GlmToolkit::transform(translation, rotation, scale) ), projection);
+            renderbuffer_->end();
+        }
 
         ready_ = true;
     }

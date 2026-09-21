@@ -411,9 +411,10 @@ void SessionFileSource::render()
         init();
     else {
         // render the media player into frame buffer
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
-        renderbuffer_->end();
+        if ( renderbuffer_->begin() ) {
+            texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+            renderbuffer_->end();
+        }
         ready_ = true;
     }
 }
@@ -473,9 +474,10 @@ void SessionGroupSource::init()
         attach(renderbuffer);
 
         // render the session frame into frame buffer immediately (avoids 1 frame blank)
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
-        renderbuffer_->end();
+        if ( renderbuffer_->begin() ) {
+            texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+            renderbuffer_->end();
+        }
 
         // done init
         uint N = session_->size();

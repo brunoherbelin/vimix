@@ -103,9 +103,10 @@ void ShaderSource::render()
 
         // render textured surface into frame buffer
         // NB: this also applies the color correction shader
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
-        renderbuffer_->end();
+        if ( renderbuffer_->begin() ) {
+            texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+            renderbuffer_->end();
+        }
         ready_ = true;
     }
 }

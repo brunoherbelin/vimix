@@ -258,14 +258,20 @@ void SessionPanel::Render()
                     }
                     //  - custom aspect ratio : input width and height
                     else {
+                        // keep the typed values within what the GPU can allocate
+                        const int max_size = (int) FrameBuffer::maxResolution().x;
                         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                         ImGui::InputInt("Height", &custom.y, 100, 500);
-                        if (ImGui::IsItemDeactivatedAfterEdit())
-                            Mixer::manager().setResolution( glm::vec3(custom, 0.f));                        
+                        if (ImGui::IsItemDeactivatedAfterEdit()) {
+                            custom.y = CLAMP(custom.y, FRAMEBUFFER_MIN_SIZE, max_size);
+                            Mixer::manager().setResolution( glm::vec3(custom, 0.f));
+                        }
                         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                         ImGui::InputInt("Width", &custom.x, 100, 500);
-                        if (ImGui::IsItemDeactivatedAfterEdit())
+                        if (ImGui::IsItemDeactivatedAfterEdit()) {
+                            custom.x = CLAMP(custom.x, FRAMEBUFFER_MIN_SIZE, max_size);
                             Mixer::manager().setResolution( glm::vec3(custom, 0.f));
+                        }
                     }
                 }
             }

@@ -557,9 +557,11 @@ void Source::render()
     else {
         // render the view into frame buffer
         // NB: this also applies the color correction shader
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
-        renderbuffer_->end();
+        // NB: begin() fails if the frame buffer could not be allocated
+        if ( renderbuffer_->begin() ) {
+            texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+            renderbuffer_->end();
+        }
         ready_ = true;
     }
 }
