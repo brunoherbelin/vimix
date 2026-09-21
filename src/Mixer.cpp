@@ -1611,6 +1611,9 @@ void Mixer::merge(SessionSource *source)
         // remember input callbacks before emptying the session
         Session::MapInputSourceCallback tmpcallbacks = session->copyInputCallbackMap();
         
+        // prepare for selection of imported sources
+        Mixer::selection().clear();
+
         // import every sources
         for ( Source *s = session->popSource(); s != nullptr; s = session->popSource()) {
 
@@ -1639,6 +1642,9 @@ void Mixer::merge(SessionSource *source)
 
             // Attach source to Mixer
             attachSource(s);
+
+            // Select the imported source
+            Mixer::selection().add(s);
         }
 
         // recreate groups in current session_
