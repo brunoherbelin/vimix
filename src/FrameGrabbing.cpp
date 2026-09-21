@@ -159,8 +159,8 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
 
     // determine input size from frame buffer and crop, ensuring divisible by 2
     glm::vec2 size = frame_buffer->projectionSize();
-    write_width_ = 2 * (int) ceilf(float(frame_buffer->width()) * size.x / 2.f);
-    write_height_ = 2 * (int) ceilf(float(frame_buffer->height()) * size.y / 2.f);
+    guint write_width = 2 * (int) ceilf(float(frame_buffer->width()) * size.x / 2.f);
+    guint write_height = 2 * (int) ceilf(float(frame_buffer->height()) * size.y / 2.f);
 
     // nothing to do read
     if (grabbers_.empty())
@@ -169,11 +169,15 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
     // if different frame buffer from previous frame
     if ( frame_buffer->width() != read_width_ ||
          frame_buffer->height() != read_height_ ||
+         write_width != write_width_ ||
+         write_height != write_height_ ||
          (frame_buffer->flags() & FrameBuffer::FrameBuffer_alpha) != use_alpha_) {
 
         // define stream properties
         read_width_ = frame_buffer->width();
         read_height_ = frame_buffer->height();
+        write_width_ = write_width;
+        write_height_ = write_height;
         use_alpha_ = (frame_buffer->flags() & FrameBuffer::FrameBuffer_alpha);
         read_size_ = read_width_ * read_height_ * (use_alpha_ ? 4 : 3);
 
