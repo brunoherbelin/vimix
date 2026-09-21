@@ -725,7 +725,7 @@ void SessionVisitor::visit (SessionFileSource& s)
 void SessionVisitor::visit (SessionGroupSource& s)
 {
     xmlCurrent_->SetAttribute("type", "GroupSource");
-    xmlCurrent_->SetAttribute("height", (float) s.frame()->height());
+    xmlCurrent_->SetAttribute("height", (float) s.frame()->height() / s.scale().y );
 
     XMLElement *center = xmlDoc_->NewElement("center");
     center->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.center()) );
