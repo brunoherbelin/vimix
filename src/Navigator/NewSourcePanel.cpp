@@ -467,11 +467,11 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
 
                 // select CODEC: decide for gst sequence (codec_id = -1) or encoding a video
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                std::string codec_current = Settings::application.image_sequence.profile < 0 ? ICON_FA_SORT_NUMERIC_DOWN " Numbered images"
+                std::string codec_current = Settings::application.image_sequence.profile < 0 ? ICON_FA_SORT_NUMERIC_DOWN "  Image sequence"
                                                          : std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[Settings::application.image_sequence.profile];
                 if (ImGui::BeginCombo("##CodecSequence", codec_current.c_str(), ImGuiComboFlags_HeightLarge)) {
                     // special case; if possible, offer to create an image sequence gst source
-                    if (ImGui::Selectable( ICON_FA_SORT_NUMERIC_DOWN " Numbered images",
+                    if (ImGui::Selectable( ICON_FA_SORT_NUMERIC_DOWN "  Image sequence",
                                           Settings::application.image_sequence.profile < 0,
                                           _numbered_sequence.valid()
                                               ? ImGuiSelectableFlags_None
@@ -489,10 +489,27 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                                            label);
                         }
                     }
-                    // always offer to encode a video
-                    for (int i = GstToolkit::H264_RT; i < GstToolkit::DEFAULT; ++i) {
-                        std::string icon = (i==GstToolkit::JPEG_MULTI) ? std::string(ICON_FA_IMAGES " ") : std::string(ICON_FA_FILM " ");
-                        std::string label = icon + GstToolkit::profile_name[i];
+                    // offer to encode as an image sequence
+                    {
+                        std::string label = std::string(ICON_FA_IMAGES " ") + GstToolkit::profile_name[GstToolkit::JPEG_MULTI];
+                        const bool supported = GstToolkit::supportsResolution(GstToolkit::JPEG_MULTI,
+                                                                             sequence_width, sequence_height,
+                                                                             Settings::application.render.gpu_decoding);
+                        if (ImGui::Selectable(label.c_str(), Settings::application.image_sequence.profile == GstToolkit::JPEG_MULTI,
+                                              supported ? ImGuiSelectableFlags_None : ImGuiSelectableFlags_Disabled)) {
+                            // select multi-image encoding (jpeg) for image sequence
+                            Settings::application.image_sequence.profile = GstToolkit::JPEG_MULTI;
+                            // close source preview (no image sequence)
+                            new_source_preview_.setSource();
+                        }
+                        if (!supported && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                            ImGuiToolkit::ToolTip( GstToolkit::unsupportedResolution(GstToolkit::JPEG_MULTI,
+                                                   sequence_width, sequence_height,
+                                                   Settings::application.render.gpu_decoding).c_str() );
+                    }
+                    // offer to encode as a video
+                    for (int i = GstToolkit::H264_RT; i < GstToolkit::JPEG_MULTI; ++i) {
+                        std::string label = std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[i];
                         const bool supported = GstToolkit::supportsResolution((GstToolkit::Profile) i,
                                                                              sequence_width, sequence_height,
                                                                              Settings::application.render.gpu_decoding);
@@ -514,8 +531,8 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                 ImGui::SameLine();
                 ImGuiToolkit::HelpToolTip(ICON_FA_SORT_NUMERIC_DOWN " Create an image sequence from the selected images; "
                                               "possible only if the selected images are numbered consecutively.\n\n"
-                                              ICON_FA_FILM " Encode a video with the selected images and create a video source.\n\n"
-                                              ICON_FA_IMAGES " Produce a sequence of consecutively numbered images (JPEG) in a subfolder.");
+                                              ICON_FA_IMAGES " Produce a sequence of consecutively numbered JPEG images in a subfolder.\n\n"
+                                              ICON_FA_FILM " Encode a video with the selected images and create a video source.");
 
                 // set framerate
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
