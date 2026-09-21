@@ -178,7 +178,7 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
 
         // Start transcoding if not already started for current source
         if (transcoder == nullptr) {
-            if (ImGui::Button(ICON_FA_COGS " Transcode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
+            if (ImGui::Button(ICON_FA_FILE_EXPORT ICON_FA_FILE_IMPORT " Transcode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
                 transcode_id = id;
                 transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
                 if (!transcoder->start(transcode_options)) {
@@ -191,17 +191,15 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
             ImGui::SameLine();
             if (mp->isImage())
                 ImGuiToolkit::HelpToolTip("Re-encode the source image file in the specified format and options.\n\n "
-                        ICON_FA_IMAGE "  The new file (same folder) will replace the one in the source "
-                        "once transcoding is successful. "
-                        "The current file is left unchanged.\n\n "
+                        ICON_FA_FILE_IMAGE "  The new image will be used by the source once transcoding is successful. "
+                        "Current file is left unchanged, new file is created in the same folder.\n\n "
                         ICON_FA_MAGIC "  Upscale will enlarge the image with a neural "
                         "network model. Models are downloaded on first run. "
                         "Largest and slowest ones give the best result.");
             else
                 ImGuiToolkit::HelpToolTip("Re-encode the source video file using the specified codec and options.\n\n "
-                        ICON_FA_FILM "  The new file (same folder) will replace the one in the source "
-                        "once transcoding is successful. "
-                        "The current file is left unchanged.\n\n "
+                        ICON_FA_FILE_VIDEO "  The new video will be used by the source once transcoding is successful. "
+                        "Current file is left unchanged, new file is created in the same folder.\n\n "
                         ICON_FA_MAGIC "  Upscale will enlarge every frame with a neural "
                         "network model. Models are downloaded on first run. "
                         "Process can be very slow for high resolution. Audio track is not kept.");

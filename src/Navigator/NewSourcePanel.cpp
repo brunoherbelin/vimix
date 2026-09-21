@@ -468,7 +468,9 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                 // select CODEC: decide for gst sequence (codec_id = -1) or encoding a video
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 std::string codec_current = Settings::application.image_sequence.profile < 0 ? ICON_FA_SORT_NUMERIC_DOWN "  Image sequence"
-                                                         : std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[Settings::application.image_sequence.profile];
+                                                         : Settings::application.image_sequence.profile < GstToolkit::JPEG_MULTI ? 
+                                                          std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[Settings::application.image_sequence.profile]
+                                                          : std::string(ICON_FA_IMAGES " ") + GstToolkit::profile_name[GstToolkit::JPEG_MULTI ];
                 if (ImGui::BeginCombo("##CodecSequence", codec_current.c_str(), ImGuiComboFlags_HeightLarge)) {
                     // special case; if possible, offer to create an image sequence gst source
                     if (ImGui::Selectable( ICON_FA_SORT_NUMERIC_DOWN "  Image sequence",
@@ -531,7 +533,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                 ImGui::SameLine();
                 ImGuiToolkit::HelpToolTip(ICON_FA_SORT_NUMERIC_DOWN " Create an image sequence from the selected images; "
                                               "possible only if the selected images are numbered consecutively.\n\n"
-                                              ICON_FA_IMAGES " Produce a sequence of consecutively numbered JPEG images in a subfolder.\n\n"
+                                              ICON_FA_IMAGES " Convert to a sequence of consecutively numbered JPEG images.\n\n"
                                               ICON_FA_FILM " Encode a video with the selected images and create a video source.");
 
                 // set framerate
@@ -592,7 +594,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                     }
                     // Offer to create video from sequence
                     ImGui::NewLine();
-                    if ( ImGui::Button( ICON_FA_COGS "  Encode", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+                    if ( ImGui::Button( ICON_FA_CHECK "  Encode", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
                         RifeOptions options;
                         options.loop = Settings::application.image_sequence.priority_mode;
                         options.fps = Settings::application.image_sequence.framerate_mode;
