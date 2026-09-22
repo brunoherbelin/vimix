@@ -19,12 +19,18 @@
 
 #include <algorithm>
 
+#include "defines.h"
+#include "IconsFontAwesome5.h"
 #include "Source/Source.h"
 #include "Source/SourceCallback.h"
+#include "Source/SessionSource.h"
 #include "ControlManager.h"
 #include "Session.h"
 
 #include "InputCallbacks.h"
+
+// any change anywhere invalidates the lists of nested actions of all sessions
+uint InputCallbacks::revision_ = 1;
 
 InputCallbacks::Assignment::~Assignment()
 {
@@ -45,13 +51,19 @@ void InputCallbacks::Assignment::clear()
     instances_.clear();
 }
 
-InputCallbacks::InputCallbacks(Session *parent) : session_(parent)
+InputCallbacks::InputCallbacks(Session *parent) : session_(parent), nested_revision_(0)
 {
     input_sync_.resize(INPUT_MAX, Metronome::SYNC_NONE);
+
+    // a session appeared: it could be nested in another one
+    touch();
 }
 
 InputCallbacks::~InputCallbacks()
 {
+    // a session disappeared: it could have been nested in another one
+    touch();
+
     // delete all callbacks
     for (auto iter = input_callbacks_.begin(); iter != input_callbacks_.end();
          iter = input_callbacks_.erase(iter))  {
@@ -63,6 +75,9 @@ InputCallbacks::~InputCallbacks()
 
 void InputCallbacks::assign(uint input, Target target, SourceCallback *callback)
 {
+    // the actions changed
+    touch();
+
     // find if this callback is already assigned
     auto k = input_callbacks_.begin();
     for (; k != input_callbacks_.end(); ++k)
@@ -87,6 +102,9 @@ void InputCallbacks::assign(uint input, Target target, SourceCallback *callback)
 
 void InputCallbacks::swap(uint from, uint to)
 {
+    // the actions changed
+    touch();
+
     Map swapped_callbacks_;
 
     for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
@@ -102,6 +120,9 @@ void InputCallbacks::swap(uint from, uint to)
 
 void InputCallbacks::copy(uint from, uint to)
 {
+    // the actions changed
+    touch();
+
     if ( input_callbacks_.count(from) > 0 ) {
         auto from_callbacks = at(from);
         for (auto it = from_callbacks.cbegin(); it != from_callbacks.cend(); ++it){
@@ -125,6 +146,9 @@ std::list<std::pair<Target, SourceCallback *> > InputCallbacks::at(uint input)
 
 void InputCallbacks::remove(SourceCallback *callback)
 {
+    // the actions changed
+    touch();
+
     for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
     {
         if ( k->second.model_ == callback) {
@@ -138,6 +162,9 @@ void InputCallbacks::remove(SourceCallback *callback)
 
 void InputCallbacks::removeAll(uint input)
 {
+    // the actions changed
+    touch();
+
     for (auto k = input_callbacks_.begin(); k != input_callbacks_.end();)
     {
         if ( k->first == input) {
@@ -153,6 +180,9 @@ void InputCallbacks::removeAll(uint input)
 
 void InputCallbacks::removeAll(Target target)
 {
+    // the actions changed
+    touch();
+
     for (auto k = input_callbacks_.begin(); k != input_callbacks_.end();)
     {
         if ( k->second.target_ == target) {
@@ -169,6 +199,9 @@ void InputCallbacks::removeAll(Target target)
 
 void InputCallbacks::clear()
 {
+    // the actions changed
+    touch();
+
     for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); )
     {
         if (k->second.model_)
@@ -227,8 +260,85 @@ bool InputCallbacks::assigned(uint input)
     return input_callbacks_.find(input) != input_callbacks_.end();
 }
 
+void InputCallbacks::listNested(Session *se, const std::string &path, int level)
+{
+    // safety: do not recurse deeper than sessions can be nested
+    if (se == nullptr || level > MAX_SESSION_LEVEL)
+        return;
+
+    for (auto sit = se->begin(); sit != se->end(); ++sit) {
+
+        // only SessionSources (bundles & session files) embed a session
+        SessionSource *ss = dynamic_cast<SessionSource *>(*sit);
+        if (ss == nullptr || ss->session() == nullptr)
+            continue;
+
+        Session *nested_session = ss->session();
+        const std::string nestedpath = path + (*sit)->name() + " " ICON_FA_LONG_ARROW_ALT_RIGHT " ";
+
+        // remember all the actions assigned in the nested session
+        for (auto k = nested_session->inputCallbacks()->begin();
+                  k != nested_session->inputCallbacks()->end(); ++k) {
+            // ignore an incomplete action
+            if (k->second.model_ == nullptr)
+                continue;
+            Nested n;
+            n.session  = nested_session;
+            n.path     = nestedpath;
+            n.target   = k->second.target_;
+            n.callback = k->second.model_;
+            nested_callbacks_.emplace( k->first, n );
+        }
+
+        // a bundle can contain bundles
+        listNested(nested_session, nestedpath, level + 1);
+    }
+}
+
+void InputCallbacks::updateNested()
+{
+    // nothing changed since the list was established: keep it
+    if (nested_revision_ == revision_)
+        return;
+    nested_revision_ = revision_;
+
+    // establish the list again
+    nested_callbacks_.clear();
+    listNested(session_, std::string());
+}
+
+bool InputCallbacks::assignedNested(uint input)
+{
+    updateNested();
+
+    return nested_callbacks_.find(input) != nested_callbacks_.end();
+}
+
+bool InputCallbacks::assignedAnywhere(uint input)
+{
+    return assigned(input) || assignedNested(input);
+}
+
+std::list<InputCallbacks::Nested> InputCallbacks::nested(uint input)
+{
+    updateNested();
+
+    std::list<Nested> ret;
+
+    if ( nested_callbacks_.count(input) > 0 ) {
+        auto result = nested_callbacks_.equal_range(input);
+        for (auto it = result.first; it != result.second; ++it)
+            ret.push_back( it->second );
+    }
+
+    return ret;
+}
+
 void InputCallbacks::removeSource( uint64_t sid )
 {
+    // the actions changed
+    touch();
+
     if (sid > 0 && !input_callbacks_.empty()) {
         // test all targets of the list of input callbacks
         for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); )
@@ -268,6 +378,9 @@ InputCallbacks::Map InputCallbacks::copyMap() const
 
 void InputCallbacks::import(InputCallbacks::Map &callbacks)
 {
+    // the actions changed
+    touch();
+
     // NB: this takes ownership of the callback models given in the map (typically
     // obtained from copyMap), either by giving them to a source of this session,
     // or by deleting them. The map is emptied and owns nothing on return.

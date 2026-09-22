@@ -3,6 +3,7 @@
 
 #include <list>
 #include <map>
+#include <string>
 #include <vector>
 
 #include "Source/SourceList.h"
@@ -44,6 +45,21 @@ public:
     // all the assignments, indexed by input
     typedef std::multimap<uint, Assignment>  Map;
 
+    /**
+     * @brief The Nested struct describes an action assigned to an input inside
+     * a session nested in this one, i.e. inside a bundle or a session file.
+     */
+    struct Nested {
+        Session *session;
+        std::string path;
+        Target target;
+        SourceCallback *callback;
+        Nested() : session(nullptr), target(nullptr), callback(nullptr) {}
+    };
+
+    // all the nested assignments, indexed by input
+    typedef std::multimap<uint, Nested>  NestedMap;
+
     // NB: an InputCallbacks always belongs to a Session
     InputCallbacks(Session *parent);
     ~InputCallbacks();
@@ -72,8 +88,14 @@ public:
 
     // list of all inputs having at least one action
     std::list<uint> assignedInputs();
-    // true if the input has at least one action
+    // true if the input has at least one action in this session
     bool assigned(uint input);
+    // true if the input has at least one action in a session nested in this one
+    bool assignedNested(uint input);
+    // true if the input has an action, either in this session or in a nested one
+    bool assignedAnywhere(uint input);
+    // list of all the actions assigned to an input in the nested sessions
+    std::list<Nested> nested(uint input);
     // move all actions from an input to another
     void swap(uint from, uint to);
     // duplicate all actions of an input to another
@@ -94,12 +116,28 @@ public:
     std::vector<Metronome::Synchronicity> synchrony();
     Metronome::Synchronicity synchrony(uint input);
 
+    // Inform that something changed in the tree of sources and sessions, and that
+    // the lists of nested actions have to be established again.
+    static inline void touch() { ++revision_; }
+
 private:
+    // (re)build the list of nested actions, only if something changed since last time
+    void updateNested();
+    // recursively fill nested_callbacks_ with the actions of the sessions in the bundles
+    void listNested(Session *se, const std::string &path, int level = 0);
+
     // the session owning these callbacks (to reach its sources and batches)
     Session *session_;
 
     Map input_callbacks_;
     std::vector<Metronome::Synchronicity> input_sync_;
+
+    // actions assigned inside the sessions nested in this one
+    NestedMap nested_callbacks_;
+    // revision at which nested_callbacks_ was established
+    uint nested_revision_;
+    // counter of changes; only ever incremented, so that comparing it is reliable
+    static uint revision_;
 };
 
 #endif // INPUTCALLBACKS_H

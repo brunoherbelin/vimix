@@ -357,6 +357,9 @@ void Session::update(float dt)
 
 SourceList::iterator Session::addSource(Source *s)
 {
+    // the list of sources changed: nested actions could have appeared
+    InputCallbacks::touch();
+
     // lock before change
     access_.lock();
 
@@ -381,6 +384,9 @@ SourceList::iterator Session::addSource(Source *s)
 
 SourceList::iterator Session::deleteSource(Source *s)
 {
+    // the list of sources changed: nested actions could have disappeared
+    InputCallbacks::touch();
+
     // lock before change
     access_.lock();
 
@@ -434,6 +440,9 @@ SourceList::iterator Session::removeSource(Source *s)
 
 Source *Session::popSource()
 {
+    // the list of sources changed: nested actions could have disappeared
+    InputCallbacks::touch();
+
     Source *s = nullptr;
 
     SourceList::iterator its = sources_.begin();
