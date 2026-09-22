@@ -230,12 +230,12 @@ XMLElement * SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Sess
         inputsNode = doc->NewElement("InputCallbacks");
 
         // list of inputs assigned in the session
-        std::list<uint> inputs = session->assignedInputs();
+        std::list<uint> inputs = session->inputCallbacks()->assignedInputs();
         if (!inputs.empty()) {
             // loop over list of inputs
             for (auto i = inputs.begin(); i != inputs.end(); ++i) {
                 // get all callbacks for this input
-                auto result = session->getSourceCallbacks(*i);
+                auto result = session->inputCallbacks()->at(*i);
                 for (auto kit = result.cbegin(); kit != result.cend(); ++kit) {
                     // create node for this callback
                     XMLElement *cbNode = doc->NewElement("Callback");
@@ -261,7 +261,7 @@ XMLElement * SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Sess
 
         // save array of synchronyzation mode for all inputs (CSV)
         std::ostringstream oss;
-        std::vector<Metronome::Synchronicity> synch = session->getInputSynchrony();
+        std::vector<Metronome::Synchronicity> synch = session->inputCallbacks()->synchrony();
         for (auto token = synch.begin(); token != synch.end(); ++token)
             oss << (int) *token << ';';
         XMLElement *syncNode = doc->NewElement("Synchrony");

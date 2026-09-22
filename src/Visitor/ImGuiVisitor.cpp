@@ -492,7 +492,7 @@ void ImGuiVisitor::visit (Source& s)
 
         // inform of input mapping
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
-        std::list<uint> inputs = Mixer::manager().session()->inputsForSource( s.id() );
+        std::list<uint> inputs = Mixer::manager().session()->inputCallbacks()->inputsForSource( s.id() );
         if (!inputs.empty())    {
             if (ImGuiToolkit::IconButton( ICON_FA_HAND_PAPER ) ) {
                 // open input mapping window

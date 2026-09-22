@@ -923,7 +923,7 @@ void Mixer::group(SourceList sourcelist)
     }
 
     // remember input callbacks before emptying the session
-    Session::MapInputSourceCallback tmpcallbacks = session_->copyInputCallbackMap();
+    InputCallbacks::Map tmpcallbacks = session_->inputCallbacks()->copyMap();
 
     // browse the list
     for (auto sit = sourcelist.begin(); sit != sourcelist.end(); ++sit) {
@@ -942,7 +942,7 @@ void Mixer::group(SourceList sourcelist)
     }
 
     // restore input callbacks
-    sessionbundle->session()->importInputCallbacks( tmpcallbacks );
+    sessionbundle->session()->inputCallbacks()->import( tmpcallbacks );
 
     if (sessionbundle->session()->size() > 0) {
         // recreate groups in session group
@@ -1046,7 +1046,7 @@ void Mixer::groupAll(bool only_active)
     }
 
     // remember input callbacks before emptying the session
-    Session::MapInputSourceCallback tmpcallbacks = session_->copyInputCallbackMap();
+    InputCallbacks::Map tmpcallbacks = session_->inputCallbacks()->copyMap();
 
     // browse the list
     for (auto sit = sourcelist.begin(); sit != sourcelist.end(); ++sit) {
@@ -1060,7 +1060,7 @@ void Mixer::groupAll(bool only_active)
     }
 
     // restore input callbacks
-    sessionbundle->session()->importInputCallbacks( tmpcallbacks );
+    sessionbundle->session()->inputCallbacks()->import( tmpcallbacks );
 
     // successful creation of a session group
     if (sessionbundle->session()->size() > 0) {
@@ -1539,7 +1539,7 @@ void Mixer::merge(Session *session)
     std::list<SourceList> allgroups = session->getMixingGroups();
 
     // remember input callbacks before emptying the session
-    Session::MapInputSourceCallback tmpcallbacks = session->copyInputCallbackMap();
+    InputCallbacks::Map tmpcallbacks = session->inputCallbacks()->copyMap();
 
     // import every sources
     std::ostringstream info;
@@ -1565,7 +1565,7 @@ void Mixer::merge(Session *session)
         session_->link( *git, mixing_.scene.fg() );
 
     // restore input callbacks
-    session_->importInputCallbacks( tmpcallbacks );
+    session_->inputCallbacks()->import( tmpcallbacks );
 
     // needs to update !
     ++View::need_deep_update_;
@@ -1594,7 +1594,7 @@ void Mixer::merge(SessionSource *source)
 
     // remember groups and input callbacks before emptying the session
     std::list<SourceList> allgroups;
-    Session::MapInputSourceCallback tmpcallbacks;
+    InputCallbacks::Map tmpcallbacks;
 
     // import sources of the session (if not empty)
     if ( !session->empty() ) {
@@ -1625,7 +1625,7 @@ void Mixer::merge(SessionSource *source)
         allgroups = session->getMixingGroups();
 
         // remember input callbacks before emptying the session
-        tmpcallbacks = session->copyInputCallbackMap();
+        tmpcallbacks = session->inputCallbacks()->copyMap();
 
         // prepare for selection of imported sources
         Mixer::selection().clear();
@@ -1678,7 +1678,7 @@ void Mixer::merge(SessionSource *source)
         session_->link( *git, mixing_.scene.fg() );
 
     // restore input callbacks
-    session_->importInputCallbacks( tmpcallbacks );
+    session_->inputCallbacks()->import( tmpcallbacks );
 
     // imported source itself should be removed
     detachSource(source);

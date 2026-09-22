@@ -288,7 +288,7 @@ void SessionLoader::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
                         // apply specific parameters
                         loadedcallback->accept(*this);
                         // assign to target
-                        session_->assignInputCallback(input, target, loadedcallback);
+                        session_->inputCallbacks()->assign(input, target, loadedcallback);
                     }
                 }
             }
@@ -304,9 +304,9 @@ void SessionLoader::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
                 uint i = 0;
                 while(std::getline(iss, token, ';')) {
                     if (token.compare("1") == 0)
-                        session_->setInputSynchrony(i, Metronome::SYNC_BEAT);
+                        session_->inputCallbacks()->setSynchrony(i, Metronome::SYNC_BEAT);
                     else if (token.compare("2") == 0)
-                        session_->setInputSynchrony(i, Metronome::SYNC_PHASE);
+                        session_->inputCallbacks()->setSynchrony(i, Metronome::SYNC_PHASE);
                     ++i;
                 }
             }

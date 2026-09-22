@@ -42,6 +42,7 @@ set(VMIX_SRCS
     Screenshot.cpp
     Selection.cpp
     Session.cpp
+    InputCallbacks.cpp
     SessionCreator.cpp
     SessionParser.cpp
     Settings.cpp
