@@ -467,8 +467,15 @@ Source *Mixer::createSourceText(const std::string &contents, glm::ivec2 res)
         basestring = BaseToolkit::transliterate(contents);
         if (SystemToolkit::file_exists(basestring))
             basestring = SystemToolkit::base_filename(basestring);
-        else
-            basestring = BaseToolkit::splitted(basestring, '\n').front();
+        else {
+            // NB: transliterate can return an empty text (e.g. contents made only of
+            // characters it removes), in which case the default name above is kept
+            std::list<std::string> lines = BaseToolkit::splitted(basestring, '\n');
+            if (!lines.empty())
+                basestring = lines.front();
+            else
+                basestring = "Text";
+        }
     }
     s->setName( basestring );
 

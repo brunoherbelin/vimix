@@ -448,6 +448,11 @@ void Source::setName (const std::string &name)
     if (!name.empty())
         name_ = BaseToolkit::unspace( BaseToolkit::transliterate(name) );
     else
+        name_.clear();
+
+    // no name given, or nothing remains after transliteration
+    // (e.g. a name made only of characters removed by transliterate, like "@!#$*%~")
+    if (name_.empty())
         name_ = "Source";
 
     initials_[0] = std::toupper( name_.front(), std::locale("C") );
