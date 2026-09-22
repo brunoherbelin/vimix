@@ -941,13 +941,13 @@ void Mixer::group(SourceList sourcelist)
         }
     }
 
+    // restore input callbacks
+    sessionbundle->session()->importInputCallbacks( tmpcallbacks );
+
     if (sessionbundle->session()->size() > 0) {
         // recreate groups in session group
         for (auto git = selectgroups.begin(); git != selectgroups.end(); ++git)
             sessionbundle->session()->link( *git );
-
-        // restore input callbacks 
-        sessionbundle->session()->importInputCallbacks( tmpcallbacks );
 
         // set depth at given location
         sessionbundle->group(View::LAYER)->translation_.z = d;
@@ -1059,15 +1059,15 @@ void Mixer::groupAll(bool only_active)
         }
     }
 
+    // restore input callbacks
+    sessionbundle->session()->importInputCallbacks( tmpcallbacks );
+
     // successful creation of a session group
     if (sessionbundle->session()->size() > 0) {
 
         // recreate groups in session group
         for (auto git = bundlegroups.begin(); git != bundlegroups.end(); ++git)
             sessionbundle->session()->link( *git );
-
-        // restore input callbacks 
-        sessionbundle->session()->importInputCallbacks( tmpcallbacks );
 
         // set default depth in workspace for the session-group source
         sessionbundle->group(View::LAYER)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;

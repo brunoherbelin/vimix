@@ -744,6 +744,11 @@ void SessionVisitor::visit (SessionGroupSource& s)
             setRoot(sessionNode);
             (*iter)->accept(*this);
         }
+        
+        // save input callbacks
+        XMLElement *inputsNode = SessionVisitor::saveInputCallbacks(xmlDoc_, se);
+        if (inputsNode)
+            sessionNode->InsertEndChild(inputsNode);
     }
 }
 

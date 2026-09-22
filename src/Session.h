@@ -204,7 +204,8 @@ public:
     std::list<uint> inputsForSource( uint64_t id );
     void removeSourceFromInputCallbacks( uint64_t id );
     MapInputSourceCallback copyInputCallbackMap() const;
-    void importInputCallbacks(MapInputSourceCallback callbacks);
+    // NB: takes ownership of the callback models held in the map, and empties it
+    void importInputCallbacks(MapInputSourceCallback &callbacks);
 
     void setInputSynchrony(uint input, Metronome::Synchronicity sync);
     std::vector<Metronome::Synchronicity> getInputSynchrony();

@@ -207,9 +207,11 @@ void Session::update(float dt)
 
                     // Add callback to the target(s)
 
-                    // 3. Case of variant as Current source
+                    // 3. Case of variant as Current source of the Mixer front session only.
+                    // Ignored in any other session (bundle, session file)
                     if (std::holds_alternative<Current>(k->second.target_)) {
-                        Source *s = Mixer::manager().currentSource();
+                        Source *s = ( this == Mixer::manager().session() )
+                                    ? Mixer::manager().currentSource() : nullptr;
                         if ( s != nullptr ) {
                             // generate a new callback from the model
                             SourceCallback *forward = k->second.model_->clone();
@@ -1081,22 +1083,40 @@ Session::MapInputSourceCallback Session::copyInputCallbackMap() const
     return _copy;
 }
 
-void Session::importInputCallbacks(Session::MapInputSourceCallback callbacks)
+void Session::importInputCallbacks(Session::MapInputSourceCallback &callbacks)
 {
+    // NB: this takes ownership of the callback models given in the map (typically
+    // obtained from copyInputCallbackMap), either by giving them to a source of this
+    // session, or by deleting them. The map is emptied and owns nothing on return.
     for (auto k = callbacks.begin(); 
               k != callbacks.end(); ++k)
     {
-        if (Source * const* v = std::get_if<Source *>(&k->second.target_)) {
-            // v is a source
-            // if the source exists in this session
-            SourceList::iterator sit = std::find_if(sources_.begin(), sources_.end(), Source::hasId( (*v)->id() ));;
-            if ( sit != sources_.end()) {
-                // assign callback to this source
-                assignInputCallback( k->first, *v, k->second.model_->clone() );
+        bool assigned = false;
+
+        if (k->second.model_ != nullptr) {
+            if (Source * const* v = std::get_if<Source *>(&k->second.target_)) {
+                // v is a source
+                // if the source exists in this session
+                SourceList::iterator sit = std::find_if(sources_.begin(), sources_.end(), Source::hasId( (*v)->id() ));;
+                if ( sit != sources_.end()) {
+                    // assign callback to this source (which takes ownership of the model)
+                    assignInputCallback( k->first, *v, k->second.model_ );
+                    assigned = true;
+                }
             }
         }
+
+        // the model could not be given to a source of this session (e.g. the target is
+        // not a source, or the source was not imported): delete it to avoid a leak
+        if (!assigned && k->second.model_ != nullptr)
+            delete k->second.model_;
+
+        // in all cases the map does not own the model anymore
+        k->second.model_ = nullptr;
     }
 
+    // every callback was either assigned or deleted
+    callbacks.clear();
 }
 
 void Session::setInputSynchrony(uint input, Metronome::Synchronicity sync)

@@ -17,12 +17,16 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "IconsFontAwesome5.h"
 #include "Source/MediaSource.h"
+#include "Source/SessionSource.h"
 #include "Source/SourceList.h"
 #include <string>
 #include <algorithm>
 #include <list>
 #include <tuple>
+#include <sstream>
+#include <iomanip>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -41,6 +45,7 @@
 #include "Mixer.h"
 #include "Source/SourceCallback.h"
 #include "ControlManager.h"
+#include "Toolkit/GstToolkit.h"
 #include "Metronome.h"
 #include "MediaPlayer.h"
 
@@ -82,6 +87,61 @@ bool InputMappingWindow::Visible() const
 }
 
 ///
+/// Name of each type of callback displayed in the user interface
+///
+static const char* callback_names[25] = { "Select",
+                                   ICON_FA_BULLSEYE "  Alpha",
+                                   ICON_FA_BULLSEYE "  Loom",
+                                   ICON_FA_OBJECT_UNGROUP "  Geometry",
+                                   ICON_FA_OBJECT_UNGROUP "  Grab",
+                                   ICON_FA_OBJECT_UNGROUP "  Resize",
+                                   ICON_FA_OBJECT_UNGROUP "  Turn",
+                                   ICON_FA_LAYER_GROUP "  Depth",
+                                   ICON_FA_PLAY_CIRCLE "  Play",
+                                   ICON_FA_PLAY_CIRCLE "  Speed",
+                                   ICON_FA_PLAY_CIRCLE "  Fast forward",
+                                   ICON_FA_PLAY_CIRCLE "  Seek",
+                                   ICON_FA_PLAY_CIRCLE "  Flag",
+                                   "  None",
+                                   "  None",
+                                   "  None",
+                                   "  None",
+                                   "  None",
+                                   ICON_FA_PALETTE "  Gamma",
+                                   ICON_FA_PALETTE "  Brightness",
+                                   ICON_FA_PALETTE "  Contrast",
+                                   ICON_FA_PALETTE "  Saturation",
+                                   ICON_FA_PALETTE "  Hue",
+                                   ICON_FA_PALETTE "  Threshold",
+                                   ICON_FA_PALETTE "  Invert"
+};
+
+static const char *callbackName(uint type)
+{
+    static const uint num_names = sizeof(callback_names) / sizeof(*callback_names);
+    return type < num_names ? callback_names[type] : "  Other";
+}
+
+///
+/// Label of a Target variant : a Source, a Batch, or the current source
+///
+static std::string targetLabel(const Target &target)
+{
+    std::string label = "Select";
+
+    if (target.index() > 0) {
+        if (Source * const* v = std::get_if<Source *>(&target))
+            label = std::string((*v)->initials()) + " - " + (*v)->name();
+        else if ( const size_t* v = std::get_if<size_t>(&target))
+            label = std::string("Batch #") + std::to_string(*v);
+        else
+            label = "Current source";
+    }
+
+    return label;
+}
+
+///
 /// Draw a combo box listing all sources and all batch of the current session
 /// Returns a Target variant : non-assigned by default (std::monostate), or a Source, or a Batch
 /// If current element is indicated, it is displayed first
@@ -89,20 +149,9 @@ bool InputMappingWindow::Visible() const
 Target InputMappingWindow::ComboSelectTarget(const Target &current)
 {
     Target selected;
-    std::string label = "Select";
 
     // depending on variant, fill the label of combo
-    if (current.index() > 0) {
-        if (Source * const* v = std::get_if<Source *>(&current)) {
-            label = std::string((*v)->initials()) + " - " + (*v)->name();
-        }
-        else if ( const size_t* v = std::get_if<size_t>(&current)) {
-            label = std::string("Batch #") + std::to_string(*v);
-        }
-        else {
-            label = "Current source";
-        }
-    }
+    std::string label = targetLabel(current);
 
     if (ImGui::BeginCombo("##ComboSelectSource", label.c_str()) )
     {
@@ -131,33 +180,6 @@ Target InputMappingWindow::ComboSelectTarget(const Target &current)
 
 uint InputMappingWindow::ComboSelectCallback(uint current, bool imageprocessing, bool ismediaplayer)
 {
-    const char* callback_names[25] = { "Select",
-                                       ICON_FA_BULLSEYE "  Alpha",
-                                       ICON_FA_BULLSEYE "  Loom",
-                                       ICON_FA_OBJECT_UNGROUP "  Geometry",
-                                       ICON_FA_OBJECT_UNGROUP "  Grab",
-                                       ICON_FA_OBJECT_UNGROUP "  Resize",
-                                       ICON_FA_OBJECT_UNGROUP "  Turn",
-                                       ICON_FA_LAYER_GROUP "  Depth",
-                                       ICON_FA_PLAY_CIRCLE "  Play",
-                                       ICON_FA_PLAY_CIRCLE "  Speed",
-                                       ICON_FA_PLAY_CIRCLE "  Fast forward",
-                                       ICON_FA_PLAY_CIRCLE "  Seek",
-                                       ICON_FA_PLAY_CIRCLE "  Flag",
-                                       "  None",
-                                       "  None",
-                                       "  None",
-                                       "  None",
-                                       "  None",
-                                       ICON_FA_PALETTE "  Gamma",
-                                       ICON_FA_PALETTE "  Brightness",
-                                       ICON_FA_PALETTE "  Contrast",
-                                       ICON_FA_PALETTE "  Saturation",
-                                       ICON_FA_PALETTE "  Hue",
-                                       ICON_FA_PALETTE "  Threshold",
-                                       ICON_FA_PALETTE "  Invert"
-    };
-
     if (!ismediaplayer && current > SourceCallback::CALLBACK_PLAY && current <= SourceCallback::CALLBACK_FLAG) 
         return SourceCallback::CALLBACK_INVALID;
 
@@ -165,7 +187,7 @@ uint InputMappingWindow::ComboSelectCallback(uint current, bool imageprocessing,
         return SourceCallback::CALLBACK_INVALID;
 
     uint selected = 0;
-    if (ImGui::BeginCombo("##ComboSelectCallback", callback_names[current]) ) {
+    if (ImGui::BeginCombo("##ComboSelectCallback", callbackName(current)) ) {
         for (uint i = SourceCallback::CALLBACK_ALPHA; 
             i <= (ismediaplayer ? SourceCallback::CALLBACK_FLAG : SourceCallback::CALLBACK_PLAY) ; ++i){
             if ( ImGui::Selectable( callback_names[i]) ) {
@@ -1386,6 +1408,59 @@ void InputMappingWindow::Render()
             ///
             /// list of input callbacks for the current input
             ///
+
+            // 1. Callbacks inside Session Sources (e.g., Bundles)
+            // First refresh the list of callbacks nested in bundles
+            updateNestedCallbacks(S, current_input_);
+            if (!nested_callbacks_.empty()) {
+                // this input is mapped inside one or more bundles: show it disabled,
+                // the test button being the only active element 
+                for (auto nit = nested_callbacks_.begin(); nit != nested_callbacks_.end(); ++nit) {
+
+                    ImGui::PushID( (void*) nit->callback.get() );
+
+                    ImGuiToolkit::Indication("This action is mapped inside a bundle and cannot be modified here",ICON_FA_LOCK);
+
+                    // where it is, and on what
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    char text_buf[1024];
+                    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s%s", nit->path.c_str(), nit->label.c_str());
+                    ImGuiToolkit::ButtonDisabled ( text_buf, ImVec2(w, 0) );
+
+                    // what it does
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", callbackName( nit->callback->type() ));
+                    ImGuiToolkit::ButtonDisabled ( text_buf, ImVec2(w, 0) );
+
+                    // action description icons
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    for (auto ics = nit->icons.cbegin(); ics != nit->icons.cend(); ++ics) {
+                        ImGui::SameLine(0, IMGUI_SAME_LINE);
+                        ImGuiToolkit::Icon( ics->first, ics->second, false );
+                    }
+
+                    // target value
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight(), 0.0f);
+                    ImGuiToolkit::ButtonDisabled ( nit->value.c_str(), size );
+
+                    // Test button: apply this callback to its target
+                    ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f);
+                    if (std::holds_alternative<Current>(nit->target)) {   
+                        ImGuiToolkit::Indication("Unavailable in this context",ICON_FA_BAN);
+                    }
+                    else {
+                        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Set %s of  '%s'  to %s", 
+                                                                                        callbackName( nit->callback->type() ), 
+                                                                                        nit->label.c_str(), 
+                                                                                        nit->value.c_str());
+                        testButton( nit->callback.get(), nit->target, text_buf, ICON_VI_EXECUTE );
+                    }
+                    ImGui::PopID();
+                }
+            }
+ 
+            // 2. Callbacks directly assigned to the current input in this session            
             if (S->inputAssigned(current_input_)) {
 
                 auto result = S->getSourceCallbacks(current_input_);
@@ -1462,7 +1537,8 @@ void InputMappingWindow::Render()
                 }
 
             }
-            else {
+            // 3. No callbacks assigned to this input
+            else if (nested_callbacks_.empty()) {
                 ImGui::Text("No action mapped to this input. Add one with +.");
             }
 
@@ -1543,5 +1619,265 @@ void InputMappingWindow::Render()
 
 
     ImGui::End();
+}
+
+///
+/// NestedCallback holds a unique_ptr to a SourceCallback, which is only a
+/// forward declaration in the header: its special members are defined here.
+///
+InputMappingWindow::NestedCallback::NestedCallback() : session(nullptr) {}
+InputMappingWindow::NestedCallback::~NestedCallback() {}
+InputMappingWindow::NestedCallback::NestedCallback(NestedCallback &&) = default;
+InputMappingWindow::NestedCallback &InputMappingWindow::NestedCallback::operator=(NestedCallback &&) = default;
+
+///
+/// Value of a callback 
+///
+static std::string valueToString(float v)
+{
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(2) << v;
+    return oss.str();
+}
+
+static std::string valueToString(const glm::vec2 &v)
+{
+    return valueToString(v.x) + ", " + valueToString(v.y);
+}
+
+std::string getValueString(SourceCallback *callback)
+{
+    if (callback == nullptr)
+        return std::string("0");
+
+    switch (callback->type()) {
+
+        // float value
+        case SourceCallback::CALLBACK_ALPHA:
+            return valueToString( static_cast<SetAlpha*>(callback)->value() );
+
+        case SourceCallback::CALLBACK_LOOM:
+            return valueToString( static_cast<Loom*>(callback)->value() );
+
+        case SourceCallback::CALLBACK_TURN:
+            return valueToString( static_cast<Turn*>(callback)->value() );
+
+        case SourceCallback::CALLBACK_DEPTH:
+            return valueToString( static_cast<SetDepth*>(callback)->value() );
+
+        // float value, inherited from ValueSourceCallback
+        case SourceCallback::CALLBACK_PLAYSPEED:
+            return UNICODE_MULTIPLY " " + valueToString( static_cast<PlaySpeed*>(callback)->value() );
+
+        case SourceCallback::CALLBACK_BRIGHTNESS:
+        case SourceCallback::CALLBACK_CONTRAST:
+        case SourceCallback::CALLBACK_SATURATION:
+        case SourceCallback::CALLBACK_HUE:
+        case SourceCallback::CALLBACK_THRESHOLD:
+            return valueToString( static_cast<ValueSourceCallback*>(callback)->value() );
+
+        // two float values
+        case SourceCallback::CALLBACK_GRAB:
+            return valueToString( static_cast<Grab*>(callback)->value() );
+
+        case SourceCallback::CALLBACK_RESIZE:
+            return valueToString( static_cast<Resize*>(callback)->value() );
+
+        // boolean value
+        case SourceCallback::CALLBACK_PLAY:
+            return static_cast<Play*>(callback)->value() ? "Play" : "Pause";
+
+        // integer value, in milliseconds
+        case SourceCallback::CALLBACK_PLAYFFWD:
+            return std::to_string( static_cast<PlayFastForward*>(callback)->value() ) + " ms";
+
+        // time value, displayed as HH:MM:SS.MS
+        case SourceCallback::CALLBACK_SEEK:
+            return GstToolkit::time_to_string( static_cast<Seek*>(callback)->value(),
+                                               GstToolkit::TIME_STRING_MINIMAL );
+
+        // index of a flag, negative meaning the next one
+        case SourceCallback::CALLBACK_FLAG:
+        {
+            const int f = static_cast<Flag*>(callback)->value();
+            return f < 0 ? std::string("Next") : std::to_string(f);
+        }
+
+        // color and gamma value
+        case SourceCallback::CALLBACK_GAMMA:
+        {
+            const glm::vec4 g = static_cast<SetGamma*>(callback)->value();
+            return valueToString(g.w) + " (" + valueToString(g.r) + ", "
+                    + valueToString(g.g) + ", " + valueToString(g.b) + ")";
+        }
+
+        // mode of inversion, as listed in the combo of SliderParametersCallback
+        case SourceCallback::CALLBACK_INVERT:
+        {
+            static const char *invert_names[3] = { "None", "Color RGB", "Luminance" };
+            const int i = (int) static_cast<SetInvert*>(callback)->value();
+            return std::string( i > -1 && i < 3 ? invert_names[i] : "None" );
+        }
+
+        // geometry has no single value: give the captured transform
+        case SourceCallback::CALLBACK_GEOMETRY:
+        {
+            Group g;
+            static_cast<SetGeometry*>(callback)->getTarget(&g);
+            return valueToString( glm::vec2(g.translation_) ) + " "
+                    + UNICODE_MULTIPLY " " + valueToString( glm::vec2(g.scale_) );
+        }
+
+        default:
+            break;
+    }
+
+    return std::string("0");
+}
+
+std::list< std::pair<int, int> >  iconsForCallback(SourceCallback *callback)
+{
+    std::list< std::pair<int, int> >  icons;
+
+    std::pair <int, int> bidirectional_icon;
+    if (callback->bidirectional())
+        bidirectional_icon = {ICON_VI_KEY_DOWN};
+    else
+        bidirectional_icon = {ICON_VI_KEY_PRESS} ;
+
+    float d = -1.f;
+    switch(callback->type()) {
+
+        // key press or key down, and a duration to reach the value
+        case SourceCallback::CALLBACK_ALPHA:
+            icons.push_back( bidirectional_icon );
+            d= static_cast<SetAlpha*>(callback)->duration();
+            break;
+        case SourceCallback::CALLBACK_GEOMETRY:
+            icons.push_back( bidirectional_icon );
+            d = static_cast<SetGeometry*>(callback)->duration();
+            break;
+        case SourceCallback::CALLBACK_DEPTH:
+            icons.push_back( bidirectional_icon );
+            d = static_cast<SetDepth*>(callback)->duration();
+            break;
+        case SourceCallback::CALLBACK_PLAYSPEED:
+        case SourceCallback::CALLBACK_BRIGHTNESS:
+        case SourceCallback::CALLBACK_CONTRAST:
+        case SourceCallback::CALLBACK_SATURATION:
+        case SourceCallback::CALLBACK_HUE:
+        case SourceCallback::CALLBACK_THRESHOLD:
+            icons.push_back( bidirectional_icon );
+            d = static_cast<ValueSourceCallback*>(callback)->duration();
+            break;
+        case SourceCallback::CALLBACK_GAMMA:
+            icons.push_back( bidirectional_icon );
+            d = static_cast<SetGamma*>(callback)->duration();
+            break;
+
+        // key press or key down, applied immediately
+        case SourceCallback::CALLBACK_PLAY:
+        case SourceCallback::CALLBACK_SEEK:
+        case SourceCallback::CALLBACK_INVERT:
+            icons.push_back( bidirectional_icon );
+            break;
+
+        // maintain the key down to repeat and iterate
+        case SourceCallback::CALLBACK_LOOM:
+        case SourceCallback::CALLBACK_GRAB:
+        case SourceCallback::CALLBACK_RESIZE:
+        case SourceCallback::CALLBACK_TURN:
+        case SourceCallback::CALLBACK_PLAYFFWD:
+            icons.push_back( {ICON_VI_KEY_REPEAT } );
+            break;
+
+        // key press only
+        case SourceCallback::CALLBACK_FLAG:
+            icons.push_back( {ICON_VI_KEY_PRESS } );
+            break;
+
+        default:
+            break;
+    }
+
+    if (d > 240.f)
+        icons.push_back( {ICON_VI_SPEED_SLOWEST} );
+    else if (d > 120.f)
+        icons.push_back( {ICON_VI_SPEED_SLOW} );
+    else if (d > 60.f)    
+        icons.push_back( {ICON_VI_SPEED_SMOOTH} );
+    else if (d > 0.f)
+        icons.push_back( {ICON_VI_SPEED_FAST} );
+    else if (d > -1.f)
+        icons.push_back( {ICON_VI_SPEED_FASTEST} );
+
+    return icons;
+}
+
+///
+/// Recursively gather the callbacks assigned to the given input inside the
+/// sessions nested in SessionSources (bundles) of the given session.
+///
+void InputMappingWindow::listNestedInputCallbacks(Session *se, uint input,
+                                                  const std::string &path, int level)
+{
+    // safety: do not recurse deeper than sessions can be nested
+    if (se == nullptr || level > MAX_SESSION_LEVEL)
+        return;
+
+    for (auto sit = se->begin(); sit != se->end(); ++sit) {
+
+        // only SessionSources (bundles & session files) embed a session
+        SessionSource *ss = dynamic_cast<SessionSource *>(*sit);
+        if (ss == nullptr || ss->session() == nullptr)
+            continue;
+
+        Session *nested = ss->session();
+        const std::string nestedpath = path + (*sit)->name() + " " ICON_FA_LONG_ARROW_ALT_RIGHT " ";
+
+        // callbacks assigned to this input inside the nested session
+        auto result = nested->getSourceCallbacks(input);
+        for (auto kit = result.cbegin(); kit != result.cend(); ++kit) {
+
+            // ignore an incomplete callback
+            if (kit->second == nullptr)
+                continue;
+
+            nested_callbacks_.emplace_back();
+            NestedCallback &nc = nested_callbacks_.back();
+            nc.path = nestedpath;
+            nc.label = targetLabel(kit->first);
+            nc.target = kit->first;
+            nc.icons = iconsForCallback(kit->second);
+            nc.value = getValueString(kit->second);
+            nc.session = nested;
+            // clone: the session keeps ownership of its own callback
+            nc.callback.reset( kit->second->clone() );
+        }
+
+        // a bundle can contain bundles
+        listNestedInputCallbacks(nested, input, nestedpath, level + 1);
+    }
+}
+
+void InputMappingWindow::updateNestedCallbacks(Session *se, uint current_input)
+{
+    static uint nested_callbacks_input_ = UINT_MAX;
+    static uint nested_callbacks_update_ = UINT_MAX;
+
+    if (se == nullptr)
+        return;
+
+    // lazy: only search again when the selected input changed, or when the tree of
+    // sources changed. 
+    if (current_input_ == nested_callbacks_input_
+        && View::need_deep_update_ == nested_callbacks_update_)
+        return;
+
+    nested_callbacks_input_ = current_input_;
+    nested_callbacks_update_ = View::need_deep_update_;
+
+    nested_callbacks_.clear();
+    listNestedInputCallbacks(se, current_input_, std::string());
 }
 

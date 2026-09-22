@@ -271,6 +271,7 @@
 #define ICON_VI_SPEED_SMOOTH  16, 15
 #define ICON_VI_SPEED_SLOW    15, 15
 #define ICON_VI_SPEED_SLOWEST 14, 15
+#define ICON_VI_EXECUTE       8,  0
 
 // fading curve shapes (same images as the cut and gap buttons above)
 #define ICON_VI_CURVE_ABRUPT      17, 3
@@ -348,7 +349,6 @@
 // #define ICON_VI_UNDEFINED_58   9,  7
 // #define ICON_VI_UNDEFINED_59  11,  7
 // #define ICON_VI_UNDEFINED_60  14,  7
-// #define ICON_VI_UNDEFINED_61  16,  7
 // #define ICON_VI_UNDEFINED_62  17,  7
 //
 // #define ICON_VI_UNDEFINED_63   1,  8
