@@ -58,7 +58,12 @@ public:
     /**
      * Open a media using gstreamer pipeline keyword
      * */
-    void open(const std::string &gstreamer_description, guint w = 0, guint h = 0);
+    void open(const std::string &gstreamer_description, guint w = 0, guint h = 0, bool glmemory = false);
+    /**
+     * True if a pipeline can deliver GLMemory to the stream
+     * (i.e. ending with 'glupload ! glcolorconvert', open with glmemory=true)
+     * */
+    static bool glMemoryAvailable();
     /**
      * Get description string
      * */
@@ -184,6 +189,11 @@ protected:
     std::atomic<bool> failed_;
     bool enabled_;
     std::string decoder_name_;
+
+    // for GLMemory (texture copy from GStreamer GL context)
+    bool use_gl_memory_;
+    guint gl_memory_fbo_;
+    bool fill_texture_glmemory(guint index);
 
     // fps counter
     struct TimeCounter {

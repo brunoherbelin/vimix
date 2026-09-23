@@ -546,8 +546,12 @@ void DeviceSource::setDevice(const std::string &devicename)
                 if ( best.stream.find("jpeg") != std::string::npos )
                     pipeline << " ! jpegdec";
 
-                // always convert
-                pipeline << " ! queue ! videoconvert";
+                // always convert; on GPU if GLMemory can be used
+                bool glmemory = Stream::glMemoryAvailable();
+                if (glmemory)
+                    pipeline << " ! queue ! glupload ! glcolorconvert";
+                else
+                    pipeline << " ! queue ! videoconvert";
 
                 // delete and reset render buffer to enforce re-init of StreamSource
                 if (renderbuffer_)
@@ -558,7 +562,7 @@ void DeviceSource::setDevice(const std::string &devicename)
                 stream_ = h->stream = new Stream;
 
                 // open gstreamer
-                h->stream->open( pipeline.str(), best.width, best.height);
+                h->stream->open( pipeline.str(), best.width, best.height, glmemory);
                 h->stream->play(true);
             }
         }

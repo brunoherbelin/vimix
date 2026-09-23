@@ -868,6 +868,12 @@ GstToolkit::PipelineConfigSet GstToolkit::getPipelineConfigs(const std::string &
                 if ( gst_structure_has_field (decice_cap_struct, "texture-target"))
                     continue;
 
+                // only system memory caps (e.g. ignore memory:DMABuf with format DMA_DRM)
+                GstCapsFeatures *features = gst_caps_get_features (device_caps, c);
+                if ( features && !gst_caps_features_is_any(features) &&
+                     !gst_caps_features_is_equal(features, GST_CAPS_FEATURES_MEMORY_SYSTEM_MEMORY))
+                    continue;
+
                 // NAME : typically video/x-raw or image/jpeg
                 config.stream = gst_structure_get_name (decice_cap_struct);
 
