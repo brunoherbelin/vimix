@@ -50,6 +50,18 @@
 
 std::list<GstElement*> MediaPlayer::registered_;
 
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+static bool need_hack_for_gstreamer_24()
+{
+#if GST_VERSION_MAJOR > 0 && GST_VERSION_MINOR > 25
+    return false;
+#else
+    static const bool nvidia_decoding = GstToolkit::has_feature("nvh264dec");
+    return Settings::application.render.gpu_decoding && nvidia_decoding;
+#endif
+}
+#endif
+
 MediaPlayer::MediaPlayer()
 {
     // create unique id
@@ -761,8 +773,29 @@ void MediaPlayer::execute_open()
         // - glupload (for GLMemory)
         // - glcolorconvert (for NV12/I420 -> RGBA conversion in shaders)
         g_object_set(G_OBJECT(glsinkbin), "sink", sink, NULL);
-        // set playbin sink though glsinkbin wrapper 
-        g_object_set ( G_OBJECT (pipeline_), "video-sink", glsinkbin, NULL);
+
+        // playbin sink is the glsinkbin wrapper
+        GstElement *video_sink = glsinkbin;
+
+        // With GStreamer 2.4, NVIDIA decoders (nvh264dec, nvh265dec) fail to output GLMemory in playbin
+        // Fix : prepend a capsfilter to glsinkbin to force decoding into system memory
+        // (glsinkbin then uploads the frames and converts them to RGBA on GPU)
+        if (need_hack_for_gstreamer_24()) {
+            GstElement *filter = gst_element_factory_make("capsfilter", NULL);
+            GstCaps *system_caps = gst_caps_new_empty_simple("video/x-raw");
+            g_object_set(G_OBJECT(filter), "caps", system_caps, NULL);
+            gst_caps_unref(system_caps);
+
+            video_sink = gst_bin_new("glsinkfilter");
+            gst_bin_add_many(GST_BIN(video_sink), filter, glsinkbin, NULL);
+            gst_element_link(filter, glsinkbin);
+            GstPad *pad = gst_element_get_static_pad(filter, "sink");
+            gst_element_add_pad(video_sink, gst_ghost_pad_new("sink", pad));
+            gst_object_unref(pad);
+        }
+
+        // set playbin sink
+        g_object_set ( G_OBJECT (pipeline_), "video-sink", video_sink, NULL);
     }
     else
 #endif

@@ -860,7 +860,7 @@ string GstToolkit::gst_version()
 
 #if GST_GL_HAVE_PLATFORM_GLX
 // list ordered with higher priority at the end (e.g. nvidia proprietary before va-api)
-const char *plugins[17] = { "vulkanh264dec", "vulkanh265dec", "vaav1dec", "nvav1dec",
+const char *plugins[15] = { "vulkanh264dec", "vulkanh265dec", "vaav1dec", "nvav1dec",
                                 "vah264dec", "nvh264dec", "vah265dec", "nvh265dec", "vampeg2videodec", "nvmpeg2videodec", "nvmpeg4videodec",
                                 "vavp8dec", "nvvp8dec", "vavp9dec", "nvvp9dec"
                                };
