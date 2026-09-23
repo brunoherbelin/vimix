@@ -276,12 +276,57 @@ const std::vector<std::string> &software_profile_description()
     return table;
 }
 
-// gst element feature name to test with has_feature(), and corresponding
-// pipeline fragment, per profile, for the hardware encoder available on
-// this platform (empty if none).
+// Adapters from frames in OpenGL memory (RGBA, see GstToolkit::Memory) to an encoder,
+// depending on the input the encoder accepts (NB: from system memory, no adapter is needed:
+// the upstream videoconvert negotiates the format with the encoder).
+// - the encoder takes GLMemory: nothing to do
+const char *GL_TO_GL = "";
+// - the encoder takes system memory: download (to RGBA) and convert (e.g. to I420)
+const char *GL_TO_SYSTEM = "gldownload ! videoconvert ! ";
+// - the encoder takes NV12 in system memory only (nvcudah264enc before GStreamer 1.26):
+//   convert to NV12 on the GPU (3 MB instead of 8 MB of RGBA per 1080p frame), then download
+const char *GL_TO_SYSTEM_NV12 = "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! gldownload ! ";
+// - the encoder takes VAMemory (VA-API): gldownload exports a DMABuf when the GL platform
+//   supports it (Mesa), and falls back to system memory otherwise; vapostproc puts it into a
+//   VA surface and performs the RGBA to NV12 conversion on the VA hardware (faster than in GL).
+const char *GL_TO_VA = "gldownload ! vapostproc ! video/x-raw(memory:VAMemory) ! ";
+
+// Test (once) if all the elements of a gst pipeline fragment are available
+// (e.g. "gldownload ! vapostproc ! video/x-raw(memory:VAMemory) ! " needs
+// gldownload and vapostproc; caps are ignored).
+bool fragment_available(const std::string &fragment)
+{
+    static std::map<std::string, bool> cache;
+    static std::mutex cache_access;
+
+    const std::lock_guard<std::mutex> lock(cache_access);
+
+    auto known = cache.find(fragment);
+    if (known != cache.end())
+        return known->second;
+
+    bool available = true;
+    std::istringstream elements(fragment);
+    std::string element;
+    while (available && std::getline(elements, element, '!')) {
+        // first word of each element of the fragment
+        std::istringstream words(element);
+        std::string name;
+        if (words >> name && name.find('/') == std::string::npos)
+            available = GstToolkit::has_feature(name);
+    }
+
+    cache[fragment] = available;
+    return available;
+}
+
+// gst element feature name to test with has_feature(), corresponding pipeline
+// fragment, and adapter from frames in OpenGL memory, per profile, for the
+// hardware encoder available on this platform (empty if none).
 struct HardwareEncoderTable {
     std::vector<std::string> feature;
     std::vector<std::string> pipeline;
+    std::vector<std::string> gl_adapter;
 };
 
 const HardwareEncoderTable &hardware_encoder_table()
@@ -291,6 +336,8 @@ const HardwareEncoderTable &hardware_encoder_table()
 
 #if GST_GL_HAVE_PLATFORM_GLX
         // under GLX (Linux), gstreamer might have nvidia or vaapi encoders
+#if GST_VERSION_MAJOR > 0 && GST_VERSION_MINOR > 25
+        // Since GStreamer 1.26, nvh264enc and nvh265enc are the NVENC encoders with presets p1 to p7
         static const std::vector<std::string> nvidia_encoder = {
             "nvh264enc",
             "nvh264enc",
@@ -309,6 +356,43 @@ const HardwareEncoderTable &hardware_encoder_table()
             "", "", "",
             "nvjpegenc quality=85 ! "
         };
+        // nvh264enc and nvh265enc take GLMemory, nvjpegenc does not
+        static const std::vector<std::string> nvidia_gl_adapter = {
+            GL_TO_GL, GL_TO_GL, GL_TO_GL, GL_TO_GL,
+            "", "", "",
+            GL_TO_SYSTEM
+        };
+#else
+        // Before GStreamer 1.26, nvh264enc and nvh265enc are the legacy NVENC encoders: their presets are
+        // legacy NVENC presets, not supported anymore by recent NVIDIA drivers (error 'Selected preset not supported').
+        // The same encoders as nvh264enc and nvh265enc in GStreamer 1.26 are nvcudah264enc and nvcudah265enc, with
+        // other property names (rate-control=cqp for rc-mode=constqp, b-frames for bframes, qp-i/p/b for qp-const-i/p/b).
+        static const std::vector<std::string> nvidia_encoder = {
+            "nvcudah264enc",
+            "nvcudah264enc",
+            "nvcudah265enc",
+            "nvcudah265enc",
+            "", "", "",
+            "nvjpegenc"
+        };
+        static const std::vector<std::string> nvidia_profile_description = {
+            // nvcudah264enc encoder
+            "nvcudah264enc rate-control=cqp preset=p4 b-frames=2 gop-size=30 qp-i=23 qp-p=25 qp-b=27 ! video/x-h264, profile=(string)main ! h264parse ! ",
+            "nvcudah264enc rate-control=cqp preset=p6 b-frames=3 rc-lookahead=16 b-adapt=true gop-size=30 ! video/x-h264, profile=(string)high ! h264parse ! ",
+            // nvcudah265enc encoder
+            "nvcudah265enc rate-control=cqp preset=p4 b-frames=2 gop-size=30 qp-i=23 qp-p=25 qp-b=27 ! video/x-h265, profile=(string)main ! h265parse ! ",
+            "nvcudah265enc rate-control=cqp preset=p6 b-frames=3 rc-lookahead=16 b-adapt=true gop-size=30 qp-i=21 qp-p=23 qp-b=25 ! video/x-h265, profile=(string)main ! h265parse ! ",
+            "", "", "",
+            "nvjpegenc quality=85 ! "
+        };
+        // nvcudah264enc and nvcudah265enc take GLMemory only if GStreamer was built with CUDA-GL
+        // interop (not the case in the snap), and otherwise only NV12 (or Y444) in system memory
+        static const std::vector<std::string> nvidia_gl_adapter = {
+            GL_TO_SYSTEM_NV12, GL_TO_SYSTEM_NV12, GL_TO_SYSTEM_NV12, GL_TO_SYSTEM_NV12,
+            "", "", "",
+            GL_TO_SYSTEM
+        };
+#endif
         static const std::vector<std::string> vaapi_encoder = {
             "vah264enc",
             "vah264enc",
@@ -327,17 +411,25 @@ const HardwareEncoderTable &hardware_encoder_table()
             "", "", "",
             "vajpegenc quality=85 ! "
         };
+        // VA-API encoders take VAMemory
+        static const std::vector<std::string> vaapi_gl_adapter = {
+            GL_TO_VA, GL_TO_VA, GL_TO_VA, GL_TO_VA,
+            "", "", "",
+            GL_TO_VA
+        };
 
         // test nvidia encoder
         if (GstToolkit::has_feature(nvidia_encoder[0])) {
             // consider that if first nvidia encoder is valid, all others should also be available
             r.feature = nvidia_encoder;
             r.pipeline = nvidia_profile_description;
+            r.gl_adapter = nvidia_gl_adapter;
         }
         // test vaapi encoder
         else if (GstToolkit::has_feature(vaapi_encoder[0])) {
             r.feature = vaapi_encoder;
             r.pipeline = vaapi_profile_description;
+            r.gl_adapter = vaapi_gl_adapter;
         }
 #elif GST_GL_HAVE_PLATFORM_CGL
         // under CGL (Mac), gstreamer might have the VideoToolbox
@@ -360,6 +452,8 @@ const HardwareEncoderTable &hardware_encoder_table()
             "vtenc_prores  max-keyframe-interval=30 quality=0.9 ! ",
             "", ""
         };
+        // VideoToolbox encoders take system memory
+        r.gl_adapter = std::vector<std::string>(r.feature.size(), GL_TO_SYSTEM);
         // in other platforms, no hardware encoder
 #endif
         return r;
@@ -368,16 +462,62 @@ const HardwareEncoderTable &hardware_encoder_table()
     return table;
 }
 
+// gst element feature name to test with has_feature(), corresponding pipeline
+// fragment, and adapter from frames in OpenGL memory, for the low-latency H264
+// hardware encoders used for streaming, by order of preference.
+struct StreamingEncoder {
+    std::string feature;
+    std::string pipeline;
+    std::string gl_adapter;
+};
+
+const std::vector<StreamingEncoder> &hardware_streaming_encoders()
+{
+    static const std::vector<StreamingEncoder> encoders = {
+#if GST_GL_HAVE_PLATFORM_GLX
+#if GST_VERSION_MAJOR > 0 && GST_VERSION_MINOR > 25
+        {"nvh264enc", "nvh264enc preset=p4 rc-mode=cbr-ld-hq bitrate=6000 ! ", GL_TO_GL},
+#else
+        // before GStreamer 1.26, legacy nvh264enc presets are not supported by recent NVIDIA drivers: use
+        // nvcudah264enc (see hardware_encoder_table); cbr-ld-hq is converted to cbr with low-latency tune
+        {"nvcudah264enc", "nvcudah264enc preset=p4 rate-control=cbr tune=low-latency bitrate=6000 ! ", GL_TO_SYSTEM_NV12},
+#endif
+        {"vah264enc", "vah264enc rate-control=cbr bitrate=6000 target-usage=2 b-frames=0 aud=true cabac=true ! ", GL_TO_VA},
+#elif GST_GL_HAVE_PLATFORM_CGL
+        {"vtenc_h264_hw", "vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! ", GL_TO_SYSTEM},
+#endif
+    };
+
+    return encoders;
+}
+
+// software low-latency H264 encoder used for streaming
+const StreamingEncoder software_streaming_encoder = {
+    "x264enc", "x264enc pass=qual quantizer=22 speed-preset=veryfast ! ", GL_TO_SYSTEM
+};
+
 } // namespace
 
-string GstToolkit::getEncodingPipeline(GstToolkit::Profile p)
+string GstToolkit::getEncodingPipeline(GstToolkit::Profile p, GstToolkit::Memory input)
 {
     if (p < 0 || p >= GstToolkit::DEFAULT)
         return "";
-    return software_profile_description()[p];
+
+    const std::string &encoder = software_profile_description()[p];
+    if (encoder.empty())
+        return "";
+
+    // software encoders take system memory
+    if (input == GstToolkit::MEMORY_GL) {
+        if (!fragment_available(GL_TO_SYSTEM))
+            return "";
+        return GL_TO_SYSTEM + encoder;
+    }
+
+    return encoder;
 }
 
-string GstToolkit::getHardwareEncodingPipeline(GstToolkit::Profile p)
+string GstToolkit::getHardwareEncodingPipeline(GstToolkit::Profile p, GstToolkit::Memory input)
 {
     if (p < 0 || p >= GstToolkit::DEFAULT)
         return "";
@@ -386,7 +526,42 @@ string GstToolkit::getHardwareEncodingPipeline(GstToolkit::Profile p)
     if ((size_t) p >= hw.feature.size() || !GstToolkit::has_feature(hw.feature[p]))
         return "";
 
+    if (input == GstToolkit::MEMORY_GL) {
+        if (!fragment_available(hw.gl_adapter[p]))
+            return "";
+        return hw.gl_adapter[p] + hw.pipeline[p];
+    }
+
     return hw.pipeline[p];
+}
+
+string GstToolkit::getStreamingEncodingPipeline(bool hardware, GstToolkit::Memory input)
+{
+    const StreamingEncoder *encoder = nullptr;
+
+    // first available hardware encoder
+    if (hardware) {
+        for (const StreamingEncoder &e : hardware_streaming_encoders()) {
+            if (GstToolkit::has_feature(e.feature)) {
+                encoder = &e;
+                break;
+            }
+        }
+    }
+    // otherwise software encoder
+    if (encoder == nullptr && GstToolkit::has_feature(software_streaming_encoder.feature))
+        encoder = &software_streaming_encoder;
+
+    if (encoder == nullptr)
+        return "";
+
+    if (input == GstToolkit::MEMORY_GL) {
+        if (!fragment_available(encoder->gl_adapter))
+            return "";
+        return encoder->gl_adapter + encoder->pipeline;
+    }
+
+    return encoder->pipeline;
 }
 
 namespace {

@@ -41,17 +41,11 @@
 
 std::string VideoBroadcast::srt_sink_;
 std::string VideoBroadcast::srt_encoder_;
+bool VideoBroadcast::srt_hardware_ = false;
 
 std::vector< std::string > srt_sink_alternatives_ {
     "srtsink",
     "srtserversink"
-};
-
-std::vector< std::pair<std::string, std::string> > srt_encoder_alternatives_ {
-    {"nvh264enc", "nvh264enc preset=p4 rc-mode=cbr-ld-hq bitrate=6000 ! "},
-    {"vah264enc", "vah264enc target-usage=2 rate-control=cbr bitrate=6000 b-frames=0 aud=true cabac=true ! "},
-    {"vtenc_h264_hw", "vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! "},
-    {"x264enc", "x264enc pass=qual quantizer=22 speed-preset=veryfast ! "}
 };
 
 bool VideoBroadcast::available()
@@ -71,22 +65,17 @@ bool VideoBroadcast::available()
 
         if (!srt_sink_.empty())
         {
-            if (Settings::application.render.gpu_decoding &&
-                GstToolkit::has_feature("glupload") &&
-                GstToolkit::has_feature("glcolorconvert")) {
-                for (auto config = srt_encoder_alternatives_.cbegin();
-                    config != srt_encoder_alternatives_.cend() && srt_encoder_.empty(); ++config) {
-                    if ( GstToolkit::has_feature(config->first) ) {
-                        srt_encoder_ = config->second;
-                        if (config->first != srt_encoder_alternatives_.back().first)
-                            Log::Info("Video Broadcast uses hardware-accelerated encoder (%s)", config->first.c_str());
-                    }
-                }
-            }
-            // disabled hardware accelerated encoding
-            else {
-                srt_encoder_ = srt_encoder_alternatives_.back().second;
-            }
+            // low-latency H264 encoder for frames in system memory; hardware
+            // accelerated if enabled and available, software otherwise
+            srt_hardware_ = Settings::application.render.gpu_decoding &&
+                            GstToolkit::has_feature("glupload") &&
+                            GstToolkit::has_feature("glcolorconvert");
+            srt_encoder_ = GstToolkit::getStreamingEncodingPipeline(srt_hardware_);
+            if (srt_hardware_ && srt_encoder_ != GstToolkit::getStreamingEncodingPipeline(false))
+                Log::Info("Video Broadcast with hardware accelerated encoder (%s)",
+                          srt_encoder_.substr(0, srt_encoder_.find(' ')).c_str());
+            else
+                srt_hardware_ = false;
         }
         else
             Log::Info("Video SRT Broadcast not available.");
@@ -129,17 +118,25 @@ std::string VideoBroadcast::init(GstCaps *read_caps, GstCaps *write_caps)
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! ";
 
+    // encoder pipeline ([adapter !] encoder !) for frames in system memory
+    std::string encoder = VideoBroadcast::srt_encoder_;
+
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-    // Use glupload + glcolorconvert for hardware encoders
-    // This uploads system memory to GPU and does color conversion in GPU shader
-    if (srt_encoder_.find("nvh264enc") != std::string::npos ||
-        srt_encoder_.find("vah264enc") != std::string::npos) {
+    // Use glupload + glcolorconvert for hardware encoders, taking frames in OpenGL memory
+    // (the encoder pipeline starts with the adapter from OpenGL memory, if needed)
+    std::string gl_encoder;
+    if (srt_hardware_ && GstToolkit::has_feature("gltransformation"))
+        gl_encoder = GstToolkit::getStreamingEncodingPipeline(true, GstToolkit::MEMORY_GL);
+
+    if (!gl_encoder.empty()) {
         // glupload: system memory → GLMemory (in GStreamer's thread)
-        // glcolorconvert: GPU color conversion (RGBA → NV12 for VAAPI, passthrough for NVIDIA)
+        // glcolorconvert: GPU color conversion (RGB → RGBA for gltransformation)
+        // gltransformation: GPU scaling to write caps (RGBA)
         description += "glupload ! glcolorconvert ! gltransformation ! capsfilter name=capf ! ";
         // specify that write caps are in GLMemory
         GstCapsFeatures *features = gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr);
         gst_caps_set_features(write_caps_, 0, features);
+        encoder = gl_encoder;
         Log::Info("Video Broadcast with glupload & GPU color conversion");
     } else
 #endif
@@ -149,7 +146,7 @@ std::string VideoBroadcast::init(GstCaps *read_caps, GstCaps *write_caps)
     }
 
     // complement pipeline with encoder
-    description += VideoBroadcast::srt_encoder_;
+    description += encoder;
     description += "video/x-h264, profile=high ! queue ! h264parse config-interval=-1 ! mpegtsmux alignment=7 ! ";
 
     // complement pipeline with sink

@@ -174,8 +174,8 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     timestamp_on_clock_ = Settings::application.record.priority_mode < 1;
     keyframe_count_ = framerate_preset_value[Settings::application.record.framerate_mode];
 
-    // clamp profile and resolve its hardware encoder pipeline (if any) once,
-    // used both to decide the GL upload path below and the encoder itself
+    // clamp profile and resolve its hardware encoder pipeline (if any), for frames
+    // in system memory (the OpenGL path below resolves its own)
     if (Settings::application.record.profile < 0 || Settings::application.record.profile >= GstToolkit::DEFAULT)
         Settings::application.record.profile = GstToolkit::H264_RT;
     GstToolkit::Profile profile = (GstToolkit::Profile) Settings::application.record.profile;
@@ -195,18 +195,23 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
 
     // create a gstreamer pipeline
     std::string description = "appsrc name=src ! ";
+    // hardware encoder pipeline ([adapter !] encoder ! parser !), if any
+    std::string hardware_encoder;
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-    // Use glupload + glcolorconvert for hardware encoders
-    // This uploads system memory to GPU and does color conversion in GPU shader
+    // Use glupload + glcolorconvert for hardware encoders, taking frames in OpenGL memory
+    // (the encoder pipeline starts with the adapter from OpenGL memory, if needed)
     if (Settings::application.render.gpu_decoding &&
         Settings::application.render.gst_glmemory_context &&
-        !hardware_pipeline.empty() &&
         GstToolkit::has_feature("glupload") &&
         GstToolkit::has_feature("glcolorconvert") &&
-        GstToolkit::has_feature("gltransformation")) {
+        GstToolkit::has_feature("gltransformation"))
+        hardware_encoder = GstToolkit::getHardwareEncodingPipeline(profile, GstToolkit::MEMORY_GL);
+
+    if (!hardware_encoder.empty()) {
         // glupload: system memory → GLMemory (in GStreamer's thread)
-        // glcolorconvert: GPU color conversion (RGBA → NV12 for VAAPI, passthrough for NVIDIA)
+        // glcolorconvert: GPU color conversion (RGB → RGBA for gltransformation)
+        // gltransformation: GPU scaling to write caps (RGBA)
         description += "glupload ! glcolorconvert ! gltransformation ! capsfilter name=capf ! ";
         // specify that write caps are in GLMemory
         GstCapsFeatures *features = gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr);
@@ -217,14 +222,16 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     {
         // CPU path: use regular videoconvert
         description += "videoconvert n-threads=0 ! videoscale ! capsfilter name=capf ! ";
+        if (Settings::application.render.gpu_decoding)
+            hardware_encoder = hardware_pipeline;
     }
 
     description += "queue ! ";
 
     // test for a hardware accelerated encoder
-    if (Settings::application.render.gpu_decoding && !hardware_pipeline.empty()) {
-        description += hardware_pipeline;
-        Log::Info("Video Recording : hardware accelerated encoder (%s)", description.c_str());
+    if (!hardware_encoder.empty()) {
+        description += hardware_encoder;
+        Log::Info("Video Recording with hardware accelerated encoder (%s)", description.c_str());
     }
     // revert to software encoder
     else {

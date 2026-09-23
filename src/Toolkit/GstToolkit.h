@@ -47,17 +47,37 @@ typedef enum {
 
 extern const char* profile_name[DEFAULT];
 
-// gst pipeline fragment (encoder ! parser ! , e.g. "x264enc ... ! h264parse ! ")
+// Memory of the raw video frames given to an encoding pipeline fragment,
+// i.e. what the upstream pipeline delivers:
+// - MEMORY_SYSTEM : frames in system memory, in any format (the upstream
+//   pipeline ends with a videoconvert, which negotiates the encoder format)
+// - MEMORY_GL : RGBA frames in OpenGL memory (video/x-raw(memory:GLMemory))
+// The encoding pipeline fragments start with the adapter needed to give
+// these frames to the encoder (e.g. download from OpenGL memory for an
+// encoder which cannot take it), followed by the encoder and parser.
+typedef enum {
+    MEMORY_SYSTEM = 0,
+    MEMORY_GL
+} Memory;
+
+// gst pipeline fragment ([adapter !] encoder ! parser ! , e.g. "x264enc ... ! h264parse ! ")
 // for the given profile, using whichever software encoder is actually
 // installed: falls back from x264enc/x265enc to openh264enc, or returns an
 // empty string if no software encoder is available for that profile.
-std::string getEncodingPipeline(Profile p);
+std::string getEncodingPipeline(Profile p, Memory input = MEMORY_SYSTEM);
 
 // Hardware-accelerated equivalent of getEncodingPipeline(): NVENC or VAAPI
 // on Linux, VideoToolbox on macOS (detected once and cached). Returns an
 // empty string if no hardware encoder is available for that profile on
-// this platform/GPU.
-std::string getHardwareEncodingPipeline(Profile p);
+// this platform/GPU, or if the adapter for the given input is not available.
+std::string getHardwareEncodingPipeline(Profile p, Memory input = MEMORY_SYSTEM);
+
+// gst pipeline fragment ([adapter !] encoder ! , e.g. "x264enc ... ! ") of the
+// low-latency H264 encoder used for network streaming (constant bit rate, no
+// parser: the caller adds the caps, parser and payloader it needs). Hardware
+// encoder if requested and available, software encoder otherwise; empty
+// string if none is available.
+std::string getStreamingEncodingPipeline(bool hardware, Memory input = MEMORY_SYSTEM);
 
 // Maximum frame width and height accepted by the encoder used for the given
 // profile, read from the caps of the gstreamer element (zero if it imposes no

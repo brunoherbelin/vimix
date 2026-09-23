@@ -412,28 +412,38 @@ std::string VideoStreamer::init(GstCaps *read_caps, GstCaps *write_caps)
         config_.protocol = NetworkToolkit::UDP_JPEG;
 
     // special case H264: can be Hardware accelerated
+    // (NB: VideoToolbox is not used for streaming under OSX)
     bool found_harware_acceleration = false;
+#ifndef APPLE
     if (config_.protocol == NetworkToolkit::UDP_H264 && Settings::application.render.gpu_decoding) {
-        for (auto config = NetworkToolkit::stream_h264_send_pipeline.cbegin();
-             config != NetworkToolkit::stream_h264_send_pipeline.cend() && !found_harware_acceleration; ++config) {
-            if ( GstToolkit::has_feature(config->first) ) {
+        // low-latency H264 hardware encoder for frames in system memory, if available
+        std::string encoder = GstToolkit::getStreamingEncodingPipeline(true);
+        if (!encoder.empty() && encoder != GstToolkit::getStreamingEncodingPipeline(false)) {
+            const std::string encoder_name = encoder.substr(0, encoder.find(' '));
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-                if ( GstToolkit::has_feature("glupload") &&
-                     GstToolkit::has_feature("glcolorconvert") ) {
-                    description += "glupload ! glcolorconvert ! ";
-                    Log::Info("Video Streamer with glupload & GPU color conversion");
-                }
-                else 
-                    description += "videoconvert ! ";
-#endif
-                {
-                    description += config->second;
-                    found_harware_acceleration = true;
-                    Log::Info("Video Streamer using hardware accelerated encoder (%s)", config->first.c_str());
-                }
+            // for frames in OpenGL memory (the encoder pipeline starts with the adapter, if needed)
+            std::string gl_encoder;
+            if ( GstToolkit::has_feature("glupload") &&
+                 GstToolkit::has_feature("glcolorconvert") )
+                gl_encoder = GstToolkit::getStreamingEncodingPipeline(true, GstToolkit::MEMORY_GL);
+            if (!gl_encoder.empty()) {
+                // glupload: system memory → GLMemory (in GStreamer's thread)
+                // glcolorconvert: GPU color conversion to RGBA (as expected for GstToolkit::MEMORY_GL)
+                description += "glupload ! glcolorconvert ! video/x-raw(memory:GLMemory),format=RGBA ! ";
+                encoder = gl_encoder;
+                Log::Info("Video Streamer with glupload & GPU color conversion");
             }
+            else
+#endif
+                description += "videoconvert ! ";
+
+            description += "queue max-size-buffers=10 ! " + encoder;
+            description += "video/x-h264, profile=(string)main ! h264parse config-interval=-1 ! rtph264pay aggregate-mode=1 ! udpsink name=sink";
+            found_harware_acceleration = true;
+            Log::Info("Video Streamer with hardware accelerated encoder (%s)", encoder_name.c_str());
         }
     }
+#endif
     // general case: use defined protocols
     if (!found_harware_acceleration) {
         description += "videoconvert ! ";

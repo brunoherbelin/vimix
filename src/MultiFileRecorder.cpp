@@ -162,7 +162,7 @@ bool MultiFileRecorder::start_record (const std::string &video_filename)
     if (Settings::application.render.gpu_decoding && !hardware_pipeline.empty()) {
 
         description += hardware_pipeline;
-        Log::Info("MultiFileRecorder use hardware accelerated encoder (%s)", hardware_pipeline.c_str());
+        Log::Info("MultiFileRecorder with hardware accelerated encoder (%s)", hardware_pipeline.c_str());
     }
     // revert to software encoder
     else

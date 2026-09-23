@@ -64,18 +64,10 @@ bool GPUVideoRecorder::isEncoderAvailable(GstToolkit::Profile profile)
     if (!GstToolkit::has_feature("gltransformation"))
         return false;
 
-    // no hardware encoder pipeline for this profile on this platform/GPU
-    std::string hw = GstToolkit::getHardwareEncodingPipeline(profile);
-    if (hw.empty())
+    // no hardware encoder pipeline for this profile on this platform/GPU,
+    // taking frames in OpenGL memory (NB: also tests the adapter elements)
+    if (GstToolkit::getHardwareEncodingPipeline(profile, GstToolkit::MEMORY_GL).empty())
         return false;
-
-    // VA-API encoders (vah264enc, vah265enc) need the GLMemory to VAMemory bridge
-    if (hw.rfind("va", 0) == 0) {
-        if (!GstToolkit::has_feature("gldownload"))
-            return false;
-        if (!GstToolkit::has_feature("vapostproc"))
-            return false;
-    }
 
     return true;
 }
@@ -84,19 +76,9 @@ std::string GPUVideoRecorder::buildPipeline(GstToolkit::Profile profile)
 {
     std::string pipeline = "appsrc name=src ! glcolorconvert name=glclcvt ! gltransformation ! capsfilter name=capf ! ";
 
-    // hardware encoder fragment (NVENC or VA-API, whichever is available)
-    std::string hw = GstToolkit::getHardwareEncodingPipeline(profile);
-
-    // GLMemory to VAMemory bridge, needed only ahead of a VA-API encoder
-    // (vah264enc, vah265enc); they take video/x-raw(memory:VAMemory)
-    // - gldownload takes the frame out of the (shared) GL context : it exports a DMABuf when the
-    //   GL platform supports it (Mesa), and falls back to system memory otherwise (e.g. NVIDIA, but then vaapi is not used).
-    // - vapostproc puts it into a VA surface and performs the RGBA to NV12 conversion on the VA
-    //   hardware; this is significantly faster than converting to NV12 in GL before download.
-    if (hw.rfind("va", 0) == 0)
-        pipeline += "gldownload ! vapostproc ! video/x-raw(memory:VAMemory) ! ";
-
-    pipeline += hw;
+    // hardware encoder fragment (NVENC or VA-API, whichever is available), starting
+    // with the adapter from RGBA frames in OpenGL memory (e.g. to VAMemory for VA-API)
+    pipeline += GstToolkit::getHardwareEncodingPipeline(profile, GstToolkit::MEMORY_GL);
 
     // Add Audio to pipeline
     if ( Settings::application.accept_audio &&
@@ -151,7 +133,7 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
         }
     }
     else {
-        return "GPU Video Recording : profile not available for GPU encoder (accepts only H264 and H265).";
+        return "GPU Video Recording : profile not available for GPU encoder.";
     }
 
     // Validate GL context sharing is set up
@@ -278,6 +260,10 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     finished_ = false;
 
     Log::Info("GPU Video Recording : started %s (%s)", filename_.c_str(), GstToolkit::profile_name[encoder_]);
+    // name of the encoder: first word of its pipeline for frames in system memory (no adapter)
+    const std::string hw = GstToolkit::getHardwareEncodingPipeline(encoder_);
+    const std::string encoder_name = hw.substr(0, hw.find(' '));
+    Log::Info("GPU Video Recording with hardware accelerated encoder (%s)", encoder_name.c_str());
 
     return "";
 }
@@ -574,8 +560,11 @@ GstBusSyncReply GPUVideoRecorder::bus_sync_handler(GstBus *, GstMessage *msg, gp
     // Handle errors
     if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
         GError *error;
-        gst_message_parse_error(msg, &error, nullptr);
-        Log::Warning("GPU Video Recording : Error %s", error->message);
+        gchar *debug = nullptr;
+        gst_message_parse_error(msg, &error, &debug);
+        // debug details tell which element failed and why
+        Log::Warning("GPU Video Recording : Error %s (%s)", error->message, debug ? debug : "no details");
+        g_free(debug);
         g_error_free(error);
 
         if (grabber) 

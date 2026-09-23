@@ -108,14 +108,6 @@ const std::vector<std::string> NetworkToolkit::stream_receive_pipeline {
     "shmsrc socket-path=XXXX is-live=true ! video/x-raw, format=RGB, framerate=30/1 ! queue ",
 };
 
-const std::vector< std::pair<std::string, std::string> > NetworkToolkit::stream_h264_send_pipeline {
-//    {"vtenc_h264_hw", "video/x-raw, format=I420, framerate=30/1 ! queue max-size-buffers=10 ! vtenc_h264_hw realtime=1 allow-frame-reordering=0 ! rtph264pay aggregate-mode=1 ! udpsink name=sink"},
-    {"nvh264enc",     "queue max-size-buffers=10 ! "
-        "nvh264enc preset=p4 rc-mode=cbr-ld-hq bitrate=6000 ! video/x-h264, profile=(string)main ! h264parse config-interval=-1 ! rtph264pay aggregate-mode=1 ! udpsink name=sink"},
-    {"vah264enc",  "queue max-size-buffers=10 ! "
-        "vah264enc rate-control=cbr bitrate=6000 target-usage=2 b-frames=0 aud=true cabac=true ! video/x-h264, profile=(string)main ! h264parse config-interval=-1 ! rtph264pay aggregate-mode=1 ! udpsink name=sink"}
-};
-
 bool initialized_ = false;
 std::vector<std::string> ipstrings_;
 std::vector<unsigned long> iplongs_;
