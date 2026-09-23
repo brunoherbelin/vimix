@@ -13,8 +13,8 @@ class Session;
 
 class InputMappingWindow : public WorkspaceWindow
 {
-    std::array< std::string, 5 > input_mode;
-    std::array< uint, 5 > current_input_for_mode;
+    std::array< std::string, 6 > input_mode;
+    std::array< uint, 6 > current_input_for_mode;
     uint current_input_;
 
     Target ComboSelectTarget(const Target &current);

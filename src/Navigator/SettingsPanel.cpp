@@ -426,33 +426,39 @@ void SettingsPanel::Render()
     //
     // Gamepad preferences
     //
-    Settings::application.pannel_settings[3] = ImGui::CollapsingHeader("Gamepad Input",
+    Settings::application.pannel_settings[3] = ImGui::CollapsingHeader("Gamepads",
                                                                        Settings::application.pannel_settings[3] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
 
     if (Settings::application.pannel_settings[3]){
 
-        // Gamepad Device selection
+        // Gamepad Device selection, for gamepad 1 and 2
         char text_buf[512];
-        if ( glfwJoystickPresent( Settings::application.gamepad_id ) == GLFW_TRUE &&
-                glfwJoystickIsGamepad(Settings::application.gamepad_id) == GLFW_TRUE )
-            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(Settings::application.gamepad_id));
-        else
-            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "None recognized");
+        auto gamepad_combo = [&](const char *label, int &gamepad_id, int other_gamepad_id) {
+            if ( glfwJoystickPresent( gamepad_id ) == GLFW_TRUE &&
+                    glfwJoystickIsGamepad(gamepad_id) == GLFW_TRUE )
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(gamepad_id));
+            else
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "None recognized");
 
-        ImGui::SetCursorPosX(align_x);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::BeginCombo("Device", text_buf, ImGuiComboFlags_None)) {
-            for( int g = GLFW_JOYSTICK_1; g < GLFW_JOYSTICK_LAST; ++g) {
-                if ( glfwJoystickPresent( g ) == GLFW_TRUE &&
-                        glfwJoystickIsGamepad(g) == GLFW_TRUE ) {
-                    ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", glfwGetJoystickName(g));
-                    if (ImGui::Selectable(text_buf, Settings::application.gamepad_id == g) ) {
-                        Settings::application.gamepad_id = g;
+            ImGui::SetCursorPosX(align_x);
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::BeginCombo(label, text_buf, ImGuiComboFlags_None)) {
+                for( int g = GLFW_JOYSTICK_1; g <= GLFW_JOYSTICK_LAST; ++g) {
+                    if ( glfwJoystickPresent( g ) == GLFW_TRUE &&
+                            glfwJoystickIsGamepad(g) == GLFW_TRUE ) {
+                        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s##%d", glfwGetJoystickName(g), g);
+                        // a device used by the other gamepad cannot be selected
+                        if (ImGui::Selectable(text_buf, gamepad_id == g,
+                                              g == other_gamepad_id ? ImGuiSelectableFlags_Disabled : 0) ) {
+                            gamepad_id = g;
+                        }
                     }
                 }
+                ImGui::EndCombo();
             }
-            ImGui::EndCombo();
-        }
+        };
+        gamepad_combo(ICON_FA_GAMEPAD " 1", Settings::application.gamepad_1_id, Settings::application.gamepad_2_id);
+        gamepad_combo(ICON_FA_GAMEPAD " 2", Settings::application.gamepad_2_id, Settings::application.gamepad_1_id);
         ImGui::Spacing();
 
         // Custom mapping file selection
@@ -499,11 +505,11 @@ void SettingsPanel::Render()
         // File dialog to browse for mapping file
         ImGui::SetCursorPosX(align_x);
         const float w = IMGUI_RIGHT_ALIGN - ImGui::GetFrameHeightWithSpacing();
-        if (ImGui::Button(ICON_FA_FOLDER_OPEN " Browse", ImVec2(w, 0))) {
+        if (ImGui::Button(ICON_FA_FOLDER_OPEN "  Open", ImVec2(w, 0))) {
             gamepadmappingdialog.open();
         }
         ImGui::SameLine(0, 6);
-        if ( ImGuiToolkit::IconButton(ICON_VI_RELOAD, "Reload") )
+        if ( ImGuiToolkit::IconButton(ICON_VI_RELOAD, "Reload database") )
             Control::manager().loadGamepadMappings();
         ImGui::SameLine(0, 3);
         if ( ImGuiToolkit::IconButton(ICON_FA_EXTERNAL_LINK_ALT, "Search online") )

@@ -367,7 +367,8 @@ struct Application
 
     // Inputs mapping (callbacks)
     InputMappingConfig mapping;
-    int gamepad_id;
+    int gamepad_1_id;
+    int gamepad_2_id;
     // gamepad support
     std::string gamepad_mapping_filename;
 
@@ -432,7 +433,8 @@ struct Application
         accept_audio = false;
         dialogPosition = glm::ivec2(-1, -1);
         image_sequence.framerate_mode = 15;
-        gamepad_id = 0;
+        gamepad_1_id = 0;
+        gamepad_2_id = 1;
     }
 
 };

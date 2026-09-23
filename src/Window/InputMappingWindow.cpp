@@ -56,9 +56,11 @@ InputMappingWindow::InputMappingWindow() : WorkspaceWindow("InputMappingInterfac
     input_mode = { ICON_FA_KEYBOARD "  Keyboard",
                    ICON_FA_CALCULATOR "   Numpad" ,
                    ICON_FA_TABLET_ALT "   TouchOSC" ,
-                   ICON_FA_GAMEPAD "  Gamepad",
-                   ICON_FA_CLOCK "   Timer"  };
-    current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST, INPUT_MULTITOUCH_FIRST, INPUT_JOYSTICK_FIRST, INPUT_TIMER_FIRST };
+                   ICON_FA_GAMEPAD "  Gamepad 1",
+                   ICON_FA_CLOCK "   Timer",
+                   ICON_FA_GAMEPAD "  Gamepad 2" };
+    current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST, INPUT_MULTITOUCH_FIRST,
+                               INPUT_GAMEPAD_1_FIRST, INPUT_TIMER_FIRST, INPUT_GAMEPAD_2_FIRST };
     current_input_ = current_input_for_mode[Settings::application.mapping.mode];
 }
 
@@ -987,7 +989,9 @@ void InputMappingWindow::Render()
         // Selection of the keyboard mode
         if (ImGui::BeginMenu( input_mode[Settings::application.mapping.mode].c_str() ))
         {
-            for (size_t i = 0; i < input_mode.size(); ++i) {
+            // list modes with Gamepad 2 (mode 5) after Gamepad 1 (mode 3)
+            static const std::array< size_t, 6 > menu_order = { 0, 1, 2, 3, 5, 4 };
+            for (size_t i : menu_order) {
                 if (ImGui::MenuItem(input_mode[i].c_str())) {
                     current_input_for_mode[Settings::application.mapping.mode] = current_input_;
                     Settings::application.mapping.mode = i;
@@ -1007,7 +1011,7 @@ void InputMappingWindow::Render()
                 S->inputCallbacks()->removeAll(current_input_);
 
             if (ImGuiToolkit::BeginMenuIcon(ICON_VI_METRONOME, "Metronome",
-                                 S->inputCallbacks()->assigned(current_input_) && Settings::application.mapping.mode < 4 ))
+                                 S->inputCallbacks()->assigned(current_input_) && Settings::application.mapping.mode != 4 ))
             {
                 Metronome::Synchronicity sync = S->inputCallbacks()->synchrony(current_input_);
                 bool active = sync == Metronome::SYNC_NONE;
@@ -1056,13 +1060,17 @@ void InputMappingWindow::Render()
         if (Control::manager().inputActive(k)) {
             if (k < INPUT_NUMPAD_FIRST)
                 Settings::application.mapping.mode = 0;
-            else if (k < INPUT_JOYSTICK_FIRST)
+            else if (k < INPUT_GAMEPAD_1_FIRST)
                 Settings::application.mapping.mode = 1;
-            else if (k > INPUT_JOYSTICK_LAST_AXIS)
+            else if (k > INPUT_GAMEPAD_1_LAST_AXIS)
                 Settings::application.mapping.mode = 2;
-            else if (k < INPUT_JOYSTICK_FIRST_AXIS)
+            else if (k < INPUT_GAMEPAD_1_FIRST_AXIS)
                 Settings::application.mapping.mode = 3;
         }
+    }
+    for (uint k = INPUT_GAMEPAD_2_FIRST_BUTTON; k <= INPUT_GAMEPAD_2_LAST_BUTTON; ++k) {
+        if (Control::manager().inputActive(k))
+            Settings::application.mapping.mode = 5;
     }
 
     //
@@ -1305,22 +1313,26 @@ void InputMappingWindow::Render()
 
     }
     //
-    // JOYSTICK
+    // GAMEPAD 1 & 2
     //
-    else if ( Settings::application.mapping.mode == 3 ) {
+    else if ( Settings::application.mapping.mode == 3 || Settings::application.mapping.mode == 5 ) {
+
+        // inputs of the gamepad selected by the mode
+        const uint first_button = Settings::application.mapping.mode == 3 ? INPUT_GAMEPAD_1_FIRST_BUTTON : INPUT_GAMEPAD_2_FIRST_BUTTON;
+        const uint first_axis   = Settings::application.mapping.mode == 3 ? INPUT_GAMEPAD_1_FIRST_AXIS : INPUT_GAMEPAD_2_FIRST_AXIS;
 
         // custom layout of gamepad buttons
-        std::vector<uint> gamepad_inputs = { INPUT_JOYSTICK_FIRST_BUTTON+11, INPUT_JOYSTICK_FIRST_BUTTON+13,
-                                             INPUT_JOYSTICK_FIRST_BUTTON+6,
-                                             INPUT_JOYSTICK_FIRST_BUTTON+2, INPUT_JOYSTICK_FIRST_BUTTON+3,
+        std::vector<uint> gamepad_inputs = { first_button+11, first_button+13,
+                                             first_button+6,
+                                             first_button+2, first_button+3,
 
-                                             INPUT_JOYSTICK_FIRST_BUTTON+14, INPUT_JOYSTICK_FIRST_BUTTON+12,
-                                             INPUT_JOYSTICK_FIRST_BUTTON+7,
-                                             INPUT_JOYSTICK_FIRST_BUTTON+0, INPUT_JOYSTICK_FIRST_BUTTON+1,
+                                             first_button+14, first_button+12,
+                                             first_button+7,
+                                             first_button+0, first_button+1,
 
-                                             INPUT_JOYSTICK_FIRST_BUTTON+4, INPUT_JOYSTICK_FIRST_BUTTON+9,
-                                             INPUT_JOYSTICK_FIRST_BUTTON+8,
-                                             INPUT_JOYSTICK_FIRST_BUTTON+10, INPUT_JOYSTICK_FIRST_BUTTON+5  };
+                                             first_button+4, first_button+9,
+                                             first_button+8,
+                                             first_button+10, first_button+5  };
 
         std::vector< std::string > gamepad_labels = {  ICON_FA_ARROW_UP,  ICON_FA_ARROW_DOWN,
                                                        ICON_FA_CHEVRON_CIRCLE_LEFT, "X", "Y",
@@ -1410,31 +1422,31 @@ void InputMappingWindow::Render()
         ImVec2 pos = axis_top;
         // Draw a little bar showing activity on the gamepad axis
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(first_axis), axis_bar_size);
         // Draw button to assign the axis to an action
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("LX", S->inputCallbacks()->assignedAnywhere(INPUT_JOYSTICK_FIRST_AXIS), 0, axis_icon_size))
-            current_input_ = INPUT_JOYSTICK_FIRST_AXIS;
+        if (ImGui::Selectable("LX", S->inputCallbacks()->assignedAnywhere(first_axis), 0, axis_icon_size))
+            current_input_ = first_axis;
         // Draw frame around current gamepad axis
-        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS)
+        if (current_input_ == first_axis)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
 
         pos = axis_top + ImVec2( 0, axis_item_size.y);
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+1), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(first_axis+1), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("LY", S->inputCallbacks()->assignedAnywhere(INPUT_JOYSTICK_FIRST_AXIS+1), 0, axis_icon_size))
-            current_input_ = INPUT_JOYSTICK_FIRST_AXIS+1;
-        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+1)
+        if (ImGui::Selectable("LY", S->inputCallbacks()->assignedAnywhere(first_axis+1), 0, axis_icon_size))
+            current_input_ = first_axis+1;
+        if (current_input_ == first_axis+1)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
 
         pos = axis_top + ImVec2( 0, 2.f * axis_item_size.y);
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+2), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(first_axis+2), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("L2", S->inputCallbacks()->assignedAnywhere(INPUT_JOYSTICK_FIRST_AXIS+2), 0, axis_icon_size))
-            current_input_ = INPUT_JOYSTICK_FIRST_AXIS+2;
-        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+2)
+        if (ImGui::Selectable("L2", S->inputCallbacks()->assignedAnywhere(first_axis+2), 0, axis_icon_size))
+            current_input_ = first_axis+2;
+        if (current_input_ == first_axis+2)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
 
         ImGui::PopStyleVar();
@@ -1445,29 +1457,29 @@ void InputMappingWindow::Render()
 
         pos = axis_top + ImVec2( axis_item_size.x, 0.f);
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+3), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(first_axis+3), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("RX", S->inputCallbacks()->assignedAnywhere(INPUT_JOYSTICK_FIRST_AXIS+3), 0, axis_icon_size))
-            current_input_ = INPUT_JOYSTICK_FIRST_AXIS+3;
-        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+3)
+        if (ImGui::Selectable("RX", S->inputCallbacks()->assignedAnywhere(first_axis+3), 0, axis_icon_size))
+            current_input_ = first_axis+3;
+        if (current_input_ == first_axis+3)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
 
         pos = axis_top + ImVec2( axis_item_size.x, axis_item_size.y);
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+4), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(first_axis+4), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("RY", S->inputCallbacks()->assignedAnywhere(INPUT_JOYSTICK_FIRST_AXIS+4), 0, axis_icon_size))
-            current_input_ = INPUT_JOYSTICK_FIRST_AXIS+4;
-        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+4)
+        if (ImGui::Selectable("RY", S->inputCallbacks()->assignedAnywhere(first_axis+4), 0, axis_icon_size))
+            current_input_ = first_axis+4;
+        if (current_input_ == first_axis+4)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
 
         pos = axis_top + ImVec2( axis_item_size.x, 2.f * axis_item_size.y);
         ImGui::SetCursorScreenPos( pos + axis_bar_pos);
-        ImGuiToolkit::ValueBar(Control::manager().inputValue(INPUT_JOYSTICK_FIRST_AXIS+5), axis_bar_size);
+        ImGuiToolkit::ValueBar(Control::manager().inputValue(first_axis+5), axis_bar_size);
         ImGui::SetCursorScreenPos( pos );
-        if (ImGui::Selectable("R2", S->inputCallbacks()->assignedAnywhere(INPUT_JOYSTICK_FIRST_AXIS+5), 0, axis_icon_size))
-            current_input_ = INPUT_JOYSTICK_FIRST_AXIS+5;
-        if (current_input_ == INPUT_JOYSTICK_FIRST_AXIS+5)
+        if (ImGui::Selectable("R2", S->inputCallbacks()->assignedAnywhere(first_axis+5), 0, axis_icon_size))
+            current_input_ = first_axis+5;
+        if (current_input_ == first_axis+5)
             draw_list->AddRect(pos, pos + axis_icon_size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 3.f);
 
         ImGui::PopStyleVar(2);

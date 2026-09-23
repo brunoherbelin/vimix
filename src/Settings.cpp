@@ -382,7 +382,8 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     mappingConfNode->SetAttribute("mode", application.mapping.mode);
     mappingConfNode->SetAttribute("current", application.mapping.current);
     mappingConfNode->SetAttribute("disabled", application.mapping.disabled);
-    mappingConfNode->SetAttribute("gamepad", application.gamepad_id);
+    mappingConfNode->SetAttribute("gamepad", application.gamepad_1_id);
+    mappingConfNode->SetAttribute("gamepad2", application.gamepad_2_id);
     if (!application.gamepad_mapping_filename.empty()) {
         XMLElement *gamepadNode = xmlDoc.NewElement("gamepad_filename");
         XMLText *text = xmlDoc.NewText( application.gamepad_mapping_filename.c_str() );
@@ -783,7 +784,8 @@ void Settings::init(const std::string &filename)
             mappingconfnode->QueryUnsigned64Attribute("mode", &application.mapping.mode);
             mappingconfnode->QueryUnsignedAttribute("current", &application.mapping.current);
             mappingconfnode->QueryBoolAttribute("disabled", &application.mapping.disabled);
-            mappingconfnode->QueryIntAttribute("gamepad", &application.gamepad_id);
+            mappingconfnode->QueryIntAttribute("gamepad", &application.gamepad_1_id);
+            mappingconfnode->QueryIntAttribute("gamepad2", &application.gamepad_2_id);
             XMLElement* gamepadNode = mappingconfnode->FirstChildElement("gamepad_filename");
             if( gamepadNode )
             {
