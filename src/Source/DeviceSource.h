@@ -44,6 +44,7 @@ private:
 struct DeviceHandle {
 
     std::string name;
+    std::list<std::string> aliases; // other names given to the same device
     std::string pipeline;
     std::string properties;
     GstToolkit::PipelineConfigSet configs;
