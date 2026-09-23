@@ -913,9 +913,39 @@ double Stream::updateFrameRate() const
 
 // CALLBACKS
 
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+static void gl_finish(GstGLContext *, gpointer)
+{
+    // executed in the GStreamer GL thread, with its context current
+    glFinish();
+}
+
+// Wait (in the GStreamer streaming thread) for the GPU to complete rendering of
+// the GLMemory texture, to avoid tearing when it is copied in the rendering thread
+static void wait_gl_memory(GstBuffer *buf)
+{
+    GstMemory *mem = gst_buffer_peek_memory(buf, 0);
+    if (mem == nullptr || !gst_is_gl_memory(mem))
+        return;
+
+    GstGLSyncMeta *sync_meta = gst_buffer_get_gl_sync_meta(buf);
+    if (sync_meta)
+        gst_gl_sync_meta_wait_cpu(sync_meta, sync_meta->context);
+    else
+        // no sync point given: wait for all GL commands of the GStreamer context
+        gst_gl_context_thread_add(((GstGLBaseMemory *) mem)->context, gl_finish, nullptr);
+}
+#endif
+
 bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
 {
 //    Log::Info("Stream fill frame");
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    // ensure the GPU texture is ready before giving it to the rendering thread
+    if (use_gl_memory_ && buf != NULL)
+        wait_gl_memory(buf);
+#endif
 
     // Do NOT overwrite an unread EOS
     if ( frame_[write_index_].status == EOS )
