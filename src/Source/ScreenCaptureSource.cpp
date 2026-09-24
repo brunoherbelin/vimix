@@ -715,15 +715,29 @@ void ScreenCaptureSource::setWindow(const std::string &name)
                 float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
                 Log::Info("ScreenCapture %s selected its optimal config: %s %s %dx%d@%.1ffps", window_.c_str(), best.stream.c_str(), best.format.c_str(), best.width, best.height, fps);
 
-                // (pipewiresrc negotiates its variable framerate)
-                if (h->session.empty()) {
+                bool glmemory = false;
+#if defined(APPLE)
+                // avfvideosrc gives the screen in system memory only; just upload it to GLMemory
+                glmemory = Stream::glMemoryAvailable();
+                if (glmemory) {
                     pipeline << " ! " << best.stream;
                     if (!best.format.empty())
                         pipeline << ",format=" << best.format;
-                    pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
+                    pipeline << " ! queue ! glupload ! glcolorconvert ! video/x-raw(memory:GLMemory),format=RGBA,texture-target=2D";
                 }
-                // convert (force alpha to 1)
-                pipeline << " ! alpha alpha=1 ! queue ! videoconvert ! videoscale";
+                else
+#endif
+                {
+                    // (pipewiresrc negotiates its variable framerate)
+                    if (h->session.empty()) {
+                        pipeline << " ! " << best.stream;
+                        if (!best.format.empty())
+                            pipeline << ",format=" << best.format;
+                        pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
+                    }
+                    // convert (force alpha to 1)
+                    pipeline << " ! alpha alpha=1 ! queue ! videoconvert ! videoscale";
+                }
 
                 // delete and reset render buffer to enforce re-init of StreamSource
                 if (renderbuffer_)
@@ -734,7 +748,7 @@ void ScreenCaptureSource::setWindow(const std::string &name)
                 stream_ = h->stream = new Stream;
 
                 // open gstreamer
-                h->stream->open( pipeline.str(), best.width, best.height);
+                h->stream->open( pipeline.str(), best.width, best.height, glmemory);
                 h->stream->play(true);
             }
         }
