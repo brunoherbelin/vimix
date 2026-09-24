@@ -19,6 +19,10 @@
 
 #include "imgui.h"
 #include <glm/ext/vector_float2.hpp>
+#include <atomic>
+#include <cstdarg>
+#include <cstdio>
+#include <cstring>
 #include <string>
 #include <list>
 #include <mutex>
@@ -196,10 +200,34 @@ list<string> notifications;
 list<string> warnings;
 float notifications_timeout = 0.f;
 
+static std::atomic<bool> console_output(false);
+
+void Log::SetConsoleOutput(bool on)
+{
+    console_output = on;
+}
+
+// Print a log line to the console, when enabled; formatted first and printed
+// in one call, so that lines logged by different threads do not interleave
+static void print_console(const char* fmt, va_list args)
+{
+    if (!console_output)
+        return;
+
+    char line[4096];
+    vsnprintf(line, sizeof(line), fmt, args);
+    const size_t len = strlen(line);
+    fprintf(stderr, (len > 0 && line[len - 1] == '\n') ? "%s" : "%s\n", line);
+}
+
 void Log::Info(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
+    va_list console_args;
+    va_copy(console_args, args);
+    print_console(fmt, console_args);
+    va_end(console_args);
     logs.AddLog(fmt, args);
     va_end(args);
 }
@@ -360,6 +388,10 @@ void Log::Osc(const char *fmt, ...)
     if (logs.LogOSC) {
         va_list args;
         va_start(args, fmt);
+        va_list console_args;
+        va_copy(console_args, args);
+        print_console(fmt, console_args);
+        va_end(console_args);
         logs.AddLog(fmt, args);
         va_end(args);
     }

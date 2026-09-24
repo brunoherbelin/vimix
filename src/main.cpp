@@ -24,6 +24,7 @@
 #include <gst/gst.h>
 
 // vmix
+#include "Log.h"
 #include "Canvas.h"
 #include "Settings.h"
 #include "Mixer.h"
@@ -89,6 +90,8 @@ int main(int argc, char *argv[])
             cleanRequested = 1;
         } else if (strcmp(argv[i], "--headless") == 0 || strcmp(argv[i], "-L") == 0) {
             headlessRequested = 1;
+        } else if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
+            Log::SetConsoleOutput(true);
         } else if (strcmp(argv[i], "--settings") == 0 || strcmp(argv[i], "-S") == 0) {
             // get settings file argument
             if (i + 1 < argc) {
@@ -163,7 +166,7 @@ int main(int argc, char *argv[])
 
     if (helpRequested) {
         printf("Usage: %s [-H, --help] [-V, --version] [-F, --fontsize] [-L, --headless] [-B, --broadcast]\n"
-               "               [-S, --settings] [-T, --test] [-C, --clean] [filename]\n",
+               "               [-S, --settings] [-v, --verbose] [-T, --test] [-C, --clean] [filename]\n",
                argv[0]);
         printf("Options:\n");
         printf("  --help       : Display usage information\n");
@@ -172,6 +175,7 @@ int main(int argc, char *argv[])
         printf("  --settings   : Run with given settings file, e.g., '-S settingsfile.xml'\n");
         printf("  --headless   : Run without GUI (only if output windows configured)\n");
         printf("  --broadcast  : Starts network broadcasting on given port, e.g., '-B 7070'\n");
+        printf("  --verbose    : Display all log messages in the console\n");
         printf("  --test       : Run rendering test and return\n");
         printf("  --clean      : Reset user settings\n");
         printf("Filename:\n");

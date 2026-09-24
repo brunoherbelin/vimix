@@ -10,6 +10,9 @@ namespace Log
     void Warning(const char* fmt, ...);
     void Error(const char* fmt, ...);
 
+    // also print logs to the console (stderr)
+    void SetConsoleOutput(bool on);
+
     // Draw logs
     void ShowLogWindow(bool* p_open = nullptr);
 
