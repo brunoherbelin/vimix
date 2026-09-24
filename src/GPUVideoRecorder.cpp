@@ -441,6 +441,9 @@ void GPUVideoRecorder::addFrame(guint texture_id, GstCaps *read_caps, GstCaps *w
     transfer_data.vimix_texture_id = texture_id;
     transfer_data.buffer = buffer;
 
+    // the GStreamer context sees what was rendered in the texture only once
+    // our context has flushed (which macOS enforces)
+    glFlush();
     gst_gl_context_thread_add(gl_context_, perform_texture_transfer, &transfer_data);
 
     // Set buffer timestamp

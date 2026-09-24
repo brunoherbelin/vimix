@@ -763,9 +763,9 @@ void MediaPlayer::execute_open()
                                                NULL);
         gst_caps_set_features(gl_caps, 0, gst_caps_features_new("memory:GLMemory", NULL));
 
-        // Append GLMemory caps as preferred option
+        // Append system memory caps after GLMemory caps, the preferred option
+        // (gst_caps_append takes ownership of caps: no unref here)
         gst_caps_append(gl_caps, caps);
-        gst_caps_unref (caps);
         gst_app_sink_set_caps (GST_APP_SINK(sink), gl_caps);
         gst_caps_unref (gl_caps);
 
@@ -1497,8 +1497,8 @@ void MediaPlayer::init_texture(guint index)
             GstMemory *mem = gst_buffer_peek_memory(frame_[index].buffer, 0);
 
             if (mem && gst_is_gl_memory(mem)) {
-                GstGLMemory *gl_mem = (GstGLMemory*) mem;
-                guint gst_tex_id = gst_gl_memory_get_texture_id(gl_mem);
+                GstMapInfo glmap;
+                guint gst_tex_id = GstToolkit::mapGLMemory(mem, &glmap);
 
                 if (gst_tex_id > 0) {
                     // Copy from GStreamer GL texture to our texture using FBO
@@ -1513,6 +1513,7 @@ void MediaPlayer::init_texture(guint index)
 
                     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
                     glDeleteFramebuffers(1, &fbo);
+                    GstToolkit::unmapGLMemory(mem, &glmap);
 
                     gl_memory_used = true;
                 }
@@ -1591,7 +1592,8 @@ void MediaPlayer::fill_texture(guint index)
 
             if (mem && gst_is_gl_memory(mem)) {
                 // FAST PATH: Direct GL texture extraction from GStreamer
-                guint gst_tex_id = gst_gl_memory_get_texture_id((GstGLMemory*) mem);
+                GstMapInfo glmap;
+                guint gst_tex_id = GstToolkit::mapGLMemory(mem, &glmap);
 
                 if (gst_tex_id > 0) {
                     // Use FBO to copy from GStreamer's texture to our texture
@@ -1609,6 +1611,7 @@ void MediaPlayer::fill_texture(guint index)
                     glBindTexture(GL_TEXTURE_2D, 0);
                     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
                     glDeleteFramebuffers(1, &fbo);
+                    GstToolkit::unmapGLMemory(mem, &glmap);
 
                     // Success - no need for CPU path
                     return;

@@ -150,6 +150,11 @@ set(VMIX_SRCS
 ##### DEFINE THE TARGET (OS specific)
 #####
 
+if (USE_GST_OPENGL_SYNC_HANDLER)
+    # Add GPU video recorder implementation
+    list(APPEND VMIX_SRCS GPUVideoRecorder.cpp)
+endif()
+
 IF(APPLE)
 
     # Add macOS tablet input implementation
@@ -162,10 +167,6 @@ IF(APPLE)
 
 ELSE(APPLE)
 
-    if (USE_GST_OPENGL_SYNC_HANDLER)
-        # Add GPU video recorder implementation
-        list(APPEND VMIX_SRCS GPUVideoRecorder.cpp)
-    endif()
 
     # Add Linux tablet input implementation
     if(X11_Xi_FOUND)
@@ -221,6 +222,7 @@ IF(APPLE)
     set(PLATFORM_LIBS
         "-framework CoreFoundation"
         "-framework CoreGraphics"
+        "-framework OpenGL"
         "-framework Appkit"
     )
 

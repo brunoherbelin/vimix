@@ -150,6 +150,17 @@ float canPlayBackward(bool has_bframes, int width, int height,
                        guint keyframe_count, guint gop_size_min, guint gop_size_max);
 
 
+// OpenGL texture of a memory in GLMemory, to be read in the OpenGL context of
+// the application (shared with that of GStreamer); 0 if the memory is not
+// GLMemory or cannot be mapped, and otherwise to release with unmapGLMemory().
+// The memory is mapped for GL, which makes GStreamer upload data still pending
+// in system memory (a texture is otherwise left empty, e.g. when glcolorconvert
+// had no conversion to do), and GStreamer then flushes its OpenGL context: an
+// OpenGL context sees what a shared context did only once that one has
+// flushed, which macOS enforces.
+guint mapGLMemory(GstMemory *mem, GstMapInfo *map);
+void unmapGLMemory(GstMemory *mem, GstMapInfo *map);
+
 // True for a raw video format holding RGB components
 bool isRGBFormat(const std::string &format);
 

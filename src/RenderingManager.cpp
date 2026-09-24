@@ -52,6 +52,9 @@
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
 #include <GLFW/glfw3native.h>
+#ifdef APPLE
+#include <OpenGL/OpenGL.h>  // CGLGetCurrentContext
+#endif
 #endif
 
 // vimix
@@ -282,10 +285,19 @@ bool Rendering::init()
     global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
                                                    GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
 #elif GST_GL_HAVE_PLATFORM_CGL
-    // macOS: Disable OpenGL context sharing due to NSOpenGLContext threading incompatibility
-    // GStreamer's Cocoa GL implementation requires main thread for context operations,
-    // but dispatches from worker threads cause deadlock with GLFW's event loop.
-    Log::Info("OpenGL context sharing disabled on macOS (NSOpenGLContext threading limitations)");
+    // macOS: wrap the CGL context of the main window (current here), an OpenGL
+    // 3.3 core profile context, for GStreamer to create its own contexts shared
+    // with it; the display is that of Cocoa.
+    global_display = gst_gl_display_new();
+    if (global_display != NULL)
+        global_gl_context = gst_gl_context_new_wrapped (global_display,
+                                                   (guintptr) CGLGetCurrentContext(),
+                                                   GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL3);
+    if (global_gl_context == NULL) {
+        g_printerr("Failed to wrap GStreamer CGL context\n");
+        Log::Warning("Failed to wrap GStreamer CGL context.");
+        global_display = NULL;
+    }
 #elif GST_GL_HAVE_PLATFORM_GLX
     global_display = (GstGLDisplay*) gst_gl_display_x11_new_with_display( glfwGetX11Display() );
     if (global_display == NULL) {

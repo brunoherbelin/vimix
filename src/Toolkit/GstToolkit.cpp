@@ -30,9 +30,38 @@ using namespace std;
 namespace fs = std::filesystem;
 
 #include <gst/gl/gl.h>
+#include <gst/gl/gstglfuncs.h>
 #include <gst/video/video.h>
 
 #include "GstToolkit.h"
+
+static void gl_flush(GstGLContext *context, gpointer)
+{
+    context->gl_vtable->Flush();
+}
+
+guint GstToolkit::mapGLMemory(GstMemory *mem, GstMapInfo *map)
+{
+    if (mem == nullptr || map == nullptr || !gst_is_gl_memory(mem))
+        return 0;
+
+    // an upload happens on mapping for GL only when data is pending
+    const bool upload = GST_MEMORY_FLAG_IS_SET(mem, GST_GL_BASE_MEMORY_TRANSFER_NEED_UPLOAD);
+
+    if (!gst_memory_map(mem, map, (GstMapFlags) (GST_MAP_READ | GST_MAP_GL)))
+        return 0;
+
+    if (upload)
+        gst_gl_context_thread_add(((GstGLBaseMemory *) mem)->context, gl_flush, nullptr);
+
+    return *(guint *) map->data;
+}
+
+void GstToolkit::unmapGLMemory(GstMemory *mem, GstMapInfo *map)
+{
+    if (mem != nullptr && map != nullptr)
+        gst_memory_unmap(mem, map);
+}
 
 bool GstToolkit::isRGBFormat(const std::string &format)
 {

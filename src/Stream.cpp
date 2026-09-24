@@ -719,7 +719,8 @@ bool Stream::fill_texture_glmemory(guint index)
         return false;
     }
 
-    guint gst_tex_id = gst_gl_memory_get_texture_id((GstGLMemory*) mem);
+    GstMapInfo glmap;
+    guint gst_tex_id = GstToolkit::mapGLMemory(mem, &glmap);
     if (gst_tex_id == 0)
         return false;
 
@@ -737,6 +738,7 @@ bool Stream::fill_texture_glmemory(guint index)
     // detach GStreamer texture (it may be deleted with the buffer)
     glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    GstToolkit::unmapGLMemory(mem, &glmap);
 
     return true;
 #else
