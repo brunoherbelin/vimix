@@ -267,12 +267,17 @@ GstBusSyncReply stream_signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
 {
     // only handle error messages
     if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR && ptr != nullptr) {
-        GError *error;
-        gst_message_parse_error(msg, &error, NULL);
-        Log::Warning("Stream %s : %s",
+        // the message says what failed, the debug string why (e.g. "streaming
+        // stopped, reason not-negotiated"), and the source which element
+        GError *error = nullptr;
+        gchar *debug = nullptr;
+        gst_message_parse_error(msg, &error, &debug);
+        Log::Warning("Stream %s : %s (%s: %s)",
                      std::to_string(reinterpret_cast<Stream*>(ptr)->id()).c_str(),
-                     error->message);
+                     error->message, GST_OBJECT_NAME(GST_MESSAGE_SRC(msg)),
+                     debug ? debug : "no details");
         g_error_free(error);
+        g_free(debug);
     }
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
     // setup OpenGL contexts for GStreamer elements from global Rendering opengl

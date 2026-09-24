@@ -30,8 +30,18 @@ using namespace std;
 namespace fs = std::filesystem;
 
 #include <gst/gl/gl.h>
+#include <gst/video/video.h>
 
 #include "GstToolkit.h"
+
+bool GstToolkit::isRGBFormat(const std::string &format)
+{
+    const GstVideoFormat f = gst_video_format_from_string(format.c_str());
+    if (f == GST_VIDEO_FORMAT_UNKNOWN)
+        return false;
+    const GstVideoFormatInfo *info = gst_video_format_get_info(f);
+    return info != nullptr && GST_VIDEO_FORMAT_INFO_IS_RGB(info);
+}
 
 string GstToolkit::time_to_string(guint64 t, time_string_mode m)
 {
@@ -1080,11 +1090,13 @@ GstToolkit::PipelineConfigSet GstToolkit::getPipelineConfigs(const std::string &
                     if ( GST_VALUE_HOLDS_LIST(val)) {
                         int N = gst_value_list_get_size(val);
                         for (int n = 0; n < N; n++ ){
-                            std::string f = gst_value_serialize( gst_value_list_get_value(val, n) );
+                            gchar *serialized = gst_value_serialize( gst_value_list_get_value(val, n) );
+                            std::string f = serialized ? serialized : "";
+                            g_free(serialized);
 
-                            // preference order : 1) RGBx, 2) JPEG, 3) ALL OTHER
-                            // select f if it contains R (e.g. for RGBx) and not already RGB in config
-                            if ( (f.find("R") != std::string::npos) && (config.format.find("R") == std::string::npos ) ) {
+                            // preference order : 1) RGB formats, 2) ALL OTHER
+                            // select if it is RGB (e.g. RGBx, BGRA) and not already RGB in config
+                            if ( isRGBFormat(f) && !isRGBFormat(config.format) ) {
                                 config.format = f;
                                 break;
                             }
@@ -1096,7 +1108,9 @@ GstToolkit::PipelineConfigSet GstToolkit::getPipelineConfigs(const std::string &
                     }
                     // single format
                     else {
-                        config.format = gst_value_serialize(val);
+                        gchar *serialized = gst_value_serialize(val);
+                        config.format = serialized ? serialized : "";
+                        g_free(serialized);
                     }
                 }
 

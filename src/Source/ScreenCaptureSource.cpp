@@ -29,6 +29,10 @@
 
 #include "ScreenCaptureSource.h"
 
+#if defined(APPLE)
+#include <map>
+#endif
+
 #ifndef NDEBUG
 #define SCREENCAPTURE_DEBUG
 #endif
@@ -37,6 +41,26 @@
 
 #if defined(APPLE)
 std::string gst_plugin_vidcap = "avfvideosrc capture-screen=true";
+
+#include <CoreGraphics/CoreGraphics.h>
+
+// Check for OSX permissions to capture screen
+bool screen_recording_allowed()
+{
+    if (CGPreflightScreenCaptureAccess())
+        return true;
+    CGRequestScreenCaptureAccess();
+    return false;
+}
+
+// in osx/ScreenCapture_macos.mm
+std::vector< std::pair<unsigned long, std::string> > getListMacOSScreens();
+
+// Pipeline of the screen at the given device-index of avfvideosrc
+std::string macos_screen_pipeline(size_t index)
+{
+    return gst_plugin_vidcap + " device-index=" + std::to_string(index);
+}
 #else
 std::string gst_plugin_vidcap = "ximagesrc show-pointer=false";
 
@@ -230,12 +254,58 @@ void ScreenCapture::launchMonitoring(ScreenCapture *sc)
     sc->monitor_initialized_ = false;
 
 #else
-    // only one screen capture possibility on OSX
-    sc->add(SCREEN_CAPTURE_NAME, gst_plugin_vidcap);
+    // Get the list of screens, by device-index of avfvideosrc, with their
+    // display id and name
+    struct Screen {
+        unsigned long display;
+        std::string name;
+    };
+    std::map<int, Screen> screens;
+    const auto list = getListMacOSScreens();
+    for (size_t i = 0; i < list.size(); ++i)
+        screens[(int) i] = { list[i].first, list[i].second };
+
+    // Screens are found by name, which must then be unique; two monitors of
+    // the same model have the same name, and get their number (from 1) added
+    std::map<std::string, int> count;
+    for (const auto &screen : screens)
+        count[screen.second.name]++;
+    for (auto &screen : screens)
+        if (count[screen.second.name] > 1)
+            screen.second.name += " (" + std::to_string(screen.first + 1) + ")";
+
+    // Go through the current list of screen handles: keep those still valid,
+    // i.e. the same display at the same index (the index is in the pipeline),
+    // with the same name
+    sc->access_.lock();
+    for (auto hit = sc->handles_.begin(); hit != sc->handles_.end();) {
+        auto s = std::find_if(screens.begin(), screens.end(), [&](const auto &screen) {
+            return hit->id == screen.second.display && hit->name == screen.second.name &&
+                   hit->pipeline == macos_screen_pipeline(screen.first);
+        });
+        if (s != screens.end()) {
+            // known already: nothing to add
+            screens.erase(s);
+            ++hit;
+        }
+        else
+            hit = sc->handles_.erase(hit);
+    }
+    sc->access_.unlock();
+
+    // Add in handles list the remaining screens
+    for (const auto &screen : screens)
+        sc->add(screen.second.name, macos_screen_pipeline(screen.first), screen.second.display);
 
     // monitor is initialized
     sc->monitor_initialized_ = true;
     sc->monitor_initialization_.notify_all();
+
+    // give time before continuing
+    std::this_thread::sleep_for ( std::chrono::seconds(2) );
+
+    // de-initialize so next call will update (e.g. a screen was connected)
+    sc->monitor_initialized_ = false;
 #endif
 }
 
@@ -375,13 +445,27 @@ void ScreenCaptureSource::reconnect()
     setWindow(d);
 }
 
-void ScreenCaptureSource::setWindow(const std::string &windowname)
+void ScreenCaptureSource::setWindow(const std::string &name)
 {
-    if (window_.compare(windowname) == 0)
-        return;
-
     // instanciate and wait for monitor initialization if not already initialized
     ScreenCapture::manager().reload();
+
+    std::string windowname = name;
+#if defined(APPLE)
+    // sessions saved when macOS had a single screen capture name it so; it
+    // was the capture of the main screen, which is the first one
+    if (windowname == SCREEN_CAPTURE_NAME) {
+        ScreenCapture::manager().access_.lock();
+        auto h = std::find_if(ScreenCapture::manager().handles_.cbegin(), ScreenCapture::manager().handles_.cend(),
+                              [](const ScreenCaptureHandle &handle) { return handle.pipeline == macos_screen_pipeline(0); });
+        if (h != ScreenCapture::manager().handles_.cend())
+            windowname = h->name;
+        ScreenCapture::manager().access_.unlock();
+    }
+#endif
+
+    if (window_.compare(windowname) == 0)
+        return;
 
     // if changing device
     if (!window_.empty())
@@ -423,17 +507,29 @@ void ScreenCaptureSource::setWindow(const std::string &windowname)
                 g_printerr(" - %s %s %d x %d  %.1f fps\n", (*it).stream.c_str(), (*it).format.c_str(), (*it).width, (*it).height, fps);
             }
 #endif
+#if defined(APPLE)
+            if (!screen_recording_allowed()) {
+                unplug();
+                Log::Warning("Screen capture needs the permission to record the screen: allow vimix in "
+                             "System Settings > Privacy & Security > Screen & System Audio Recording, "
+                             "then restart vimix.");
+            }
+            else
+#endif
             if (!confs.empty()) {
                 GstToolkit::PipelineConfig best = *confs.rbegin();
+#if defined(APPLE)
+                // avfvideosrc offers ARGB but fails with it; force BGRA
+                if (GstToolkit::isRGBFormat(best.format))
+                    best.format = "BGRA";
+#endif
                 float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
                 Log::Info("ScreenCapture %s selected its optimal config: %s %s %dx%d@%.1ffps", window_.c_str(), best.stream.c_str(), best.format.c_str(), best.width, best.height, fps);
 
                 pipeline << " ! " << best.stream;
                 if (!best.format.empty())
                     pipeline << ",format=" << best.format;
-#ifndef APPLE                    
                 pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
-#endif
                 // convert (force alpha to 1)
                 pipeline << " ! alpha alpha=1 ! queue ! videoconvert ! videoscale";
 

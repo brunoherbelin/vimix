@@ -150,6 +150,9 @@ float canPlayBackward(bool has_bframes, int width, int height,
                        guint keyframe_count, guint gop_size_min, guint gop_size_max);
 
 
+// True for a raw video format holding RGB components
+bool isRGBFormat(const std::string &format);
+
 struct PipelineConfig {
     gint width;
     gint height;
@@ -169,8 +172,8 @@ struct PipelineConfig {
 
     inline bool operator < (const PipelineConfig b) const
     {
-        int formatscore = this->format.find("R") != std::string::npos ? 2 : 1; // best score for RGBx
-        int b_formatscore = b.format.find("R") != std::string::npos ? 2 : 1;
+        int formatscore = isRGBFormat(this->format) ? 2 : 1; // best score for RGB formats
+        int b_formatscore = isRGBFormat(b.format) ? 2 : 1;
         float fps = static_cast<float>(this->fps_numerator) / static_cast<float>(this->fps_denominator);
         float b_fps = static_cast<float>(b.fps_numerator) / static_cast<float>(b.fps_denominator);
         float score = fps * static_cast<float>(this->width * this->height * formatscore);
