@@ -253,9 +253,9 @@ private:
 #ifdef HAVE_ONNX
 // ONNX Runtime
 //
-// CPU-only fallback. An .onnx file is a serialized compute graph; ONNX
-// Runtime loads it once into a session and runs it by feeding/collecting
-// tensors.
+// An .onnx file is a serialized compute graph; ONNX Runtime 
+// loads it once into a session and runs it by feeding/collecting
+// tensors, on the CPU -- or on the GPU through CoreML on macOS.
 //
 // Model contract: one float32 NCHW input [1, C, H, W] holding planar RGB in
 // 0..1, and one output [1, 3, H, W] with the interpolated frame. C says
@@ -273,10 +273,14 @@ private:
 // model which leaves the dimension symbolic says nothing, so it is taken to
 // be the 6 of the historical default.
 //
+// Every frame of a sequence has the size of its first image, w x h, which is
+// given to the session as the static shape of the input: CoreML can then
+// run the model on the GPU 
+//
 class RifeONNX : public RifeBackend {
 public:
-    explicit RifeONNX(const std::string &model_path)
-        : session_(model_path)
+    RifeONNX(const std::string &model_path, int w, int h)
+        : session_(model_path, { 1, 0, h, w })
     {
         // A model wanting more than the one tensor we feed cannot be driven
         // from here: say so now rather than letting the inference fail later
@@ -329,11 +333,12 @@ private:
 };
 #endif // HAVE_ONNX
 
-// Pick the inference backend: ncnn (Vulkan GPU) preferred, onnx (CPU) as
-// fallback; either can be forced. Backends not compiled in (HAVE_NCNN/
+// Pick the inference backend: ncnn (Vulkan GPU) preferred, onnx (CPU)
+// Either can be forced. Backends not compiled in (HAVE_NCNN/
 // HAVE_ONNX) can neither be probed nor forced. Returns RifeDummy — no
 // interpolation — when nothing is available.
-std::unique_ptr<RifeBackend> make_backend(const std::string &backend, std::string *message = nullptr)
+std::unique_ptr<RifeBackend> make_backend(const std::string &backend, int w, int h,
+                                          std::string *message = nullptr)
 {
     std::unique_ptr<RifeBackend> rife;
 
@@ -379,7 +384,7 @@ std::unique_ptr<RifeBackend> make_backend(const std::string &backend, std::strin
         }
         // initialize the RIFE inference backend (ONNX Runtime CPU)
         (*message) = "Using ONNX RIFE model";
-        rife = std::make_unique<RifeONNX>(_path);
+        rife = std::make_unique<RifeONNX>(_path, w, h);
     }
 #else
     if (backend == "onnx")
@@ -568,13 +573,20 @@ void MultiFileRifeEncoder::run(RifeOptions options)
         Log::Info("ImageSequence: %zu images, %d intermediate frame(s) per pair, %d fps, %s",
                 files_.size(), mid, options.fps, options.loop ? "loop" : "no loop");
 
-        // choose the inference backend (downloads its model on first use)
+        // first image fixes the geometry (rounded even for the encoders)
+        Frame first = decode_image(files_.front(), 0, 0);
+        int w = first.w & ~1, h = first.h & ~1;
+        if (w != first.w || h != first.h)
+            first = decode_image(files_.front(), w, h);
+
+        // choose the inference backend (downloads its model on first use),
+        // for frames of that size
         std::unique_ptr<RifeBackend> rife;
 
 #if defined(HAVE_NCNN) || defined(HAVE_ONNX)
         if (mid > 0) {
             message_ = "Initializing AI Model...";
-            rife = make_backend(options.backend, &message_);
+            rife = make_backend(options.backend, w, h, &message_);
             if (dynamic_cast<RifeDummy *>(rife.get())) {
                 Log::Warning("ImageSequence: no interpolation backend available, "
                              "encoding images only");
@@ -613,12 +625,6 @@ void MultiFileRifeEncoder::run(RifeOptions options)
             reverse_files.reverse();
             files_.insert(files_.end(), reverse_files.begin(), reverse_files.end());
         }
-
-        // first image fixes the geometry (rounded even for the encoders)
-        Frame first = decode_image(files_.front(), 0, 0);
-        int w = first.w & ~1, h = first.h & ~1;
-        if (w != first.w || h != first.h)
-            first = decode_image(files_.front(), w, h);
 
         total_frames_ = (int)files_.size() + (int)(files_.size() - 1) * mid;
 

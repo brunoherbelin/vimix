@@ -338,7 +338,8 @@ private:
 class UpscalerONNX : public UpscalerBackend {
 public:
     UpscalerONNX(const UpscalerModel &model, int tilesize)
-        : session_(SystemToolkit::full_filename(modelPath(), model.file))
+        : session_(SystemToolkit::full_filename(modelPath(), model.file),
+                   { 1, 3, staticInputSize(tilesize), staticInputSize(tilesize) })
         , factor_(model.factor)
     {
         if (session_.inputCount() != 1)
@@ -357,7 +358,9 @@ public:
         // Most of these networks take any size, but some are exported with
         // a fixed one (4xNomos2...256 takes exactly 256x256): the model then
         // dictates the tiles, and every region handed to it must be exactly
-        // that size -- see region().
+        // that size -- see region(). The session also pins the others to
+        // staticInputSize() where its execution provider needs it (CoreML),
+        // and they are then tiled exactly the same way.
         if (shape.size() == 4 && shape[2] > 0 && shape[3] > 0) {
             fixed_h_ = (int) shape[2];
             fixed_w_ = (int) shape[3];
@@ -489,6 +492,14 @@ private:
         return i < n ? i : period - i;
     }
 
+    // Side of the input asked from the session when a static shape pays
+    // off (see OnnxToolkit::Session): the tile asked for together with its
+    // context margin, or kStaticInputSize.
+    static int staticInputSize(int tilesize)
+    {
+        return tilesize >= 32 ? tilesize + 2 * kTilePadding : kStaticInputSize;
+    }
+
     static unsigned char to_u8(float v)
     {
         return (unsigned char) std::lround(std::clamp(v, 0.f, 1.f) * 255.f);
@@ -550,6 +561,10 @@ private:
     // which is what makes one tile size right for every model.
     static constexpr size_t kTileBudgetBytes = 512u << 20;
     static constexpr size_t kBytesPerInputPixel = 3u << 10;
+
+    // Input side for a model pinned to a static shape 
+    // Empirically Measured with CoreML on an M2 Max (GPU)
+    static constexpr int kStaticInputSize = 512;
 
     OnnxToolkit::Session session_;
     int factor_;

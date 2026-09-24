@@ -246,7 +246,8 @@ const std::vector<std::string> &software_profile_description()
             "avenc_prores_ks pass=quant quantizer=8 profile=standard quant-mat=default threads=0 vendor=apl0 ! ",
             "avenc_prores_ks pass=quant quantizer=4 profile=hq quant-mat=default threads=0 vendor=apl0 ! ",
             "vp9enc end-usage=cq cq-level=24 target-bitrate=25000000 deadline=1 cpu-used=6 lag-in-frames=0 keyframe-max-dist=30 threads=4 row-mt=true tile-columns=2 ! ",
-            // JPEG encoding
+            // JPEG encoding in YCbCr 4:2:0 as from any camera
+            "videoconvert ! video/x-raw, format=I420, colorimetry=(string)1:4:0:0 ! "
             "jpegenc idct-method=float ! "
         };
 
@@ -566,8 +567,10 @@ string GstToolkit::getStreamingEncodingPipeline(bool hardware, GstToolkit::Memor
 
 namespace {
 
-// Name of the gstreamer element encoding the given profile: the first word
-// of the pipeline fragment (e.g. "nvh264enc" in "nvh264enc rc-mode=...").
+// Name of the gstreamer element encoding the given profile: the first
+// element of the pipeline fragment registered as an encoder (e.g. "nvh264enc"
+// in "nvh264enc rc-mode=... ! h264parse ! ", "jpegenc" in "videoconvert !
+// video/x-raw, ... ! jpegenc ! "), or its first word if none is known.
 // Hardware encoder if requested and available, software encoder otherwise.
 std::string encoder_element(GstToolkit::Profile profile, bool hardware)
 {
@@ -576,6 +579,21 @@ std::string encoder_element(GstToolkit::Profile profile, bool hardware)
         pipeline = GstToolkit::getHardwareEncodingPipeline(profile);
     if (pipeline.empty())
         pipeline = GstToolkit::getEncodingPipeline(profile);
+
+    std::istringstream fragments(pipeline);
+    std::string fragment;
+    while (std::getline(fragments, fragment, '!')) {
+        std::istringstream words(fragment);
+        std::string name;
+        words >> name;
+        GstElementFactory *factory = name.empty() ? nullptr : gst_element_factory_find(name.c_str());
+        if (factory) {
+            const bool encoder = gst_element_factory_list_is_type(factory, GST_ELEMENT_FACTORY_TYPE_ENCODER);
+            gst_object_unref(factory);
+            if (encoder)
+                return name;
+        }
+    }
 
     return pipeline.substr(0, pipeline.find(' '));
 }
@@ -724,7 +742,8 @@ struct ImageEncoder {
 
 const ImageEncoder kImageEncoders[GstToolkit::IMAGE_INVALID] = {
     { "pngenc",  "pngenc compression-level=9 ! ",            "png",  0,     true  },
-    { "jpegenc", "jpegenc quality=95 idct-method=float ! ",  "jpg",  65535, false },
+    { "jpegenc", "videoconvert ! video/x-raw, format=Y444, colorimetry=(string)1:4:0:0 ! "
+                 "jpegenc quality=95 idct-method=float ! ",  "jpg",  65535, false },
     { "webpenc", "webpenc lossless=false quality=90 speed=4 ! ", "webp", 16383, true }
 };
 

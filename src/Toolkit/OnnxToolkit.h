@@ -45,12 +45,22 @@ bool available();
  * model is missing or malformed, and selects the fastest execution provider
  * this machine offers, quietly falling back to plain CPU.
  *
+ * `static_shape` is the one input shape the caller will always feed, when
+ * it can promise one ({1, 3, 512, 512} say); a value of 0 stands for a
+ * dimension the caller does not know, which is fine where the model fixes
+ * it, and leaves the shape dynamic otherwise. The free dimensions of the
+ * model are then pinned to it -- but only where the execution provider gains
+ * from that, which is CoreML: it runs a model of dynamic shape on the CPU
+ * alone, and a static one on the GPU, over ten times faster. Elsewhere it is
+ * ignored. inputShape() tells which: it reports the pinned dimensions.
+ *
  * Not thread safe: one session belongs to the thread which created it.
  */
 class Session
 {
 public:
-    explicit Session(const std::string &model_path);
+    explicit Session(const std::string &model_path,
+                     const std::vector<int64_t> &static_shape = {});
     ~Session();
     Session(const Session &) = delete;
     Session &operator=(const Session &) = delete;

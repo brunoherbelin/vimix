@@ -21,6 +21,7 @@
 
 #ifdef HAVE_ONNX
 #include <numeric>
+#include <unordered_map>
 #include <onnxruntime_cxx_api.h>
 #endif
 
@@ -51,40 +52,114 @@ struct OnnxToolkit::Session::Impl {
 namespace {
 
 // Ask for an accelerated execution provider where one is worth having, and
-// settle for the CPU one otherwise. 
+// settle for the CPU one otherwise. Returns the name of the provider, and
+// tells in `accelerated` whether it is not the plain CPU one.
 //
-// oneDNN (DNNL) is deliberately NOT used, although this onnxruntime ships it.
+// oneDNN (DNNL in Linux) is deliberately NOT used.
 // It is both slower than onnxruntime's own CPU kernels and 8 to 14 times 
 // hungrier for memory. Do not re-enable it without testing more.
-std::string append_best_provider(Ort::SessionOptions &opts)
+//
+// `static_shape` tells that the input will be of one fixed size, which is
+// what lets OSX CoreML compile the model for the GPU or the Neural Engine at
+// all; it then builds an ML Program, measured twice as fast as its default
+// NeuralNetwork format on the upscalers.
+std::string append_best_provider(Ort::SessionOptions &opts, bool static_shape, bool &accelerated)
 {
+    accelerated = false;
 #if defined(__APPLE__)
+    // Apple GPU / Neural Engine through CoreML
+    std::unordered_map<std::string, std::string> coreml;
+    std::string name = "CoreML";
+    if (static_shape) {
+        coreml["ModelFormat"] = "MLProgram";
+        name += " (MLProgram)";
+    }
+
     try {
-        // Apple Neural Engine / GPU through CoreML. Unlike DNNL above this
-        // has not been measured: watch memory when upscaling on a Mac.
-        opts.AppendExecutionProvider("CoreML", {});
-        return "CoreML";
+        opts.AppendExecutionProvider("CoreML", coreml);
+        accelerated = true;
+        return name;
     } catch (const std::exception &) {}
 #else
     (void) opts;
+    (void) static_shape;
 #endif
     return "CPU";
 }
 
+// Would the session gain from a static input shape? Only with CoreML, which
+// cannot compile a model with an unbounded dimension for the GPU or the
+// Neural Engine and leaves it all on the CPU. Any other provider -- the CPU
+// one everywhere else -- takes any size just as fast, and pinning it would
+// only cost full size tiles on the edges of the frame.
+bool wants_static_shape()
+{
+#if defined(__APPLE__)
+    return true;
+#else
+    return false;
+#endif
 }
 
-OnnxToolkit::Session::Session(const std::string &model_path)
+// Free dimensions of the model's input, by name, set to the values given in
+// `shape` at their position. Returns nothing when the input is already
+// static, or when a dimension cannot be pinned -- it has no name, or no
+// value was given for it -- as the shape would not be static anyway.
+std::vector<std::pair<std::string, int64_t>> free_dimensions(Ort::Env &env,
+                                                             const std::string &model_path,
+                                                             const std::vector<int64_t> &shape)
+{
+    std::vector<std::pair<std::string, int64_t>> pins;
+
+    // the symbolic names are only told by a loaded model; load it raw, as
+    // quickly as possible, just to read them
+    Ort::SessionOptions opts;
+    opts.SetGraphOptimizationLevel(ORT_DISABLE_ALL);
+    Ort::Session probe(env, model_path.c_str(), opts);
+    // the shape info is a view into the type info, which has to stay alive
+    const Ort::TypeInfo type = probe.GetInputTypeInfo(0);
+    const auto info = type.GetTensorTypeAndShapeInfo();
+    const std::vector<int64_t> dims = info.GetShape();
+    std::vector<const char *> names(dims.size(), nullptr);
+    info.GetSymbolicDimensions(names.data(), names.size());
+
+    for (size_t i = 0; i < dims.size(); ++i) {
+        if (dims[i] > 0)
+            continue;
+        if (i >= shape.size() || shape[i] <= 0 || names[i] == nullptr || *names[i] == '\0')
+            return {};
+        pins.emplace_back(names[i], shape[i]);
+    }
+    return pins;
+}
+
+}
+
+OnnxToolkit::Session::Session(const std::string &model_path,
+                              const std::vector<int64_t> &static_shape)
     : impl_(new Impl)
 {
     // ONNX Runtime prints a wall of schema registration warnings the first
     // time its registry is populated; hide that noise
     SystemToolkit::StderrSilencer hush;
 
+    impl_->env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "vimix");
+
+    // the free dimensions to pin, when a static shape is asked for and the
+    // provider gains from it
+    std::vector<std::pair<std::string, int64_t>> pins;
+    if (!static_shape.empty() && wants_static_shape())
+        pins = free_dimensions(*impl_->env, model_path, static_shape);
+
     Ort::SessionOptions opts;
     opts.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
-    impl_->provider = append_best_provider(opts);
+    bool accelerated = false;
+    impl_->provider = append_best_provider(opts, !pins.empty(), accelerated);
+    if (accelerated) {
+        for (const auto &pin : pins)
+            opts.AddFreeDimensionOverrideByName(pin.first.c_str(), pin.second);
+    }
 
-    impl_->env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "vimix");
     impl_->session = std::make_unique<Ort::Session>(*impl_->env, model_path.c_str(), opts);
 
     // inputs and outputs are addressed by name; query instead of hard-coding
@@ -144,7 +219,7 @@ std::vector<float> OnnxToolkit::Session::run(const float *data, const std::vecto
 // throws, so no Session ever exists and the other methods are unreachable.
 struct OnnxToolkit::Session::Impl { std::string provider; };
 
-OnnxToolkit::Session::Session(const std::string &)
+OnnxToolkit::Session::Session(const std::string &, const std::vector<int64_t> &)
 {
     throw std::runtime_error("this build has no ONNX Runtime backend");
 }
