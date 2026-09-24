@@ -1106,16 +1106,28 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                 else
                     current_screen = "Select";
 
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                if (ImGui::BeginCombo("##ScreenCaptureSelect", current_screen.c_str(), ImGuiComboFlags_HeightLarge))
-                {
-                    for (int d = 0; d < ScreenCapture::manager().numWindow(); ++d){
-                        std::string namewin = ScreenCapture::manager().name(d);
-                        if (ImGui::Selectable( namewin.c_str() )) {
-                            new_source_preview_.setSource( Mixer::manager().createSourceScreen(namewin), namewin);
-                        }
+                // Wayland: the user selects in the dialog of the desktop
+                if (!ScreenCapture::manager().hasWindowList()) {
+                    // ScreenCaptureSource *ssc = static_cast<ScreenCaptureSource *>(new_source_preview_.getSource());
+                    if (new_source_preview_.filled() && !new_source_preview_.ready())
+                        ImGuiToolkit::ButtonDisabled("Selecting...", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+                    else if (ImGui::Button("Select", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
+                        new_source_preview_.setSource();
+                        new_source_preview_.setSource( Mixer::manager().createSourceScreen(SCREEN_CAPTURE_NAME), "Screen capture");
                     }
-                    ImGui::EndCombo();
+                }
+                else {
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    if (ImGui::BeginCombo("##ScreenCaptureSelect", current_screen.c_str(), ImGuiComboFlags_HeightLarge))
+                    {
+                        for (int d = 0; d < ScreenCapture::manager().numWindow(); ++d){
+                            std::string namewin = ScreenCapture::manager().name(d);
+                            if (ImGui::Selectable( namewin.c_str() )) {
+                                new_source_preview_.setSource( Mixer::manager().createSourceScreen(namewin), namewin);
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
                 }
                 // indication
                 ImGui::SameLine();

@@ -179,6 +179,9 @@ ELSE(APPLE)
         endif()
     endif()
 
+    # Add Linux freedesktop services (screen cast portal for screen capture under Wayland)
+    list(APPEND VMIX_SRCS Toolkit/FreedesktopToolkit.cpp)
+
 ENDIF(APPLE)
 
 IF(APPLE)
@@ -286,6 +289,12 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
 if(AVAHI_FOUND)
     target_include_directories(${VMIX_BINARY} PRIVATE ${AVAHI_INCLUDE_DIRS})
     target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${AVAHI_LIBRARIES})
+endif()
+
+# GIO (D-Bus and unix fd passing) for the Linux screen cast portal
+if(GIO_UNIX_FOUND)
+    target_include_directories(${VMIX_BINARY} PRIVATE ${GIO_UNIX_INCLUDE_DIRS})
+    target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${GIO_UNIX_LIBRARIES})
 endif()
 
 # miniz for ZIP compression (optional, present when submodule is initialised)

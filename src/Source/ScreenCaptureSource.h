@@ -2,13 +2,16 @@
 #define SCREENCAPTURESOURCE_H
 
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "Toolkit/GstToolkit.h"
+#include "Toolkit/FreedesktopToolkit.h"
 #include "StreamSource.h"
 
 #define SCREEN_CAPTURE_NAME    "Screen Capture"
+#define SCREEN_CAPTURE_SELECT  "Select screen or window"
 
 class ScreenCaptureSource : public StreamSource
 {
@@ -22,14 +25,23 @@ public:
     Failure failed() const override;
     void accept (Visitor& v) override;
     void setActive (bool on) override;
+    void update (float dt) override;
+    void play (bool on) override;
+    bool playable () const override;
 
     // StreamSource interface
     Stream *stream() const override { return stream_; }
 
     // specific interface
-    void setWindow(const std::string &windowname);
+    void setWindow(const std::string &windowname = "");
     inline std::string window() const { return window_; }
     void reconnect();
+
+    // Wayland: waiting for the user to select a screen or window
+    inline bool pending() const { return request_ != nullptr; }
+    // Wayland: token to restore the selection without asking the user
+    inline std::string restoreToken() const { return restore_token_; }
+    inline void setRestoreToken(const std::string &token) { restore_token_ = token; }
 
     glm::ivec2 icon() const override;
     inline std::string info() const override;
@@ -43,6 +55,11 @@ private:
     std::string window_;
     std::atomic<Source::Failure> failure_;
     void unsetWindow();
+
+    std::shared_ptr<struct ScreenCaptureRequest> request_;
+    std::string restore_token_;
+    // pipewiresrc fails to resume from pause: never pause it
+    bool pipewire_;
 };
 
 struct ScreenCaptureHandle {
@@ -56,7 +73,12 @@ struct ScreenCaptureHandle {
     Stream *stream;
     std::list<ScreenCaptureSource *> associated_sources;
 
-    ScreenCaptureHandle() : id(0), stream(nullptr) {}
+    // Wayland: screen cast portal session and PipeWire remote
+    std::string session;
+    int fd;
+    std::string restore_token;
+
+    ScreenCaptureHandle() : id(0), stream(nullptr), fd(-1) {}
     void update(const std::string &newname);
 };
 
@@ -78,6 +100,9 @@ public:
         return _instance;
     }
 
+    // false under Wayland, where the user selects in the dialog of the desktop
+    inline bool hasWindowList () const { return !portal_; }
+
     int numWindow () ;
     std::string name (int index) ;
     std::string description (int index) ;
@@ -91,6 +116,13 @@ public:
     void remove(const std::string &windowname, unsigned long id=0);
 
 private:
+
+    // Wayland: capture through the screen cast portal and pipewiresrc
+    bool portal_;
+    std::vector<std::string> closed_sessions_;
+    std::string add (const FreedesktopToolkit::ScreenCastResult &result, const std::string &windowname);
+    void release (const std::string &windowname);
+    void update ();
 
     static void launchMonitoring(ScreenCapture *d);
     static bool initialized();

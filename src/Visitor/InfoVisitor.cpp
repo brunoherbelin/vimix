@@ -328,7 +328,10 @@ void InfoVisitor::visit (ScreenCaptureSource& s)
     std::ostringstream oss;
 
     GstToolkit::PipelineConfigSet confs = ScreenCapture::manager().config( ScreenCapture::manager().index(s.window()));
-    if ( !confs.empty()) {
+    if ( s.pending() ) {
+        oss << "Waiting for the selection of a screen or window.";
+    }
+    else if ( !confs.empty()) {
         GstToolkit::PipelineConfig best = *confs.rbegin();
         float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
 
@@ -350,7 +353,9 @@ void InfoVisitor::visit (ScreenCaptureSource& s)
     }
 
     information_ = oss.str();
-    current_id_ = s.id();
+    // keep updating until the screen or window is selected
+    if ( !s.pending() )
+        current_id_ = s.id();
 }
 
 

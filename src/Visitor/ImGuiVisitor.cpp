@@ -1887,25 +1887,36 @@ void ImGuiVisitor::visit (ScreenCaptureSource& s)
 
     if ( !s.failed() ) {
 
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::BeginCombo("Window", s.window().c_str()))
-        {
-            for (int d = 0; d < ScreenCapture::manager().numWindow(); ++d){
-                std::string namedev = ScreenCapture::manager().name(d);
-                if (ImGui::Selectable( namedev.c_str() )) {
-                    if ( namedev.compare(s.window())==0 )
-                        s.reconnect();
-                    else {
-                        s.setWindow(namedev);
-                        info.reset();
-                        oss << "Window '" << namedev << "'";
-                        Action::manager().store(oss.str());
+        // Wayland: the user selects in the dialog of the desktop
+        if (!ScreenCapture::manager().hasWindowList()) {
+            if (s.pending())
+                ImGuiToolkit::ButtonDisabled("Selecting...", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+            else if (ImGui::Button("Select", ImVec2(IMGUI_RIGHT_ALIGN, 0)))
+                s.setWindow();
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::Text("Window");
+        }
+        else {
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::BeginCombo("Window", s.window().c_str()))
+            {
+                for (int d = 0; d < ScreenCapture::manager().numWindow(); ++d){
+                    std::string namedev = ScreenCapture::manager().name(d);
+                    if (ImGui::Selectable( namedev.c_str() )) {
+                        if ( namedev.compare(s.window())==0 )
+                            s.reconnect();
+                        else {
+                            s.setWindow(namedev);
+                            info.reset();
+                            oss << "Window '" << namedev << "'";
+                            Action::manager().store(oss.str());
+                        }
+                        // ensure all sources are updated after the texture change of this one
+                        Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
                     }
-                    // ensure all sources are updated after the texture change of this one
-                    Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
                 }
+                ImGui::EndCombo();
             }
-            ImGui::EndCombo();
         }
         ImVec2 botom = ImGui::GetCursorPos();
 

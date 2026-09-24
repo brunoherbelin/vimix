@@ -1434,6 +1434,10 @@ void SessionLoader::visit (ScreenCaptureSource& s)
 {
     std::string winname = std::string ( xmlCurrent_->Attribute("window") );
 
+    // Wayland: token to restore the screen cast without asking the user
+    const char *token = xmlCurrent_->Attribute("restore");
+    if (token)
+        s.setRestoreToken(token);
     // change only if different window
     if ( winname != s.window() )
         s.setWindow(winname);

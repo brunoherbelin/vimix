@@ -977,6 +977,9 @@ void SessionVisitor::visit (ScreenCaptureSource& s)
 {
     xmlCurrent_->SetAttribute("type", "ScreenCaptureSource");
     xmlCurrent_->SetAttribute("window", s.window().c_str() );
+    // Wayland: token to restore the screen cast without asking the user
+    if (!s.restoreToken().empty())
+        xmlCurrent_->SetAttribute("restore", s.restoreToken().c_str() );
 }
 
 void SessionVisitor::visit (NetworkSource& s)

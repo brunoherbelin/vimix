@@ -288,8 +288,7 @@ const std::vector<std::string> &software_profile_description()
             "avenc_prores_ks pass=quant quantizer=4 profile=hq quant-mat=default threads=0 vendor=apl0 ! ",
             "vp9enc end-usage=cq cq-level=24 target-bitrate=25000000 deadline=1 cpu-used=6 lag-in-frames=0 keyframe-max-dist=30 threads=4 row-mt=true tile-columns=2 ! ",
             // JPEG encoding in YCbCr 4:2:0 as from any camera
-            "videoconvert ! video/x-raw, format=I420, colorimetry=(string)1:4:0:0 ! "
-            "jpegenc idct-method=float ! "
+            "videoconvert ! video/x-raw, format=I420, colorimetry=(string)1:4:0:0 ! jpegenc idct-method=float ! "
         };
 
         if (!GstToolkit::has_feature("x264enc")) {

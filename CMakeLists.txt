@@ -171,6 +171,9 @@ if(UNIX)
             endif()
         endif()
 
+        # Linux: GIO for the screen cast portal (screen capture under Wayland)
+        pkg_check_modules(GIO_UNIX REQUIRED gio-unix-2.0)
+
         # Linux: native Avahi client for mDNS peer discovery
         # (NOT avahi-compat-libdnssd — it has no .pc file and missing symbols)
         if(PKG_CONFIG_FOUND)

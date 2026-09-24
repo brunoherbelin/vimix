@@ -426,7 +426,10 @@ Source * Mixer::createSourceScreen(const std::string &namewindow)
     s->setWindow(namewindow);
 
     // propose a new name based on pattern name
-    s->setName( namewindow.substr(0, namewindow.find(" ")) );
+    if (namewindow == SCREEN_CAPTURE_SELECT)
+        s->setName("Screen");
+    else
+        s->setName( namewindow.substr(0, namewindow.find(" ")) );
 
     return s;
 }
