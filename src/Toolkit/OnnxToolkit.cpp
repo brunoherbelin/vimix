@@ -157,7 +157,7 @@ OnnxToolkit::Session::Session(const std::string &model_path,
     impl_->provider = append_best_provider(opts, !pins.empty(), accelerated);
     if (accelerated) {
         for (const auto &pin : pins)
-            opts.AddFreeDimensionOverrideByName(pin.first.c_str(), pin.second);
+            Ort::ThrowOnError(Ort::GetApi().AddFreeDimensionOverrideByName(opts, pin.first.c_str(), pin.second));
     }
 
     impl_->session = std::make_unique<Ort::Session>(*impl_->env, model_path.c_str(), opts);
