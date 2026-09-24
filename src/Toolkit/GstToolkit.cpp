@@ -36,6 +36,8 @@ namespace fs = std::filesystem;
 
 bool GstToolkit::isRGBFormat(const std::string &format)
 {
+    if (format.empty())
+        return false;
     const GstVideoFormat f = gst_video_format_from_string(format.c_str());
     if (f == GST_VIDEO_FORMAT_UNKNOWN)
         return false;
