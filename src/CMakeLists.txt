@@ -156,6 +156,9 @@ IF(APPLE)
     list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/osx/TabletInput_macos.mm)
     # Enable Objective-C++
     set_source_files_properties(${CMAKE_SOURCE_DIR}/osx/TabletInput_macos.mm PROPERTIES COMPILE_FLAGS "-x objective-c++")
+    # Add macOS list of screens for screen capture
+    list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/osx/ScreenCapture_macos.mm)
+    set_source_files_properties(${CMAKE_SOURCE_DIR}/osx/ScreenCapture_macos.mm PROPERTIES COMPILE_FLAGS "-x objective-c++")
 
 ELSE(APPLE)
 
@@ -197,9 +200,27 @@ IF(APPLE)
         MACOSX_BUNDLE_INFO_PLIST ${MACOSX_BUNDLE_PLIST_FILE}
     )
 
+    # Sign the bundle after each build, for development. macOS grants its
+    # permissions (Screen Recording, Camera...) to an application by its
+    # signature: an ad-hoc signed build is a new application after every
+    # rebuild, and loses them, while one signed with APPLE_CODESIGN_IDENTITY
+    # is the same application as the installed vimix, and shares its permissions.
+    # No hardened runtime here, so that libraries of the system (e.g. Homebrew) still load.
+    option(APPLE_CODESIGN_BUILD "Sign the bundle with APPLE_CODESIGN_IDENTITY after each build" OFF)
+    if(APPLE_CODESIGN_BUILD)
+        add_custom_command(TARGET ${VMIX_BINARY} POST_BUILD
+            # codesign refuses files with extended attributes (Finder information...)
+            COMMAND xattr -cr "$<TARGET_BUNDLE_DIR:${VMIX_BINARY}>"
+            COMMAND codesign --force --sign "${APPLE_CODESIGN_IDENTITY}" "$<TARGET_BUNDLE_DIR:${VMIX_BINARY}>"
+            COMMENT "Signing ${VMIX_BINARY}.app with ${APPLE_CODESIGN_IDENTITY}"
+            VERBATIM
+        )
+    endif()
+
     # link with base frameworks
     set(PLATFORM_LIBS
         "-framework CoreFoundation"
+        "-framework CoreGraphics"
         "-framework Appkit"
     )
 
