@@ -63,6 +63,7 @@
 #include <stb_image_write.h>
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Log.h"
 #include "Toolkit/SystemToolkit.h"
@@ -298,8 +299,8 @@ void UserInterface::handleKeyboard()
             else {
                 bool can_bundle = false;
                 if (Mixer::manager().currentSource() != nullptr){
-                    can_bundle = !(Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_GROUP)) &&
-                    !(Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_CLONE));
+                    can_bundle = !(Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_GROUP)) &&
+                    !(Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_CLONE));
                 }
                 if (can_bundle) {
                     Mixer::manager().groupCurrent();
@@ -974,6 +975,51 @@ void UserInterface::NewFrame()
         }
     }
 
+    // popup to confirm deletion of session file
+    if (!pending_delete_file.empty()) {
+        if (!ImGui::IsPopupOpen(MENU_DELETE_FILE)) {
+            if ( !SystemToolkit::file_exists(pending_delete_file) )                
+                pending_delete_file.clear();
+            else 
+                ImGui::OpenPopup(MENU_DELETE_FILE);
+        }
+        if (ImGui::BeginPopupModal(MENU_DELETE_FILE, NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            if ( !SystemToolkit::file_exists(pending_delete_file) ) {                
+                pending_delete_file.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::Spacing();
+            ImGui::Text("Delete this file ?\n\n");
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
+            ImGui::Text("%s", pending_delete_file.c_str());
+            ImGui::PopFont();
+            ImGui::Text("\nThis cannot be undone. ");
+            ImGui::Spacing();
+            if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))
+                     || ImGui::IsKeyPressed(GLFW_KEY_ESCAPE) ) {
+                pending_delete_file.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+            if (ImGui::Button(MENU_DELETE_FILE, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+                // close the session if it is the file to delete
+                if (Mixer::manager().session()->filename() == pending_delete_file)
+                    Mixer::manager().close();
+                // delete the file from disk
+                if (SystemToolkit::remove_file(pending_delete_file))
+                    Log::Notify("Deleted session file %s", pending_delete_file.c_str());
+                else
+                    Log::Error("Failed to delete session file %s", pending_delete_file.c_str());
+                pending_delete_file.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PopStyleColor(1);
+            ImGui::Spacing();
+            ImGui::EndPopup();
+        }
+    }
+
 }
 
 void UserInterface::Render()
@@ -1142,15 +1188,15 @@ void UserInterface::showMenuBundle()
     bool is_clone = false;
     bool has_current = Mixer::manager().currentSource() != nullptr;
     if (has_current){
-        is_bundle = Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_GROUP);
-        is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_SOURCE_CLONE);
+        is_bundle = Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_GROUP);
+        is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_CLONE);
     }
     // cannot be bundled if no current source, or if current source is a bundle or a clone
     if (has_current && (is_bundle || is_clone) )
         // disabled menu is tinted in red to show there is a problem
         disabled_color.x = 0.7f;
     ImGui::PushStyleColor(ImGuiCol_TextDisabled, disabled_color);
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " Current source", SHORTCUT_BUNDLE, false, 
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " Current source", SHORTCUT_BUNDLE, false, 
                         has_current && !is_bundle && !is_clone)) {
         Mixer::manager().groupCurrent();
         // switch pannel to show first source (created)
@@ -1173,7 +1219,7 @@ void UserInterface::showMenuBundle()
         // disabled menu is tinted in red to show there is a problem
         disabled_color.x = 0.7f;
     ImGui::PushStyleColor(ImGuiCol_TextDisabled, disabled_color);
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " Selected sources", SHORTCUT_BUNDLE, false, 
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " Selected sources", SHORTCUT_BUNDLE, false, 
                         cangroup_selection)) {
         Mixer::manager().groupSelection();
         // switch pannel to show first source (created)
@@ -1188,7 +1234,7 @@ void UserInterface::showMenuBundle()
     // 
     // Menu Bundle all active sources
     // 
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " All active sources", NULL, false, 
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " All active sources", NULL, false, 
                         Mixer::manager().numSource() > 0)) {
         // create a new group session with only active sources
         Mixer::manager().groupAll( true );
@@ -1198,7 +1244,7 @@ void UserInterface::showMenuBundle()
     // 
     // Menu Bundle all sources
     // 
-    if (ImGuiToolkit::MenuItemIcon(11, 2, " Everything", NULL, false, 
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " Everything", NULL, false, 
                         Mixer::manager().numSource() > 0)) {
         // create a new group session the whole session
         Mixer::manager().groupAll( false );
@@ -1209,12 +1255,12 @@ void UserInterface::showMenuBundle()
     // Menu to unbundle selected bundle sources
     // 
     ImGui::Separator();
-    if (ImGuiToolkit::MenuItemIcon(7, 2, " Uncover selected bundle", NULL, false, 
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_UNCOVER, " Uncover selected bundle", NULL, false, 
                         is_bundle)) {
         // import sourses of bundle 
         Mixer::manager().import( dynamic_cast<SessionSource*>(Mixer::manager().currentSource()) );
     }
-    if (ImGuiToolkit::MenuItemIcon(7, 2, " Uncover every bundles", NULL, false, 
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_UNCOVER, " Uncover every bundles", NULL, false, 
                         Mixer::manager().numSource() > 0)) {
         // ungroup all bundle sources
         Mixer::manager().ungroupAll();
@@ -1279,10 +1325,16 @@ void UserInterface::showMenuFile()
     }
     else {
         // Custom width and height
+        // NB: kept within what the GPU can allocate
+        const int max_size = (int) FrameBuffer::maxResolution().x;
         ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
         ImGui::InputInt("Width", &Settings::application.render.custom_width, 100, 500);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            Settings::application.render.custom_width = CLAMP(Settings::application.render.custom_width, FRAMEBUFFER_MIN_SIZE, max_size);
         ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x * 0.54f);
         ImGui::InputInt("Height", &Settings::application.render.custom_height, 100, 500);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            Settings::application.render.custom_height = CLAMP(Settings::application.render.custom_height, FRAMEBUFFER_MIN_SIZE, max_size);
     }
 
     // FILE OPEN AND SAVE
@@ -1310,6 +1362,10 @@ void UserInterface::showMenuFile()
     }
     if (ImGui::MenuItem( MENU_SAVEAS_FILE, SHORTCUT_SAVEAS_FILE))
         selectSaveFilename();
+
+    // DELETE (after confirmation dialog)
+    if (ImGui::MenuItem( MENU_DELETE_FILE, nullptr, false, currentfileopen))
+        pending_delete_file = currentfilename;
 
     ImGui::MenuItem( MENU_SAVE_ON_EXIT, nullptr, &Settings::application.recentSessions.save_on_exit);
 
@@ -1347,7 +1403,7 @@ void UserInterface::showMenuConfig()
     ImGui::TextDisabled("Vimix settings");
     // offer to open settings location
     ImGui::SameLine(0, IMGUI_SAME_LINE * 3);
-    if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+    if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
         SystemToolkit::open(SystemToolkit::settings_path());
     // EXPORT 
     if (ImGui::MenuItem(ICON_FA_SAVE "    Export")) {
@@ -1451,7 +1507,7 @@ int UserInterface::RenderViewNavigator(int *shift)
             *shift = 0;
         }
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon(ICON_WORKSPACE, "", selected_view[3], iconsize))
+        if (ImGuiToolkit::SelectableIcon(ICON_VI_LAYERS, "", selected_view[3], iconsize))
         {
             setView(View::LAYER);
             *shift = 0;
@@ -1464,7 +1520,7 @@ int UserInterface::RenderViewNavigator(int *shift)
         }
         // skip TRANSITION view
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon(10, 7, "", selected_view[6], iconsize))
+        if (ImGuiToolkit::SelectableIcon(ICON_VI_VIEW_DISPLAYS, "", selected_view[6], iconsize))
         {
             setView(View::DISPLAYS);
             *shift = 0;
@@ -1703,7 +1759,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
     // title
     ImGui::Text( MENU_METRICS );
     ImGui::SameLine(0, 2.2f * ImGui::GetTextLineHeightWithSpacing());
-    if (ImGuiToolkit::IconButton(5,8))
+    if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS))
         ImGui::OpenPopup("metrics_menu");
 
     // read Memory info every 1/2 second
@@ -2003,7 +2059,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 // SCALE LOCK ASPECT RATIO
                 ImGui::SameLine(0, 0);
                 bool lock = *p_mode & SourceToolbar_linkar;
-                if (ImGuiToolkit::IconToggle(5,1,6,1, &lock, tooltip_lock ))
+                if (ImGuiToolkit::IconToggle(ICON_VI_ASPECT_UNLINKED,ICON_VI_ASPECT_LINKED, &lock, tooltip_lock ))
                     *p_mode ^= SourceToolbar_linkar; //             *p_mode |= lock ? SourceToolbar_linkar : !SourceToolbar_linkar;
                 ImGui::SameLine(0, 0);
                 // SCALE Y
@@ -2038,7 +2094,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 // ROTATION ANGLE
                 //
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                if (ImGuiToolkit::IconButton( 18, 9, "Angle")) {
+                if (ImGuiToolkit::IconButton( ICON_VI_ANGLE, "Angle")) {
                     n->rotation_.z = 0.f;
                     s->touch();
                     info << "Angle " << std::fixed << std::setprecision(2) << n->rotation_.z * 180.f / M_PI << UNICODE_DEGREE;
@@ -2075,7 +2131,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 ImGui::SameLine(0, sliderwidth);
             }
 
-            if (ImGuiToolkit::IconButton(5,8))
+            if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS))
                 ImGui::OpenPopup("sourcetool_menu");
         }
         //
@@ -2094,7 +2150,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
             // Title window
             ImGui::Text( MENU_SOURCE_TOOL );
             ImGui::SameLine(0, 2.f * ImGui::GetTextLineHeightWithSpacing());
-            if (ImGuiToolkit::IconButton(5,8))
+            if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS))
                 ImGui::OpenPopup("sourcetool_menu");
 
             // WITH SOURCE
@@ -2211,7 +2267,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 // SCALE LOCK ASPECT RATIO
                 ImGui::SameLine(0, 0);
                 bool lock = *p_mode & SourceToolbar_linkar;
-                if (ImGuiToolkit::IconToggle(5,1,6,1, &lock, tooltip_lock ))
+                if (ImGuiToolkit::IconToggle(ICON_VI_ASPECT_UNLINKED,ICON_VI_ASPECT_LINKED, &lock, tooltip_lock ))
                     *p_mode ^= SourceToolbar_linkar;
                 ImGui::SameLine(0, 0);
                 // SCALE Y
@@ -2440,18 +2496,18 @@ void UserInterface::RenderNotes()
                     ImVec2 size = ImGui::GetContentRegionAvail();
                     ImVec2 pos = ImGui::GetCursorPos();
                     // close & delete
-                    close = ImGuiToolkit::IconButton(4,16,"Delete");
+                    close = ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET,"Delete");
                     if (ImGui::IsWindowFocused()) {
                         // font size
                         pos.x = size.x - 2.f * ImGui::GetTextLineHeightWithSpacing();
                         ImGui::SetCursorPos( pos );
-                        if (ImGuiToolkit::IconButton(1, 13) )
+                        if (ImGuiToolkit::IconButton(ICON_VI_FONT) )
                             (*note).large = !(*note).large ;
                         // stick to views icon
                         pos.x = size.x - ImGui::GetTextLineHeightWithSpacing() + 8.f;
                         ImGui::SetCursorPos( pos );
                         bool s = (*note).stick > 0;
-                        if (ImGuiToolkit::IconToggle(5, 2, 4, 2, &s) )
+                        if (ImGuiToolkit::IconToggle(ICON_VI_NOTE_ALL_VIEWS, ICON_VI_NOTE_THIS_VIEW, &s) )
                             (*note).stick = s ? Settings::application.current_view : 0;
                     }
 
@@ -2511,7 +2567,7 @@ void ToolBox::Render()
     // Menu Bar
     if (ImGui::BeginMenuBar())
     {
-        if (ImGuiToolkit::IconButton(4,16))
+        if (ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET))
             Settings::application.widget.toolbox = false;
 
         if (ImGui::BeginMenu(IMGUI_TITLE_TOOLBOX))
@@ -2649,7 +2705,7 @@ void UserInterface::RenderHelp()
     if (ImGui::BeginMenuBar())
     {
         // Close and widget menu
-        if (ImGuiToolkit::IconButton(4,16))
+        if (ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET))
             Settings::application.widget.help = false;
         if (ImGui::BeginMenu(IMGUI_TITLE_HELP))
         {
@@ -2708,7 +2764,7 @@ void UserInterface::RenderHelp()
         ImGui::Text(ICON_FA_OBJECT_UNGROUP "  Geometry"); ImGui::NextColumn();
         ImGui::Text ("Move, scale, rotate or crop sources to place them in the mix. Setup canvases that are used for display.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_WORKSPACE); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Layers"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_LAYERS); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Layers"); ImGui::NextColumn();
         ImGui::Text ("Organize the rendering order of sources in depth, from background to foreground.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_CHESS_BOARD "  Texturing"); ImGui::NextColumn();
@@ -2768,7 +2824,7 @@ void UserInterface::RenderHelp()
 
             ImGui::BeginChild("PlaylistHelp", ImVec2(0, 10.f * H), true, window_flags);
             if (ImGui::BeginMenuBar()) {
-                ImGuiToolkit::Icon(4, 8);
+                ImGuiToolkit::Icon(ICON_VI_PANNEL_PLAYLIST);
                 ImGui::Text (" Playlist");
                 ImGui::EndMenuBar();
             }
@@ -2776,7 +2832,7 @@ void UserInterface::RenderHelp()
             {
                 ImGui::BeginChild("SessionHelp", ImVec2(0, 7.f * H), true, window_flags);
                 if (ImGui::BeginMenuBar()) {
-                    ImGuiToolkit::Icon(7, 1);
+                    ImGuiToolkit::Icon(ICON_VI_PANNEL_SESSION);
                     ImGui::Text (" Session");
                     ImGui::EndMenuBar();
                 }
@@ -2784,7 +2840,7 @@ void UserInterface::RenderHelp()
                 {
                     ImGui::BeginChild("SourceHelp", ImVec2(0, 4.f * H), true, window_flags);
                     if (ImGui::BeginMenuBar()) {
-                        ImGuiToolkit::Icon(14, 11);
+                        ImGuiToolkit::Icon(ICON_VI_SOURCE);
                         ImGui::Text ("Source");
                         ImGui::EndMenuBar();
                     }
@@ -2821,58 +2877,58 @@ void UserInterface::RenderHelp()
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
-        ImGuiToolkit::Icon(ICON_SOURCE_VIDEO); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Video"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_VIDEO); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Video"); ImGui::NextColumn();
         ImGui::Text ("Video file (*.mpg, *mov, *.avi, etc.). Decoding can be optimized with hardware acceleration.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_IMAGE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Image"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_IMAGE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Image"); ImGui::NextColumn();
         ImGui::Text ("Image file (*.jpg, *.png, etc.) or vector graphics (*.svg). Transparency is supported.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_SESSION); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Session"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_SESSION); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Session"); ImGui::NextColumn();
         ImGui::Text ("Render a vimix session (*.mix) as a source. Recursion is limited.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_SEQUENCE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Sequence"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_SEQUENCE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Sequence"); ImGui::NextColumn();
         ImGui::Text ("Displays a set of images numbered sequentially (*.jpg, *.png, etc.) or assemble a video from a selection of images.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Loopback"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Loopback"); ImGui::NextColumn();
         ImGui::Text ("Loopback the rendering output as a source, with or without recursion.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_DEVICE_SCREEN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Screen"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_DEVICE_SCREEN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Screen"); ImGui::NextColumn();
         ImGui::Text ("Screen capture of the entire screen or of a selected window (Linux X11 only).");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_DEVICE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Device"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_DEVICE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Device"); ImGui::NextColumn();
         ImGui::Text ("Connected webcam or frame grabber. Highest resolution and framerate automatically selected.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_NETWORK); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Shared"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_NETWORK); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Shared"); ImGui::NextColumn();
         ImGui::Text ("Peer-to-peer stream from another vimix on the same machine (SHM shared memory) or in the local network (RTP Real-time Transport Protocol).");
         ImGuiToolkit::ButtonOpenUrl("Example script", "https://github.com/brunoherbelin/vimix/blob/master/rsc/osc/vimix_connect.sh", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_SRT); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("SRT"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_SRT); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("SRT"); ImGui::NextColumn();
         ImGui::Text ("Connected Secure Reliable Transport (SRT) stream emitted on the network (e.g. broadcasted by vimix).");
         ImGuiToolkit::ButtonOpenUrl("Documentation", "https://github.com/brunoherbelin/vimix/wiki/SRT-stream-I-O", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_PATTERN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Pattern"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_PATTERN); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Pattern"); ImGui::NextColumn();
         ImGui::Text ("Algorithmically generated source, static or animated (colors, grids, test patterns, timers, etc.).");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_TEXT); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Text"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_TEXT); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Text"); ImGui::NextColumn();
         ImGui::Text ("Renders rich text or subtitle files (SRT), with layout control (alignment and margins) and Pango markup and font description.");
         ImGuiToolkit::ButtonOpenUrl("Pango font", "https://docs.gtk.org/Pango/pango_fonts.html", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGuiToolkit::ButtonOpenUrl("Pango markup", "https://docs.gtk.org/Pango/pango_markup.html", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGuiToolkit::ButtonOpenUrl("SubRip file format", "https://en.wikipedia.org/wiki/SubRip", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_SHADER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Shader"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_SHADER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Shader"); ImGui::NextColumn();
         ImGui::Text ("Custom GLSL shader, compatible with ShaderToy syntax.");
         ImGuiToolkit::ButtonOpenUrl("About GLSL", "https://www.khronos.org/opengl/wiki/OpenGL_Shading_Language", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGuiToolkit::ButtonOpenUrl("Browse shadertoy.com", "https://www.shadertoy.com", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_GSTREAMER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("GStreamer"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_GSTREAMER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("GStreamer"); ImGui::NextColumn();
         ImGui::Text ("Custom gstreamer pipeline, as described in command line for gst-launch-1.0 (without the target sink).");
         ImGuiToolkit::ButtonOpenUrl("GST Documentation", "https://gstreamer.freedesktop.org/documentation/tools/gst-launch.html?gi-language=c#pipeline-description", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGuiToolkit::ButtonOpenUrl("Examples", "https://github.com/thebruce87m/gstreamer-cheat-sheet", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_CLONE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Clone"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_CLONE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Clone"); ImGui::NextColumn();
         ImGui::Text ("Clones the frames of a source into another one and optionnaly applies a filter (see below).");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Bundle"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Bundle"); ImGui::NextColumn();
         ImGui::Text ("Bundles together several sources and renders them as an internal session, "
             " e.g., select multiple sources in the Layers view and choose 'Bundle selection'.");
 
@@ -2890,35 +2946,35 @@ void UserInterface::RenderHelp()
         ImGui::SetColumnWidth(0, width_column0);
         ImGui::PushTextWrapPos(width_window );
 
-        ImGuiToolkit::Icon(ICON_FILTER_DELAY); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGuiToolkit::Icon(ICON_VI_FILTER_DELAY); ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Delay"); ImGui::NextColumn();
         ImGui::Text("Postpones the display of the input source by a given delay (between 0.0 and 2.0 seconds).");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_FILTER_RESAMPLE); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGuiToolkit::Icon(ICON_VI_FILTER_RESAMPLE); ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Resample"); ImGui::NextColumn();
         ImGui::Text ("Displays the input source with a different resolution. Downsampling is producing a smaller resolution (half or quarter). Upsampling is producing a higher resolution (double). GPU filtering is applied to improve scaling quality.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_FILTER_BLUR); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGuiToolkit::Icon(ICON_VI_FILTER_BLUR); ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Blur"); ImGui::NextColumn();
         ImGui::Text ("Applies a real-time GPU bluring filter. Radius of the filter (when available) is a fraction of the image height. ");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_FILTER_SHARPEN); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGuiToolkit::Icon(ICON_VI_FILTER_SHARPEN); ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Sharpen"); ImGui::NextColumn();
         ImGui::Text ("Applies a real-time GPU sharpening filter.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_FILTER_SMOOTH); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGuiToolkit::Icon(ICON_VI_FILTER_SMOOTH); ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Smooth"); ImGui::NextColumn();
         ImGui::Text ("Applies a real-time GPU smoothing filters to reduce noise. Inverse filters to add noise or grain are also available.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_FILTER_EDGE); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGuiToolkit::Icon(ICON_VI_FILTER_EDGE); ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Edge"); ImGui::NextColumn();
         ImGui::Text ("Applies a real-time GPU filter to outline edges.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_FILTER_ALPHA); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGuiToolkit::Icon(ICON_VI_FILTER_ALPHA); ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Alpha"); ImGui::NextColumn();
         ImGui::Text ("Applies a real-time GPU chroma-key (green screen) or luma-key (black screen). Inverse filter fills transparent alpha with an opaque color.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_FILTER_IMAGE); ImGui::SameLine(0, IMGUI_SAME_LINE);
+        ImGuiToolkit::Icon(ICON_VI_FILTER_IMAGE); ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Custom"); ImGui::NextColumn();
         ImGui::Text ("Applies a real-time GPU fragment shader defined by custom code in OpenGL Shading Language (GLSL). ");
         ImGuiToolkit::ButtonOpenUrl("About GLSL", "https://www.khronos.org/opengl/wiki/OpenGL_Shading_Language", ImVec2(ImGui::GetContentRegionAvail().x, 0));
@@ -3010,7 +3066,7 @@ void UserInterface::RenderHelp()
         ImGui::Text("F2"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_OBJECT_UNGROUP " Geometry view"); ImGui::NextColumn();
         ImGui::Text("F3"); ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_WORKSPACE); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Layers view"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_LAYERS); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Layers view"); ImGui::NextColumn();
         ImGui::Text("F4"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CHESS_BOARD "  Texturing view"); ImGui::NextColumn();
         ImGui::Text("F5"); ImGui::NextColumn();
@@ -3263,7 +3319,7 @@ void ShowAboutOpengl(bool* p_open)
     ImGui::Text("          Details");
     ImGui::SameLine();
 
-    ImGuiToolkit::IconToggle(10,0,11,0,&show_opengl_info);
+    ImGuiToolkit::IconToggle(ICON_VI_PANNEL_COLLAPSE,ICON_VI_PANNEL_EXPAND,&show_opengl_info);
     if (show_opengl_info)
     {
         ImGui::Separator();
@@ -3272,7 +3328,7 @@ void ShowAboutOpengl(bool* p_open)
         static char _openglfilter[64] = "";
         ImGui::InputText("Filter", _openglfilter, 64);
         ImGui::SameLine();
-        if ( ImGuiToolkit::ButtonIcon( 12, 14 ) )
+        if ( ImGuiToolkit::ButtonIcon( ICON_VI_CLEAR_LIST) )
             _openglfilter[0] = '\0';
         std::string filter(_openglfilter);
 
@@ -3326,7 +3382,7 @@ void ShowAboutGStreamer(bool* p_open)
         ImGui::SetNextItemWidth(-100.f);
         ImGui::Text("          Details");
         ImGui::SameLine();
-        ImGuiToolkit::IconToggle(10,0,11,0,&show_config_info);
+        ImGuiToolkit::IconToggle(ICON_VI_PANNEL_COLLAPSE,ICON_VI_PANNEL_EXPAND,&show_config_info);
         if (show_config_info)
         {
             ImGui::Separator();
@@ -3334,7 +3390,7 @@ void ShowAboutGStreamer(bool* p_open)
             ImGui::SameLine(0.f, 60.f);
             static char _filter[64] = ""; ImGui::InputText("Filter", _filter, 64);
             ImGui::SameLine();
-            if ( ImGuiToolkit::ButtonIcon( 12, 14 ) )
+            if ( ImGuiToolkit::ButtonIcon( ICON_VI_CLEAR_LIST) )
                 _filter[0] = '\0';
             std::string filter(_filter);
 

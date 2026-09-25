@@ -178,7 +178,8 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     transcodeNode->SetAttribute("option_0", application.transcode_options[0]);
     transcodeNode->SetAttribute("option_1", application.transcode_options[1]);
     transcodeNode->SetAttribute("option_2", application.transcode_options[2]);
-    transcodeNode->SetAttribute("option_3", application.transcode_options[3]);
+    transcodeNode->SetAttribute("image_format", application.transcode_image_format);
+    transcodeNode->SetAttribute("upscaler", application.transcode_upscaler.c_str());
     applicationNode->InsertEndChild(transcodeNode);
 
     XMLElement *exportNode = xmlDoc.NewElement( "Export" );
@@ -243,6 +244,8 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     XMLElement *SequenceNode = xmlDoc.NewElement( "Sequence" );
     SequenceNode->SetAttribute("profile", application.image_sequence.profile);
     SequenceNode->SetAttribute("framerate", application.image_sequence.framerate_mode);
+    SequenceNode->SetAttribute("rife_mode", application.image_sequence.buffering_mode);
+    SequenceNode->SetAttribute("loop_mode", application.image_sequence.priority_mode);
     pRoot->InsertEndChild(SequenceNode);
 
     // Transition
@@ -379,7 +382,8 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     mappingConfNode->SetAttribute("mode", application.mapping.mode);
     mappingConfNode->SetAttribute("current", application.mapping.current);
     mappingConfNode->SetAttribute("disabled", application.mapping.disabled);
-    mappingConfNode->SetAttribute("gamepad", application.gamepad_id);
+    mappingConfNode->SetAttribute("gamepad", application.gamepad_1_id);
+    mappingConfNode->SetAttribute("gamepad2", application.gamepad_2_id);
     if (!application.gamepad_mapping_filename.empty()) {
         XMLElement *gamepadNode = xmlDoc.NewElement("gamepad_filename");
         XMLText *text = xmlDoc.NewText( application.gamepad_mapping_filename.c_str() );
@@ -542,10 +546,13 @@ void Settings::init(const std::string &filename)
 
             XMLElement * transcodeNode = applicationNode->FirstChildElement("Transcode");
             if (transcodeNode != nullptr) {
-                transcodeNode->QueryBoolAttribute("option_0", &application.transcode_options[0]) ;
-                transcodeNode->QueryBoolAttribute("option_1", &application.transcode_options[1]) ;
-                transcodeNode->QueryBoolAttribute("option_2", &application.transcode_options[2]) ;
-                transcodeNode->QueryBoolAttribute("option_3", &application.transcode_options[3]) ;
+                transcodeNode->QueryIntAttribute("option_0", &application.transcode_options[0]) ;
+                transcodeNode->QueryIntAttribute("option_1", &application.transcode_options[1]) ;
+                transcodeNode->QueryIntAttribute("option_2", &application.transcode_options[2]) ;
+                transcodeNode->QueryIntAttribute("image_format", &application.transcode_image_format) ;
+                const char *upscaler = transcodeNode->Attribute("upscaler");
+                if (upscaler != nullptr)
+                    application.transcode_upscaler = upscaler;
             }
 
             XMLElement * exportNode = applicationNode->FirstChildElement("Export");
@@ -631,11 +638,13 @@ void Settings::init(const std::string &filename)
                 application.record.audio_device = "";
         }
 
-        // Record
+        // Sequence
         XMLElement * sequencenode = pRoot->FirstChildElement("Sequence");
         if (sequencenode != nullptr) {
             sequencenode->QueryIntAttribute("profile", &application.image_sequence.profile);
             sequencenode->QueryIntAttribute("framerate", &application.image_sequence.framerate_mode);
+            sequencenode->QueryIntAttribute("rife_mode", &application.image_sequence.buffering_mode);
+            sequencenode->QueryIntAttribute("loop_mode", &application.image_sequence.priority_mode);
         }
 
         // Source
@@ -775,7 +784,8 @@ void Settings::init(const std::string &filename)
             mappingconfnode->QueryUnsigned64Attribute("mode", &application.mapping.mode);
             mappingconfnode->QueryUnsignedAttribute("current", &application.mapping.current);
             mappingconfnode->QueryBoolAttribute("disabled", &application.mapping.disabled);
-            mappingconfnode->QueryIntAttribute("gamepad", &application.gamepad_id);
+            mappingconfnode->QueryIntAttribute("gamepad", &application.gamepad_1_id);
+            mappingconfnode->QueryIntAttribute("gamepad2", &application.gamepad_2_id);
             XMLElement* gamepadNode = mappingconfnode->FirstChildElement("gamepad_filename");
             if( gamepadNode )
             {

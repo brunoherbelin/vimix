@@ -80,6 +80,10 @@ include(MacroFindGStreamerLibrary)
 set(BUILD_STATIC_LIBS ON)
 set(CMAKE_INCLUDE_CURRENTDIR ON)
 
+# NCNN and ONNX Runtime are optional 
+option(USE_NCNN "Enable NCNN with Vulkan GPU backend" ON)
+option(USE_ONNX "Enable ONNX Runtime backend" ON)
+
 if(UNIX)
     if (APPLE)
         add_definitions(-DAPPLE)
@@ -100,6 +104,9 @@ if(UNIX)
         set(CPACK_SYSTEM_NAME  "OSX_${CMAKE_OSX_DEPLOYMENT_TARGET}_${CMAKE_OSX_ARCHITECTURES}")
         set(CPACK_GENERATOR DragNDrop)
         set(CPACK_BINARY_DRAGNDROP ON)
+
+        # NCNN Vulkan GPU backend is not supported on macOS
+        set(USE_NCNN OFF)
 
         # Apple ID code signing
         set(APPLE_CODESIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/osx/entitlements.plist")
@@ -164,6 +171,9 @@ if(UNIX)
             endif()
         endif()
 
+        # Linux: GIO for the screen cast portal (screen capture under Wayland)
+        pkg_check_modules(GIO_UNIX REQUIRED gio-unix-2.0)
+
         # Linux: native Avahi client for mDNS peer discovery
         # (NOT avahi-compat-libdnssd — it has no .pc file and missing symbols)
         if(PKG_CONFIG_FOUND)
@@ -188,10 +198,10 @@ endif()
 #####
 
 option(USE_GST_OPENGL_SYNC_HANDLER "Enable GStreamer OpenGL sync handler" ON)
-if(USE_GST_OPENGL_SYNC_HANDLER AND NOT APPLE)
+if(USE_GST_OPENGL_SYNC_HANDLER)
     add_definitions(-DUSE_GST_OPENGL_SYNC_HANDLER)
 endif()
-# add_definitions(-DUSE_GL_BUFFER_SUBDATA)
+
 
 #####
 ##### Dependencies
@@ -215,7 +225,6 @@ if (PKG_CONFIG_FOUND)
         gstreamer-audio-1.0
         gstreamer-video-1.0
         gstreamer-gl-1.0
-        gstreamer-transcoder-1.0
     )
 
     include_directories(
@@ -235,7 +244,7 @@ else ()
 
     find_package(GStreamer 1.0 COMPONENTS base REQUIRED)
 
-    find_package(GStreamerPluginsBase 1.0.0 COMPONENTS app audio video pbutils gl transcoder)
+    find_package(GStreamerPluginsBase 1.0.0 COMPONENTS app audio video pbutils gl)
     macro_log_feature(GSTREAMER_APP_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer app library"
     "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
     macro_log_feature(GSTREAMER_AUDIO_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer audio library"
@@ -245,8 +254,6 @@ else ()
     macro_log_feature(GSTREAMER_PBUTILS_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer pbutils library"
     "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
     macro_log_feature(GSTREAMER_GL_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer opengl library"
-    "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
-    macro_log_feature(GSTREAMER_TRANSCODER_LIBRARY_FOUND "GStreamerPluginsBase" "GStreamer transcoder library"
     "http://gstreamer.freedesktop.org/" TRUE "1.0.0")
 
     include_directories(
@@ -258,7 +265,6 @@ else ()
         ${GSTREAMER_APP_INCLUDE_DIR}
         ${GSTREAMER_PBUTILS_INCLUDE_DIR}
         ${GSTREAMER_GL_INCLUDE_DIR}
-        ${GSTREAMER_TRANSCODER_INCLUDE_DIR}
     )
     set( GSTREAMER_LIBRARIES
         ${GOBJECT_LIBRARIES}
@@ -269,7 +275,6 @@ else ()
         ${GSTREAMER_VIDEO_LIBRARY}
         ${GSTREAMER_PBUTILS_LIBRARY}
         ${GSTREAMER_GL_LIBRARY}
-        ${GSTREAMER_TRANSCODER_LIBRARY}
     )
 
 endif ()
@@ -326,7 +331,7 @@ else ()
 endif()
 
 if (GLM_FOUND)
-    macro_log_feature(GLM_FOUND "GLM" "OpenGL mathematics" "https://glm.g-truc.net" TRUE)
+    macro_log_feature(GLM_FOUND "GLM" "OpenGL mathematics" "https://glm.g-truc.net" FALSE)
 else ()
     set(GLM_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/glm)
@@ -347,7 +352,7 @@ else ()
 endif()
 
 if (TINYXML2_FOUND)
-    macro_log_feature(TINYXML2_FOUND "TinyXML2" "TinyXML2 library" "https://github.com/leethomason/tinyxml2.git" TRUE)
+    macro_log_feature(TINYXML2_FOUND "TinyXML2" "TinyXML2 library" "https://github.com/leethomason/tinyxml2.git" FALSE)
 else ()
     set(TINYXML2_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2)
     set(TINYXML2_LIBRARIES TINYXML2)
@@ -371,7 +376,7 @@ else ()
 endif()
 
 if (STB_FOUND)
-    macro_log_feature(STB_FOUND "STB" "single-file image and audio processing" "https://github.com/nothings/stb" TRUE)
+    macro_log_feature(STB_FOUND "STB" "single-file image and audio processing" "https://github.com/nothings/stb" FALSE)
 else ()
     set(STB_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/stb)
     message(STATUS "Including 'STB' single-file image and audio processing from https://github.com/nothings/stb -- ${STB_INCLUDE_DIRS}")
@@ -387,7 +392,7 @@ include_directories(
 find_package(AbletonLink QUIET)
 
 if (AbletonLink_FOUND)
-    macro_log_feature(AbletonLink_FOUND "AbletonLink" "Ableton Link synchronizer" "https://github.com/Ableton/link" TRUE)
+    macro_log_feature(AbletonLink_FOUND "AbletonLink" "Ableton Link synchronizer" "https://github.com/Ableton/link" FALSE)
 else ()
     include(${CMAKE_CURRENT_SOURCE_DIR}/ext/link/AbletonLinkConfig.cmake)
     message(STATUS "Compiling 'Ableton Link' from https://github.com/Ableton/link -- ${CMAKE_CURRENT_SOURCE_DIR}/ext/link")
@@ -437,7 +442,7 @@ if(UNIX)
             HINTS ${SHMDATA_LIBRARY_DIRS}/gstreamer-1.0
         )
         if(GSTREAMER_SHMDATA_LIBRARY)
-            add_definitions(-DGSTREAMER_SHMDATA_PLUGIN=\"${GSTREAMER_SHMDATA_LIBRARY}\")
+            add_definitions(-DGSTREAMER_SHMDATA_PLUGIN="${GSTREAMER_SHMDATA_LIBRARY}")
         endif()
 
         macro_log_feature(GSTREAMER_SHMDATA_LIBRARY "GStreamerPluginShmdata" "Plugin to share any flow" "https://gitlab.com/sat-mtl/tools/shmdata" FALSE)
@@ -445,9 +450,32 @@ if(UNIX)
 
 endif(UNIX)
 
+# ONNX backend for Accelerated machine learning inference by Microsoft.
+# Used by RIFE frame interpolator as CPU fallback.
+# Search for system-installed package 
+if(USE_ONNX)
+  set(ORT_ROOT "" CACHE PATH "Extra prefix to search for ONNX Runtime")
 
-# show message about found libs
-macro_display_feature_log()
+  find_path(ORT_INCLUDE_DIR onnxruntime_cxx_api.h
+    HINTS ${ORT_ROOT}/include
+    PATH_SUFFIXES onnxruntime)
+  find_library(ORT_LIBRARY onnxruntime HINTS ${ORT_ROOT}/lib)
+
+  if(ORT_INCLUDE_DIR AND ORT_LIBRARY)
+    add_library(onnxruntime::onnxruntime SHARED IMPORTED)
+    set_target_properties(onnxruntime::onnxruntime PROPERTIES
+      IMPORTED_LOCATION "${ORT_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${ORT_INCLUDE_DIR}")
+  else()
+    find_package(onnxruntime CONFIG QUIET HINTS ${ORT_ROOT})
+    if(NOT onnxruntime_FOUND)
+      set(USE_ONNX OFF)
+    endif()
+  endif()
+    
+  macro_log_feature(USE_ONNX "ONNX" "Backend for Accelerated machine learning inference" "https://onnxruntime.ai/" FALSE)
+
+endif()
 
 #####
 ##### Locally built libraries
@@ -541,14 +569,204 @@ message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack
 #
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/miniz/CMakeLists.txt")
     set(MINIZ_LIBRARIES miniz)
+    # temporarily disable warning of CMake version 
+    set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
     # BUILD_EXAMPLES/BUILD_TESTS/INSTALL_PROJECT default to OFF when miniz detects
     # it is included as a subdirectory (MINIZ_STANDALONE_PROJECT = OFF).
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/miniz)
+    set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)
     message(STATUS "Compiling 'miniz' ZIP compression from https://github.com/richgel999/miniz")
 else()
     set(MINIZ_LIBRARIES "")
     message(STATUS "miniz not found - ZIP compression disabled (run: git submodule update --init ext/miniz)")
 endif()
+
+#
+# show synthetic table about found packages
+#
+macro_display_feature_log()
+
+#
+# NCNN Vulkan GPU backend. 
+# Neural network inference framework, developed by Tencent, that utilizes 
+# the Vulkan API for hardware-accelerated GPU computing.
+# Used by RIFE frame interpolator and Real-ESRGAN upscaler. 
+# The script setup-ext.sh runs automatically on first configure.
+#
+if(USE_NCNN)
+  find_package(Vulkan QUIET)
+  if(NOT Vulkan_FOUND)
+    set(USE_NCNN OFF)
+  endif()
+endif()
+
+if(USE_NCNN)
+  set(RIFE_NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/rife-ncnn-vulkan/src)
+  set(RIFE_NCNN_INCLUDE_DIRS ${RIFE_NCNN_DIR} ${CMAKE_CURRENT_BINARY_DIR}) 
+  set(ESRGAN_NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/realesrgan-ncnn-vulkan/src)
+  set(ESRGAN_NCNN_INCLUDE_DIRS ${ESRGAN_NCNN_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+  set(NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/ncnn)
+  if(NOT EXISTS ${RIFE_NCNN_DIR}/rife.cpp
+     OR NOT EXISTS ${ESRGAN_NCNN_DIR}/realesrgan.cpp
+     OR NOT EXISTS ${NCNN_DIR}/CMakeLists.txt
+     OR NOT EXISTS ${NCNN_DIR}/glslang/CMakeLists.txt)
+    message(STATUS "Fetching extra sources (cmake/setup-ext.sh) ...")
+    execute_process(
+      COMMAND ${CMAKE_SOURCE_DIR}/cmake/setup-ext.sh
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      RESULT_VARIABLE EXT_SETUP_RESULT)
+    if(NOT EXT_SETUP_RESULT EQUAL 0)
+      message(WARNING "cmake/setup-ext.sh failed (git + network needed "
+                      "on first configure) — building without RifeNCNN/UpscaleNCNN")
+      set(USE_NCNN OFF)
+    endif()
+  endif()
+endif()
+
+if(USE_NCNN)
+  find_package(Threads REQUIRED)
+  message(STATUS "Compiling 'NCNN' Neural network inference for Vulkan GPU from https://github.com/Tencent/ncnn -- ${NCNN_DIR}")
+
+  # ncnn build configuration (mirrors rife-ncnn-vulkan/src/CMakeLists.txt).
+  # NCNN_VULKAN_ONLINE_SPIRV: shaders are embedded as source and compiled
+  # at runtime, so no glslangValidator is needed at build time.
+  set(NCNN_VULKAN ON CACHE BOOL "" FORCE)
+  set(NCNN_VULKAN_ONLINE_SPIRV ON CACHE BOOL "" FORCE)
+  # ncnn defaults to -fno-exceptions/-fno-rtti and propagates them to
+  # consumers; our code and the ONNX Runtime C++ API rely on exceptions
+  set(NCNN_DISABLE_EXCEPTION OFF CACHE BOOL "" FORCE)
+  set(NCNN_DISABLE_RTTI OFF CACHE BOOL "" FORCE)
+  set(NCNN_INSTALL_SDK OFF CACHE BOOL "" FORCE)
+  set(NCNN_BUILD_BENCHMARK OFF CACHE BOOL "" FORCE)
+  set(NCNN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(NCNN_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+  set(NCNN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(NCNN_PIXEL_ROTATE OFF CACHE BOOL "" FORCE)
+  set(NCNN_PIXEL_AFFINE OFF CACHE BOOL "" FORCE)
+  set(NCNN_PIXEL_DRAWING OFF CACHE BOOL "" FORCE)
+  set(NCNN_INT8 OFF CACHE BOOL "" FORCE)
+
+  # Build only the ncnn layers needed by the models we run: adopt the
+  # per-layer option lists curated in the vendored CMakeLists (so they stay
+  # in sync with the pinned commits), keeping a layer ON as soon as either
+  # RIFE or Real-ESRGAN asks for it.
+  set(_layer_opts "")
+  foreach(_ncnn_user_dir ${RIFE_NCNN_DIR} ${ESRGAN_NCNN_DIR})
+    file(STRINGS ${_ncnn_user_dir}/CMakeLists.txt _opts REGEX "option\\(WITH_LAYER_")
+    list(APPEND _layer_opts ${_opts})
+  endforeach()
+  foreach(_line IN LISTS _layer_opts)
+    if(_line MATCHES "WITH_LAYER_([a-z0-9_]+) \"\" (ON|OFF)")
+      if(${CMAKE_MATCH_2} OR NOT DEFINED WITH_LAYER_${CMAKE_MATCH_1})
+        set(WITH_LAYER_${CMAKE_MATCH_1} ${CMAKE_MATCH_2} CACHE BOOL "" FORCE)
+      endif()
+    endif()
+  endforeach()
+
+  # RIFE compiles its shaders at runtime (NCNN_VULKAN_ONLINE_SPIRV), but
+  # Real-ESRGAN #includes them as precompiled SPIR-V, which needs the
+  # glslangValidator binary. ncnn declares ENABLE_GLSLANG_BINARIES with
+  # option(), so setting it here takes precedence: the tool is built from
+  # the vendored glslang, no system glslang-tools package needed.
+  set(ENABLE_GLSLANG_BINARIES ON CACHE BOOL "" FORCE)
+
+  # The pinned ncnn/glslang declare cmake_minimum_required versions older than the one we use, so silence the warning.
+  if(NOT DEFINED CMAKE_POLICY_VERSION_MINIMUM)
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+  endif()
+  set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
+  add_subdirectory(${NCNN_DIR} ncnn EXCLUDE_FROM_ALL)
+  set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)
+  unset(CMAKE_POLICY_VERSION_MINIMUM)
+
+  # ncnn is third-party code; silence its (harmless) unused-variable warnings
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(ncnn PRIVATE -Wno-unused-variable)
+  endif()
+
+  # Compute shaders -> C headers (.comp.hex.h), same mechanism as upstream.
+  macro(rife_add_shader SHADER_SRC)
+    get_filename_component(SHADER_SRC_NAME_WE ${SHADER_SRC} NAME_WE)
+    set(SHADER_COMP_HEADER ${CMAKE_CURRENT_BINARY_DIR}/${SHADER_SRC_NAME_WE}.comp.hex.h)
+    add_custom_command(
+      OUTPUT ${SHADER_COMP_HEADER}
+      COMMAND ${CMAKE_COMMAND}
+        -DSHADER_SRC=${RIFE_NCNN_DIR}/${SHADER_SRC}
+        -DSHADER_COMP_HEADER=${SHADER_COMP_HEADER}
+        -P "${RIFE_NCNN_DIR}/generate_shader_comp_header.cmake"
+      DEPENDS ${RIFE_NCNN_DIR}/${SHADER_SRC}
+      COMMENT "Preprocessing shader source ${SHADER_SRC_NAME_WE}.comp"
+      VERBATIM)
+    set_source_files_properties(${SHADER_COMP_HEADER} PROPERTIES GENERATED TRUE)
+    list(APPEND SHADER_SPV_HEX_FILES ${SHADER_COMP_HEADER})
+  endmacro()
+
+  rife_add_shader(rife_preproc.comp)
+  rife_add_shader(rife_postproc.comp)
+  rife_add_shader(rife_preproc_tta.comp)
+  rife_add_shader(rife_postproc_tta.comp)
+  rife_add_shader(rife_flow_tta_avg.comp)
+  rife_add_shader(rife_v2_flow_tta_avg.comp)
+  rife_add_shader(rife_v4_flow_tta_avg.comp)
+  rife_add_shader(rife_flow_tta_temporal_avg.comp)
+  rife_add_shader(rife_v2_flow_tta_temporal_avg.comp)
+  rife_add_shader(rife_v4_flow_tta_temporal_avg.comp)
+  rife_add_shader(rife_out_tta_temporal_avg.comp)
+  rife_add_shader(rife_v4_timestep.comp)
+  rife_add_shader(rife_v4_timestep_tta.comp)
+  rife_add_shader(warp.comp)
+  rife_add_shader(warp_pack4.comp)
+  rife_add_shader(warp_pack8.comp)
+
+  # Real-ESRGAN compute shaders -> SPIR-V hex headers, in the three ncnn
+  # storage variants (base / fp16s / int8s) realesrgan.cpp #includes.
+  macro(esrgan_add_shader SHADER_SRC)
+    get_filename_component(SHADER_SRC_NAME_WE ${SHADER_SRC} NAME_WE)
+    foreach(_v "" "_fp16s" "_int8s")
+      set(_out ${CMAKE_CURRENT_BINARY_DIR}/${SHADER_SRC_NAME_WE}${_v}.spv.hex.h)
+      set(_defs "")
+      if(_v STREQUAL "_fp16s")
+        set(_defs -DNCNN_fp16_storage=1)
+      elseif(_v STREQUAL "_int8s")
+        set(_defs -DNCNN_fp16_storage=1 -DNCNN_int8_storage=1)
+      endif()
+      add_custom_command(
+        OUTPUT ${_out}
+        COMMAND $<TARGET_FILE:glslangValidator> ${_defs} -V -s -x -o ${_out} ${ESRGAN_NCNN_DIR}/${SHADER_SRC}
+        DEPENDS ${ESRGAN_NCNN_DIR}/${SHADER_SRC} glslangValidator
+        COMMENT "Building SPIR-V module ${SHADER_SRC_NAME_WE}${_v}.spv"
+        VERBATIM)
+      set_source_files_properties(${_out} PROPERTIES GENERATED TRUE)
+      list(APPEND SHADER_SPV_HEX_FILES ${_out})
+    endforeach()
+  endmacro()
+
+  esrgan_add_shader(realesrgan_preproc.comp)
+  esrgan_add_shader(realesrgan_postproc.comp)
+  esrgan_add_shader(realesrgan_preproc_tta.comp)
+  esrgan_add_shader(realesrgan_postproc_tta.comp)
+
+  add_custom_target(generate-spirv DEPENDS ${SHADER_SPV_HEX_FILES})
+
+  # Static library bundling the RIFE ncnn sources and their generated shader
+  # headers, linked into the application instead of compiled inline.
+  add_library(NCNNRIFE STATIC
+      ${RIFE_NCNN_DIR}/rife.cpp
+      ${RIFE_NCNN_DIR}/warp.cpp)
+  add_dependencies(NCNNRIFE generate-spirv)
+  target_include_directories(NCNNRIFE PUBLIC ${RIFE_NCNN_INCLUDE_DIRS})
+  target_compile_definitions(NCNNRIFE PUBLIC HAVE_NCNN)
+  target_link_libraries(NCNNRIFE PUBLIC ncnn)
+
+  # Same for the Real-ESRGAN upscaler.
+  add_library(NCNNUPSCALE STATIC ${ESRGAN_NCNN_DIR}/realesrgan.cpp)
+  add_dependencies(NCNNUPSCALE generate-spirv)
+  target_include_directories(NCNNUPSCALE PUBLIC ${ESRGAN_NCNN_INCLUDE_DIRS})
+  target_compile_definitions(NCNNUPSCALE PUBLIC HAVE_NCNN)
+  target_link_libraries(NCNNUPSCALE PUBLIC ncnn)
+
+endif()
+
 
 
 #####
@@ -882,6 +1100,24 @@ set(CPACK_STRIP_FILES TRUE)
 ##### Build Application
 #####
 add_subdirectory(src)
+
+
+#####
+##### Clean the build
+#####
+
+# The generator already provides the standard 'clean' target, which removes
+# the files produced by the build (e.g. "ninja clean" or "make clean").
+# 'distclean' goes further: it empties the build directory, cmake cache
+# included, so the next build is configured from scratch.
+add_custom_target(distclean
+    COMMAND ${CMAKE_COMMAND}
+            -DBUILD_DIR=${CMAKE_BINARY_DIR}
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/DistClean.cmake
+    COMMENT "Removing all build files and cmake configuration from ${CMAKE_BINARY_DIR}"
+    VERBATIM
+)
 
 
 # To Create a package, run "cpack"

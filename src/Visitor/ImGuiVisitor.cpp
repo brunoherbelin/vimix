@@ -37,10 +37,12 @@
 
 #include "Log.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Scene/Scene.h"
 #include "Scene/Primitives.h"
 //#include "ImageShader.h"
 #include "ImageProcessingShader.h"
+#include "Toolkit/GstToolkit.h"
 #include "MediaPlayer.h"
 #include "Source/MediaSource.h"
 #include "Source/CloneSource.h"
@@ -90,7 +92,7 @@ void ImGuiVisitor::visit(Group &n)
     // MODEL VIEW
     ImGui::PushID(std::to_string(n.id()).c_str());
 
-    if (ImGuiToolkit::ButtonIcon(1, 16)) {
+    if (ImGuiToolkit::ButtonIcon(ICON_VI_TRANSFORM_RESET)) {
         n.translation_.x = 0.f;
         n.translation_.y = 0.f;
         n.rotation_.z = 0.f;
@@ -101,7 +103,7 @@ void ImGuiVisitor::visit(Group &n)
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Geometry");
 
-    if (ImGuiToolkit::ButtonIcon(6, 15)) {
+    if (ImGuiToolkit::ButtonIcon(ICON_VI_POSITION_RESET)) {
         n.translation_.x = 0.f;
         n.translation_.y = 0.f;
         Action::manager().store("Position 0.0, 0.0");
@@ -118,7 +120,7 @@ void ImGuiVisitor::visit(Group &n)
         oss << "Position " << std::setprecision(3) << n.translation_.x << ", " << n.translation_.y;
         Action::manager().store(oss.str());
     }
-    if (ImGuiToolkit::ButtonIcon(3, 15))  {
+    if (ImGuiToolkit::ButtonIcon(ICON_VI_SCALE_RESET))  {
         n.scale_.x = 1.f;
         n.scale_.y = 1.f;
         Action::manager().store("Scale 1.0 x 1.0");
@@ -136,7 +138,7 @@ void ImGuiVisitor::visit(Group &n)
         Action::manager().store(oss.str());
     }
 
-    if (ImGuiToolkit::ButtonIcon(18, 9)){
+    if (ImGuiToolkit::ButtonIcon(ICON_VI_ANGLE)){
         n.rotation_.z = 0.f;
         Action::manager().store("Angle 0.0");
     }
@@ -195,7 +197,7 @@ void ImGuiVisitor::visit(Shader &n)
     ImGui::PushID(std::to_string(n.id()).c_str());
 
     // Base color
-//    if (ImGuiToolkit::ButtonIcon(10, 2)) {
+//    if (ImGuiToolkit::ButtonIcon(ICON_VI_COLOR)) {
 //        n.blending = Shader::BLEND_OPACITY;
 //        n.color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 //    }
@@ -490,7 +492,7 @@ void ImGuiVisitor::visit (Source& s)
 
         // inform of input mapping
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
-        std::list<uint> inputs = Mixer::manager().session()->inputsForSource( s.id() );
+        std::list<uint> inputs = Mixer::manager().session()->inputCallbacks()->inputsForSource( s.id() );
         if (!inputs.empty())    {
             if (ImGuiToolkit::IconButton( ICON_FA_HAND_PAPER ) ) {
                 // open input mapping window
@@ -513,7 +515,7 @@ void ImGuiVisitor::visit (Source& s)
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
         static const char *tooltip[2] = {"Unlocked", "Locked"};
         bool l = s.locked();
-        if (ImGuiToolkit::IconToggle(15, 6, 17, 6, &l, tooltip ) ) {
+        if (ImGuiToolkit::IconToggle(ICON_VI_UNLOCKED, ICON_VI_LOCKED, &l, tooltip ) ) {
             s.setLocked(l);
             if (l) {
                 Mixer::selection().clear();
@@ -551,7 +553,7 @@ void ImGuiVisitor::visit (Source& s)
         static uint counter_menu_timeout = 0;
         ImVec2 pos_bot = ImGui::GetCursorPos();
         ImGui::SetCursorPos( ImVec2( pos.x + preview_width + IMGUI_SAME_LINE, pos.y + preview_height + ImGui::GetStyle().ItemSpacing.y));
-        if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+        if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             counter_menu_timeout=0;
             ImGui::OpenPopup( "MenuImageProcessing" );
         }
@@ -568,7 +570,7 @@ void ImGuiVisitor::visit (Source& s)
         // context menu for image processing
         if (ImGui::BeginPopup( "MenuImageProcessing" ))
         {
-            if (ImGui::MenuItem("Enabled", NULL, &on)) {
+            if (ImGui::MenuItem("Enable", NULL, &on)) {
                 oss << ( on ? "Enable Color correction" : "Disable Color correction");
                 Action::manager().store(oss.str());
                 s.setImageProcessingEnabled(on);
@@ -638,21 +640,22 @@ void ImGuiVisitor::visit (Source& s)
     ImGui::PopStyleColor();
     ImGui::EndChild();
 
-    // Source specific icon to the right of Header
-    ImVec2 pos_bot = ImGui::GetCursorPos();
-    ImGui::SetCursorPos( ImVec2( pos_top.x + preview_width + IMGUI_SAME_LINE, pos_top.y + ImGui::GetStyle().ItemSpacing.y));
-    if (ImGuiToolkit::IconButton(s.icon().x, s.icon().y) ) {
-        UserInterface::manager().showSourceEditor(&s);
+    if (!Settings::application.pannel_source[1]) {
+        // Source specific icon to the right of Header
+        ImVec2 pos_bot = ImGui::GetCursorPos();
+        ImGui::SetCursorPos( ImVec2( pos_top.x + preview_width + IMGUI_SAME_LINE, pos_top.y + ImGui::GetStyle().ItemSpacing.y));
+        if (ImGuiToolkit::IconButton(s.icon().x, s.icon().y) ) {
+            UserInterface::manager().showSourceEditor(&s);
+        }
+        // Source specific tooltip on hover
+        if (ImGui::IsItemHovered()) {
+            InfoVisitor info;
+            info.setExtendedStringMode();
+            s.accept(info);
+            ImGuiToolkit::ToolTip(info.str().c_str());
+        }
+        ImGui::SetCursorPos(pos_bot);   
     }
-    // Source specific tooltip on hover
-    if (ImGui::IsItemHovered()) {
-        InfoVisitor info;
-        info.setExtendedStringMode();
-        s.accept(info);
-        ImGuiToolkit::ToolTip(info.str().c_str());
-    }
-    ImGui::SetCursorPos(pos_bot);   
-
 }
 
 
@@ -698,7 +701,7 @@ void ImGuiVisitor::renderAudioPanel(MediaSource &s)
         if (audio_is_on) {
             ImGui::SameLine(0, 2 * IMGUI_SAME_LINE);
             static uint counter_menu_timeout_2 = 0;
-            if (ImGuiToolkit::IconButton(6, 2)
+            if (ImGuiToolkit::IconButton(ICON_VI_MENU_AUDIO)
                 || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
                 counter_menu_timeout_2 = 0;
                 ImGui::OpenPopup("MenuMixAudio");
@@ -772,7 +775,7 @@ void ImGuiVisitor::visit (MediaSource& s)
             top.x += ImGui::GetFrameHeight();
         }
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+        if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
 
         MediaPlayer *mp = s.mediaplayer();
@@ -785,10 +788,56 @@ void ImGuiVisitor::visit (MediaSource& s)
                 std::string desc = mp->videoEffect();
                 desc = desc.substr(0, desc.find_first_of(' '));
                 desc = "Has gstreamer effect '" + desc + "'";
-                ImGuiToolkit::Indication(desc.c_str(),16,16);
+                ImGuiToolkit::Indication(desc.c_str(), ICON_VI_SOURCE_GSTREAMER);
             }
 
+            // Information on keyframes and GOP size, and tooltip on backward playback and errors
             ImGui::SetCursorPos(botom);
+            ImGuiTextBuffer info;
+            ImGuiTextBuffer tooltip;
+            if (mp->evaluation().done) {
+                if (mp->evaluation().log.empty() && mp->evaluation().keyframe_count > 0) {
+
+                    // information on keyframes and GOP size
+                    info.appendf("%d", (int) mp->evaluation().keyframe_count);
+                    if (mp->evaluation().gop_size_max - mp->evaluation().gop_size_min > 1)
+                        info.appendf(" (1 every %d-%d frames)", (int) mp->evaluation().gop_size_min, (int) mp->evaluation().gop_size_max);
+                    else                            
+                        info.appendf(" (1 every %d frames)", (int) mp->evaluation().gop_size_max);
+                    
+                    // tooltip on backward playback and errors
+                    float backward_score = GstToolkit::canPlayBackward(mp->evaluation().has_bframes,
+                                mp->width(), mp->height(), mp->evaluation().keyframe_count,
+                                mp->evaluation().gop_size_min, mp->evaluation().gop_size_max);
+                    if (backward_score <= 0.f)
+                        tooltip.appendf(ICON_FA_MINUS_CIRCLE " Cannot play backward");
+                    else if (backward_score < 1.f)
+                        tooltip.appendf(ICON_FA_EXCLAMATION_TRIANGLE " Unstable backward playback");
+                    else
+                        tooltip.appendf(ICON_FA_CHECK " Smooth backward playback");
+                    if (mp->evaluation().discontinuity_count > 0 )
+                        tooltip.appendf(", %d discontinuities", mp->evaluation().discontinuity_count);
+                    if (mp->evaluation().corrupted_count > 0 )
+                        tooltip.appendf(", %d corruptions", mp->evaluation().corrupted_count);
+                } 
+                else {
+                    info.appendf("%s", mp->evaluation().log.c_str());
+                    tooltip.appendf("%s", mp->evaluation().log.c_str());
+                }
+            }
+            else {
+                static const char* animation[] = { ICON_FA_HOURGLASS_START,ICON_FA_HOURGLASS_HALF,ICON_FA_HOURGLASS_END,ICON_FA_HOURGLASS };
+                info.appendf("  %s", animation[(g_get_monotonic_time() / 300000) % 4]);
+            }
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            ImGui::InputText("Keyframes", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopStyleColor(1);
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text( "%s", tooltip.c_str() );
+                ImGui::EndTooltip();
+            }
 
             // Selector for Hardware or software decoding, if available
             if ( Settings::application.render.gpu_decoding ) {
@@ -823,7 +872,7 @@ void ImGuiVisitor::visit (MediaSource& s)
             }
             else {
                 // info of software only decoding if disabled
-                ImGuiToolkit::Icon(14,2,false);
+                ImGuiToolkit::Icon(ICON_VI_HARDWARE_DECODING_OFF,false);
                 ImGui::SameLine();
                 ImGui::TextDisabled("Hardware decoding disabled");
             }
@@ -965,7 +1014,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
         }
 
         ImGui::SetCursorPos(top);
-        if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+        if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
             SystemToolkit::open(SystemToolkit::path_filename(s.path()));
 
     }
@@ -1117,7 +1166,7 @@ void ImGuiVisitor::visit (DelayFilter& f)
 {
     ImGuiIO& io = ImGui::GetIO();
 
-//    if (ImGuiToolkit::IconButton(ICON_FILTER_DELAY)) {
+//    if (ImGuiToolkit::IconButton(ICON_VI_FILTER_DELAY)) {
 //        f.setDelay(0.f);
 //        Action::manager().store("Delay 0 s");
 //    }
@@ -1800,7 +1849,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
 
         // icon to show gstreamer properties
         ImGui::SetCursorPos(top);
-        ImGuiToolkit::Icon(16, 16, false);
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_GSTREAMER, false);
         if (ImGui::IsItemHovered()) {
             int index = Device::manager().index( s.device() );
             std::string prop = Device::manager().properties( index );
@@ -1838,25 +1887,36 @@ void ImGuiVisitor::visit (ScreenCaptureSource& s)
 
     if ( !s.failed() ) {
 
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if (ImGui::BeginCombo("Window", s.window().c_str()))
-        {
-            for (int d = 0; d < ScreenCapture::manager().numWindow(); ++d){
-                std::string namedev = ScreenCapture::manager().name(d);
-                if (ImGui::Selectable( namedev.c_str() )) {
-                    if ( namedev.compare(s.window())==0 )
-                        s.reconnect();
-                    else {
-                        s.setWindow(namedev);
-                        info.reset();
-                        oss << "Window '" << namedev << "'";
-                        Action::manager().store(oss.str());
+        // Wayland: the user selects in the dialog of the desktop
+        if (!ScreenCapture::manager().hasWindowList()) {
+            if (s.pending())
+                ImGuiToolkit::ButtonDisabled("Selecting...", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+            else if (ImGui::Button("Select", ImVec2(IMGUI_RIGHT_ALIGN, 0)))
+                s.setWindow();
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::Text("Window");
+        }
+        else {
+            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+            if (ImGui::BeginCombo("Window", s.window().c_str()))
+            {
+                for (int d = 0; d < ScreenCapture::manager().numWindow(); ++d){
+                    std::string namedev = ScreenCapture::manager().name(d);
+                    if (ImGui::Selectable( namedev.c_str() )) {
+                        if ( namedev.compare(s.window())==0 )
+                            s.reconnect();
+                        else {
+                            s.setWindow(namedev);
+                            info.reset();
+                            oss << "Window '" << namedev << "'";
+                            Action::manager().store(oss.str());
+                        }
+                        // ensure all sources are updated after the texture change of this one
+                        Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
                     }
-                    // ensure all sources are updated after the texture change of this one
-                    Mixer::manager().session()->execute([](Source *so) { so->touch(Source::SourceUpdate_Mask); });
                 }
+                ImGui::EndCombo();
             }
-            ImGui::EndCombo();
         }
         ImVec2 botom = ImGui::GetCursorPos();
 
@@ -2016,7 +2076,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
 
     // offer to open file browser at location
     ImGui::SetCursorPos(top);
-    if (ImGuiToolkit::IconButton(3, 5, "Show in finder"))
+    if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
         SystemToolkit::open(SystemToolkit::path_filename( s.sequence().location ));
 
     ImGui::SetCursorPos(botom);
@@ -2243,7 +2303,7 @@ void ImGuiVisitor::visit(TextSource &s)
         }
         botom = ImGui::GetCursorPos();
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (ImGuiToolkit::IconButton(1, 13, "Pango font description"))
+        if (ImGuiToolkit::IconButton(ICON_VI_FONT, "Pango font description"))
             SystemToolkit::open("https://docs.gtk.org/Pango/type_func.FontDescription.from_string.html");
         ImGui::SetCursorPos(botom);
 
@@ -2311,19 +2371,19 @@ void ImGuiVisitor::visit(TextSource &s)
             _x += IMGUI_SAME_LINE + g.Style.FramePadding.x;
             ImGui::SetCursorPosX(_x);
         }
-        if (ImGuiToolkit::ButtonIconToggle(17, 16, &on, "Left"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_LEFT, &on, "Left"))
             tc->setHorizontalAlignment(0);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 1;
-        if (ImGuiToolkit::ButtonIconToggle(18, 16, &on, "Center"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_CENTER_H, &on, "Center"))
             tc->setHorizontalAlignment(1);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 2;
-        if (ImGuiToolkit::ButtonIconToggle(19, 16, &on, "Right"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_RIGHT, &on, "Right"))
             tc->setHorizontalAlignment(2);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 3;
-        if (ImGuiToolkit::ButtonIconToggle(6, 10, &on, "Absolute"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_ABSOLUTE_H, &on, "Absolute"))
             tc->setHorizontalAlignment(3);
         if (var != tc->horizontalAlignment()){
             oss << "Change h-align";
@@ -2375,19 +2435,19 @@ void ImGuiVisitor::visit(TextSource &s)
             _x += IMGUI_SAME_LINE + g.Style.FramePadding.x;
              ImGui::SetCursorPosX(_x);
         }
-        if (ImGuiToolkit::ButtonIconToggle(1, 17, &on, "Bottom"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_BOTTOM, &on, "Bottom"))
             tc->setVerticalAlignment(0);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 2;
-        if (ImGuiToolkit::ButtonIconToggle(3, 17, &on, "Center"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_CENTER_V, &on, "Center"))
             tc->setVerticalAlignment(2);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 1;
-        if (ImGuiToolkit::ButtonIconToggle(2, 17, &on, "Top"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_TOP, &on, "Top"))
             tc->setVerticalAlignment(1);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         on = var == 3;
-        if (ImGuiToolkit::ButtonIconToggle(3, 10, &on, "Absolute"))
+        if (ImGuiToolkit::ButtonIconToggle(ICON_VI_ALIGN_ABSOLUTE_V, &on, "Absolute"))
             tc->setVerticalAlignment(3);
         if (var != tc->verticalAlignment()){
             oss << "Change v-align";

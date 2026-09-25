@@ -473,7 +473,7 @@ private:
     // gst frame filling
     void init_texture(guint index);
     void fill_texture(guint index);
-    bool fill_frame(GstBuffer *buf, FrameStatus status);
+    bool fill_frame(GstBuffer *buf, FrameStatus status, const GstSegment *segment = nullptr);
 
     // gst callbacks
     static void callback_end_of_stream (GstAppSink *, gpointer);

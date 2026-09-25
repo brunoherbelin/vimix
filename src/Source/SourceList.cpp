@@ -23,6 +23,7 @@
 #include <glm/gtx/rotate_vector.hpp>
 
 #include "Source.h"
+#include "CloneSource.h"
 #include "Session.h"
 
 #include "SourceList.h"
@@ -67,6 +68,18 @@ SourceList active_only (const SourceList &list)
 
     return pl;
 }
+
+bool notvisible (const Source *s) { return !s->visible(); }
+
+SourceList visible_only (const SourceList &list)
+{
+    SourceList pl = list;
+
+    pl.remove_if(notvisible);
+
+    return pl;
+}
+
 
 SourceList depth_sorted(const SourceList &list)
 {
@@ -170,6 +183,23 @@ SourceList join (const SourceList &first, const SourceList &second)
     SourceList l = second;
     for (auto it = first.begin(); it != first.end(); ++it)
         l.push_back(*it);
+    l.unique();
+    return l;
+}
+
+SourceList joinClones (const SourceList &list) 
+{
+    SourceList l = list;    
+    for (auto it = list.begin(); it != list.end(); ++it) {
+        CloneSource *cs = dynamic_cast<CloneSource*>(*it);
+        if ( cs != nullptr ) 
+            l.push_back( cs->origin() );
+        if ((*it)->cloned()) {
+            SourceList clones = (*it)->clones();
+            for (auto cit = clones.begin(); cit != clones.end(); ++cit)
+                l.push_back(*cit);
+        }
+    }
     l.unique();
     return l;
 }

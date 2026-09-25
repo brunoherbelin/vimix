@@ -29,6 +29,10 @@
 
 #include "ScreenCaptureSource.h"
 
+#if defined(APPLE)
+#include <map>
+#endif
+
 #ifndef NDEBUG
 #define SCREENCAPTURE_DEBUG
 #endif
@@ -37,14 +41,95 @@
 
 #if defined(APPLE)
 std::string gst_plugin_vidcap = "avfvideosrc capture-screen=true";
+
+#include <CoreGraphics/CoreGraphics.h>
+
+// Check for OSX permissions to capture screen
+bool screen_recording_allowed()
+{
+    if (CGPreflightScreenCaptureAccess())
+        return true;
+    CGRequestScreenCaptureAccess();
+    return false;
+}
+
+// in osx/ScreenCapture_macos.mm
+std::vector< std::pair<unsigned long, std::string> > getListMacOSScreens();
+
+// Pipeline of the screen at the given device-index of avfvideosrc
+std::string macos_screen_pipeline(size_t index)
+{
+    return gst_plugin_vidcap + " device-index=" + std::to_string(index);
+}
 #else
 std::string gst_plugin_vidcap = "ximagesrc show-pointer=false";
 
+#include <unistd.h>
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
 #include <xcb/xproto.h>
+#include "IconsVimixImage.h"
 int X11_error_handler(Display *d, XErrorEvent *e);
 std::map<unsigned long, std::string> getListX11Windows();
+
+// Under Wayland, screens and windows are captured with pipewiresrc, after
+// the user selected them in the dialog of the screen cast portal
+bool wayland_session()
+{
+    const char *type = g_getenv("XDG_SESSION_TYPE");
+    return g_getenv("WAYLAND_DISPLAY") != nullptr || (type && strcmp(type, "wayland") == 0);
+}
+
+std::string pipewire_pipeline(const FreedesktopToolkit::ScreenCastResult &result)
+{
+    // keepalive resends the last frame, as the desktop sends frames only on change
+    return "pipewiresrc fd=" + std::to_string(result.fd) + " path=" + std::to_string(result.node) +
+           " do-timestamp=true keepalive-time=500";
+}
+
+void close_pipewire(int fd, const std::string &session)
+{
+    if (fd > -1)
+        ::close(fd);
+    FreedesktopToolkit::screencastClose(session);
+}
+
+// Request to the screen cast portal, answered in the portal thread
+struct ScreenCaptureRequest
+{
+    std::mutex access;
+    std::string window;     // name asked for (empty for a new selection)
+    bool done = false;
+    bool abandoned = false;
+    FreedesktopToolkit::ScreenCastResult result;
+};
+
+std::shared_ptr<ScreenCaptureRequest> request_portal(const std::string &window, const std::string &restore_token)
+{
+    auto r = std::make_shared<ScreenCaptureRequest>();
+    r->window = window;
+    FreedesktopToolkit::screencastRequest(restore_token, [r](const FreedesktopToolkit::ScreenCastResult &result) {
+        std::lock_guard<std::mutex> lock(r->access);
+        // close the screen cast if the source was deleted meanwhile
+        if (r->abandoned) {
+            if (result.success)
+                close_pipewire(result.fd, result.session);
+        }
+        else {
+            r->result = result;
+            r->done = true;
+        }
+    });
+    return r;
+}
+
+void abandon_portal(const std::shared_ptr<ScreenCaptureRequest> &r)
+{
+    std::lock_guard<std::mutex> lock(r->access);
+    if (r->done && r->result.success)
+        close_pipewire(r->result.fd, r->result.session);
+    r->abandoned = true;
+}
 
 #endif
 
@@ -166,8 +251,19 @@ void ScreenCapture::remove(const std::string &windowname, unsigned long id)
 //Display *x11_display = NULL;
 //#endif
 
-ScreenCapture::ScreenCapture(): monitor_initialized_(false)
+ScreenCapture::ScreenCapture(): portal_(false), monitor_initialized_(false)
 {
+#if defined(LINUX)
+    portal_ = wayland_session();
+    if (portal_) {
+        // the desktop may end a screen cast (e.g. 'stop sharing'); this is
+        // handled in the main thread (see update)
+        FreedesktopToolkit::setScreencastClosedCallback([this](const std::string &session) {
+            std::lock_guard<std::mutex> lock(access_);
+            closed_sessions_.push_back(session);
+        });
+    }
+#endif
 //#ifdef LINUX
 //    // Capture X11 errors to prevent crashing when capturing a window that is closed
 //    x11_display = XOpenDisplay(NULL);
@@ -189,6 +285,21 @@ ScreenCapture::~ScreenCapture()
 void ScreenCapture::launchMonitoring(ScreenCapture *sc)
 {
 #if defined(LINUX)
+
+    // Wayland: no list; the screens and windows are selected by the user
+    // in the dialog of the screen cast portal
+    if (sc->portal_) {
+        static bool warned = false;
+        if (!warned && !FreedesktopToolkit::screencastAvailable())
+            Log::Warning("Screen capture under Wayland requires the screen cast portal (xdg-desktop-portal).");
+        warned = true;
+
+        sc->monitor_initialized_ = true;
+        sc->monitor_initialization_.notify_all();
+        std::this_thread::sleep_for ( std::chrono::seconds(2) );
+        sc->monitor_initialized_ = false;
+        return;
+    }
 
     // Get the list of windows in X11
     std::map<unsigned long,std::string> windowlist = getListX11Windows();
@@ -229,12 +340,58 @@ void ScreenCapture::launchMonitoring(ScreenCapture *sc)
     sc->monitor_initialized_ = false;
 
 #else
-    // only one screen capture possibility on OSX
-    sc->add(SCREEN_CAPTURE_NAME, gst_plugin_vidcap);
+    // Get the list of screens, by device-index of avfvideosrc, with their
+    // display id and name
+    struct Screen {
+        unsigned long display;
+        std::string name;
+    };
+    std::map<int, Screen> screens;
+    const auto list = getListMacOSScreens();
+    for (size_t i = 0; i < list.size(); ++i)
+        screens[(int) i] = { list[i].first, list[i].second };
+
+    // Screens are found by name, which must then be unique; two monitors of
+    // the same model have the same name, and get their number (from 1) added
+    std::map<std::string, int> count;
+    for (const auto &screen : screens)
+        count[screen.second.name]++;
+    for (auto &screen : screens)
+        if (count[screen.second.name] > 1)
+            screen.second.name += " (" + std::to_string(screen.first + 1) + ")";
+
+    // Go through the current list of screen handles: keep those still valid,
+    // i.e. the same display at the same index (the index is in the pipeline),
+    // with the same name
+    sc->access_.lock();
+    for (auto hit = sc->handles_.begin(); hit != sc->handles_.end();) {
+        auto s = std::find_if(screens.begin(), screens.end(), [&](const auto &screen) {
+            return hit->id == screen.second.display && hit->name == screen.second.name &&
+                   hit->pipeline == macos_screen_pipeline(screen.first);
+        });
+        if (s != screens.end()) {
+            // known already: nothing to add
+            screens.erase(s);
+            ++hit;
+        }
+        else
+            hit = sc->handles_.erase(hit);
+    }
+    sc->access_.unlock();
+
+    // Add in handles list the remaining screens
+    for (const auto &screen : screens)
+        sc->add(screen.second.name, macos_screen_pipeline(screen.first), screen.second.display);
 
     // monitor is initialized
     sc->monitor_initialized_ = true;
     sc->monitor_initialization_.notify_all();
+
+    // give time before continuing
+    std::this_thread::sleep_for ( std::chrono::seconds(2) );
+
+    // de-initialize so next call will update (e.g. a screen was connected)
+    sc->monitor_initialized_ = false;
 #endif
 }
 
@@ -328,7 +485,77 @@ int  ScreenCapture::index(const std::string &window)
     return i;
 }
 
-ScreenCaptureSource::ScreenCaptureSource(uint64_t id) : StreamSource(id), failure_(FAIL_NONE)
+#if defined(LINUX)
+
+std::string ScreenCapture::add(const FreedesktopToolkit::ScreenCastResult &result, const std::string &windowname)
+{
+    std::lock_guard<std::mutex> lock(access_);
+
+    // keep the name asked for, or name it after the type of source
+    std::string name = windowname;
+    auto taken = [&](const std::string &n) {
+        return n.empty() || n == SCREEN_CAPTURE_SELECT || std::any_of(handles_.cbegin(), handles_.cend(), hasScreenCaptureName(n));
+    };
+    for (int i = 1; taken(name); ++i)
+        name = std::string(result.source_type == SCREENCAST_WINDOW ? "Window " : "Screen ") + std::to_string(i);
+
+    GstToolkit::PipelineConfig config;
+    config.stream = "video/x-raw";
+    config.width = result.width > 0 ? result.width : 1920;
+    config.height = result.height > 0 ? result.height : 1080;
+
+    ScreenCaptureHandle handle;
+    handle.name = name;
+    handle.pipeline = pipewire_pipeline(result);
+    handle.configs.insert(config);
+    handle.session = result.session;
+    handle.fd = result.fd;
+    handle.restore_token = result.restore_token;
+    handles_.push_back(handle);
+
+    Log::Info("Screen capture '%s' available (%d x %d).", name.c_str(), config.width, config.height);
+    return name;
+}
+
+void ScreenCapture::release(const std::string &windowname)
+{
+    std::lock_guard<std::mutex> lock(access_);
+
+    // end the screen cast of the portal when no source uses it anymore
+    auto h = std::find_if(handles_.begin(), handles_.end(), hasScreenCaptureName(windowname));
+    if (h != handles_.end() && !h->session.empty() && h->associated_sources.empty()) {
+        close_pipewire(h->fd, h->session);
+        handles_.erase(h);
+    }
+}
+
+void ScreenCapture::update()
+{
+    std::lock_guard<std::mutex> lock(access_);
+
+    // remove the handles of screen casts ended by the desktop
+    for (const auto &session : closed_sessions_) {
+        auto h = std::find_if(handles_.begin(), handles_.end(),
+                              [&](const ScreenCaptureHandle &handle) { return handle.session == session; });
+        if (h == handles_.end())
+            continue;
+        for (auto sit = h->associated_sources.begin(); sit != h->associated_sources.end(); ++sit) {
+            Log::Warning("Screen capture %s ended: source %s deleted.", h->name.c_str(), (*sit)->name().c_str());
+            // the stream is deleted by the first source only
+            if (sit != h->associated_sources.begin())
+                (*sit)->stream_ = nullptr;
+            (*sit)->trash();
+        }
+        if (h->fd > -1)
+            ::close(h->fd);
+        handles_.erase(h);
+    }
+    closed_sessions_.clear();
+}
+
+#endif
+
+ScreenCaptureSource::ScreenCaptureSource(uint64_t id) : StreamSource(id), failure_(FAIL_NONE), request_(nullptr), pipewire_(false)
 {
     // set symbol
     symbol_ = new Symbol(Symbol::SCREEN, glm::vec3(0.75f, 0.75f, 0.01f));
@@ -337,7 +564,15 @@ ScreenCaptureSource::ScreenCaptureSource(uint64_t id) : StreamSource(id), failur
 
 ScreenCaptureSource::~ScreenCaptureSource()
 {
+#if defined(LINUX)
+    if (request_)
+        abandon_portal(request_);
+    std::string w = window_;
     unsetWindow();
+    ScreenCapture::manager().release(w);
+#else
+    unsetWindow();
+#endif
 }
 
 void ScreenCaptureSource::unsetWindow()
@@ -374,13 +609,47 @@ void ScreenCaptureSource::reconnect()
     setWindow(d);
 }
 
-void ScreenCaptureSource::setWindow(const std::string &windowname)
+void ScreenCaptureSource::setWindow(const std::string &name)
 {
-    if (window_.compare(windowname) == 0)
-        return;
-
     // instanciate and wait for monitor initialization if not already initialized
     ScreenCapture::manager().reload();
+
+    std::string windowname = name;
+
+#if defined(LINUX)
+    // Wayland: ask the user to select a new screen or window, or restore
+    // one not captured yet (e.g. when loading a session). The source keeps
+    // its current window until the selection is done (see update)
+    if (ScreenCapture::manager().portal_) {
+        std::string wanted = windowname;
+        if (wanted.empty() || ScreenCapture::manager().index(wanted) < 0) {
+            if (request_)
+                abandon_portal(request_);
+            request_ = request_portal(wanted, wanted.empty() ? "" : restore_token_);
+            if (wanted.empty())
+                Log::Info("Select the screen or window to capture.");
+            else
+                Log::Info("Restoring the screen capture '%s'.", wanted.c_str());
+            return;
+        }
+    }
+#endif
+
+#if defined(APPLE)
+    // sessions saved when macOS had a single screen capture name it so; it
+    // was the capture of the main screen, which is the first one
+    if (windowname == SCREEN_CAPTURE_NAME) {
+        ScreenCapture::manager().access_.lock();
+        auto h = std::find_if(ScreenCapture::manager().handles_.cbegin(), ScreenCapture::manager().handles_.cend(),
+                              [](const ScreenCaptureHandle &handle) { return handle.pipeline == macos_screen_pipeline(0); });
+        if (h != ScreenCapture::manager().handles_.cend())
+            windowname = h->name;
+        ScreenCapture::manager().access_.unlock();
+    }
+#endif
+
+    if (window_.compare(windowname) == 0)
+        return;
 
     // if changing device
     if (!window_.empty())
@@ -400,6 +669,11 @@ void ScreenCaptureSource::setWindow(const std::string &windowname)
 
     // found a device handle
     if ( h != ScreenCapture::manager().handles_.end()) {
+
+        // keep the token to restore the selection of the portal
+        if (!h->restore_token.empty())
+            restore_token_ = h->restore_token;
+        pipewire_ = !h->session.empty();
 
         // find if a DeviceHandle with this device name already has a stream that is open
         if ( h->stream != nullptr ) {
@@ -422,19 +696,48 @@ void ScreenCaptureSource::setWindow(const std::string &windowname)
                 g_printerr(" - %s %s %d x %d  %.1f fps\n", (*it).stream.c_str(), (*it).format.c_str(), (*it).width, (*it).height, fps);
             }
 #endif
+#if defined(APPLE)
+            if (!screen_recording_allowed()) {
+                unplug();
+                Log::Warning("Screen capture needs the permission to record the screen: allow vimix in "
+                             "System Settings > Privacy & Security > Screen & System Audio Recording, "
+                             "then restart vimix.");
+            }
+            else
+#endif
             if (!confs.empty()) {
                 GstToolkit::PipelineConfig best = *confs.rbegin();
+#if defined(APPLE)
+                // avfvideosrc offers ARGB but fails with it; force BGRA
+                if (GstToolkit::isRGBFormat(best.format))
+                    best.format = "BGRA";
+#endif
                 float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
                 Log::Info("ScreenCapture %s selected its optimal config: %s %s %dx%d@%.1ffps", window_.c_str(), best.stream.c_str(), best.format.c_str(), best.width, best.height, fps);
 
-                pipeline << " ! " << best.stream;
-                if (!best.format.empty())
-                    pipeline << ",format=" << best.format;
-#ifndef APPLE                    
-                pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
+                bool glmemory = false;
+#if defined(APPLE)
+                // avfvideosrc gives the screen in system memory only; just upload it to GLMemory
+                glmemory = Stream::glMemoryAvailable();
+                if (glmemory) {
+                    pipeline << " ! " << best.stream;
+                    if (!best.format.empty())
+                        pipeline << ",format=" << best.format;
+                    pipeline << " ! queue ! glupload ! glcolorconvert ! video/x-raw(memory:GLMemory),format=RGBA,texture-target=2D";
+                }
+                else
 #endif
-                // convert (force alpha to 1)
-                pipeline << " ! alpha alpha=1 ! queue ! videoconvert ! videoscale";
+                {
+                    // (pipewiresrc negotiates its variable framerate)
+                    if (h->session.empty()) {
+                        pipeline << " ! " << best.stream;
+                        if (!best.format.empty())
+                            pipeline << ",format=" << best.format;
+                        pipeline << ",framerate=" << best.fps_numerator << "/" << best.fps_denominator;
+                    }
+                    // convert (force alpha to 1)
+                    pipeline << " ! alpha alpha=1 ! queue ! videoconvert ! videoscale";
+                }
 
                 // delete and reset render buffer to enforce re-init of StreamSource
                 if (renderbuffer_)
@@ -445,7 +748,7 @@ void ScreenCaptureSource::setWindow(const std::string &windowname)
                 stream_ = h->stream = new Stream;
 
                 // open gstreamer
-                h->stream->open( pipeline.str(), best.width, best.height);
+                h->stream->open( pipeline.str(), best.width, best.height, glmemory);
                 h->stream->play(true);
             }
         }
@@ -469,7 +772,8 @@ void ScreenCaptureSource::setActive (bool on)
     // try to activate (may fail if source is cloned)
     Source::setActive(on);
 
-    if (stream_) {
+    // pipewiresrc fails to go from PAUSED to PLAYING (flushing in 1.6)
+    if (stream_ && !pipewire_) {
         // change status of stream (only if status changed)
         if (active_ != was_active) {
 
@@ -488,6 +792,51 @@ void ScreenCaptureSource::setActive (bool on)
 
 }
 
+void ScreenCaptureSource::update(float dt)
+{
+#if defined(LINUX)
+    // Wayland: the desktop may have ended screen casts
+    if (ScreenCapture::manager().portal_)
+        ScreenCapture::manager().update();
+
+    // Wayland: the user selected (or cancelled) in the dialog of the portal
+    if (request_) {
+        std::unique_lock<std::mutex> lock(request_->access);
+        if (request_->done) {
+            FreedesktopToolkit::ScreenCastResult result = request_->result;
+            std::string wanted = request_->window;
+            lock.unlock();
+            request_.reset();
+            if (result.success)
+                setWindow(ScreenCapture::manager().add(result, wanted));
+            else {
+                if (result.error.empty())
+                    Log::Info("Screen capture cancelled.");
+                else
+                    Log::Warning("Screen capture failed: %s.", result.error.c_str());
+                // a new source without window is useless
+                if (window_.empty())
+                    trash();
+            }
+        }
+    }
+#endif
+
+    StreamSource::update(dt);
+}
+
+void ScreenCaptureSource::play(bool on)
+{
+    // pipewiresrc fails to go from PAUSED to PLAYING (flushing in 1.6)
+    if (!pipewire_)
+        StreamSource::play(on);
+}
+
+bool ScreenCaptureSource::playable() const
+{
+    return !pipewire_ && StreamSource::playable();
+}
+
 void ScreenCaptureSource::accept(Visitor& v)
 {
     StreamSource::accept(v);
@@ -504,7 +853,7 @@ Source::Failure ScreenCaptureSource::failed() const
 
 glm::ivec2 ScreenCaptureSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_DEVICE_SCREEN);
+    return glm::ivec2(ICON_VI_SOURCE_DEVICE_SCREEN);
 }
 
 std::string ScreenCaptureSource::info() const

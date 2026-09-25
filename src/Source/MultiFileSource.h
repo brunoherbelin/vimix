@@ -16,6 +16,7 @@ struct MultiFileSequence {
 
     MultiFileSequence ();
     MultiFileSequence (const std::list<std::string> &list_files);
+    MultiFileSequence (const std::string &path);
     bool valid () const;
     bool operator != (const MultiFileSequence& b);
 };

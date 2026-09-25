@@ -1,7 +1,7 @@
 {
     "app-id": "io.github.brunoherbelin.Vimix",
     "runtime": "org.freedesktop.Platform",
-    "runtime-version": "25.08",
+    "runtime-version": "26.08",
     "sdk": "org.freedesktop.Sdk",
     "command": "launch_vimix.sh",
     "rename-desktop-file": "vimix.desktop",

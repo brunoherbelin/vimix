@@ -639,4 +639,24 @@ std::string SystemToolkit::filename_dateprefix(const std::string& path, const st
     return filename.str();
 }
 
+SystemToolkit::StderrSilencer::StderrSilencer() : saved_(-1)
+{
+    fflush(stderr);
+    saved_ = dup(fileno(stderr));
+    FILE* devnull = fopen("/dev/null", "w");
+    if (devnull != nullptr) {
+        dup2(fileno(devnull), fileno(stderr));
+        fclose(devnull);
+    }
+}
+
+SystemToolkit::StderrSilencer::~StderrSilencer()
+{
+    if (saved_ >= 0) {
+        fflush(stderr);
+        dup2(saved_, fileno(stderr));
+        close(saved_);
+    }
+}
+
 

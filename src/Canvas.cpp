@@ -67,13 +67,22 @@ void Canvas::terminate()
 
     // delete all canvases
     GeometryView *geometryView = static_cast<GeometryView *>(Mixer::manager().view(View::GEOMETRY));
-    while ( canvases_.size() > 0 ) {        
+    while ( canvases_.size() > 0 ) {
         Source *tmp = canvases_.back();
         geometryView->detach(tmp);
         canvases_.pop_back();
         delete tmp;
     }
 
+    // the input frame buffer belongs to the Mixer session: only forget it
+    framebuffer_ = nullptr;
+
+    // delete the output session (it owns a frame buffer as large as all monitors)
+    {
+        std::lock_guard<std::mutex> lock(output_mutex_);
+        delete output_session_;
+        output_session_ = nullptr;
+    }
 }
 
 void Canvas::setInputFrameBuffer(FrameBuffer *fb)

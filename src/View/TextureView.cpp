@@ -35,6 +35,7 @@
 #include "Toolkit/ImGuiToolkit.h"
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Mixer.h"
 #include "Source/Source.h"
 #include "Settings.h"
@@ -840,14 +841,14 @@ void TextureView::draw()
                         if(TabletInput::instance().isEnabled() && TabletInput::instance().hasPressure()) {
                             static bool enable_tablet_input = false;
                             enable_tablet_input = Settings::application.brush_pressure_mode & TabletInput_brush_size;
-                            ImGuiToolkit::ButtonIconToggle(13, 0, &enable_tablet_input, "Tablet pressure sensitive");
+                            ImGuiToolkit::ButtonIconToggle(ICON_VI_TABLET_PRESSURE, &enable_tablet_input, "Tablet pressure sensitive");
                             if (enable_tablet_input)
                                 Settings::application.brush_pressure_mode |= TabletInput_brush_size;
                             else 
                                 Settings::application.brush_pressure_mode &= ~TabletInput_brush_size;
                         }
                         // max brush size
-                        ImGuiToolkit::Indication("Large  ", 16, 1);
+                        ImGuiToolkit::Indication("Large  ", ICON_VI_BRUSH_LARGE);
                         if (ImGui::VSliderInt("##BrushSize", ImVec2(30,260), &pixel_size, pixel_size_min, pixel_size_max, "") ){
                             Settings::application.brush.x = CLAMP(float(pixel_size) / edit_source_->frame()->height(), BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
                         }
@@ -856,7 +857,7 @@ void TextureView::draw()
                             ImGui::Text("%d px", pixel_size);
                             ImGui::EndTooltip();
                         }
-                        ImGuiToolkit::Indication("Small  ", 15, 1);
+                        ImGuiToolkit::Indication("Small  ", ICON_VI_BRUSH_SMALL);
                         ImGui::PopFont();
                         ImGui::EndPopup();
                     }
@@ -877,7 +878,7 @@ void TextureView::draw()
                         if(TabletInput::instance().isEnabled() && TabletInput::instance().hasPressure()) {
                             static bool enable_tablet_input = false;
                             enable_tablet_input = Settings::application.brush_pressure_mode & TabletInput_brush_pressure;
-                            ImGuiToolkit::ButtonIconToggle(13, 0, &enable_tablet_input, "Tablet pressure sensitive");
+                            ImGuiToolkit::ButtonIconToggle(ICON_VI_TABLET_PRESSURE, &enable_tablet_input, "Tablet pressure sensitive");
                             if (enable_tablet_input)
                                 Settings::application.brush_pressure_mode |= TabletInput_brush_pressure;
                             else 
@@ -1038,7 +1039,7 @@ void TextureView::draw()
                             ImGui::Text("%.d%% blur", blur_percent);
                             ImGui::EndTooltip();
                         }
-                        ImGuiToolkit::Indication("Sharp ", 8, 16);
+                        ImGuiToolkit::Indication("Sharp ", ICON_VI_BLUR_SHARP);
                         ImGui::PopFont();
                         ImGui::EndPopup();
                     }

@@ -448,6 +448,11 @@ void Source::setName (const std::string &name)
     if (!name.empty())
         name_ = BaseToolkit::unspace( BaseToolkit::transliterate(name) );
     else
+        name_.clear();
+
+    // no name given, or nothing remains after transliteration
+    // (e.g. a name made only of characters removed by transliterate, like "@!#$*%~")
+    if (name_.empty())
         name_ = "Source";
 
     initials_[0] = std::toupper( name_.front(), std::locale("C") );
@@ -557,9 +562,11 @@ void Source::render()
     else {
         // render the view into frame buffer
         // NB: this also applies the color correction shader
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
-        renderbuffer_->end();
+        // NB: begin() fails if the frame buffer could not be allocated
+        if ( renderbuffer_->begin() ) {
+            texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+            renderbuffer_->end();
+        }
         ready_ = true;
     }
 }
@@ -742,7 +749,8 @@ float Source::alpha(bool allow_negative) const
 
 bool Source::visible() const
 {
-    return blendingShader()->color.a > - EPSILON;
+    float dist = glm::length( glm::vec2(group(View::MIXING)->translation_) );
+    return dist < 1.f + EPSILON;
 }
 
 

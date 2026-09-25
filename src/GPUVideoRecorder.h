@@ -9,6 +9,7 @@
 #include <gst/app/gstappsrc.h>
 
 #include "FrameGrabber.h"
+#include "Toolkit/GstToolkit.h"
 
 /**
  * @brief The GPUVideoRecorder class provides a full-GPU video recording pipeline
@@ -36,22 +37,7 @@ class GPUVideoRecorder : public FrameGrabber
 {
 public:
 
-    // Hardware encoder profiles
-    typedef enum {
-        NVENC_H264_REALTIME = 0,
-        NVENC_H264_HQ,
-        NVENC_H265_REALTIME,
-        NVENC_H265_HQ,
-        VAAPI_H264_REALTIME,
-        VAAPI_H264_HQ,
-        VAAPI_H265_REALTIME,
-        VAAPI_H265_HQ,
-        PROFILE_COUNT
-    } Profile;
-
-    static const char* profile_name[PROFILE_COUNT];
-    static const char* profile_encoder[PROFILE_COUNT];
-    static const int   framerate_preset[3];
+    static const int framerate_preset[3];
 
     GPUVideoRecorder(const std::string &basename = std::string());
     virtual ~GPUVideoRecorder();
@@ -130,7 +116,7 @@ private:
     // Configuration
     gint width_;
     gint height_;
-    Profile profile_;
+    GstToolkit::Profile encoder_;
     std::string filename_;
     std::string basename_;
 
@@ -149,11 +135,14 @@ private:
     static void clbck_enough_data(GstAppSrc *src, gpointer user_data);
     static GstBusSyncReply bus_sync_handler(GstBus *bus, GstMessage *msg, gpointer user_data);
 
-    // Helper to check encoder availability
-    static bool isEncoderAvailable(Profile profile);
+    // GPU-accelerated recording is only offered for the H264/H265 profiles
+    // (GstToolkit::H264_RT .. GstToolkit::H265_HQ); the actual
+    // hardware encoder pipeline (NVENC or VAAPI, whichever is available) is
+    // supplied by GstToolkit::getHardwareEncodingPipeline().
+    static bool isEncoderAvailable(GstToolkit::Profile profile);
 
     // Build pipeline description
-    std::string buildPipeline(Profile profile, GstCaps *write_caps);
+    std::string buildPipeline(GstToolkit::Profile profile);
 };
 
 #endif // USE_GST_OPENGL_SYNC_HANDLER

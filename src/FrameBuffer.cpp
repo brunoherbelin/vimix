@@ -18,6 +18,8 @@
 **/
 
 #include <sstream>
+#include <cmath>
+#include <list>
 
 #include "FrameBuffer.h"
 #include "Resource.h"
@@ -30,35 +32,173 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 
-#ifndef NDEBUG
-#define FRAMEBUFFER_DEBUG
-#endif
-
 unsigned long FrameBuffer::total_mem_usage = 0;
 unsigned long FrameBuffer::memory_usage()
 {
     return total_mem_usage;
 }
 
+#ifdef FRAMEBUFFER_DEBUG
+// list of all frame buffers alive; function-local static to be immune
+// to static initialization order (frame buffers can be created early)
+static std::list<FrameBuffer *>& registry()
+{
+    static std::list<FrameBuffer *> list_;
+    return list_;
+}
+#endif
+
+//
+// GPU limits & memory estimation
+//
+
+glm::vec3 FrameBuffer::maxResolution()
+{
+    // GL_MAX_TEXTURE_SIZE cannot change during the life of the GL context: query it once
+    static GLint max_texture_size = 0;
+    if (max_texture_size < 1) {
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
+        // no valid GL context yet: assume the conservative minimum guaranteed by GL 3.3
+        if (max_texture_size < 1)
+            max_texture_size = 4096;
+    }
+    return glm::vec3(max_texture_size, max_texture_size, 0.f);
+}
+
+unsigned long FrameBuffer::memoryBudget()
+{
+    static unsigned long budget = 0;
+    if (budget == 0) {
+        // total RAM of the graphics card, in kBytes (or INT_MAX if unknown)
+        const glm::ivec2 RAM = Rendering::getGPUMemoryInformation();
+        if (RAM.y > 0 && RAM.y < INT_MAX)
+            // a single frame buffer should not take more than a third of the GPU RAM
+            budget = ( static_cast<unsigned long>(RAM.y) * 1024UL ) / 3UL;
+        else
+            // no information available: apply a fixed limit
+            budget = FRAMEBUFFER_MAX_MEMORY;
+    }
+    return budget;
+}
+
+unsigned long FrameBuffer::memoryUsage(glm::vec3 resolution, FrameBufferFlags flags)
+{
+    // reject NaN, infinity and degenerate resolutions
+    // (e.g. a division by a null scale when reading a session file)
+    if ( !std::isfinite(resolution.x) || !std::isfinite(resolution.y) ||
+         resolution.x < float(FRAMEBUFFER_MIN_SIZE) || resolution.y < float(FRAMEBUFFER_MIN_SIZE) ||
+         resolution.x > float(INT_MAX) || resolution.y > float(INT_MAX) )
+        return 0;
+
+    // NB: all computed in unsigned long to avoid integer overflow on large resolutions
+    const unsigned long w = static_cast<unsigned long>(resolution.x);
+    const unsigned long h = static_cast<unsigned long>(resolution.y);
+    const unsigned long bpp = (flags & FrameBuffer_alpha) ? 4UL : 3UL;
+
+    // the RGB(A) texture
+    unsigned long bytes = w * h * bpp;
+
+    // the mipmap levels add about a third
+    if (flags & FrameBuffer_mipmap) {
+        unsigned long mw = w, mh = h;
+        for (int i = 1; i < MIPMAP_LEVEL; ++i) {
+            mw = MAX(1UL, mw / 2UL);
+            mh = MAX(1UL, mh / 2UL);
+            bytes += mw * mh * bpp;
+        }
+    }
+
+    // the multisample texture holds N samples per pixel
+    // (same condition as in init(), which drops the flag if multisampling is disabled)
+    if ( (flags & FrameBuffer_multisampling) && Settings::application.render.multisampling > 0 )
+        bytes += static_cast<unsigned long>(Settings::application.render.multisampling) * w * h * bpp;
+
+    return bytes;
+}
+
+bool FrameBuffer::isValidResolution(glm::vec3 resolution, FrameBufferFlags flags)
+{
+    // not finite, or smaller than one pixel
+    const unsigned long bytes = memoryUsage(resolution, flags);
+    if (bytes == 0)
+        return false;
+
+    // larger than what the GPU can store in a texture
+    const glm::vec3 maxres = maxResolution();
+    if (resolution.x > maxres.x || resolution.y > maxres.y)
+        return false;
+
+    // more than a single frame buffer is allowed to take
+    return bytes <= memoryBudget();
+}
+
 FrameBuffer::FrameBuffer(glm::vec3 resolution, FrameBufferFlags flags): flags_(flags),
-    textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0), mem_usage_(0)
+    textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0),
+    failed_(false), mem_usage_(0)
 {
     attrib_.viewport = glm::ivec2(resolution);
     setProjectionArea(glm::vec4(-1.f, 1.f, 1.f, -1.f));
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, 0.f);
+#ifdef FRAMEBUFFER_DEBUG
+    registry().push_back(this);
+#endif
 }
 
 FrameBuffer::FrameBuffer(uint width, uint height, FrameBufferFlags flags): flags_(flags),
-    textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0), mem_usage_(0)
+    textureid_(0), multisampling_textureid_(0), framebufferid_(0), multisampling_framebufferid_(0),
+    failed_(false), mem_usage_(0)
 {
     attrib_.viewport = glm::ivec2(width, height);
     setProjectionArea(glm::vec4(-1.f, 1.f, 1.f, -1.f));
     attrib_.clear_color = glm::vec4(0.f, 0.f, 0.f, 0.f);
+#ifdef FRAMEBUFFER_DEBUG
+    registry().push_back(this);
+#endif
 }
 
 void FrameBuffer::init()
 {
-    mem_usage_ = 0;
+    // a previous attempt already failed: do not try (nor warn) again
+    if (failed_)
+        return;
+
+    // refuse a resolution the GPU cannot store, or that would take an
+    // unreasonable amount of memory (most likely given by mistake)
+    if ( !isValidResolution(resolution(), flags_) ) {
+        failed_ = true;
+        const glm::vec3 maxres = maxResolution();
+        Log::Warning("Frame buffer %d x %d not created: it would need %lu MB of GPU memory.\n\n"
+                     "The maximum is %d x %d pixels and %lu MB per frame buffer.",
+                     attrib_.viewport.x, attrib_.viewport.y,
+                     memoryUsage(resolution(), flags_) / 1000000,
+                     (int) maxres.x, (int) maxres.y, memoryBudget() / 1000000);
+        return;
+    }
+
+    // memory needed for this frame buffer (in Bytes)
+    const unsigned long usage = memoryUsage(resolution(), flags_);
+
+    // test currently available memory if the buffer is big (more than 20 MByte)
+    if ( usage > 20000000UL ) {
+
+        // Obtain RAM usage in GPU (if possible); values in kByte, INT_MAX if unknown
+        const glm::ivec2 RAM = Rendering::getGPUMemoryInformation();
+
+        // bad case: not enough RAM available (asking for twice the needed space)
+        if ( RAM.x < INT_MAX && static_cast<unsigned long>(RAM.x) * 1024UL < usage * 2UL ) {
+            failed_ = true;
+            Log::Warning("Frame buffer %d x %d not created: only %d MB of RAM left in the "
+                         "graphics card to allocate %lu MB.",
+                         attrib_.viewport.x, attrib_.viewport.y, RAM.x / 1000, usage / 1000000);
+            if (RAM.y < INT_MAX)
+                Log::Warning("Only %.1f %% of %d MB GPU RAM available.",
+                             100.f * float(RAM.x) / float(RAM.y), RAM.y / 1000);
+            return;
+        }
+    }
+
+    // forget any error that occured before, to be able to detect ours
+    while (glGetError() != GL_NO_ERROR) { /* drain */ }
 
     // generate texture
     glGenTextures(1, &textureid_);
@@ -75,8 +215,6 @@ void FrameBuffer::init()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     }
 
-    // calculate GPU memory usage (for debug only)
-    mem_usage_ += ( attrib_.viewport.x * attrib_.viewport.y * (flags_ & FrameBuffer_alpha?4:3) );
 
     // common texture parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -84,6 +222,18 @@ void FrameBuffer::init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    // did the driver accept to allocate the texture?
+    // NB: glCheckFramebufferStatus does NOT report GL_OUT_OF_MEMORY
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        failed_ = true;
+        Log::Warning("Frame buffer %d x %d not created: the graphics card refused to "
+                     "allocate the texture (OpenGL error 0x%x).",
+                     attrib_.viewport.x, attrib_.viewport.y, err);
+        reset();
+        return;
+    }
 
     // create a framebuffer object
     glGenFramebuffers(1, &framebufferid_);
@@ -110,15 +260,24 @@ void FrameBuffer::init()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 
+        // did the driver accept to allocate the multisample texture?
+        err = glGetError();
+        if (err != GL_NO_ERROR) {
+            failed_ = true;
+            Log::Warning("Frame buffer %d x %d not created: the graphics card refused to "
+                         "allocate the multisampling texture (OpenGL error 0x%x).",
+                         attrib_.viewport.x, attrib_.viewport.y, err);
+            reset();
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            return;
+        }
+
         // attach the multisampled texture to FBO (framebufferid_  currently binded)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, multisampling_textureid_, 0);
 
         // create an intermediate FBO : this is the FBO to use for reading
         glGenFramebuffers(1, &multisampling_framebufferid_);
         glBindFramebuffer(GL_FRAMEBUFFER, multisampling_framebufferid_);
-
-        // calculate GPU memory usage
-        mem_usage_ += ( Settings::application.render.multisampling * attrib_.viewport.x * attrib_.viewport.y * (flags_ & FrameBuffer_alpha?4:3) );
 
 #ifdef FRAMEBUFFER_DEBUG
         g_printerr("multi sampling (%d) - ", Settings::application.render.multisampling);
@@ -129,43 +288,37 @@ void FrameBuffer::init()
     // (i.e. the multisampling_framebufferid_ FBO if enabled, default framebufferid_ otherwise)
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureid_, 0);
 
-    // attach multiple FBOs to the mipmaped texture
-    if (flags_ & FrameBuffer_mipmap) {
-
-        // calculate GPU memory usage
-        int width = attrib_.viewport.x;
-        int height = attrib_.viewport.y;
-        for(int i=1; i < MIPMAP_LEVEL; ++i) {
-            width = MAX(1, (width / 2));
-            height = MAX(1, (height / 2));
-            mem_usage_ += ( width * height * (flags_ & FrameBuffer_alpha?4:3) );
-        }
 #ifdef FRAMEBUFFER_DEBUG
+    if (flags_ & FrameBuffer_mipmap)
         g_printerr("mipmap (%d) - ", MIPMAP_LEVEL);
 #endif
-    }
 
-    total_mem_usage += mem_usage_;
-
-    if (  !checkFramebufferStatus() )
+    if (  !checkFramebufferStatus() ) {
+        failed_ = true;
         reset();
+    }
+    else {
+        // success: account for the memory now used by this frame buffer
+        // NB: mem_usage_ is non null if and only if it is counted in total_mem_usage
+        mem_usage_ = usage;
+        total_mem_usage += mem_usage_;
 #ifdef FRAMEBUFFER_DEBUG
-    else
-         g_printerr("~%lu Bytes allocated (%lu kB total)\n", mem_usage_, total_mem_usage / 1000);
+         g_printerr("~%lu kB allocated \t(%lu kB total)\n", mem_usage_ / 1000, total_mem_usage / 1000);
 #endif
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 FrameBuffer::~FrameBuffer()
 {
-    total_mem_usage -= mem_usage_;
-
 #ifdef FRAMEBUFFER_DEBUG
     if (framebufferid_)
-         g_printerr("Framebuffer %d deleted - ~%lu B freed (%lu kB total)\n", framebufferid_, mem_usage_, total_mem_usage / 1000);
+         g_printerr("Framebuffer %d deleted - ~%lu kB freed (%lu kB total)\n", framebufferid_, mem_usage_ / 1000, (total_mem_usage - mem_usage_) / 1000);
+    registry().remove(this);
 #endif
 
+    // NB: reset() discounts mem_usage_ from total_mem_usage
     reset();
 }
 
@@ -183,6 +336,11 @@ void FrameBuffer::reset()
     if (multisampling_textureid_)
         glDeleteTextures(1, &multisampling_textureid_);
     multisampling_textureid_ = 0;
+
+    // this is the only place where the total memory usage is decreased:
+    // mem_usage_ is null unless a successful init() added it to the total
+    total_mem_usage -= mem_usage_;
+    mem_usage_ = 0;
 }
 
 uint FrameBuffer::texture() const
@@ -212,45 +370,32 @@ glm::vec3 FrameBuffer::resolution() const
     return glm::vec3(attrib_.viewport.x, attrib_.viewport.y, 0.f);
 }
 
-glm::vec3 FrameBuffer::maxResolution()
-{
-    GLint max_texture_size = 0;
-    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
-    return glm::vec3(max_texture_size, max_texture_size, 0.f);
-}
-
 void FrameBuffer::resize(glm::vec3 res)
 {
-    if (framebufferid_) {
-        if (attrib_.viewport.x != res.x || attrib_.viewport.y != res.y)
-        {
-            // de-init
-            glDeleteFramebuffers(1, &framebufferid_);
-            framebufferid_ = 0;
+    const glm::ivec2 newviewport = glm::ivec2(res);
 
-            if (multisampling_framebufferid_)
-                glDeleteFramebuffers(1, &multisampling_framebufferid_);
-            multisampling_framebufferid_ = 0;
+    // nothing to do if the resolution is unchanged
+    if (attrib_.viewport == newviewport)
+        return;
 
-            if (textureid_)
-                glDeleteTextures(1, &textureid_);
-            textureid_ = 0;
+    // de-init (this frees the GL objects and discounts the memory usage)
+    reset();
 
-            if (multisampling_textureid_)
-                glDeleteTextures(1, &multisampling_textureid_);
-            multisampling_textureid_ = 0;
+    // change resolution
+    attrib_.viewport = newviewport;
 
-            // change resolution
-            attrib_.viewport = glm::ivec2(res);
-            mem_usage_ = 0;
-        }
-    }
+    // a new resolution deserves a new attempt at allocation
+    failed_ = false;
 }
 
-void FrameBuffer::begin(bool clear)
+bool FrameBuffer::begin(bool clear)
 {
     if (!framebufferid_)
         init();
+
+    // allocation failed: do NOT bind framebuffer 0, this is the screen!
+    if (!framebufferid_)
+        return false;
 
     glBindFramebuffer(GL_FRAMEBUFFER, framebufferid_);
 
@@ -258,6 +403,8 @@ void FrameBuffer::begin(bool clear)
 
     if (clear)
         glClear(GL_COLOR_BUFFER_BIT);
+
+    return true;
 }
 
 void FrameBuffer::end()
@@ -323,6 +470,10 @@ bool FrameBuffer::blit(FrameBuffer *destination)
     if (!destination->framebufferid_)
         destination->init();
 
+    // destination could not be allocated
+    if (!destination->framebufferid_)
+        return false;
+
     if (flags_ & FrameBuffer_multisampling)
         glBindFramebuffer(GL_READ_FRAMEBUFFER, multisampling_framebufferid_);
     else
@@ -375,24 +526,9 @@ bool FrameBuffer::checkFramebufferStatus()
         Log::Warning(" GL_FRAMEBUFFER_UNDEFINED​ is returned if target​ is the default framebuffer, but the default framebuffer does not exist.");
         break;
     case GL_FRAMEBUFFER_COMPLETE:
-        {
-            // success
-            ret = true;
-            // test available memory if created buffer is big (more than 20 MByte)
-            if ( mem_usage_ > (20000000) ) {
-
-                // Obtain RAM usage in GPU (if possible)
-                glm::ivec2 RAM = Rendering::getGPUMemoryInformation();
-
-                // bad case: not enough RAM, we should warn the user (testing values in KByte, for twice needed space)
-                if ( uint(RAM.x) < mem_usage_ / 2000 ) {
-                    Log::Warning("Critical allocation of frame buffer: only %d kB RAM in "
-                             "graphics card to allocate %lu framebuffer.", RAM.x, mem_usage_ / 1000);
-                    if (RAM.y < INT_MAX)
-                        Log::Warning("Only %.1f %% of %d kB GPU RAM available.", 100.f*float(RAM.x)/float(RAM.y), RAM.y);
-                }
-            }
-        }
+        // success
+        // NB: available GPU memory is tested in init(), before allocation
+        ret = true;
         break;
     default:
         Log::Warning(" GL_FRAMEBUFFER is in an UNKNOWN state.");
@@ -402,6 +538,23 @@ bool FrameBuffer::checkFramebufferStatus()
     return ret;
 }
 
+
+#ifdef FRAMEBUFFER_DEBUG
+void FrameBuffer::dumpRegistry()
+{
+    g_printerr("\nFramebuffer: %lu buffer(s) still alive, %lu kB not freed\n",
+               (unsigned long) registry().size(), total_mem_usage / 1000);
+
+    for (auto fb = registry().cbegin(); fb != registry().cend(); ++fb) {
+        g_printerr("   %p id %d \t%d x %d \t%s%s%s \t~%lu kB\n", (void *) *fb,
+                   (*fb)->framebufferid_, (*fb)->attrib_.viewport.x, (*fb)->attrib_.viewport.y,
+                   ((*fb)->flags_ & FrameBuffer_alpha) ? "RGBA" : "RGB ",
+                   ((*fb)->flags_ & FrameBuffer_multisampling) ? " multisampling" : "",
+                   ((*fb)->flags_ & FrameBuffer_mipmap) ? " mipmap" : "",
+                   (*fb)->mem_usage_ / 1000);
+    }
+}
+#endif
 
 glm::mat4 FrameBuffer::projection() const
 {
@@ -520,6 +673,10 @@ bool FrameBuffer::fill(FrameBufferImage *image)
 {
     if (!framebufferid_)
         init();
+
+    // could not be allocated
+    if (!framebufferid_)
+        return false;
 
     // only compatible for RGB FrameBuffers
     if (flags_ & FrameBuffer_alpha || flags_ & FrameBuffer_multisampling)

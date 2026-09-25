@@ -28,6 +28,7 @@
 #include "Toolkit/BaseToolkit.h"
 
 #include "StreamSource.h"
+#include "IconsVimixImage.h"
 
 
 GenericStreamSource::GenericStreamSource(uint64_t id) : StreamSource(id)
@@ -78,7 +79,7 @@ void GenericStreamSource::accept(Visitor& v)
 
 glm::ivec2 GenericStreamSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_GSTREAMER);
+    return glm::ivec2(ICON_VI_SOURCE_GSTREAMER);
 }
 
 std::string GenericStreamSource::info() const

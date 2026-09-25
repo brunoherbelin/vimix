@@ -52,6 +52,9 @@
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
 #include <GLFW/glfw3native.h>
+#ifdef APPLE
+#include <OpenGL/OpenGL.h>  // CGLGetCurrentContext
+#endif
 #endif
 
 // vimix
@@ -65,6 +68,7 @@
 #include "UserInterfaceManager.h"
 #include "Scene/Primitives.h"
 #include "TabletInput.h"
+#include "FrameBuffer.h"
 
 #include "RenderingManager.h"
 
@@ -267,6 +271,12 @@ bool Rendering::init()
     //  no vsync on main opengl context (blocs rendering if main window is in background on some systems)
     glfwSwapInterval(0);
 
+    // query and cache GPU limits now that the OpenGL context is current
+    // (FrameBuffer relies on them to refuse allocating oversized frame buffers)
+    const glm::vec3 maxres = FrameBuffer::maxResolution();
+    Log::Info("OpenGL maximum texture size %d x %d, frame buffer memory budget %lu MB",
+              (int) maxres.x, (int) maxres.y, FrameBuffer::memoryBudget() / 1000000);
+
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER    
     global_display = NULL;
@@ -275,10 +285,19 @@ bool Rendering::init()
     global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
                                                    GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
 #elif GST_GL_HAVE_PLATFORM_CGL
-    // macOS: Disable OpenGL context sharing due to NSOpenGLContext threading incompatibility
-    // GStreamer's Cocoa GL implementation requires main thread for context operations,
-    // but dispatches from worker threads cause deadlock with GLFW's event loop.
-    Log::Info("OpenGL context sharing disabled on macOS (NSOpenGLContext threading limitations)");
+    // macOS: wrap the CGL context of the main window (current here), an OpenGL
+    // 3.3 core profile context, for GStreamer to create its own contexts shared
+    // with it; the display is that of Cocoa.
+    global_display = gst_gl_display_new();
+    if (global_display != NULL)
+        global_gl_context = gst_gl_context_new_wrapped (global_display,
+                                                   (guintptr) CGLGetCurrentContext(),
+                                                   GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL3);
+    if (global_gl_context == NULL) {
+        g_printerr("Failed to wrap GStreamer CGL context\n");
+        Log::Warning("Failed to wrap GStreamer CGL context.");
+        global_display = NULL;
+    }
 #elif GST_GL_HAVE_PLATFORM_GLX
     global_display = (GstGLDisplay*) gst_gl_display_x11_new_with_display( glfwGetX11Display() );
     if (global_display == NULL) {
@@ -567,13 +586,23 @@ glm::ivec2 Rendering::getGPUMemoryInformation()
 
 bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags, int num_buffers)
 {
-    glm::ivec2 RAM = getGPUMemoryInformation();
+    // RAM needed for such FBOs, in Bytes
+    // NB: same estimation as used by FrameBuffer to account for its memory
+    const unsigned long needed = FrameBuffer::memoryUsage(resolution, flags)
+                                 * static_cast<unsigned long>(num_buffers + 1);
 
-    // approximation of RAM needed for such FBO
-    GLint framebufferMemoryInKB = ( resolution.x * resolution.x *
-                                    ((flags & FrameBuffer::FrameBuffer_alpha)?4:3) * ((flags & FrameBuffer::FrameBuffer_multisampling)?2:1) ) / 1024;
+    // invalid resolution
+    if (needed == 0)
+        return false;
 
-    return ( RAM.x > framebufferMemoryInKB * (num_buffers + 1) );
+    // currently available RAM in the graphics card, in kBytes (INT_MAX if unknown)
+    const glm::ivec2 RAM = getGPUMemoryInformation();
+
+    // no information available: rely on the general frame buffer budget
+    if (RAM.x == INT_MAX)
+        return needed <= FrameBuffer::memoryBudget();
+
+    return ( static_cast<unsigned long>(RAM.x) * 1024UL > needed );
 }
 
 glm::vec3 Rendering::monitorsResolution() 

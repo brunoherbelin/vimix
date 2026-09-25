@@ -34,6 +34,7 @@
 
 #include "Mixer.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Source/Source.h"
 #include "Source/CloneSource.h"
 #include "Source/SourceCallback.h"
@@ -109,7 +110,7 @@ void LayerView::draw()
         Source *s = Mixer::manager().currentSource();
         if (s != nullptr && !s->failed() ) {
 
-            if (ImGuiToolkit::BeginMenuIcon( 5, 6, "Blending" )) {
+            if (ImGuiToolkit::BeginMenuIcon( ICON_VI_BLENDING, "Blending" )) {
                 for (auto bmode = Shader::blendingFunction.cbegin();
                     bmode != Shader::blendingFunction.cend();
                     ++bmode) {
@@ -127,16 +128,16 @@ void LayerView::draw()
                 ImGui::EndMenu();
             }
 
-            if (s->icon() == glm::ivec2(ICON_SOURCE_GROUP) )
+            if (s->icon() == glm::ivec2(ICON_VI_SOURCE_GROUP) )
             {
-                if (ImGuiToolkit::SelectableIcon( 7, 2, "Uncover bundle ", false )) {
+                if (ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_UNCOVER, "Uncover bundle ", false )) {
                     Mixer::manager().import( dynamic_cast<SessionSource*>(s) );
                 }
             }
             else {
-                if ( s->cloned() || s->icon() == glm::ivec2(ICON_SOURCE_CLONE)){
+                if ( s->cloned() || s->icon() == glm::ivec2(ICON_VI_SOURCE_CLONE)){
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
-                    ImGuiToolkit::SelectableIcon( 11, 2, "Bundle source", false );
+                    ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_CREATE, "Bundle source", false );
                     ImGui::PopStyleColor(); 
                     if (ImGui::IsItemHovered()) {
                         ImGuiToolkit::ToolTip("Cannot create bundle; clones "
@@ -144,7 +145,7 @@ void LayerView::draw()
                     }
                 }
                 else {
-                    if (ImGuiToolkit::SelectableIcon( 11, 2, "Bundle source ", false )) {
+                    if (ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_CREATE, "Bundle source ", false )) {
                         Mixer::manager().groupCurrent();
                     }
                 }
@@ -170,7 +171,7 @@ void LayerView::draw()
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.8f));
 
         // Blending all selection
-        if (ImGuiToolkit::BeginMenuIcon( 5, 6, "Blending" )) {
+        if (ImGuiToolkit::BeginMenuIcon( ICON_VI_BLENDING, "Blending" )) {
             for (auto bmode = Shader::blendingFunction.cbegin();
                  bmode != Shader::blendingFunction.cend();
                  ++bmode) {
@@ -191,13 +192,13 @@ void LayerView::draw()
 
         // special action of Mixing view
         if (candidate_flatten_group){
-            if (ImGuiToolkit::SelectableIcon( 11, 2, "Bundle selection", false )) {
+            if (ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_CREATE, "Bundle selection", false )) {
                 Mixer::manager().groupSelection();
             }
         }
         else {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
-            ImGuiToolkit::SelectableIcon( 11, 2, "Bundle selection", false );
+            ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_CREATE, "Bundle selection", false );
             ImGui::PopStyleColor(); 
             if (ImGui::IsItemHovered()) {
                 ImGuiToolkit::ToolTip("Cannot create bundle; selection must be "

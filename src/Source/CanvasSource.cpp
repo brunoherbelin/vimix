@@ -26,6 +26,7 @@
 
 #include "Settings.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Log.h"
 #include "FrameBuffer.h"
 #include "Scene/Decorations.h"
@@ -124,10 +125,11 @@ void CanvasSurface::render ()
         // // ensure correct output texture is displayed (could have changed if canvas framebuffer changed)
         // texturesurface_->setTextureIndex( Canvas::manager().framebuffer_->texture() );
 
-        // render 
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::inverse( GlmToolkit::transform(translation, rotation, scale) ), projection);
-        renderbuffer_->end();
+        // render
+        if ( renderbuffer_->begin() ) {
+            texturesurface_->draw(glm::inverse( GlmToolkit::transform(translation, rotation, scale) ), projection);
+            renderbuffer_->end();
+        }
 
         ready_ = true;
     }
@@ -326,7 +328,7 @@ void CanvasSource::accept(Visitor& v)
 
 glm::ivec2 CanvasSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE); // TODO NEW ICON SOURCE_CANVAS
+    return glm::ivec2(ICON_VI_SOURCE); // TODO NEW ICON SOURCE_CANVAS
 }
 
 std::string CanvasSource::info() const

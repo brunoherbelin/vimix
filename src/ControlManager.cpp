@@ -593,32 +593,39 @@ bool Control::init()
     return receiver_ != nullptr;
 }
 
-void Control::update()
+void Control::readGamepad(int glfw_id, uint first_button, uint first_axis)
 {
-    if (glfwJoystickPresent(Settings::application.gamepad_id) == GLFW_TRUE &&
-        glfwJoystickIsGamepad(Settings::application.gamepad_id) == GLFW_TRUE) {
+    if (glfwJoystickPresent(glfw_id) == GLFW_TRUE &&
+        glfwJoystickIsGamepad(glfw_id) == GLFW_TRUE) {
         // read joystick buttons
         int num_buttons = 0;
-        const unsigned char *state_buttons = glfwGetJoystickButtons(Settings::application.gamepad_id, &num_buttons);
+        const unsigned char *state_buttons = glfwGetJoystickButtons(glfw_id, &num_buttons);
 
         // map to Control input array
         input_access_.lock();
-        for (int b = 0; b < MIN(num_buttons, INPUT_JOYSTICK_COUNT_BUTTON); ++b) {
-            input_active[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS;
-            input_values[INPUT_JOYSTICK_FIRST_BUTTON + b] = state_buttons[b] == GLFW_PRESS ? 1.f : 0.f;
+        for (int b = 0; b < MIN(num_buttons, INPUT_GAMEPAD_1_COUNT_BUTTON); ++b) {
+            input_active[first_button + b] = state_buttons[b] == GLFW_PRESS;
+            input_values[first_button + b] = state_buttons[b] == GLFW_PRESS ? 1.f : 0.f;
         }
         input_access_.unlock();
 
         // read joystick axis
         int num_axis = 0;
-        const float *state_axis = glfwGetJoystickAxes(Settings::application.gamepad_id, &num_axis);
+        const float *state_axis = glfwGetJoystickAxes(glfw_id, &num_axis);
         input_access_.lock();
-        for (int a = 0; a < MIN(num_axis, INPUT_JOYSTICK_COUNT_AXIS); ++a) {
-            input_active[INPUT_JOYSTICK_FIRST_AXIS + a] = ABS(state_axis[a]) > 0.02 ? true : false;
-            input_values[INPUT_JOYSTICK_FIRST_AXIS + a] = state_axis[a];
+        for (int a = 0; a < MIN(num_axis, INPUT_GAMEPAD_1_COUNT_AXIS); ++a) {
+            input_active[first_axis + a] = ABS(state_axis[a]) > 0.02 ? true : false;
+            input_values[first_axis + a] = state_axis[a];
         }
         input_access_.unlock();
     }
+}
+
+void Control::update()
+{
+    // read both gamepads
+    readGamepad(Settings::application.gamepad_1_id, INPUT_GAMEPAD_1_FIRST_BUTTON, INPUT_GAMEPAD_1_FIRST_AXIS);
+    readGamepad(Settings::application.gamepad_2_id, INPUT_GAMEPAD_2_FIRST_BUTTON, INPUT_GAMEPAD_2_FIRST_AXIS);
 
     // multitouch input needs to be cleared when no more OSC input comes in
     for (int m = 0; m < INPUT_MULTITOUCH_COUNT; ++m) {
@@ -1923,7 +1930,8 @@ std::string Control::inputLabel(uint id)
                                                 };
         label = pad_labels[id -INPUT_NUMPAD_FIRST];
     }
-    else if ( id >= INPUT_JOYSTICK_FIRST && id <= INPUT_JOYSTICK_LAST )
+    else if ( (id >= INPUT_GAMEPAD_1_FIRST && id <= INPUT_GAMEPAD_1_LAST) ||
+              (id >= INPUT_GAMEPAD_2_FIRST && id <= INPUT_GAMEPAD_2_LAST) )
     {
         static std::vector< std::string > joystick_labels = { "Button A", "Button B", "Button X", "Button Y",
                                                        "Left bumper", "Right bumper", "Back", "Start",
@@ -1931,7 +1939,10 @@ std::string Control::inputLabel(uint id)
                                                        "Up", "Right", "Down", "Left",
                                                        "Left Axis X", "Left Axis Y", "Left Trigger",
                                                        "Right Axis X", "Right Axis Y", "Right Trigger" };
-        label = joystick_labels[id - INPUT_JOYSTICK_FIRST];
+        if (id <= INPUT_GAMEPAD_1_LAST)
+            label = joystick_labels[id - INPUT_GAMEPAD_1_FIRST];
+        else
+            label = joystick_labels[id - INPUT_GAMEPAD_2_FIRST];
     }
     else if ( id >= INPUT_MULTITOUCH_FIRST && id <= INPUT_MULTITOUCH_LAST )
     {

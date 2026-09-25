@@ -30,6 +30,7 @@
 #include "Filter/DelayFilter.h"
 
 #include "ShaderSource.h"
+#include "IconsVimixImage.h"
 
 ShaderSource::ShaderSource(uint64_t id) : Source(id), paused_(false), filter_(nullptr)
 {
@@ -102,9 +103,10 @@ void ShaderSource::render()
 
         // render textured surface into frame buffer
         // NB: this also applies the color correction shader
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
-        renderbuffer_->end();
+        if ( renderbuffer_->begin() ) {
+            texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+            renderbuffer_->end();
+        }
         ready_ = true;
     }
 }
@@ -197,7 +199,7 @@ void ShaderSource::accept(Visitor& v)
 
 glm::ivec2 ShaderSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_SHADER);
+    return glm::ivec2(ICON_VI_SOURCE_SHADER);
 }
 
 std::string ShaderSource::info() const

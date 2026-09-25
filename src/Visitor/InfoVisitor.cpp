@@ -100,34 +100,6 @@ void InfoVisitor::visit(MediaPlayer &mp)
             oss << mp.width() << " x " << mp.height();
             if (!mp.singleFrame() && mp.frameRate() > 0.)
                 oss << ", " << std::fixed << std::setprecision(1) << mp.frameRate() << " fps";
-            if (!mp.media().isimage) {
-                if (mp.evaluation().done) {
-                    if (mp.evaluation().log.empty() && mp.evaluation().keyframe_count > 0) {
-                        oss << ", " << mp.evaluation().keyframe_count << " keyframes";
-                        if (mp.evaluation().gop_size_max - mp.evaluation().gop_size_min > 1)
-                            oss << " (1 every " << mp.evaluation().gop_size_min << "-" << mp.evaluation().gop_size_max << " frames, ";
-                        else                            
-                            oss << " (1 every " << mp.evaluation().gop_size_max << " frames, ";
-                        if (mp.evaluation().gop_size_max < 1 )
-                            oss << "cannot play backward)";
-                        else if (mp.evaluation().gop_size_max * mp.height() > 35000 || mp.evaluation().has_bframes)
-                            oss << "hard to play backward)";
-                        else
-                            oss << "can play backward)";
-                        if (mp.evaluation().discontinuity_count > 0 )
-                            oss << ", " << mp.evaluation().discontinuity_count << " discontinuities";
-                        if (mp.evaluation().corrupted_count > 0 )
-                            oss << ", " << mp.evaluation().corrupted_count << " corrupted frames";
-                    } 
-                    else {
-                        oss << " " << mp.evaluation().log;
-                    }
-                }
-                else {
-                    static const char* animation[] = { ICON_FA_HOURGLASS_START,ICON_FA_HOURGLASS_HALF,ICON_FA_HOURGLASS_END,ICON_FA_HOURGLASS };
-                    oss << " " << animation[(g_get_monotonic_time() / 300000) % 4];
-                }
-            }
         }
         else {
             oss << mp.filename() << std::endl;
@@ -356,7 +328,10 @@ void InfoVisitor::visit (ScreenCaptureSource& s)
     std::ostringstream oss;
 
     GstToolkit::PipelineConfigSet confs = ScreenCapture::manager().config( ScreenCapture::manager().index(s.window()));
-    if ( !confs.empty()) {
+    if ( s.pending() ) {
+        oss << "Waiting for the selection of a screen or window.";
+    }
+    else if ( !confs.empty()) {
         GstToolkit::PipelineConfig best = *confs.rbegin();
         float fps = static_cast<float>(best.fps_numerator) / static_cast<float>(best.fps_denominator);
 
@@ -378,7 +353,9 @@ void InfoVisitor::visit (ScreenCaptureSource& s)
     }
 
     information_ = oss.str();
-    current_id_ = s.id();
+    // keep updating until the screen or window is selected
+    if ( !s.pending() )
+        current_id_ = s.id();
 }
 
 

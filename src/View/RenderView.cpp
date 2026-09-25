@@ -40,6 +40,10 @@ float RenderView::height_preset_value[6] = { 720.f, 1080.f, 1200.f, 1440.f, 2160
 
 glm::vec3 RenderView::resolutionFromPreset(int ar, int h)
 {
+    // clamp indices: they can come from an outdated or hand-edited config file
+    ar = glm::clamp(ar, 0, (int)(sizeof(ratio_preset_value) / sizeof(*ratio_preset_value)) - 1);
+    h  = glm::clamp(h,  0, (int)(sizeof(height_preset_value) / sizeof(*height_preset_value)) - 1);
+
     float width = ratio_preset_value[ar].x * height_preset_value[h] / ratio_preset_value[ar].y;
     width -= (int)width % 2;
     return glm::vec3( width, height_preset_value[h] , 0.f);
@@ -154,10 +158,11 @@ void RenderView::draw()
         glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / frame_buffer_->aspectRatio(), 1.f, 1.f));
 
         // render the scene normally (pre-multiplied alpha in RGB)
-        frame_buffer_->begin();
-        scene.root()->draw(glm::identity<glm::mat4>(), P);
-        fading_overlay_->draw(glm::identity<glm::mat4>(), projection);
-        frame_buffer_->end();
+        if ( frame_buffer_->begin() ) {
+            scene.root()->draw(glm::identity<glm::mat4>(), P);
+            fading_overlay_->draw(glm::identity<glm::mat4>(), projection);
+            frame_buffer_->end();
+        }
     }
 }
 
@@ -185,9 +190,10 @@ void RenderView::drawThumbnail()
                 if ( !frame_buffer_->blit(frame_thumbnail_) ){
                     // render anyway if blit failed
                     FrameBufferSurface *thumb = new FrameBufferSurface(frame_buffer_);
-                    frame_thumbnail_->begin();
-                    thumb->draw(glm::identity<glm::mat4>(), frame_thumbnail_->projection());
-                    frame_thumbnail_->end();
+                    if ( frame_thumbnail_->begin() ) {
+                        thumb->draw(glm::identity<glm::mat4>(), frame_thumbnail_->projection());
+                        frame_thumbnail_->end();
+                    }
                     delete thumb;
                 }
 

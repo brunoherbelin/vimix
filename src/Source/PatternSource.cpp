@@ -26,6 +26,7 @@
 #include "Toolkit/GstToolkit.h"
 
 #include "PatternSource.h"
+#include "IconsVimixImage.h"
 
 //
 //   Fill the list of patterns videotestsrc
@@ -179,7 +180,7 @@ Pattern *PatternSource::pattern() const
 
 glm::ivec2 PatternSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_PATTERN);
+    return glm::ivec2(ICON_VI_SOURCE_PATTERN);
 }
 
 std::string PatternSource::info() const

@@ -41,6 +41,7 @@
 #endif
 
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Log.h"
 #include "Settings.h"
 #include "Toolkit/SystemToolkit.h"
@@ -293,7 +294,7 @@ void SourceControlWindow::Render()
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
     {
-        if (ImGuiToolkit::IconButton(4,16)){
+        if (ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET)){
             Settings::application.widget.media_player = false;
         }
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
@@ -315,11 +316,11 @@ void SourceControlWindow::Render()
             //
             if (ImGui::BeginMenu( ICON_FA_IMAGE "  Displayed image"))
             {
-                if (ImGuiToolkit::MenuItemIcon(8, 9, " Render"))
+                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SLIDER_RENDER, " Render"))
                     Settings::application.widget.media_player_slider = 0.0;
-                if (ImGuiToolkit::MenuItemIcon(6, 9, " Split"))
+                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SLIDER_SPLIT, " Split"))
                     Settings::application.widget.media_player_slider = 0.5;
-                if (ImGuiToolkit::MenuItemIcon(7, 9, " Input"))
+                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SLIDER_INPUT, " Input"))
                     Settings::application.widget.media_player_slider = 1.0;
                 ImGui::EndMenu();
             }
@@ -440,7 +441,7 @@ void SourceControlWindow::Render()
             // offer to open folder location
             ImVec2 draw_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(draw_pos + ImVec2(combo_width + 3.f * ImGui::GetTextLineHeight() , -ImGui::GetFrameHeight()) );
-            if (ImGuiToolkit::IconButton( 3, 5, Settings::application.source.capture_path.c_str()))
+            if (ImGuiToolkit::IconButton( ICON_VI_SHOW_IN_FINDER, Settings::application.source.capture_path.c_str()))
                 SystemToolkit::open(Settings::application.source.capture_path);
             ImGui::SetCursorPos(draw_pos);
 
@@ -461,7 +462,7 @@ void SourceControlWindow::Render()
         if (ImGui::BeginMenu(ICON_FA_FILM " Timeline", mediaplayer_active_) )
         {
             if ( mediaplayer_active_->isImage()) {
-                if ( ImGuiToolkit::MenuItemIcon(1, 14, "Remove")){
+                if ( ImGuiToolkit::MenuItemIcon(ICON_VI_TIMELINE_REMOVE, "Remove")){
                     // set empty timeline
                     Timeline tl;
                     mediaplayer_active_->setTimeline(tl);
@@ -495,26 +496,28 @@ void SourceControlWindow::Render()
                     _alpha_fading ? MediaPlayer::FADING_ALPHA : MediaPlayer::FADING_COLOR);
             }
 
-            if (ImGuiToolkit::BeginMenuIcon(4, 13, "Metronome"))
+            if (ImGuiToolkit::BeginMenuIcon(ICON_VI_METRONOME, "Metronome"))
             {
                 Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
                 bool active = sync == Metronome::SYNC_NONE;
-                if (ImGuiToolkit::MenuItemIcon(5, 13, " Not synchronized", NULL, active ))
+                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SYNC_NONE, " Not synchronized", NULL, active ))
                     mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_NONE);
                 active = sync == Metronome::SYNC_BEAT;
-                if (ImGuiToolkit::MenuItemIcon(6, 13, " Sync to beat", NULL, active ))
+                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SYNC_BEAT, " Sync to beat", NULL, active ))
                     mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_BEAT);
                 active = sync == Metronome::SYNC_PHASE;
-                if (ImGuiToolkit::MenuItemIcon(7, 13, " Sync to phase", NULL, active ))
+                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SYNC_PHASE, " Sync to phase", NULL, active ))
                     mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
                 ImGui::EndMenu();
             }
 
-            ImGui::Separator();
-            if (ImGuiToolkit::MenuItemIcon(16, 16, "Gstreamer effect", nullptr,
-                                           !mediaplayer_active_->videoEffect().empty(),
-                                           mediaplayer_active_->videoEffectAvailable()) )
-                mediaplayer_edit_pipeline_ = true;
+            if ( !mediaplayer_active_->isImage()) {
+                ImGui::Separator();
+                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SOURCE_GSTREAMER, "Gstreamer effect", nullptr,
+                                            !mediaplayer_active_->videoEffect().empty(),
+                                            mediaplayer_active_->videoEffectAvailable()) )
+                    mediaplayer_edit_pipeline_ = true;
+            }
 
             ImGui::EndMenu();
         }
@@ -921,7 +924,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
     ImRect slider_bbox( timeline_bbox.GetTL() + ImVec2(-cursor_width + 2.f, cursor_width + 4.f ), timeline_bbox.GetBR() + ImVec2( cursor_width - 2.f, 0.f ) );
 
     // units conversion: from time to float (calculation made with higher precision first)
-    float time_ = static_cast<float> ( static_cast<double>(*time - tl->begin()) / static_cast<double>(tl->duration()) );
+    float time_ = static_cast<float> ( static_cast<double>(*time) / static_cast<double>(tl->duration()) );
 
     //
     // GET INPUT 
@@ -1314,7 +1317,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                     // if not 1x speed, offer to reset
                     if ( fabs( fabs(mp->playSpeed()) - 1.0 ) > EPSILON ) {
                         ImGui::SameLine(0,h_space_);
-                        if (ImGuiToolkit::ButtonIcon(19, 15, "Reset speed"))
+                        if (ImGuiToolkit::ButtonIcon(ICON_VI_SPEED_RESET, "Reset speed"))
                             mp->setPlaySpeed( 1.0 );
                     }
 
@@ -1338,7 +1341,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                                 if (playdur > durations.front() ) {
                                     // offer to speed up or slow down [<>]
                                     if (playdur < durations.back() ) {
-                                        if ( ImGuiToolkit::ButtonIcon(0, 12, "Adjust duration") ) {
+                                        if ( ImGuiToolkit::ButtonIcon(ICON_VI_DURATION_FASTER_SLOWER, "Adjust duration") ) {
                                             auto prev = d;
                                             prev--;
                                             selection_target_slower_ = SIGN(mp->playSpeed()) * secdur / static_cast<double>(*prev);
@@ -1350,7 +1353,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                                         }
                                     }
                                     // offer to speed up [< ]
-                                    else if ( ImGuiToolkit::ButtonIcon(8, 12, "Adjust duration") ) {
+                                    else if ( ImGuiToolkit::ButtonIcon(ICON_VI_DURATION_FASTER, "Adjust duration") ) {
                                         auto next = d;
                                         next++;
                                         selection_target_faster_ = SIGN(mp->playSpeed()) * secdur / static_cast<double>(*next);
@@ -1360,7 +1363,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                                     }
                                 }
                                 // minimum duration : offer to slow down [ >]
-                                else if ( ImGuiToolkit::ButtonIcon(9, 12, "Adjust duration") ) {
+                                else if ( ImGuiToolkit::ButtonIcon(ICON_VI_DURATION_SLOWER, "Adjust duration") ) {
                                     selection_target_faster_ = 0.0;
                                     auto prev = d;
                                     prev--;
@@ -1376,7 +1379,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                                 ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Cut at %s",
                                                GstToolkit::time_to_string(cutposition, GstToolkit::TIME_STRING_MINIMAL).c_str());
 
-                                if ( ImGuiToolkit::ButtonIcon(11, 3, text_buf) ) {
+                                if ( ImGuiToolkit::ButtonIcon(ICON_VI_TIMELINE_CUT, text_buf) ) {
                                     if ( mp->timeline()->cut(cutposition, false, true) ) {
                                         std::ostringstream info;
                                         info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline " <<text_buf;
@@ -1397,7 +1400,7 @@ void SourceControlWindow::RenderSelection(size_t i)
 
                         // offer only to adjust size by removing ending gap
                         if ( mp->timeline()->gapAt( mp->timeline()->end() ) ) {
-                            if ( ImGuiToolkit::ButtonIcon(7, 0, "Remove end gap" )){
+                            if ( ImGuiToolkit::ButtonIcon(ICON_VI_GAP_REMOVE_END, "Remove end gap" )){
                                 if ( mp->timeline()->removeGaptAt(mp->timeline()->end()) ) {
                                     std::ostringstream info;
                                     info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline Remove end gap";
@@ -1528,19 +1531,19 @@ void SourceControlWindow::RenderSelectionContextMenu()
         std::ostringstream info;
         info << SystemToolkit::base_filename( selection_mediaplayer_->filename() );
 
-        if ( ImGuiToolkit::MenuItemIcon(14, 16,  ICON_FA_CARET_LEFT " Accelerate", NULL, false, fabs(selection_target_faster_) > 0 )){
+        if ( ImGuiToolkit::MenuItemIcon(ICON_VI_SPEED_ACCELERATE,  ICON_FA_CARET_LEFT " Accelerate", NULL, false, fabs(selection_target_faster_) > 0 )){
             selection_mediaplayer_->setPlaySpeed( selection_target_faster_ );
             info << ": Speed x" << std::setprecision(3) << selection_target_faster_;
             Action::manager().store(info.str());
         }
-        if ( ImGuiToolkit::MenuItemIcon(15, 16,  "Slow down " ICON_FA_CARET_RIGHT, NULL, false, fabs(selection_target_slower_) > 0 )){
+        if ( ImGuiToolkit::MenuItemIcon(ICON_VI_SPEED_SLOWDOWN,  "Slow down " ICON_FA_CARET_RIGHT, NULL, false, fabs(selection_target_slower_) > 0 )){
             selection_mediaplayer_->setPlaySpeed( selection_target_slower_ );
             info << ": Speed x" << std::setprecision(3) << selection_target_slower_;
             Action::manager().store(info.str());
         }
         if ( selection_mediaplayer_->timeline()->gapAt( selection_mediaplayer_->timeline()->end()) ) {
 
-            if ( ImGuiToolkit::MenuItemIcon(7, 0, "Restore ending" )){
+            if ( ImGuiToolkit::MenuItemIcon(ICON_VI_GAP_REMOVE_END, "Restore ending" )){
                 info << ": Restore ending";
                 if ( selection_mediaplayer_->timeline()->removeGaptAt(selection_mediaplayer_->timeline()->end()) )
                     Action::manager().store(info.str());
@@ -2035,7 +2038,7 @@ void SourceControlWindow::RenderSingleSource(Source *s)
                     width = buttons_width_ - ImGui::GetTextLineHeightWithSpacing();
                 ImGui::SameLine(0, space -width);
                 ImGui::SetNextItemWidth(width);
-                if (ImGuiToolkit::ButtonIcon( 0, 14, LABEL_PLAYER_TIMELINE_ADD, true, space > buttons_width_ )) {
+                if (ImGuiToolkit::ButtonIcon( ICON_VI_TIMELINE_ADD, LABEL_PLAYER_TIMELINE_ADD, true, space > buttons_width_ )) {
 
                     // activate mediaplayer
                     mediaplayer_active_ = ms->mediaplayer();
@@ -2070,7 +2073,7 @@ void SourceControlWindow::RenderSingleSource(Source *s)
 
             ImGui::SameLine();
             ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.4f);
-            if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+            if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
                 counter_menu_timeout=0;
                 ImGui::OpenPopup( "MenuStreamOptions" );
             }
@@ -2113,7 +2116,7 @@ void DragButtonIcon(int i, int j, const char *tooltip, TimelinePayload payload)
 void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 {
     static bool show_overlay_info = false;
-    static std::vector< std::pair<int,int> > editmode_icon = { {8, 3}, {7, 4}, {12, 6} };
+    static std::vector< std::pair<int,int> > editmode_icon = { {ICON_VI_TOOL_CUT}, {ICON_VI_TOOL_FADE}, {ICON_VI_FLAG_STOP} };
     editmode_icon[2] = { Settings::application.widget.media_player_timeline_flag + 11, 6 };  
     static std::vector< std::string > editmode_tooltip = { "Cutting tool", "Fading tool", "Flag tool" };
 
@@ -2227,12 +2230,20 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     ///
     /// media player timelines
     ///
-    static std::vector< std::pair<int, int> > icons_loop = { {0, 15}, {1, 15}, {19, 14}, {18, 14} };
+    static std::vector< std::pair<int, int> > icons_loop = { {ICON_VI_LOOP_STOP}, {ICON_VI_LOOP_RESTART}, {ICON_VI_LOOP_BOUNCE}, {ICON_VI_LOOP_BLACKOUT} };
     static std::vector< std::string > tooltips_loop = { "Stop at end", "Loop to start", "Bounce (reverse speed)", "Stop and blackout at end" };
-    static std::vector< std::pair<int, int> > icons_flags = { {11, 6}, {12, 6}, {13, 6} };
+    static std::vector< std::pair<int, int> > icons_flags = { {ICON_VI_FLAG_BOOKMARK}, {ICON_VI_FLAG_STOP}, {ICON_VI_FLAG_BLACKOUT} };
     static std::vector< std::string > tooltips_flags = { " Bookmark", " Stop Flag", " Blackout Flag" };
 
     double current_play_speed = mediaplayer_active_->playSpeed();
+    // backward playback validity: false means the GOP size is invalid (no
+    // usable keyframe structure to seek to and decode forward from)
+    bool can_play_backward = mediaplayer_active_->evaluation().done &&
+            GstToolkit::canPlayBackward(mediaplayer_active_->evaluation().has_bframes,
+                mediaplayer_active_->width(), mediaplayer_active_->height(),
+                mediaplayer_active_->evaluation().keyframe_count,
+                mediaplayer_active_->evaluation().gop_size_min,
+                mediaplayer_active_->evaluation().gop_size_max) > 0.f;
     static uint counter_menu_timeout = 0;
     const ImVec2 scrollwindow = ImVec2(ImGui::GetContentRegionAvail().x - slider_zoom_width - 3.0,
                                  2.f * timeline_height_ + scrollbar_ );
@@ -2290,9 +2301,9 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         bottom += ImVec2(scrollwindow.x + 2.f, 0.f);
         draw_list->AddRectFilled(bottom, bottom + ImVec2(slider_zoom_width, timeline_height_ -1.f), ImGui::GetColorU32(ImGuiCol_FrameBg));
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.f));
-        if (!mediaplayer_edit_panel_ && ImGuiToolkit::IconButton(11, 0, "Open panel"))
+        if (!mediaplayer_edit_panel_ && ImGuiToolkit::IconButton(ICON_VI_PANNEL_EXPAND, "Open panel"))
             mediaplayer_edit_panel_ = true;
-        if (mediaplayer_edit_panel_ && ImGuiToolkit::IconButton(10, 0, "Close panel"))
+        if (mediaplayer_edit_panel_ && ImGuiToolkit::IconButton(ICON_VI_PANNEL_COLLAPSE, "Close panel"))
             mediaplayer_edit_panel_ = false;
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.5f * timeline_height_));
         // select timeline editmode; cut, fade, flag
@@ -2368,7 +2379,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                     bool has_prev = target_flag.is_valid() && 
                       !( mediaplayer_active_->currentFlag().is_valid() && mediaplayer_active_->timeline()->numFlags() == 1) &&
                       ( mediaplayer_active_->loop() == MediaPlayer::LOOP_REWIND || (target_flag.end < _paused_time) );
-                    if( ImGuiToolkit::ButtonIcon(6, 0, "Go to previous flag", has_prev) )
+                    if( ImGuiToolkit::ButtonIcon(ICON_VI_FLAG_PREVIOUS, "Go to previous flag", has_prev) )
                         seek_flag = target_flag;
                 }
                 else {
@@ -2377,14 +2388,14 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                     bool has_next = target_flag.is_valid() && 
                       !( mediaplayer_active_->currentFlag().is_valid() && mediaplayer_active_->timeline()->numFlags() == 1) &&
                       ( mediaplayer_active_->loop() == MediaPlayer::LOOP_REWIND || (target_flag.begin > _paused_time) );
-                    if( ImGuiToolkit::ButtonIcon(5, 0, "Go to next flag", has_next) )
+                    if( ImGuiToolkit::ButtonIcon(ICON_VI_FLAG_NEXT, "Go to next flag", has_next) )
                         seek_flag = target_flag;
                 }
 
                 // if stopped at a flag, show flag menu
                 if (!mediaplayer_mode_ && mediaplayer_active_->currentFlag().is_valid()) {
                     ImGui::SameLine(0, h_space_);
-                    if (ImGuiToolkit::IconButton(3, 0) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+                    if (ImGuiToolkit::IconButton(ICON_VI_MENU_FLAGS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
                         counter_menu_timeout=0;
                         ImGui::OpenPopup( "MenuMediaPlayerFlags" );
                     }
@@ -2408,11 +2419,9 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             if ( ImGuiToolkit::IconMultistate(icons_loop, &current_loop, tooltips_loop) )
                 mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );
             // disable bounce mode if GOP size is invalid
-            if (current_loop ==  (int) MediaPlayer::LOOP_BIDIRECTIONAL && mediaplayer_active_->evaluation().done && 
-                (mediaplayer_active_->evaluation().gop_size_min < 1 || 
-                mediaplayer_active_->evaluation().gop_size_max < 1 ) )
-            {      
-                current_loop++;   
+            if (current_loop ==  (int) MediaPlayer::LOOP_BIDIRECTIONAL && !can_play_backward)
+            {
+                current_loop++;
                 mediaplayer_active_->setLoop( (MediaPlayer::LoopMode) current_loop );
             }
 
@@ -2433,7 +2442,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         ImGui::SameLine();
         ImGui::SetCursorPosX(rendersize.x - buttons_height_ / 1.4f);
-        if (ImGuiToolkit::IconButton(5, 8) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+        if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             counter_menu_timeout=0;
             ImGui::OpenPopup( "MenuMediaPlayerOptions" );
         }
@@ -2491,26 +2500,24 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
     if (ImGui::BeginPopup( "MenuMediaPlayerOptions" ))
     {
-        if (ImGuiToolkit::MenuItemIcon(8,0, "Play forward", nullptr, current_play_speed>0)) {
+        if (ImGuiToolkit::MenuItemIcon(ICON_VI_PLAY_FORWARD, "Play forward", nullptr, current_play_speed>0)) {
             mediaplayer_active_->setPlaySpeed( ABS(mediaplayer_active_->playSpeed()) );
             oss << ": Play forward";
             Action::manager().store(oss.str());
         }
         // Enable backward play only if GOP size is valid
-        if (mediaplayer_active_->evaluation().done && 
-            mediaplayer_active_->evaluation().gop_size_min > 0 && 
-            mediaplayer_active_->evaluation().gop_size_max > 0)
-        {            
-            if (ImGuiToolkit::MenuItemIcon(9,0, "Play backward", nullptr, current_play_speed<0)) {
+        if (can_play_backward)
+        {
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_PLAY_BACKWARD, "Play backward", nullptr, current_play_speed<0)) {
                 mediaplayer_active_->setPlaySpeed( - ABS(mediaplayer_active_->playSpeed()) );
                 oss << ": Play backward";
                 Action::manager().store(oss.str());
             }
         } 
         else {
-            ImGuiToolkit::MenuItemIcon(9,0, "Play backward", nullptr, false, false);
+            ImGuiToolkit::MenuItemIcon(ICON_VI_PLAY_BACKWARD, "Play backward", nullptr, false, false);
         }
-        if (ImGuiToolkit::MenuItemIcon(19,15, "Reset speed")) {
+        if (ImGuiToolkit::MenuItemIcon(ICON_VI_SPEED_RESET, "Reset speed")) {
             mediaplayer_active_->setPlaySpeed(1.0);
             oss << ": Speed x 1.0";
             Action::manager().store(oss.str());
@@ -2548,7 +2555,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             }
         }
         ImGui::Separator();
-        if (ImGuiToolkit::MenuItemIcon(2,0, "Delete flag")) {
+        if (ImGuiToolkit::MenuItemIcon(ICON_VI_FLAG_DELETE, "Delete flag")) {
             mediaplayer_active_->timeline()->removeFlagAt(mediaplayer_active_->currentFlag().midpoint() );
             oss << ": Flag removed";
             Action::manager().store(oss.str());
@@ -2597,13 +2604,13 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ///
             /// CUT LEFT OF CURSOR
             ///
-            DragButtonIcon(9, 3, "Drop in timeline to\nCut left",
+            DragButtonIcon(ICON_VI_CUT_START, "Drop in timeline to\nCut left",
                            TimelinePayload(TimelinePayload::CUT, 0, 1) );
             ///
             /// CUT RIGHT OF CURSOR
             ///
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            DragButtonIcon(10, 3, "Drop in timeline to\nCut right",
+            DragButtonIcon(ICON_VI_CUT_END, "Drop in timeline to\nCut right",
                            TimelinePayload(TimelinePayload::CUT, 0, 0) );
 
             if (tl->numGaps() > 0) {
@@ -2611,13 +2618,13 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 /// MERGE CUTS AT CURSOR
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(19, 3, "Drop in timeline to\nMerge two gaps",
+                DragButtonIcon(ICON_VI_GAP_MERGE_NONE, "Drop in timeline to\nMerge two gaps",
                                TimelinePayload(TimelinePayload::CUT_MERGE, 0, 0) );
                 ///
                 /// ERASE CUT AT CURSOR
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(0, 4, "Drop in timeline to\nErase a gap",
+                DragButtonIcon(ICON_VI_GAP_NONE, "Drop in timeline to\nErase a gap",
                                TimelinePayload(TimelinePayload::CUT_ERASE, 0, 0) );
             }
             else {
@@ -2625,9 +2632,9 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 /// DISABLED ICONS IF NO GAP
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGuiToolkit::ButtonIcon(19, 3, "No gap to merge", false);
+                ImGuiToolkit::ButtonIcon(ICON_VI_GAP_MERGE_NONE, "No gap to merge", false);
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGuiToolkit::ButtonIcon(0, 4, "No gap to erase", false);
+                ImGuiToolkit::ButtonIcon(ICON_VI_GAP_NONE, "No gap to erase", false);
             }
 
             ///
@@ -2648,7 +2655,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             /// CUT LEFT TIME
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
             ImGui::SetCursorPos( ImVec2(w, draw_pos.y));
-            if (ImGuiToolkit::ButtonIcon(17, 3, "Cut left at given time", target_time_valid)) {
+            if (ImGuiToolkit::ButtonIcon(ICON_VI_CUT_TIME_LEFT, "Cut left at given time", target_time_valid)) {
                 tl->cut(target_time, true);
                 tl->refresh();
                 oss << ": Timeline cut";
@@ -2656,7 +2663,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             }
             /// CUT RIGHT TIME
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::ButtonIcon(18, 3, "Cut right at given time", target_time_valid)){
+            if (ImGuiToolkit::ButtonIcon(ICON_VI_CUT_TIME_RIGHT, "Cut right at given time", target_time_valid)){
                 tl->cut(target_time, false);
                 tl->refresh();
                 oss << ": Timeline cut";
@@ -2664,7 +2671,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             }
             /// CLEAR
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::ButtonIcon(11, 14, "Clear all gaps")) {
+            if (ImGuiToolkit::ButtonIcon(ICON_VI_TIMELINE_CLEAR, "Clear all gaps")) {
                 tl->clearGaps();
                 oss << ": Timeline clear gaps";
                 Action::manager().store(oss.str());
@@ -2689,9 +2696,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                                                              {"Fading Linear"},
                                                              {"Fading Smooth"}};
             const std::vector<std::pair<int, int> > options_curve
-                = {{12, 12},
-                   {13, 12},
-                   {14, 12}};
+                = {{ICON_VI_FADE_SHARP}, {ICON_VI_FADE_LINEAR}, {ICON_VI_FADE_SMOOTH}};
 
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
             ImGuiToolkit::IconMultistate(options_curve, &current_curve, tooltips_curve);
@@ -2705,19 +2710,19 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 /// FADE IN
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(14, 10, "Drop in timeline to insert\nSharp fade-in",
+                DragButtonIcon(ICON_VI_FADE_SHARP_IN, "Drop in timeline to insert\nSharp fade-in",
                                TimelinePayload(TimelinePayload::FADE_IN, d*GST_MSECOND, Timeline::FADING_SHARP));
                 ///
                 /// FADE OUT
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(11, 10, "Drop in timeline to insert\nSharp fade-out",
+                DragButtonIcon(ICON_VI_FADE_SHARP_OUT, "Drop in timeline to insert\nSharp fade-out",
                                TimelinePayload(TimelinePayload::FADE_OUT, d*GST_MSECOND, Timeline::FADING_SHARP));
                 ///
                 /// FADE IN & OUT
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(9, 10, "Drop in timeline to insert\nSharp fade in & out",
+                DragButtonIcon(ICON_VI_FADE_SHARP_IN_OUT, "Drop in timeline to insert\nSharp fade in & out",
                                TimelinePayload(TimelinePayload::FADE_IN_OUT, d*GST_MSECOND, Timeline::FADING_SHARP));
             }
             ///
@@ -2728,19 +2733,19 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 /// FADE IN
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(15, 10, "Drop in timeline to insert\nLinear fade-in",
+                DragButtonIcon(ICON_VI_FADE_LINEAR_IN, "Drop in timeline to insert\nLinear fade-in",
                                TimelinePayload(TimelinePayload::FADE_IN, d*GST_MSECOND, Timeline::FADING_LINEAR));
                 ///
                 /// FADE OUT
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(12, 10, "Drop in timeline to insert\nLinear fade-out",
+                DragButtonIcon(ICON_VI_FADE_LINEAR_OUT, "Drop in timeline to insert\nLinear fade-out",
                                TimelinePayload(TimelinePayload::FADE_OUT, d*GST_MSECOND, Timeline::FADING_LINEAR));
                 ///
                 /// FADE IN & OUT
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(7, 10, "Drop in timeline to insert\nLinear fade in & out",
+                DragButtonIcon(ICON_VI_FADE_LINEAR_IN_OUT, "Drop in timeline to insert\nLinear fade in & out",
                                TimelinePayload(TimelinePayload::FADE_IN_OUT, d*GST_MSECOND, Timeline::FADING_LINEAR));
             }
             ///
@@ -2751,19 +2756,19 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 /// FADE IN
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(16, 10, "Drop in timeline to insert\nSmooth fade-in",
+                DragButtonIcon(ICON_VI_FADE_SMOOTH_IN, "Drop in timeline to insert\nSmooth fade-in",
                                TimelinePayload(TimelinePayload::FADE_IN, d*GST_MSECOND, Timeline::FADING_SMOOTH));
                 ///
                 /// FADE OUT
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(13, 10, "Drop in timeline to insert\nSmooth fade-out",
+                DragButtonIcon(ICON_VI_FADE_SMOOTH_OUT, "Drop in timeline to insert\nSmooth fade-out",
                                TimelinePayload(TimelinePayload::FADE_OUT, d*GST_MSECOND, Timeline::FADING_SMOOTH));
                 ///
                 /// FADE IN & OUT
                 ///
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
-                DragButtonIcon(17, 10, "Drop in timeline to insert\nSmooth fade in & out",
+                DragButtonIcon(ICON_VI_FADE_SMOOTH_IN_OUT, "Drop in timeline to insert\nSmooth fade in & out",
                                TimelinePayload(TimelinePayload::FADE_IN_OUT, d*GST_MSECOND, Timeline::FADING_SMOOTH));
             }
             else {
@@ -2806,7 +2811,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             static int _actionsmooth = 0;
             ImGui::SameLine(0, 0);
             ImGui::PushButtonRepeat(true);
-            if (ImGuiToolkit::ButtonIcon(2, 7, "Apply smoothing filter")){
+            if (ImGuiToolkit::ButtonIcon(ICON_VI_SMOOTH_FILTER, "Apply smoothing filter")){
                 tl->smoothFading( 15 );
                 ++_actionsmooth;
             }
@@ -2819,7 +2824,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
             /// CLEANUP
             ImGui::SameLine(0, 0);
-            if (ImGuiToolkit::ButtonIcon(3, 7, "Clean curve in gaps")) {
+            if (ImGuiToolkit::ButtonIcon(ICON_VI_GAP_CLEAN_CURVE, "Clean curve in gaps")) {
                 tl->autoFadeInGaps();
                 oss << ": Timeline cleanup curve";
                 Action::manager().store(oss.str());
@@ -2827,7 +2832,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
             /// CLEAR
             ImGui::SameLine(0, 0);
-            if (ImGuiToolkit::ButtonIcon(11, 14, "Clear fading curve")){
+            if (ImGuiToolkit::ButtonIcon(ICON_VI_TIMELINE_CLEAR, "Clear fading curve")){
                 tl->clearFading();
                 oss << ": Timeline clear fading";
                 Action::manager().store(oss.str());
@@ -2849,19 +2854,19 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ///
             /// DROP ICONS
             ///
-            DragButtonIcon(11, 6, "Drop in timeline to\nAdd a Bookmark",
+            DragButtonIcon(ICON_VI_FLAG_BOOKMARK, "Drop in timeline to\nAdd a Bookmark",
                            TimelinePayload(TimelinePayload::FLAG_ADD, 0, 0) );
 
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            DragButtonIcon(12, 6, "Drop in timeline to\nAdd a Stop Flag",
+            DragButtonIcon(ICON_VI_FLAG_STOP, "Drop in timeline to\nAdd a Stop Flag",
                            TimelinePayload(TimelinePayload::FLAG_ADD, 0, 1) );
 
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            DragButtonIcon(13, 6, "Drop in timeline to\nAdd a Blackout Flag",
+            DragButtonIcon(ICON_VI_FLAG_BLACKOUT, "Drop in timeline to\nAdd a Blackout Flag",
                            TimelinePayload(TimelinePayload::FLAG_ADD, 0, 2) );
 
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            DragButtonIcon(2, 0, "Drop in timeline to\nErase a flag",
+            DragButtonIcon(ICON_VI_FLAG_DELETE, "Drop in timeline to\nErase a flag",
                            TimelinePayload(TimelinePayload::FLAG_REMOVE, 0, 0) );
 
             ///
@@ -2886,7 +2891,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             /// FLAG AT TIME
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
             ImGui::SetCursorPos( ImVec2(w, draw_pos.y));
-            if (ImGuiToolkit::ButtonIcon(1, 0, "Add flag at given time", target_time_valid)) {
+            if (ImGuiToolkit::ButtonIcon(ICON_VI_FLAG_ADD_TIME, "Add flag at given time", target_time_valid)) {
                 tl->removeFlagAt(target_time);
                 tl->addFlagAt(target_time, Settings::application.widget.media_player_timeline_flag);
                 tl->refresh();
@@ -2896,7 +2901,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
             /// Add
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::ButtonIcon(0, 0, "Add flag at cursor position", !mediaplayer_active_->isPlaying()) ) {
+            if (ImGuiToolkit::ButtonIcon(ICON_VI_FLAG_ADD_CURSOR, "Add flag at cursor position", !mediaplayer_active_->isPlaying()) ) {
                 tl->removeFlagAt(mediaplayer_active_->position());
                 tl->addFlagAt(mediaplayer_active_->position(), Settings::application.widget.media_player_timeline_flag);
                 tl->refresh();
@@ -2906,7 +2911,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
             /// CLEAR
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGuiToolkit::ButtonIcon(11, 14, "Clear all flags")) {
+            if (ImGuiToolkit::ButtonIcon(ICON_VI_TIMELINE_CLEAR, "Clear all flags")) {
                 tl->clearFlags();
                 oss << ": Timeline flag clear";
                 Action::manager().store(oss.str());
@@ -2945,18 +2950,18 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         static int l = 0;
         static std::vector< std::tuple<int, int, std::string> > fading_options = {
-            {19, 7, "Fade in"},
-            {18, 7, "Fade out"},
-            { 0, 8, "Auto fade in & out"}
+            {ICON_VI_FADE_IN, "Fade in"},
+            {ICON_VI_FADE_OUT, "Fade out"},
+            { ICON_VI_TRANSITION_CROSS_FADE, "Auto fade in & out"}
         };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGuiToolkit::ComboIcon("Fading", &l, fading_options);
 
         static int c = 0;
         static std::vector< std::tuple<int, int, std::string> > curve_options = {
-            {18, 3, "Linear"},
-            {19, 3, "Progressive"},
-            {17, 3, "Abrupt"}
+            {ICON_VI_CURVE_LINEAR, "Linear"},
+            {ICON_VI_CURVE_PROGRESSIVE, "Progressive"},
+            {ICON_VI_CURVE_ABRUPT, "Abrupt"}
         };
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         ImGuiToolkit::ComboIcon("Curve", &c, curve_options);
@@ -3079,7 +3084,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         }
         // Local menu for clearing
         ImGui::SameLine();
-        if ( ImGuiToolkit::ButtonIcon(11,13,"Clear") ) {
+        if ( ImGuiToolkit::ButtonIcon(ICON_VI_CLEAR_TEXT,"Clear") ) {
             _effect_description = "";
             _effect_description_changed = true;
         }
@@ -3310,7 +3315,7 @@ void SourceControlWindow::DrawButtonBar(ImVec2 bottom, float width)
     }
     ImGui::SameLine(0, h_space_);
     if (hasflags) {
-        if( ImGuiToolkit::ButtonIcon(5, 0, "Go to next flag", enabled) && enabled ) {
+        if( ImGuiToolkit::ButtonIcon(ICON_VI_FLAG_NEXT, "Go to next flag", enabled) && enabled ) {
             for (auto source = selection_.begin(); source != selection_.end(); ++source) {
                 (*source)->call( new Flag( ));
             }

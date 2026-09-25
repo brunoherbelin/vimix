@@ -7,6 +7,10 @@ class MediaPlayer;
 
 class MediaSource : public Source
 {
+    // setPath is reserved to source creation (Mixer) and session loading (SessionLoader)
+    friend class Mixer;
+    friend class SessionLoader;
+
 public:
     MediaSource(uint64_t id = 0);
     ~MediaSource();
@@ -28,7 +32,6 @@ public:
     bool texturePostProcessed () const override;
 
     // Media specific interface
-    void setPath(const std::string &p);
     std::string path() const;
     MediaPlayer *mediaplayer() const;
 
@@ -38,6 +41,7 @@ public:
 protected:
 
     void init() override;
+    void setPath(const std::string &p);
 
     std::string path_;
     MediaPlayer *mediaplayer_;

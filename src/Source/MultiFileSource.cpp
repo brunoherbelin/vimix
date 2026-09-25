@@ -30,6 +30,7 @@
 #include "Log.h"
 
 #include "MultiFileSource.h"
+#include "IconsVimixImage.h"
 
 // example test gstreamer pipelines
 //
@@ -46,27 +47,45 @@ MultiFileSequence::MultiFileSequence() : width(0), height(0), min(0), max(0)
 
 MultiFileSequence::MultiFileSequence(const std::list<std::string> &list_files)
 {
-    location = BaseToolkit::common_numbered_pattern(list_files, &min, &max);
-
-    if ( !location.empty() ) {
-        MediaInfo media = MediaPlayer::UriDiscoverer( GstToolkit::filename_to_uri( list_files.front() ) );
-        if (media.valid && media.isimage) {
-            codec.resize(media.codec_name.size());
-            std::transform(media.codec_name.begin(), media.codec_name.end(), codec.begin(), ::tolower);
-            width = media.width;
-            height = media.height;
-        }
-        else
-            Log::Info("MultiFileSequence '%s' does not list images.", location.c_str());
+    if (list_files.empty()) {
+        location.clear();
+        codec.clear();
+        width = height = 0;
+        min = max = 0;
+        return;
     }
 
-    // sanity check: the location pattern looks like a filename and seems consecutive numbered
+    // try to generate location pattern from the list of files (e.g. "frames%03d.png")
+    location = BaseToolkit::common_numbered_pattern(list_files, &min, &max);
+    
+    // sanity check: does the location pattern looks like a filename and seems consecutive numbered
     if ( SystemToolkit::extension_filename(location).empty() ||
          SystemToolkit::path_filename(location) != SystemToolkit::path_filename(list_files.front()) ||
          list_files.size() != (size_t) (max - min) + 1 ) {
-        Log::Info("MultiFileSequence '%s' invalid.", location.c_str());
         location.clear();
     }
+
+    // get codec and resolution from first file
+    MediaInfo media = MediaPlayer::UriDiscoverer( GstToolkit::filename_to_uri( list_files.front() ) );
+    if (media.valid && media.isimage) {
+        if (location.empty())
+            codec = "mixed files";
+        else {
+            codec.resize(media.codec_name.size());
+            std::transform(media.codec_name.begin(), media.codec_name.end(), codec.begin(), ::tolower);
+            // codecs without description are given as caps (e.g. 'image/webp')
+            if (codec.rfind("image/", 0) == 0)
+                codec.erase(0, 6);
+        }
+        width = media.width;
+        height = media.height;
+    }
+
+}
+
+MultiFileSequence::MultiFileSequence(const std::string &path)
+    : MultiFileSequence( SystemToolkit::list_directory(path, {"*.jpg", "*.jpeg", "*.png", "*.webp"}) )
+{
 }
 
 bool MultiFileSequence::valid() const
@@ -260,7 +279,7 @@ MultiFile *MultiFileSource::multifile () const
 
 glm::ivec2 MultiFileSource::icon () const
 {
-    return glm::ivec2(ICON_SOURCE_SEQUENCE);
+    return glm::ivec2(ICON_VI_SOURCE_SEQUENCE);
 }
 
 std::string MultiFileSource::info() const

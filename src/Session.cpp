@@ -48,7 +48,7 @@ SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_str
 }
 
 Session::Session(uint64_t id) : id_(id), active_(true), activation_threshold_(MIXING_MIN_THRESHOLD),
-    filename_(""), thumbnail_(nullptr), ready_(false)
+    filename_(""), thumbnail_(nullptr), ready_(false), input_callbacks_(this)
 {
     // create unique id
     if (id_ == 0)
@@ -73,31 +73,10 @@ Session::Session(uint64_t id) : id_(id), active_(true), activation_threshold_(MI
     config_[View::TEXTURE]->scale_ = Settings::application.views[View::TEXTURE].default_scale;
     config_[View::TEXTURE]->translation_ = Settings::application.views[View::TEXTURE].default_translation;
 
-    input_sync_.resize(INPUT_MAX, Metronome::SYNC_NONE);
-
     snapshots_.xmlDoc_ = new tinyxml2::XMLDocument;
     start_time_ = gst_util_get_timestamp ();
 }
 
-
-Session::InputSourceCallback::~InputSourceCallback()
-{
-    clear();
-}
-
-void Session::InputSourceCallback::clear()
-{
-    // go through all instances stored in InputSourceCallback
-    for (auto clb = instances_.begin(); clb != instances_.end(); ++clb) {
-        // finish all
-        if (clb->second.first != nullptr)
-            clb->second.first->finish();
-        if (clb->second.second != nullptr)
-            clb->second.second->finish();
-    }
-    // do not keep references: will be deleted when terminated
-    instances_.clear();
-}
 
 Session::~Session()
 {
@@ -112,14 +91,6 @@ Session::~Session()
     for(auto it = sources_.begin(); it != sources_.end(); ) {
         // erase this source from the list
         it = deleteSource(*it);
-    }
-
-    // delete all callbacks
-    for (auto iter = input_callbacks_.begin(); iter != input_callbacks_.end();
-         iter = input_callbacks_.erase(iter))  {
-        if ( iter->second.model_ != nullptr)
-            delete iter->second.model_;
-        iter->second.clear();
     }
 
     delete config_[View::RENDERING];
@@ -173,7 +144,7 @@ void Session::detachSource (Source *s)
         // remove source from all batch
         removeSourceFromBatch(s);
         // remove source from all input callbacks
-        removeSourceFromInputCallbacks( s->id() );
+        input_callbacks_.removeSource( s->id() );
     }
 }
 
@@ -207,16 +178,18 @@ void Session::update(float dt)
 
                     // Add callback to the target(s)
 
-                    // 3. Case of variant as Current source
+                    // 3. Case of variant as Current source of the Mixer front session only.
+                    // Ignored in any other session (bundle, session file)
                     if (std::holds_alternative<Current>(k->second.target_)) {
-                        Source *s = Mixer::manager().currentSource();
+                        Source *s = ( this == Mixer::manager().session() )
+                                    ? Mixer::manager().currentSource() : nullptr;
                         if ( s != nullptr ) {
                             // generate a new callback from the model
                             SourceCallback *forward = k->second.model_->clone();
                             // apply value multiplyer from input
                             forward->multiply( Control::manager().inputValue(k->first) );
                             // add delay
-                            forward->delay( Metronome::manager().timeToSync( (Metronome::Synchronicity) input_sync_[k->first] ) );
+                            forward->delay( Metronome::manager().timeToSync( input_callbacks_.synchrony(k->first) ) );
                             // add callback to source
                             s->call( forward );
                             // get the reverse of the callback (can be null)
@@ -234,7 +207,7 @@ void Session::update(float dt)
                             // apply value multiplyer from input
                             forward->multiply( Control::manager().inputValue(k->first) );
                             // add delay
-                            forward->delay( Metronome::manager().timeToSync( (Metronome::Synchronicity) input_sync_[k->first] ) );
+                            forward->delay( Metronome::manager().timeToSync( input_callbacks_.synchrony(k->first) ) );
                             // add callback to source
                             (*v)->call( forward );
                             // get the reverse of the callback (can be null)
@@ -258,7 +231,7 @@ void Session::update(float dt)
                                     // apply value multiplyer from input
                                     forward->multiply( Control::manager().inputValue(k->first) );
                                     // add delay
-                                    forward->delay( Metronome::manager().timeToSync( (Metronome::Synchronicity) input_sync_[k->first] ) );
+                                    forward->delay( Metronome::manager().timeToSync( input_callbacks_.synchrony(k->first) ) );
                                     // add callback to source
                                     (*sit)->call( forward );
                                     // get the reverse of the callback (can be null)
@@ -384,6 +357,9 @@ void Session::update(float dt)
 
 SourceList::iterator Session::addSource(Source *s)
 {
+    // the list of sources changed: nested actions could have appeared
+    InputCallbacks::touch();
+
     // lock before change
     access_.lock();
 
@@ -408,6 +384,9 @@ SourceList::iterator Session::addSource(Source *s)
 
 SourceList::iterator Session::deleteSource(Source *s)
 {
+    // the list of sources changed: nested actions could have disappeared
+    InputCallbacks::touch();
+
     // lock before change
     access_.lock();
 
@@ -418,7 +397,7 @@ SourceList::iterator Session::deleteSource(Source *s)
         // detach
         detachSource(s);
         // erase all input callbacks for that source
-        deleteInputCallbacks(s);
+        input_callbacks_.removeAll(s);
         // erase the source from the failed list
         failed_.erase(s);
         // erase the source from the update list & get next element
@@ -461,6 +440,9 @@ SourceList::iterator Session::removeSource(Source *s)
 
 Source *Session::popSource()
 {
+    // the list of sources changed: nested actions could have disappeared
+    InputCallbacks::touch();
+
     Source *s = nullptr;
 
     SourceList::iterator its = sources_.begin();
@@ -875,245 +857,6 @@ std::string Session::save(const std::string& filename, Session *session, const s
 
     return ret;
 }
-
-void Session::assignInputCallback(uint input, Target target, SourceCallback *callback)
-{
-    // find if this callback is already assigned
-    auto k = input_callbacks_.begin();
-    for (; k != input_callbacks_.end(); ++k)
-    {
-        // yes, then just change the target
-        if ( k->second.model_ == callback) {
-            k->second.target_ = target;
-            // reverse became invalid
-            k->second.clear();
-            break;
-        }
-    }
-
-    // if this callback is not assigned yet (looped until end)
-    if ( k == input_callbacks_.end() ) {
-        // create new entry
-        std::multimap<uint, InputSourceCallback>::iterator added = input_callbacks_.emplace(input, InputSourceCallback() );
-        added->second.model_ = callback;
-        added->second.target_ = target;
-    }
-}
-
-void Session::swapInputCallback(uint from, uint to)
-{
-    std::multimap<uint, InputSourceCallback> swapped_callbacks_;
-
-    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
-    {
-        if ( k->first == from )
-            swapped_callbacks_.emplace( to,  k->second);
-        else
-            swapped_callbacks_.emplace( k->first,  k->second);
-    }
-
-    input_callbacks_.swap(swapped_callbacks_);
-}
-
-void Session::copyInputCallback(uint from, uint to)
-{
-    if ( input_callbacks_.count(from) > 0 ) {
-        auto from_callbacks = getSourceCallbacks(from);
-        for (auto it = from_callbacks.cbegin(); it != from_callbacks.cend(); ++it){
-            assignInputCallback(to, it->first, it->second->clone() );
-        }
-    }
-}
-
-std::list<std::pair<Target, SourceCallback *> > Session::getSourceCallbacks(uint input)
-{
-    std::list< std::pair< Target, SourceCallback*> > ret;
-
-    if ( input_callbacks_.count(input) > 0 ) {
-        auto result = input_callbacks_.equal_range(input);
-        for (auto it = result.first; it != result.second; ++it)
-            ret.push_back( std::pair< Target, SourceCallback*>(it->second.target_, it->second.model_) );
-    }
-
-    return ret;
-}
-
-void Session::deleteInputCallback(SourceCallback *callback)
-{
-    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
-    {
-        if ( k->second.model_ == callback) {
-            delete callback;
-            k->second.clear();
-            input_callbacks_.erase(k);
-            break;
-        }
-    }
-}
-
-void Session::deleteInputCallbacks(uint input)
-{
-    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end();)
-    {
-        if ( k->first == input) {
-            if (k->second.model_)
-                delete k->second.model_;
-            k->second.clear();
-            k = input_callbacks_.erase(k);
-        }
-        else
-            ++k;
-    }
-}
-
-void Session::deleteInputCallbacks(Target target)
-{
-    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end();)
-    {
-        if ( k->second.target_ == target) {
-            if (k->second.model_)
-                delete k->second.model_;
-            k->second.clear();
-            k = input_callbacks_.erase(k);
-        }
-        else
-            ++k;
-    }
-}
-
-
-void Session::clearInputCallbacks()
-{
-    for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); )
-    {
-        if (k->second.model_)
-            delete k->second.model_;
-        k->second.clear();
-
-        k = input_callbacks_.erase(k);
-    }
-}
-
-std::list<uint> Session::assignedInputs()
-{
-    std::list<uint> inputs;
-
-    // fill with list of keys
-    for(const auto& [key, value] : input_callbacks_) {
-        inputs.push_back(key);
-    }
-
-    // remove duplicates
-    inputs.unique();
-
-    return inputs;
-}
-
-std::list<uint> Session::inputsForSource( uint64_t sid )
-{
-    std::list<uint> inputs;
-
-    if (sid > 0 && !input_callbacks_.empty()) {
-        // test all targets of the list of input callbacks
-        for(const auto& [key, value] : input_callbacks_) {
-            if (Source * const* v = std::get_if<Source *>(&value.target_)) {
-                // v is a source
-                if (sid == (*v)->id())
-                    // v is the source we are looking for
-                    inputs.push_back(key);
-            }
-            else if ( const size_t* v = std::get_if<size_t>(&value.target_)) {
-                // v is a batch
-                SourceIdList::iterator it = std::find(batch_[*v].begin(),
-                                    batch_[*v].end(),sid);
-                if ( it != batch_[*v].end())
-                    // v contains the source we are looking for
-                    inputs.push_back(key);
-            }
-        }
-        // remove duplicates
-        inputs.unique();
-    }
-    return inputs;
-}
-
-bool Session::inputAssigned(uint input)
-{
-    return input_callbacks_.find(input) != input_callbacks_.end();
-}
-
-void Session::removeSourceFromInputCallbacks( uint64_t sid )
-{
-    if (sid > 0 && !input_callbacks_.empty()) {
-        // test all targets of the list of input callbacks
-        for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); )
-        {
-            if (Source * const* v = std::get_if<Source *>(&k->second.target_)) {
-                // v is a source
-                if ( sid == (*v)->id() ) {
-                    // v is the source we are looking to remove
-                    if (k->second.model_)
-                        delete k->second.model_;
-                    k->second.clear();
-                    k = input_callbacks_.erase(k);
-                }
-                else 
-                    ++k;
-            }
-            else 
-                ++k;
-        }
-    }
-}
-
-Session::MapInputSourceCallback Session::copyInputCallbackMap() const
-{
-    MapInputSourceCallback _copy;
-    if (!input_callbacks_.empty()) {
-        for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
-        {            
-            _copy.emplace( k->first, InputSourceCallback() );
-            _copy.rbegin()->second.model_ = k->second.model_->clone();
-            _copy.rbegin()->second.target_ = k->second.target_;
-        }
-    }
-
-    return _copy;
-}
-
-void Session::importInputCallbacks(Session::MapInputSourceCallback callbacks)
-{
-    for (auto k = callbacks.begin(); 
-              k != callbacks.end(); ++k)
-    {
-        if (Source * const* v = std::get_if<Source *>(&k->second.target_)) {
-            // v is a source
-            // if the source exists in this session
-            SourceList::iterator sit = std::find_if(sources_.begin(), sources_.end(), Source::hasId( (*v)->id() ));;
-            if ( sit != sources_.end()) {
-                // assign callback to this source
-                assignInputCallback( k->first, *v, k->second.model_->clone() );
-            }
-        }
-    }
-
-}
-
-void Session::setInputSynchrony(uint input, Metronome::Synchronicity sync)
-{
-    input_sync_[input] = sync;
-}
-
-std::vector<Metronome::Synchronicity> Session::getInputSynchrony()
-{
-    return input_sync_;
-}
-
-Metronome::Synchronicity Session::inputSynchrony(uint input)
-{
-    return input_sync_[input];
-}
-
 
 void Session::applySnapshot(uint64_t key)
 {

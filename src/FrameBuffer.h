@@ -3,8 +3,17 @@
 
 #include "RenderingManager.h"
 
+#ifndef NDEBUG
+#define FRAMEBUFFER_DEBUG
+#endif
+
 #define FBI_JPEG_QUALITY 90
 #define MIPMAP_LEVEL 7
+
+// Smallest framebuffer accepted (pixels, per axis)
+#define FRAMEBUFFER_MIN_SIZE 2
+// Memory a single framebuffer may use when the GPU RAM is unknown (Bytes)
+#define FRAMEBUFFER_MAX_MEMORY 1000000000UL
 
 /**
  * @brief The FrameBufferImage class stores an RGB image in RAM
@@ -55,7 +64,9 @@ public:
     ~FrameBuffer();
 
     // Bind & push attribs to prepare draw
-    void begin(bool clear = true);
+    // returns false if the frame buffer could not be allocated:
+    // in that case nothing is bound and end() shall NOT be called
+    bool begin(bool clear = true);
     // pop attrib and unbind to end draw
     void end();
     // unbind (any) framebuffer object
@@ -88,6 +99,9 @@ public:
     inline uint opengl_id() const { return framebufferid_; }
     inline FrameBufferFlags flags() const { return flags_; }
 
+    // true when the frame buffer is allocated and can be drawn into
+    inline bool isValid() const { return framebufferid_ > 0; }
+
     // index for texturing
     uint texture() const;
 
@@ -95,9 +109,24 @@ public:
     FrameBufferImage *image();
     bool fill(FrameBufferImage *image);
 
-    // how much memory used, in Bytes
+    // how much memory is used by all frame buffers, in Bytes
     static unsigned long memory_usage();
+
+    // estimated GPU memory, in Bytes, needed for such a frame buffer
+    // (0 if the resolution is not finite or smaller than one pixel)
+    static unsigned long memoryUsage(glm::vec3 resolution, FrameBufferFlags flags);
+    // maximum resolution supported by the GPU (GL_MAX_TEXTURE_SIZE)
     static glm::vec3 maxResolution();
+    // how much memory, in Bytes, a single frame buffer is allowed to use
+    static unsigned long memoryBudget();
+    // false if the resolution is not finite, too small, larger than
+    // maxResolution(), or needs more memory than memoryBudget()
+    static bool isValidResolution(glm::vec3 resolution, FrameBufferFlags flags);
+
+#ifdef FRAMEBUFFER_DEBUG
+    // list all frame buffers still alive (debug builds only)
+    static void dumpRegistry();
+#endif
 
 private:
     void init();
@@ -110,6 +139,7 @@ private:
     glm::vec4 projection_area_;
     uint textureid_, multisampling_textureid_;
     uint framebufferid_, multisampling_framebufferid_;
+    bool failed_;
     unsigned long mem_usage_;
     static unsigned long total_mem_usage;
 };

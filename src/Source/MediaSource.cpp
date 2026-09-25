@@ -27,6 +27,7 @@
 #include "Log.h"
 
 #include "MediaSource.h"
+#include "IconsVimixImage.h"
 
 MediaSource::MediaSource(uint64_t id) : Source(id), path_("")
 {
@@ -42,6 +43,11 @@ MediaSource::~MediaSource()
 
 void MediaSource::setPath(const std::string &p)
 {
+    // a media player can be opened only once: do not pretend to change the path
+    // of a source already openned (use Mixer::replaceSource instead)
+    if ( mediaplayer_->isOpen() )
+        return;
+
     path_ = p;
 
     // prepare audio flag before openning
@@ -67,9 +73,9 @@ MediaPlayer *MediaSource::mediaplayer() const
 glm::ivec2 MediaSource::icon() const
 {
     if (mediaplayer_->isImage())
-        return glm::ivec2(ICON_SOURCE_IMAGE);
+        return glm::ivec2(ICON_VI_SOURCE_IMAGE);
     else
-        return glm::ivec2(ICON_SOURCE_VIDEO);
+        return glm::ivec2(ICON_VI_SOURCE_VIDEO);
 }
 
 std::string MediaSource::info() const
@@ -222,10 +228,8 @@ void MediaSource::render()
     if ( renderbuffer_ == nullptr )
         init();
     else {
-        // render the media player into frame buffer
-        // NB: this also applies the color correction shader
-        renderbuffer_->begin();
         // apply fading
+        // NB: done even if the frame buffer is not available, to keep audio in sync
         float __f = mediaplayer_->currentTimelineFading();
         setAudioVolumeFactor(Source::VOLUME_OPACITY, __f);
         if (mediaplayer_->timelineFadingMode() != MediaPlayer::FADING_ALPHA) {
@@ -236,8 +240,13 @@ void MediaSource::render()
             // alpha fading
             texturesurface_->shader()->color = glm::vec4( glm::vec3(1.f), __f);
         }
-        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
-        renderbuffer_->end();
+
+        // render the media player into frame buffer
+        // NB: this also applies the color correction shader
+        if ( renderbuffer_->begin() ) {
+            texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+            renderbuffer_->end();
+        }
         ready_ = true;
     }
 }

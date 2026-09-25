@@ -28,6 +28,7 @@
 #include <climits>
 #include <map>
 #include <cmath>
+#include <mutex>
 
 #include <unicode/ustream.h>
 #include <unicode/translit.h>
@@ -83,33 +84,50 @@ std::string BaseToolkit::transliterate(const std::string &input)
 {
     // because icu::Transliterator is slow, we keep a dictionary of already
     // transliterated texts to be faster during repeated calls (update of user interface)
+    // The dictionary is shared by all threads and thus has to be protected by a mutex.
+    static std::mutex dictionary_mutex_;
     static std::map<std::string, std::string> dictionary_;
-    std::map<std::string, std::string>::const_iterator existingentry = dictionary_.find(input);
 
-    if (existingentry == dictionary_.cend()) {
-
-        auto ucs = icu::UnicodeString::fromUTF8(input);
-
-        UErrorCode status = U_ZERO_ERROR;
-        icu::Transliterator *firstTrans = icu::Transliterator::createInstance(
-                    "any-NFKD ; [:Nonspacing Mark:] Remove; NFKC; Latin", UTRANS_FORWARD, status);
-        firstTrans->transliterate(ucs);
-        delete firstTrans;
-
-        icu::Transliterator *secondTrans = icu::Transliterator::createInstance(
-                    "any-NFKD ; [:Nonspacing Mark:] Remove; [@!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
-        secondTrans->transliterate(ucs);
-        delete secondTrans;
-
-        std::ostringstream output;
-        output << ucs;
-
-        // remember for future
-        dictionary_[input] = output.str();
+    // already transliterated? return a copy (never a reference inside the dictionary,
+    // which another thread could modify at any time)
+    {
+        std::lock_guard<std::mutex> lock(dictionary_mutex_);
+        std::map<std::string, std::string>::const_iterator entry = dictionary_.find(input);
+        if (entry != dictionary_.cend())
+            return entry->second;
     }
 
-    // return remembered transliterated text
-    return dictionary_[input];
+    // Not known yet: transliterate outside of the lock, as icu is slow
+    auto ucs = icu::UnicodeString::fromUTF8(input);
+
+    UErrorCode status = U_ZERO_ERROR;
+    icu::Transliterator *firstTrans = icu::Transliterator::createInstance(
+                "any-NFKD ; [:Nonspacing Mark:] Remove; NFKC; Latin", UTRANS_FORWARD, status);
+    if (firstTrans == nullptr || U_FAILURE(status))
+        // icu is not available: give back the text unchanged
+        return input;
+    firstTrans->transliterate(ucs);
+    delete firstTrans;
+
+    status = U_ZERO_ERROR;
+    icu::Transliterator *secondTrans = icu::Transliterator::createInstance(
+                "any-NFKD ; [:Nonspacing Mark:] Remove; [@!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
+    if (secondTrans != nullptr && U_SUCCESS(status)) {
+        secondTrans->transliterate(ucs);
+        delete secondTrans;
+    }
+
+    std::ostringstream output;
+    output << ucs;
+    const std::string result = output.str();
+
+    // remember for future
+    {
+        std::lock_guard<std::mutex> lock(dictionary_mutex_);
+        dictionary_[input] = result;
+    }
+
+    return result;
 }
 
 

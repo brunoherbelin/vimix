@@ -20,6 +20,8 @@
 #include <glib.h>
 #include <glm/fwd.hpp>
 #include <sstream>
+#include <iomanip>
+#include <ctime>
 #include <algorithm>
 
 #include "Log.h"
@@ -55,7 +57,7 @@ using namespace tinyxml2;
 
 #include "SessionCreator.h"
 
-SessionInformation SessionCreator::info(const std::string& filename)
+SessionInformation SessionCreator::info(const std::string& filename, bool with_thumbnail)
 {
     SessionInformation ret;
 
@@ -78,26 +80,40 @@ SessionInformation SessionCreator::info(const std::string& filename)
                     ret.description += " (" + std::to_string(t) + " in total)";
                 ret.description += "\n";
                 const char *att_string = header->Attribute("resolution");
-                if (att_string)
+                if (att_string) {
+                    // keep only the resolution, before any legacy information after a coma
+                    ret.resolution = std::string( att_string );
+                    ret.resolution = ret.resolution.substr(0, ret.resolution.find(','));
                     ret.description += std::string( att_string ) + "\n";
+                }
                 att_string = header->Attribute("date");
                 if (att_string) {
                     std::string date( att_string );
                     ret.description += date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4) + " @ ";
                     ret.description += date.substr(8,2) + ":" + date.substr(10,2);
+                    // convert date string YYYYMMDDHHMMSS (local time) to time_point
+                    std::tm tm = {};
+                    std::istringstream ss(date);
+                    ss >> std::get_time(&tm, "%Y%m%d%H%M%S");
+                    if (!ss.fail()) {
+                        tm.tm_isdst = -1;
+                        ret.date = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+                    }
                 }
             }
-            const XMLElement *session = doc.FirstChildElement("Session");
-            if (session != nullptr ) {
-                const XMLElement *thumbnailelement = session->FirstChildElement("Thumbnail");
-                // if there is a user defined thumbnail, get it
-                if (thumbnailelement) {
-                    ret.thumbnail = XMLToImage(thumbnailelement);
-                    ret.user_thumbnail_ = true;
+            if (with_thumbnail) {
+                const XMLElement *session = doc.FirstChildElement("Session");
+                if (session != nullptr ) {
+                    const XMLElement *thumbnailelement = session->FirstChildElement("Thumbnail");
+                    // if there is a user defined thumbnail, get it
+                    if (thumbnailelement) {
+                        ret.thumbnail = XMLToImage(thumbnailelement);
+                        ret.user_thumbnail_ = true;
+                    }
+                    // otherwise get the default saved thumbnail in session
+                    else
+                        ret.thumbnail = XMLToImage(session);
                 }
-                // otherwise get the default saved thumbnail in session
-                else
-                    ret.thumbnail = XMLToImage(session);
             }
         }
     }
@@ -272,7 +288,7 @@ void SessionLoader::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
                         // apply specific parameters
                         loadedcallback->accept(*this);
                         // assign to target
-                        session_->assignInputCallback(input, target, loadedcallback);
+                        session_->inputCallbacks()->assign(input, target, loadedcallback);
                     }
                 }
             }
@@ -288,9 +304,9 @@ void SessionLoader::loadInputCallbacks(tinyxml2::XMLElement *inputsNode)
                 uint i = 0;
                 while(std::getline(iss, token, ';')) {
                     if (token.compare("1") == 0)
-                        session_->setInputSynchrony(i, Metronome::SYNC_BEAT);
+                        session_->inputCallbacks()->setSynchrony(i, Metronome::SYNC_BEAT);
                     else if (token.compare("2") == 0)
-                        session_->setInputSynchrony(i, Metronome::SYNC_PHASE);
+                        session_->inputCallbacks()->setSynchrony(i, Metronome::SYNC_PHASE);
                     ++i;
                 }
             }
@@ -1418,6 +1434,10 @@ void SessionLoader::visit (ScreenCaptureSource& s)
 {
     std::string winname = std::string ( xmlCurrent_->Attribute("window") );
 
+    // Wayland: token to restore the screen cast without asking the user
+    const char *token = xmlCurrent_->Attribute("restore");
+    if (token)
+        s.setRestoreToken(token);
     // change only if different window
     if ( winname != s.window() )
         s.setWindow(winname);

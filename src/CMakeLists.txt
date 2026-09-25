@@ -33,7 +33,6 @@ set(VMIX_SRCS
     MixingGroup.cpp
     MousePointer.cpp
     MultiFileRecorder.cpp
-    Navigator.cpp
     OutputWindow.cpp
     Overlay.cpp
     Playlist.cpp
@@ -43,6 +42,7 @@ set(VMIX_SRCS
     Screenshot.cpp
     Selection.cpp
     Session.cpp
+    InputCallbacks.cpp
     SessionCreator.cpp
     SessionParser.cpp
     Settings.cpp
@@ -55,8 +55,10 @@ set(VMIX_SRCS
     TabletInput.cpp
     Timeline.cpp
     Transcoder.cpp
+    Upscaler.cpp
     UserInterfaceManager.cpp
     VideoBroadcast.cpp
+    MultiFileRifeEncoder.cpp
     
     # Filter/ folder
     Filter/DelayFilter.cpp
@@ -96,7 +98,9 @@ set(VMIX_SRCS
     Toolkit/GlmToolkit.cpp
     Toolkit/GstToolkit.cpp
     Toolkit/ImGuiToolkit.cpp
+    Toolkit/NcnnToolkit.cpp
     Toolkit/NetworkToolkit.cpp
+    Toolkit/OnnxToolkit.cpp
     Toolkit/SystemToolkit.cpp
     Toolkit/tinyxml2Toolkit.cpp
     
@@ -121,6 +125,18 @@ set(VMIX_SRCS
     Visitor/SearchVisitor.cpp
     Visitor/SessionVisitor.cpp
     
+    # Navigator/ folder
+    Navigator/Navigator.cpp
+    Navigator/NavigatorCodec.cpp
+    Navigator/NavigatorInternal.cpp
+    Navigator/NavigatorPanel.cpp
+    Navigator/NavigatorWidgets.cpp
+    Navigator/NewSourcePanel.cpp
+    Navigator/PlaylistPanel.cpp
+    Navigator/SessionPanel.cpp
+    Navigator/SourcePanel.cpp
+    Navigator/SettingsPanel.cpp
+
     # Window/ folder
     Window/InputMappingWindow.cpp
     Window/OutputPreviewWindow.cpp
@@ -134,19 +150,23 @@ set(VMIX_SRCS
 ##### DEFINE THE TARGET (OS specific)
 #####
 
+if (USE_GST_OPENGL_SYNC_HANDLER)
+    # Add GPU video recorder implementation
+    list(APPEND VMIX_SRCS GPUVideoRecorder.cpp)
+endif()
+
 IF(APPLE)
 
     # Add macOS tablet input implementation
     list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/osx/TabletInput_macos.mm)
     # Enable Objective-C++
     set_source_files_properties(${CMAKE_SOURCE_DIR}/osx/TabletInput_macos.mm PROPERTIES COMPILE_FLAGS "-x objective-c++")
+    # Add macOS list of screens for screen capture
+    list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/osx/ScreenCapture_macos.mm)
+    set_source_files_properties(${CMAKE_SOURCE_DIR}/osx/ScreenCapture_macos.mm PROPERTIES COMPILE_FLAGS "-x objective-c++")
 
 ELSE(APPLE)
 
-    if (USE_GST_OPENGL_SYNC_HANDLER)
-        # Add GPU video recorder implementation
-        list(APPEND VMIX_SRCS GPUVideoRecorder.cpp)
-    endif()
 
     # Add Linux tablet input implementation
     if(X11_Xi_FOUND)
@@ -158,6 +178,9 @@ ELSE(APPLE)
             list(APPEND VMIX_SRCS TabletInput_linux_libinput.cpp)
         endif()
     endif()
+
+    # Add Linux freedesktop services (screen cast portal for screen capture under Wayland)
+    list(APPEND VMIX_SRCS Toolkit/FreedesktopToolkit.cpp)
 
 ENDIF(APPLE)
 
@@ -181,9 +204,28 @@ IF(APPLE)
         MACOSX_BUNDLE_INFO_PLIST ${MACOSX_BUNDLE_PLIST_FILE}
     )
 
+    # Sign the bundle after each build, for development. macOS grants its
+    # permissions (Screen Recording, Camera...) to an application by its
+    # signature: an ad-hoc signed build is a new application after every
+    # rebuild, and loses them, while one signed with APPLE_CODESIGN_IDENTITY
+    # is the same application as the installed vimix, and shares its permissions.
+    # No hardened runtime here, so that libraries of the system (e.g. Homebrew) still load.
+    option(APPLE_CODESIGN_BUILD "Sign the bundle with APPLE_CODESIGN_IDENTITY after each build" OFF)
+    if(APPLE_CODESIGN_BUILD)
+        add_custom_command(TARGET ${VMIX_BINARY} POST_BUILD
+            # codesign refuses files with extended attributes (Finder information...)
+            COMMAND xattr -cr "$<TARGET_BUNDLE_DIR:${VMIX_BINARY}>"
+            COMMAND codesign --force --sign "${APPLE_CODESIGN_IDENTITY}" "$<TARGET_BUNDLE_DIR:${VMIX_BINARY}>"
+            COMMENT "Signing ${VMIX_BINARY}.app with ${APPLE_CODESIGN_IDENTITY}"
+            VERBATIM
+        )
+    endif()
+
     # link with base frameworks
     set(PLATFORM_LIBS
         "-framework CoreFoundation"
+        "-framework CoreGraphics"
+        "-framework OpenGL"
         "-framework Appkit"
     )
 
@@ -249,10 +291,28 @@ if(AVAHI_FOUND)
     target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${AVAHI_LIBRARIES})
 endif()
 
+# GIO (D-Bus and unix fd passing) for the Linux screen cast portal
+if(GIO_UNIX_FOUND)
+    target_include_directories(${VMIX_BINARY} PRIVATE ${GIO_UNIX_INCLUDE_DIRS})
+    target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${GIO_UNIX_LIBRARIES})
+endif()
+
 # miniz for ZIP compression (optional, present when submodule is initialised)
 if(MINIZ_LIBRARIES)
     target_compile_definitions(${VMIX_BINARY} PUBLIC VIMIX_USE_MINIZ)
     target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${MINIZ_LIBRARIES})
+endif()
+
+# ncnn for RIFE frame interpolation and Real-ESRGAN upscaling
+# (optional, present when the ext/ sources were fetched)
+if(USE_NCNN)
+    target_link_libraries(${VMIX_BINARY} PRIVATE NCNNRIFE NCNNUPSCALE)
+endif()
+
+# ONNX for RIFE frame interpolation (optional, present when submodule is initialised)
+if(USE_ONNX)
+    target_compile_definitions(${VMIX_BINARY} PRIVATE HAVE_ONNX)
+    target_link_libraries(${VMIX_BINARY} PRIVATE onnxruntime::onnxruntime)
 endif()
 
 #####

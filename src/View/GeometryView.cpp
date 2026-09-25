@@ -43,6 +43,7 @@
 #include "View/View.h"
 #include "Mixer.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Source/Source.h"
 #include "Settings.h"
 #include "Visitor/PickingVisitor.h"
@@ -547,14 +548,14 @@ void GeometryView::draw()
             _label += "non visible sources\n(";
             _label += std::to_string(hidden_count_) + " source" + (hidden_count_>1?"s are ":" is ") + "outside mixing circle)";            
             ImGui::SameLine(0, IMGUI_SAME_LINE);
-            ImGuiToolkit::ButtonIconToggle(12, 0, &Settings::application.views[mode_].ignore_mix, _label.c_str());
+            ImGuiToolkit::ButtonIconToggle(ICON_VI_HIDDEN_SOURCES, &Settings::application.views[mode_].ignore_mix, _label.c_str());
 
             // select layers visibility
             static std::vector<std::tuple<int, int, std::string> > _workspaces
-                = {{ICON_WORKSPACE_BACKGROUND, "Show only sources in\nBackground layer ("},
-                   {ICON_WORKSPACE_CENTRAL,    "Show only sources in\nWorkspace layer ("},
-                   {ICON_WORKSPACE_FOREGROUND, "Show only sources in\nForeground layer ("},
-                   {ICON_WORKSPACE,            "Show sources in all layers ("}
+                = {{ICON_VI_LAYERS_BACKGROUND, "Show only sources in\nBackground layer ("},
+                   {ICON_VI_LAYERS_CENTRAL,    "Show only sources in\nWorkspace layer ("},
+                   {ICON_VI_LAYERS_FOREGROUND, "Show only sources in\nForeground layer ("},
+                   {ICON_VI_LAYERS,            "Show sources in all layers ("}
                 };
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             std::ostringstream oss;

@@ -34,36 +34,14 @@
 #include "Audio.h"
 #include "Log.h"
 
-const char* GPUVideoRecorder::profile_name[GPUVideoRecorder::PROFILE_COUNT] = {
-    "NVIDIA H264 (Realtime)",
-    "NVIDIA H264 (HQ)",
-    "NVIDIA H265 (Realtime)",
-    "NVIDIA H265 (HQ)",
-    "VAAPI H264 (Realtime)",
-    "VAAPI H264 (HQ)",
-    "VAAPI H265 (Realtime)",
-    "VAAPI H265 (HQ)"
-};
-
-const char* GPUVideoRecorder::profile_encoder[GPUVideoRecorder::PROFILE_COUNT] = {
-    "nvh264enc",
-    "nvh264enc",
-    "nvh265enc",
-    "nvh265enc",
-    "vaapih264enc",
-    "vaapih264enc",
-    "vaapih265enc",
-    "vaapih265enc"
-};
-
 const gint GPUVideoRecorder::framerate_preset[3] = { 15, 25, 30 };
 
 
 GPUVideoRecorder::GPUVideoRecorder(const std::string &basename)
     : FrameGrabber(),
       gl_context_(nullptr), gl_display_(nullptr),
-      width_(0), height_(0), 
-      profile_(NVENC_H264_REALTIME), basename_(basename)
+      width_(0), height_(0),
+      encoder_(GstToolkit::H264_RT), basename_(basename)
 {
 }
 
@@ -79,56 +57,28 @@ GPUVideoRecorder::~GPUVideoRecorder()
     
 }
 
-bool GPUVideoRecorder::isEncoderAvailable(Profile profile)
+bool GPUVideoRecorder::isEncoderAvailable(GstToolkit::Profile profile)
 {
     if (!GstToolkit::has_feature("glcolorconvert"))
         return false;
     if (!GstToolkit::has_feature("gltransformation"))
         return false;
-    return GstToolkit::has_feature(profile_encoder[profile]);
+
+    // no hardware encoder pipeline for this profile on this platform/GPU,
+    // taking frames in OpenGL memory (NB: also tests the adapter elements)
+    if (GstToolkit::getHardwareEncodingPipeline(profile, GstToolkit::MEMORY_GL).empty())
+        return false;
+
+    return true;
 }
 
-std::string GPUVideoRecorder::buildPipeline(Profile profile, GstCaps *write_caps)
+std::string GPUVideoRecorder::buildPipeline(GstToolkit::Profile profile)
 {
     std::string pipeline = "appsrc name=src ! glcolorconvert name=glclcvt ! gltransformation ! capsfilter name=capf ! ";
 
-    // Build encoder-specific pipeline
-    switch (profile) {
-        case NVENC_H264_REALTIME:
-            pipeline += "nvh264enc rc-mode=constqp zerolatency=true ! "
-                       "video/x-h264, profile=main ! h264parse ! ";
-            break;
-        case NVENC_H264_HQ:
-            pipeline += "nvh264enc rc-mode=constqp qp-const=18 ! "
-                       "video/x-h264, profile=high ! h264parse ! ";
-            break;
-        case NVENC_H265_REALTIME:
-            pipeline += "nvh265enc rc-mode=constqp zerolatency=true ! "
-                       "video/x-h265, profile=main ! h265parse ! ";
-            break;
-        case NVENC_H265_HQ:
-            pipeline += "nvh265enc rc-mode=constqp qp-const=18 ! "
-                       "video/x-h265, profile=main ! h265parse ! ";
-            break;
-        case VAAPI_H264_REALTIME:
-            pipeline += "vaapih264enc rate-control=cqp init-qp=26 ! "
-                       "video/x-h264, profile=main ! h264parse ! ";
-            break;
-        case VAAPI_H264_HQ:
-            pipeline += "vaapih264enc rate-control=cqp init-qp=16 ! "
-                       "video/x-h264, profile=high ! h264parse ! ";
-            break;
-        case VAAPI_H265_REALTIME:
-            pipeline += "vaapih265enc rate-control=cqp init-qp=26 ! "
-                       "video/x-h265, profile=main ! h265parse ! ";
-            break;
-        case VAAPI_H265_HQ:
-            pipeline += "vaapih265enc rate-control=cqp init-qp=16 ! "
-                       "video/x-h265, profile=high ! h265parse ! ";
-            break;
-        default:
-            break;
-    }
+    // hardware encoder fragment (NVENC or VA-API, whichever is available), starting
+    // with the adapter from RGBA frames in OpenGL memory (e.g. to VAMemory for VA-API)
+    pipeline += GstToolkit::getHardwareEncodingPipeline(profile, GstToolkit::MEMORY_GL);
 
     // Add Audio to pipeline
     if ( Settings::application.accept_audio &&
@@ -153,17 +103,14 @@ std::string GPUVideoRecorder::buildPipeline(Profile profile, GstCaps *write_caps
 }
 
 bool GPUVideoRecorder::hasProfile(int i)
-{   
-    if (i < 0 || i > 3)
+{
+    // GPU recording is only offered for the H264/H265 profiles; GstToolkit
+    // already resolves to whichever hardware encoder (NVENC or VA-API) is
+    // available on this system, so a single check suffices here.
+    if (i < GstToolkit::H264_RT || i >= GstToolkit::PRORES_RT)
         return false;
 
-    if (isEncoderAvailable(static_cast<Profile>(i))) 
-        return true;
-    
-    if (isEncoderAvailable(static_cast<Profile>(i + 4))) 
-        return true;
-
-    return false;
+    return isEncoderAvailable(static_cast<GstToolkit::Profile>(i));
 }
 
 std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
@@ -173,26 +120,20 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
         return ("GPU Video Recording : Invalid Caps");
     }
 
-    // set profile from settings
-    if (Settings::application.record.profile >= 0 && Settings::application.record.profile < 4 ) {
+    // set profile from settings (GstToolkit resolves to whichever hardware
+    // encoder, NVENC or VA-API, is available for it on this system)
+    if (Settings::application.record.profile >= GstToolkit::H264_RT &&
+        Settings::application.record.profile < GstToolkit::PRORES_RT ) {
 
-        // try nvidia encoder 
-        profile_ = static_cast<Profile>(Settings::application.record.profile);
+        encoder_ = static_cast<GstToolkit::Profile>(Settings::application.record.profile);
 
         // test if hardware encoder is available
-        if (!isEncoderAvailable(profile_)) {
-
-            // try vaapi if nvidia encoder not available
-            profile_ = static_cast<Profile>(Settings::application.record.profile + 4);
-
-            // test if hardware encoder is available
-            if (!isEncoderAvailable(profile_)) {
-                return("GPU Video Recording : No GPU Encoder available (nvdec or vaapi).");
-            }
+        if (!isEncoderAvailable(encoder_)) {
+            return("GPU Video Recording : No GPU Encoder available (nvdec or va-api).");
         }
-    } 
+    }
     else {
-        return "GPU Video Recording : profile not available for GPU encoder (accepts only H264 and H265).";
+        return "GPU Video Recording : profile not available for GPU encoder.";
     }
 
     // Validate GL context sharing is set up
@@ -211,6 +152,10 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     if (width_ <= 0 || height_ <= 0) {
         return "GPU Video Recording : Invalid video dimensions in caps";
     }
+    // verify the profile can encode the resolution of the session
+    std::string unsupported = GstToolkit::unsupportedResolution(encoder_, width_, height_, true);
+    if (!unsupported.empty())
+        return std::string("GPU Video Recording : ") + unsupported;
     // specify recorder framerate in the given caps
     GstCaps *tmp = gst_caps_copy( read_caps );
     GValue v = G_VALUE_INIT;
@@ -229,7 +174,7 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     gst_caps_set_features(write_caps_, 0, features);
     
     // Build pipeline
-    std::string pipeline_desc = buildPipeline(profile_, write_caps);
+    std::string pipeline_desc = buildPipeline(encoder_);
 
     // Parse pipeline
     GError *error = nullptr;
@@ -314,7 +259,11 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     accept_buffer_ = false;
     finished_ = false;
 
-    Log::Info("GPU Video Recording : started %s (%s)", filename_.c_str(), profile_name[profile_]);
+    Log::Info("GPU Video Recording : started %s (%s)", filename_.c_str(), GstToolkit::profile_name[encoder_]);
+    // name of the encoder: first word of its pipeline for frames in system memory (no adapter)
+    const std::string hw = GstToolkit::getHardwareEncodingPipeline(encoder_);
+    const std::string encoder_name = hw.substr(0, hw.find(' '));
+    Log::Info("GPU Video Recording with hardware accelerated encoder (%s)", encoder_name.c_str());
 
     return "";
 }
@@ -492,6 +441,9 @@ void GPUVideoRecorder::addFrame(guint texture_id, GstCaps *read_caps, GstCaps *w
     transfer_data.vimix_texture_id = texture_id;
     transfer_data.buffer = buffer;
 
+    // the GStreamer context sees what was rendered in the texture only once
+    // our context has flushed (which macOS enforces)
+    glFlush();
     gst_gl_context_thread_add(gl_context_, perform_texture_transfer, &transfer_data);
 
     // Set buffer timestamp
@@ -550,7 +502,7 @@ std::string GPUVideoRecorder::info(bool extended) const
     if (extended) {
         std::string info = "Recorded ";
         info += std::to_string(frame_count_) + " frames\n";
-        info +=  profile_name[profile_];
+        info +=  GstToolkit::profile_name[encoder_];
         return info;
     }
 
@@ -611,8 +563,11 @@ GstBusSyncReply GPUVideoRecorder::bus_sync_handler(GstBus *, GstMessage *msg, gp
     // Handle errors
     if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
         GError *error;
-        gst_message_parse_error(msg, &error, nullptr);
-        Log::Warning("GPU Video Recording : Error %s", error->message);
+        gchar *debug = nullptr;
+        gst_message_parse_error(msg, &error, &debug);
+        // debug details tell which element failed and why
+        Log::Warning("GPU Video Recording : Error %s (%s)", error->message, debug ? debug : "no details");
+        g_free(debug);
         g_error_free(error);
 
         if (grabber) 

@@ -31,6 +31,7 @@
 #include "Visitor/Visitor.h"
 
 #include "DeviceSource.h"
+#include "IconsVimixImage.h"
 
 #ifndef NDEBUG
 #define DEVICE_DEBUG
@@ -69,6 +70,12 @@ std::string pipelineForDevice(GstDevice *device, uint index)
                 path = gst_structure_get_string(stru, "device.path");
             else
                 path = gst_structure_get_string(stru, "api.v4l2.path");
+
+            // no path, no pipeline
+            if (path == nullptr) {
+                gst_structure_free(stru);
+                return std::string();
+            }
             pipe << " device=" << path;
 #endif
         }
@@ -109,11 +116,22 @@ Device::callback_device_monitor (GstBus *, GstMessage * message, gpointer )
 struct hasDeviceName
 {
     inline bool operator()(const DeviceHandle &elem) const {
-       return (elem.name.compare(_name) == 0);
+       return (elem.name.compare(_name) == 0) ||
+              std::find(elem.aliases.cbegin(), elem.aliases.cend(), _name) != elem.aliases.cend();
     }
     explicit hasDeviceName(const std::string &name) : _name(name) { }
 private:
     std::string _name;
+};
+
+struct hasDevicePipeline
+{
+    inline bool operator()(const DeviceHandle &elem) const {
+       return (elem.pipeline.compare(_pipeline) == 0);
+    }
+    explicit hasDevicePipeline(const std::string &pipeline) : _pipeline(pipeline) { }
+private:
+    std::string _pipeline;
 };
 
 struct hasConnectedSource
@@ -166,6 +184,16 @@ void Device::add(GstDevice *device)
 
         // add if not in the list and valid
         std::string p = pipelineForDevice(device, handles_.size());
+
+#if !defined(APPLE)
+        // same device given under another name (e.g. by another device provider)
+        auto same = std::find_if(handles_.begin(), handles_.end(), hasDevicePipeline(p) );
+        if ( !p.empty() && same != handles_.end() ) {
+            same->aliases.push_back(device_name);
+            p.clear();
+        }
+#endif
+
         if (!p.empty()) {
 
             GstToolkit::PipelineConfigSet confs = GstToolkit::getPipelineConfigs(p);
@@ -518,8 +546,12 @@ void DeviceSource::setDevice(const std::string &devicename)
                 if ( best.stream.find("jpeg") != std::string::npos )
                     pipeline << " ! jpegdec";
 
-                // always convert
-                pipeline << " ! queue ! videoconvert";
+                // always convert; on GPU if GLMemory can be used
+                bool glmemory = Stream::glMemoryAvailable();
+                if (glmemory)
+                    pipeline << " ! queue ! glupload ! glcolorconvert";
+                else
+                    pipeline << " ! queue ! videoconvert";
 
                 // delete and reset render buffer to enforce re-init of StreamSource
                 if (renderbuffer_)
@@ -530,7 +562,7 @@ void DeviceSource::setDevice(const std::string &devicename)
                 stream_ = h->stream = new Stream;
 
                 // open gstreamer
-                h->stream->open( pipeline.str(), best.width, best.height);
+                h->stream->open( pipeline.str(), best.width, best.height, glmemory);
                 h->stream->play(true);
             }
         }
@@ -600,7 +632,7 @@ Source::Failure DeviceSource::failed() const
 
 glm::ivec2 DeviceSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_DEVICE);
+    return glm::ivec2(ICON_VI_SOURCE_DEVICE);
 }
 
 std::string DeviceSource::info() const

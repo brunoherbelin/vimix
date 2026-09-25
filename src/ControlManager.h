@@ -98,21 +98,30 @@
 #define INPUT_NUMPAD_FIRST     27
 #define INPUT_NUMPAD_COUNT     16
 #define INPUT_NUMPAD_LAST      43
-#define INPUT_JOYSTICK_FIRST   44
-#define INPUT_JOYSTICK_COUNT   20
-#define INPUT_JOYSTICK_LAST    64
-#define INPUT_JOYSTICK_FIRST_BUTTON  44
-#define INPUT_JOYSTICK_COUNT_BUTTON  15
-#define INPUT_JOYSTICK_LAST_BUTTON   58
-#define INPUT_JOYSTICK_FIRST_AXIS    59
-#define INPUT_JOYSTICK_COUNT_AXIS    6
-#define INPUT_JOYSTICK_LAST_AXIS     64
+#define INPUT_GAMEPAD_1_FIRST   44
+#define INPUT_GAMEPAD_1_COUNT   21
+#define INPUT_GAMEPAD_1_LAST    64
+#define INPUT_GAMEPAD_1_FIRST_BUTTON  44
+#define INPUT_GAMEPAD_1_COUNT_BUTTON  15
+#define INPUT_GAMEPAD_1_LAST_BUTTON   58
+#define INPUT_GAMEPAD_1_FIRST_AXIS    59
+#define INPUT_GAMEPAD_1_COUNT_AXIS    6
+#define INPUT_GAMEPAD_1_LAST_AXIS     64
 #define INPUT_MULTITOUCH_FIRST 65
 #define INPUT_MULTITOUCH_COUNT 16
 #define INPUT_MULTITOUCH_LAST  81
 #define INPUT_TIMER_FIRST      82
 #define INPUT_TIMER_LAST       114
-#define INPUT_MAX              115
+#define INPUT_GAMEPAD_2_FIRST   115
+#define INPUT_GAMEPAD_2_COUNT   21
+#define INPUT_GAMEPAD_2_LAST    135
+#define INPUT_GAMEPAD_2_FIRST_BUTTON  115
+#define INPUT_GAMEPAD_2_COUNT_BUTTON  15
+#define INPUT_GAMEPAD_2_LAST_BUTTON   129
+#define INPUT_GAMEPAD_2_FIRST_AXIS    130
+#define INPUT_GAMEPAD_2_COUNT_AXIS    6
+#define INPUT_GAMEPAD_2_LAST_AXIS     135
+#define INPUT_MAX              136
 
 
 class Session;
@@ -145,6 +154,7 @@ public:
     void terminate();
 
     void loadGamepadMappings();
+    void readGamepad(int glfw_id, uint first_button, uint first_axis);
 
     bool  inputActive (uint id);
     float inputValue  (uint id);

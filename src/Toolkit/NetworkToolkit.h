@@ -29,7 +29,6 @@ typedef enum {
 
 extern const char* stream_protocol_label[DEFAULT];
 extern const std::vector<std::string> stream_send_pipeline;
-extern const std::vector< std::pair<std::string, std::string> > stream_h264_send_pipeline;
 extern const std::vector<std::string> stream_receive_pipeline;
 
 struct StreamConfig {

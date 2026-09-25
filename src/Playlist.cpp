@@ -21,7 +21,6 @@
 #include <set>
 
 #include <tinyxml2.h>
-#include "Log.h"
 #include "Toolkit/tinyxml2Toolkit.h"
 #include "Toolkit/SystemToolkit.h"
 using namespace tinyxml2;

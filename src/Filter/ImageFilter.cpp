@@ -483,16 +483,18 @@ void ImageFilter::draw (FrameBuffer *input)
         }
 
         // render input surface into frame buffer
-        buffers_.first->begin();
-        surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
-        buffers_.first->end();
+        if ( buffers_.first->begin() ) {
+            surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
+            buffers_.first->end();
+        }
 
         // SECOND PASS
         if ( program_.isTwoPass() ) {
             // render filtered surface from first pass into frame buffer
-            buffers_.second->begin();
-            surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
-            buffers_.second->end();
+            if ( buffers_.second->begin() ) {
+                surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
+                buffers_.second->end();
+            }
         }
     }
 }
@@ -818,16 +820,18 @@ void ResampleFilter::draw (FrameBuffer *input)
     {
         // FIRST PASS
         // render input surface into frame buffer
-        buffers_.first->begin();
-        surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
-        buffers_.first->end();
+        if ( buffers_.first->begin() ) {
+            surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
+            buffers_.first->end();
+        }
 
         // SECOND PASS
         if ( program().isTwoPass() ) {
             // render filtered surface from first pass into frame buffer
-            buffers_.second->begin();
-            surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
-            buffers_.second->end();
+            if ( buffers_.second->begin() ) {
+                surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
+                buffers_.second->end();
+            }
         }
     }
 }
@@ -962,16 +966,18 @@ void BlurFilter::draw (FrameBuffer *input)
 
         // FIRST PASS
         // render mipmapped texture into frame buffer
-        buffers_.first->begin();
-        surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
-        buffers_.first->end();
+        if ( buffers_.first->begin() ) {
+            surfaces_.first->draw(glm::identity<glm::mat4>(), buffers_.first->projection());
+            buffers_.first->end();
+        }
 
         // SECOND PASS
         if ( program().isTwoPass() ) {
             // render filtered surface from first pass into frame buffer
-            buffers_.second->begin();
-            surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
-            buffers_.second->end();
+            if ( buffers_.second->begin() ) {
+                surfaces_.second->draw(glm::identity<glm::mat4>(), buffers_.second->projection());
+                buffers_.second->end();
+            }
         }
     }
 }

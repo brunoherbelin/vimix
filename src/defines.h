@@ -30,13 +30,13 @@
 #define MEDIA_FILES_PATTERN \
     { \
         "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov", "*.mkv", \
-        "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.hevc", "*.asf", "*.jpg", \
+        "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.hevc", "*.asf", "*.jpg", "*.jpeg", \
         "*.png", "*.gif", "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg" \
     }
-#define IMAGES_FILES_TYPE "Image (JPG, PNG, BMP, PPM, GIF)"
+#define IMAGES_FILES_TYPE "Image (JPG, PNG, WEBP, BMP, PPM, GIF)"
 #define IMAGES_FILES_PATTERN \
     { \
-        "*.jpg", "*.png", "*.bmp", "*.ppm", "*.gif" \
+        "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp", "*.ppm", "*.gif" \
     }
 #define SUBTITLE_FILES_TYPE "Subtitle (SRT, SUB)"
 #define SUBTITLE_FILES_PATTERN \
@@ -186,6 +186,7 @@
 #define MENU_SAVE_FILE        ICON_FA_FILE_DOWNLOAD "  Save"
 #define SHORTCUT_SAVE_FILE    CTRL_MOD "S"
 #define MENU_SAVEAS_FILE      ICON_FA_FILE_DOWNLOAD "  Save as"
+#define MENU_DELETE_FILE      ICON_FA_TRASH_ALT "  Delete"
 #define MENU_SAVE_ON_EXIT     ICON_FA_LEVEL_DOWN_ALT "  Save on exit"
 #define MENU_OPEN_ON_START    ICON_FA_LEVEL_UP_ALT "  Restore on start"
 #define SHORTCUT_SAVEAS_FILE  CTRL_MOD "Shift+S"
@@ -272,7 +273,7 @@
 #define LABEL_PLAYER_TIMELINE_ADD    "Add timeline"
 #define LABEL_EDIT_FADING     ICON_FA_RANDOM "  Edit timeline fading"
 #define LABEL_EDIT_GAPS       ICON_FA_CUT "  Cut timeline"
-#define LABEL_VIDEO_SEQUENCE  "  Encode an image sequence"
+#define LABEL_VIDEO_SEQUENCE  ICON_FA_FILM "  Encode an image sequence"
 #define DIALOG_TIMELINE_DURATION    ICON_FA_HOURGLASS_HALF " Set timeline duration"
 #define DIALOG_GST_EFFECT     "Gstreamer Video effect"
 #define LABEL_SHADER_EMBEDDED ICON_FA_FILE_ALT "  Embedded code"

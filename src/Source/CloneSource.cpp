@@ -24,6 +24,7 @@
 
 #include "Log.h"
 #include "defines.h"
+#include "IconsVimixImage.h"
 #include "Resource.h"
 #include "Scene/Decorations.h"
 #include "Visitor/Visitor.h"
@@ -109,9 +110,10 @@ void CloneSource::render()
 
         // render textured surface into frame buffer
         // NB: this also applies the color correction shader
-        renderbuffer_->begin();
-        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
-        renderbuffer_->end();
+        if ( renderbuffer_->begin() ) {
+            texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+            renderbuffer_->end();
+        }
         ready_ = true;
     }
 }
@@ -245,7 +247,7 @@ void CloneSource::accept(Visitor& v)
 
 glm::ivec2 CloneSource::icon() const
 {
-    return glm::ivec2(ICON_SOURCE_CLONE);
+    return glm::ivec2(ICON_VI_SOURCE_CLONE);
 }
 
 std::string CloneSource::info() const

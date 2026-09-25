@@ -50,6 +50,18 @@
 
 std::list<GstElement*> MediaPlayer::registered_;
 
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+static bool need_hack_for_gstreamer_24()
+{
+#if GST_VERSION_MAJOR > 0 && GST_VERSION_MINOR > 25
+    return false;
+#else
+    static const bool nvidia_decoding = GstToolkit::has_feature("nvh264dec");
+    return Settings::application.render.gpu_decoding && nvidia_decoding;
+#endif
+}
+#endif
+
 MediaPlayer::MediaPlayer()
 {
     // create unique id
@@ -114,6 +126,13 @@ MediaPlayer::~MediaPlayer()
         textureindex_ = 0;
     }
 
+    // cleanup picture buffer
+    if (pbo_[0]) {
+        glDeleteBuffers(2, pbo_);
+        pbo_[0] = pbo_[1] = 0;
+        pbo_size_ = 0;
+    }
+
 #ifdef MEDIA_PLAYER_DEBUG
     g_printerr("MediaPlayer %s deleted\n", std::to_string(id_).c_str());
 #endif
@@ -157,7 +176,7 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
     MediaInfo video_stream_info;
 
     // if uri is valid
-    if ( SystemToolkit::file_exists( gst_uri_get_location(uri.c_str()) ) ) {
+    if ( !uri.empty() && SystemToolkit::file_exists( gst_uri_get_location(uri.c_str()) ) ) {
 
         GError *err = NULL;
         GstDiscoverer *discoverer = gst_discoverer_new (DISCOVER_TIMOUT * GST_SECOND, &err);
@@ -312,6 +331,19 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
     return video_stream_info;
 }
 
+// Convert a raw buffer PTS to stream time using the active segment, undoing
+// the shift a container's edit list applies to compensate for encoder B-frame reorder delay 
+// Positions before segment.start are still treated as invalid: those are the
+// buffered priming frames the edit list exists to trim from playback.
+static GstClockTime segment_stream_time(const GstSegment *segment, GstClockTime pts)
+{
+    if (segment == nullptr || segment->format != GST_FORMAT_TIME || !GST_CLOCK_TIME_IS_VALID(pts))
+        return pts;
+    if (pts < segment->start)
+        return GST_CLOCK_TIME_NONE;
+    return (GstClockTime) ((pts - segment->start) * ABS(segment->applied_rate) + segment->time);
+}
+
 MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_ptr<std::atomic<bool>> cancelled)
 {
     MediaEvaluation eval;
@@ -334,7 +366,10 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
         GstClockTime pts_last = GST_CLOCK_TIME_NONE;
         std::vector<GstClockTime> keyframe_pts;
         std::vector<guint64> gop_sizes;
+        // segment reported by qtdemux/parsebin: needed to convert raw buffer PTS into stream time
+        GstSegment segment;
     } probe_data;
+    gst_segment_init(&probe_data.segment, GST_FORMAT_UNDEFINED);
 
     // Context for the pad-added callback
     struct PadContext {
@@ -379,18 +414,32 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
                     gst_caps_unref(caps);
                     if (is_video) {
                         ctx->video_probed.exchange(true);
-                        ctx->data->error_code = gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER,
+                        ctx->data->error_code = gst_pad_add_probe(pad,
+                        (GstPadProbeType)(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM),
                         [](GstPad *, GstPadProbeInfo *info, gpointer user_data) -> GstPadProbeReturn {
                             ProbeData *d = static_cast<ProbeData *>(user_data);
+                            // track the segment (carries the edit-list correction
+                            // qtdemux applies for encoder B-frame reorder delay)
+                            if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM) {
+                                GstEvent *event = GST_PAD_PROBE_INFO_EVENT(info);
+                                if (GST_EVENT_TYPE(event) == GST_EVENT_SEGMENT) {
+                                    const GstSegment *s = nullptr;
+                                    gst_event_parse_segment(event, &s);
+                                    d->segment = *s;
+                                }
+                                return GST_PAD_PROBE_OK;
+                            }
                             GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
                             d->frame_count++;
+                            // convert to stream time using the active segment, so an edit list doesn't offset it
+                            GstClockTime pts = segment_stream_time(&d->segment, GST_BUFFER_DTS_OR_PTS(buf));
                             if (!GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_DELTA_UNIT)) {
                                 if (d->keyframe_count > 0)
                                     d->gop_sizes.push_back(d->frame_count - d->last_keyframe_frame);
                                 d->last_keyframe_frame = d->frame_count;
                                 d->keyframe_count++;
                                 if (d->keyframe_pts.size() < MAX_KEYFRAME_STORED)
-                                    d->keyframe_pts.push_back(buf->pts);
+                                    d->keyframe_pts.push_back(pts);
                             }
                             if (!d->has_bframes &&
                                     GST_CLOCK_TIME_IS_VALID(buf->dts) &&
@@ -401,10 +450,10 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
                                 d->discontinuity_count++;
                             if (GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_CORRUPTED))
                                 d->corrupted_count++;
-                            if (d->pts_first == GST_CLOCK_TIME_NONE && GST_CLOCK_TIME_IS_VALID(buf->pts))
-                                d->pts_first = buf->pts;
-                            if (GST_CLOCK_TIME_IS_VALID(buf->pts))
-                                d->pts_last = buf->pts;
+                            if (d->pts_first == GST_CLOCK_TIME_NONE && GST_CLOCK_TIME_IS_VALID(pts))
+                                d->pts_first = pts;
+                            if (GST_CLOCK_TIME_IS_VALID(pts))
+                                d->pts_last = pts;
                             return GST_PAD_PROBE_OK;
                         },
                         ctx->data, NULL);
@@ -498,6 +547,10 @@ MediaEvaluation MediaPlayer::evaluation() const
 
 void MediaPlayer::open (const std::string & filename, const std::string &uri)
 {
+    // Cannot be opened with another file if already open or discovering
+    if (isOpen() || discoverer_.valid())
+        return;
+
     // set path
     filename_ = BaseToolkit::transliterate( filename );
 
@@ -509,10 +562,6 @@ void MediaPlayer::open (const std::string & filename, const std::string &uri)
 
     if (uri_.empty())
         failed_ = true;
-
-    // close before re-openning
-    if (isOpen())
-        close();
 
     // start URI discovering thread:
     discoverer_ = std::async( MediaPlayer::UriDiscoverer, uri_);
@@ -714,9 +763,9 @@ void MediaPlayer::execute_open()
                                                NULL);
         gst_caps_set_features(gl_caps, 0, gst_caps_features_new("memory:GLMemory", NULL));
 
-        // Append GLMemory caps as preferred option
+        // Append system memory caps after GLMemory caps, the preferred option
+        // (gst_caps_append takes ownership of caps: no unref here)
         gst_caps_append(gl_caps, caps);
-        gst_caps_unref (caps);
         gst_app_sink_set_caps (GST_APP_SINK(sink), gl_caps);
         gst_caps_unref (gl_caps);
 
@@ -724,8 +773,29 @@ void MediaPlayer::execute_open()
         // - glupload (for GLMemory)
         // - glcolorconvert (for NV12/I420 -> RGBA conversion in shaders)
         g_object_set(G_OBJECT(glsinkbin), "sink", sink, NULL);
-        // set playbin sink though glsinkbin wrapper 
-        g_object_set ( G_OBJECT (pipeline_), "video-sink", glsinkbin, NULL);
+
+        // playbin sink is the glsinkbin wrapper
+        GstElement *video_sink = glsinkbin;
+
+        // With GStreamer 2.4, NVIDIA decoders (nvh264dec, nvh265dec) fail to output GLMemory in playbin
+        // Fix : prepend a capsfilter to glsinkbin to force decoding into system memory
+        // (glsinkbin then uploads the frames and converts them to RGBA on GPU)
+        if (need_hack_for_gstreamer_24()) {
+            GstElement *filter = gst_element_factory_make("capsfilter", NULL);
+            GstCaps *system_caps = gst_caps_new_empty_simple("video/x-raw");
+            g_object_set(G_OBJECT(filter), "caps", system_caps, NULL);
+            gst_caps_unref(system_caps);
+
+            video_sink = gst_bin_new("glsinkfilter");
+            gst_bin_add_many(GST_BIN(video_sink), filter, glsinkbin, NULL);
+            gst_element_link(filter, glsinkbin);
+            GstPad *pad = gst_element_get_static_pad(filter, "sink");
+            gst_element_add_pad(video_sink, gst_ghost_pad_new("sink", pad));
+            gst_object_unref(pad);
+        }
+
+        // set playbin sink
+        g_object_set ( G_OBJECT (pipeline_), "video-sink", video_sink, NULL);
     }
     else
 #endif
@@ -1070,6 +1140,7 @@ void MediaPlayer::close()
     rate_ = 1.0;
     rate_change_ = RATE_CHANGE_NONE;
     position_ = GST_CLOCK_TIME_NONE;
+    decoder_name_ = "";
 
     // cleanup eventual remaining frame memory
     for(guint i = 0; i < N_VFRAME; i++) {
@@ -1091,13 +1162,6 @@ void MediaPlayer::close()
         // immediately invalidate access for other methods
         pipeline_ = nullptr;
         bus_ = nullptr;
-    }
-
-    // cleanup picture buffer
-    if (pbo_[0]) {
-        glDeleteBuffers(2, pbo_);
-        pbo_[0] = pbo_[1] = 0;
-        pbo_size_ = 0;
     }
 }
 
@@ -1433,8 +1497,8 @@ void MediaPlayer::init_texture(guint index)
             GstMemory *mem = gst_buffer_peek_memory(frame_[index].buffer, 0);
 
             if (mem && gst_is_gl_memory(mem)) {
-                GstGLMemory *gl_mem = (GstGLMemory*) mem;
-                guint gst_tex_id = gst_gl_memory_get_texture_id(gl_mem);
+                GstMapInfo glmap;
+                guint gst_tex_id = GstToolkit::mapGLMemory(mem, &glmap);
 
                 if (gst_tex_id > 0) {
                     // Copy from GStreamer GL texture to our texture using FBO
@@ -1449,6 +1513,7 @@ void MediaPlayer::init_texture(guint index)
 
                     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
                     glDeleteFramebuffers(1, &fbo);
+                    GstToolkit::unmapGLMemory(mem, &glmap);
 
                     gl_memory_used = true;
                 }
@@ -1527,7 +1592,8 @@ void MediaPlayer::fill_texture(guint index)
 
             if (mem && gst_is_gl_memory(mem)) {
                 // FAST PATH: Direct GL texture extraction from GStreamer
-                guint gst_tex_id = gst_gl_memory_get_texture_id((GstGLMemory*) mem);
+                GstMapInfo glmap;
+                guint gst_tex_id = GstToolkit::mapGLMemory(mem, &glmap);
 
                 if (gst_tex_id > 0) {
                     // Use FBO to copy from GStreamer's texture to our texture
@@ -1545,6 +1611,7 @@ void MediaPlayer::fill_texture(guint index)
                     glBindTexture(GL_TEXTURE_2D, 0);
                     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
                     glDeleteFramebuffers(1, &fbo);
+                    GstToolkit::unmapGLMemory(mem, &glmap);
 
                     // Success - no need for CPU path
                     return;
@@ -1745,8 +1812,9 @@ void MediaPlayer::update()
     else if (position_ != GST_CLOCK_TIME_NONE) {
         // manage timeline:
         TimeInterval gap;
-        // ensure we remain within the begin to end range
-        if (position_ > timeline_.last() || position_ < timeline_.first()) {
+        // ensure we remain within the first to last range
+        if (( timeline_.last()  != GST_CLOCK_TIME_NONE && position_ > timeline_.last()) || 
+            ( timeline_.first() != GST_CLOCK_TIME_NONE && position_ < timeline_.first()) ) {
             need_loop = true;
         }
         // test if position falls into a gap
@@ -2020,7 +2088,7 @@ double MediaPlayer::updateFrameRate() const
 
 // CALLBACKS
 
-bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
+bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status, const GstSegment *segment)
 {
     // Do NOT overwrite an unread EOS
     if ( frame_[write_index_].status == EOS )
@@ -2047,16 +2115,18 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status)
         // indicate to update loop that buffer is new
         frame_[write_index_].is_new = true;
 
+        // Convert raw buffer PTS to stream time using the sample's segment;
+        // fall back to the raw PTS if the buffer falls outside the segment
+        GstClockTime pts = segment_stream_time(segment, GST_BUFFER_DTS_OR_PTS(buf));
+        if (!GST_CLOCK_TIME_IS_VALID(pts)) 
+            pts = buf->pts;
+
         // set presentation time stamp
-        frame_[write_index_].position = buf->pts;
+        frame_[write_index_].position = pts;
 
         // set the start position (i.e. pts of first frame we got)
-        if (timeline_.first() == GST_CLOCK_TIME_NONE) {
-            timeline_.setFirst(buf->pts);
-            // add a gap to show that before
-            if (buf->pts > 0 && !timeline_.gapAt( buf->pts ))
-                timeline_.addGap(0, buf->pts);
-        }
+        if (timeline_.first() == GST_CLOCK_TIME_NONE)
+            timeline_.setFirst( pts );
 
     }
     // else; null buffer for EOS: give a position
@@ -2126,7 +2196,7 @@ GstFlowReturn MediaPlayer::callback_new_preroll (GstAppSink *sink, gpointer p)
 #endif
 
             // fill frame from buffer
-            if ( !m->fill_frame(buf, MediaPlayer::PREROLL) )
+            if ( !m->fill_frame(buf, MediaPlayer::PREROLL, gst_sample_get_segment(sample)) )
                 ret = GST_FLOW_ERROR;
             // loop negative rate: emulate an EOS
             else if (m->playSpeed() < 0.f && !(buf->pts > 0) ) {
@@ -2161,7 +2231,7 @@ GstFlowReturn MediaPlayer::callback_new_sample (GstAppSink *sink, gpointer p)
             GstBuffer *buf = gst_sample_get_buffer (sample) ;
 
             // fill frame with buffer
-            if ( !m->fill_frame(buf, MediaPlayer::SAMPLE) )
+            if ( !m->fill_frame(buf, MediaPlayer::SAMPLE, gst_sample_get_segment(sample)) )
                 ret = GST_FLOW_ERROR;
             // loop negative rate: emulate an EOS
             else if (m->playSpeed() < 0.f && !(buf->pts > 0) ) {

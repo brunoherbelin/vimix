@@ -100,6 +100,20 @@ namespace SystemToolkit
 
     // return memory used by the program (in Kbytes)
     long memory_usage();
+
+    // RAII redirect of stderr (fd 2) to /dev/null for its lifetime,
+    // to suppressany third-party output (e.g. fprintf(stderr)). 
+    // Only use it when the calling thread is the sole writer to stderr.
+    class StderrSilencer {
+    public:
+        StderrSilencer();
+        ~StderrSilencer();
+        StderrSilencer(const StderrSilencer &) = delete;
+        StderrSilencer &operator=(const StderrSilencer &) = delete;
+
+    private:
+        int saved_;
+    };
 }
 
 #endif // SYSTEMTOOLKIT_H

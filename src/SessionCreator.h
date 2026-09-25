@@ -3,6 +3,7 @@
 
 #include <list>
 #include <map>
+#include <chrono>
 #include <tinyxml2.h>
 
 #include "Visitor/Visitor.h"
@@ -119,10 +120,11 @@ protected:
 
 struct SessionInformation {
     std::string description;
+    std::string resolution;
+    std::chrono::system_clock::time_point date;
     FrameBufferImage *thumbnail;
     bool user_thumbnail_;
     SessionInformation() {
-        description = "";
         thumbnail = nullptr;
         user_thumbnail_ = false;
     }
@@ -142,7 +144,7 @@ public:
 
     void load(const std::string& filename);
 
-    static SessionInformation info(const std::string& filename);
+    static SessionInformation info(const std::string& filename, bool with_thumbnail = true);
 };
 
 #endif // SESSIONCREATOR_H

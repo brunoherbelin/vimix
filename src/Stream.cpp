@@ -28,8 +28,14 @@
 #include "Visitor/Visitor.h"
 #include "Toolkit/BaseToolkit.h"
 #include "Toolkit/GstToolkit.h"
+#include "Settings.h"
 
 #include "Stream.h"
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+#include <gst/gl/gl.h>
+#include "RenderingManager.h"
+#endif
 
 std::list<GstElement*> Stream::registered_;
 
@@ -71,6 +77,10 @@ Stream::Stream()
     // OpenGL texture
     textureindex_ = 0;
     textureinitialized_ = false;
+
+    // no GLMemory by default
+    use_gl_memory_ = false;
+    gl_memory_fbo_ = 0;
 }
 
 Stream::~Stream()
@@ -87,6 +97,12 @@ Stream::~Stream()
     if (pbo_[0]) {
         glDeleteBuffers(2, pbo_);
         pbo_[0] = 0;
+    }
+
+    // cleanup frame buffer for GLMemory copy
+    if (gl_memory_fbo_) {
+        glDeleteFramebuffers(1, &gl_memory_fbo_);
+        gl_memory_fbo_ = 0;
     }
 
 #ifdef STREAM_DEBUG
@@ -211,7 +227,19 @@ StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
     return info;
 }
 
-void Stream::open(const std::string &gstreamer_description, guint w, guint h)
+bool Stream::glMemoryAvailable()
+{
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    return Settings::application.render.gst_glmemory_context &&
+           Rendering::manager().global_gl_context != nullptr &&
+           GstToolkit::has_feature("glupload") &&
+           GstToolkit::has_feature("glcolorconvert");
+#else
+    return false;
+#endif
+}
+
+void Stream::open(const std::string &gstreamer_description, guint w, guint h, bool glmemory)
 {
     // set gstreamer pipeline source
     description_ = gstreamer_description;
@@ -219,6 +247,9 @@ void Stream::open(const std::string &gstreamer_description, guint w, guint h)
     // close before re-openning
     if (isOpen())
         close();
+
+    // pipeline provides GLMemory to appsink
+    use_gl_memory_ = glmemory && glMemoryAvailable();
 
     // reset failed flag
     failed_ = false;
@@ -236,13 +267,39 @@ GstBusSyncReply stream_signal_handler(GstBus *, GstMessage *msg, gpointer ptr)
 {
     // only handle error messages
     if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR && ptr != nullptr) {
-        GError *error;
-        gst_message_parse_error(msg, &error, NULL);
-        Log::Warning("Stream %s : %s",
+        // the message says what failed, the debug string why (e.g. "streaming
+        // stopped, reason not-negotiated"), and the source which element
+        GError *error = nullptr;
+        gchar *debug = nullptr;
+        gst_message_parse_error(msg, &error, &debug);
+        Log::Warning("Stream %s : %s (%s: %s)",
                      std::to_string(reinterpret_cast<Stream*>(ptr)->id()).c_str(),
-                     error->message);
+                     error->message, GST_OBJECT_NAME(GST_MESSAGE_SRC(msg)),
+                     debug ? debug : "no details");
         g_error_free(error);
+        g_free(debug);
     }
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    // setup OpenGL contexts for GStreamer elements from global Rendering opengl
+    else if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_NEED_CONTEXT) {
+        const gchar* contextType;
+        gst_message_parse_context_type(msg, &contextType);
+
+        if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE) && Rendering::manager().global_display) {
+            GstContext *displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+            gst_context_set_gl_display(displayContext, Rendering::manager().global_display);
+            gst_element_set_context(GST_ELEMENT(msg->src), displayContext);
+            gst_context_unref (displayContext);
+        }
+        if (!g_strcmp0(contextType, "gst.gl.app_context") && Rendering::manager().global_gl_context) {
+            GstContext *appContext = gst_context_new("gst.gl.app_context", TRUE);
+            GstStructure* structure = gst_context_writable_structure(appContext);
+            gst_structure_set(structure, "context", GST_TYPE_GL_CONTEXT, Rendering::manager().global_gl_context, nullptr);
+            gst_element_set_context(GST_ELEMENT(msg->src), appContext);
+            gst_context_unref (appContext);
+        }
+    }
+#endif
 
     // drop all messages to avoid filling up the stack
     gst_message_unref (msg);
@@ -288,8 +345,15 @@ void Stream::execute_open()
         return;
     }
 
-    // instruct sink to use the required caps
-    gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
+    // instruct sink to use the required caps; in GLMemory if the pipeline provides it
+    if (use_gl_memory_) {
+        GstCaps *gl_caps = gst_caps_copy(caps);
+        gst_caps_set_features(gl_caps, 0, gst_caps_features_new("memory:GLMemory", NULL));
+        gst_app_sink_set_caps (GST_APP_SINK(sink), gl_caps);
+        gst_caps_unref (gl_caps);
+    }
+    else
+        gst_app_sink_set_caps (GST_APP_SINK(sink), caps);
     gst_caps_unref (caps);
 
     // Instruct appsink to drop old buffers when the maximum amount of queued buffers is reached.
@@ -317,6 +381,11 @@ void Stream::execute_open()
     gst_app_sink_set_callbacks (GST_APP_SINK(sink), &callbacks, this, NULL);
     gst_app_sink_set_emit_signals (GST_APP_SINK(sink), false);
 
+    // set message handler for the pipeline's bus
+    // (before state change, as GL elements request the OpenGL context when starting)
+    bus_ = gst_element_get_bus(pipeline_);
+    gst_bus_set_sync_handler(bus_, stream_signal_handler, this, NULL);
+
     // set to desired state (PLAY or PAUSE)
     live_ = false;
     GstStateChangeReturn ret = gst_element_set_state (pipeline_, desired_state_);
@@ -331,11 +400,6 @@ void Stream::execute_open()
 
     // instruct the sink to send samples synched in time if not live source
     gst_base_sink_set_sync (GST_BASE_SINK(sink), !live_);
-
-    bus_ = gst_element_get_bus(pipeline_);
-
-    // set message handler for the pipeline's bus
-    gst_bus_set_sync_handler(bus_, stream_signal_handler, this, NULL);
 
     // all good
     Log::Info("Stream %s Opened '%s' (%d x %d)", std::to_string(id_).c_str(), description.c_str(), width_, height_);
@@ -593,20 +657,28 @@ void Stream::init_texture(guint index)
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width_, height_);
 
     // fill texture with frame at given index
-    if (frame_[index].buffer) {
+    if (frame_[index].buffer && !fill_texture_glmemory(index)) {
         GstMapInfo map;
         gst_buffer_map(frame_[index].buffer, &map, GST_MAP_READ);
+        glBindTexture(GL_TEXTURE_2D, textureindex_);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_, height_, GL_RGBA, GL_UNSIGNED_BYTE, map.data);
         gst_buffer_unmap(frame_[index].buffer, &map);
     }
+    glBindTexture(GL_TEXTURE_2D, textureindex_);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+    // GLMemory textures are copied on GPU, no need for Pixel Buffer Objects
+    if (use_gl_memory_) {
+#ifdef STREAM_DEBUG
+        Log::Info("Stream %s Uses OpenGL GLMemory texturing.", std::to_string(id_).c_str());
+#endif
+    }
     // use Pixel Buffer Objects only for performance needs of videos
-    if (!single_frame_) {
+    else if (!single_frame_) {
 
         // set pbo image size
         pbo_size_ = height_ * width_ * 4;
@@ -632,6 +704,49 @@ void Stream::init_texture(guint index)
 }
 
 
+bool Stream::fill_texture_glmemory(guint index)
+{
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    if (!use_gl_memory_ || !frame_[index].buffer)
+        return false;
+
+    GstMemory *mem = gst_buffer_peek_memory(frame_[index].buffer, 0);
+    if (mem == nullptr || !gst_is_gl_memory(mem)) {
+        // not GLMemory : disable GLMemory for this stream, use CPU transfer
+        use_gl_memory_ = false;
+        Log::Info("Stream %s GLMemory not available, falling back to CPU transfer.",
+                  std::to_string(id_).c_str());
+        return false;
+    }
+
+    GstMapInfo glmap;
+    guint gst_tex_id = GstToolkit::mapGLMemory(mem, &glmap);
+    if (gst_tex_id == 0)
+        return false;
+
+    // copy from GStreamer GL texture (shared context) to our texture using a read FBO
+    if (!gl_memory_fbo_)
+        glGenFramebuffers(1, &gl_memory_fbo_);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_memory_fbo_);
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                           GL_TEXTURE_2D, gst_tex_id, 0);
+
+    glBindTexture(GL_TEXTURE_2D, textureindex_);
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width_, height_);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // detach GStreamer texture (it may be deleted with the buffer)
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    GstToolkit::unmapGLMemory(mem, &glmap);
+
+    return true;
+#else
+    (void) index;
+    return false;
+#endif
+}
+
 void Stream::fill_texture(guint index)
 {
     // is this the first frame ?
@@ -641,7 +756,8 @@ void Stream::fill_texture(guint index)
         // (this also fills the texture with frame at index)
         init_texture(index);
     }
-    else {
+    // try GLMemory first (copy on GPU), otherwise transfer from CPU memory
+    else if ( !fill_texture_glmemory(index) ) {
         // Use GST mapping to access pointer to RGBA data
         GstMapInfo map;
         gst_buffer_map(frame_[index].buffer, &map, GST_MAP_READ);
@@ -804,9 +920,39 @@ double Stream::updateFrameRate() const
 
 // CALLBACKS
 
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+static void gl_finish(GstGLContext *, gpointer)
+{
+    // executed in the GStreamer GL thread, with its context current
+    glFinish();
+}
+
+// Wait (in the GStreamer streaming thread) for the GPU to complete rendering of
+// the GLMemory texture, to avoid tearing when it is copied in the rendering thread
+static void wait_gl_memory(GstBuffer *buf)
+{
+    GstMemory *mem = gst_buffer_peek_memory(buf, 0);
+    if (mem == nullptr || !gst_is_gl_memory(mem))
+        return;
+
+    GstGLSyncMeta *sync_meta = gst_buffer_get_gl_sync_meta(buf);
+    if (sync_meta)
+        gst_gl_sync_meta_wait_cpu(sync_meta, sync_meta->context);
+    else
+        // no sync point given: wait for all GL commands of the GStreamer context
+        gst_gl_context_thread_add(((GstGLBaseMemory *) mem)->context, gl_finish, nullptr);
+}
+#endif
+
 bool Stream::fill_frame(GstBuffer *buf, FrameStatus status)
 {
 //    Log::Info("Stream fill frame");
+
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
+    // ensure the GPU texture is ready before giving it to the rendering thread
+    if (use_gl_memory_ && buf != NULL)
+        wait_gl_memory(buf);
+#endif
 
     // Do NOT overwrite an unread EOS
     if ( frame_[write_index_].status == EOS )

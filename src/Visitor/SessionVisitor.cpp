@@ -230,12 +230,12 @@ XMLElement * SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Sess
         inputsNode = doc->NewElement("InputCallbacks");
 
         // list of inputs assigned in the session
-        std::list<uint> inputs = session->assignedInputs();
+        std::list<uint> inputs = session->inputCallbacks()->assignedInputs();
         if (!inputs.empty()) {
             // loop over list of inputs
             for (auto i = inputs.begin(); i != inputs.end(); ++i) {
                 // get all callbacks for this input
-                auto result = session->getSourceCallbacks(*i);
+                auto result = session->inputCallbacks()->at(*i);
                 for (auto kit = result.cbegin(); kit != result.cend(); ++kit) {
                     // create node for this callback
                     XMLElement *cbNode = doc->NewElement("Callback");
@@ -261,7 +261,7 @@ XMLElement * SessionVisitor::saveInputCallbacks(tinyxml2::XMLDocument *doc, Sess
 
         // save array of synchronyzation mode for all inputs (CSV)
         std::ostringstream oss;
-        std::vector<Metronome::Synchronicity> synch = session->getInputSynchrony();
+        std::vector<Metronome::Synchronicity> synch = session->inputCallbacks()->synchrony();
         for (auto token = synch.begin(); token != synch.end(); ++token)
             oss << (int) *token << ';';
         XMLElement *syncNode = doc->NewElement("Synchrony");
@@ -725,7 +725,7 @@ void SessionVisitor::visit (SessionFileSource& s)
 void SessionVisitor::visit (SessionGroupSource& s)
 {
     xmlCurrent_->SetAttribute("type", "GroupSource");
-    xmlCurrent_->SetAttribute("height", (float) s.frame()->height());
+    xmlCurrent_->SetAttribute("height", (float) s.frame()->height() / s.scale().y );
 
     XMLElement *center = xmlDoc_->NewElement("center");
     center->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.center()) );
@@ -744,6 +744,11 @@ void SessionVisitor::visit (SessionGroupSource& s)
             setRoot(sessionNode);
             (*iter)->accept(*this);
         }
+        
+        // save input callbacks
+        XMLElement *inputsNode = SessionVisitor::saveInputCallbacks(xmlDoc_, se);
+        if (inputsNode)
+            sessionNode->InsertEndChild(inputsNode);
     }
 }
 
@@ -972,6 +977,9 @@ void SessionVisitor::visit (ScreenCaptureSource& s)
 {
     xmlCurrent_->SetAttribute("type", "ScreenCaptureSource");
     xmlCurrent_->SetAttribute("window", s.window().c_str() );
+    // Wayland: token to restore the screen cast without asking the user
+    if (!s.restoreToken().empty())
+        xmlCurrent_->SetAttribute("restore", s.restoreToken().c_str() );
 }
 
 void SessionVisitor::visit (NetworkSource& s)

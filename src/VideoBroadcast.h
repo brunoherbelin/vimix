@@ -31,6 +31,7 @@ private:
     // pipeline elements
     static std::string srt_sink_;
     static std::string srt_encoder_;
+    static bool srt_hardware_;
 };
 
 
