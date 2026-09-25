@@ -2,6 +2,7 @@
 #define TRANSCODER_H
 
 #include <atomic>
+#include <list>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -106,12 +107,13 @@ public:
     /**
      * @brief Construct a new Transcoder
      * @param input_filename Path to the input video file
+     * @param output_filename Path of the output file; empty to generate it
      *
-     * The output filename (extension depending on the chosen profile's
-     * container) will be automatically generated in the same folder with a
-     * "_transcoded" suffix, ensuring it doesn't overwrite existing files.
+     * Unless given, the output filename (extension depending on the chosen
+     * profile's container) will be automatically generated in the same folder
+     * with a suffix, ensuring it doesn't overwrite existing files.
      */
-    Transcoder(const std::string& input_filename);
+    Transcoder(const std::string& input_filename, const std::string& output_filename = "");
 
     /**
      * @brief Destroy the Transcoder and clean up resources
@@ -235,6 +237,73 @@ private:
     std::string decode_desc_;     // source -> RGB frames, built in start()
     std::string video_encoder_;   // encoder fragment for the profile, chosen in start()
     int upscale_factor_;          // 1 when not upscaling
+};
+
+/**
+ * @brief Transcoder of a sequence of still images
+ *
+ * Re-encodes every image of a list to one of GstToolkit's image formats,
+ * optionally upscaled, into a new folder created next to the images: the
+ * files keep their name, with the extension of the new format. The images
+ * are transcoded one after the other by a Transcoder, in a worker thread.
+ *
+ * Driven like a Transcoder: start(), then poll finished() / progress().
+ */
+class SequenceTranscoder
+{
+public:
+    /**
+     * @brief Construct a new SequenceTranscoder
+     * @param input_files Paths of the images, in the order of the sequence
+     */
+    SequenceTranscoder(const std::list<std::string>& input_files);
+    ~SequenceTranscoder();
+
+    /**
+     * @brief Start transcoding, with options for a still image
+     * @return true if started, false if options or files are not valid
+     */
+    bool start(const TranscoderOptions& options);
+
+    /**
+     * @brief Stop transcoding, and remove the output folder
+     */
+    void stop();
+
+    bool finished() const { return finished_; }
+    bool success() const { return finished_ && success_; }
+    double progress() const;
+    std::string error() const;
+    std::string status() const;
+
+    /**
+     * @brief Folder of the transcoded images
+     */
+    const std::string& outputFolder() const { return output_folder_; }
+
+    /**
+     * @brief Paths of the transcoded images; complete once success()
+     */
+    std::list<std::string> outputFiles() const;
+
+private:
+    void run(TranscoderOptions options);
+
+    std::list<std::string> input_files_;
+    std::string output_folder_;
+
+    // written by the worker thread, read by the UI thread
+    mutable std::mutex mutex_;
+    std::list<std::string> output_files_;
+    std::string error_message_;
+    std::string status_message_;
+    std::atomic<double> progress_;
+
+    std::thread worker_;
+    std::atomic<bool> started_;
+    std::atomic<bool> abort_;
+    std::atomic<bool> finished_;
+    std::atomic<bool> success_;
 };
 
 #endif // TRANSCODER_H

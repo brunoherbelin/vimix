@@ -32,6 +32,7 @@
 #include "Transcoder.h"
 #include "Upscaler.h"
 #include "Source/MediaSource.h"
+#include "Source/MultiFileSource.h"
 #include "Source/SourceCallback.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Toolkit/GstToolkit.h"
@@ -102,13 +103,11 @@ static void renderTranscodingPanelVideo(MediaPlayer *mp, bool enabled, Transcode
                                  force_keyframes, force_no_audio, transcode_upscaler );
 }
 
-// Transcoding options for a still image source: format and upscaling model.
-// Keyframes, audio and backward playback have no meaning for one image and
-// are not shown.
-static void renderTranscodingPanelImage(MediaPlayer *mp, bool, TranscoderOptions &options)
+// Transcoding options for still images (a single image or the images of a
+// sequence) of the given resolution: format and upscaling model. Keyframes,
+// audio and backward playback have no meaning for images and are not shown.
+static void renderTranscodingPanelImage(int source_width, int source_height, bool, TranscoderOptions &options)
 {
-    const int source_width = (int) mp->width();
-    const int source_height = (int) mp->height();
     int transcode_format = Settings::application.transcode_image_format;
 
     // Image format
@@ -172,7 +171,7 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
         // codec: only the options differ, everything around them is common.
         TranscoderOptions transcode_options;
         if (mp->isImage())
-            renderTranscodingPanelImage(mp, transcoder == nullptr, transcode_options);
+            renderTranscodingPanelImage((int) mp->width(), (int) mp->height(), transcoder == nullptr, transcode_options);
         else
             renderTranscodingPanelVideo(mp, transcoder == nullptr, transcode_options);
 
@@ -267,6 +266,125 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
     return ret;
 }
 
+static bool renderTranscodingPanelMultifile(guint64 id, MultiFileSource *mfs)
+{
+    static SequenceTranscoder *transcoder = nullptr;
+    static guint64 transcode_id = 0;
+    bool ret = false;
+
+    const MultiFileSequence sequence = mfs->sequence();
+    if (!sequence.valid())
+        return ret;
+
+    if (id != transcode_id && transcoder != nullptr) {
+        // if source changed while transcoding;
+        //    show a disabled transcoding panel
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.f,0.f,0.f,0.f));
+        ImGui::CollapsingHeader("Transcoding", ImGuiTreeNodeFlags_Bullet);
+        ImGui::PopStyleColor(3);
+        return ret;
+    }
+
+    // Transcoding panel
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
+    Settings::application.pannel_source[2] = ImGui::CollapsingHeader("Transcoding",
+                                                                      Settings::application.pannel_source[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    ImGui::PopStyleColor();
+
+    if (Settings::application.pannel_source[2]) {
+
+        // the images of the sequence are re-encoded as a single image
+        TranscoderOptions transcode_options;
+        renderTranscodingPanelImage((int) sequence.width, (int) sequence.height, transcoder == nullptr, transcode_options);
+
+        // Start transcoding if not already started for current source
+        if (transcoder == nullptr) {
+            if (ImGui::Button(ICON_FA_FILE_EXPORT ICON_FA_FILE_IMPORT " Transcode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
+                // list of the images of the sequence, from its location pattern
+                std::list<std::string> files;
+                for (int i = sequence.min; i <= sequence.max; ++i) {
+                    char filename[4096];
+                    snprintf(filename, sizeof(filename), sequence.location.c_str(), i);
+                    files.push_back(filename);
+                }
+                transcode_id = id;
+                transcoder = new SequenceTranscoder(files);
+                if (!transcoder->start(transcode_options)) {
+                    Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
+                    delete transcoder;
+                    transcoder = nullptr;
+                    transcode_id = 0;
+                }
+            }
+            ImGui::SameLine();
+            ImGuiToolkit::HelpToolTip("Re-encode the images of the sequence in the specified format and options.\n\n "
+                    ICON_FA_FOLDER "  The new images will be used by the source once transcoding is successful. "
+                    "Current files are left unchanged, new files are created in a new folder next to them.\n\n "
+                    ICON_FA_MAGIC "  Upscale will enlarge every image with a neural "
+                    "network model. Models are downloaded on first run. "
+                    "Largest and slowest ones give the best result.");
+        }
+
+        if (transcoder != nullptr) {
+            if (transcoder->finished()) {
+                if (transcoder->success()) {
+                    Log::Notify("Transcoding successful: %s", transcoder->outputFolder().c_str());
+                    // replace source in session by a new multifile source of the new images
+                    MultiFileSource *src = dynamic_cast<MultiFileSource *>(Mixer::manager().findSource(transcode_id));
+                    if (src != nullptr) {
+                        Source *s = Mixer::manager().createSourceMultifile(transcoder->outputFiles(), src->framerate());
+                        MultiFileSource *newmfs = dynamic_cast<MultiFileSource *>(s);
+                        if (newmfs != nullptr) {
+                            // same numbering: keep the range and loop of the source
+                            newmfs->setLoop(src->loop());
+                            newmfs->setRange(src->begin(), src->end());
+                            Mixer::manager().replaceSource(src, newmfs);
+                        }
+                        else
+                            Log::Warning("Invalid sequence of transcoded images in %s", transcoder->outputFolder().c_str());
+                    }
+                    ret = true;
+                }
+                else
+                    Log::Warning("Transcoding interrupted (%s)", transcoder->error().c_str());
+                // all done in any case
+                delete transcoder;
+                transcoder = nullptr;
+                transcode_id = 0;
+            }
+            else {
+                float progress = transcoder->progress();
+                std::string status = transcoder->status();
+                if (status.empty() && progress < EPSILON)
+                    status = " Working...";
+                ImGui::ProgressBar(progress, ImVec2(IMGUI_RIGHT_ALIGN,0),
+                                   status.empty() ? nullptr : status.c_str());
+                ImGui::SameLine();
+                if (ImGui::Button( ICON_FA_TIMES " Cancel", ImVec2(0,0)) ||
+                    Mixer::manager().findSource(transcode_id) == nullptr ) {
+                    // cancel transcoding by user or source removed
+                    transcoder->stop();
+                }
+            }
+        }
+    }
+    else {
+        if (transcoder != nullptr && !transcoder->finished()) {
+            ImVec2 pos_tmp = ImGui::GetCursorPos();
+            ImVec2 space_size = ImGui::CalcTextSize(" Transcoding ", NULL);
+            space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y;
+            ImGui::SetCursorPos( pos_tmp + space_size );
+            ImGui::Text("( %d %% )", (int)(100.0 * transcoder->progress()));
+            ImGui::SetCursorPos( pos_tmp );
+        }
+    }
+
+    return ret;
+}
+
 // Source pannel : *s was checked before
 void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize, bool reset)
 {
@@ -312,13 +430,20 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
         s->accept(v);
 
         ///
-        /// Transcoding panel for media player
+        /// Transcoding panel for media player and MultiFileSource 
         ///
         if (!s->failed()) {
             MediaSource* ms = dynamic_cast<MediaSource*>(s);
             if (ms != nullptr) {
                 if (renderTranscodingPanel(ms->id(), ms->mediaplayer())) 
                     v.reset();
+            } 
+            else {
+                MultiFileSource* mfs = dynamic_cast<MultiFileSource*>(s);
+                if (mfs != nullptr) {
+                    if (renderTranscodingPanelMultifile(mfs->id(), mfs))
+                        v.reset();
+                }
             }
         }
 

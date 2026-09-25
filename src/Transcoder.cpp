@@ -114,8 +114,9 @@ GstPadProbeReturn limit_jpeg_frames_probe(GstPad *pad, GstPadProbeInfo *info, gp
 
 } // namespace
 
-Transcoder::Transcoder(const std::string& input_filename)
+Transcoder::Transcoder(const std::string& input_filename, const std::string& output_filename)
     : input_filename_(input_filename)
+    , output_filename_(output_filename)
     , pipeline_(nullptr)
     , bus_(nullptr)
     , is_image_sequence_(false)
@@ -128,7 +129,7 @@ Transcoder::Transcoder(const std::string& input_filename)
     , position_(0)
     , upscale_factor_(1)
 {
-    // Output filename will be generated in start() based on options
+    // Unless given, output filename will be generated in start() based on options
 }
 
 Transcoder::~Transcoder()
@@ -255,7 +256,8 @@ bool Transcoder::start(const TranscoderOptions& options)
     upscale_factor_ = (Upscaler::available() && upscaler.factor > 1) ? upscaler.factor : 1;
 
     // Generate output filename (or folder, for JPEG_MULTI) based on options
-    output_filename_ = generateOutputFilename(input_filename_, options);
+    if (output_filename_.empty())
+        output_filename_ = generateOutputFilename(input_filename_, options);
 
     // Check if input file exists
     struct stat buffer;
@@ -943,4 +945,153 @@ void Transcoder::runUpscale(TranscoderOptions options)
     // published last: the user interface deletes this Transcoder as soon as
     // it sees finished_, and that destructor joins this very thread
     finished_ = true;
+}
+
+//
+// SequenceTranscoder
+//
+
+SequenceTranscoder::SequenceTranscoder(const std::list<std::string>& input_files)
+    : input_files_(input_files)
+    , progress_(0.0)
+    , started_(false)
+    , abort_(false)
+    , finished_(false)
+    , success_(false)
+{
+}
+
+SequenceTranscoder::~SequenceTranscoder()
+{
+    stop();
+    if (worker_.joinable())
+        worker_.join();
+}
+
+bool SequenceTranscoder::start(const TranscoderOptions& options)
+{
+    if (started_ || !options.isImage() || input_files_.empty()) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        error_message_ = "Invalid sequence or options";
+        return false;
+    }
+
+    // New folder next to the images, named after them and the options,
+    // e.g. 'frames_webp' or 'frames_png_upscaled_x4'
+    const std::string &first = input_files_.front();
+    std::string name = SystemToolkit::base_filename(first);
+    while (!name.empty() && (isdigit(name.back()) || name.back() == '_' || name.back() == '-' || name.back() == '.'))
+        name.pop_back();
+    if (name.empty())
+        name = "sequence";
+    name += std::string("_") + GstToolkit::imageFileExtension(options.format());
+    const int factor = Upscaler::model(options.upscaler).factor;
+    if (Upscaler::available() && factor > 1)
+        name += "_upscaled_x" + std::to_string(factor);
+
+    const std::string base = SystemToolkit::path_filename(first) + name;
+    output_folder_ = base;
+    for (int counter = 1; SystemToolkit::file_exists(output_folder_); ++counter)
+        output_folder_ = base + "_" + std::to_string(counter);
+
+    if (!SystemToolkit::create_directory(output_folder_)) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        error_message_ = "Cannot create folder " + output_folder_;
+        return false;
+    }
+
+    Log::Info("Transcoder: Starting transcoding of %d images into '%s' (%s)",
+              (int) input_files_.size(), output_folder_.c_str(),
+              GstToolkit::image_name[options.format()]);
+
+    started_ = true;
+    worker_ = std::thread(&SequenceTranscoder::run, this, options);
+    return true;
+}
+
+void SequenceTranscoder::run(TranscoderOptions options)
+{
+    const std::string extension = GstToolkit::imageFileExtension(options.format());
+    const size_t total = input_files_.size();
+    size_t count = 0;
+    std::string error;
+
+    for (const auto &input : input_files_) {
+
+        // same name, extension of the new format
+        const std::string output = output_folder_ + "/" + SystemToolkit::base_filename(input) + "." + extension;
+
+        // transcode this image, and wait for it to finish
+        Transcoder transcoder(input, output);
+        if (!transcoder.start(options))
+            error = transcoder.error();
+        else {
+            while (!transcoder.finished()) {
+                if (abort_) {
+                    transcoder.stop();
+                    break;
+                }
+                progress_ = (static_cast<double>(count) + transcoder.progress()) / static_cast<double>(total);
+                const std::string status = transcoder.status();
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    status_message_ = " Image " + std::to_string(count + 1) + " / " + std::to_string(total) +
+                                      (status.empty() ? "" : " -" + status);
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            }
+            if (!abort_ && !transcoder.success())
+                error = transcoder.error();
+        }
+
+        if (abort_ || !error.empty())
+            break;
+
+        std::lock_guard<std::mutex> lock(mutex_);
+        output_files_.push_back(output);
+        progress_ = static_cast<double>(++count) / static_cast<double>(total);
+    }
+
+    // incomplete: remove the folder and what it contains
+    if (abort_ || !error.empty()) {
+        std::error_code ec;
+        std::filesystem::remove_all(output_folder_, ec);
+        std::lock_guard<std::mutex> lock(mutex_);
+        error_message_ = abort_ ? "Cancelled" : error;
+        output_files_.clear();
+    }
+    else
+        Log::Info("Transcoder: transcoding of %d images into '%s' completed", (int) total, output_folder_.c_str());
+
+    success_ = !abort_ && error.empty();
+    finished_ = true;
+}
+
+void SequenceTranscoder::stop()
+{
+    if (started_ && !finished_)
+        abort_ = true;
+}
+
+double SequenceTranscoder::progress() const
+{
+    return finished_ ? 1.0 : progress_.load();
+}
+
+std::string SequenceTranscoder::error() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return error_message_;
+}
+
+std::string SequenceTranscoder::status() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return status_message_;
+}
+
+std::list<std::string> SequenceTranscoder::outputFiles() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return output_files_;
 }

@@ -73,6 +73,9 @@ MultiFileSequence::MultiFileSequence(const std::list<std::string> &list_files)
         else {
             codec.resize(media.codec_name.size());
             std::transform(media.codec_name.begin(), media.codec_name.end(), codec.begin(), ::tolower);
+            // codecs without description are given as caps (e.g. 'image/webp')
+            if (codec.rfind("image/", 0) == 0)
+                codec.erase(0, 6);
         }
         width = media.width;
         height = media.height;
