@@ -1,7 +1,7 @@
 {
     "app-id": "io.github.brunoherbelin.Vimix",
     "runtime": "org.freedesktop.Platform",
-    "runtime-version": "26.08",
+    "runtime-version": "25.08",
     "sdk": "org.freedesktop.Sdk",
     "command": "launch_vimix.sh",
     "rename-desktop-file": "vimix.desktop",
@@ -23,6 +23,7 @@
         "--filesystem=/run/media",
         "--filesystem=/media",
         "--filesystem=xdg-run/vimix:create",
+        "--filesystem=xdg-run/pipewire-0",
         "--persist=.config/vimix",
         "--talk-name=org.gtk.vfs.*",
         "--env=FREI0R_PATH=/app/lib/frei0r-1"
