@@ -40,3 +40,7 @@ build/
 .claude/
 
 toolchain-x86_64.cmake
+# fetched at configure time by cmake/setup-ext.sh
+ext/ncnn/
+ext/rife-ncnn-vulkan/
+ext/realesrgan-ncnn-vulkan/
