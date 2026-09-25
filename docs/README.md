@@ -17,12 +17,25 @@ First time after git clone:
     cmake --build .
     
 This will create the directory 'vimix-build', configure the program for build, and compile vimix.
-If successful, the compilation will have produced the executable `vimix` in the `src` directory. 
-You can run vimix with `./src/vimix` :
+If successful, the compilation will end with:
      
      ...
+     [100%] Linking CXX executable vimix
      [100%] Built target vimix
-     ./src/vimix
+
+You can run vimix from your `vimix-build` directory with this command:
+
+    __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia DISPLAY=:0 ./src/vimix
+
+## Install
+
+To install vimix in your system:
+
+    sudo cmake --install .
+
+Vimix is now installed and can be launched from the list of apps or with this command:
+
+    launch_vimix.sh
     
 ## Update clone and re-compile 
 
