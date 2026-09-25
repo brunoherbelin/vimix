@@ -84,7 +84,7 @@ MultiFileSequence::MultiFileSequence(const std::list<std::string> &list_files)
 }
 
 MultiFileSequence::MultiFileSequence(const std::string &path)
-    : MultiFileSequence( SystemToolkit::list_directory(path, {"*.jpg", "*.jpeg", "*.png"}) )
+    : MultiFileSequence( SystemToolkit::list_directory(path, {"*.jpg", "*.jpeg", "*.png", "*.webp"}) )
 {
 }
 

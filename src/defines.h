@@ -30,13 +30,13 @@
 #define MEDIA_FILES_PATTERN \
     { \
         "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov", "*.mkv", \
-        "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.hevc", "*.asf", "*.jpg", \
+        "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.hevc", "*.asf", "*.jpg", "*.jpeg", \
         "*.png", "*.gif", "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg" \
     }
 #define IMAGES_FILES_TYPE "Image (JPG, PNG, WEBP, BMP, PPM, GIF)"
 #define IMAGES_FILES_PATTERN \
     { \
-        "*.jpg", "*.png", "*.webp", "*.bmp", "*.ppm", "*.gif" \
+        "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp", "*.ppm", "*.gif" \
     }
 #define SUBTITLE_FILES_TYPE "Subtitle (SRT, SUB)"
 #define SUBTITLE_FILES_PATTERN \
