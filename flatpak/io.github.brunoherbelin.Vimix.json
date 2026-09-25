@@ -119,6 +119,34 @@
                 "type": "git",
                 "branch": "beta",
                 "url": "https://github.com/brunoherbelin/vimix.git"
+                },
+                {
+                "type": "git",
+                "url": "https://github.com/Tencent/ncnn.git",
+                "commit": "b4ba207c18d3103d6df890c0e3a97b469b196b26",
+                "disable-submodules": true,
+                "dest": "ext/ncnn"
+                },
+                {
+                "type": "git",
+                "url": "https://github.com/KhronosGroup/glslang.git",
+                "commit": "86ff4bca1ddc7e2262f119c16e7228d0efb67610",
+                "disable-submodules": true,
+                "dest": "ext/ncnn/glslang"
+                },
+                {
+                "type": "git",
+                "url": "https://github.com/nihui/rife-ncnn-vulkan.git",
+                "commit": "a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7",
+                "disable-submodules": true,
+                "dest": "ext/rife-ncnn-vulkan"
+                },
+                {
+                "type": "git",
+                "url": "https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan.git",
+                "commit": "37026f49824c5cf84062e7c6a5dd71445dcf610f",
+                "disable-submodules": true,
+                "dest": "ext/realesrgan-ncnn-vulkan"
                 }
             ]
         }
