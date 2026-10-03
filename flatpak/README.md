@@ -31,8 +31,8 @@ If not already installed, install the builder and the flathub repository:
 
 Install the runtime environments:
     
-    flatpak install org.freedesktop.Sdk/x86_64/25.08
-    flatpak install org.freedesktop.Platform/x86_64/25.08
+    flatpak install org.freedesktop.Sdk/x86_64/26.08
+    flatpak install org.freedesktop.Platform/x86_64/26.08
 
 These settings of git are needed to enable clone of local repos during build (done only once):
 

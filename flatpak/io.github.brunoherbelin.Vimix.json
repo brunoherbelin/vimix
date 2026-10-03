@@ -1,7 +1,7 @@
 {
     "app-id": "io.github.brunoherbelin.Vimix",
     "runtime": "org.freedesktop.Platform",
-    "runtime-version": "25.08",
+    "runtime-version": "26.08",
     "sdk": "org.freedesktop.Sdk",
     "command": "launch_vimix.sh",
     "rename-desktop-file": "vimix.desktop",
@@ -51,8 +51,8 @@
             "sources": [
             {
                 "type": "git",
-                "tag": "3.4",
-                "commit": "7b6aead9fb88b3623e3b3725ebb42670cbe4c579",
+                "tag": "3.5.1",
+                "commit": "d9d6f0f1f967807ffade6598ea9a631ebaf37a56",
                 "url": "https://github.com/glfw/glfw.git"
             }
             ]
@@ -68,9 +68,25 @@
             "sources": [
             {
                 "type": "git",
-                "tag": "v1.5.5-rc.0a",
-                "commit": "bab403744b4d02005b03dac12a79988bc4590038",
+                "tag": "v1.5.7",
+                "commit": "899348d8318eb9a3c5a5b6ec43c4a1114288773a",
                 "url": "https://github.com/Haivision/srt.git"
+            }
+            ]
+        },
+        {
+            "name": "gst-plugin-srt",
+            "buildsystem": "simple",
+            "build-commands": [
+                "meson setup _build --prefix=/app --buildtype=release -Dauto_features=disabled -Dsrt=enabled",
+                "ninja -C _build ext/srt/libgstsrt.so",
+                "install -Dm755 _build/ext/srt/libgstsrt.so /app/lib/gstreamer-1.0/libgstsrt.so"
+            ],
+            "sources": [
+            {
+                "type": "archive",
+                "url": "https://gstreamer.freedesktop.org/src/gst-plugins-bad/gst-plugins-bad-1.28.6.tar.xz",
+                "sha256": "6636f2c2289ceda52c4aba971338c81e2b5780d3381bd3673c1c116ec87587c3"
             }
             ]
         },
@@ -78,33 +94,17 @@
             "name": "frei0r",
             "buildsystem": "cmake-ninja",
             "config-opts": [
+                "-DWITHOUT_OPENCV=ON",
+                "-DWITHOUT_GAVL=ON",
+                "-DWITHOUT_FACERECOGNITION=ON",
                 "-DCMAKE_BUILD_TYPE=Release"
             ],
             "sources": [
             {
                 "type": "git",
-                "tag": "v2.5.0",
-                "commit": "0dbbac5258c518e596a64fedcbb1198403dcc981",
+                "tag": "v2.5.6",
+                "commit": "530f7e6388c6931f20aa2ca9e4ea33a60df7aca7",
                 "url": "https://github.com/dyne/frei0r.git"
-            }
-            ]
-        },
-        {
-            "name": "shmdata",
-            "buildsystem": "cmake-ninja",
-            "config-opts": [
-                "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
-                "-DWITH_PYTHON=OFF",
-                "-DWITH_SDFLOW=OFF",
-                "-DWITH_SDCRASH=OFF",
-                "-DWITH_GST=ON"
-            ],
-            "sources": [
-            {
-                "type": "git",
-                "tag": "1.3.74",
-                "commit": "43d2fe1b133cc9ded823fde6bd10560721a36e98",
-                "url": "https://gitlab.com/sat-mtl/tools/shmdata.git"
             }
             ]
         },
