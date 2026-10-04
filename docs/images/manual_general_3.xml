@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vimix>
+    <Annotations width="1920" height="1080">
+        <Annotation type="Arrow" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="683" y="170"/>
+            <vec2 x="888" y="272"/>
+            <vec2 x="858" y="180"/>
+        </Annotation>
+        <Annotation type="Frame" thickness="3" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="82" y="162"/>
+            <vec2 x="479" y="707"/>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="884" y="186"/>
+            <text>Load and save Display Configuration
+      for video mapping</text>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="261" y="710"/>
+            <text>               User settings
+(saved automatically)</text>
+        </Annotation>
+        <Annotation type="Arrow" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="575" y="487"/>
+            <vec2 x="767" y="614"/>
+            <vec2 x="551" y="699"/>
+        </Annotation>
+        <Annotation type="Frame" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="563" y="360"/>
+            <vec2 x="642" y="487"/>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="670" y="440"/>
+            <text>Add / Remove Rendering
+surfaces to screens</text>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="1471" y="120"/>
+            <text>Activate Display Output
+and adjust colors and 
+white balance</text>
+        </Annotation>
+        <Annotation type="Arrow" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="1440" y="141"/>
+            <vec2 x="1404" y="252"/>
+            <vec2 x="1399" y="166"/>
+        </Annotation>
+    </Annotations>
+</vimix>
+
+<!--Originally saved as /home/bh/Claude/VimixDev/vimix/docs/images/manual_general_3.xml by bh-->

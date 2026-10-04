@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vimix>
+    <Annotations width="1920" height="1080">
+        <Annotation type="Arrow" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="1193" y="168"/>
+            <vec2 x="1415" y="213"/>
+            <vec2 x="1373" y="145"/>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="40" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="825" y="147"/>
+            <text>3    Choose a file and Open</text>
+        </Annotation>
+        <Annotation type="Circle" thickness="4" size="40" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="831" y="171"/>
+            <vec2 x="854" y="165"/>
+        </Annotation>
+        <Annotation type="Circle" thickness="4" size="40" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="65" y="174"/>
+            <vec2 x="88" y="168"/>
+        </Annotation>
+        <Annotation type="Circle" thickness="4" size="40" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="465" y="181"/>
+            <vec2 x="488" y="175"/>
+        </Annotation>
+        <Annotation type="Arrow" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="442" y="168"/>
+            <vec2 x="335" y="200"/>
+            <vec2 x="418" y="151"/>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="37" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="36" y="106"/>
+            <text>  </text>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="40" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="56" y="149"/>
+            <text>1 </text>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="40" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="457" y="157"/>
+            <text>2 </text>
+        </Annotation>
+        <Annotation type="Frame" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="81" y="62"/>
+            <vec2 x="172" y="145"/>
+        </Annotation>
+    </Annotations>
+</vimix>
+
+<!--Originally saved as /home/bh/Claude/VimixDev/vimix/docs/images/manual_newsource_0.xml by bh-->

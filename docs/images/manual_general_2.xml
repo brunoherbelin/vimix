@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vimix>
+    <Annotations width="1920" height="1080">
+        <Annotation type="Arrow" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="509" y="331"/>
+            <vec2 x="477" y="420"/>
+            <vec2 x="638" y="350"/>
+        </Annotation>
+        <Annotation type="Frame" thickness="3" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="83" y="455"/>
+            <vec2 x="479" y="707"/>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="40" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="305" y="309"/>
+            <text>  Double-clic</text>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="554" y="295"/>
+            <text>Trigger smooth transition
+      with cross fading</text>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="146" y="718"/>
+            <text>Export a Playlist: creates a folder
+or a ZIP archive with all sessions
+and copy locally all media files 
+(videos, images, etc).</text>
+        </Annotation>
+        <Annotation type="Arrow" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="1267" y="1014"/>
+            <vec2 x="1106" y="533"/>
+            <vec2 x="1315" y="573"/>
+        </Annotation>
+        <Annotation type="Frame" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="535" y="1014"/>
+            <vec2 x="1384" y="1075"/>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="1106" y="975"/>
+            <text>Source Toolbar</text>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="1573" y="136"/>
+            <text>Metrics :
+Framerate, RAM usage, etc</text>
+        </Annotation>
+    </Annotations>
+</vimix>
+
+<!--Originally saved as /home/bh/Claude/VimixDev/vimix/docs/images/manual_general_2.xml by bh-->

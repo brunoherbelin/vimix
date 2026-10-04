@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vimix>
+    <Annotations width="1920" height="1080">
+        <Annotation type="Arrow" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="789" y="47"/>
+            <vec2 x="474" y="452"/>
+            <vec2 x="1581" y="437"/>
+        </Annotation>
+        <Annotation type="Text" thickness="3" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="500" y="742"/>
+            <text>Undo/Redo history
+  Ctrl+Z / Ctrl+Shift+Z</text>
+        </Annotation>
+        <Annotation type="Arrow" thickness="3" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="516" y="737"/>
+            <vec2 x="458" y="637"/>
+            <vec2 x="536" y="678"/>
+        </Annotation>
+        <Annotation type="Text" thickness="3" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="865" y="282"/>
+            <text>Session file ( .mix )
+loading, saving, etc..
+</text>
+        </Annotation>
+        <Annotation type="Frame" thickness="3" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="486" y="115"/>
+            <vec2 x="853" y="354"/>
+        </Annotation>
+    </Annotations>
+</vimix>
+
+<!--Originally saved as /home/bh/Claude/VimixDev/vimix/docs/images/manual_general_1.xml by bh-->
