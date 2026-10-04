@@ -84,6 +84,7 @@
 #include "Playlist.h"
 #include "FrameGrabbing.h"
 #include "Canvas.h"
+#include "Annotations.h"
 
 #include "UserInterfaceManager.h"
 
@@ -1081,7 +1082,8 @@ void UserInterface::Render()
             Log::ShowLogWindow(&Settings::application.widget.logs);
         if (Settings::application.widget.help)
             RenderHelp();
-        if (Settings::application.widget.toolbox)
+        // (hide toolbox from screenshot in annotation mode)
+        if (Settings::application.widget.toolbox && !(screenshot_step > 0 && Annotations::manager().active()))
             toolbox.Render();
 
         // About
@@ -1113,6 +1115,9 @@ void UserInterface::Render()
         int a = 150 + (int) ( 50.f * sin( (float) Runtime() / 100000000.f ));
         ImGui::GetForegroundDrawList()->AddCircleFilled(center, RECORDER_INDICATION_SIZE, IM_COL32(255, 10, 10, a), 0);
     }
+
+    // annotations overlay on top of everything
+    Annotations::manager().Render(screenshot_step > 0);
 
     // handle keyboard input after all IMGUI widgets have potentially captured keyboard
     handleKeyboard();
@@ -1441,7 +1446,10 @@ void UserInterface::handleScreenshot()
             break;
             case 3:
             {
-                if ( Rendering::manager().currentScreenshot()->isFull() ){
+                // in annotation mode, ask filename for PNG and XML
+                if ( Annotations::manager().active() )
+                    Annotations::manager().saveScreenshot();
+                else if ( Rendering::manager().currentScreenshot()->isFull() ){
                     std::string filename =  SystemToolkit::full_filename( SystemToolkit::home_path(), SystemToolkit::date_time_string() + "_vmixcapture.png" );
                     Rendering::manager().currentScreenshot()->save( filename );
                     Log::Notify("Screenshot saved %s", filename.c_str() );
@@ -2574,12 +2582,19 @@ void ToolBox::Render()
         {
             if ( ImGui::MenuItem( MENU_CAPTUREGUI, SHORTCUT_CAPTURE_GUI) )
                 UserInterface::manager().StartScreenshot();
+            if ( ImGui::MenuItem( ICON_FA_DESKTOP "  HD resolution", "1920x1080") )
+                Rendering::manager().mainWindow().setSize(1920, 1080);
 
             ImGui::Separator();
             ImGui::MenuItem("Demo ImGui", nullptr, &show_demo_window);
             ImGui::MenuItem("Icons", nullptr, &show_icons_window);
             ImGui::MenuItem("Sandbox", nullptr, &show_sandbox);
 
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu(ICON_FA_EDIT "  Annotations"))
+        {
+            Annotations::manager().Menu();
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Stats"))

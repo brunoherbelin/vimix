@@ -379,6 +379,7 @@ void Rendering::draw()
 
     // change windows fullscreen mode or title if requested
     main_.changeFullscreen_();
+    main_.changeSize_();
     main_.changeTitle_();
 
     // draw output windows

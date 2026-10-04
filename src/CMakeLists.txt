@@ -57,6 +57,7 @@ set(VMIX_SRCS
     Transcoder.cpp
     Upscaler.cpp
     UserInterfaceManager.cpp
+    Annotations.cpp
     VideoBroadcast.cpp
     MultiFileRifeEncoder.cpp
     

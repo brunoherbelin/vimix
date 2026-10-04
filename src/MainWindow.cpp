@@ -42,7 +42,7 @@
 #include "MainWindow.h"
 
 
-MainWindow::MainWindow() : window_(NULL), dpi_scale_(1.f), request_change_fullscreen_(false)
+MainWindow::MainWindow() : window_(NULL), dpi_scale_(1.f), request_change_fullscreen_(false), request_change_size_(0)
 {
 
 }
@@ -158,6 +158,32 @@ void MainWindow::changeFullscreen_()
             // enter fullscreen
             setFullscreen_(monitor());
         }
+    }
+}
+
+void MainWindow::changeSize_()
+{
+    // change upon request
+    if (request_change_size_.x > 0 && request_change_size_.y > 0) {
+
+        // exit fullscreen and maximized modes
+        if (isFullscreen ())
+            setFullscreen_(nullptr);
+        glfwRestoreWindow(window_);
+
+        // window size is in screen coordinates: apply framebuffer scale
+        // to get the requested size in pixels
+        int ww = 0, wh = 0, fw = 0, fh = 0;
+        glfwGetWindowSize(window_, &ww, &wh);
+        glfwGetFramebufferSize(window_, &fw, &fh);
+        float sx = (ww > 0 && fw > 0) ? float(fw) / float(ww) : 1.f;
+        float sy = (wh > 0 && fh > 0) ? float(fh) / float(wh) : 1.f;
+        glfwSetWindowSize(window_,
+                          int( float(request_change_size_.x) / sx + 0.5f),
+                          int( float(request_change_size_.y) / sy + 0.5f) );
+
+        // done request
+        request_change_size_ = glm::ivec2(0);
     }
 }
 
