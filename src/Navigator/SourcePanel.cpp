@@ -39,6 +39,7 @@
 #include "Toolkit/ImGuiToolkit.h"
 #include "Visitor/ImGuiVisitor.h"
 #include "UserInterfaceManager.h"
+#include "Draft.h"
 
 #include "Navigator.h"
 #include "NavigatorCodec.h"
@@ -148,7 +149,7 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
     if (mp == nullptr)
         return ret;
 
-    if (id != transcode_id && transcoder != nullptr) {
+    if (Draft::manager().active() || (id != transcode_id && transcoder != nullptr)) {
         // if source changed while transcoding;
         //    show a disabled transcoding panel
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));    
@@ -276,7 +277,7 @@ static bool renderTranscodingPanelMultifile(guint64 id, MultiFileSource *mfs)
     if (!sequence.valid())
         return ret;
 
-    if (id != transcode_id && transcoder != nullptr) {
+    if (Draft::manager().active() || (id != transcode_id && transcoder != nullptr)) {
         // if source changed while transcoding;
         //    show a disabled transcoding panel
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
@@ -455,6 +456,8 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
 
             ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, 0);
 
+            ImGuiToolkit::PushDisabled(s->drafting());
+
             // clone button
             if ( s->failed() )
                 ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", size);
@@ -491,6 +494,9 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
                 Mixer::manager().deleteSource(s);
                 Action::manager().store(sname + std::string(": Deleted"));
             }
+
+            ImGuiToolkit::PopDisabled(s->drafting());
+
             // delete all button
             if ( Mixer::manager().session()->failedSources().size() > 1 && 
                 Mixer::manager().session()->find(s) != Mixer::manager().session()->end() && s->failed()) {

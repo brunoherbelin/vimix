@@ -25,6 +25,7 @@ set(VMIX_SRCS
     FrameGrabber.cpp
     FrameGrabbing.cpp
     Interpolator.cpp
+    Draft.cpp
     Loopback.cpp
     MainWindow.cpp
     MediaPlayer.cpp

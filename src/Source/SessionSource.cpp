@@ -163,7 +163,7 @@ void SessionSource::update(float dt)
 
     // update audio
     for (auto it = session_->begin(); it != session_->end(); ++it) {
-        (*it)->setAudioVolumeFactor(Source::VOLUME_PARENT, blendingshader_->color.a);
+        (*it)->setAudioVolumeFactor(Source::VOLUME_PARENT, liveAlpha());
     }
 
     // manage sources which failed

@@ -148,6 +148,22 @@ public:
     void call(SourceCallback *callback, bool override = false);
     void finish(SourceCallback *callback);
 
+    // DRAFT mode: the source holds the draft state edited by the user,
+    // while the live state (rendered in output) is kept aside and
+    // modified only by callbacks
+    void beginDraft ();
+    void endDraft ();
+    inline bool drafting () const { return draft_ != nullptr; }
+    const SourceCore *liveState () const;
+    // swap live state in (true) and draft state back (false)
+    void swapLive (bool on);
+    float liveDepth () const;
+    float liveAlpha () const;
+    // render the content of source in live state (after render())
+    void renderLive ();
+    // draw the source in live state (in output scene)
+    void drawLive (glm::mat4 modelview, glm::mat4 projection);
+
     // update mode
     inline  bool active () const { return active_; }
     virtual void setActive (bool on);
@@ -367,6 +383,9 @@ protected:
     std::list<SourceCallback *> update_callbacks_;
     std::mutex access_callbacks_;
     void updateCallbacks(float dt);
+
+    // draft mode
+    struct DraftState *draft_;
 
     // clones
     CloneList clones_;

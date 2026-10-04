@@ -46,7 +46,6 @@
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/DialogToolkit.h"
 #include "Toolkit/ImGuiToolkit.h"
-#include "View/RenderView.h"
 #include "UserInterfaceManager.h"
 
 #include "Navigator.h"

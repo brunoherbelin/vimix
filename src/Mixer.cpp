@@ -64,6 +64,7 @@
 #include "FrameGrabbing.h"
 #include "Visitor/BoundingBoxVisitor.h"
 
+#include "Draft.h"
 #include "Mixer.h"
 
 #define THREADED_LOADING
@@ -155,8 +156,8 @@ void Mixer::update()
         }
     }
 
-    // if there is a session source to import
-    if (!sessionSourceToImport_.empty()) {
+    // if there is a session source to import (not in DRAFT mode)
+    if (!sessionSourceToImport_.empty() && !Draft::manager().active()) {
         // get the session source to be imported
         SessionSource *source = sessionSourceToImport_.back();
         // merge (&delete) the session inside this session source
@@ -183,8 +184,8 @@ void Mixer::update()
         }
     }
 
-    // if there is a source candidate for this session
-    if (candidate_sources_.size() > 0) {
+    // if there is a source candidate for this session (not in DRAFT mode)
+    if (candidate_sources_.size() > 0 && !Draft::manager().active()) {
         // the first element of the pair is the source to insert
         // NB: only make the last candidate the current source in Mixing view
         insertSource(candidate_sources_.front().first, candidate_sources_.size() > 1 ? View::INVALID : View::MIXING);
@@ -211,6 +212,9 @@ void Mixer::update()
 
     // compute stabilized dt__
     dt__ = 0.05f * dt_ + 0.95f * dt__;
+
+    // animate draft
+    Draft::manager().update(dt_);
 
     // update session and associated sources
     session_->update(dt_);
@@ -651,6 +655,9 @@ bool Mixer::recreateSource(Source *s)
     if (replacement == nullptr)
         return false;
 
+    // stop draft animation of source
+    Draft::manager().forget(s);
+
     // remove source Nodes from all views
     detachSource(s);
 
@@ -672,6 +679,9 @@ void Mixer::deleteSource(Source *s)
     {
         // keep name for log
         std::string name = s->name();
+
+        // stop draft animation of source
+        Draft::manager().forget(s);
 
         // remove source Nodes from all views
         detachSource(s);
@@ -776,6 +786,10 @@ void Mixer::uncover(Source *s)
 
 void Mixer::deleteSelection()
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     // operate on canvas source in Displays view
     if ( current_view_ == &displays_ ) {
         // cancel selection deletion in Displays view
@@ -818,6 +832,10 @@ void Mixer::deleteSelection()
 
 void Mixer::groupSelection()
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     // obvious cancel
     if (selection().empty())
         return;
@@ -883,6 +901,10 @@ bool Mixer::selectionCanBeGroupped () const
 
 void Mixer::groupCurrent()
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     if ( current_source_ != session_->end() ) {
 
         SourceList L;
@@ -1005,6 +1027,10 @@ void Mixer::group(SourceList sourcelist)
 
 void Mixer::groupAll(bool only_active)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     // obvious cancel
     if (session_->empty())
         return;
@@ -1106,6 +1132,10 @@ void Mixer::groupAll(bool only_active)
 
 void Mixer::ungroupAll()
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
     {
         SessionGroupSource *ss = dynamic_cast< SessionGroupSource * >(*source_iter);
@@ -1424,12 +1454,20 @@ View *Mixer::view(View::Mode m)
 
 void Mixer::save(bool with_version)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     if (!session_->filename().empty())
         saveas(session_->filename(), with_version, true);
 }
 
 void Mixer::saveas(const std::string& filename, bool with_version, bool with_thumbail)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     if (!with_thumbail)
         session_->resetThumbnail();
     // optional copy of views config
@@ -1454,6 +1492,10 @@ void Mixer::saveas(const std::string& filename, bool with_version, bool with_thu
 
 void Mixer::load(const std::string& filename)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     std::string sessionfile = filename;
 
     // given an empty filename, try to revert to recent file according to user settings
@@ -1486,6 +1528,10 @@ void Mixer::load(const std::string& filename)
 
 void Mixer::open(const std::string& filename, bool smooth)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     if (smooth)
     {
         // create special SessionSource to be used for the smooth transition
@@ -1513,6 +1559,10 @@ void Mixer::open(const std::string& filename, bool smooth)
 
 void Mixer::import(const std::string& filename)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
 #ifdef THREADED_LOADING
     // import only one at a time
     if (sessionImporters_.empty()) {
@@ -1527,6 +1577,10 @@ void Mixer::import(const std::string& filename)
 
 void Mixer::import(SessionSource *source)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     sessionSourceToImport_.push_back( source );
 }
 
@@ -1700,6 +1754,9 @@ void Mixer::swap()
     if (!back_session_)
         return;
 
+    // leave DRAFT mode on the current session
+    Draft::manager().terminate();
+
     if (session_) {
         // clear selection
         selection().clear();
@@ -1767,6 +1824,10 @@ void Mixer::swap()
 
 void Mixer::close(bool smooth)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     if (smooth)
     {
         // create empty SessionSource to be used for the smooth transition
@@ -1791,6 +1852,9 @@ void Mixer::close(bool smooth)
 
 void Mixer::terminate()
 {
+    // leave DRAFT mode
+    Draft::manager().terminate();
+
     // wait finish saving / loading
     while (busy())
         update();
@@ -1864,6 +1928,10 @@ void Mixer::setResolution(glm::vec3 res)
 
 void Mixer::paste(const std::string& clipboard)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     tinyxml2::XMLDocument xmlDoc;
     tinyxml2::XMLElement* sourceNode = SessionLoader::firstSourceElement(clipboard, xmlDoc);
     if (sourceNode) {

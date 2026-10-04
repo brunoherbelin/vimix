@@ -72,6 +72,7 @@ public:
     inline void setSourceToReplace(Source *s) { source_to_replace = s; }
     inline Source *&sourceToReplace() { return source_to_replace; }
 
+    float width() const { return width_; }
 
 private:
     // side pannels of the main pannel

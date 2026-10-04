@@ -160,6 +160,10 @@ void Session::update(float dt)
     if ( render_.frame() == nullptr )
         return;
 
+    // in DRAFT mode, inputs operate on the live state of sources
+    for (auto it = sources_.begin(); it != sources_.end(); ++it)
+        (*it)->swapLive(true);
+
     // listen to inputs
     for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
     {
@@ -269,6 +273,10 @@ void Session::update(float dt)
         }
     }
 
+    // get back to draft state of sources
+    for (auto it = sources_.begin(); it != sources_.end(); ++it)
+        (*it)->swapLive(false);
+
     // pre-render all sources
     bool test_ready = true;
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); ++it){
@@ -298,6 +306,9 @@ void Session::update(float dt)
             (*it)->update(dt);
             // render the source
             (*it)->render();
+            // render the source in live state (DRAFT mode)
+            if ( render_.draftFrame() )
+                (*it)->renderLive();
         }
 
         // apply session fading to audio
@@ -348,7 +359,11 @@ void Session::update(float dt)
     render_.update(dt);
 
     // draw render view in Frame Buffer
-    render_.draw();
+    if ( render_.draftFrame() )
+        // DRAFT mode: draw draft and live
+        render_.drawDraft(sources_);
+    else
+        render_.draw();
 
     // draw the thumbnail only after all sources are ready
     if (ready_)

@@ -27,6 +27,7 @@ struct WidgetsConfig
     int  media_player_timeline_editmode;
     int  media_player_timeline_flag;
     float media_player_slider;
+    float draft_slider;
     bool timer;
     int  timer_view;
     bool inputs;
@@ -52,6 +53,7 @@ struct WidgetsConfig
         media_player_timeline_editmode = 0;
         media_player_timeline_flag = 1;
         media_player_slider = 0.f;
+        draft_slider = 0.5f;
         toolbox = false;
         help = false;
         timer = false;
@@ -290,6 +292,7 @@ struct Application
     int  accent_color;
     bool save_version_snapshot;
     bool smooth_transition;
+    float draft_duration;
     bool proportional_grid;
     int  mouse_pointer;
     bool mouse_pointer_lock;
@@ -388,6 +391,7 @@ struct Application
         scale = 1.f;
         accent_color = 0;
         smooth_transition = true;
+        draft_duration = 1000.f;
         save_version_snapshot = false;
         proportional_grid = true;
         mouse_pointer = 1;

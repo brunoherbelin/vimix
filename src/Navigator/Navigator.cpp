@@ -29,11 +29,9 @@
 #include "Settings.h"
 #include "Toolkit/ImGuiToolkit.h"
 #include "View/View.h"
-#include "View/RenderView.h"
 #include "Resource.h"
 #include "Mixer.h"
-#include "MediaPlayer.h"
-#include "Source/PatternSource.h"
+#include "Draft.h"
 #include "Source/SourceCallback.h"
 #include "RenderingManager.h"
 #include "ControlManager.h"
@@ -274,12 +272,17 @@ void Navigator::Render()
                 tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN, nullptr};
 
             // the "+" icon for action of creating new source
-            if (ImGui::Selectable( source_to_replace != nullptr ? ICON_FA_PLUS_SQUARE : ICON_FA_PLUS,
-                                   &selected_button[NAV_NEW], 0, iconsize)) {
-                applyButtonSelection(NAV_NEW);
+            if (!Draft::manager().active()) {
+                if (ImGui::Selectable( source_to_replace != nullptr ? ICON_FA_PLUS_SQUARE : ICON_FA_PLUS,
+                                    &selected_button[NAV_NEW], 0, iconsize)) {
+                    applyButtonSelection(NAV_NEW);
+                }
+                if (ImGui::IsItemHovered())
+                    tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE, nullptr};
             }
-            if (ImGui::IsItemHovered())
-                tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE, nullptr};
+            else {
+                ImGui::Selectable(ICON_FA_PLUS, false, ImGuiSelectableFlags_Disabled, iconsize);
+            }
             //
             // the list of INITIALS for sources
             //
@@ -554,7 +557,7 @@ void Navigator::Render()
             reset_visitor = true;
         }
         // pannel to create a source
-        else if (selected_button[NAV_NEW])
+        else if (selected_button[NAV_NEW] && !Draft::manager().active())
         {
             new_source_panel_.Render(this, iconsize);
             reset_visitor = true;

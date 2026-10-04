@@ -110,6 +110,22 @@ void ImGuiToolkit::ButtonDisabled(const char* label, const ImVec2 &size_arg)
     ImGui::PopStyleColor(1);
 }
 
+void ImGuiToolkit::PushDisabled(bool on)
+{
+    if (on) {
+        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+    }
+}
+
+void ImGuiToolkit::PopDisabled(bool on)
+{
+    if (on) {
+        ImGui::PopStyleVar();
+        ImGui::PopItemFlag();
+    }
+}
+
 bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* tooltip, bool enabled)
 {
     bool ret = false;

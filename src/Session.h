@@ -118,6 +118,10 @@ public:
     // get frame result of render
     inline FrameBuffer *frame () const { return render_.frame(); }
 
+    // DRAFT mode: frame of the draft state, and frame() remains the live output
+    inline void setDraft (bool on) { render_.setDraft(on); }
+    inline FrameBuffer *draftFrame () const { return render_.draftFrame(); }
+
     // get an newly rendered thumbnail
     inline FrameBufferImage *renderThumbnail () { return render_.thumbnail(); }
 

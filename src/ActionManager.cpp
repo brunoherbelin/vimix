@@ -32,6 +32,7 @@
 #include "Settings.h"
 #include "Toolkit/BaseToolkit.h"
 #include "Interpolator.h"
+#include "Draft.h"
 #include "Toolkit/SystemToolkit.h"
 
 #include "ActionManager.h"
@@ -192,6 +193,10 @@ void Action::store(const std::string &label, bool threaded)
     if (label.empty())
         return;
 
+    // ignore actions in DRAFT mode
+    if (Draft::manager().active())
+        return;
+
     // threaded capturing state of current session
     if (threaded)
         std::thread(Action::storeSession, Mixer::manager().session(), label, true).detach();
@@ -201,6 +206,12 @@ void Action::store(const std::string &label, bool threaded)
 
 void Action::undo()
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // finish draft animation
+    Draft::manager().terminate();
     // not possible to go to 1 -1 = 0
     if (history_step_ <= 1)
         return;
@@ -211,6 +222,12 @@ void Action::undo()
 
 void Action::redo()
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // finish draft animation
+    Draft::manager().terminate();
     // not possible to go to max_step_ + 1
     if (history_step_ >= history_max_step_)
         return;
@@ -222,6 +239,12 @@ void Action::redo()
 
 void Action::stepTo(uint target)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // finish draft animation
+    Draft::manager().terminate();
     // get reasonable target
     uint t = CLAMP(target, 1, history_max_step_);
 
@@ -273,6 +296,12 @@ FrameBufferImage *Action::thumbnail(uint s) const
 
 void Action::restore(uint target)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // finish draft animation
+    Draft::manager().terminate();
     history_access_.lock();
 
     // get history node of target step
@@ -319,6 +348,12 @@ void Action::takeSnapshot(Session *se, const std::string &label, bool create_thr
 
 void Action::snapshot(const std::string &label)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // finish draft animation
+    Draft::manager().terminate();
     // ensure label is unique
     std::string snap_label = BaseToolkit::uniqueName(label, labels());
 
@@ -351,6 +386,12 @@ void Action::open(uint64_t snapshotid)
 
 void Action::replace(uint64_t snapshotid)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // finish draft animation
+    Draft::manager().terminate();
     if (snapshotid > 0)
         open(snapshotid);
 
@@ -478,6 +519,12 @@ void Action::remove(uint64_t snapshotid)
 
 void Action::restore(uint64_t snapshotid)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // finish draft animation
+    Draft::manager().terminate();
     if (snapshotid > 0)
         open(snapshotid);
 
@@ -499,6 +546,12 @@ float Action::interpolation()
 
 void Action::interpolate(float val, uint64_t snapshotid)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // finish draft animation
+    Draft::manager().terminate();
     if (snapshotid > 0)
         open(snapshotid);
 

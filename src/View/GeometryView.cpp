@@ -57,6 +57,7 @@
 #include "Source/CanvasSource.h"
 #include "Source/SourceList.h"
 #include "Canvas.h"
+#include "Draft.h"
 
 #include "GeometryView.h"
 #include "GeometryHandleManipulation.h"
@@ -338,9 +339,11 @@ void GeometryView::draw()
         scene.accept(draw_sources);
     }
 
-    // 3. Draw canvases on top of sources 
-    DrawVisitor draw_canvases(canvas_surfaces, projection);
-    scene.accept(draw_canvases);
+    if (!Draft::manager().active()) {
+        // 3. Draw canvases on top of sources if not in draft mode
+        DrawVisitor draw_canvases(canvas_surfaces, projection);
+        scene.accept(draw_canvases);
+    }
 
     if (!source_overlays.empty())  {
         // 5. Draw frames and icons of sources in the current workspace

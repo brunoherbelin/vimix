@@ -37,6 +37,7 @@
 #include "defines.h"
 #include "IconsVimixImage.h"
 #include "Mixer.h"
+#include "Draft.h"
 #include "Source/Source.h"
 #include "Settings.h"
 #include "Resource.h"
@@ -460,7 +461,8 @@ std::pair<Node *, glm::vec2> TextureView::pick(glm::vec2 P)
         if (current != nullptr) {
 
             // special case for drawing in the mask
-            if ( current->maskShader()->mode == MaskShader::PAINT && mask_cursor_paint_ > 0) {
+            if ( current->maskShader()->mode == MaskShader::PAINT && mask_cursor_paint_ > 0
+                 && !Draft::manager().active() ) {
                 pick = { mask_cursor_circle_, P };
                 // adapt grid to prepare grab action
                 adaptGridToSource(current);
@@ -469,7 +471,8 @@ std::pair<Node *, glm::vec2> TextureView::pick(glm::vec2 P)
                 return pick;
             }
             // special case for cropping the mask shape
-            else if ( current->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0) {
+            else if ( current->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0
+                      && !Draft::manager().active() ) {
                 pick = { mask_cursor_crop_, P };
                 // adapt grid to prepare grab action
                 adaptGridToSource(current);
@@ -682,6 +685,10 @@ void TextureView::draw()
             ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.22f, 0.22f, 0.99f));
+
+            // mask cannot be edited in DRAFT mode
+            const bool draft = Draft::manager().active();
+            ImGuiToolkit::PushDisabled(draft);
 
             int maskmode = edit_source_->maskShader()->mode;
             ImGui::SetNextItemWidth( ImGui::GetTextLineHeightWithSpacing() * 2.6);
@@ -1062,6 +1069,8 @@ void TextureView::draw()
                 ImGui::SameLine(0, 60);
                 ImGui::TextDisabled( "No mask" );
             }
+
+            ImGuiToolkit::PopDisabled(draft);
 
             ImGui::PopStyleColor(8);  // colors
             ImGui::End();

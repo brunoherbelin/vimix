@@ -147,6 +147,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("scale", application.scale);
     applicationNode->SetAttribute("accent_color", application.accent_color);
     applicationNode->SetAttribute("smooth_transition", application.smooth_transition);
+    applicationNode->SetAttribute("draft_duration", application.draft_duration);
     applicationNode->SetAttribute("save_snapshot", application.save_version_snapshot);
     applicationNode->SetAttribute("action_history_follow_view", application.action_history_follow_view);
     applicationNode->SetAttribute("show_tooptips", application.show_tooptips);
@@ -203,6 +204,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     widgetsNode->SetAttribute("timeline_editmode", application.widget.media_player_timeline_editmode);
     widgetsNode->SetAttribute("timeline_flag", application.widget.media_player_timeline_flag);
     widgetsNode->SetAttribute("media_player_slider", application.widget.media_player_slider);
+    widgetsNode->SetAttribute("draft_slider", application.widget.draft_slider);
     widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
     widgetsNode->SetAttribute("shader_editor_view", application.widget.shader_editor_view);
     widgetsNode->SetAttribute("stats", application.widget.stats);
@@ -518,6 +520,7 @@ void Settings::init(const std::string &filename)
             applicationNode->QueryFloatAttribute("scale", &application.scale);
             applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
             applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
+            applicationNode->QueryFloatAttribute("draft_duration", &application.draft_duration);
             applicationNode->QueryBoolAttribute("save_snapshot", &application.save_version_snapshot);
             applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
             applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
@@ -582,6 +585,7 @@ void Settings::init(const std::string &filename)
             widgetsNode->QueryIntAttribute("timeline_editmode", &application.widget.media_player_timeline_editmode);
             widgetsNode->QueryIntAttribute("timeline_flag", &application.widget.media_player_timeline_flag);
             widgetsNode->QueryFloatAttribute("media_player_slider", &application.widget.media_player_slider);
+            widgetsNode->QueryFloatAttribute("draft_slider", &application.widget.draft_slider);
             widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
             widgetsNode->QueryIntAttribute("shader_editor_view", &application.widget.shader_editor_view);
             widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);

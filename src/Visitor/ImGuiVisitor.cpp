@@ -63,6 +63,7 @@
 #include "SessionVisitor.h"
 #include "Settings.h"
 #include "Mixer.h"
+#include "Draft.h"
 #include "MixingGroup.h"
 #include "ActionManager.h"
 #include "Mixer.h"
@@ -207,12 +208,16 @@ void ImGuiVisitor::visit(Shader &n)
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int mode = n.blending;
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    // blending cannot be changed in DRAFT mode
+    const bool draft = Draft::manager().active();
+    ImGuiToolkit::PushDisabled(draft);
     if (ImGuiToolkit::ComboIcon("Blending", &mode, Shader::blendingFunction) )
     {
         n.blending = Shader::BlendMode(mode);
         oss << "Blending " << std::get<2>(Shader::blendingFunction[mode]).c_str();
         Action::manager().store(oss.str());
     }
+    ImGuiToolkit::PopDisabled(draft);
 
     ImGui::PopID();
 }
@@ -553,7 +558,7 @@ void ImGuiVisitor::visit (Source& s)
         static uint counter_menu_timeout = 0;
         ImVec2 pos_bot = ImGui::GetCursorPos();
         ImGui::SetCursorPos( ImVec2( pos.x + preview_width + IMGUI_SAME_LINE, pos.y + preview_height + ImGui::GetStyle().ItemSpacing.y));
-        if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+        if (!Draft::manager().active() && (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) )) {
             counter_menu_timeout=0;
             ImGui::OpenPopup( "MenuImageProcessing" );
         }
@@ -934,6 +939,9 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     if ( !s.failed() && s.session() != nullptr ) {
 
         if ( s.active() && s.session()->ready() ) {
+
+            ImGuiToolkit::PushDisabled(s.drafting());
+
             // versions
             SessionSnapshots *versions = s.session()->snapshots();
             if (versions->keys_.size()>0) {
@@ -996,6 +1004,7 @@ void ImGuiVisitor::visit (SessionFileSource& s)
                 top.x += ImGui::GetFrameHeight();
             }
 
+            ImGuiToolkit::PopDisabled(s.drafting());
         }
         else
         {
@@ -1053,8 +1062,10 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
                               ImGuiInputTextFlags_ReadOnly);
     ImGui::PopStyleColor(1);
 
+    ImGuiToolkit::PushDisabled(s.drafting());
     if ( ImGui::Button( ICON_FA_TIMES "  Uncover", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().import( &s );
+    ImGuiToolkit::PopDisabled(s.drafting());
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1091,6 +1102,8 @@ void ImGuiVisitor::visit (RenderSource& s)
     ImGui::Text("%s", info.str().c_str());
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
+
+    ImGuiToolkit::PushDisabled(s.drafting());
 
     // loopback provenance
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1129,6 +1142,8 @@ void ImGuiVisitor::visit (RenderSource& s)
         }
 
     }
+
+    ImGuiToolkit::PopDisabled(s.drafting());
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1625,6 +1640,9 @@ void ImGuiVisitor::visit (CloneSource& s)
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         ImGui::Text("Origin");
 
+        // filter cannot be changed in DRAFT mode
+        ImGuiToolkit::PushDisabled(s.drafting());
+
         // filter selection
         int type = (int) s.filter()->type();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1666,6 +1684,8 @@ void ImGuiVisitor::visit (CloneSource& s)
 
         // filter options
         s.filter()->accept(*this);
+
+        ImGuiToolkit::PopDisabled(s.drafting());
 
         ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1749,6 +1769,9 @@ void ImGuiVisitor::visit (PatternSource& s)
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
+    // Pattern cannot be changed in DRAFT mode
+    ImGuiToolkit::PushDisabled(s.drafting());
+
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::BeginCombo("##Patterns", Pattern::get(s.pattern()->type()).label.c_str(), ImGuiComboFlags_HeightLarge) )
     {
@@ -1770,6 +1793,8 @@ void ImGuiVisitor::visit (PatternSource& s)
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Generator");
+
+    ImGuiToolkit::PopDisabled(s.drafting());
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1812,6 +1837,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
 
     if ( !s.failed() ) {
 
+        ImGuiToolkit::PushDisabled(s.drafting());
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::BeginCombo("Device", s.device().c_str()))
         {
@@ -1832,6 +1858,8 @@ void ImGuiVisitor::visit (DeviceSource& s)
             }
             ImGui::EndCombo();
         }
+
+        ImGuiToolkit::PopDisabled(s.drafting());
         ImVec2 botom = ImGui::GetCursorPos();
 
         // icon (>) to open player
@@ -2012,6 +2040,8 @@ void ImGuiVisitor::visit (MultiFileSource& s)
         ImGui::InputText("Filenames", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopStyleColor(1);
 
+        ImGuiToolkit::PushDisabled(s.drafting());
+
         // change range
         static int _begin = -1;
         if (_begin < 0 || id != s.id())
@@ -2054,6 +2084,9 @@ void ImGuiVisitor::visit (MultiFileSource& s)
             Action::manager().store(oss.str());
             _fps = -1;
         }
+
+
+        ImGuiToolkit::PopDisabled(s.drafting());
 
         botom = ImGui::GetCursorPos();
 
@@ -2213,6 +2246,7 @@ void ImGuiVisitor::visit(TextSource &s)
     ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
+    ImGuiToolkit::PushDisabled(s.drafting());
 
     TextContents *tc = s.contents();
     if (tc) {
@@ -2462,6 +2496,8 @@ void ImGuiVisitor::visit(TextSource &s)
 
         botom = ImGui::GetCursorPos();
     }
+
+    ImGuiToolkit::PopDisabled(s.drafting());
 
     if ( !s.failed() ) {
         // icon (>) to open player

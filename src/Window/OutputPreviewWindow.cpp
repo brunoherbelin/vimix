@@ -40,6 +40,7 @@
 #include "Toolkit/SystemToolkit.h"
 #include "Settings.h"
 #include "Mixer.h"
+#include "Draft.h"
 #include "Recorder.h"
 #include "Connection.h"
 #include "Streamer.h"
@@ -249,6 +250,22 @@ void OutputPreviewWindow::Render()
         {
             if (ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET))
                 Settings::application.widget.preview = false;
+
+            // DRAFT button
+            if ( Draft::manager().active() ) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
+                if (ImGuiToolkit::IconButton(ICON_FA_PENCIL_RULER))
+                    Draft::manager().cancel();
+                ImGui::PopStyleColor();
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip(MENU_DRAFT_CANCEL, SHORTCUT_DRAFT_CANCEL);
+            }
+            else {
+                if (ImGuiToolkit::IconButton(ICON_FA_PENCIL_RULER) && !Draft::manager().busy())
+                    Draft::manager().enter();
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip(MENU_DRAFT, SHORTCUT_DRAFT);
+            }
 
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
@@ -544,10 +561,107 @@ void OutputPreviewWindow::Render()
         ImVec2 imagepos = draw_pos + (areasize - imagesize) * 0.5f;
         ImGui::SetCursorScreenPos(imagepos);
 
+        // draft frame to compare with output
+        FrameBuffer *draft = nullptr;
+        if (Draft::manager().active() && Settings::application.widget.preview_output < 0)
+            draft = Mixer::manager().session()->draftFrame();
+        float split = CLAMP(Settings::application.widget.draft_slider, 0.f, 1.f);
+
         // 100% opacity for the image (ensures true colors)
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
-        ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
+        if (draft) {
+            // LEFT of split : live output
+            if (split > 0.f)
+                ImGui::Image((void*)(intptr_t)output->texture(), ImVec2(imagesize.x * split, imagesize.y),
+                             ImVec2(0.f, 0.f), ImVec2(split, 1.f));
+            // RIGHT of split : draft
+            if (split < 1.f) {
+                ImGui::SetCursorScreenPos(imagepos + ImVec2(imagesize.x * split, 0.f));
+                ImGui::Image((void*)(intptr_t)draft->texture(), ImVec2(imagesize.x * (1.f - split), imagesize.y),
+                             ImVec2(split, 0.f), ImVec2(1.f, 1.f));
+            }
+        }
+        else
+            ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
         ImGui::PopStyleVar();
+
+        ///
+        /// DRAFT mode controls (before image interaction)
+        ///
+        if (Draft::manager().busy())
+        {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            const ImU32 draft_color = ImGui::GetColorU32(ImGuiCol_Header);
+            const float bar_h = ImGui::GetFrameHeightWithSpacing() + g.Style.WindowPadding.y;
+            const ImVec2 bar_pos(imagepos.x, imagepos.y + imagesize.y - bar_h);
+
+            // frame around image
+            draw_list->AddRect(imagepos, imagepos + imagesize, draft_color, 0.f, 0, 3.f);
+
+            if (draft) {
+                // pre-calculate slider coordinates in rendering area
+                const ImVec2 slider = imagesize * ImVec2(split, 1.f);
+                ImU32 slider_color = ImGui::GetColorU32(ImGuiCol_HeaderHovered);
+                if (!magnifying_glass)
+                {
+                    // user input : move slider horizontally
+                    ImGui::SetCursorScreenPos(imagepos + ImVec2(- 20.f, 0.5f * imagesize.y - 20.0f));
+                    ImGuiToolkit::InvisibleSliderFloat("#draft_slider", &Settings::application.widget.draft_slider, 0.f, 1.f, ImVec2(imagesize.x + 40.f, 40.0f) );
+                    // affordance: cursor change to horizontal arrows
+                    if (ImGui::IsItemHovered() || ImGui::IsItemFocused()) {
+                        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+                        slider_color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
+                    }
+                    // graphical indication of slider
+                    draw_list->AddCircleFilled(imagepos + slider * ImVec2(1.f, 0.5f), 20.f, slider_color, 26);
+                }
+                // graphical indication of separator (vertical line)
+                draw_list->AddLine(imagepos + slider * ImVec2(1.f, 0.0f), imagepos + slider, slider_color, 1);
+
+                // labels on each side of the separator
+                const float xs = imagepos.x + slider.x;
+                const char *label_live = "Live " ICON_FA_CARET_LEFT;
+                const ImVec2 size_live = ImGui::CalcTextSize(label_live);
+                if (xs - size_live.x - 6.f > imagepos.x) {
+                    ImGui::SetCursorScreenPos(ImVec2(xs - size_live.x - 6.f, imagepos.y + 4.f));
+                    ImGui::TextColored(ImGuiToolkit::HighlightColor(), "%s", label_live);
+                }
+                const char *label_draft = ICON_FA_CARET_RIGHT " Draft";
+                if (xs + ImGui::CalcTextSize(label_draft).x + 6.f < imagepos.x + imagesize.x) {
+                    ImGui::SetCursorScreenPos(ImVec2(xs + 6.f, imagepos.y + 4.f));
+                    ImGui::TextColored(ImGuiToolkit::HighlightColor(), "%s", label_draft);
+                }
+            }
+
+            // bottom bar
+            draw_list->AddRectFilled(bar_pos, imagepos + imagesize, IMGUI_COLOR_OVERLAY);
+            ImGui::SetCursorScreenPos(bar_pos + g.Style.WindowPadding * 0.5f);
+            if (Draft::manager().active()) {
+                // Cancel, duration and Apply
+                if (ImGui::Button(ICON_FA_TIMES " Cancel"))
+                    Draft::manager().cancel();
+                ImGui::SameLine();
+                const float apply_w = ImGui::CalcTextSize(ICON_FA_CHECK " Apply").x + 2.f * g.Style.FramePadding.x;
+                ImGui::SetNextItemWidth( MAX(imagesize.x - ImGui::GetCursorScreenPos().x + imagepos.x
+                                             - apply_w - 2.f * g.Style.ItemSpacing.x, 20.f) );
+                ImGui::DragFloat("##draft_duration", &Settings::application.draft_duration, 10.f, 0.f, 60000.f,
+                                 ICON_FA_STOPWATCH " %.0f ms");
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Duration of transition to draft");
+                ImGui::SameLine();
+                ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
+                if (ImGui::Button(ICON_FA_CHECK " Apply"))
+                    Draft::manager().apply(Settings::application.draft_duration);
+                ImGui::PopStyleColor();
+            }
+            else {
+                // animation in progress
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImGuiToolkit::HighlightColor(false));
+                ImGui::ProgressBar(Draft::manager().progress(),
+                                   ImVec2(imagesize.x - g.Style.WindowPadding.x, 0.f), "Applying draft");
+                ImGui::PopStyleColor();
+            }
+        }
 
         // disable magnifying glass if window is deactivated
         if (g.NavWindow != g.CurrentWindow)
@@ -568,8 +682,13 @@ void OutputPreviewWindow::Render()
             ImGui::SetHoveredID(0);
         }
         // show magnifying glass if active and mouse hovering
-        else if (hovered && magnifying_glass)
-            DrawInspector(output->texture(), areasize, imagesize, imagepos);
+        else if (hovered && magnifying_glass) {
+            // in DRAFT mode, inspect the draft on the right of the slider
+            if (draft && !ImGui::IsMouseHoveringRect(imagepos, imagepos + imagesize * ImVec2(split, 1.f)))
+                DrawInspector(draft->texture(), areasize, imagesize, imagepos);
+            else
+                DrawInspector(output->texture(), areasize, imagesize, imagepos);
+        }
 
         ///
         /// Icons overlays

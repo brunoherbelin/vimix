@@ -58,6 +58,9 @@ namespace ImGuiToolkit
     bool ButtonSwitch  (const char* label, bool* toggle, const char *tooltip = nullptr, bool enabled = true);
     void ButtonOpenUrl (const char* label, const char* url, const ImVec2& size_arg = ImVec2(0,0));
     void ButtonDisabled(const char* label, const ImVec2& size_arg = ImVec2(0,0));
+    // disable following items if on (to be matched with PopDisabled with same argument)
+    void PushDisabled(bool on);
+    void PopDisabled(bool on);
     bool TextButton    (const char* text, const char *tooltip = nullptr, const char *shortcut = nullptr);
 
     // tooltip and mouse over help

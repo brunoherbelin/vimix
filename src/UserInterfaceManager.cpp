@@ -76,6 +76,7 @@
 #include "Resource.h"
 #include "SessionCreator.h"
 #include "Mixer.h"
+#include "Draft.h"
 #include "Recorder.h"
 #include "Source/SourceCallback.h"
 #include "Source/ShaderSource.h"
@@ -309,6 +310,18 @@ void UserInterface::handleKeyboard()
                     navigator.showPannelSource(Mixer::manager().indexCurrentSource());
                 }
             }
+        }
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_D), false )) {
+            // Draft mode
+            if (Draft::manager().active()) {
+                if (shift_modifier_active)
+                    Draft::manager().cancel();
+                else
+                    Draft::manager().apply(Settings::application.draft_duration);
+            }
+            else if (!shift_modifier_active && Draft::manager().enter())
+                // show Mix window to see draft
+                outputcontrol.setVisible(true);
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_L), false )) {
             // Logs
@@ -1025,6 +1038,10 @@ void UserInterface::NewFrame()
 
 void UserInterface::Render()
 {
+    // indicator of DRAFT mode over the views
+    if (Draft::manager().busy())
+        RenderDraftIndicator();
+
     // navigator bar first
     navigator.Render();
 
@@ -1142,8 +1159,46 @@ void UserInterface::Terminate()
     ImGui::DestroyContext();
 }
 
+// disable menu items in DRAFT mode (scoped)
+struct DraftDisabledMenu
+{
+    bool on;
+    DraftDisabledMenu() : on(Draft::manager().active()) {
+        if (on)
+            ImGui::TextColored(ImGuiToolkit::HighlightColor(), ICON_FA_PENCIL_RULER "  Not available in Draft mode");
+        ImGuiToolkit::PushDisabled(on);
+    }
+    ~DraftDisabledMenu() { ImGuiToolkit::PopDisabled(on); }
+};
+
+void UserInterface::RenderDraftIndicator()
+{
+    const ImGuiIO& io = ImGui::GetIO();
+    ImDrawList *draw_list = ImGui::GetBackgroundDrawList();
+    const ImU32 color = ImGui::GetColorU32(ImGuiToolkit::HighlightColor());
+
+    // frame around the views
+    ImVec2 p0 = ImVec2(navigator.width(), 0.f);
+    draw_list->AddRect(p0, io.DisplaySize, color, 0.f, 0, 6.f);
+
+    // label at top center
+    std::string label;
+    if (Draft::manager().active())
+        label = ICON_FA_PAUSE "  DRAFT   (" SHORTCUT_DRAFT " apply, " SHORTCUT_DRAFT_CANCEL " cancel)";
+    else
+        label = ICON_FA_PLAY "  Applying draft " + std::to_string((int) (100.f * Draft::manager().progress())) + "%";
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+    const ImVec2 size = ImGui::CalcTextSize(label.c_str());
+    const ImVec2 pos( 0.5f * (io.DisplaySize.x - size.x), 8.f);
+    draw_list->AddRectFilled(pos - ImVec2(10.f, 4.f), pos + size + ImVec2(10.f, 4.f), IMGUI_COLOR_OVERLAY, 6.f);
+    draw_list->AddText(ImGui::GetFont(), ImGui::GetFontSize(), pos, color, label.c_str());
+    ImGui::PopFont();
+}
+
 void UserInterface::showMenuEdit()
 {
+    DraftDisabledMenu disabled;
+
     bool has_selection = !Mixer::selection().empty();
     const char *clipboard = ImGui::GetClipboardText();
     bool has_clipboard = (clipboard != nullptr && strlen(clipboard) > 0 && SessionLoader::isClipboard(clipboard));
@@ -1182,7 +1237,8 @@ void UserInterface::showMenuEdit()
 }
 
 void UserInterface::showMenuBundle()
-{       
+{
+    DraftDisabledMenu disabled;       
     ImVec4 disabled_color = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
     ImGui::MenuItem("Create bundle with:", NULL, false, false);
 
@@ -1316,6 +1372,8 @@ void UserInterface::showMenuWindows()
 
 void UserInterface::showMenuFile()
 {
+    DraftDisabledMenu disabled;
+
     // NEW
     if (ImGui::MenuItem( MENU_NEW_FILE, SHORTCUT_NEW_FILE)) {
         Mixer::manager().close();
@@ -1638,6 +1696,11 @@ void UserInterface::RenderPreview()
         if (_framebuffer != nullptr)
         {
             ImGuiIO& io = ImGui::GetIO();
+            // in DRAFT mode, the preview of output shows the draft
+            FrameBuffer *draft = nullptr;
+            if (show_preview == PREVIEW_OUTPUT && Draft::manager().active())
+                draft = Mixer::manager().session()->draftFrame();
+            const uint preview_texture = draft ? draft->texture() : _framebuffer->texture();
             float ar = _framebuffer->aspectRatio();
             // image takes the available window area
             ImVec2 imagesize = io.DisplaySize;
@@ -1649,8 +1712,11 @@ void UserInterface::RenderPreview()
             // 100% opacity for the image (ensures true colors)
             ImVec2 draw_pos = ImGui::GetCursorScreenPos();
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
-            ImGui::Image((void*)(intptr_t)_framebuffer->texture(), imagesize);
+            ImGui::Image((void*)(intptr_t)preview_texture, imagesize);
             ImGui::PopStyleVar();
+            if (draft)
+                ImGui::GetWindowDrawList()->AddRect(draw_pos, draw_pos + imagesize,
+                                                    ImGui::GetColorU32(ImGuiToolkit::HighlightColor()), 0.f, 0, 4.f);
 
             // closing icon in top left corner
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
@@ -1662,6 +1728,8 @@ void UserInterface::RenderPreview()
                 ImGui::SameLine();
                 if (show_preview == PREVIEW_SOURCE)
                     ImGui::Text("Preview Player source");
+                else if (draft)
+                    ImGui::Text("Preview Draft");
                 else
                     ImGui::Text("Preview Mix output");  
             }
@@ -1681,7 +1749,7 @@ void UserInterface::RenderPreview()
                 _inspector = !_inspector;
             // draw inspector (magnifying glass) on mouse hovering
             if (hovered & _inspector)
-                DrawInspector(_framebuffer->texture(), imagesize, imagesize, draw_pos);
+                DrawInspector(preview_texture, imagesize, imagesize, draw_pos);
 
             // close view on mouse clic outside
             // and ignore show_preview on single clic
