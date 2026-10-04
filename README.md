@@ -27,14 +27,13 @@ Check the [Quick Installation Guide](https://github.com/brunoherbelin/vimix/wiki
 
 ### Linux
 
-Download and install a released [flatpak package](https://flathub.org/apps/details/io.github.brunoherbelin.Vimix)
+Install a released [flatpak package](https://flathub.org/apps/details/io.github.brunoherbelin.Vimix)
 
     flatpak install vimix
     
+Install a released [snap package](https://snapcraft.io/vimix) 
 
 [![vimix](https://snapcraft.io/vimix/badge.svg)](https://snapcraft.io/vimix)
-
-Download and install a released [snap package](https://snapcraft.io/vimix) 
 
     snap install vimix
     
@@ -44,7 +43,7 @@ Install the stable debian package (slower release frequency)
 
 ### Mac OSX
 
-#### Download the [latest vimix Release](https://github.com/brunoherbelin/vimix/releases)
+Download and install the [latest vimix Release](https://github.com/brunoherbelin/vimix/releases)
 
 # Build vimix
 

@@ -7,7 +7,6 @@ Vimix allows you to specify a custom gamepad mapping database file to replace th
 - You have controllers not in the default database
 - You want to use an updated version of SDL_GameControllerDB
 - You've created custom mappings for your specific hardware
-- You need to maintain organization-specific controller configurations
 
 ## Quick Start
 
@@ -92,7 +91,5 @@ If your controller isn't in the database:
 
 ### See Also
 
-- [GAMEPAD_SUPPORT.md](GAMEPAD_SUPPORT.md) - General gamepad documentation
-- [CONTRIBUTING_GAMEPAD_MAPPINGS.md](CONTRIBUTING_GAMEPAD_MAPPINGS.md) - How to create mappings
 - [SDL_GameControllerDB](https://github.com/gabomdq/SDL_GameControllerDB) - Community database
 - [SDL2 Gamepad Tool](https://generalarcade.com/gamepadtool/) - Mapping creation tool
