@@ -1,5 +1,7 @@
 # Build vimix
 
+First, install dependencies according to your system (see below).
+
 ## Clone
 
     git clone --recursive https://github.com/brunoherbelin/vimix.git
@@ -11,10 +13,7 @@ and (recursively) clone all the internal git dependencies.
 
 First time after git clone:
 
-    mkdir vimix-build
-    cd vimix-build
-    cmake -DCMAKE_BUILD_TYPE=Release ../vimix
-    cmake --build .
+    mkdir vimix-build && cd vimix-build && cmake -DCMAKE_BUILD_TYPE=Release ../vimix && cmake --build . -j$(nproc)  
     
 This will create the directory 'vimix-build', configure the program for build, and compile vimix.
 If successful, the compilation will end with:
@@ -69,9 +68,10 @@ It should say;
 **Libraries:**
 
 - gstreamer
-- gst-plugins (libav, base, good, bad & ugly)
+- gst-plugins (libav, base, good, extra, bad & pipewire)
 - libglfw3
 - libicu (icu-i18n icu-uc icu-io)
+- libpng
 
 Optionnal:
 
@@ -80,18 +80,26 @@ Optionnal:
 - TinyXML2
 - AbletonLink
 - Shmdata
+- Frei0r
 
 ### Install Dependencies
 
 #### Ubuntu
 
-    apt-get install build-essential cmake libpng-dev libglfw3-dev libgstreamer1.0-dev libgstreamer-plugins-bad1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-libav libicu-dev libgtk-3-dev 
+Minimum:
 
-Optionnal:
+    apt-get update && apt-get install -y build-essential cmake git libpng-dev libicu-dev libglfw3-dev libgtk-3-dev libavahi-client-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-good
 
-    apt-get install libglm-dev libstb-dev libtinyxml2-dev ableton-link-dev 
+Recommended:
+
+    apt-get install -y libavahi-client3 gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-plugins-extra gstreamer1.0-pipewire frei0r-plugins 
+
+Optionnal (will be compiled if not installed):
+
+    apt-get install -y libglm-dev libstb-dev libtinyxml2-dev ableton-link-dev 
     
-  > Follow these instructions to [install Shmdata](https://github.com/nicobou/shmdata/blob/develop/doc/install-from-sources.md).
+
+Extra support for [Shmdata](https://github.com/nicobou/shmdata/blob/develop/doc/install-from-sources.md) to interface with [Splash](https://splashmapper.xyz/fr/)
   
     git clone https://gitlab.com/sat-metalab/shmdata.git
     mkdir shmdata-build
@@ -100,7 +108,22 @@ Optionnal:
     cmake --build . --target package
     sudo dpkg -i ./libshmdata_1.3*_amd64.deb
 
-#### OSX with Brew
+#### OSX with [Homebrew](https://brew.sh/)
 
-    brew install cmake libpng glfw gstreamer icu4c
+Compiler and git are provided by the Xcode command line tools:
+
+    xcode-select --install
+
+Minimum:
+
+    brew install cmake pkgconf libpng glfw gstreamer icu4c
+
+Rrecommended:
+
+    brew install frei0r onnxruntime
+
+Optionnal (will be compiled if not installed):
+
+    brew install glm tinyxml2 
+
 

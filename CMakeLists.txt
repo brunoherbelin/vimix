@@ -184,6 +184,7 @@ if(UNIX)
             else()
                 message(STATUS "mDNS/Avahi: NO (install libavahi-client-dev for peer discovery)")
             endif()
+            macro_log_feature(AVAHI_FOUND "Avahi" "mDNS/DNS-SD network peer discovery" "https://www.avahi.org" TRUE)
         endif()
 
     endif()
