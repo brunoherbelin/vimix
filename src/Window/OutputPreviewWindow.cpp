@@ -251,22 +251,6 @@ void OutputPreviewWindow::Render()
             if (ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET))
                 Settings::application.widget.preview = false;
 
-            // DRAFT button
-            if ( Draft::manager().active() ) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
-                if (ImGuiToolkit::IconButton(ICON_FA_PENCIL_RULER))
-                    Draft::manager().cancel();
-                ImGui::PopStyleColor();
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip(MENU_DRAFT_CANCEL, SHORTCUT_DRAFT_CANCEL);
-            }
-            else {
-                if (ImGuiToolkit::IconButton(ICON_FA_PENCIL_RULER) && !Draft::manager().busy())
-                    Draft::manager().enter();
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip(MENU_DRAFT, SHORTCUT_DRAFT);
-            }
-
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
                 // Preview and output menu
@@ -586,14 +570,12 @@ void OutputPreviewWindow::Render()
         ImGui::PopStyleVar();
 
         ///
-        /// DRAFT mode controls (before image interaction)
+        /// DRAFT mode comparison (before image interaction)
         ///
         if (Draft::manager().busy())
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             const ImU32 draft_color = ImGui::GetColorU32(ImGuiCol_Header);
-            const float bar_h = ImGui::GetFrameHeightWithSpacing() + g.Style.WindowPadding.y;
-            const ImVec2 bar_pos(imagepos.x, imagepos.y + imagesize.y - bar_h);
 
             // frame around image
             draw_list->AddRect(imagepos, imagepos + imagesize, draft_color, 0.f, 0, 3.f);
@@ -631,35 +613,6 @@ void OutputPreviewWindow::Render()
                     ImGui::SetCursorScreenPos(ImVec2(xs + 6.f, imagepos.y + 4.f));
                     ImGui::TextColored(ImGuiToolkit::HighlightColor(), "%s", label_draft);
                 }
-            }
-
-            // bottom bar
-            draw_list->AddRectFilled(bar_pos, imagepos + imagesize, IMGUI_COLOR_OVERLAY);
-            ImGui::SetCursorScreenPos(bar_pos + g.Style.WindowPadding * 0.5f);
-            if (Draft::manager().active()) {
-                // Cancel, duration and Apply
-                if (ImGui::Button(ICON_FA_TIMES " Cancel"))
-                    Draft::manager().cancel();
-                ImGui::SameLine();
-                const float apply_w = ImGui::CalcTextSize(ICON_FA_CHECK " Apply").x + 2.f * g.Style.FramePadding.x;
-                ImGui::SetNextItemWidth( MAX(imagesize.x - ImGui::GetCursorScreenPos().x + imagepos.x
-                                             - apply_w - 2.f * g.Style.ItemSpacing.x, 20.f) );
-                ImGui::DragFloat("##draft_duration", &Settings::application.draft_duration, 10.f, 0.f, 60000.f,
-                                 ICON_FA_STOPWATCH " %.0f ms");
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip("Duration of transition to draft");
-                ImGui::SameLine();
-                ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
-                if (ImGui::Button(ICON_FA_CHECK " Apply"))
-                    Draft::manager().apply(Settings::application.draft_duration);
-                ImGui::PopStyleColor();
-            }
-            else {
-                // animation in progress
-                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImGuiToolkit::HighlightColor(false));
-                ImGui::ProgressBar(Draft::manager().progress(),
-                                   ImVec2(imagesize.x - g.Style.WindowPadding.x, 0.f), "Applying draft");
-                ImGui::PopStyleColor();
             }
         }
 

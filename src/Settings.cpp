@@ -205,6 +205,8 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     widgetsNode->SetAttribute("timeline_flag", application.widget.media_player_timeline_flag);
     widgetsNode->SetAttribute("media_player_slider", application.widget.media_player_slider);
     widgetsNode->SetAttribute("draft_slider", application.widget.draft_slider);
+    widgetsNode->SetAttribute("draft", application.widget.draft);
+    widgetsNode->SetAttribute("draft_corner", application.widget.draft_corner);
     widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
     widgetsNode->SetAttribute("shader_editor_view", application.widget.shader_editor_view);
     widgetsNode->SetAttribute("stats", application.widget.stats);
@@ -586,6 +588,8 @@ void Settings::init(const std::string &filename)
             widgetsNode->QueryIntAttribute("timeline_flag", &application.widget.media_player_timeline_flag);
             widgetsNode->QueryFloatAttribute("media_player_slider", &application.widget.media_player_slider);
             widgetsNode->QueryFloatAttribute("draft_slider", &application.widget.draft_slider);
+            widgetsNode->QueryBoolAttribute("draft", &application.widget.draft);
+            widgetsNode->QueryIntAttribute("draft_corner", &application.widget.draft_corner);
             widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
             widgetsNode->QueryIntAttribute("shader_editor_view", &application.widget.shader_editor_view);
             widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);

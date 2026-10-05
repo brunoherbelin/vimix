@@ -266,9 +266,10 @@
 #define SHORTCUT_PLAY_PAUSE   "Space"
 #define MENU_PLAY_BEGIN       ICON_FA_FAST_BACKWARD "  Go to Beginning"
 #define SHORTCUT_BUNDLE       CTRL_MOD "B"
-#define MENU_DRAFT            ICON_FA_PENCIL_RULER "  Draft mode"
+#define MENU_DRAFT            ICON_FA_PENCIL_RULER "  Draft"
 #define SHORTCUT_DRAFT        CTRL_MOD "D"
-#define MENU_DRAFT_APPLY      ICON_FA_CHECK "  Apply draft"
+#define MENU_DRAFT_START      "Start draft"
+#define MENU_DRAFT_APPLY      "Apply draft"
 #define MENU_DRAFT_CANCEL     ICON_FA_TIMES "  Cancel draft"
 #define SHORTCUT_DRAFT_CANCEL CTRL_MOD "Shift+D"
 

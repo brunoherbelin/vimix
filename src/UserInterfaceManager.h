@@ -140,7 +140,8 @@ protected:
     void selectSaveFilename();
     void selectOpenFilename();
 
-    void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
+    void RenderMetrics (bool* p_open, int *p_mode);
+    void RenderDraft (bool* p_open, int* p_corner);
     void RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode);
     int  RenderViewNavigator(int* shift);
     void RenderPreview();

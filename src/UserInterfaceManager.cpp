@@ -319,9 +319,8 @@ void UserInterface::handleKeyboard()
                 else
                     Draft::manager().apply(Settings::application.draft_duration);
             }
-            else if (!shift_modifier_active && Draft::manager().enter())
-                // show Mix window to see draft
-                outputcontrol.setVisible(true);
+            else if (!shift_modifier_active)
+                Draft::manager().enter();
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_L), false )) {
             // Logs
@@ -1078,11 +1077,10 @@ void UserInterface::Render()
     if (shadercontrol.Visible())
         shadercontrol.Render();
 
-    // stats in the corner
-    if (Settings::application.widget.stats)
-        RenderMetrics(&Settings::application.widget.stats,
-                  &Settings::application.widget.stats_corner,
-                  &Settings::application.widget.stats_mode);
+    // draft toolbox in the corner
+    if (Settings::application.widget.draft || Draft::manager().active())
+        RenderDraft(&Settings::application.widget.draft,
+                    &Settings::application.widget.draft_corner);
 
     // source editor
     if (Settings::application.widget.source_toolbar)
@@ -1099,6 +1097,9 @@ void UserInterface::Render()
             Log::ShowLogWindow(&Settings::application.widget.logs);
         if (Settings::application.widget.help)
             RenderHelp();
+        if (Settings::application.widget.stats)
+            RenderMetrics(&Settings::application.widget.stats,
+                          &Settings::application.widget.stats_mode);
         // (hide toolbox from screenshot in annotation mode)
         if (Settings::application.widget.toolbox && !(screenshot_step > 0 && Annotations::manager().active()))
             toolbox.Render();
@@ -1180,19 +1181,6 @@ void UserInterface::RenderDraftIndicator()
     // frame around the views
     ImVec2 p0 = ImVec2(navigator.width(), 0.f);
     draw_list->AddRect(p0, io.DisplaySize, color, 0.f, 0, 6.f);
-
-    // label at top center
-    std::string label;
-    if (Draft::manager().active())
-        label = ICON_FA_PAUSE "  DRAFT   (" SHORTCUT_DRAFT " apply, " SHORTCUT_DRAFT_CANCEL " cancel)";
-    else
-        label = ICON_FA_PLAY "  Applying draft " + std::to_string((int) (100.f * Draft::manager().progress())) + "%";
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-    const ImVec2 size = ImGui::CalcTextSize(label.c_str());
-    const ImVec2 pos( 0.5f * (io.DisplaySize.x - size.x), 8.f);
-    draw_list->AddRectFilled(pos - ImVec2(10.f, 4.f), pos + size + ImVec2(10.f, 4.f), IMGUI_COLOR_OVERLAY, 6.f);
-    draw_list->AddText(ImGui::GetFont(), ImGui::GetFontSize(), pos, color, label.c_str());
-    ImGui::PopFont();
 }
 
 void UserInterface::showMenuEdit()
@@ -1349,13 +1337,15 @@ void UserInterface::showMenuWindows()
     ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP, &Settings::application.widget.help );
     // Show Logs
     ImGui::MenuItem( MENU_LOGS, SHORTCUT_LOGS, &Settings::application.widget.logs );
+    // Show Metrics 
+    ImGui::MenuItem( MENU_METRICS, NULL, &Settings::application.widget.stats );
 
     ImGui::Separator();
 
+    // Enable / disable draft toolbar
+    ImGui::MenuItem( MENU_DRAFT, SHORTCUT_DRAFT, &Settings::application.widget.draft );
     // Enable / disable source toolbar
     ImGui::MenuItem( MENU_SOURCE_TOOL, NULL, &Settings::application.widget.source_toolbar );
-    // Enable / disable metrics toolbar
-    ImGui::MenuItem( MENU_METRICS, NULL, &Settings::application.widget.stats );
 
     ImGui::Separator();
 
@@ -1797,22 +1787,208 @@ void UserInterface::RenderPreview()
 
 enum MetricsFlags_
 {
-    Metrics_none       = 0,
-    Metrics_framerate  = 1,
-    Metrics_ram        = 2,
-    Metrics_gpu        = 4,
-    Metrics_session    = 8,
-    Metrics_runtime    = 16,
-    Metrics_lifetime   = 32
+    Metrics_none         = 0,
+    Metrics_framerate    = 1,
+    Metrics_ram          = 2,
+    Metrics_gpu          = 4,
+    Metrics_update       = 8,
+    Metrics_framebuffers = 16,
+    Metrics_all          = 31
 };
 
-void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
+// Circular buffer of PLOT_ARRAY_SIZE values, with running sum
+struct MetricsPlot
 {
-    if (!p_open || !p_corner || !p_mode)
+    float values[PLOT_ARRAY_SIZE];
+    float sum;
+
+    MetricsPlot() : sum(0.f) { reset(0.f); }
+
+    void reset(float v) {
+        for (int i = 0; i < PLOT_ARRAY_SIZE; ++i)
+            values[i] = v;
+        sum = v * float(PLOT_ARRAY_SIZE);
+    }
+    void store(int index, float v) {
+        sum += v - values[index];
+        values[index] = v;
+    }
+    float average() const { return sum / float(PLOT_ARRAY_SIZE); }
+    // bounds around min and max values, with a margin
+    void bounds(float margin, float *min, float *max) const {
+        *min = *max = values[0];
+        for (int i = 1; i < PLOT_ARRAY_SIZE; ++i) {
+            *min = MINI(*min, values[i]);
+            *max = MAXI(*max, values[i]);
+        }
+        *min = MAXI(*min - margin, 0.f);
+        *max += margin;
+    }
+};
+
+void UserInterface::RenderMetrics(bool *p_open, int *p_mode)
+{
+    if (!p_open || !p_mode)
         return;
 
+    *p_mode &= Metrics_all;
     if (*p_mode == Metrics_none)
         *p_mode = Metrics_framerate;
+
+    //
+    // sample values (even if window is collapsed)
+    //
+    // keep array of 180 values, i.e. approx 3 seconds of recording
+    static MetricsPlot plot_fps, plot_update, plot_framebuffers, plot_ram, plot_gpu;
+    static float refresh_rate = -1.f;
+    static int   values_index = 0;
+
+    // read Memory info every 1/2 second
+    static float ram = 0.f;
+    static float gpu = -1.f;
+    {
+        static GTimer *timer = nullptr;
+        if (timer == nullptr || g_timer_elapsed (timer, NULL) > 0.5 ) {
+            if (timer == nullptr)
+                timer = g_timer_new ();
+            ram = static_cast<float>( static_cast<double>(SystemToolkit::memory_usage()) / 1000000.0 );
+            glm::ivec2 g = Rendering::manager().getGPUMemoryInformation();
+            if (g.x < INT_MAX && g.x > 0) {
+                // got free and max GPU RAM (nvidia), or got used GPU RAM (ati)
+                long kb = (g.y < INT_MAX && g.y > 0) ? long(g.y - g.x) : long(g.x);
+                gpu = static_cast<float>( static_cast<double>(kb) * 1024.0 / 1000000.0 );
+            }
+            g_timer_start(timer);
+        }
+    }
+    const float framebuffers = static_cast<float>( static_cast<double>(FrameBuffer::memory_usage()) / 1000000.0 );
+
+    // init
+    if (refresh_rate < 0.f) {
+        const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().mainWindow().monitor());
+        refresh_rate = float(mode->refreshRate);
+        if (Settings::application.render.vsync > 0)
+            refresh_rate /= Settings::application.render.vsync;
+        else
+            refresh_rate = 0.f;
+        plot_fps.reset(refresh_rate);
+        plot_update.reset(16.f);
+        plot_framebuffers.reset(framebuffers);
+        plot_ram.reset(ram);
+        plot_gpu.reset(MAXI(gpu, 0.f));
+    }
+
+    // store values
+    plot_fps.store(values_index, MINI(ImGui::GetIO().Framerate, 1000.f));
+    plot_update.store(values_index, MINI(Mixer::manager().dt(), 100.f));
+    plot_framebuffers.store(values_index, framebuffers);
+    plot_ram.store(values_index, ram);
+    plot_gpu.store(values_index, MAXI(gpu, 0.f));
+
+    // move inside array
+    values_index = (values_index+1) % PLOT_ARRAY_SIZE;
+    const int last_index = (values_index + PLOT_ARRAY_SIZE - 1) % PLOT_ARRAY_SIZE;
+
+    //
+    // Window
+    //
+    ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(250, 150), ImVec2(FLT_MAX, FLT_MAX));
+    if ( !ImGui::Begin(MENU_METRICS, p_open,  ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar) )
+    {
+        ImGui::End();
+        return;
+    }
+
+    // Menu Bar
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET))
+            *p_open = false;
+
+        if (ImGui::BeginMenu(MENU_METRICS))
+        {
+            if (ImGui::MenuItem( "Framerate", NULL, *p_mode & Metrics_framerate))
+                *p_mode ^= Metrics_framerate;
+            if (ImGui::MenuItem( "Update time", NULL, *p_mode & Metrics_update))
+                *p_mode ^= Metrics_update;
+            if (ImGui::MenuItem( "OpenGL buffers", NULL, *p_mode & Metrics_framebuffers))
+                *p_mode ^= Metrics_framebuffers;
+            if (ImGui::MenuItem( "CPU RAM", NULL, *p_mode & Metrics_ram))
+                *p_mode ^= Metrics_ram;
+            // GPU RAM if available
+            if (ImGui::MenuItem( "GPU RAM", NULL, *p_mode & Metrics_gpu, gpu > 0.f))
+                *p_mode ^= Metrics_gpu;
+
+            ImGui::Separator();
+            if ( ImGui::MenuItem( MENU_CLOSE ) )
+                *p_open = false;
+
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    // count plots to display
+    const bool show_gpu = (*p_mode & Metrics_gpu) && gpu > 0.f;
+    int n = 0;
+    n += (*p_mode & Metrics_framerate) ? 1 : 0;
+    n += (*p_mode & Metrics_update) ? 1 : 0;
+    n += (*p_mode & Metrics_framebuffers) ? 1 : 0;
+    n += (*p_mode & Metrics_ram) ? 1 : 0;
+    n += show_gpu ? 1 : 0;
+
+    // plot values, with title overlay to display the value
+    ImVec2 plot_size = ImGui::GetContentRegionAvail();
+    plot_size.y = MAXI( (plot_size.y - float(MAXI(n - 1, 0)) * ImGui::GetStyle().ItemSpacing.y) / float(MAXI(n, 1)), 10.f);
+    char overlay[128];
+    float min = 0.f, max = 0.f;
+
+    // plots are not hoverable (no tooltip)
+    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+
+    if (*p_mode & Metrics_framerate) {
+        // vsync : plot around refresh rate; otherwise, around past values
+        const float center = refresh_rate > 1.f ? refresh_rate : plot_fps.average();
+        snprintf(overlay, 128, "Rendering %.1f FPS", plot_fps.average());
+        ImGui::PlotLines("##LinesRender", plot_fps.values, PLOT_ARRAY_SIZE, values_index, overlay,
+                         center - 15.f, center + 10.f, plot_size);
+    }
+    if (*p_mode & Metrics_update) {
+        snprintf(overlay, 128, "Update time %.1f ms (%.1f FPS)", plot_update.average(),
+                 1000.f / MAXI(plot_update.average(), EPSILON));
+        ImGui::PlotHistogram("##HistogramUpdate", plot_update.values, PLOT_ARRAY_SIZE, values_index, overlay,
+                             1.f, 50.f, plot_size);
+    }
+    if (*p_mode & Metrics_framebuffers) {
+        plot_framebuffers.bounds(100.f, &min, &max);
+        snprintf(overlay, 128, "OpenGL buffers %.1f MB", plot_framebuffers.values[last_index]);
+        ImGui::PlotLines("##LinesFramebuffers", plot_framebuffers.values, PLOT_ARRAY_SIZE, values_index, overlay,
+                         min, max, plot_size);
+    }
+    if (*p_mode & Metrics_ram) {
+        plot_ram.bounds(100.f, &min, &max);
+        snprintf(overlay, 128, "CPU RAM %.1f MB", plot_ram.values[last_index]);
+        ImGui::PlotLines("##LinesRAM", plot_ram.values, PLOT_ARRAY_SIZE, values_index, overlay,
+                         min, max, plot_size);
+    }
+    if (show_gpu) {
+        plot_gpu.bounds(100.f, &min, &max);
+        snprintf(overlay, 128, "GPU RAM %.1f MB", plot_gpu.values[last_index]);
+        ImGui::PlotLines("##LinesGPU", plot_gpu.values, PLOT_ARRAY_SIZE, values_index, overlay,
+                         min, max, plot_size);
+    }
+
+    ImGui::PopItemFlag();
+
+    ImGui::End();
+}
+
+void UserInterface::RenderDraft(bool *p_open, int* p_corner)
+{
+    if (!p_open || !p_corner)
+        return;
 
     ImGuiIO& io = ImGui::GetIO();
     if (*p_corner != -1) {
@@ -1824,7 +2000,7 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
 
     ImGui::SetNextWindowBgAlpha(WINDOW_TOOLBOX_ALPHA); // Transparent background
 
-    if (!ImGui::Begin("Metrics", NULL, (*p_corner != -1 ? ImGuiWindowFlags_NoMove : 0) |
+    if (!ImGui::Begin("Draft", NULL, (*p_corner != -1 ? ImGuiWindowFlags_NoMove : 0) |
                       ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                       ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
@@ -1832,130 +2008,68 @@ void UserInterface::RenderMetrics(bool *p_open, int* p_corner, int *p_mode)
         return;
     }
 
-    // title
-    ImGui::Text( MENU_METRICS );
-    ImGui::SameLine(0, 2.2f * ImGui::GetTextLineHeightWithSpacing());
-    if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS))
-        ImGui::OpenPopup("metrics_menu");
+    const bool drafting = Draft::manager().active();
+    const ImGuiStyle &style = ImGui::GetStyle();
+    const float _width = 5.f * ImGui::GetTextLineHeightWithSpacing();
 
-    // read Memory info every 1/2 second
-    static long ram = 0;
-    static glm::ivec2 gpu(INT_MAX, INT_MAX);
-    {
-        static GTimer *timer = g_timer_new ();
-        double elapsed = g_timer_elapsed (timer, NULL);
-        if ( elapsed > 0.5 ){
-            ram = SystemToolkit::memory_usage();
-            gpu = Rendering::manager().getGPUMemoryInformation();
-            g_timer_start(timer);
+    // title
+    ImGui::Text( MENU_DRAFT );
+    ImGui::SameLine(_width - ImGui::GetTextLineHeight());
+    if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS))
+        ImGui::OpenPopup("draft_menu");
+
+    // height of the big Pause button (frame height in large font)
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    const float _height = 1.6f * ImGui::GetFrameHeight();
+    ImGui::PopFont();
+
+    // animation in progress replaces the Pause button
+    if (Draft::manager().state() == Draft::DRAFT_ANIMATE) {
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImGuiToolkit::HighlightColor(false));
+        ImGui::ProgressBar(Draft::manager().progress(), ImVec2(_width, _height), "Applying");
+        ImGui::PopStyleColor();
+    }
+    // big Pause button, toggled when drafting
+    else {
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        if (drafting) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_Text));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_HeaderActive));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetColorU32(ImGuiCol_HeaderActive));
+        }
+        if ( ImGui::Button(ICON_FA_PAUSE, ImVec2(_width, _height)) ) {
+            if (drafting)
+                Draft::manager().apply(Settings::application.draft_duration);
+            else
+                Draft::manager().enter();
+        }
+        if (drafting)
+            ImGui::PopStyleColor(4);
+        ImGui::PopFont();
+        if (ImGui::IsItemHovered()) {
+            if (drafting)
+                ImGuiToolkit::ToolTip(MENU_DRAFT_APPLY, SHORTCUT_DRAFT);
+            else
+                ImGuiToolkit::ToolTip(MENU_DRAFT_START, SHORTCUT_DRAFT);
         }
     }
-    static char dummy_str[256];
-    uint64_t time = Runtime();
 
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.f, 2.5f));
-    const float _width = 4.f * ImGui::GetTextLineHeightWithSpacing();
+    // Duration / Cancel (enabled only when drafting)
+    ImGuiToolkit::PushDisabled(!drafting);
+    ImGui::SetNextItemWidth(_width);
+    ImGui::DragFloat("##draft_duration", &Settings::application.draft_duration, 10.f, 0.f, 5000.f,
+                     ICON_FA_STOPWATCH " %.0f ms");
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip("Duration of transition to draft");
+    if (ImGui::Button(ICON_FA_TIMES " Cancel", ImVec2(_width, 0.f)))
+        Draft::manager().cancel();
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(MENU_DRAFT_CANCEL, SHORTCUT_DRAFT_CANCEL);
+    ImGuiToolkit::PopDisabled(!drafting);
 
-    if (*p_mode & Metrics_framerate) {
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        snprintf(dummy_str, 256, "%.1f", io.Framerate);
-        ImGui::SetNextItemWidth(_width);
-        ImGui::InputText("##dummy", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopFont();
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("FPS");
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Frames per second");
-    }
-
-    if (*p_mode & Metrics_ram) {
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        snprintf(dummy_str, 256, "%s", BaseToolkit::byte_to_string( ram ).c_str());
-        ImGui::SetNextItemWidth(_width);
-        ImGui::InputText("##dummy2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopFont();
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("RAM");
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Amount of physical memory\nused by vimix");
-    }
-
-    // GPU RAM if available
-    if (gpu.x < INT_MAX && gpu.x > 0 && *p_mode & Metrics_gpu) {
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        // got free and max GPU RAM (nvidia)
-        if (gpu.y < INT_MAX && gpu.y > 0)
-            snprintf(dummy_str, 256, "%s", BaseToolkit::byte_to_string( long(gpu.y-gpu.x) * 1024 ).c_str());
-        // got used GPU RAM (ati)
-        else
-            snprintf(dummy_str, 256, "%s", BaseToolkit::byte_to_string( long(gpu.x) * 1024 ).c_str());
-        ImGui::SetNextItemWidth(_width);
-        ImGui::InputText("##dummy3", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopFont();
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("GPU");
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Total memory used in GPU");
-    }
-
-    if (*p_mode & Metrics_session) {
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        snprintf(dummy_str, 256, "%s", GstToolkit::time_to_string(Mixer::manager().session()->runtime(), GstToolkit::TIME_STRING_READABLE).c_str());
-        ImGui::SetNextItemWidth(_width);
-        ImGui::InputText("##dummy", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopFont();
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Session");
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Runtime since session load");
-    }
-
-    if (*p_mode & Metrics_runtime) {
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        snprintf(dummy_str, 256, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
-        ImGui::SetNextItemWidth(_width);
-        ImGui::InputText("##dummy2", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopFont();
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Runtime");
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Runtime since vimix started");
-    }
-
-    if (*p_mode & Metrics_lifetime) {
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-        time += Settings::application.total_runtime;
-        snprintf(dummy_str, 256, "%s", GstToolkit::time_to_string(time, GstToolkit::TIME_STRING_READABLE).c_str());
-        ImGui::SetNextItemWidth(_width);
-        ImGui::InputText("##dummy3", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopFont();
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        ImGui::Text("Lifetime");
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Accumulated runtime of vimix\nsince its installation");
-    }
-
-    ImGui::PopStyleVar();
-
-    if (ImGui::BeginPopup("metrics_menu"))
+    if (ImGui::BeginPopup("draft_menu"))
     {
-        if (ImGui::MenuItem( "Framerate", NULL, *p_mode & Metrics_framerate))
-            *p_mode ^= Metrics_framerate;
-        if (ImGui::MenuItem( "RAM", NULL, *p_mode & Metrics_ram))
-            *p_mode ^= Metrics_ram;
-        // GPU RAM if available
-        if (gpu.x < INT_MAX && gpu.x > 0)
-            if (ImGui::MenuItem( "GPU", NULL, *p_mode & Metrics_gpu))
-                *p_mode ^= Metrics_gpu;
-        if (ImGui::MenuItem( "Session time", NULL, *p_mode & Metrics_session))
-            *p_mode ^= Metrics_session;
-        if (ImGui::MenuItem( "Runtime", NULL, *p_mode & Metrics_runtime))
-            *p_mode ^= Metrics_runtime;
-        if (ImGui::MenuItem( "Lifetime", NULL, *p_mode & Metrics_lifetime))
-            *p_mode ^= Metrics_lifetime;
-
-        ImGui::Separator();
-
         if (ImGui::MenuItem( ICON_FA_ANGLE_UP "  Top right",    NULL, *p_corner == 1))
             *p_corner = 1;
         if (ImGui::MenuItem( ICON_FA_ANGLE_DOWN "  Bottom right", NULL, *p_corner == 3))
@@ -2627,9 +2741,6 @@ ToolBox::ToolBox()
 
 void ToolBox::Render()
 {
-    static bool record_ = false;
-    static std::ofstream csv_file_;
-
     // first run
     ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
@@ -2665,98 +2776,10 @@ void ToolBox::Render()
             Annotations::manager().Menu();
             ImGui::EndMenu();
         }
-        if (ImGui::BeginMenu("Stats"))
-        {
-            if (ImGui::MenuItem("Record", nullptr, &record_) )
-            {
-                if ( record_ )
-                    csv_file_.open( SystemToolkit::home_path() + std::to_string(BaseToolkit::uniqueId()) + ".csv", std::ofstream::out | std::ofstream::app);
-                else
-                    csv_file_.close();
-            }
-            ImGui::EndMenu();
-        }
         ImGui::EndMenuBar();
     }
 
-    //
-    // display histogram of update time and plot framerate
-    //
-    // keep array of 180 values, i.e. approx 3 seconds of recording
-    static float recorded_values[3][PLOT_ARRAY_SIZE] = {{}};
-    static float recorded_sum[3] = { 0.f, 0.f, 0.f };
-    static float recorded_bounds[3][2] = {  {40.f, 65.f}, {1.f, 50.f}, {0.f, 50.f} };
-    static float refresh_rate = -1.f;
-    static int   values_index = 0;
-    float megabyte = static_cast<float>( static_cast<double>(FrameBuffer::memory_usage()) / 1000000.0 );
-
-    // init
-    if (refresh_rate < 0.f) {
-
-        const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().mainWindow().monitor());
-        refresh_rate = float(mode->refreshRate);
-        if (Settings::application.render.vsync > 0)
-            refresh_rate /= Settings::application.render.vsync;
-        else
-            refresh_rate = 0.f;
-        recorded_bounds[0][0] = refresh_rate - 15.f; // min fps
-        recorded_bounds[0][1] = refresh_rate + 10.f;  // max
-
-        for(int i = 0; i<PLOT_ARRAY_SIZE; ++i) {
-            recorded_values[0][i] = refresh_rate;
-            recorded_sum[0] += recorded_values[0][i];
-            recorded_values[1][i] = 16.f;
-            recorded_sum[1] += recorded_values[1][i];
-            recorded_values[2][i] = megabyte;
-            recorded_sum[2] += recorded_values[2][i];
-        }
-    }
-
-    // compute average step 1: remove previous value from the sum
-    recorded_sum[0] -= recorded_values[0][values_index];
-    recorded_sum[1] -= recorded_values[1][values_index];
-    recorded_sum[2] -= recorded_values[2][values_index];
-
-    // store values
-    recorded_values[0][values_index] = MINI(ImGui::GetIO().Framerate, 1000.f);
-    recorded_values[1][values_index] = MINI(Mixer::manager().dt(), 100.f);
-    recorded_values[2][values_index] = megabyte;
-
-    // compute average step 2: add current value to the sum
-    recorded_sum[0] += recorded_values[0][values_index];
-    recorded_sum[1] += recorded_values[1][values_index];
-    recorded_sum[2] += recorded_values[2][values_index];
-
-    // move inside array
-    values_index = (values_index+1) % PLOT_ARRAY_SIZE;
-
-    // non-vsync fixed FPS : have to calculate plot dimensions based on past values
-    if (refresh_rate < 1.f) {
-        recorded_bounds[0][0] = recorded_sum[0] / float(PLOT_ARRAY_SIZE) - 15.f;
-        recorded_bounds[0][1] = recorded_sum[0] / float(PLOT_ARRAY_SIZE) + 10.f;
-    }
-
-    recorded_bounds[2][0] = recorded_sum[2] / float(PLOT_ARRAY_SIZE) - 400.f;
-    recorded_bounds[2][1] = recorded_sum[2] / float(PLOT_ARRAY_SIZE) + 300.f;
-
-
-    // plot values, with title overlay to display the average
-    ImVec2 plot_size = ImGui::GetContentRegionAvail();
-    plot_size.y *= 0.32;
-    char overlay[128];
-    snprintf(overlay, 128, "Rendering %.1f FPS", recorded_sum[0] / float(PLOT_ARRAY_SIZE));
-    ImGui::PlotLines("LinesRender", recorded_values[0], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[0][0], recorded_bounds[0][1], plot_size);
-    snprintf(overlay, 128, "Update time %.1f ms (%.1f FPS)", recorded_sum[1] / float(PLOT_ARRAY_SIZE), (float(PLOT_ARRAY_SIZE) * 1000.f) / recorded_sum[1]);
-    ImGui::PlotHistogram("LinesMixer", recorded_values[1], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[1][0], recorded_bounds[1][1], plot_size);
-    snprintf(overlay, 128, "Framebuffers %.1f MB", recorded_values[2][(values_index+PLOT_ARRAY_SIZE-1) % PLOT_ARRAY_SIZE] );
-    ImGui::PlotLines("LinesMemo", recorded_values[2], PLOT_ARRAY_SIZE, values_index, overlay, recorded_bounds[2][0], recorded_bounds[2][1], plot_size);
-
     ImGui::End();
-
-    // save to file
-    if ( record_ && csv_file_.is_open()) {
-            csv_file_ << megabyte << ", " << ImGui::GetIO().Framerate << std::endl;
-    }
 
     // About and other utility windows
     if (show_icons_window)

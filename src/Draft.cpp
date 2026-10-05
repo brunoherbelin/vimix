@@ -33,10 +33,7 @@ Draft::Draft() : state_(DRAFT_OFF), duration_(0.f), progress_(0.f)
 
 bool Draft::enter()
 {
-    // finish ongoing animation
-    if (state_ == DRAFT_ANIMATE)
-        finish();
-
+    // not possible during edit or animation
     if (state_ != DRAFT_OFF)
         return false;
 

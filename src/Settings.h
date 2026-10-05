@@ -28,6 +28,8 @@ struct WidgetsConfig
     int  media_player_timeline_flag;
     float media_player_slider;
     float draft_slider;
+    bool draft;
+    int  draft_corner;
     bool timer;
     int  timer_view;
     bool inputs;
@@ -54,6 +56,8 @@ struct WidgetsConfig
         media_player_timeline_flag = 1;
         media_player_slider = 0.f;
         draft_slider = 0.5f;
+        draft = false;
+        draft_corner = 1;
         toolbox = false;
         help = false;
         timer = false;
