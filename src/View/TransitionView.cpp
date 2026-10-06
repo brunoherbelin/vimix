@@ -105,7 +105,7 @@ void TransitionView::update(float dt)
     if  (View::need_deep_update_ > 0) {
 
         // update rendering of render frame
-        FrameBuffer *output = Mixer::manager().session()->frame();
+        FrameBuffer *output = Mixer::manager().liveSession()->frame();
         if (output){
             float aspect_ratio = output->aspectRatio();
             for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); ++node) {

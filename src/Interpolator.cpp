@@ -187,11 +187,39 @@ bool mergeUntouched(SourceCore &draft, SourceCore &base, const SourceCore &live)
     return changed;
 }
 
+Source::Parameters diff(const Source::Parameters &a, const Source::Parameters &b)
+{
+    Source::Parameters d;
+    for (const auto &p : a) {
+        auto it = b.find(p.first);
+        if ( it != b.end() && it->second != p.second )
+            d[p.first] = p.second;
+    }
+    return d;
+}
+
+bool mergeUntouched(Source::Parameters &draft, Source::Parameters &base, const Source::Parameters &live)
+{
+    bool changed = false;
+    for (auto &p : draft) {
+        auto b = base.find(p.first);
+        auto l = live.find(p.first);
+        // parameter not modified in draft, and changed in live
+        if ( b != base.end() && l != live.end() && p.second == b->second && b->second != l->second ) {
+            p.second = b->second = l->second;
+            changed = true;
+        }
+    }
+    return changed;
+}
+
 } // namespace SourceCoreField
 
 
-SourceInterpolator::SourceInterpolator(Source *subject, const SourceCore &target, SourceCoreField::Mask mask) :
-    subject_(subject), to_(target), mask_(mask), current_cursor_(0.f), started_(false)
+SourceInterpolator::SourceInterpolator(Source *subject, const SourceCore &target, SourceCoreField::Mask mask,
+                                       const Source::Parameters &target_parameters) :
+    subject_(subject), to_(target), mask_(mask), to_parameters_(target_parameters),
+    current_cursor_(0.f), started_(false)
 {
 
 }
@@ -215,6 +243,17 @@ void SourceInterpolator::apply(float percent)
     // start from the state of the source at first application
     if ( !started_ ) {
         SourceCoreField::copy(from_, *subject_, mask_);
+        // start parameters (only those to interpolate)
+        Source::Parameters current = subject_->parameters();
+        for (auto p = to_parameters_.begin(); p != to_parameters_.end(); ) {
+            auto c = current.find(p->first);
+            if (c != current.end()) {
+                from_parameters_[p->first] = c->second;
+                ++p;
+            }
+            else
+                p = to_parameters_.erase(p);
+        }
         started_ = true;
     }
     else if ( ABS_DIFF(current_cursor_, percent) < EPSILON )
@@ -224,6 +263,14 @@ void SourceInterpolator::apply(float percent)
 
     // apply interpolation only on fields of the mask
     SourceCoreField::mix(*subject_, from_, to_, current_cursor_, mask_);
+
+    // apply interpolation of parameters
+    if ( !to_parameters_.empty() ) {
+        Source::Parameters p;
+        for (const auto &t : to_parameters_)
+            p[t.first] = glm::mix(from_parameters_[t.first], t.second, current_cursor_);
+        subject_->setParameters(p);
+    }
 
     // ensure reordering of sources in view
     if ( mask_ & SourceCoreField::bit(SourceCoreField::LAYER_DEPTH) )
@@ -250,9 +297,10 @@ void Interpolator::clear()
     }
 }
 
-void Interpolator::add (Source *s, const SourceCore &target, SourceCoreField::Mask mask)
+void Interpolator::add (Source *s, const SourceCore &target, SourceCoreField::Mask mask,
+                         const Source::Parameters &target_parameters)
 {
-    SourceInterpolator *i = new SourceInterpolator(s, target, mask);
+    SourceInterpolator *i = new SourceInterpolator(s, target, mask, target_parameters);
     interpolators_.push_back(i);
 }
 

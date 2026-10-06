@@ -30,8 +30,6 @@
 #include "Settings.h"
 #include "Scene/Primitives.h"
 
-#include "Source/Source.h"
-
 #include "RenderView.h"
 
 const char* RenderView::ratio_preset_name[6] = { "4:3", "3:2", "16:10", "16:9", "21:9", "Custom" };
@@ -91,7 +89,7 @@ glm::ivec2 RenderView::presetFromResolution(glm::vec3 resolution)
     return ret;
 }
 
-RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr), draft_frame_(nullptr), fading_overlay_(nullptr), frame_thumbnail_(nullptr)
+RenderView::RenderView() : View(RENDERING), frame_buffer_(nullptr), fading_overlay_(nullptr), frame_thumbnail_(nullptr)
 {
 }
 
@@ -99,8 +97,6 @@ RenderView::~RenderView()
 {
     if (frame_buffer_)
         delete frame_buffer_;
-    if (draft_frame_)
-        delete draft_frame_;
     if (fading_overlay_)
         delete fading_overlay_;
     if (frame_thumbnail_)
@@ -149,12 +145,6 @@ void RenderView::setResolution(glm::vec3 resolution, bool useAlpha)
         frame_buffer_ = new FrameBuffer(resolution, flag);
     }
 
-    // keep draft frame identical
-    if (draft_frame_) {
-        setDraft(false);
-        setDraft(true);
-    }
-
     // reset fading
     setFading();
 }
@@ -173,49 +163,6 @@ void RenderView::draw()
             fading_overlay_->draw(glm::identity<glm::mat4>(), projection);
             frame_buffer_->end();
         }
-    }
-}
-
-void RenderView::setDraft(bool on)
-{
-    if (on && draft_frame_ == nullptr && frame_buffer_)
-        draft_frame_ = new FrameBuffer(frame_buffer_->resolution(), frame_buffer_->flags());
-    else if (!on && draft_frame_) {
-        delete draft_frame_;
-        draft_frame_ = nullptr;
-    }
-}
-
-void RenderView::drawDraft(const SourceList &sources)
-{
-    static glm::mat4 projection = glm::ortho(-1.f, 1.f, 1.f, -1.f, -SCENE_DEPTH, 1.f);
-
-    if (frame_buffer_ == nullptr || draft_frame_ == nullptr)
-        return;
-
-    glm::mat4 P  = glm::scale( projection, glm::vec3(1.f / frame_buffer_->aspectRatio(), 1.f, 1.f));
-
-    // render the scene in draft frame buffer (sources hold the draft state)
-    if ( draft_frame_->begin() ) {
-        scene.root()->draw(glm::identity<glm::mat4>(), P);
-        fading_overlay_->draw(glm::identity<glm::mat4>(), projection);
-        draft_frame_->end();
-    }
-
-    // render sources in live state in the frame buffer, ordered by live depth
-    SourceList live = sources;
-    live.sort( [](const Source *a, const Source *b) { return a->liveDepth() < b->liveDepth(); } );
-    glm::mat4 modelview = scene.root()->transform_ * scene.ws()->transform_;
-    if ( frame_buffer_->begin() ) {
-        if (scene.root()->visible_ && scene.ws()->visible_) {
-            for (auto it = live.begin(); it != live.end(); ++it) {
-                // only sources attached to this scene
-                if ( (*it)->group(View::RENDERING)->refcount_ > 0 )
-                    (*it)->drawLive(modelview, P);
-            }
-        }
-        fading_overlay_->draw(glm::identity<glm::mat4>(), projection);
-        frame_buffer_->end();
     }
 }
 

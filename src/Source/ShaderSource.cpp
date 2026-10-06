@@ -206,3 +206,16 @@ std::string ShaderSource::info() const
 {
     return "Shader";
 }
+
+Source::Parameters ShaderSource::parameters () const
+{
+    if (filter_)
+        return filter_->program().parameters();
+    return Parameters();
+}
+
+void ShaderSource::setParameters (const Parameters &p)
+{
+    if (filter_)
+        filter_->updateProgramParameters(p);
+}

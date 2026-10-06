@@ -440,7 +440,7 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
             sourcecontrol.Capture();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F11, false ))
-            Outputs::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
+            Outputs::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename())));
         else if (ImGui::IsKeyPressed( GLFW_KEY_F12, false )) {
             Settings::application.render.disabled = !Settings::application.render.disabled;
         }
@@ -1663,7 +1663,7 @@ void UserInterface::RenderPreview()
     if (show_preview != PREVIEW_NONE && !ImGui::IsPopupOpen("##RENDERPREVIEW")) {
         // select which framebuffer to display depending on input
         if (show_preview == PREVIEW_OUTPUT)
-            _framebuffer = Mixer::manager().session()->frame();
+            _framebuffer = Mixer::manager().liveSession()->frame();
         else if (show_preview == PREVIEW_SOURCE) {
             _framebuffer = sourcecontrol.renderedFramebuffer();
             if (_framebuffer == nullptr && Mixer::manager().currentSource() != nullptr) {
@@ -1689,7 +1689,7 @@ void UserInterface::RenderPreview()
             // in DRAFT mode, the preview of output shows the draft
             FrameBuffer *draft = nullptr;
             if (show_preview == PREVIEW_OUTPUT && Draft::manager().active())
-                draft = Mixer::manager().session()->draftFrame();
+                draft = Mixer::manager().session()->frame();
             const uint preview_texture = draft ? draft->texture() : _framebuffer->texture();
             float ar = _framebuffer->aspectRatio();
             // image takes the available window area

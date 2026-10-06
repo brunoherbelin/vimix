@@ -126,7 +126,7 @@ void SettingsPanel::Render()
 
         // recording is done at the resolution of the session output
         glm::ivec2 output_resolution(0, 0);
-        const FrameBuffer *output_frame = Mixer::manager().session()->frame();
+        const FrameBuffer *output_frame = Mixer::manager().liveSession()->frame();
         if (output_frame)
             output_resolution = glm::ivec2(output_frame->resolution());
 
@@ -154,7 +154,7 @@ void SettingsPanel::Render()
             Settings::application.record.framerate_mode = 1;
 
         // compute number of frames in buffer and show warning sign if too low
-        const FrameBuffer *output = Mixer::manager().session()->frame();
+        const FrameBuffer *output = Mixer::manager().liveSession()->frame();
         if (output) {
             guint64 nb = 0;
             nb = VideoRecorder::buffering_preset_value[Settings::application.record.buffering_mode] / (output->width() * output->height() * 4);

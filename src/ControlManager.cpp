@@ -141,7 +141,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             else if ( target.compare(OSC_ALL) == 0 )
             {
                 // Loop over selected sources
-                for (SourceList::iterator it = Mixer::manager().session()->begin(); it != Mixer::manager().session()->end(); ++it) {
+                for (SourceList::iterator it = Mixer::manager().liveSession()->begin(); it != Mixer::manager().liveSession()->end(); ++it) {
                     // apply attributes
                     if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
                         // and send back feedback if needed
@@ -718,7 +718,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             // if a second argument is given, it is a duration
             else
                 arguments >> d >> osc::EndMessage;
-            Mixer::manager().session()->setFadingTarget(f, d);
+            Mixer::manager().liveSession()->setFadingTarget(f, d);
         }
         /// e.g. '/vimix/output/fadein' or '/vimix/output/fadein f 300.f'
         else if ( attribute.compare(OSC_OUTPUT_FADE_IN) == 0) {
@@ -726,7 +726,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             // if argument is given, it is a duration
             if (!arguments.Eos())
                 arguments >> f >> osc::EndMessage;
-            Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() - f * 0.01);
+            Mixer::manager().liveSession()->setFadingTarget( Mixer::manager().liveSession()->fading() - f * 0.01);
             need_feedback = true;
         }
         else if ( attribute.compare(OSC_OUTPUT_FADE_OUT) == 0) {
@@ -734,7 +734,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             // if argument is given, it is a duration
             if (!arguments.Eos())
                 arguments >> f >> osc::EndMessage;
-            Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() + f * 0.01);
+            Mixer::manager().liveSession()->setFadingTarget( Mixer::manager().liveSession()->fading() + f * 0.01);
             need_feedback = true;
         }
         else if ( attribute.compare(OSC_OUTPUT_SRT_START) == 0) {
@@ -1284,10 +1284,10 @@ bool Control::receiveBatchAttribute(int i, const std::string &attribute,
 {
     bool send_feedback = false;
 
-    if ( i < (int) Mixer::manager().session()->numBatch() ) {
+    if ( i < (int) Mixer::manager().liveSession()->numBatch() ) {
         // Batch sources target: apply attribute to all sources in the Batch
         // loop over batch list of sources
-        SourceList _selection = Mixer::manager().session()->getBatch(i);
+        SourceList _selection = Mixer::manager().liveSession()->getBatch(i);
         for (SourceList::iterator it = _selection.begin(); it != _selection.end(); ++it) {
             // apply attributes
             send_feedback |= Control::manager().receiveSourceAttribute( *it, attribute, arguments) ;
@@ -1543,9 +1543,9 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
         }
         else if (attr.compare("index") == 0) {
             address += "/index";
-            SourceList::iterator it = Mixer::manager().session()->find(_s);
-            if (it != Mixer::manager().session()->end()) {
-                int sourceIndex = Mixer::manager().session()->index(it);
+            SourceList::iterator it = Mixer::manager().liveSession()->find(_s);
+            if (it != Mixer::manager().liveSession()->end()) {
+                int sourceIndex = Mixer::manager().liveSession()->index(it);
                 p << osc::BeginMessage( address.c_str() ) << sourceIndex << osc::EndMessage;
             }
         }
@@ -1763,8 +1763,8 @@ void Control::sendBatchStatus(const IpEndpointName &remoteEndpoint)
     UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );
 
     // data structures to browse batch
-    std::vector<SourceIdList> pl = Mixer::manager().session()->getAllBatch();
-    Session *_session = Mixer::manager().session();
+    std::vector<SourceIdList> pl = Mixer::manager().liveSession()->getAllBatch();
+    Session *_session = Mixer::manager().liveSession();
 
     // Calculate required buffer size dynamically
     // For each batch, we send 2 messages:
@@ -1845,7 +1845,7 @@ void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)
     p << (Settings::application.render.disabled ? 0.f : 1.f);
     p << osc::EndMessage;
     p << osc::BeginMessage( OSC_PREFIX OSC_OUTPUT OSC_OUTPUT_FADING );
-    p << Mixer::manager().session()->fading();
+    p << Mixer::manager().liveSession()->fading();
     p << osc::EndMessage;
 
     p << osc::EndBundle;

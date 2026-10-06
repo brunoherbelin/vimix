@@ -46,6 +46,7 @@ public:
     virtual void visit (class PatternSource&) {}
     virtual void visit (class SessionFileSource&) {}
     virtual void visit (class SessionGroupSource&) {}
+    virtual void visit (class DraftSource&) {}
     virtual void visit (class RenderSource&) {}
     virtual void visit (class CloneSource&) {}
     virtual void visit (class MultiFileSource&) {}

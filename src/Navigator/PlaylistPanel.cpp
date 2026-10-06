@@ -784,7 +784,7 @@ void PlaylistPanel::Render()
     if (Settings::application.smooth_transition) {
         const char *tooltip[2] = {"Fade to black", "Cross fading"};
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (Mixer::manager().session()->fading() > 0.01)
+        if (Mixer::manager().liveSession()->fading() > 0.01)
             ImGuiToolkit::Icon(ICON_VI_TRANSITION_FADE_BLACK, false);
         else
             ImGuiToolkit::IconToggle(ICON_VI_TRANSITION_FADE_BLACK, ICON_VI_TRANSITION_CROSS_FADE, &Settings::application.transition.cross_fade, tooltip );

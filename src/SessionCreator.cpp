@@ -55,6 +55,7 @@
 #include "Toolkit/tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
+#include "Source/DraftSource.h"
 #include "SessionCreator.h"
 
 SessionInformation SessionCreator::info(const std::string& filename, bool with_thumbnail)
@@ -400,6 +401,42 @@ std::list< SourceList > SessionLoader::getMixingGroups() const
     return groups_new_sources_id;
 }
 
+Source *SessionLoader::newSource(const std::string &type, uint64_t id)
+{
+    Source *load_source = nullptr;
+
+    if ( type == "MediaSource")
+        load_source = new MediaSource(id);
+    else if ( type == "SessionSource")
+        load_source = new SessionFileSource(id);
+    else if ( type == "GroupSource")
+        load_source = new SessionGroupSource(id);
+    else if ( type == "RenderSource")
+        load_source = new RenderSource(id);
+    else if ( type == "PatternSource")
+        load_source = new PatternSource(id);
+    else if ( type == "DeviceSource")
+        load_source = new DeviceSource(id);
+    else if ( type == "ScreenCaptureSource")
+        load_source = new ScreenCaptureSource(id);
+    else if ( type == "NetworkSource")
+        load_source = new NetworkSource(id);
+    else if ( type == "MultiFileSource")
+        load_source = new MultiFileSource(id);
+    else if ( type == "GenericStreamSource")
+        load_source = new GenericStreamSource(id);
+    else if ( type == "SrtReceiverSource")
+        load_source = new SrtReceiverSource(id);
+    else if ( type == "TextSource")
+        load_source = new TextSource(id);
+    else if ( type == "ShaderSource")
+        load_source = new ShaderSource(id);
+    else
+        Log::Info("Unknown source type '%s' ignored.", type.c_str());
+
+    return load_source;
+}
+
 void SessionLoader::load(XMLElement *sessionNode)
 {
     sources_id_.clear();
@@ -441,53 +478,14 @@ void SessionLoader::load(XMLElement *sessionNode)
                 const char *pType = xmlCurrent_->Attribute("type");
                 if (!pType)
                     continue;
-                if ( std::string(pType) == "MediaSource") {
-                    load_source = new MediaSource(id_xml_);
-                }
-                else if ( std::string(pType) == "SessionSource") {
-                    load_source = new SessionFileSource(id_xml_);
-                }
-                else if ( std::string(pType) == "GroupSource") {
-                    load_source = new SessionGroupSource(id_xml_);
-                }
-                else if ( std::string(pType) == "RenderSource") {
-                    load_source = new RenderSource(id_xml_);
-                }
-                else if ( std::string(pType) == "PatternSource") {
-                    load_source = new PatternSource(id_xml_);
-                }
-                else if ( std::string(pType) == "DeviceSource") {
-                    load_source = new DeviceSource(id_xml_);
-                }
-                else if ( std::string(pType) == "ScreenCaptureSource") {
-                    load_source = new ScreenCaptureSource(id_xml_);
-                }
-                else if ( std::string(pType) == "NetworkSource") {
-                    load_source = new NetworkSource(id_xml_);
-                }
-                else if ( std::string(pType) == "MultiFileSource") {
-                    load_source = new MultiFileSource(id_xml_);
-                }
-                else if ( std::string(pType) == "GenericStreamSource") {
-                    load_source = new GenericStreamSource(id_xml_);
-                }
-                else if ( std::string(pType) == "SrtReceiverSource") {
-                    load_source = new SrtReceiverSource(id_xml_);
-                }
-                else if ( std::string(pType) == "TextSource") {
-                    load_source = new TextSource(id_xml_);
-                }
-                else if ( std::string(pType) == "ShaderSource") {
-                    load_source = new ShaderSource(id_xml_);
-                }
-                else if ( std::string(pType) == "CloneSource") {
+                // clones are created after all other sources
+                if ( std::string(pType) == "CloneSource") {
                     cloneNodesToAdd.push_front(xmlCurrent_);
                     continue;
                 }
-                else {
-                    Log::Info("Unknown source type '%s' ignored.", pType);
+                load_source = newSource(pType, id_xml_);
+                if (load_source == nullptr)
                     continue;
-                }
 
                 // and store id as loaded
                 loaded_xml_ids[i++] = id_xml_;
@@ -591,6 +589,51 @@ void SessionLoader::load(XMLElement *sessionNode)
     }
 }
 
+
+DraftSessionLoader::DraftSessionLoader(Session *draft, Session *live) : SessionLoader(draft), live_(live)
+{
+
+}
+
+Source *DraftSessionLoader::newSource(const std::string &type, uint64_t id)
+{
+    // sources computing their content are created
+    if ( type == "ShaderSource" || type == "RenderSource")
+        return SessionLoader::newSource(type, id);
+
+    // other sources are proxies of the sources of the live session
+    SourceList::iterator it = live_->find(id);
+    if ( it != live_->end() )
+        return new DraftSource(*it, id);
+
+    return nullptr;
+}
+
+Session *DraftSessionLoader::createDraft(Session *live)
+{
+    if (live == nullptr || live->frame() == nullptr)
+        return nullptr;
+
+    // new session with same output as live
+    Session *draft = new Session;
+    draft->setResolution( live->frame()->resolution(), live->frame()->flags() & FrameBuffer::FrameBuffer_alpha );
+    draft->setFilename( live->filename() );
+
+    // describe the sources of the live session in xml
+    tinyxml2::XMLDocument xmlDoc;
+    XMLElement *sessionNode = xmlDoc.NewElement("Session");
+    xmlDoc.InsertEndChild(sessionNode);
+    sessionNode->SetAttribute("activationThreshold", live->activationThreshold());
+    SessionVisitor sv(&xmlDoc, sessionNode);
+    for (auto iter = live->begin(); iter != live->end(); ++iter, sv.setRoot(sessionNode) )
+        (*iter)->accept(sv);
+
+    // load the draft session from this description
+    DraftSessionLoader loader(draft, live);
+    loader.load(sessionNode);
+
+    return draft;
+}
 
 Source *SessionLoader::recreateSource(Source *s)
 {

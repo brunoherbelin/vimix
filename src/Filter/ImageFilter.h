@@ -151,6 +151,8 @@ public:
 
     // update parameters of program
     void setProgramParameters(const std::map< std::string, float > &parameters);
+    // set values of existing parameters (only those which changed)
+    void updateProgramParameters(const std::map< std::string, float > &parameters);
     void setProgramParameter(const std::string &p, float value);
 
     // update textures of program

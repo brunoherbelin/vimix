@@ -16,6 +16,8 @@ TextEditor _editor;
 #include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Mixer.h"
+#include "Draft.h"
+#include "Log.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Source/CloneSource.h"
 #include "Source/ShaderSource.h"
@@ -155,6 +157,12 @@ bool ShaderEditWindow::Visible() const
 
 void ShaderEditWindow::BuildShader()
 {
+    // shader code cannot be changed in DRAFT mode
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+
     // if the UI has a current clone, and ref to code for current clone is valid
     if (current_ != nullptr &&  filters_.find(current_) != filters_.end()) {
 
@@ -182,6 +190,10 @@ void ShaderEditWindow::BuildShader()
 
 void ShaderEditWindow::BuildAll()
 {
+    // shader code cannot be changed in DRAFT mode
+    if (Draft::manager().active())
+        return;
+
     // Loop over all sources
     for (auto s = Mixer::manager().session()->begin(); s != Mixer::manager().session()->end(); ++s) {
         // if image filter can be extracted from source
@@ -637,12 +649,12 @@ void ShaderEditWindow::Render()
             ImGui::SetNextItemWidth(200);
             ImGui::SliderFloat("##iMouse.x",
                                &FilteringProgram::iMouse.x, 0.f,
-                               Mixer::manager().session()->frame()->width(), "iMouse.x %.f");
+                               Mixer::manager().liveSession()->frame()->width(), "iMouse.x %.f");
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::SetNextItemWidth(200);
             ImGui::SliderFloat("##iMouse.y",
                                &FilteringProgram::iMouse.y, 0.f,
-                               Mixer::manager().session()->frame()->height(), "iMouse.y %.f");
+                               Mixer::manager().liveSession()->frame()->height(), "iMouse.y %.f");
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::SetNextItemWidth(200);
             ImGui::SliderFloat("##iMouse.z",

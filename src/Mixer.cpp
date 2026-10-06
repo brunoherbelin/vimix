@@ -75,7 +75,7 @@ std::vector< SessionSource * > sessionSourceToImport_;
 const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 
-Mixer::Mixer() : session_(new Session), back_session_(nullptr), sessionSwapRequested_(false),
+Mixer::Mixer() : session_(new Session), back_session_(nullptr), live_(nullptr), sessionSwapRequested_(false),
     current_view_(nullptr), busy_(false), dt_(16.f), dt__(16.f)
 {
     // unsused initial empty session
@@ -216,6 +216,10 @@ void Mixer::update()
     // animate draft
     Draft::manager().update(dt_);
 
+    // update live session (DRAFT mode)
+    if (live_)
+        live_->update(dt_);
+
     // update session and associated sources
     session_->update(dt_);
 
@@ -223,7 +227,7 @@ void Mixer::update()
     Canvas::manager().update(dt_);
 
     // grab frames to recorders & streamers
-    FrameBuffer *output = session_->frame();
+    FrameBuffer *output = liveSession()->frame();
     // tries to show canvas output if selected
     if (Settings::application.widget.preview_output > -1) {
         Settings::application.widget.preview_output = MIN( Canvas::manager().size()-1, Settings::application.widget.preview_output );
@@ -705,6 +709,92 @@ void Mixer::deleteSource(Source *s)
     ++View::need_deep_update_;
 }
 
+
+void Mixer::attachToViews(Source *s)
+{
+    if ( s != nullptr ) {
+        // force update
+        s->touch();
+        // attach to views
+        mixing_.scene.ws()->attach( s->group(View::MIXING) );
+        geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
+        layer_.scene.ws()->attach( s->group(View::LAYER) );
+        appearance_.scene.ws()->attach( s->group(View::TEXTURE) );
+    }
+}
+
+void Mixer::detachFromViews(Source *s)
+{
+    if ( s != nullptr ) {
+        mixing_.scene.ws()->detach( s->group(View::MIXING) );
+        geometry_.scene.ws()->detach( s->group(View::GEOMETRY) );
+        layer_.scene.ws()->detach( s->group(View::LAYER) );
+        appearance_.scene.ws()->detach( s->group(View::TEXTURE) );
+        transition_.scene.ws()->detach( s->group(View::TRANSITION) );
+    }
+}
+
+void Mixer::switchViews(Session *from, Session *to)
+{
+    // remember current source and selection
+    uint64_t current = currentSource() ? currentSource()->id() : 0;
+    SourceIdList selected = ids( selection().getCopy() );
+    unsetCurrentSource();
+    selection().clear();
+
+    // detach sources and mixing groups of session 'from'
+    for (auto it = from->begin(); it != from->end(); ++it)
+        detachFromViews(*it);
+    for (auto g = from->beginMixingGroup(); g != from->endMixingGroup(); ++g)
+        (*g)->attachTo(nullptr);
+
+    // attach sources and mixing groups of session 'to'
+    for (auto it = to->begin(); it != to->end(); ++it)
+        attachToViews(*it);
+    for (auto g = to->beginMixingGroup(); g != to->endMixingGroup(); ++g)
+        (*g)->attachTo( mixing_.scene.fg() );
+
+    // session 'to' is edited
+    session_ = to;
+    current_source_ = session_->end();
+    current_source_index_ = -1;
+
+    // restore selection and current source (sources with same id)
+    for (auto id = selected.begin(); id != selected.end(); ++id) {
+        SourceList::iterator it = session_->find(*id);
+        if (it != session_->end())
+            selection().add(*it);
+    }
+    if (current > 0)
+        setCurrentSource(current);
+
+    // needs refresh
+    ++View::need_deep_update_;
+}
+
+void Mixer::setEditedSession(Session *draft)
+{
+    if (draft == nullptr || live_ != nullptr)
+        return;
+
+    // edit the draft session, keep the live session
+    live_ = session_;
+    switchViews(live_, draft);
+}
+
+void Mixer::restoreEditedSession()
+{
+    if (live_ == nullptr)
+        return;
+
+    // edit the live session again
+    Session *draft = session_;
+    switchViews(draft, live_);
+    live_ = nullptr;
+
+    // delete the draft session later
+    garbage_.push_back(draft);
+}
 
 void Mixer::attachSource(Source *s)
 {
@@ -1913,11 +2003,13 @@ void Mixer::setResolution(glm::vec3 res)
 {
     if (session_) {
 
-        // set session resolution
+        // set session resolution (and of the live session in DRAFT mode)
         session_->setResolution(res);
+        if (live_)
+            live_->setResolution(res);
 
         // adjust canvas to rewly updated framebuffer
-        Canvas::manager().setInputFrameBuffer(session_->frame());
+        Canvas::manager().setInputFrameBuffer(liveSession()->frame());
 
         ++View::need_deep_update_;
         std::ostringstream info;

@@ -112,6 +112,13 @@ public:
 
     // manipulate, load and save sessions
     inline Session * session () const { return session_; }
+
+    // DRAFT mode: the session edited is the draft session,
+    // while the live session renders the output
+    inline Session * liveSession () const { return live_ ? live_ : session_; }
+    inline bool editingDraft () const { return live_ != nullptr; }
+    void setEditedSession (Session *draft);
+    void restoreEditedSession ();
     void terminate();
     void save   (bool with_version = false);
     void saveas (const std::string& filename, bool with_version = false, bool with_thumbail = false);
@@ -139,6 +146,10 @@ protected:
 
     Session *session_;
     Session *back_session_;
+    Session *live_;
+    void attachToViews   (Source *s);
+    void detachFromViews (Source *s);
+    void switchViews     (Session *from, Session *to);
     std::list<Session *> garbage_;
     bool sessionSwapRequested_;
     void swap();

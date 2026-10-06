@@ -37,6 +37,10 @@ public:
     // access shader
     inline ImageFilter *filter() { return filter_; }
 
+    // parameters of the shader program
+    Parameters parameters () const override;
+    void setParameters (const Parameters &p) override;
+
 protected:
 
     void init() override;

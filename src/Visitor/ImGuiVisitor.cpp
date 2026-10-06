@@ -64,6 +64,7 @@
 #include "Settings.h"
 #include "Mixer.h"
 #include "Draft.h"
+#include "Source/DraftSource.h"
 #include "MixingGroup.h"
 #include "ActionManager.h"
 #include "Mixer.h"
@@ -940,7 +941,6 @@ void ImGuiVisitor::visit (SessionFileSource& s)
 
         if ( s.active() && s.session()->ready() ) {
 
-            ImGuiToolkit::PushDisabled(s.drafting());
 
             // versions
             SessionSnapshots *versions = s.session()->snapshots();
@@ -1004,7 +1004,6 @@ void ImGuiVisitor::visit (SessionFileSource& s)
                 top.x += ImGui::GetFrameHeight();
             }
 
-            ImGuiToolkit::PopDisabled(s.drafting());
         }
         else
         {
@@ -1062,10 +1061,8 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
                               ImGuiInputTextFlags_ReadOnly);
     ImGui::PopStyleColor(1);
 
-    ImGuiToolkit::PushDisabled(s.drafting());
     if ( ImGui::Button( ICON_FA_TIMES "  Uncover", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().import( &s );
-    ImGuiToolkit::PopDisabled(s.drafting());
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1103,7 +1100,7 @@ void ImGuiVisitor::visit (RenderSource& s)
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
-    ImGuiToolkit::PushDisabled(s.drafting());
+    ImGuiToolkit::PushDisabled(Draft::manager().active());
 
     // loopback provenance
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -1143,7 +1140,7 @@ void ImGuiVisitor::visit (RenderSource& s)
 
     }
 
-    ImGuiToolkit::PopDisabled(s.drafting());
+    ImGuiToolkit::PopDisabled(Draft::manager().active());
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1167,6 +1164,42 @@ void ImGuiVisitor::visit (RenderSource& s)
     ImGui::SetCursorPos(botom);
 }
 
+void ImGuiVisitor::visit (DraftSource& s)
+{
+    Source *o = s.origin();
+    if (o == nullptr)
+        return;
+
+    // show the panel of the source in live session, disabled
+    // NB: only the specific part of the panel (generic Source part is the draft source)
+    ImGuiToolkit::PushDisabled(true);
+
+    if ( MediaSource *src = dynamic_cast<MediaSource *>(o) )
+        visit(*src);
+    else if ( SessionFileSource *src = dynamic_cast<SessionFileSource *>(o) )
+        visit(*src);
+    else if ( SessionGroupSource *src = dynamic_cast<SessionGroupSource *>(o) )
+        visit(*src);
+    else if ( PatternSource *src = dynamic_cast<PatternSource *>(o) )
+        visit(*src);
+    else if ( DeviceSource *src = dynamic_cast<DeviceSource *>(o) )
+        visit(*src);
+    else if ( ScreenCaptureSource *src = dynamic_cast<ScreenCaptureSource *>(o) )
+        visit(*src);
+    else if ( NetworkSource *src = dynamic_cast<NetworkSource *>(o) )
+        visit(*src);
+    else if ( MultiFileSource *src = dynamic_cast<MultiFileSource *>(o) )
+        visit(*src);
+    else if ( GenericStreamSource *src = dynamic_cast<GenericStreamSource *>(o) )
+        visit(*src);
+    else if ( SrtReceiverSource *src = dynamic_cast<SrtReceiverSource *>(o) )
+        visit(*src);
+    else if ( TextSource *src = dynamic_cast<TextSource *>(o) )
+        visit(*src);
+
+    ImGuiToolkit::PopDisabled(true);
+}
+
 void ImGuiVisitor::visit (FrameBufferFilter&)
 {
 
@@ -1179,6 +1212,8 @@ void ImGuiVisitor::visit (PassthroughFilter&)
 
 void ImGuiVisitor::visit (DelayFilter& f)
 {
+    // cannot be changed in DRAFT mode
+    ImGuiToolkit::PushDisabled(Draft::manager().active());
     ImGuiIO& io = ImGui::GetIO();
 
 //    if (ImGuiToolkit::IconButton(ICON_VI_FILTER_DELAY)) {
@@ -1206,10 +1241,13 @@ void ImGuiVisitor::visit (DelayFilter& f)
         oss << "Delay 0.5 s";
         Action::manager().store(oss.str());
     }
+    ImGuiToolkit::PopDisabled(Draft::manager().active());
 }
 
 void ImGuiVisitor::visit (ResampleFilter& f)
 {
+    // cannot be changed in DRAFT mode
+    ImGuiToolkit::PushDisabled(Draft::manager().active());
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) f.factor();
     if (ImGui::Combo("##Factor", &m, ResampleFilter::factor_label, IM_ARRAYSIZE(ResampleFilter::factor_label) )) {
@@ -1225,6 +1263,7 @@ void ImGuiVisitor::visit (ResampleFilter& f)
         Action::manager().store(oss.str());
         info.reset();
     }
+    ImGuiToolkit::PopDisabled(Draft::manager().active());
 }
 
 void ImGuiVisitor::list_parameters_(ImageFilter &f, std::ostringstream &oss, bool editrange)
@@ -1309,6 +1348,8 @@ void ImGuiVisitor::visit (BlurFilter& f)
     oss << "Blur ";
 
     // Method selection
+    // cannot be changed in DRAFT mode
+    ImGuiToolkit::PushDisabled(Draft::manager().active());
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) f.method();
     if (ImGui::Combo("##MethodBlur", &m, BlurFilter::method_label, IM_ARRAYSIZE(BlurFilter::method_label) )) {
@@ -1322,6 +1363,7 @@ void ImGuiVisitor::visit (BlurFilter& f)
         oss << BlurFilter::method_label[0];
         Action::manager().store(oss.str());
     }
+    ImGuiToolkit::PopDisabled(Draft::manager().active());
 
     // List of parameters
     list_parameters_(f, oss);
@@ -1332,6 +1374,8 @@ void ImGuiVisitor::visit (SharpenFilter& f)
     oss << "Sharpen ";
 
     // Method selection
+    // cannot be changed in DRAFT mode
+    ImGuiToolkit::PushDisabled(Draft::manager().active());
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) f.method();
     if (ImGui::Combo("##MethodSharpen", &m, SharpenFilter::method_label, IM_ARRAYSIZE(SharpenFilter::method_label) )) {
@@ -1345,6 +1389,7 @@ void ImGuiVisitor::visit (SharpenFilter& f)
         oss << SharpenFilter::method_label[0];
         Action::manager().store(oss.str());
     }
+    ImGuiToolkit::PopDisabled(Draft::manager().active());
 
     // List of parameters
     list_parameters_(f, oss);
@@ -1355,6 +1400,8 @@ void ImGuiVisitor::visit (SmoothFilter& f)
     oss << "Smooth ";
 
     // Method selection
+    // cannot be changed in DRAFT mode
+    ImGuiToolkit::PushDisabled(Draft::manager().active());
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) f.method();
     if (ImGui::Combo("##MethodSmooth", &m, SmoothFilter::method_label, IM_ARRAYSIZE(SmoothFilter::method_label) )) {
@@ -1368,6 +1415,7 @@ void ImGuiVisitor::visit (SmoothFilter& f)
         oss << SmoothFilter::method_label[0];
         Action::manager().store(oss.str());
     }
+    ImGuiToolkit::PopDisabled(Draft::manager().active());
 
     // List of parameters
     list_parameters_(f, oss);
@@ -1378,6 +1426,8 @@ void ImGuiVisitor::visit (EdgeFilter& f)
     oss << "Edge ";
 
     // Method selection
+    // cannot be changed in DRAFT mode
+    ImGuiToolkit::PushDisabled(Draft::manager().active());
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) f.method();
     if (ImGui::Combo("##MethodEdge", &m, EdgeFilter::method_label, IM_ARRAYSIZE(EdgeFilter::method_label) )) {
@@ -1391,6 +1441,7 @@ void ImGuiVisitor::visit (EdgeFilter& f)
         oss << EdgeFilter::method_label[0];
         Action::manager().store(oss.str());
     }
+    ImGuiToolkit::PopDisabled(Draft::manager().active());
 
     // List of parameters
     list_parameters_(f, oss);
@@ -1402,6 +1453,8 @@ void ImGuiVisitor::visit (AlphaFilter& f)
     oss << "Alpha ";
 
     // Alpha operation selection
+    // cannot be changed in DRAFT mode
+    ImGuiToolkit::PushDisabled(Draft::manager().active());
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     int m = (int) f.operation();
     if (ImGui::Combo("##Operation", &m, AlphaFilter::operation_label, IM_ARRAYSIZE(AlphaFilter::operation_label) )) {
@@ -1415,6 +1468,7 @@ void ImGuiVisitor::visit (AlphaFilter& f)
         oss << AlphaFilter::operation_label[0];
         Action::manager().store(oss.str());
     }
+    ImGuiToolkit::PopDisabled(Draft::manager().active());
 
     // List of parameters
     std::map<std::string, float> filter_parameters = f.program().parameters();
@@ -1641,7 +1695,7 @@ void ImGuiVisitor::visit (CloneSource& s)
         ImGui::Text("Origin");
 
         // filter cannot be changed in DRAFT mode
-        ImGuiToolkit::PushDisabled(s.drafting());
+        ImGuiToolkit::PushDisabled(Draft::manager().active());
 
         // filter selection
         int type = (int) s.filter()->type();
@@ -1682,10 +1736,10 @@ void ImGuiVisitor::visit (CloneSource& s)
             }
         }
 
+        ImGuiToolkit::PopDisabled(Draft::manager().active());
+
         // filter options
         s.filter()->accept(*this);
-
-        ImGuiToolkit::PopDisabled(s.drafting());
 
         ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1769,9 +1823,6 @@ void ImGuiVisitor::visit (PatternSource& s)
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
-    // Pattern cannot be changed in DRAFT mode
-    ImGuiToolkit::PushDisabled(s.drafting());
-
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     if (ImGui::BeginCombo("##Patterns", Pattern::get(s.pattern()->type()).label.c_str(), ImGuiComboFlags_HeightLarge) )
     {
@@ -1793,8 +1844,6 @@ void ImGuiVisitor::visit (PatternSource& s)
     }
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     ImGui::Text("Generator");
-
-    ImGuiToolkit::PopDisabled(s.drafting());
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1837,7 +1886,6 @@ void ImGuiVisitor::visit (DeviceSource& s)
 
     if ( !s.failed() ) {
 
-        ImGuiToolkit::PushDisabled(s.drafting());
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if (ImGui::BeginCombo("Device", s.device().c_str()))
         {
@@ -1859,7 +1907,6 @@ void ImGuiVisitor::visit (DeviceSource& s)
             ImGui::EndCombo();
         }
 
-        ImGuiToolkit::PopDisabled(s.drafting());
         ImVec2 botom = ImGui::GetCursorPos();
 
         // icon (>) to open player
@@ -2040,8 +2087,6 @@ void ImGuiVisitor::visit (MultiFileSource& s)
         ImGui::InputText("Filenames", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
         ImGui::PopStyleColor(1);
 
-        ImGuiToolkit::PushDisabled(s.drafting());
-
         // change range
         static int _begin = -1;
         if (_begin < 0 || id != s.id())
@@ -2084,9 +2129,6 @@ void ImGuiVisitor::visit (MultiFileSource& s)
             Action::manager().store(oss.str());
             _fps = -1;
         }
-
-
-        ImGuiToolkit::PopDisabled(s.drafting());
 
         botom = ImGui::GetCursorPos();
 
@@ -2246,7 +2288,6 @@ void ImGuiVisitor::visit(TextSource &s)
     ImGui::Spacing();
 
     ImVec2 botom = ImGui::GetCursorPos();
-    ImGuiToolkit::PushDisabled(s.drafting());
 
     TextContents *tc = s.contents();
     if (tc) {
@@ -2496,8 +2537,6 @@ void ImGuiVisitor::visit(TextSource &s)
 
         botom = ImGui::GetCursorPos();
     }
-
-    ImGuiToolkit::PopDisabled(s.drafting());
 
     if ( !s.failed() ) {
         // icon (>) to open player

@@ -37,6 +37,9 @@ public:
     void setFilter(FrameBufferFilter::Type T);
     inline FrameBufferFilter *filter() { return filter_; }
 
+    // parameters of the image filter
+    Parameters parameters () const override;
+    void setParameters (const Parameters &p) override;
 
 protected:
     // only Source class can create new CloneSource via clone();

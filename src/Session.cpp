@@ -160,10 +160,6 @@ void Session::update(float dt)
     if ( render_.frame() == nullptr )
         return;
 
-    // in DRAFT mode, inputs operate on the live state of sources
-    for (auto it = sources_.begin(); it != sources_.end(); ++it)
-        (*it)->swapLive(true);
-
     // listen to inputs
     for (auto k = input_callbacks_.begin(); k != input_callbacks_.end(); ++k)
     {
@@ -185,8 +181,14 @@ void Session::update(float dt)
                     // 3. Case of variant as Current source of the Mixer front session only.
                     // Ignored in any other session (bundle, session file)
                     if (std::holds_alternative<Current>(k->second.target_)) {
-                        Source *s = ( this == Mixer::manager().session() )
-                                    ? Mixer::manager().currentSource() : nullptr;
+                        // (the source with the same id as the current source of the Mixer)
+                        Source *s = nullptr;
+                        Source *c = Mixer::manager().currentSource();
+                        if ( this == Mixer::manager().liveSession() && c != nullptr ) {
+                            SourceList::iterator cs = find( c->id() );
+                            if ( cs != sources_.end() )
+                                s = *cs;
+                        }
                         if ( s != nullptr ) {
                             // generate a new callback from the model
                             SourceCallback *forward = k->second.model_->clone();
@@ -273,10 +275,6 @@ void Session::update(float dt)
         }
     }
 
-    // get back to draft state of sources
-    for (auto it = sources_.begin(); it != sources_.end(); ++it)
-        (*it)->swapLive(false);
-
     // pre-render all sources
     bool test_ready = true;
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); ++it){
@@ -306,9 +304,6 @@ void Session::update(float dt)
             (*it)->update(dt);
             // render the source
             (*it)->render();
-            // render the source in live state (DRAFT mode)
-            if ( render_.draftFrame() )
-                (*it)->renderLive();
         }
 
         // apply session fading to audio
@@ -359,11 +354,7 @@ void Session::update(float dt)
     render_.update(dt);
 
     // draw render view in Frame Buffer
-    if ( render_.draftFrame() )
-        // DRAFT mode: draw draft and live
-        render_.drawDraft(sources_);
-    else
-        render_.draw();
+    render_.draw();
 
     // draw the thumbnail only after all sources are ready
     if (ready_)

@@ -57,7 +57,7 @@ void SessionPanel::Render()
     //
     // Session
     //
-    std::string sessions_current = Mixer::manager().session()->filename();
+    std::string sessions_current = Mixer::manager().liveSession()->filename();
     if (sessions_current.empty())
         sessions_current = "<unsaved>";
     else
@@ -91,24 +91,24 @@ void SessionPanel::Render()
         ImGui::EndCombo();
     }
     ImVec2 pos = ImGui::GetCursorPos();
-    if (!Mixer::manager().session()->filename().empty()) {
+    if (!Mixer::manager().liveSession()->filename().empty()) {
         ImGui::SameLine();
         if ( ImGuiToolkit::IconButton(ICON_FA_TIMES, "Close"))
             Mixer::manager().close();
         ImGui::SetCursorPos(pos);
     }
-////    if ( Mixer::manager().session()->filename().empty()) {
+////    if ( Mixer::manager().liveSession()->filename().empty()) {
 ////        if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save as"))
 ////            UserInterface::manager().saveOrSaveAs();
 ////    } else {
 ////        if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
-////            SystemToolkit::open(SystemToolkit::path_filename(Mixer::manager().session()->filename()));
+////            SystemToolkit::open(SystemToolkit::path_filename(Mixer::manager().liveSession()->filename()));
 ////    }
 
     //
     // Preview session
     //
-    Session *se = Mixer::manager().session();
+    Session *se = Mixer::manager().liveSession();
     if (se->frame()) {
         float width = preview_width;
         float height = se->frame()->projectionSize().y * width / ( se->frame()->projectionSize().x * se->frame()->aspectRatio());
@@ -122,22 +122,22 @@ void SessionPanel::Render()
     }
 
     // right side options for session
-    if (!Mixer::manager().session()->filename().empty()) {
+    if (!Mixer::manager().liveSession()->filename().empty()) {
 
         //
         // Right align icon top : heart to add to favorites
         //
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + space) );
         // if session is in favorites
-        if ( UserInterface::manager().favorites.has( Mixer::manager().session()->filename() ) > 0 ) {
+        if ( UserInterface::manager().favorites.has( Mixer::manager().liveSession()->filename() ) > 0 ) {
             // offer to remove from favorites
             if ( ImGuiToolkit::IconButton( ICON_VI_FAVORITE_REMOVE, "Remove from favorites")) {
-                UserInterface::manager().favorites.remove( Mixer::manager().session()->filename() );
+                UserInterface::manager().favorites.remove( Mixer::manager().liveSession()->filename() );
             }
         }
         // else session is not in favorites, offer to add
         else if ( ImGuiToolkit::IconButton( ICON_VI_FAVORITES, "Add to favorites")) {
-            UserInterface::manager().favorites.add( Mixer::manager().session()->filename() );
+            UserInterface::manager().favorites.add( Mixer::manager().liveSession()->filename() );
         }
 
         //
@@ -145,7 +145,7 @@ void SessionPanel::Render()
         //
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - 2.f * ImGui::GetFrameHeightWithSpacing()) );
         if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE " +", "Add a sticky note")) {
-            Mixer::manager().session()->addNote();
+            Mixer::manager().liveSession()->addNote();
         }
 
         //
@@ -153,22 +153,22 @@ void SessionPanel::Render()
         //
         static Thumbnail _session_thumbnail;
         static FrameBufferImage *_thumbnail = nullptr;
-        bool _user_thumbnail = Mixer::manager().session()->thumbnail() != nullptr;
+        bool _user_thumbnail = Mixer::manager().liveSession()->thumbnail() != nullptr;
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
         if (ImGuiToolkit::IconToggle(ICON_VI_THUMBNAIL_AUTOMATIC, ICON_VI_THUMBNAIL_CUSTOM, &_user_thumbnail)) {
             if (_user_thumbnail)
-                Mixer::manager().session()->setThumbnail();
+                Mixer::manager().liveSession()->setThumbnail();
             else {
-                Mixer::manager().session()->resetThumbnail();
+                Mixer::manager().liveSession()->resetThumbnail();
                 _session_thumbnail.reset();
             }
             _thumbnail = nullptr;
         }
         if (ImGui::IsItemHovered()){
             // thumbnail changed
-            if (_thumbnail != Mixer::manager().session()->thumbnail()) {
+            if (_thumbnail != Mixer::manager().liveSession()->thumbnail()) {
                 _session_thumbnail.reset();
-                _thumbnail = Mixer::manager().session()->thumbnail();
+                _thumbnail = Mixer::manager().liveSession()->thumbnail();
                 if (_thumbnail != nullptr)
                     _session_thumbnail.fill( _thumbnail );
             }
@@ -199,7 +199,7 @@ void SessionPanel::Render()
     if (Settings::application.pannel_session[0]) {
 
         // Information and resolution
-        const FrameBuffer *output = Mixer::manager().session()->frame();
+        const FrameBuffer *output = Mixer::manager().liveSession()->frame();
         if (output)  {
             // change resolution (height only)
             // get parameters to edit resolution
@@ -278,7 +278,7 @@ void SessionPanel::Render()
         }
     }
     else {
-        const FrameBuffer *output = Mixer::manager().session()->frame();
+        const FrameBuffer *output = Mixer::manager().liveSession()->frame();
         if (output)  {
             ImVec2 pos_tmp = ImGui::GetCursorPos();
             ImVec2 space_size = ImGui::CalcTextSize(" Resolution ", NULL);
@@ -393,7 +393,7 @@ void SessionPanel::Render()
                 if (ImGui::Selectable( ICON_FA_CODE_BRANCH "-    Remove", false, 0, size ))
                     Action::manager().remove();
                 // export option if possible
-                std::string filename = Mixer::manager().session()->filename();
+                std::string filename = Mixer::manager().liveSession()->filename();
                 if (filename.size()>0) {
                     if (ImGui::Selectable( ICON_FA_FILE_DOWNLOAD "     Export as session", false, 0, size )) {
                         Action::manager().saveas(filename);
@@ -614,15 +614,15 @@ void SessionPanel::Render()
             // cannot export if no target folder or session file,
             // or if target folder is same than current session folder (avoid overwriting)
             if (Settings::application.recentExportFolder.path.empty() ||
-                Mixer::manager().session()->filename().empty() ||
-                SystemToolkit::path_filename(Mixer::manager().session()->filename()) == Settings::application.recentExportFolder.path + PATH_SEP) {
+                Mixer::manager().liveSession()->filename().empty() ||
+                SystemToolkit::path_filename(Mixer::manager().liveSession()->filename()) == Settings::application.recentExportFolder.path + PATH_SEP) {
                 ImGuiToolkit::ButtonDisabled(ICON_FA_SAVE "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0));
             }
             else if (ImGui::Button(ICON_FA_SAVE "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
                 const std::string archive_name =
-                    SystemToolkit::base_filename(Mixer::manager().session()->filename());
+                    SystemToolkit::base_filename(Mixer::manager().liveSession()->filename());
                 Playlist tmp;
-                tmp.add(Mixer::manager().session()->filename());
+                tmp.add(Mixer::manager().liveSession()->filename());
                 exporter = new Exporter(tmp, Settings::application.recentExportFolder.path,
                                         Settings::application.export_options[0],
                                         Settings::application.export_options[2],

@@ -146,6 +146,21 @@ void CloneSource::update(float dt)
     }
 }
 
+Source::Parameters CloneSource::parameters () const
+{
+    ImageFilter *f = dynamic_cast<ImageFilter *>(filter_);
+    if (f)
+        return f->program().parameters();
+    return Parameters();
+}
+
+void CloneSource::setParameters (const Parameters &p)
+{
+    ImageFilter *f = dynamic_cast<ImageFilter *>(filter_);
+    if (f)
+        f->updateProgramParameters(p);
+}
+
 void CloneSource::setFilter(FrameBufferFilter::Type T)
 {
     if (filter_)

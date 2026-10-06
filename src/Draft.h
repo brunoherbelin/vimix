@@ -8,12 +8,12 @@ class Source;
 /**
  * @brief The Draft manager
  *
- * In DRAFT mode, the user edits the sources of the current session without
- * changing the output: sources hold the draft state, while their live state
- * is kept aside (see Source::beginDraft) and rendered in the session frame.
- * The draft is rendered in the draft frame of the session.
+ * In DRAFT mode, the user edits a draft session without changing the output:
+ * the draft session is created from the live session (see DraftSessionLoader),
+ * and the Mixer edits the draft session while the live session renders the output.
  *
- * Callbacks of sources (inputs, metronome, etc.) keep operating on the live state.
+ * Callbacks of sources (inputs, metronome, etc.) keep operating on the live session,
+ * and the properties not modified in the draft follow the live session.
  *
  * Leaving the DRAFT mode either cancels the draft, or applies it with
  * an animation from the live state to the draft (only on modified properties).
@@ -69,6 +69,19 @@ private:
     float duration_;
     float progress_;
 
+    // the draft session (shown in views once ready)
+    Session *draft_;
+    uint pending_;
+
+    // reference state of sources at creation of draft (by source id)
+    std::map<uint64_t, SourceCore *> base_;
+    std::map<uint64_t, Source::Parameters> base_parameters_;
+    void clearBase ();
+
+    // properties of draft sources not modified follow the live sources
+    void merge ();
+    // leave edition of draft session
+    void close ();
     void finish ();
 };
 

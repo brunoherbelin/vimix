@@ -623,7 +623,10 @@ Source *TextureView::getEditOrCurrentSource()
         // nothing yet?
         if (_source == nullptr && edit_source_ != nullptr) {
             // then keep the current edit source ( if still available )
-            _source = Mixer::manager().findSource( edit_source_->id() );
+            // NB: edit_source_ could have been deleted, test pointer only
+            SourceList::iterator it = Mixer::manager().session()->find( edit_source_ );
+            if ( it != Mixer::manager().session()->end() )
+                _source = *it;
         }
         // ensures the source is selected
         Mixer::selection().set(_source);

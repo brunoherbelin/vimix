@@ -5,7 +5,6 @@
 #include <future>
 
 #include "View.h"
-#include "Source/SourceList.h"
 #include "FrameBuffer.h"
 
 class RenderView : public View
@@ -14,8 +13,6 @@ class RenderView : public View
 
     // rendering FBO
     FrameBuffer *frame_buffer_;
-    // rendering FBO of draft (DRAFT mode)
-    FrameBuffer *draft_frame_;
     Surface *fading_overlay_;
 
     // promises of returning thumbnails after an update
@@ -34,11 +31,6 @@ public:
 
     // current frame
     inline FrameBuffer *frame () const { return frame_buffer_; }
-
-    // DRAFT mode: scene is drawn in draft frame, and sources in live state in frame
-    void setDraft (bool on);
-    inline FrameBuffer *draftFrame () const { return draft_frame_; }
-    void drawDraft (const SourceList &sources);
 
     // size descriptions
     enum AspectRatio {

@@ -199,9 +199,9 @@ void Action::store(const std::string &label, bool threaded)
 
     // threaded capturing state of current session
     if (threaded)
-        std::thread(Action::storeSession, Mixer::manager().session(), label, true).detach();
+        std::thread(Action::storeSession, Mixer::manager().liveSession(), label, true).detach();
     else
-        Action::storeSession(Mixer::manager().session(), label, false);
+        Action::storeSession(Mixer::manager().liveSession(), label, false);
 }
 
 void Action::undo()
@@ -358,7 +358,7 @@ void Action::snapshot(const std::string &label)
     std::string snap_label = BaseToolkit::uniqueName(label, labels());
 
     // take the snapshot on current session
-    takeSnapshot(Mixer::manager().session(), snap_label, true);
+    takeSnapshot(Mixer::manager().liveSession(), snap_label, true);
 
 }
 
@@ -367,7 +367,7 @@ void Action::open(uint64_t snapshotid)
     if ( snapshot_id_ != snapshotid )
     {
         // get snapshot node of target in current session
-        Session *se = Mixer::manager().session();
+        Session *se = Mixer::manager().liveSession();
         if (se) {
             se->snapshots()->access_.lock();
             snapshot_node_ = se->snapshots()->xmlDoc_->FirstChildElement(
@@ -400,7 +400,7 @@ void Action::replace(uint64_t snapshotid)
         std::string label = snapshot_node_->Attribute("label");
 
         // remove previous node
-        Session *se = Mixer::manager().session();
+        Session *se = Mixer::manager().liveSession();
         if (se) {
 
             se->snapshots()->access_.lock();
@@ -420,14 +420,14 @@ void Action::replace(uint64_t snapshotid)
 
 std::list<uint64_t> Action::snapshots() const
 {
-    return Mixer::manager().session()->snapshots()->keys_;
+    return Mixer::manager().liveSession()->snapshots()->keys_;
 }
 
 std::list<std::string> Action::labels() const
 {
     std::list<std::string> names;
 
-    tinyxml2::XMLDocument *doc = Mixer::manager().session()->snapshots()->xmlDoc_;
+    tinyxml2::XMLDocument *doc = Mixer::manager().liveSession()->snapshots()->xmlDoc_;
     for ( XMLElement *snap = doc->FirstChildElement(); snap ; snap = snap->NextSiblingElement() )
         names.push_back( snap->Attribute("label"));
 
@@ -439,7 +439,7 @@ std::string Action::label(uint64_t snapshotid) const
     std::string label = "";
 
     // get snapshot node of target in current session
-    Session *se = Mixer::manager().session();
+    Session *se = Mixer::manager().liveSession();
     const XMLElement *snap = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid).c_str() );
 
     if (snap)
@@ -453,7 +453,7 @@ std::string Action::date(uint64_t snapshotid) const
     std::string date = "";
 
     // get snapshot node of target in current session
-    Session *se = Mixer::manager().session();
+    Session *se = Mixer::manager().liveSession();
     const XMLElement *snap = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid).c_str() );
 
     if (snap){
@@ -482,7 +482,7 @@ FrameBufferImage *Action::thumbnail(uint64_t snapshotid) const
     FrameBufferImage *img = nullptr;
 
     // get snapshot node of target in current session
-    Session *se = Mixer::manager().session();
+    Session *se = Mixer::manager().liveSession();
     const XMLElement *snap = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(snapshotid).c_str() );
 
     if (snap){
@@ -494,7 +494,7 @@ FrameBufferImage *Action::thumbnail(uint64_t snapshotid) const
 
 void Action::clearSnapshots()
 {
-    Session *se = Mixer::manager().session();
+    Session *se = Mixer::manager().liveSession();
     while (!se->snapshots()->keys_.empty())
         remove(se->snapshots()->keys_.front());
 }
@@ -506,7 +506,7 @@ void Action::remove(uint64_t snapshotid)
 
     if (snapshot_node_) {
         // remove
-        Session *se = Mixer::manager().session();
+        Session *se = Mixer::manager().liveSession();
         se->snapshots()->access_.lock();
         se->snapshots()->xmlDoc_->DeleteChild( snapshot_node_ );
         se->snapshots()->keys_.remove( snapshot_id_ );
@@ -567,7 +567,7 @@ void Action::interpolate(float val, uint64_t snapshotid)
             interpolator_ = new Interpolator;
 
             // current session
-            Session *se = Mixer::manager().session();
+            Session *se = Mixer::manager().liveSession();
 
             XMLElement* N = snapshot_node_->FirstChildElement("Source");
             for( ; N ; N = N->NextSiblingElement()) {

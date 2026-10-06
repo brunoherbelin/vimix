@@ -32,6 +32,7 @@ public:
     void visit (SessionGroupSource& s) override;
     void visit (RenderSource& s) override;
     void visit (CloneSource& s) override;
+    void visit (DraftSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
     void visit (ScreenCaptureSource& s) override;

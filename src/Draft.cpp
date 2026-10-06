@@ -23,10 +23,14 @@
 #include "Session.h"
 #include "ActionManager.h"
 #include "Source/Source.h"
+#include "SessionCreator.h"
 
 #include "Draft.h"
 
-Draft::Draft() : state_(DRAFT_OFF), duration_(0.f), progress_(0.f)
+// maximum number of frames to wait for the draft session to be ready
+#define DRAFT_MAX_PENDING 30
+
+Draft::Draft() : state_(DRAFT_OFF), duration_(0.f), progress_(0.f), draft_(nullptr), pending_(0)
 {
 
 }
@@ -42,19 +46,28 @@ bool Draft::enter()
         return false;
     }
 
-    Session *se = Mixer::manager().session();
-    if (se == nullptr || se->frame() == nullptr)
+    // create the draft session from the live session
+    Session *live = Mixer::manager().session();
+    draft_ = DraftSessionLoader::createDraft(live);
+    if (draft_ == nullptr)
         return false;
 
-    // all sources of the session keep their live state aside
-    for (auto it = se->begin(); it != se->end(); ++it)
-        (*it)->beginDraft();
+    // draft sources start exactly at the state of live sources, kept as reference
+    for (auto it = draft_->begin(); it != draft_->end(); ++it) {
+        SourceList::iterator l = live->find( (*it)->id() );
+        if ( l != live->end() ) {
+            SourceCoreField::copy(**it, **l);
+            (*it)->setParameters( (*l)->parameters() );
+            SourceCore *base = new SourceCore;
+            SourceCoreField::copy(*base, **l);
+            base_[(*it)->id()] = base;
+            base_parameters_[(*it)->id()] = (*l)->parameters();
+        }
+    }
 
-    // session renders both draft and live
-    se->setDraft(true);
-
+    // the draft session will be edited when ready (see update)
+    pending_ = 0;
     state_ = DRAFT_EDIT;
-    ++View::need_deep_update_;
 
     Log::Info("Draft mode started.");
     return true;
@@ -65,16 +78,8 @@ void Draft::cancel()
     if (state_ != DRAFT_EDIT)
         return;
 
-    Session *se = Mixer::manager().session();
-
-    // all sources get back to their (current) live state
-    for (auto it = se->begin(); it != se->end(); ++it)
-        (*it)->endDraft();
-
-    se->setDraft(false);
-
+    close();
     state_ = DRAFT_OFF;
-    ++View::need_deep_update_;
 
     Log::Info("Draft cancelled.");
 }
@@ -84,29 +89,28 @@ void Draft::apply(float duration)
     if (state_ != DRAFT_EDIT)
         return;
 
-    Session *se = Mixer::manager().session();
+    Session *live = Mixer::manager().liveSession();
 
+    // animate live sources to the properties modified in draft
     interpolator_.clear();
-    for (auto it = se->begin(); it != se->end(); ++it) {
-        Source *s = *it;
-        if ( !s->drafting() )
+    for (auto it = draft_->begin(); it != draft_->end(); ++it) {
+        auto b = base_.find( (*it)->id() );
+        SourceList::iterator l = live->find( (*it)->id() );
+        if ( b == base_.end() || l == live->end() )
             continue;
 
-        // get the draft and the properties modified in draft
-        SourceCore target;
-        SourceCoreField::copy(target, *s);
-        SourceCoreField::Mask mask = SourceCoreField::diff(target, *s->liveState());
-
-        // source gets back to live state (no change in output)
-        s->endDraft();
-
-        // animate modified properties from live to draft
-        if (mask != 0)
-            interpolator_.add(s, target, mask);
+        // properties modified in draft
+        SourceCoreField::Mask mask = SourceCoreField::diff(**it, *b->second);
+        Source::Parameters parameters = SourceCoreField::diff( (*it)->parameters(),
+                                                               base_parameters_[(*it)->id()] );
+        if ( mask != 0 || !parameters.empty() ) {
+            SourceCore target;
+            SourceCoreField::copy(target, **it);
+            interpolator_.add(*l, target, mask, parameters);
+        }
     }
 
-    se->setDraft(false);
-    ++View::need_deep_update_;
+    close();
 
     // nothing to animate
     if (interpolator_.empty()) {
@@ -126,6 +130,51 @@ void Draft::apply(float duration)
         finish();
 }
 
+void Draft::close()
+{
+    // edit the live session again (draft session is deleted)
+    if ( Mixer::manager().editingDraft() )
+        Mixer::manager().restoreEditedSession();
+    // draft session was not edited yet
+    else
+        delete draft_;
+    draft_ = nullptr;
+
+    clearBase();
+}
+
+void Draft::clearBase()
+{
+    for (auto b = base_.begin(); b != base_.end(); ++b)
+        delete b->second;
+    base_.clear();
+    base_parameters_.clear();
+}
+
+void Draft::merge()
+{
+    Session *live = Mixer::manager().liveSession();
+
+    for (auto it = draft_->begin(); it != draft_->end(); ++it) {
+        auto b = base_.find( (*it)->id() );
+        SourceList::iterator l = live->find( (*it)->id() );
+        if ( b == base_.end() || l == live->end() )
+            continue;
+
+        // properties not modified in draft follow live
+        if ( SourceCoreField::mergeUntouched(**it, *b->second, **l) )
+            (*it)->touch();
+
+        Source::Parameters parameters = (*it)->parameters();
+        if ( SourceCoreField::mergeUntouched(parameters, base_parameters_[(*it)->id()], (*l)->parameters()) )
+            (*it)->setParameters(parameters);
+    }
+
+    // same fading as live
+    if ( draft_->fadingTarget() != live->fading() )
+        draft_->setFadingTarget( live->fading() );
+}
+
 void Draft::terminate()
 {
     if (state_ == DRAFT_EDIT)
@@ -143,6 +192,20 @@ float Draft::progress() const
 
 void Draft::update(float dt)
 {
+    if (state_ == DRAFT_EDIT) {
+        // draft session is not yet edited
+        if ( !Mixer::manager().editingDraft() ) {
+            // edit the draft session once all its sources are ready
+            // NB: it is then updated by the Mixer as the edited session
+            if ( draft_->ready() || ++pending_ > DRAFT_MAX_PENDING )
+                Mixer::manager().setEditedSession(draft_);
+            // keep updating draft session until ready
+            else
+                draft_->update(dt);
+        }
+        merge();
+    }
+
     if (state_ != DRAFT_ANIMATE)
         return;
 

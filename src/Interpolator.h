@@ -54,13 +54,19 @@ namespace SourceCoreField
     // 3-way merge: fields not modified in draft (i.e. equal to base) follow live
     // returns true if draft was changed
     bool mergeUntouched (SourceCore &draft, SourceCore &base, const SourceCore &live);
+
+    // same for numerical parameters of sources
+    // diff returns the parameters of a which are different in b
+    Source::Parameters diff (const Source::Parameters &a, const Source::Parameters &b);
+    bool mergeUntouched (Source::Parameters &draft, Source::Parameters &base, const Source::Parameters &live);
 }
 
 class SourceInterpolator
 {
 public:
     SourceInterpolator(Source *subject, const SourceCore &target,
-                       SourceCoreField::Mask mask = SourceCoreField::ALL);
+                       SourceCoreField::Mask mask = SourceCoreField::ALL,
+                       const Source::Parameters &target_parameters = Source::Parameters());
 
     void apply (float percent);
     float current() const;
@@ -72,6 +78,8 @@ protected:
     SourceCore from_;
     SourceCore to_;
     SourceCoreField::Mask mask_;
+    Source::Parameters from_parameters_;
+    Source::Parameters to_parameters_;
     float current_cursor_;
     bool started_;
 };
@@ -84,7 +92,8 @@ public:
 
     void clear ();
     void add (Source *s, const SourceCore &target,
-              SourceCoreField::Mask mask = SourceCoreField::ALL);
+              SourceCoreField::Mask mask = SourceCoreField::ALL,
+              const Source::Parameters &target_parameters = Source::Parameters());
     void remove (Source *s);
     inline bool empty () const { return interpolators_.empty(); }
 

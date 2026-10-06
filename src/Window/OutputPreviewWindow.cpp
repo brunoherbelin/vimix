@@ -108,13 +108,13 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
                  Settings::application.render.gpu_decoding && 
                  GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
                 Outputs::manager().chain(
-                    new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
+                    new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename()))
                 );
             } else
 #endif
             {
                 Outputs::manager().chain(
-                    new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
+                    new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename()))
                 );
             }
         } 
@@ -131,14 +131,14 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
              Settings::application.render.gpu_decoding && 
              GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
             Outputs::manager().start(
-                new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
+                new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename())),
                 std::chrono::seconds(Settings::application.record.delay), timeout
             );
         } else 
 #endif
         {
             Outputs::manager().start(
-                new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
+                new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename())),
                 std::chrono::seconds(Settings::application.record.delay), timeout
             );
         }
@@ -211,7 +211,7 @@ void OutputPreviewWindow::Render()
     bool openInitializeSystemLoopback = false;
 
     // default to show mixer output
-    FrameBuffer *output = Mixer::manager().session()->frame();
+    FrameBuffer *output = Mixer::manager().liveSession()->frame();
     ImVec2 _cropsize(1.f,1.f);
 
     // tries to show canvas output if selected
@@ -297,7 +297,7 @@ void OutputPreviewWindow::Render()
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
                 if ( ImGui::MenuItem( MENU_CAPTUREFRAME, SHORTCUT_CAPTURE_DISPLAY) ) {
-                    Outputs::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
+                    Outputs::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename())));
                 }
                 ImGui::PopStyleColor(1);
 
@@ -382,7 +382,7 @@ void OutputPreviewWindow::Render()
                         if (selected_path > 2)
                             recordFolderDialog->open();
                         else if (selected_path > 1)
-                            Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+                            Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().liveSession()->filename() );
                         else if (selected_path > 0)
                             Settings::application.record.path = SystemToolkit::home_path();
                     }
@@ -548,7 +548,7 @@ void OutputPreviewWindow::Render()
         // draft frame to compare with output
         FrameBuffer *draft = nullptr;
         if (Draft::manager().active() && Settings::application.widget.preview_output < 0)
-            draft = Mixer::manager().session()->draftFrame();
+            draft = Mixer::manager().session()->frame();
         float split = CLAMP(Settings::application.widget.draft_slider, 0.f, 1.f);
 
         // 100% opacity for the image (ensures true colors)

@@ -456,7 +456,7 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
 
             ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, 0);
 
-            ImGuiToolkit::PushDisabled(s->drafting());
+            ImGuiToolkit::PushDisabled(Draft::manager().active());
 
             // clone button
             if ( s->failed() )
@@ -495,7 +495,7 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
                 Action::manager().store(sname + std::string(": Deleted"));
             }
 
-            ImGuiToolkit::PopDisabled(s->drafting());
+            ImGuiToolkit::PopDisabled(Draft::manager().active());
 
             // delete all button
             if ( Mixer::manager().session()->failedSources().size() > 1 && 

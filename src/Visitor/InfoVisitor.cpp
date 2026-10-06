@@ -33,6 +33,7 @@
 #include "MediaPlayer.h"
 #include "Source/MediaSource.h"
 #include "Source/CloneSource.h"
+#include "Source/DraftSource.h"
 #include "Source/RenderSource.h"
 #include "Source/SessionSource.h"
 #include "Source/PatternSource.h"
@@ -168,6 +169,13 @@ void InfoVisitor::visit (SessionFileSource& s)
     }
 
     information_ = oss.str();
+}
+
+void InfoVisitor::visit (DraftSource& s)
+{
+    // information of the source in live session
+    if (s.origin() != nullptr)
+        s.origin()->accept(*this);
 }
 
 void InfoVisitor::visit (SessionGroupSource& s)

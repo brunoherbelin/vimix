@@ -36,29 +36,6 @@
 
 #include "CloneSource.h"
 #include "Source.h"
-#include "Interpolator.h"
-
-// State kept aside while the source is in DRAFT mode
-struct DraftState
-{
-    // live state, rendered in output and modified by callbacks
-    SourceCore live;
-    // reference to detect properties modified in draft
-    SourceCore base;
-    // temporary storage of draft when live is swapped in
-    SourceCore scratch;
-    // frame buffer for content rendered with live properties
-    FrameBuffer *livebuffer;
-    bool use_livebuffer;
-    bool live_visible;
-    bool swapped;
-    float saved_alpha;
-    float saved_depth;
-
-    DraftState() : livebuffer(nullptr), use_livebuffer(false), live_visible(false),
-        swapped(false), saved_alpha(1.f), saved_depth(0.f) {}
-    ~DraftState() { if (livebuffer) delete livebuffer; }
-};
 
 // Transform of texture coordinates from the APPEARANCE node
 static glm::mat4 textureTransform(const Group *texture, float aspectRatio)
@@ -191,7 +168,6 @@ Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(null
     snprintf(initials_, 3, "__");
     name_ = "Source";
     mode_ = Source::UNINITIALIZED;
-    draft_ = nullptr;
 
     // create groups and overlays for each view
 
@@ -490,9 +466,6 @@ Source::~Source()
         (*it)->detach();
     clones_.clear();
 
-    // delete draft state
-    endDraft();
-
     // delete objects
     if (renderbuffer_)
         delete renderbuffer_;
@@ -758,192 +731,7 @@ void Source::setActive (bool on)
 
 void Source::setActive (float threshold)
 {
-    bool on = glm::length( glm::vec2(groups_[View::MIXING]->translation_) ) < threshold;
-
-    if (draft_) {
-        // in draft mode, the source is active if active in draft or in live state
-        bool on_live = glm::length( glm::vec2(draft_->live.group(View::MIXING)->translation_) ) < threshold;
-        setActive( on || on_live );
-        // forced activation (e.g. by clones) applies to both
-        bool forced = active_ && !on && !on_live;
-        // visibility in draft and in live are distinct
-        groups_[View::RENDERING]->visible_ = active_ && ( on || forced );
-        draft_->live_visible = active_ && ( on_live || forced );
-    }
-    else
-        setActive( on );
-}
-
-void Source::beginDraft ()
-{
-    if (draft_)
-        return;
-
-    draft_ = new DraftState;
-    SourceCoreField::copy(draft_->live, *this);
-    SourceCoreField::copy(draft_->base, *this);
-    draft_->live_visible = groups_[View::RENDERING]->visible_;
-}
-
-void Source::endDraft ()
-{
-    if (!draft_)
-        return;
-
-    // get back to live state
-    if (draft_->swapped)
-        swapLive(false);
-    SourceCoreField::copy(*this, draft_->live);
-
-    // restore content rendering
-    if (rendersurface_ && renderbuffer_)
-        rendersurface_->setFrameBuffer(renderbuffer_);
-
-    delete draft_;
-    draft_ = nullptr;
-
-    touch();
-}
-
-const SourceCore *Source::liveState () const
-{
-    return draft_ ? &draft_->live : static_cast<const SourceCore *>(this);
-}
-
-void Source::swapLive (bool on)
-{
-    if (!draft_ || draft_->swapped == on)
-        return;
-
-    if (on) {
-        // keep draft aside and get the live state
-        SourceCoreField::copy(draft_->scratch, *this);
-        SourceCoreField::copy(*this, draft_->live);
-        // derived values read by callbacks
-        draft_->saved_alpha = blendingshader_->color.a;
-        draft_->saved_depth = groups_[View::RENDERING]->translation_.z;
-        blendingshader_->color.a = liveAlpha();
-        groups_[View::RENDERING]->translation_.z = liveDepth();
-    }
-    else {
-        // store live state and get back the draft
-        SourceCoreField::copy(draft_->live, *this);
-        SourceCoreField::copy(*this, draft_->scratch);
-        blendingshader_->color.a = draft_->saved_alpha;
-        groups_[View::RENDERING]->translation_.z = draft_->saved_depth;
-    }
-
-    draft_->swapped = on;
-}
-
-float Source::liveDepth () const
-{
-    return liveState()->group(View::LAYER)->translation_.z;
-}
-
-float Source::liveAlpha () const
-{
-    if (!draft_)
-        return blendingshader_->color.a;
-
-    glm::vec2 dist = glm::vec2(draft_->live.group(View::MIXING)->translation_);
-    return SourceCore::alphaFromCordinates(dist.x, dist.y);
-}
-
-void Source::renderLive ()
-{
-    if ( !draft_ || !renderbuffer_ || !texturesurface_ )
-        return;
-
-    const SourceCore &L = draft_->live;
-
-    // content is the same in live and draft: use the render buffer
-    draft_->use_livebuffer = SourceCoreField::diff(*this, L, SourceCoreField::CONTENT) != 0;
-    if ( !draft_->use_livebuffer )
-        return;
-
-    // (re)create the frame buffer for live content
-    if ( draft_->livebuffer == nullptr
-         || draft_->livebuffer->resolution() != renderbuffer_->resolution()
-         || draft_->livebuffer->flags() != renderbuffer_->flags() ) {
-        if (draft_->livebuffer)
-            delete draft_->livebuffer;
-        draft_->livebuffer = new FrameBuffer( renderbuffer_->resolution(), renderbuffer_->flags() );
-    }
-
-    // swap content properties to live
-    SourceCoreField::copy(draft_->scratch, *this, SourceCoreField::COLOR);
-    SourceCoreField::copy(*this, L, SourceCoreField::COLOR);
-    glm::mat4 saved_transform = texturesurface_->shader()->iTransform;
-    Group texture;
-    texture.copyTransform( groups_[View::TEXTURE] );
-    texture.translation_.x = L.group(View::TEXTURE)->translation_.x;
-    texture.translation_.y = L.group(View::TEXTURE)->translation_.y;
-    texture.scale_.x = L.group(View::TEXTURE)->scale_.x;
-    texture.scale_.y = L.group(View::TEXTURE)->scale_.y;
-    texture.rotation_.z = L.group(View::TEXTURE)->rotation_.z;
-    texturesurface_->shader()->iTransform = textureTransform(&texture, renderbuffer_->aspectRatio());
-    draft_->livebuffer->setProjectionArea( L.group(View::GEOMETRY)->crop_ );
-
-    // render content in live frame buffer
-    if ( draft_->livebuffer->begin() ) {
-        texturesurface_->draw(glm::identity<glm::mat4>(), draft_->livebuffer->projection());
-        draft_->livebuffer->end();
-    }
-
-    // restore draft content properties
-    texturesurface_->shader()->iTransform = saved_transform;
-    SourceCoreField::copy(*this, draft_->scratch, SourceCoreField::COLOR);
-}
-
-void Source::drawLive (glm::mat4 modelview, glm::mat4 projection)
-{
-    if ( !rendersurface_ )
-        return;
-
-    // source not in draft mode: draw as is
-    if ( !draft_ ) {
-        groups_[View::RENDERING]->draw(modelview, projection);
-        return;
-    }
-
-    if ( !draft_->live_visible )
-        return;
-
-    const SourceCore &L = draft_->live;
-    Group *R = groups_[View::RENDERING];
-
-    // keep draft rendering properties
-    glm::mat4 saved_transform = R->transform_;
-    bool saved_visible = R->visible_;
-    glm::vec4 saved_color = blendingshader_->color;
-    glm::mat4 saved_nodes = blendingshader_->iNodes;
-
-    // apply live rendering properties
-    glm::vec3 t = L.group(View::GEOMETRY)->translation_;
-    t.z = L.group(View::LAYER)->translation_.z;
-    glm::vec3 s = L.group(View::GEOMETRY)->scale_;
-    s.x = CLAMP_SCALE(s.x);
-    s.y = CLAMP_SCALE(s.y);
-    s.z = 1.f;
-    glm::vec3 r = R->rotation_;
-    r.z = L.group(View::GEOMETRY)->rotation_.z;
-    R->transform_ = GlmToolkit::transform(t, r, s);
-    R->visible_ = true;
-    blendingshader_->color.a = liveAlpha();
-    blendingshader_->iNodes = clampNodes(L.group(View::GEOMETRY)->data_);
-    if (draft_->use_livebuffer && draft_->livebuffer)
-        rendersurface_->setFrameBuffer(draft_->livebuffer);
-
-    // draw
-    R->draw(modelview, projection);
-
-    // restore draft rendering properties
-    rendersurface_->setFrameBuffer(renderbuffer_);
-    blendingshader_->iNodes = saved_nodes;
-    blendingshader_->color = saved_color;
-    R->visible_ = saved_visible;
-    R->transform_ = saved_transform;
+    setActive( glm::length( glm::vec2(groups_[View::MIXING]->translation_) ) < threshold );
 }
 
 void Source::setLocked (bool on)
@@ -1117,17 +905,7 @@ void Source::update(float dt)
     if (renderbuffer_ && mixingsurface_ && maskbuffer_)
     {
         // call active callbacks
-        if (draft_) {
-            // callbacks operate on the live state
-            swapLive(true);
-            updateCallbacks(dt);
-            swapLive(false);
-            // draft properties not modified by user follow the live state
-            if ( SourceCoreField::mergeUntouched(*this, draft_->base, draft_->live) )
-                need_update_ |= SourceUpdate_Render;
-        }
-        else
-            updateCallbacks(dt);
+        updateCallbacks(dt);
 
         // update nodes if needed
         if (need_update_ & SourceUpdate_Render)
@@ -1141,7 +919,7 @@ void Source::update(float dt)
             // use the sinusoidal transfer function to compute alpha
             float __a = SourceCore::alphaFromCordinates(dist.x, dist.y);
             // audio update in case if depends on alpha (the one of output)
-            setAudioVolumeFactor(Source::VOLUME_ALPHA, draft_ ? liveAlpha() : __a);
+            setAudioVolumeFactor(Source::VOLUME_ALPHA, __a);
             // apply alpha
             blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, __a);
             mixingshader_->color = blendingshader_->color;
