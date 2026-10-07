@@ -136,19 +136,15 @@ bool DraftSource::playing () const
 
 void DraftSource::play (bool on)
 {
-    if (origin_)
-        origin_->play(on);
 }
 
 bool DraftSource::playable () const
 {
-    return origin_ ? origin_->playable() : false;
+    return false;
 }
 
 void DraftSource::replay ()
 {
-    if (origin_)
-        origin_->replay();
 }
 
 void DraftSource::reload ()
