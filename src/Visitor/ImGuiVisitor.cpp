@@ -559,7 +559,7 @@ void ImGuiVisitor::visit (Source& s)
         static uint counter_menu_timeout = 0;
         ImVec2 pos_bot = ImGui::GetCursorPos();
         ImGui::SetCursorPos( ImVec2( pos.x + preview_width + IMGUI_SAME_LINE, pos.y + preview_height + ImGui::GetStyle().ItemSpacing.y));
-        if (!Draft::manager().active() && (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) )) {
+        if ( (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) )) {
             counter_menu_timeout=0;
             ImGui::OpenPopup( "MenuImageProcessing" );
         }

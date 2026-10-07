@@ -76,6 +76,7 @@ private:
     // reference state of sources at creation of draft (by source id)
     std::map<uint64_t, SourceCore *> base_;
     std::map<uint64_t, Source::Parameters> base_parameters_;
+    std::map<uint64_t, bool> base_processing_;
     void clearBase ();
 
     // properties of draft sources not modified follow the live sources

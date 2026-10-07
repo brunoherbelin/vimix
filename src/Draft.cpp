@@ -17,7 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include "defines.h"
 #include "Log.h"
 #include "Mixer.h"
 #include "Session.h"
@@ -62,6 +61,7 @@ bool Draft::enter()
             SourceCoreField::copy(*base, **l);
             base_[(*it)->id()] = base;
             base_parameters_[(*it)->id()] = (*l)->parameters();
+            base_processing_[(*it)->id()] = (*l)->imageProcessingEnabled();
         }
     }
 
@@ -103,10 +103,16 @@ void Draft::apply(float duration)
         SourceCoreField::Mask mask = SourceCoreField::diff(**it, *b->second);
         Source::Parameters parameters = SourceCoreField::diff( (*it)->parameters(),
                                                                base_parameters_[(*it)->id()] );
-        if ( mask != 0 || !parameters.empty() ) {
+        // image processing switched in draft
+        SourceInterpolator::ProcessingSwitch processing = SourceInterpolator::PROCESSING_KEEP;
+        if ( (*it)->imageProcessingEnabled() != base_processing_[(*it)->id()] )
+            processing = (*it)->imageProcessingEnabled() ? SourceInterpolator::PROCESSING_ENABLE
+                                                         : SourceInterpolator::PROCESSING_DISABLE;
+
+        if ( mask != 0 || !parameters.empty() || processing != SourceInterpolator::PROCESSING_KEEP ) {
             SourceCore target;
             SourceCoreField::copy(target, **it);
-            interpolator_.add(*l, target, mask, parameters);
+            interpolator_.add(*l, target, mask, parameters, processing);
         }
     }
 
@@ -149,6 +155,7 @@ void Draft::clearBase()
         delete b->second;
     base_.clear();
     base_parameters_.clear();
+    base_processing_.clear();
 }
 
 void Draft::merge()
@@ -168,6 +175,14 @@ void Draft::merge()
         Source::Parameters parameters = (*it)->parameters();
         if ( SourceCoreField::mergeUntouched(parameters, base_parameters_[(*it)->id()], (*l)->parameters()) )
             (*it)->setParameters(parameters);
+
+        // image processing not switched in draft follows live
+        bool &base_processing = base_processing_[(*it)->id()];
+        if ( (*it)->imageProcessingEnabled() == base_processing
+             && base_processing != (*l)->imageProcessingEnabled() ) {
+            base_processing = (*l)->imageProcessingEnabled();
+            (*it)->setImageProcessingEnabled(base_processing);
+        }
     }
 
     // same fading as live

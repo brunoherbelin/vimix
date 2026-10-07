@@ -217,11 +217,22 @@ bool mergeUntouched(Source::Parameters &draft, Source::Parameters &base, const S
 
 
 SourceInterpolator::SourceInterpolator(Source *subject, const SourceCore &target, SourceCoreField::Mask mask,
-                                       const Source::Parameters &target_parameters) :
+                                       const Source::Parameters &target_parameters, ProcessingSwitch processing) :
     subject_(subject), to_(target), mask_(mask), to_parameters_(target_parameters),
-    current_cursor_(0.f), started_(false)
+    processing_(processing), current_cursor_(0.f), started_(false)
 {
+    // image processing switched : interpolate color (from or to neutral values)
+    if (processing_ != PROCESSING_KEEP) {
+        mask_ |= SourceCoreField::COLOR;
 
+        if (processing_ == PROCESSING_DISABLE) {
+            // keep target color values, to set after disabling
+            SourceCoreField::copy(hidden_, target, SourceCoreField::COLOR);
+            // interpolate color to neutral values
+            SourceCore neutral;
+            SourceCoreField::copy(to_, neutral, SourceCoreField::COLOR);
+        }
+    }
 }
 
 float SourceInterpolator::current() const
@@ -242,6 +253,12 @@ void SourceInterpolator::apply(float percent)
 
     // start from the state of the source at first application
     if ( !started_ ) {
+        // enabling image processing: start from neutral values
+        if ( processing_ == PROCESSING_ENABLE && !subject_->imageProcessingEnabled() ) {
+            SourceCore neutral;
+            SourceCoreField::copy(*subject_, neutral, SourceCoreField::COLOR);
+            subject_->setImageProcessingEnabled(true);
+        }
         SourceCoreField::copy(from_, *subject_, mask_);
         // start parameters (only those to interpolate)
         Source::Parameters current = subject_->parameters();
@@ -272,6 +289,12 @@ void SourceInterpolator::apply(float percent)
         subject_->setParameters(p);
     }
 
+    // disabling image processing at the end, and set target color values
+    if ( current_cursor_ >= 1.f && processing_ == PROCESSING_DISABLE && subject_->imageProcessingEnabled() ) {
+        subject_->setImageProcessingEnabled(false);
+        SourceCoreField::copy(*subject_, hidden_, SourceCoreField::COLOR);
+    }
+
     // ensure reordering of sources in view
     if ( mask_ & SourceCoreField::bit(SourceCoreField::LAYER_DEPTH) )
         ++View::need_deep_update_;
@@ -298,9 +321,10 @@ void Interpolator::clear()
 }
 
 void Interpolator::add (Source *s, const SourceCore &target, SourceCoreField::Mask mask,
-                         const Source::Parameters &target_parameters)
+                         const Source::Parameters &target_parameters,
+                         SourceInterpolator::ProcessingSwitch processing)
 {
-    SourceInterpolator *i = new SourceInterpolator(s, target, mask, target_parameters);
+    SourceInterpolator *i = new SourceInterpolator(s, target, mask, target_parameters, processing);
     interpolators_.push_back(i);
 }
 

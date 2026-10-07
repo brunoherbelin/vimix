@@ -64,9 +64,17 @@ namespace SourceCoreField
 class SourceInterpolator
 {
 public:
+    // switch of image processing during interpolation
+    typedef enum {
+        PROCESSING_KEEP = 0,
+        PROCESSING_ENABLE,  // reset and enable at start
+        PROCESSING_DISABLE  // disable at end
+    } ProcessingSwitch;
+
     SourceInterpolator(Source *subject, const SourceCore &target,
                        SourceCoreField::Mask mask = SourceCoreField::ALL,
-                       const Source::Parameters &target_parameters = Source::Parameters());
+                       const Source::Parameters &target_parameters = Source::Parameters(),
+                       ProcessingSwitch processing = PROCESSING_KEEP);
 
     void apply (float percent);
     float current() const;
@@ -80,6 +88,8 @@ protected:
     SourceCoreField::Mask mask_;
     Source::Parameters from_parameters_;
     Source::Parameters to_parameters_;
+    ProcessingSwitch processing_;
+    SourceCore hidden_;
     float current_cursor_;
     bool started_;
 };
@@ -93,7 +103,8 @@ public:
     void clear ();
     void add (Source *s, const SourceCore &target,
               SourceCoreField::Mask mask = SourceCoreField::ALL,
-              const Source::Parameters &target_parameters = Source::Parameters());
+              const Source::Parameters &target_parameters = Source::Parameters(),
+              SourceInterpolator::ProcessingSwitch processing = SourceInterpolator::PROCESSING_KEEP);
     void remove (Source *s);
     inline bool empty () const { return interpolators_.empty(); }
 
