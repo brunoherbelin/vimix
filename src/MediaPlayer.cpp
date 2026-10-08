@@ -564,12 +564,7 @@ void MediaPlayer::open (const std::string & filename, const std::string &uri)
         failed_ = true;
 
     // start URI discovering thread:
-    discoverer_ = std::async( MediaPlayer::UriDiscoverer, uri_);
-    // wait for discoverer to finish in the future (test in update)
-
-    // start async evaluation for video files
-    evaluator_cancel_ = std::make_shared<std::atomic<bool>>(false);
-    evaluator_ = std::async(MediaPlayer::UriEvaluator, uri_, evaluator_cancel_);
+    startDiscovery();
 
 //    // debug without thread
 //    media_ = MediaPlayer::UriDiscoverer(uri_);
@@ -581,6 +576,17 @@ void MediaPlayer::open (const std::string & filename, const std::string &uri)
 
 }
 
+
+void MediaPlayer::startDiscovery()
+{
+    // start URI discovering thread:
+    discoverer_ = std::async( MediaPlayer::UriDiscoverer, uri_);
+    // wait for discoverer to finish in the future (test in update)
+
+    // start async evaluation for video files
+    evaluator_cancel_ = std::make_shared<std::atomic<bool>>(false);
+    evaluator_ = std::async(MediaPlayer::UriEvaluator, uri_, evaluator_cancel_);
+}
 
 void MediaPlayer::reopen()
 {
@@ -671,6 +677,9 @@ void MediaPlayer::execute_open()
 
     // connect to callback for elements monitoring
     g_signal_connect ( G_OBJECT (pipeline_), "element-setup", G_CALLBACK (callback_element_setup), this);
+
+    // sub-class specific setup
+    setupPipeline();
 
     // Get and modify playbin flags
     // ENABLE ONLY VIDEO, NOT AUDIO AND TEXT SUBTITLES
@@ -958,6 +967,9 @@ void MediaPlayer::execute_open()
     Log::Info("MediaPlayer %s Pipeline [%s]", std::to_string(id_).c_str(), description.c_str());
 #endif
     gst_object_ref(pipeline_);
+
+    // sub-class specific setup
+    setupPipeline();
 
     // setup pipeline
     g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
@@ -2060,7 +2072,7 @@ bool MediaPlayer::go_to_flag(TimeInterval flag)
     return ret;
 }
 
-MediaInfo MediaPlayer::media() const
+const MediaInfo &MediaPlayer::media() const
 {
     return media_;
 }

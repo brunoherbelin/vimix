@@ -70,6 +70,7 @@
 #include "Mixer.h"
 #include "ControlManager.h"
 #include "Canvas.h"
+#include "SplitMediaPlayer.h"
 
 #include "imgui.h"
 #include "Toolkit/ImGuiToolkit.h"
@@ -799,45 +800,60 @@ void ImGuiVisitor::visit (MediaSource& s)
 
             // Information on keyframes and GOP size, and tooltip on backward playback and errors
             ImGui::SetCursorPos(botom);
+            ImGuiTextBuffer label;
             ImGuiTextBuffer info;
             ImGuiTextBuffer tooltip;
-            if (mp->evaluation().done) {
-                if (mp->evaluation().log.empty() && mp->evaluation().keyframe_count > 0) {
 
-                    // information on keyframes and GOP size
-                    info.appendf("%d", (int) mp->evaluation().keyframe_count);
-                    if (mp->evaluation().gop_size_max - mp->evaluation().gop_size_min > 1)
-                        info.appendf(" (1 every %d-%d frames)", (int) mp->evaluation().gop_size_min, (int) mp->evaluation().gop_size_max);
-                    else                            
-                        info.appendf(" (1 every %d frames)", (int) mp->evaluation().gop_size_max);
-                    
-                    // tooltip on backward playback and errors
-                    float backward_score = GstToolkit::canPlayBackward(mp->evaluation().has_bframes,
-                                mp->width(), mp->height(), mp->evaluation().keyframe_count,
-                                mp->evaluation().gop_size_min, mp->evaluation().gop_size_max);
-                    if (backward_score <= 0.f)
-                        tooltip.appendf(ICON_FA_MINUS_CIRCLE " Cannot play backward");
-                    else if (backward_score < 1.f)
-                        tooltip.appendf(ICON_FA_EXCLAMATION_TRIANGLE " Unstable backward playback");
-                    else
-                        tooltip.appendf(ICON_FA_CHECK " Smooth backward playback");
-                    if (mp->evaluation().discontinuity_count > 0 )
-                        tooltip.appendf(", %d discontinuities", mp->evaluation().discontinuity_count);
-                    if (mp->evaluation().corrupted_count > 0 )
-                        tooltip.appendf(", %d corruptions", mp->evaluation().corrupted_count);
-                } 
-                else {
-                    info.appendf("%s", mp->evaluation().log.c_str());
-                    tooltip.appendf("%s", mp->evaluation().log.c_str());
-                }
+            SplitMediaPlayer *smp = dynamic_cast<SplitMediaPlayer *>(mp);
+            if (smp) {
+
+                label.appendf("Files");
+                info.appendf("%d segments ", (int) smp->files().size());
+                info.appendf("(.%s)", SystemToolkit::extension_filename(smp->filename()).c_str());
+                tooltip.appendf("%s", BaseToolkit::joinned( smp->files(), '\n').c_str());
+
             }
             else {
-                static const char* animation[] = { ICON_FA_HOURGLASS_START,ICON_FA_HOURGLASS_HALF,ICON_FA_HOURGLASS_END,ICON_FA_HOURGLASS };
-                info.appendf("  %s", animation[(g_get_monotonic_time() / 300000) % 4]);
+
+                label.appendf("Keyframes");
+                if (mp->evaluation().done) {
+                    if (mp->evaluation().log.empty() && mp->evaluation().keyframe_count > 0) {
+
+                        // information on keyframes and GOP size
+                        info.appendf("%d", (int) mp->evaluation().keyframe_count);
+                        if (mp->evaluation().gop_size_max - mp->evaluation().gop_size_min > 1)
+                            info.appendf(" (1 every %d-%d frames)", (int) mp->evaluation().gop_size_min, (int) mp->evaluation().gop_size_max);
+                        else                            
+                            info.appendf(" (1 every %d frames)", (int) mp->evaluation().gop_size_max);
+                        
+                        // tooltip on backward playback and errors
+                        float backward_score = GstToolkit::canPlayBackward(mp->evaluation().has_bframes,
+                                    mp->width(), mp->height(), mp->evaluation().keyframe_count,
+                                    mp->evaluation().gop_size_min, mp->evaluation().gop_size_max);
+                        if (backward_score <= 0.f)
+                            tooltip.appendf(ICON_FA_MINUS_CIRCLE " Cannot play backward");
+                        else if (backward_score < 1.f)
+                            tooltip.appendf(ICON_FA_EXCLAMATION_TRIANGLE " Unstable backward playback");
+                        else
+                            tooltip.appendf(ICON_FA_CHECK " Smooth backward playback");
+                        if (mp->evaluation().discontinuity_count > 0 )
+                            tooltip.appendf(", %d discontinuities", mp->evaluation().discontinuity_count);
+                        if (mp->evaluation().corrupted_count > 0 )
+                            tooltip.appendf(", %d corruptions", mp->evaluation().corrupted_count);
+                    } 
+                    else {
+                        info.appendf("%s", mp->evaluation().log.c_str());
+                        tooltip.appendf("%s", mp->evaluation().log.c_str());
+                    }
+                }
+                else {
+                    static const char* animation[] = { ICON_FA_HOURGLASS_START,ICON_FA_HOURGLASS_HALF,ICON_FA_HOURGLASS_END,ICON_FA_HOURGLASS };
+                    info.appendf("  %s", animation[(g_get_monotonic_time() / 300000) % 4]);
+                }
             }
             ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            ImGui::InputText("Keyframes", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+            ImGui::InputText((char *)label.c_str(), (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
             ImGui::PopStyleColor(1);
             if (ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();

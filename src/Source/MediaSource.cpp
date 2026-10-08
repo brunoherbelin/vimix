@@ -35,6 +35,10 @@ MediaSource::MediaSource(uint64_t id) : Source(id), path_("")
     mediaplayer_ = new MediaPlayer;
 }
 
+MediaSource::MediaSource(uint64_t id, MediaPlayer *mp) : Source(id), path_(""), mediaplayer_(mp)
+{
+}
+
 MediaSource::~MediaSource()
 {
     // delete media player

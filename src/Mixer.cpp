@@ -49,6 +49,7 @@
 #include "Source/DeviceSource.h"
 #include "Source/ScreenCaptureSource.h"
 #include "Source/MultiFileSource.h"
+#include "Source/SplitMediaSource.h"
 #include "Source/StreamSource.h"
 #include "Source/NetworkSource.h"
 #include "Source/ShaderSource.h"
@@ -368,6 +369,27 @@ Source * Mixer::createSourceMultifile(const std::list<std::string> &list_files, 
         else {
             Log::Notify("Could not find a sequence of consecutively numbered files.");
         }
+    }
+
+    return s;
+}
+
+Source * Mixer::createSourceSplitMedia(const std::list<std::string> &list_files)
+{
+    // ready to create a source
+    Source *s = nullptr;
+
+    if ( list_files.size() > 1 ) {
+
+        // create a split media source
+        SplitMediaSource *sms = new SplitMediaSource;
+        sms->setFiles(list_files);
+        sms->play(true);
+        s = sms;
+
+        // propose a new name
+        std::string name = SystemToolkit::base_filename( BaseToolkit::common_prefix(list_files) );
+        s->setName( name.empty() ? SystemToolkit::base_filename(list_files.front()) : name );
     }
 
     return s;

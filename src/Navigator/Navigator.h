@@ -45,7 +45,7 @@ public:
     // the pannel creating new sources owns these types
     typedef NewSourcePanel::NewSourceType NewSourceType;
     static constexpr NewSourceType SOURCE_FILE      = NewSourcePanel::SOURCE_FILE;
-    static constexpr NewSourceType SOURCE_SEQUENCE  = NewSourcePanel::SOURCE_SEQUENCE;
+    static constexpr NewSourceType SOURCE_SEQUENCE  = NewSourcePanel::SOURCE_MULTIFILE;
     static constexpr NewSourceType SOURCE_CONNECTED = NewSourcePanel::SOURCE_CONNECTED;
     static constexpr NewSourceType SOURCE_GENERATED = NewSourcePanel::SOURCE_GENERATED;
     static constexpr NewSourceType SOURCE_BUNDLE    = NewSourcePanel::SOURCE_BUNDLE;

@@ -43,6 +43,7 @@ struct MediaInfo {
     GstClockTime end;
     std::string log;
     bool hasaudio;
+    std::vector<GstClockTime> segments; // start time of each file of a split media (empty otherwise)
 
     MediaInfo() {
         width = par_width = 1;
@@ -112,7 +113,7 @@ public:
     /**
      * Destructor.
      */
-    ~MediaPlayer();
+    virtual ~MediaPlayer();
     /**
      * Get unique id
      */
@@ -129,11 +130,11 @@ public:
     /**
      * Get name of the file
      * */
-    std::string filename() const;
+    virtual std::string filename() const;
     /**
-     * Get name of Codec of the media
+     * Get all info on the media
      * */
-    MediaInfo media() const;
+    const MediaInfo &media() const;
     /**
      * True if a media was oppenned
      * */
@@ -365,7 +366,13 @@ public:
     MediaEvaluation evaluation() const;
 
 
-private:
+protected:
+
+    // hooks for sub-classes
+    // start async discovery (and evaluation) of uri_, called by open()
+    virtual void startDiscovery();
+    // configure the gstreamer pipeline_ just created, called by execute_open()
+    virtual void setupPipeline() {}
 
     // video player description
     uint64_t id_;

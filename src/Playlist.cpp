@@ -181,7 +181,24 @@ static void scanSessionNode(XMLElement *sessionNode,
         if (!pType) continue;
         const std::string type(pType);
 
-        if (type == "MediaSource") {
+        if (type == "SplitMediaSource") {
+            XMLElement *listNode = sourceNode->FirstChildElement("SplitFiles");
+            for (XMLElement *fileNode = listNode ? listNode->FirstChildElement("file") : nullptr;
+                 fileNode != nullptr; fileNode = fileNode->NextSiblingElement("file")) {
+                const char *text = fileNode->GetText();
+                if (!text) continue;
+                std::string path(text);
+                if (!SystemToolkit::file_exists(path)) {
+                    const char *relative = nullptr;
+                    if (fileNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS && relative)
+                        path = SystemToolkit::path_absolute_from_path(relative, sessionFilePath);
+                }
+                if (SystemToolkit::file_exists(path) &&
+                    std::find(list.begin(), list.end(), path) == list.end())
+                    list.push_back(path);
+            }
+        }
+        else if (type == "MediaSource") {
             XMLElement *uriNode = sourceNode->FirstChildElement("uri");
             if (uriNode) {
                 const char *text = uriNode->GetText();

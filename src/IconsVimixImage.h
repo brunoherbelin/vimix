@@ -77,6 +77,7 @@
 #define ICON_VI_SELECT_VISIBLE       8, 1
 #define ICON_VI_RELOAD               5, 15
 #define ICON_VI_CLEAR_LIST           12, 14
+#define ICON_VI_IMAGES_VIDEOS       3, 16
 
 // files, folders, playlists and sessions
 #define ICON_VI_SHOW_IN_FINDER      3, 5
@@ -428,7 +429,6 @@
 // #define ICON_VI_UNDEFINED_130 13, 15
 //
 // #define ICON_VI_UNDEFINED_131  0, 16
-// #define ICON_VI_UNDEFINED_132  3, 16
 // #define ICON_VI_UNDEFINED_133  7, 16
 //
 

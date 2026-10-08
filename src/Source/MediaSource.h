@@ -40,6 +40,9 @@ public:
 
 protected:
 
+    // sub-classes can provide their own media player (deleted by MediaSource)
+    MediaSource(uint64_t id, MediaPlayer *mp);
+
     void init() override;
     void setPath(const std::string &p);
 

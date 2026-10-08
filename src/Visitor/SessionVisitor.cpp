@@ -33,6 +33,7 @@ using namespace tinyxml2;
 #include "Filter/ImageFilter.h"
 #include "Source/RenderSource.h"
 #include "Source/MediaSource.h"
+#include "Source/SplitMediaSource.h"
 #include "Session.h"
 #include "Source/SessionSource.h"
 #include "Source/PatternSource.h"
@@ -705,6 +706,21 @@ void SessionVisitor::visit (MediaSource& s)
 
     if (!s.failed())
         s.mediaplayer()->accept(*this);
+}
+
+void SessionVisitor::visit (SplitMediaSource& s)
+{
+    xmlCurrent_->SetAttribute("type", "SplitMediaSource");
+
+    XMLElement *list = xmlDoc_->NewElement("SplitFiles");
+    xmlCurrent_->InsertEndChild(list);
+    for (const std::string &f : s.files()) {
+        XMLElement *file = xmlDoc_->NewElement("file");
+        file->InsertEndChild( xmlDoc_->NewText( f.c_str() ) );
+        if (!sessionFilePath_.empty())
+            file->SetAttribute("relative", SystemToolkit::path_relative_to_path(f, sessionFilePath_).c_str());
+        list->InsertEndChild(file);
+    }
 }
 
 void SessionVisitor::visit (SessionFileSource& s)

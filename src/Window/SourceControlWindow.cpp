@@ -45,12 +45,16 @@
 #include "Log.h"
 #include "Settings.h"
 #include "Toolkit/SystemToolkit.h"
+#include "Toolkit/BaseToolkit.h"
 #include "Toolkit/DialogToolkit.h"
 #include "Toolkit/GstToolkit.h"
 #include "Resource.h"
 
 #include "Mixer.h"
 #include "Source/MediaSource.h"
+#include "SplitMediaPlayer.h"
+#include "Transcoder.h"
+#include "Navigator/NavigatorCodec.h"
 #include "Source/StreamSource.h"
 #include "MediaPlayer.h"
 #include "ActionManager.h"
@@ -109,7 +113,7 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     play_toggle_request_(false), replay_request_(false), pending_(false),
     active_label_(LABEL_PLAYER_SELECTION), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
-    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0),
+    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0), mediaplayer_export_sections_(false),
     mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f),
     mediaplayer_edit_panel_(false), magnifying_glass(false)
 {
@@ -488,6 +492,13 @@ void SourceControlWindow::Render()
                 oss << ": Reset timeline";
                 Action::manager().store(oss.str());
             }
+
+            // export the sections between gaps as a sequence of videos
+            const bool can_export = !mediaplayer_active_->isImage() &&
+                                    mediaplayer_active_->timeline()->numGaps() > 0 &&
+                                    dynamic_cast<SplitMediaPlayer *>(mediaplayer_active_) == nullptr;
+            if (ImGui::MenuItem(ICON_FA_CUT "  Export sections", NULL, false, can_export))
+                mediaplayer_export_sections_ = true;
 
             bool _alpha_fading = mediaplayer_active_->timelineFadingMode()
                                  == MediaPlayer::FADING_ALPHA;
@@ -887,7 +898,8 @@ bool EditTimeline(const char *label,
     return array_changed;
 }
 
-bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timeline *tl, const float width)
+bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timeline *tl,
+                     const std::vector<GstClockTime> &segments, const float width)
 {
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -957,6 +969,18 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
 
     // render the timeline
     ImGuiToolkit::RenderTimeline(timeline_bbox.Min, timeline_bbox.Max, tl->begin(), tl->end(), tl->step());
+
+    //
+    // SEGMENTS (of split media) : vertical line at the beginning of each segment
+    //
+    const ImU32 segment_col = IM_COL32(255, 255, 255, 110);
+    for (const GstClockTime &segment_time : segments) {
+        if (segment_time <= tl->begin() || segment_time >= tl->end())
+            continue;
+        float segment_pos_ = static_cast<float> ( static_cast<double>(segment_time - tl->begin()) / static_cast<double>(tl->duration()) );
+        float x = ImLerp(timeline_bbox.Min.x, timeline_bbox.Max.x, segment_pos_);
+        window->DrawList->AddLine(ImVec2(x, timeline_bbox.Min.y), ImVec2(x, timeline_bbox.Max.y), segment_col, 3.f);
+    }
 
     //
     // FLAGS 
@@ -1730,9 +1754,9 @@ ImRect SourceControlWindow::DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 r
     const ImVec2 top_image = top + corner;
     ImGui::SetCursorScreenPos(top_image);
 
-    // pre-draw background with checkerboard pattern
-    ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
-                 ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
+    // // pre-draw background with checkerboard pattern
+    // ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
+    //              ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
 
     // draw source
     if (s->ready()) {
@@ -2292,7 +2316,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 }
                 // custom timeline slider
                 // TODO  : if (mediaplayer_active_->syncToMetronome() > Metronome::SYNC_NONE)
-                mediaplayer_slider_pressed_ = TimelineSlider("##timeline", &seek_t, &seek_flag, tl, size.x);
+                mediaplayer_slider_pressed_ = TimelineSlider("##timeline", &seek_t, &seek_flag, tl, mediaplayer_active_->media().segments, size.x);
             }
         }
         ImGui::EndChild();
@@ -2404,6 +2428,39 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             else {
                 ImGui::SameLine(0, h_space_);
                 ImGuiToolkit::ButtonIcon(mediaplayer_active_->playSpeed() < 0 ? 6 : 5, 0, nullptr, false);
+            }
+        }
+
+        // segment buttons for split media
+        SplitMediaPlayer *smp = dynamic_cast<SplitMediaPlayer *>(mediaplayer_active_);
+        if (smp && rendersize.x > buttons_height_ * 11.f) {
+            char tooltip[64];
+
+            ImGui::SameLine(0, h_space_);
+            if (ImGui::Button(ICON_FA_ANGLE_DOUBLE_LEFT) && smp->previousSegment()) {
+                oss << ": Previous segment";
+                Action::manager().store(oss.str());
+            }
+            if (ImGui::IsItemHovered()) {
+                GstClockTime t = smp->previousSegmentTime();
+                if (GST_CLOCK_TIME_IS_VALID(t))
+                    snprintf(tooltip, 64, "Previous segment ( %s )", GstToolkit::time_to_string(t).c_str());
+                else
+                    snprintf(tooltip, 64, "Previous segment");
+                ImGuiToolkit::ToolTip(tooltip);
+            }
+            ImGui::SameLine(0, h_space_);
+            if (ImGui::Button(ICON_FA_ANGLE_DOUBLE_RIGHT) && smp->nextSegment()) {
+                oss << ": Next segment";
+                Action::manager().store(oss.str());
+            }
+            if (ImGui::IsItemHovered()) {
+                GstClockTime t = smp->nextSegmentTime();
+                if (GST_CLOCK_TIME_IS_VALID(t))
+                    snprintf(tooltip, 64, "Next segment ( %s )", GstToolkit::time_to_string(t).c_str());
+                else
+                    snprintf(tooltip, 64, "Next segment");
+                ImGuiToolkit::ToolTip(tooltip);
             }
         }
 
@@ -3226,6 +3283,141 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             else
                 mediaplayer_active_->timeline()->setEnd( GST_MSECOND * (GstClockTime) ( timeline_duration_ * 1000.f ) );
             // close popup window
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    ////
+    ///  Dialog to export sections of timeline
+    ///
+    DrawExportSectionsDialog(top, rendersize);
+}
+
+void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize)
+{
+    static std::unique_ptr<SequenceTranscoder> _exporter;
+    static DialogToolkit::OpenFolderDialog _folder_dialog("Export sections Location");
+    static std::string _folder;
+    static std::string _media;
+    static std::list< std::pair<GstClockTime, GstClockTime> > _ranges;
+    static int _profile = GstToolkit::H264_RT;
+    static int _copy = 0;
+
+    if (mediaplayer_export_sections_) {
+        // forget previous export (unless still ongoing)
+        if (_exporter && _exporter->finished())
+            _exporter.reset();
+        // sections of the timeline of the media
+        _media = mediaplayer_active_->filename();
+        _ranges.clear();
+        TimeIntervalSet sections = mediaplayer_active_->timeline()->sections();
+        for (const auto &s : sections)
+            _ranges.push_back( {s.begin, s.end} );
+        // default folder is the one of the media
+        if (_folder.empty() || !SystemToolkit::file_exists(_folder))
+            _folder = SystemToolkit::path_filename(_media);
+        // open dialog (only once)
+        ImGui::OpenPopup(DIALOG_EXPORT_SECTIONS);
+        mediaplayer_export_sections_ = false;
+    }
+
+    if (_folder_dialog.closed() && !_folder_dialog.path().empty())
+        _folder = _folder_dialog.path();
+
+    const ImVec2 dialog_size(buttons_width_ * 3.f, buttons_height_ * 7.f);
+    ImGui::SetNextWindowSize(dialog_size, ImGuiCond_Always);
+    ImGui::SetNextWindowPos(top + rendersize * 0.5f - dialog_size * 0.5f, ImGuiCond_Always);
+    if (ImGui::BeginPopupModal(DIALOG_EXPORT_SECTIONS, NULL, ImGuiWindowFlags_NoResize))
+    {
+        const ImVec2 pos = ImGui::GetCursorPos();
+        const ImVec2 area = ImGui::GetContentRegionAvail();
+        bool close = false;
+
+        // export ongoing
+        if (_exporter) {
+            ImGui::Spacing();
+            if (!_exporter->finished()) {
+                ImGui::Text("Exporting sections of %s", SystemToolkit::filename(_media).c_str());
+                ImGui::Text("%s", _exporter->status().c_str());
+                ImGui::Spacing();
+                ImGui::ProgressBar(_exporter->progress());
+                ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
+                if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(area.x * 0.3f, 0)))
+                    _exporter->stop();
+            }
+            else if (_exporter->success()) {
+                ImGui::TextWrapped("%d videos exported to %s", (int) _exporter->outputFiles().size(),
+                                   _exporter->outputFolder().c_str());
+                ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
+                if (ImGui::Button(ICON_FA_TIMES "  Close", ImVec2(area.x * 0.3f, 0)))
+                    close = true;
+                ImGui::SetCursorPos(pos + ImVec2(area.x * 0.55f, area.y - buttons_height_));
+                ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+                if (ImGui::Button(ICON_FA_PLUS "  Create source", ImVec2(area.x * 0.45f, 0))) {
+                    Mixer::manager().addSource( Mixer::manager().createSourceSplitMedia(_exporter->outputFiles()) );
+                    close = true;
+                }
+                ImGui::PopStyleColor(1);
+            }
+            else {
+                // failed (error already logged by the transcoder): close
+                close = true;
+            }
+        }
+        // settings of export
+        else {
+            ImGui::Spacing();
+            ImGui::TextWrapped("Export the %d sections between gaps as %d video files, to play them as a sequence of videos.",
+                               (int) _ranges.size(), (int) _ranges.size());
+            ImGui::Spacing();
+
+            ImGui::RadioButton("Encode (frame accurate)", &_copy, 0);
+            ImGui::SameLine();
+            ImGui::RadioButton("Copy (fast, cut on keyframes)", &_copy, 1);
+
+            ImGui::SetNextItemWidth(area.x * 0.7f);
+            if (_copy == 0) {
+                ComboCodec("Codec", &_profile, mediaplayer_active_->width() & ~1, mediaplayer_active_->height() & ~1);
+                if (_profile == GstToolkit::JPEG_MULTI)
+                    _profile = GstToolkit::H264_RT;
+            }
+            else
+                ImGui::TextDisabled("Original codec in Matroska (mkv) files");
+
+            ImGui::SetNextItemWidth(area.x * 0.7f);
+            std::string folder = BaseToolkit::truncated(_folder, 40);
+            if (ImGui::Button( (std::string(ICON_FA_FOLDER_OPEN " ") + folder).c_str(), ImVec2(area.x * 0.7f, 0)))
+                _folder_dialog.open();
+            ImGui::SameLine();
+            ImGui::Text("Folder");
+
+            ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
+            if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(area.x * 0.3f, 0)))
+                close = true;
+            ImGui::SetCursorPos(pos + ImVec2(area.x * 0.7f, area.y - buttons_height_));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+            if (ImGui::Button(ICON_FA_CHECK "  Export", ImVec2(area.x * 0.3f, 0))) {
+                // new folder for the videos, named after the media
+                const std::string base = SystemToolkit::full_filename(_folder, SystemToolkit::base_filename(_media) + "_split");
+                std::string output = base;
+                for (int counter = 1; SystemToolkit::file_exists(output); ++counter)
+                    output = base + "_" + std::to_string(counter);
+                // start export of all sections
+                TranscoderOptions options( (GstToolkit::Profile) _profile, true);
+                options.stream_copy = _copy > 0;
+                _exporter = std::make_unique<SequenceTranscoder>(_media, _ranges);
+                if (!_exporter->start(options, output)) {
+                    Log::Warning("Cannot export sections (%s).", _exporter->error().c_str());
+                    _exporter.reset();
+                    close = true;
+                }
+            }
+            ImGui::PopStyleColor(1);
+        }
+
+        if (close) {
+            _exporter.reset();
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

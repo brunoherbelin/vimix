@@ -40,7 +40,7 @@ public:
 
     typedef enum {
         SOURCE_FILE = 0,
-        SOURCE_SEQUENCE,
+        SOURCE_MULTIFILE,
         SOURCE_CONNECTED,
         SOURCE_GENERATED,
         SOURCE_BUNDLE
@@ -63,6 +63,7 @@ public:
 private:
     SourcePreview new_source_preview_;
     std::list<std::string> sourceSequenceFiles;
+    std::list<std::string> sourceVideoFiles;
     std::list<std::string> sourceMediaFiles;
     std::string sourceMediaFileCurrent;
     MediaCreateMode new_media_mode;

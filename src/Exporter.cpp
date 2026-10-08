@@ -56,7 +56,21 @@ static void patchSessionNode(XMLElement *sessionNode,
         if (!pType) continue;
         const std::string type(pType);
 
-        if (type == "MediaSource") {
+        if (type == "SplitMediaSource") {
+            // <SplitFiles><file relative="...">absolute_path</file>...</SplitFiles>
+            XMLElement *listNode = sourceNode->FirstChildElement("SplitFiles");
+            for (XMLElement *fileNode = listNode ? listNode->FirstChildElement("file") : nullptr;
+                 fileNode != nullptr; fileNode = fileNode->NextSiblingElement("file")) {
+                const char *text = fileNode->GetText();
+                if (text && files_set.count(std::string(text))) {
+                    const std::string fname = SystemToolkit::filename(text);
+                    const std::string newpath = dest + PATH_SEP + fname;
+                    fileNode->SetText(newpath.c_str());
+                    fileNode->SetAttribute("relative", fname.c_str());
+                }
+            }
+        }
+        else if (type == "MediaSource") {
             // <uri relative="...">absolute_path</uri>
             XMLElement *uriNode = sourceNode->FirstChildElement("uri");
             if (uriNode) {

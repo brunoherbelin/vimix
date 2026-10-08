@@ -36,6 +36,10 @@ struct TranscoderOptions {
     bool force_keyframes;         ///< Force keyframe at every second (for easier seeking/editing)
     bool force_no_audio;          ///< Force removal of audio stream (create video-only output)
     std::string upscaler;         ///< Name of an UpscalerModel; Upscaler::NONE for no upscaling
+    bool stream_copy;             ///< Copy video and audio streams without re-encoding (Matroska output)
+    guint width, height;          ///< Output frame size, letterboxed (0 to keep the source size)
+    guint framerate_n, framerate_d; ///< Output framerate (0 to keep the source framerate)
+    GstClockTime begin, end;      ///< Range of the source to transcode (GST_CLOCK_TIME_NONE for start / end)
 
     /**
      * @brief Options to transcode a video, with sensible defaults
@@ -48,6 +52,10 @@ struct TranscoderOptions {
         , force_keyframes(keyframes)
         , force_no_audio(no_audio)
         , upscaler(upscaler)
+        , stream_copy(false)
+        , width(0), height(0)
+        , framerate_n(0), framerate_d(1)
+        , begin(GST_CLOCK_TIME_NONE), end(GST_CLOCK_TIME_NONE)
     {}
 
     /**
@@ -59,6 +67,10 @@ struct TranscoderOptions {
         , force_keyframes(false)
         , force_no_audio(true)
         , upscaler(upscaler)
+        , stream_copy(false)
+        , width(0), height(0)
+        , framerate_n(0), framerate_d(1)
+        , begin(GST_CLOCK_TIME_NONE), end(GST_CLOCK_TIME_NONE)
     {}
 
     /**
@@ -212,6 +224,18 @@ private:
     void setError(const std::string &message);
     void setStatus(const std::string &message);
 
+    // Stream copy: parsebin -> matroskamux, branches linked when pads appear
+    bool startCopy(const std::string &src_filename, bool has_audio);
+    static void callback_copy_pad_added(GstElement *, GstPad *pad, gpointer user_data);
+    static GstPadProbeReturn callback_copy_check_pts(GstPad *, GstPadProbeInfo *info, gpointer user_data);
+
+    // Range: buffers are dropped at the entry of each branch until the seek
+    // to the range has flushed it, so muxer and encoders only see the range
+    bool hasRange() const;
+    void addRangeProbe(GstPad *sinkpad);
+    bool applyRange(bool accurate);
+    static GstPadProbeReturn callback_range_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data);
+
     std::string input_filename_;
     std::string output_filename_;
 
@@ -237,36 +261,64 @@ private:
     std::string decode_desc_;     // source -> RGB frames, built in start()
     std::string video_encoder_;   // encoder fragment for the profile, chosen in start()
     int upscale_factor_;          // 1 when not upscaling
+
+    // range of the source to transcode
+    GstClockTime range_begin_;
+    GstClockTime range_end_;
+    std::atomic<bool> range_ready_;
+    bool range_by_eos_;           // end of range by EOS in the branches (no clipping of last frame)
+    GstPad *range_pad_;           // pad upstream of a branch, where to send the seek
+    std::mutex range_mutex_;
+
+    // stream copy
+    GstElement *copy_mux_;
+    bool copy_audio_;
+    std::atomic<bool> copy_failed_;
 };
 
 /**
- * @brief Transcoder of a sequence of still images
+ * @brief Transcoder of a sequence of still images or videos
  *
- * Re-encodes every image of a list to one of GstToolkit's image formats,
- * optionally upscaled, into a new folder created next to the images: the
- * files keep their name, with the extension of the new format. The images
- * are transcoded one after the other by a Transcoder, in a worker thread.
+ * With options for a still image, re-encodes every image of a list to one of
+ * GstToolkit's image formats, optionally upscaled, into a new folder created
+ * next to the images: the files keep their name, with the extension of the
+ * new format.
  *
- * Driven like a Transcoder: start(), then poll finished() / progress().
+ * With options for a video, re-encodes (or copies) a list of videos, or a
+ * list of time ranges of one video, into a folder of consecutively numbered
+ * video files (name_00001.mov, ...), e.g. to be played by a SplitMediaSource.
+ *
+ * The items are transcoded one after the other by a Transcoder, in a worker
+ * thread. Driven like a Transcoder: start(), then poll finished() / progress().
  */
 class SequenceTranscoder
 {
 public:
     /**
      * @brief Construct a new SequenceTranscoder
-     * @param input_files Paths of the images, in the order of the sequence
+     * @param input_files Paths of the images or videos, in the order of the sequence
      */
     SequenceTranscoder(const std::list<std::string>& input_files);
+    /**
+     * @brief Construct a new SequenceTranscoder of ranges of a video
+     * @param input_file Path of the video
+     * @param ranges List of [begin, end] time ranges, in the order of the sequence
+     */
+    SequenceTranscoder(const std::string& input_file,
+                       const std::list< std::pair<GstClockTime, GstClockTime> >& ranges);
     ~SequenceTranscoder();
 
     /**
-     * @brief Start transcoding, with options for a still image
+     * @brief Start transcoding
+     * @param options Options for a still image, or for a video
+     * @param output_folder Folder of video files (created if needed);
+     *        empty for a new folder next to the input files
      * @return true if started, false if options or files are not valid
      */
-    bool start(const TranscoderOptions& options);
+    bool start(const TranscoderOptions& options, const std::string &output_folder = "");
 
     /**
-     * @brief Stop transcoding, and remove the output folder
+     * @brief Stop transcoding, and remove the files produced
      */
     void stop();
 
@@ -277,19 +329,23 @@ public:
     std::string status() const;
 
     /**
-     * @brief Folder of the transcoded images
+     * @brief Folder of the transcoded images or videos
      */
     const std::string& outputFolder() const { return output_folder_; }
 
     /**
-     * @brief Paths of the transcoded images; complete once success()
+     * @brief Paths of the transcoded images or videos; complete once success()
      */
     std::list<std::string> outputFiles() const;
 
 private:
     void run(TranscoderOptions options);
 
-    std::list<std::string> input_files_;
+    struct Item {
+        std::string file;
+        GstClockTime begin, end;
+    };
+    std::list<Item> input_;
     std::string output_folder_;
 
     // written by the worker thread, read by the UI thread

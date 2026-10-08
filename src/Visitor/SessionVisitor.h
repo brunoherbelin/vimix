@@ -59,6 +59,7 @@ public:
     // Sources
     void visit (Source& s) override;
     void visit (MediaSource& s) override;
+    void visit (SplitMediaSource& s) override;
     void visit (StreamSource& s) override;
     void visit (SessionFileSource& s) override;
     void visit (SessionGroupSource& s) override;

@@ -128,6 +128,14 @@ Transcoder::Transcoder(const std::string& input_filename, const std::string& out
     , duration_(-1)
     , position_(0)
     , upscale_factor_(1)
+    , range_begin_(GST_CLOCK_TIME_NONE)
+    , range_end_(GST_CLOCK_TIME_NONE)
+    , range_ready_(false)
+    , range_by_eos_(false)
+    , range_pad_(nullptr)
+    , copy_mux_(nullptr)
+    , copy_audio_(false)
+    , copy_failed_(false)
 {
     // Unless given, output filename will be generated in start() based on options
 }
@@ -148,6 +156,14 @@ Transcoder::~Transcoder()
     if (bus_) {
         gst_object_unref(bus_);
         bus_ = nullptr;
+    }
+    if (range_pad_) {
+        gst_object_unref(range_pad_);
+        range_pad_ = nullptr;
+    }
+    if (copy_mux_) {
+        gst_object_unref(copy_mux_);
+        copy_mux_ = nullptr;
     }
 }
 
@@ -214,7 +230,9 @@ std::string Transcoder::generateOutputFilename(const std::string& input, const T
         suffix += "_upscaled_x" + std::to_string(factor);
     // keyframes and audio do not apply to a still image
     if (!options.isImage()) {
-        if (options.force_keyframes)
+        if (options.stream_copy)
+            suffix += "_copy";
+        else if (options.force_keyframes)
             suffix += "_bidir";
         if (options.force_no_audio)
             suffix += "_noaudio";
@@ -226,6 +244,8 @@ std::string Transcoder::generateOutputFilename(const std::string& input, const T
     std::string extension;
     if (options.isImage())
         extension = GstToolkit::imageFileExtension(options.format());
+    else if (options.stream_copy)
+        extension = "mkv";
     else
         extension = (options.profile() == GstToolkit::VPX_RT) ? "webm" : "mov";
 
@@ -248,7 +268,13 @@ bool Transcoder::start(const TranscoderOptions& options)
     }
 
     is_still_image_ = options.isImage();
-    is_image_sequence_ = !is_still_image_ && options.profile() == GstToolkit::JPEG_MULTI;
+    is_image_sequence_ = !is_still_image_ && !options.stream_copy && options.profile() == GstToolkit::JPEG_MULTI;
+
+    // range of the source to transcode (not for a still image)
+    if (!is_still_image_) {
+        range_begin_ = options.begin;
+        range_end_ = options.end;
+    }
 
     // Resolve the upscaling model: an unknown name, or a build without the
     // ncnn Vulkan backend, simply means no upscaling
@@ -330,11 +356,19 @@ bool Transcoder::start(const TranscoderOptions& options)
 
     g_object_unref(discoverer);
 
+    // Stream copy: no decoding, no encoding
+    if (!is_still_image_ && options.stream_copy) {
+        g_free(src_uri);
+        return startCopy(input_filename_, has_audio && !options.force_no_audio);
+    }
+
     // Upscaling multiplies the frame size: everything downstream (the
     // resolution check, the keyframe interval, the encoder caps) works on
     // the size of the frames actually handed to the encoder
-    const int frame_out_width = (int) frame_width * upscale_factor_;
-    const int frame_out_height = (int) frame_height * upscale_factor_;
+    // Rescaling to a given output size (not when upscaling)
+    const bool rescale = !is_still_image_ && upscale_factor_ == 1 && options.width > 0 && options.height > 0;
+    const int frame_out_width = rescale ? (int) options.width : (int) frame_width * upscale_factor_;
+    const int frame_out_height = rescale ? (int) options.height : (int) frame_height * upscale_factor_;
 
     // A still format can only hold one frame: refuse to silently turn a video
     // into its first frame, which is never what the user meant
@@ -457,10 +491,26 @@ bool Transcoder::start(const TranscoderOptions& options)
     description += "\" name=dec ";
     g_free(src_uri);
 
-    description += "dec. ! queue ! ";
+    description += "dec. ! queue name=vq ! ";
     if (source_interlaced)
         description += "deinterlace method=2 ! ";
-    description += "videoconvert ! videoscale ! ";
+    description += "videoconvert ! ";
+    // change framerate and / or size (letterboxed) if requested
+    // videorate ensures regular timestamps: sources with missing frames (variable
+    // framerate) otherwise lead the parser to drop PTS, and the muxer to fail
+    const bool reframe = !is_still_image_ && options.framerate_n > 0 && options.framerate_d > 0;
+    if (!is_still_image_)
+        description += "videorate name=rate ! ";
+    description += "videoscale ! ";
+    if (rescale || reframe) {
+        description += "video/x-raw";
+        if (rescale)
+            description += ",width=" + std::to_string(frame_out_width) + ",height=" + std::to_string(frame_out_height)
+                         + ",pixel-aspect-ratio=1/1";
+        if (reframe)
+            description += ",framerate=" + std::to_string(options.framerate_n) + "/" + std::to_string(options.framerate_d);
+        description += " ! ";
+    }
     description += video_encoder;
 
     if (is_still_image_) {
@@ -479,7 +529,7 @@ bool Transcoder::start(const TranscoderOptions& options)
         description += " name=mux ! filesink name=sink location=\"" + output_filename_ + "\" ";
 
         if (has_audio && !options.force_no_audio) {
-            description += "dec. ! queue ! audioconvert ! audioresample ! ";
+            description += "dec. ! queue name=aq ! audioconvert ! audioresample ! ";
             if (options.profile() == GstToolkit::VPX_RT)
                 description += "opusenc ! opusparse ! queue ! mux. ";
             else
@@ -518,6 +568,32 @@ bool Transcoder::start(const TranscoderOptions& options)
         }
     }
 
+    // videorate should not duplicate the last frame (up to 1 second by default) when
+    // the stream ends; property available since GStreamer 1.22
+    GstElement *rate = gst_bin_get_by_name(GST_BIN(pipeline_), "rate");
+    if (rate) {
+        if (g_object_class_find_property(G_OBJECT_GET_CLASS(rate), "max-closing-segment-duplication-duration"))
+            g_object_set(G_OBJECT(rate), "max-closing-segment-duplication-duration", (guint64) 0, NULL);
+        gst_object_unref(rate);
+    }
+
+    // Range: hold back the data entering each branch until the seek,
+    // and end each branch at the first buffer after the range: a stop position
+    // in the seek would clip the duration of the last frame, and the muxer
+    // would then not be able to tell the framerate from the frames durations
+    range_by_eos_ = true;
+    if (hasRange()) {
+        for (const char *name : {"vq", "aq"}) {
+            GstElement *queue = gst_bin_get_by_name(GST_BIN(pipeline_), name);
+            if (queue) {
+                GstPad *pad = gst_element_get_static_pad(queue, "sink");
+                addRangeProbe(pad);
+                gst_object_unref(pad);
+                gst_object_unref(queue);
+            }
+        }
+    }
+
     bus_ = gst_element_get_bus(pipeline_);
 
     GstStateChangeReturn ret = gst_element_set_state(pipeline_, GST_STATE_PLAYING);
@@ -527,8 +603,220 @@ bool Transcoder::start(const TranscoderOptions& options)
         return false;
     }
 
+    // seek to the exact range
+    if (hasRange() && !applyRange(true)) {
+        gst_element_set_state(pipeline_, GST_STATE_NULL);
+        removeIncompleteOutput();
+        return false;
+    }
+
     started_ = true;
     return true;
+}
+
+bool Transcoder::hasRange() const
+{
+    return GST_CLOCK_TIME_IS_VALID(range_begin_) || GST_CLOCK_TIME_IS_VALID(range_end_);
+}
+
+struct RangeProbe {
+    Transcoder *transcoder;
+    bool passing;
+    bool ended;
+};
+
+void Transcoder::addRangeProbe(GstPad *sinkpad)
+{
+    if (sinkpad)
+        gst_pad_add_probe(sinkpad, (GstPadProbeType) (GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_FLUSH),
+                          callback_range_probe, new RangeProbe({this, false, false}),
+                          [](gpointer data) { delete static_cast<RangeProbe *>(data); });
+}
+
+GstPadProbeReturn Transcoder::callback_range_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+    RangeProbe *probe = static_cast<RangeProbe *>(user_data);
+
+    if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER) {
+        Transcoder *t = probe->transcoder;
+
+        if (probe->passing) {
+            if (probe->ended)
+                return GST_PAD_PROBE_DROP;
+            // first buffer after the range: end this branch
+            // (upstream then receives EOS when pushing more)
+            GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+            if (t->range_by_eos_ && GST_CLOCK_TIME_IS_VALID(t->range_end_) &&
+                buffer && GST_BUFFER_PTS_IS_VALID(buffer) && GST_BUFFER_PTS(buffer) >= t->range_end_) {
+                probe->ended = true;
+                gst_pad_send_event(pad, gst_event_new_eos());
+                return GST_PAD_PROBE_DROP;
+            }
+            return GST_PAD_PROBE_OK;
+        }
+
+        // data flows: remember where to send the seek, and drop the buffer
+        {
+            std::lock_guard<std::mutex> lock(t->range_mutex_);
+            if (t->range_pad_ == nullptr)
+                t->range_pad_ = gst_pad_get_peer(pad);
+        }
+        t->range_ready_ = true;
+        return GST_PAD_PROBE_DROP;
+    }
+
+    // the seek flushed this branch: let the range pass
+    GstEvent *event = GST_PAD_PROBE_INFO_EVENT(info);
+    if (event && GST_EVENT_TYPE(event) == GST_EVENT_FLUSH_STOP)
+        probe->passing = true;
+
+    return GST_PAD_PROBE_OK;
+}
+
+bool Transcoder::applyRange(bool accurate)
+{
+    // wait for data to flow in the pipeline (buffers being dropped)
+    for (int t = 0; !range_ready_ && t < 2000; ++t) {
+        pollBus();
+        if (finished_)
+            return false;
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    GstPad *pad = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(range_mutex_);
+        if (range_pad_)
+            pad = GST_PAD(gst_object_ref(range_pad_));
+    }
+    if (!pad) {
+        setError("Cannot read the input file");
+        Log::Warning("Transcoder: no data to seek in %s", input_filename_.c_str());
+        return false;
+    }
+
+    // flushing seek upstream of the branch, to the begin and end of range
+    // (accurate when decoding, on keyframe before begin when copying streams)
+    GstSeekFlags flags = (GstSeekFlags) (GST_SEEK_FLAG_FLUSH |
+                         (accurate ? GST_SEEK_FLAG_ACCURATE : (GST_SEEK_FLAG_KEY_UNIT | GST_SEEK_FLAG_SNAP_BEFORE)));
+    // (without stop position when the end of range is done by EOS)
+    const bool stop = GST_CLOCK_TIME_IS_VALID(range_end_) && !range_by_eos_;
+    GstEvent *seek = gst_event_new_seek(1.0, GST_FORMAT_TIME, flags,
+                        GST_SEEK_TYPE_SET, GST_CLOCK_TIME_IS_VALID(range_begin_) ? range_begin_ : 0,
+                        stop ? GST_SEEK_TYPE_SET : GST_SEEK_TYPE_NONE,
+                        stop ? range_end_ : GST_CLOCK_TIME_NONE);
+    const bool done = gst_pad_send_event(pad, seek);
+    gst_object_unref(pad);
+
+    if (!done) {
+        setError("Cannot seek in the input file");
+        Log::Warning("Transcoder: failed to seek in %s", input_filename_.c_str());
+    }
+    return done;
+}
+
+bool Transcoder::startCopy(const std::string &src_filename, bool has_audio)
+{
+    Log::Info("Transcoder: Copying streams of '%s' to '%s'", src_filename.c_str(), output_filename_.c_str());
+
+    // pipeline: parsebin gives the (parsed) compressed streams, linked to the
+    // muxer when they appear. Matroska accepts virtually any codec.
+    std::string description = "filesrc location=\"" + src_filename + "\" ! parsebin name=dec "
+                              "matroskamux name=mux ! filesink name=sink location=\"" + output_filename_ + "\"";
+
+    GError *error = nullptr;
+    pipeline_ = gst_parse_launch(description.c_str(), &error);
+    if (error != nullptr) {
+        setError(std::string("Could not construct pipeline: ") + error->message);
+        Log::Warning("Transcoder: Could not construct pipeline: %s", error->message);
+        g_clear_error(&error);
+        return false;
+    }
+
+    copy_audio_ = has_audio;
+    range_by_eos_ = false;   // copy: no frame duration clipped, stop at end of range
+    copy_mux_ = gst_bin_get_by_name(GST_BIN(pipeline_), "mux");
+    GstElement *dec = gst_bin_get_by_name(GST_BIN(pipeline_), "dec");
+    g_signal_connect(dec, "pad-added", G_CALLBACK(callback_copy_pad_added), this);
+    gst_object_unref(dec);
+
+    bus_ = gst_element_get_bus(pipeline_);
+
+    GstStateChangeReturn ret = gst_element_set_state(pipeline_, GST_STATE_PLAYING);
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+        setError("Failed to start copy pipeline");
+        Log::Warning("Transcoder: Failed to start copy pipeline");
+        return false;
+    }
+
+    // seek to keyframe before range
+    if (hasRange() && !applyRange(false)) {
+        gst_element_set_state(pipeline_, GST_STATE_NULL);
+        removeIncompleteOutput();
+        return false;
+    }
+
+    started_ = true;
+    return true;
+}
+
+GstPadProbeReturn Transcoder::callback_copy_check_pts(GstPad *, GstPadProbeInfo *info, gpointer user_data)
+{
+    GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+    if (buffer && GST_BUFFER_PTS_IS_VALID(buffer))
+        return GST_PAD_PROBE_OK;
+
+    // stream without presentation timestamps (e.g. MPEG-4 ASP in AVI): the
+    // copy would be broken, fail with an error (once) and drop the buffer
+    Transcoder *t = static_cast<Transcoder *>(user_data);
+    if (!t->copy_failed_.exchange(true)) {
+        GError *error = g_error_new_literal(GST_STREAM_ERROR, GST_STREAM_ERROR_FORMAT,
+                        "Cannot copy a video without timestamps; encode it instead");
+        gst_element_post_message(t->pipeline_,
+                                 gst_message_new_error(GST_OBJECT(t->pipeline_), error, nullptr));
+        g_error_free(error);
+    }
+    return GST_PAD_PROBE_DROP;
+}
+
+void Transcoder::callback_copy_pad_added(GstElement *, GstPad *pad, gpointer user_data)
+{
+    Transcoder *t = static_cast<Transcoder *>(user_data);
+
+    // kind of stream
+    GstCaps *caps = gst_pad_get_current_caps(pad);
+    if (!caps)
+        caps = gst_pad_query_caps(pad, nullptr);
+    const gchar *name = gst_structure_get_name(gst_caps_get_structure(caps, 0));
+    const bool video = g_str_has_prefix(name, "video/") || g_str_has_prefix(name, "image/");
+    const bool audio = g_str_has_prefix(name, "audio/");
+    gst_caps_unref(caps);
+
+    // ignore other streams (e.g. subtitles), and audio if not wanted
+    if (!video && !(audio && t->copy_audio_))
+        return;
+
+    // branch: queue -> muxer
+    GstElement *queue = gst_element_factory_make("queue", nullptr);
+    gst_bin_add(GST_BIN(t->pipeline_), queue);
+    gst_element_sync_state_with_parent(queue);
+
+    GstPad *sinkpad = gst_element_get_static_pad(queue, "sink");
+    if (t->hasRange())
+        t->addRangeProbe(sinkpad);
+    gst_pad_link(pad, sinkpad);
+    gst_object_unref(sinkpad);
+
+    GstPad *muxpad = gst_element_request_pad_simple(t->copy_mux_, video ? "video_%u" : "audio_%u");
+    GstPad *srcpad = gst_element_get_static_pad(queue, "src");
+    if (muxpad == nullptr || gst_pad_link(srcpad, muxpad) != GST_PAD_LINK_OK)
+        Log::Warning("Transcoder: cannot copy stream %s", name);
+    // the muxer needs timestamps, which some containers do not give without decoding
+    if (video)
+        gst_pad_add_probe(srcpad, GST_PAD_PROBE_TYPE_BUFFER, callback_copy_check_pts, t, nullptr);
+    gst_object_unref(srcpad);
+    if (muxpad)
+        gst_object_unref(muxpad);
 }
 
 void Transcoder::pollBus()
@@ -560,6 +848,9 @@ void Transcoder::pollBus()
 
         if (finished_) {
             gst_element_set_state(pipeline_, GST_STATE_NULL);
+            // do not leave a broken file behind
+            if (!success_)
+                removeIncompleteOutput();
             break;
         }
     }
@@ -649,7 +940,11 @@ double Transcoder::progress()
     if (gst_element_query_position(pipeline_, GST_FORMAT_TIME, &pos) &&
         gst_element_query_duration(pipeline_, GST_FORMAT_TIME, &dur) &&
         dur > 0 && pos >= 0) {
-        return static_cast<double>(pos) / static_cast<double>(dur);
+        // progress within the range
+        const gint64 b = GST_CLOCK_TIME_IS_VALID(range_begin_) ? (gint64) range_begin_ : 0;
+        const gint64 e = GST_CLOCK_TIME_IS_VALID(range_end_) ? std::min((gint64) range_end_, dur) : dur;
+        if (e > b)
+            return std::clamp(static_cast<double>(pos - b) / static_cast<double>(e - b), 0.0, 1.0);
     }
 
     return 0.0;
@@ -952,13 +1247,26 @@ void Transcoder::runUpscale(TranscoderOptions options)
 //
 
 SequenceTranscoder::SequenceTranscoder(const std::list<std::string>& input_files)
-    : input_files_(input_files)
-    , progress_(0.0)
+    : progress_(0.0)
     , started_(false)
     , abort_(false)
     , finished_(false)
     , success_(false)
 {
+    for (const auto &f : input_files)
+        input_.push_back({f, GST_CLOCK_TIME_NONE, GST_CLOCK_TIME_NONE});
+}
+
+SequenceTranscoder::SequenceTranscoder(const std::string& input_file,
+                                       const std::list< std::pair<GstClockTime, GstClockTime> >& ranges)
+    : progress_(0.0)
+    , started_(false)
+    , abort_(false)
+    , finished_(false)
+    , success_(false)
+{
+    for (const auto &r : ranges)
+        input_.push_back({input_file, r.first, r.second});
 }
 
 SequenceTranscoder::~SequenceTranscoder()
@@ -968,41 +1276,52 @@ SequenceTranscoder::~SequenceTranscoder()
         worker_.join();
 }
 
-bool SequenceTranscoder::start(const TranscoderOptions& options)
+bool SequenceTranscoder::start(const TranscoderOptions& options, const std::string &output_folder)
 {
-    if (started_ || !options.isImage() || input_files_.empty()) {
+    if (started_ || input_.empty() || (!options.isImage() && options.profile() == GstToolkit::JPEG_MULTI)) {
         std::lock_guard<std::mutex> lock(mutex_);
         error_message_ = "Invalid sequence or options";
         return false;
     }
 
-    // New folder next to the images, named after them and the options,
-    // e.g. 'frames_webp' or 'frames_png_upscaled_x4'
-    const std::string &first = input_files_.front();
+    // Name of the sequence, from the first file without trailing numbers
+    const std::string &first = input_.front().file;
     std::string name = SystemToolkit::base_filename(first);
     while (!name.empty() && (isdigit(name.back()) || name.back() == '_' || name.back() == '-' || name.back() == '.'))
         name.pop_back();
     if (name.empty())
         name = "sequence";
-    name += std::string("_") + GstToolkit::imageFileExtension(options.format());
-    const int factor = Upscaler::model(options.upscaler).factor;
-    if (Upscaler::available() && factor > 1)
-        name += "_upscaled_x" + std::to_string(factor);
 
-    const std::string base = SystemToolkit::path_filename(first) + name;
-    output_folder_ = base;
-    for (int counter = 1; SystemToolkit::file_exists(output_folder_); ++counter)
-        output_folder_ = base + "_" + std::to_string(counter);
+    // Given folder, or new folder next to the input files, named after
+    // them and the options, e.g. 'frames_webp', 'frames_png_upscaled_x4' or 'clip_split'
+    if (!output_folder.empty())
+        output_folder_ = output_folder;
+    else {
+        if (options.isImage()) {
+            name += std::string("_") + GstToolkit::imageFileExtension(options.format());
+            const int factor = Upscaler::model(options.upscaler).factor;
+            if (Upscaler::available() && factor > 1)
+                name += "_upscaled_x" + std::to_string(factor);
+        }
+        else
+            name += "_split";
 
-    if (!SystemToolkit::create_directory(output_folder_)) {
+        const std::string base = SystemToolkit::path_filename(first) + name;
+        output_folder_ = base;
+        for (int counter = 1; SystemToolkit::file_exists(output_folder_); ++counter)
+            output_folder_ = base + "_" + std::to_string(counter);
+    }
+
+    if (!SystemToolkit::file_exists(output_folder_) && !SystemToolkit::create_directory(output_folder_)) {
         std::lock_guard<std::mutex> lock(mutex_);
         error_message_ = "Cannot create folder " + output_folder_;
         return false;
     }
 
-    Log::Info("Transcoder: Starting transcoding of %d images into '%s' (%s)",
-              (int) input_files_.size(), output_folder_.c_str(),
-              GstToolkit::image_name[options.format()]);
+    Log::Info("Transcoder: Starting transcoding of %d %s into '%s' (%s)",
+              (int) input_.size(), options.isImage() ? "images" : "videos", output_folder_.c_str(),
+              options.isImage() ? GstToolkit::image_name[options.format()]
+                                : options.stream_copy ? "copy" : GstToolkit::profile_name[options.profile()]);
 
     started_ = true;
     worker_ = std::thread(&SequenceTranscoder::run, this, options);
@@ -1011,17 +1330,39 @@ bool SequenceTranscoder::start(const TranscoderOptions& options)
 
 void SequenceTranscoder::run(TranscoderOptions options)
 {
-    const std::string extension = GstToolkit::imageFileExtension(options.format());
-    const size_t total = input_files_.size();
+    // extension of the new format (same container conventions as Transcoder)
+    const bool image = options.isImage();
+    const std::string extension = image ? GstToolkit::imageFileExtension(options.format())
+                                        : options.stream_copy ? "mkv"
+                                        : options.profile() == GstToolkit::VPX_RT ? "webm" : "mov";
+    // video files are numbered after the name of the folder
+    std::string name = SystemToolkit::base_filename(output_folder_);
+    if (name.size() > 6 && name.compare(name.size() - 6, 6, "_split") == 0)
+        name.resize(name.size() - 6);
+    const char *label = image ? " Image " : " Video ";
+    const size_t total = input_.size();
     size_t count = 0;
     std::string error;
 
-    for (const auto &input : input_files_) {
+    for (const auto &item : input_) {
+        const std::string &input = item.file;
 
-        // same name, extension of the new format
-        const std::string output = output_folder_ + "/" + SystemToolkit::base_filename(input) + "." + extension;
+        // images keep their name, with extension of the new format;
+        // videos are numbered consecutively
+        std::string output = output_folder_ + "/";
+        if (image)
+            output += SystemToolkit::base_filename(input) + "." + extension;
+        else {
+            char number[16];
+            snprintf(number, 16, "_%05d.", (int) count + 1);
+            output += name + number + extension;
+        }
 
-        // transcode this image, and wait for it to finish
+        // range of the video
+        options.begin = item.begin;
+        options.end = item.end;
+
+        // transcode this item, and wait for it to finish
         Transcoder transcoder(input, output);
         if (!transcoder.start(options))
             error = transcoder.error();
@@ -1035,7 +1376,7 @@ void SequenceTranscoder::run(TranscoderOptions options)
                 const std::string status = transcoder.status();
                 {
                     std::lock_guard<std::mutex> lock(mutex_);
-                    status_message_ = " Image " + std::to_string(count + 1) + " / " + std::to_string(total) +
+                    status_message_ = label + std::to_string(count + 1) + " / " + std::to_string(total) +
                                       (status.empty() ? "" : " -" + status);
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(20));
@@ -1052,16 +1393,19 @@ void SequenceTranscoder::run(TranscoderOptions options)
         progress_ = static_cast<double>(++count) / static_cast<double>(total);
     }
 
-    // incomplete: remove the folder and what it contains
+    // incomplete: remove the files produced (and the folder if left empty)
     if (abort_ || !error.empty()) {
         std::error_code ec;
-        std::filesystem::remove_all(output_folder_, ec);
         std::lock_guard<std::mutex> lock(mutex_);
+        for (const auto &f : output_files_)
+            std::filesystem::remove(f, ec);
+        std::filesystem::remove(output_folder_, ec);
         error_message_ = abort_ ? "Cancelled" : error;
         output_files_.clear();
     }
     else
-        Log::Info("Transcoder: transcoding of %d images into '%s' completed", (int) total, output_folder_.c_str());
+        Log::Info("Transcoder: transcoding of %d %s into '%s' completed", (int) total,
+                  image ? "images" : "videos", output_folder_.c_str());
 
     success_ = !abort_ && error.empty();
     finished_ = true;

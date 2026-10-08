@@ -33,6 +33,7 @@
 #include "Filter/DelayFilter.h"
 #include "Filter/ImageFilter.h"
 #include "Source/MediaSource.h"
+#include "Source/SplitMediaSource.h"
 #include "Source/SessionSource.h"
 #include "Source/StreamSource.h"
 #include "Source/PatternSource.h"
@@ -407,6 +408,8 @@ Source *SessionLoader::newSource(const std::string &type, uint64_t id)
 
     if ( type == "MediaSource")
         load_source = new MediaSource(id);
+    else if ( type == "SplitMediaSource")
+        load_source = new SplitMediaSource(id);
     else if ( type == "SessionSource")
         load_source = new SessionFileSource(id);
     else if ( type == "GroupSource")
@@ -683,6 +686,9 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
         if (pType) {
             if ( std::string(pType) == "MediaSource") {
                 load_source = new MediaSource(id__);
+            }
+            else if ( std::string(pType) == "SplitMediaSource") {
+                load_source = new SplitMediaSource(id__);
             }
             else if ( std::string(pType) == "SessionSource") {
                 load_source = new SessionFileSource(id__);
@@ -1217,8 +1223,37 @@ void SessionLoader::visit (Source& s)
 void SessionLoader::visit (MediaSource& s)
 {
     bool freshload = false;
+    // set list of files of a split media
+    SplitMediaSource *sms = dynamic_cast<SplitMediaSource *>(&s);
+    if (sms) {
+        std::list<std::string> files;
+        XMLElement* listNode = xmlCurrent_->FirstChildElement("SplitFiles");
+        if (listNode) {
+            for (XMLElement* fileNode = listNode->FirstChildElement("file"); fileNode;
+                 fileNode = fileNode->NextSiblingElement("file")) {
+                const char * text = fileNode->GetText();
+                if (!text)
+                    continue;
+                std::string path(text);
+                if ( !SystemToolkit::file_exists(path)){
+                    const char * relative;
+                    if ( fileNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
+                        std::string rel = SystemToolkit::path_absolute_from_path(std::string( relative ), sessionFilePath_);
+                        Log::Info("File %s not found; Trying %s instead.", path.c_str(), rel.c_str());
+                        path = rel;
+                    }
+                }
+                files.push_back(path);
+            }
+        }
+        // load only new list of files
+        if ( files.empty() || files != sms->files() ) {
+            sms->setFiles(files);
+            freshload = true;
+        }
+    }
     // set uri
-    XMLElement* pathNode = xmlCurrent_->FirstChildElement("uri"); // TODO change to "path" but keep backward compatibility
+    XMLElement* pathNode = sms ? nullptr : xmlCurrent_->FirstChildElement("uri"); // TODO change to "path" but keep backward compatibility
     if (pathNode) {
         const char * text = pathNode->GetText();
         if (text) {
