@@ -65,7 +65,7 @@ void NewSourcePanel::clearNewPannel()
     pattern_type = -1;
     generated_type = -1;
     custom_type = -1;
-    sourceSequenceFiles.clear();
+    sourceImageFiles.clear();
     sourceVideoFiles.clear();
     sourceMediaFileCurrent.clear();
     new_media_mode_changed = true;
@@ -384,31 +384,18 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             ImGui::SetCursorPos(pos_bot);
 
         }
-        // Sequence Source creator
+        // Multi-file Source creator
         else if (Settings::application.source.new_type == SOURCE_MULTIFILE){
 
             static DialogToolkit::OpenManyFilesDialog _selectFilesDialog("Select multiple images or videos",
                                                                          MEDIA_FILES_TYPE,
                                                                          MEDIA_FILES_PATTERN);
-            static MultiFileSequence _numbered_sequence;
-            static MultiFileRifeEncoder _rife_encoder;
-            // static int codec_id = -1;
-
-            // sequence of videos: discovery of all files, and transcoding if needed
-            struct VideoSequenceInfo {
-                MediaInfo split;                // info of the concatenated videos (invalid if not compatible)
-                std::vector<MediaInfo> files;   // info of each video
-            };
-            static std::future<VideoSequenceInfo> _video_discovery;
-            static VideoSequenceInfo _video_info;
-            static std::unique_ptr<SequenceTranscoder> _video_transcoder;
-            static int _video_profile = GstToolkit::H264_RT;
 
             ImGui::Text("Image or video sequence");
 
             // clic button to load file
             if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open multiple", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
-                sourceSequenceFiles.clear();
+                sourceImageFiles.clear();
                 sourceVideoFiles.clear();
                 new_source_preview_.setSource();
                 _selectFilesDialog.open();
@@ -424,437 +411,54 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                                      ICON_FA_CARET_RIGHT " convert videos to the same format");
 
             // return from thread for folder openning
+            bool new_selection = false;
             if (_selectFilesDialog.closed()) {
                 // clear
                 new_source_preview_.setSource();
+                sourceImageFiles.clear();
                 sourceVideoFiles.clear();
-                // store list of files from dialog
-                sourceSequenceFiles = _selectFilesDialog.files();
-                if (sourceSequenceFiles.empty())
+                // list of files from dialog
+                std::list<std::string> files = _selectFilesDialog.files();
+                if (files.empty())
                     Log::Notify("No file selected.");
-
+                // single file selected: open it as source
+                else if (files.size() == 1) {
+                    std::string label = BaseToolkit::transliterate( files.front() );
+                    new_source_preview_.setSource( Mixer::manager().createSourceFile(files.front()), label);
+                }
                 // sort images and videos
-                if (sourceSequenceFiles.size() > 1) {
+                else {
                     static const std::vector<std::string> image_ext = { "jpg", "jpeg", "png", "webp", "bmp",
                                                                         "ppm", "gif", "tif", "tiff", "svg" };
-                    size_t num_images = 0, num_videos = 0;
-                    for (const auto &f : sourceSequenceFiles) {
+                    size_t num_others = 0;
+                    for (const auto &f : files) {
                         if (std::any_of(image_ext.begin(), image_ext.end(),
                                         [&f](const std::string &e) { return SystemToolkit::has_extension(f, e); }))
-                            ++num_images;
+                            sourceImageFiles.push_back(f);
                         else if (!SystemToolkit::has_extension(f, VIMIX_FILE_EXT))
-                            ++num_videos;
+                            sourceVideoFiles.push_back(f);
+                        else
+                            ++num_others;
                     }
-                    // a sequence of videos
-                    if (num_videos == sourceSequenceFiles.size()) {
-                        sourceVideoFiles = sourceSequenceFiles;
-                        sourceVideoFiles.sort();
-                        sourceSequenceFiles.clear();
-                        _video_info = VideoSequenceInfo();
-                        _video_discovery = std::async(std::launch::async, [](std::list<std::string> files) {
-                            VideoSequenceInfo info;
-                            for (const auto &f : files)
-                                info.files.push_back( MediaPlayer::UriDiscoverer( GstToolkit::filename_to_uri(f) ) );
-                            info.split = SplitMediaPlayer::SplitMediaInfo(files, info.files);
-                            return info;
-                        }, sourceVideoFiles);
-                    }
-                    // anything else than a sequence of images
-                    else if (num_images != sourceSequenceFiles.size()) {
+                    // either only images or only videos
+                    if ( num_others > 0 || (!sourceImageFiles.empty() && !sourceVideoFiles.empty()) ) {
                         Log::Notify("Select either only images or only videos.");
-                        sourceSequenceFiles.clear();
-                    }
-                }
-
-                // set sequence
-                _numbered_sequence = MultiFileSequence(sourceSequenceFiles);
-
-                // automatically create a MultiFile Source if possible
-                const bool images = sourceVideoFiles.empty();
-                if (images && _numbered_sequence.valid() && Settings::application.image_sequence.profile < 0) {
-                    // propose image sequence if requested and possible
-                    // show source preview available if possible
-                    std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
-                    new_source_preview_
-                        .setSource(Mixer::manager().createSourceMultifile(sourceSequenceFiles,
-                                                                          Settings::application.image_sequence.framerate_mode),
-                                   label);
-                } 
-                else if (images && Settings::application.image_sequence.profile < 0)
-                    Settings::application.image_sequence.profile = 0; // default to H264 video encoding
-            }
-
-            // multiple files selected
-            if (sourceSequenceFiles.size() > 1) {
-
-                ImGui::Spacing();
-
-                // encoding is done at the resolution of the images, rounded even
-                const int sequence_width = (int) (_numbered_sequence.width & ~1);
-                const int sequence_height = (int) (_numbered_sequence.height & ~1);
-
-                // show info sequence
-                ImGuiTextBuffer info;
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-                info.appendf("%d %s (%d x %d)", 
-                    (int) sourceSequenceFiles.size(), 
-                    _numbered_sequence.codec.c_str(),
-                    sequence_width,
-                    sequence_height);
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::InputText("##SequenceSelection", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
-                ImGui::PopStyleColor(1);
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                if (ImGuiToolkit::TextButton("Selection")) {
-                    sourceSequenceFiles.clear();
-                    new_source_preview_.setSource();
-                    _numbered_sequence = MultiFileSequence();
-                }
-
-                // encoding profile validation; ensure it supports the resolution of the images
-                if (Settings::application.image_sequence.profile >= 0)
-                    ValidateCodecResolution(&Settings::application.image_sequence.profile,
-                                            sequence_width, sequence_height);
-
-                // select CODEC: decide for gst sequence (codec_id = -1) or encoding a video
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                std::string codec_current = Settings::application.image_sequence.profile < 0 ? ICON_FA_SORT_NUMERIC_DOWN "  Image sequence"
-                                                         : Settings::application.image_sequence.profile < GstToolkit::JPEG_MULTI ? 
-                                                          std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[Settings::application.image_sequence.profile]
-                                                          : std::string(ICON_FA_IMAGES " ") + GstToolkit::profile_name[GstToolkit::JPEG_MULTI ];
-                if (ImGui::BeginCombo("##CodecSequence", codec_current.c_str(), ImGuiComboFlags_HeightLarge)) {
-                    // special case; if possible, offer to create an image sequence gst source
-                    if (ImGui::Selectable( ICON_FA_SORT_NUMERIC_DOWN "  Image sequence",
-                                          Settings::application.image_sequence.profile < 0,
-                                          _numbered_sequence.valid()
-                                              ? ImGuiSelectableFlags_None
-                                              : ImGuiSelectableFlags_Disabled)) {
-                        // select id of image sequence
-                        Settings::application.image_sequence.profile = -1;
-                        // Open source preview for image sequence
-                        if (_numbered_sequence.valid()) {
-                            std::string label = BaseToolkit::transliterate(
-                                BaseToolkit::common_pattern(sourceSequenceFiles));
-                            new_source_preview_
-                                .setSource(Mixer::manager().createSourceMultifile(
-                                               sourceSequenceFiles,
-                                               Settings::application.image_sequence.framerate_mode),
-                                           label);
-                        }
-                    }
-                    // offer to encode as an image sequence
-                    {
-                        std::string label = std::string(ICON_FA_IMAGES " ") + GstToolkit::profile_name[GstToolkit::JPEG_MULTI];
-                        const bool supported = GstToolkit::supportsResolution(GstToolkit::JPEG_MULTI,
-                                                                             sequence_width, sequence_height,
-                                                                             Settings::application.render.gpu_decoding);
-                        if (ImGui::Selectable(label.c_str(), Settings::application.image_sequence.profile == GstToolkit::JPEG_MULTI,
-                                              supported ? ImGuiSelectableFlags_None : ImGuiSelectableFlags_Disabled)) {
-                            // select multi-image encoding (jpeg) for image sequence
-                            Settings::application.image_sequence.profile = GstToolkit::JPEG_MULTI;
-                            // close source preview (no image sequence)
-                            new_source_preview_.setSource();
-                        }
-                        if (!supported && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                            ImGuiToolkit::ToolTip( GstToolkit::unsupportedResolution(GstToolkit::JPEG_MULTI,
-                                                   sequence_width, sequence_height,
-                                                   Settings::application.render.gpu_decoding).c_str() );
-                    }
-                    // offer to encode as a video
-                    for (int i = GstToolkit::H264_RT; i < GstToolkit::JPEG_MULTI; ++i) {
-                        std::string label = std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[i];
-                        const bool supported = GstToolkit::supportsResolution((GstToolkit::Profile) i,
-                                                                             sequence_width, sequence_height,
-                                                                             Settings::application.render.gpu_decoding);
-                        if (ImGui::Selectable(label.c_str(), Settings::application.image_sequence.profile == i,
-                                              supported ? ImGuiSelectableFlags_None : ImGuiSelectableFlags_Disabled)) {
-                            // select id of video encoding codec
-                            Settings::application.image_sequence.profile = i;
-                            // close source preview (no image sequence)
-                            new_source_preview_.setSource();
-                        }
-                        if (!supported && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                            ImGuiToolkit::ToolTip( GstToolkit::unsupportedResolution((GstToolkit::Profile) i,
-                                                   sequence_width, sequence_height,
-                                                   Settings::application.render.gpu_decoding).c_str() );
-                    }
-                    ImGui::EndCombo();
-                }
-                // Indication
-                ImGui::SameLine();
-                ImGuiToolkit::HelpToolTip(ICON_FA_SORT_NUMERIC_DOWN " Create an image sequence from the selected images; "
-                                              "possible only if the selected images are numbered consecutively.\n\n"
-                                              ICON_FA_IMAGES " Convert to a sequence of consecutively numbered JPEG images.\n\n"
-                                              ICON_FA_FILM " Encode a video with the selected images and create a video source.");
-
-                // set framerate
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::SliderInt("##SequenceFramerate", &Settings::application.image_sequence.framerate_mode, 1, 30, "%d fps");
-                if (ImGui::IsItemDeactivatedAfterEdit()){
-                    if (new_source_preview_.filled()) {
-                        std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
-                        new_source_preview_
-                            .setSource(Mixer::manager().createSourceMultifile(
-                                           sourceSequenceFiles,
-                                           Settings::application.image_sequence.framerate_mode),
-                                       label);
-                    }
-                }
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                if (ImGuiToolkit::TextButton("Framerate")) {
-                    Settings::application.image_sequence.framerate_mode = 25;
-                }
-
-                // if video encoding codec selected
-                if ( Settings::application.image_sequence.profile >= 0 )
-                {
-
-#if defined(HAVE_NCNN) || defined(HAVE_ONNX)
-                    // set number of intermediate frames to generate between each image (for video encoding)
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    // slider position num maps to 2^num -1 intermediate frames;
-                    // restore it from the saved value with the inverse (log2)
-                    static int num = CLAMP( (int) log2f(
-                        (float) Settings::application.image_sequence.buffering_mode + 1.f), 0, 5);
-                    Settings::application.image_sequence.buffering_mode = pow(2, num)-1;
-                    char buf[64];
-                    ImFormatString(buf, IM_ARRAYSIZE(buf), "%d  intermediate frames", 
-                                    Settings::application.image_sequence.buffering_mode);
-                    ImGui::SliderInt("##Interpolate", &num, 0, 5, buf);
-                    ImGui::SameLine();
-#if defined(HAVE_NCNN)
-                    ImGuiToolkit::Indication("Use Real-time Intermediate Flow Estimation (RIFE), an AI-based "
-                                            "algorithm to generates smooth intermediate frames, "
-                                            "powered by NCNN backend on GPU (Vulkan).\n\n"
-                                            ICON_FA_MINUS_CIRCLE "  Set to 0 to disable interpolation.\n",
-                                            ICON_FA_MAGIC);
-#else
-                    ImGuiToolkit::Indication("Use Real-time Intermediate Flow Estimation (RIFE), an AI-based "
-                                            "algorithm to generates smooth intermediate frames, "
-                                            "powered by ONNX backend on CPU.\n\n"
-                                            ICON_FA_MINUS_CIRCLE "  Set to 0 to disable interpolation.\n",
-                                            ICON_FA_MAGIC);
-#endif
-#endif
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::Combo("##SequenceLoop", &Settings::application.image_sequence.priority_mode, 
-                        "None\0Rewind\0Mirror\0");
-                    ImGui::SameLine(0, IMGUI_SAME_LINE);
-                    if (ImGuiToolkit::TextButton("Loop")) {
-                        Settings::application.image_sequence.priority_mode = 0;
-                    }
-                    // Offer to create video from sequence
-                    ImGui::NewLine();
-                    if ( ImGui::Button( ICON_FA_CHECK "  Encode", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
-                        RifeOptions options;
-                        options.loop = Settings::application.image_sequence.priority_mode;
-                        options.fps = Settings::application.image_sequence.framerate_mode;
-                        options.mid = Settings::application.image_sequence.buffering_mode;
-                        options.profile = (GstToolkit::Profile) Settings::application.image_sequence.profile;
-                        _rife_encoder.setFiles( sourceSequenceFiles );
-                        _rife_encoder.start(options);
-                        // open dialog
-                        ImGui::OpenPopup(LABEL_VIDEO_SEQUENCE);
-                    }
-                }
-
-                // video recorder finished: inform and open pannel to import video source from recent recordings
-                if ( _rife_encoder.finished() ) {
-
-                    // reset encoder to be ready for next encoding
-                    _rife_encoder.reset();
-
-                    // video recorder failed if it does not return a valid filename
-                    if ( !_rife_encoder.success() || _rife_encoder.filename().empty() )
-                        Log::Warning("Failed to generate an image sequence (%s).", _rife_encoder.message().c_str() );
-                    // JPEG_MULTI produced a folder of numbered images, not a video file
-                    else if (Settings::application.image_sequence.profile == GstToolkit::JPEG_MULTI) {
-
-                        sourceSequenceFiles = SystemToolkit::list_directory(_rife_encoder.filename(), {"*.jpg", "*.jpeg", "*.png"});
-                        _numbered_sequence = MultiFileSequence(sourceSequenceFiles);
-
-                        if (_numbered_sequence.valid()) {
-                            // propose image sequence if possible
-                            // show source preview available if possible
-                            std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceSequenceFiles) );
-                            new_source_preview_
-                                .setSource(Mixer::manager().createSourceMultifile(sourceSequenceFiles,
-                                                                                Settings::application.image_sequence.framerate_mode),
-                                        label);
-                            // select id of image sequence
-                            Settings::application.image_sequence.profile = -1;
-                        } 
-
+                        sourceImageFiles.clear();
+                        sourceVideoFiles.clear();
                     }
                     else {
-
-                        // save path location if valid
-                        std::string uri = GstToolkit::filename_to_uri(_rife_encoder.filename());
-                        MediaInfo media = MediaPlayer::UriDiscoverer(uri);
-                        if (media.valid && !media.isimage)
-                            Settings::application.recentRecordings.push(_rife_encoder.filename());
-                        else
-                            Settings::application.recentRecordings.remove(_rife_encoder.filename());
-
-                        Log::Notify("Image sequence saved to %s.", _rife_encoder.filename().c_str());
-                        // open the file as new recording
-                        setNewMedia(Navigator::MEDIA_RECORDING, _rife_encoder.filename());
+                        sourceVideoFiles.sort();
+                        new_selection = true;
                     }
-                }
-                else if (ImGui::BeginPopupModal(LABEL_VIDEO_SEQUENCE, NULL, ImGuiWindowFlags_NoResize))
-                {
-                    ImGui::Spacing();
-                    ImGui::Text("Please wait while the video is being encoded :             \n");
-                    ImGui::Text("%s\n", _rife_encoder.message().c_str());
-
-                    ImGui::Text("Framerate :");ImGui::SameLine(150);
-                    ImGui::Text("%d fps", Settings::application.image_sequence.framerate_mode );
-                    ImGui::Text("Codec :");ImGui::SameLine(150);
-                    ImGui::Text("%s", GstToolkit::profile_name[ Settings::application.image_sequence.profile ] );
-                    ImGui::Text("Frames :");ImGui::SameLine(150);
-                    ImGui::Text("%lu (%lu key frames)", (unsigned long)_rife_encoder.numFrames(), (unsigned long)_rife_encoder.files().size() ) ;
-
-                    ImGui::Spacing();
-                    ImGui::ProgressBar(_rife_encoder.progress());
-
-                    ImGui::Spacing();
-                    ImGui::Spacing();
-                    if (ImGui::Button(ICON_FA_TIMES " Cancel",ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-                        _rife_encoder.stop();
-
-                    ImGui::EndPopup();
                 }
             }
-            // multiple videos selected
-            else if (!sourceVideoFiles.empty()) {
 
-                ImGui::Spacing();
-
-                // discovery of the videos ongoing
-                if (_video_discovery.valid()) {
-                    if (_video_discovery.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
-                        _video_info = _video_discovery.get();
-                        // compatible videos: show preview of the split media source
-                        if (_video_info.split.valid) {
-                            std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceVideoFiles) );
-                            new_source_preview_.setSource( Mixer::manager().createSourceSplitMedia(sourceVideoFiles), label);
-                        }
-                    }
-                    else
-                        ImGui::Text("Analysing %d videos...", (int) sourceVideoFiles.size());
-                }
-                else {
-                    const MediaInfo &first = _video_info.files.empty() ? _video_info.split : _video_info.files.front();
-
-                    // show info sequence
-                    ImGuiTextBuffer info;
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-                    if (_video_info.split.valid)
-                        info.appendf("%d videos, %s", (int) sourceVideoFiles.size(),
-                                     GstToolkit::time_to_string(_video_info.split.end, GstToolkit::TIME_STRING_READABLE).c_str());
-                    else
-                        info.appendf("%d videos", (int) sourceVideoFiles.size());
-                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    ImGui::InputText("##VideoSelection", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
-                    ImGui::PopStyleColor(1);
-                    ImGui::SameLine(0, IMGUI_SAME_LINE);
-                    if (ImGuiToolkit::TextButton("Selection")) {
-                        sourceVideoFiles.clear();
-                        new_source_preview_.setSource();
-                        _video_info = VideoSequenceInfo();
-                    }
-
-                    // videos are not compatible: offer to transcode them
-                    if (!sourceVideoFiles.empty() && !_video_info.split.valid) {
-
-                        // audio is kept only if all videos have audio
-                        const bool all_audio = !_video_info.files.empty() &&
-                            std::all_of(_video_info.files.begin(), _video_info.files.end(),
-                                        [](const MediaInfo &m) { return m.hasaudio; });
-                        // encoding is done at the resolution of the first video, rounded even
-                        const int width = (int) (first.width & ~1);
-                        const int height = (int) (first.height & ~1);
-
-                        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-                        ImGui::TextColored(ImVec4(IMGUI_COLOR_FAILED, 1.f), ICON_FA_EXCLAMATION_TRIANGLE " %s",
-                                           _video_info.split.log.c_str());
-                        ImGui::PopTextWrapPos();
-
-                        if (first.valid && !first.isimage) {
-                            ImGui::Spacing();
-                            ImGui::TextWrapped("Convert the videos to %d x %d, %.2f fps%s:",
-                                               width, height,
-                                               (float) first.framerate_n / (float) first.framerate_d,
-                                               all_audio ? "" : ", no audio");
-
-                            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                            ComboCodec("##CodecVideoSequence", &_video_profile, width, height);
-                            if (_video_profile == GstToolkit::JPEG_MULTI)
-                                _video_profile = GstToolkit::H264_RT;
-
-                            if ( ImGui::Button( ICON_FA_CHECK "  Convert", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
-                                TranscoderOptions options( (GstToolkit::Profile) _video_profile, true, !all_audio);
-                                options.width = width;
-                                options.height = height;
-                                options.framerate_n = first.framerate_n;
-                                options.framerate_d = first.framerate_d;
-                                _video_transcoder = std::make_unique<SequenceTranscoder>(sourceVideoFiles);
-                                if (_video_transcoder->start(options))
-                                    ImGui::OpenPopup(LABEL_VIDEO_CONVERT);
-                                else {
-                                    Log::Warning("Failed to convert videos (%s).", _video_transcoder->error().c_str());
-                                    _video_transcoder.reset();
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // transcoding finished: open the split media source with converted videos
-                if (_video_transcoder && _video_transcoder->finished()) {
-                    if (_video_transcoder->success()) {
-                        Log::Notify("Videos converted to %s.", _video_transcoder->outputFolder().c_str());
-                        sourceVideoFiles = _video_transcoder->outputFiles();
-                        _video_info = VideoSequenceInfo();
-                        _video_discovery = std::async(std::launch::async, [](std::list<std::string> files) {
-                            VideoSequenceInfo info;
-                            for (const auto &f : files)
-                                info.files.push_back( MediaPlayer::UriDiscoverer( GstToolkit::filename_to_uri(f) ) );
-                            info.split = SplitMediaPlayer::SplitMediaInfo(files, info.files);
-                            return info;
-                        }, sourceVideoFiles);
-                    }
-                    else
-                        Log::Warning("Failed to convert videos (%s).", _video_transcoder->error().c_str());
-                    _video_transcoder.reset();
-                }
-                else if (_video_transcoder && ImGui::BeginPopupModal(LABEL_VIDEO_CONVERT, NULL, ImGuiWindowFlags_NoResize))
-                {
-                    ImGui::Spacing();
-                    ImGui::Text("Please wait while the videos are being converted :      \n");
-                    ImGui::Text("%s\n", _video_transcoder->status().c_str());
-                    ImGui::Text("Codec :");ImGui::SameLine(150);
-                    ImGui::Text("%s", GstToolkit::profile_name[ _video_profile ] );
-
-                    ImGui::Spacing();
-                    ImGui::ProgressBar(_video_transcoder->progress());
-
-                    ImGui::Spacing();
-                    ImGui::Spacing();
-                    if (ImGui::Button(ICON_FA_TIMES " Cancel",ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-                        _video_transcoder->stop();
-
-                    ImGui::EndPopup();
-                }
-            }
-            // single file selected
-            else if (sourceSequenceFiles.size() > 0) {
-                // open image file as source
-                std::string label = BaseToolkit::transliterate( sourceSequenceFiles.front() );
-                new_source_preview_.setSource( Mixer::manager().createSourceFile(sourceSequenceFiles.front()), label);
-                // done with sequence
-                sourceSequenceFiles.clear();
-            }
+            // multiple image files selected
+            if (sourceImageFiles.size() > 1)
+                RenderImageSequence(new_selection);
+            // multiple video files selected
+            else if (sourceVideoFiles.size() > 1)
+                RenderVideoSequence(new_selection);
         }
         // Generated patterns Source creator
         else if (Settings::application.source.new_type == SOURCE_GENERATED){
@@ -1495,5 +1099,425 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
         }
 
         ImGui::End();
+    }
+}
+
+///
+/// Sequence of images: create a MultiFile source of numbered images, or encode
+/// a video (or numbered JPEG images) from the images, with RIFE interpolation
+///
+void NewSourcePanel::RenderImageSequence(bool new_selection)
+{
+    static MultiFileSequence _numbered_sequence;
+    static MultiFileRifeEncoder _rife_encoder;
+
+    // new list of images selected
+    if (new_selection) {
+
+        // set sequence
+        _numbered_sequence = MultiFileSequence(sourceImageFiles);
+
+        // automatically create a MultiFile Source if possible
+        if (_numbered_sequence.valid() && Settings::application.image_sequence.profile < 0) {
+            // propose image sequence if requested and possible
+            // show source preview available if possible
+            std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceImageFiles) );
+            new_source_preview_
+                .setSource(Mixer::manager().createSourceMultifile(sourceImageFiles,
+                                                                  Settings::application.image_sequence.framerate_mode),
+                           label);
+        }
+        else if (Settings::application.image_sequence.profile < 0)
+            Settings::application.image_sequence.profile = 0; // default to H264 video encoding
+    }
+
+    ImGui::Spacing();
+
+    // encoding is done at the resolution of the images, rounded even
+    const int sequence_width = (int) (_numbered_sequence.width & ~1);
+    const int sequence_height = (int) (_numbered_sequence.height & ~1);
+
+    // show info sequence
+    ImGuiTextBuffer info;
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+    info.appendf("%d %s (%d x %d)", 
+        (int) sourceImageFiles.size(), 
+        _numbered_sequence.codec.c_str(),
+        sequence_width,
+        sequence_height);
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::InputText("##SequenceSelection", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+    ImGui::PopStyleColor(1);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Selection")) {
+        sourceImageFiles.clear();
+        new_source_preview_.setSource();
+        _numbered_sequence = MultiFileSequence();
+    }
+
+    // encoding profile validation; ensure it supports the resolution of the images
+    if (Settings::application.image_sequence.profile >= 0)
+        ValidateCodecResolution(&Settings::application.image_sequence.profile,
+                                sequence_width, sequence_height);
+
+    // select CODEC: decide for gst sequence (codec_id = -1) or encoding a video
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    std::string codec_current = Settings::application.image_sequence.profile < 0 ? ICON_FA_SORT_NUMERIC_DOWN "  Image sequence"
+                                             : Settings::application.image_sequence.profile < GstToolkit::JPEG_MULTI ? 
+                                              std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[Settings::application.image_sequence.profile]
+                                              : std::string(ICON_FA_IMAGES " ") + GstToolkit::profile_name[GstToolkit::JPEG_MULTI ];
+    if (ImGui::BeginCombo("##CodecSequence", codec_current.c_str(), ImGuiComboFlags_HeightLarge)) {
+        // special case; if possible, offer to create an image sequence gst source
+        if (ImGui::Selectable( ICON_FA_SORT_NUMERIC_DOWN "  Image sequence",
+                              Settings::application.image_sequence.profile < 0,
+                              _numbered_sequence.valid()
+                                  ? ImGuiSelectableFlags_None
+                                  : ImGuiSelectableFlags_Disabled)) {
+            // select id of image sequence
+            Settings::application.image_sequence.profile = -1;
+            // Open source preview for image sequence
+            if (_numbered_sequence.valid()) {
+                std::string label = BaseToolkit::transliterate(
+                    BaseToolkit::common_pattern(sourceImageFiles));
+                new_source_preview_
+                    .setSource(Mixer::manager().createSourceMultifile(
+                                   sourceImageFiles,
+                                   Settings::application.image_sequence.framerate_mode),
+                               label);
+            }
+        }
+        // offer to encode as an image sequence
+        {
+            std::string label = std::string(ICON_FA_IMAGES " ") + GstToolkit::profile_name[GstToolkit::JPEG_MULTI];
+            const bool supported = GstToolkit::supportsResolution(GstToolkit::JPEG_MULTI,
+                                                                 sequence_width, sequence_height,
+                                                                 Settings::application.render.gpu_decoding);
+            if (ImGui::Selectable(label.c_str(), Settings::application.image_sequence.profile == GstToolkit::JPEG_MULTI,
+                                  supported ? ImGuiSelectableFlags_None : ImGuiSelectableFlags_Disabled)) {
+                // select multi-image encoding (jpeg) for image sequence
+                Settings::application.image_sequence.profile = GstToolkit::JPEG_MULTI;
+                // close source preview (no image sequence)
+                new_source_preview_.setSource();
+            }
+            if (!supported && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGuiToolkit::ToolTip( GstToolkit::unsupportedResolution(GstToolkit::JPEG_MULTI,
+                                       sequence_width, sequence_height,
+                                       Settings::application.render.gpu_decoding).c_str() );
+        }
+        // offer to encode as a video
+        for (int i = GstToolkit::H264_RT; i < GstToolkit::JPEG_MULTI; ++i) {
+            std::string label = std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[i];
+            const bool supported = GstToolkit::supportsResolution((GstToolkit::Profile) i,
+                                                                 sequence_width, sequence_height,
+                                                                 Settings::application.render.gpu_decoding);
+            if (ImGui::Selectable(label.c_str(), Settings::application.image_sequence.profile == i,
+                                  supported ? ImGuiSelectableFlags_None : ImGuiSelectableFlags_Disabled)) {
+                // select id of video encoding codec
+                Settings::application.image_sequence.profile = i;
+                // close source preview (no image sequence)
+                new_source_preview_.setSource();
+            }
+            if (!supported && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGuiToolkit::ToolTip( GstToolkit::unsupportedResolution((GstToolkit::Profile) i,
+                                       sequence_width, sequence_height,
+                                       Settings::application.render.gpu_decoding).c_str() );
+        }
+        ImGui::EndCombo();
+    }
+    // Indication
+    ImGui::SameLine();
+    ImGuiToolkit::HelpToolTip(ICON_FA_SORT_NUMERIC_DOWN " Create an image sequence from the selected images; "
+                                  "possible only if the selected images are numbered consecutively.\n\n"
+                                  ICON_FA_IMAGES " Convert to a sequence of consecutively numbered JPEG images.\n\n"
+                                  ICON_FA_FILM " Encode a video with the selected images and create a video source.");
+
+    // set framerate
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::SliderInt("##SequenceFramerate", &Settings::application.image_sequence.framerate_mode, 1, 30, "%d fps");
+    if (ImGui::IsItemDeactivatedAfterEdit()){
+        if (new_source_preview_.filled()) {
+            std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceImageFiles) );
+            new_source_preview_
+                .setSource(Mixer::manager().createSourceMultifile(
+                               sourceImageFiles,
+                               Settings::application.image_sequence.framerate_mode),
+                           label);
+        }
+    }
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::TextButton("Framerate")) {
+        Settings::application.image_sequence.framerate_mode = 25;
+    }
+
+    // if video encoding codec selected
+    if ( Settings::application.image_sequence.profile >= 0 )
+    {
+
+#if defined(HAVE_NCNN) || defined(HAVE_ONNX)
+        // set number of intermediate frames to generate between each image (for video encoding)
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        // slider position num maps to 2^num -1 intermediate frames;
+        // restore it from the saved value with the inverse (log2)
+        static int num = CLAMP( (int) log2f(
+            (float) Settings::application.image_sequence.buffering_mode + 1.f), 0, 5);
+        Settings::application.image_sequence.buffering_mode = pow(2, num)-1;
+        char buf[64];
+        ImFormatString(buf, IM_ARRAYSIZE(buf), "%d  intermediate frames", 
+                        Settings::application.image_sequence.buffering_mode);
+        ImGui::SliderInt("##Interpolate", &num, 0, 5, buf);
+        ImGui::SameLine();
+#if defined(HAVE_NCNN)
+        ImGuiToolkit::Indication("Use Real-time Intermediate Flow Estimation (RIFE), an AI-based "
+                                "algorithm to generates smooth intermediate frames, "
+                                "powered by NCNN backend on GPU (Vulkan).\n\n"
+                                ICON_FA_MINUS_CIRCLE "  Set to 0 to disable interpolation.\n",
+                                ICON_FA_MAGIC);
+#else
+        ImGuiToolkit::Indication("Use Real-time Intermediate Flow Estimation (RIFE), an AI-based "
+                                "algorithm to generates smooth intermediate frames, "
+                                "powered by ONNX backend on CPU.\n\n"
+                                ICON_FA_MINUS_CIRCLE "  Set to 0 to disable interpolation.\n",
+                                ICON_FA_MAGIC);
+#endif
+#endif
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::Combo("##SequenceLoop", &Settings::application.image_sequence.priority_mode, 
+            "None\0Rewind\0Mirror\0");
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Loop")) {
+            Settings::application.image_sequence.priority_mode = 0;
+        }
+        // Offer to create video from sequence
+        ImGui::NewLine();
+        if ( ImGui::Button( ICON_FA_CHECK "  Encode", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+            RifeOptions options;
+            options.loop = Settings::application.image_sequence.priority_mode;
+            options.fps = Settings::application.image_sequence.framerate_mode;
+            options.mid = Settings::application.image_sequence.buffering_mode;
+            options.profile = (GstToolkit::Profile) Settings::application.image_sequence.profile;
+            _rife_encoder.setFiles( sourceImageFiles );
+            _rife_encoder.start(options);
+            // open dialog
+            ImGui::OpenPopup(LABEL_VIDEO_SEQUENCE);
+        }
+    }
+
+    // video recorder finished: inform and open pannel to import video source from recent recordings
+    if ( _rife_encoder.finished() ) {
+
+        // reset encoder to be ready for next encoding
+        _rife_encoder.reset();
+
+        // video recorder failed if it does not return a valid filename
+        if ( !_rife_encoder.success() || _rife_encoder.filename().empty() )
+            Log::Warning("Failed to generate an image sequence (%s).", _rife_encoder.message().c_str() );
+        // JPEG_MULTI produced a folder of numbered images, not a video file
+        else if (Settings::application.image_sequence.profile == GstToolkit::JPEG_MULTI) {
+
+            sourceImageFiles = SystemToolkit::list_directory(_rife_encoder.filename(), {"*.jpg", "*.jpeg", "*.png"});
+            _numbered_sequence = MultiFileSequence(sourceImageFiles);
+
+            if (_numbered_sequence.valid()) {
+                // propose image sequence if possible
+                // show source preview available if possible
+                std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceImageFiles) );
+                new_source_preview_
+                    .setSource(Mixer::manager().createSourceMultifile(sourceImageFiles,
+                                                                    Settings::application.image_sequence.framerate_mode),
+                            label);
+                // select id of image sequence
+                Settings::application.image_sequence.profile = -1;
+            } 
+
+        }
+        else {
+
+            // save path location if valid
+            std::string uri = GstToolkit::filename_to_uri(_rife_encoder.filename());
+            MediaInfo media = MediaPlayer::UriDiscoverer(uri);
+            if (media.valid && !media.isimage)
+                Settings::application.recentRecordings.push(_rife_encoder.filename());
+            else
+                Settings::application.recentRecordings.remove(_rife_encoder.filename());
+
+            Log::Notify("Image sequence saved to %s.", _rife_encoder.filename().c_str());
+            // open the file as new recording
+            setNewMedia(Navigator::MEDIA_RECORDING, _rife_encoder.filename());
+        }
+    }
+    else if (ImGui::BeginPopupModal(LABEL_VIDEO_SEQUENCE, NULL, ImGuiWindowFlags_NoResize))
+    {
+        ImGui::Spacing();
+        ImGui::Text("Please wait while the video is being encoded :             \n");
+        ImGui::Text("%s\n", _rife_encoder.message().c_str());
+
+        ImGui::Text("Framerate :");ImGui::SameLine(150);
+        ImGui::Text("%d fps", Settings::application.image_sequence.framerate_mode );
+        ImGui::Text("Codec :");ImGui::SameLine(150);
+        ImGui::Text("%s", GstToolkit::profile_name[ Settings::application.image_sequence.profile ] );
+        ImGui::Text("Frames :");ImGui::SameLine(150);
+        ImGui::Text("%lu (%lu key frames)", (unsigned long)_rife_encoder.numFrames(), (unsigned long)_rife_encoder.files().size() ) ;
+
+        ImGui::Spacing();
+        ImGui::ProgressBar(_rife_encoder.progress());
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        if (ImGui::Button(ICON_FA_TIMES " Cancel",ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+            _rife_encoder.stop();
+
+        ImGui::EndPopup();
+    }
+}
+
+///
+/// Sequence of videos: create a SplitMedia source if the videos are compatible
+/// (same codec, resolution, framerate and audio), or convert them first
+///
+void NewSourcePanel::RenderVideoSequence(bool new_selection)
+{
+    // discovery of all videos, and transcoding if needed
+    struct VideoSequenceInfo {
+        MediaInfo split;                // info of the concatenated videos (invalid if not compatible)
+        std::vector<MediaInfo> files;   // info of each video
+    };
+    static std::future<VideoSequenceInfo> _video_discovery;
+    static VideoSequenceInfo _video_info;
+    static std::unique_ptr<SequenceTranscoder> _video_transcoder;
+    static int _video_profile = GstToolkit::H264_RT;
+
+    // discover all videos (in a separate thread)
+    auto discover = [](std::list<std::string> files) {
+        VideoSequenceInfo info;
+        for (const auto &f : files)
+            info.files.push_back( MediaPlayer::UriDiscoverer( GstToolkit::filename_to_uri(f) ) );
+        info.split = SplitMediaPlayer::SplitMediaInfo(files, info.files);
+        return info;
+    };
+
+    // new list of videos selected
+    if (new_selection) {
+        _video_info = VideoSequenceInfo();
+        _video_discovery = std::async(std::launch::async, discover, sourceVideoFiles);
+    }
+
+    ImGui::Spacing();
+
+    // discovery of the videos ongoing
+    if (_video_discovery.valid()) {
+        if (_video_discovery.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+            _video_info = _video_discovery.get();
+            // compatible videos: show preview of the split media source
+            if (_video_info.split.valid) {
+                std::string label = BaseToolkit::transliterate( BaseToolkit::common_pattern(sourceVideoFiles) );
+                new_source_preview_.setSource( Mixer::manager().createSourceSplitMedia(sourceVideoFiles), label);
+            }
+        }
+        else
+            ImGui::Text("Analysing %d videos...", (int) sourceVideoFiles.size());
+    }
+    else {
+        const MediaInfo &first = _video_info.files.empty() ? _video_info.split : _video_info.files.front();
+
+        // show info sequence
+        ImGuiTextBuffer info;
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+        if (_video_info.split.valid)
+            info.appendf("%d videos, %s", (int) sourceVideoFiles.size(),
+                         GstToolkit::time_to_string(_video_info.split.end, GstToolkit::TIME_STRING_READABLE).c_str());
+        else
+            info.appendf("%d mixed videos", (int) sourceVideoFiles.size());
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGui::InputText("##VideoSelection", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopStyleColor(1);
+        // cause of incompatibility of videos
+        if (!_video_info.split.valid && !_video_info.split.log.empty() && ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip(_video_info.split.log.c_str());
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (ImGuiToolkit::TextButton("Selection")) {
+            sourceVideoFiles.clear();
+            new_source_preview_.setSource();
+            _video_info = VideoSequenceInfo();
+        }
+
+        // videos are not compatible: offer to transcode them
+        if (!sourceVideoFiles.empty() && !_video_info.split.valid) {
+
+            // audio is kept only if all videos have audio
+            const bool all_audio = !_video_info.files.empty() &&
+                std::all_of(_video_info.files.begin(), _video_info.files.end(),
+                            [](const MediaInfo &m) { return m.hasaudio; });
+            // encoding is done at the resolution of the first video, rounded even
+            const int width = (int) (first.width & ~1);
+            const int height = (int) (first.height & ~1);
+
+            if (first.valid && !first.isimage) {
+
+                // select CODEC for encoding all videos
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ComboCodec("##CodecVideoSequence", &_video_profile, width, height);
+                if (_video_profile == GstToolkit::JPEG_MULTI)
+                    _video_profile = GstToolkit::H264_RT;
+                // Indication
+                ImGui::SameLine();
+                char help[512];
+                ImFormatString(help, IM_ARRAYSIZE(help),
+                               ICON_FA_FILM " Encode the %d videos with the selected codec, "
+                               "at %d x %d, %.2f fps%s, into a new folder; then create a source "
+                               "playing them one after the other.",
+                               (int) sourceVideoFiles.size(), width, height,
+                               (float) first.framerate_n / (float) first.framerate_d,
+                               all_audio ? "" : ", without audio");
+                ImGuiToolkit::HelpToolTip(help);
+
+                // Offer to encode videos
+                ImGui::NewLine();
+                if ( ImGui::Button( ICON_FA_CHECK "  Encode", ImVec2(ImGui::GetContentRegionAvail().x, 0)) ) {
+                    TranscoderOptions options( (GstToolkit::Profile) _video_profile, true, !all_audio);
+                    options.width = width;
+                    options.height = height;
+                    options.framerate_n = first.framerate_n;
+                    options.framerate_d = first.framerate_d;
+                    _video_transcoder = std::make_unique<SequenceTranscoder>(sourceVideoFiles);
+                    if (_video_transcoder->start(options))
+                        ImGui::OpenPopup(LABEL_VIDEO_CONVERT);
+                    else {
+                        Log::Warning("Failed to convert videos (%s).", _video_transcoder->error().c_str());
+                        _video_transcoder.reset();
+                    }
+                }
+            }
+        }
+    }
+
+    // transcoding finished: open the split media source with converted videos
+    if (_video_transcoder && _video_transcoder->finished()) {
+        if (_video_transcoder->success()) {
+            Log::Notify("Videos converted to %s.", _video_transcoder->outputFolder().c_str());
+            sourceVideoFiles = _video_transcoder->outputFiles();
+            _video_info = VideoSequenceInfo();
+            _video_discovery = std::async(std::launch::async, discover, sourceVideoFiles);
+        }
+        else
+            Log::Warning("Failed to convert videos (%s).", _video_transcoder->error().c_str());
+        _video_transcoder.reset();
+    }
+    else if (_video_transcoder && ImGui::BeginPopupModal(LABEL_VIDEO_CONVERT, NULL, ImGuiWindowFlags_NoResize))
+    {
+        ImGui::Spacing();
+        ImGui::Text("Please wait while the videos are being converted :      \n");
+        ImGui::Text("%s\n", _video_transcoder->status().c_str());
+        ImGui::Text("Codec :");ImGui::SameLine(150);
+        ImGui::Text("%s", GstToolkit::profile_name[ _video_profile ] );
+
+        ImGui::Spacing();
+        ImGui::ProgressBar(_video_transcoder->progress());
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        if (ImGui::Button(ICON_FA_TIMES " Cancel",ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+            _video_transcoder->stop();
+
+        ImGui::EndPopup();
     }
 }

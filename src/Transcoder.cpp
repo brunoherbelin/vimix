@@ -23,6 +23,7 @@
 #include "Upscaler.h"
 #include "IconsFontAwesome5.h"
 #include "Toolkit/SystemToolkit.h"
+#include "Toolkit/BaseToolkit.h"
 
 #include <string>
 #include <sys/stat.h>
@@ -1284,11 +1285,25 @@ bool SequenceTranscoder::start(const TranscoderOptions& options, const std::stri
         return false;
     }
 
-    // Name of the sequence, from the first file without trailing numbers
+    // Name of the sequence: for images, the first file without trailing numbers;
+    // for videos, the part common to the names of all files (e.g. '20260611_1'
+    // for 20260611_151758.mp4 and 20260611_192634.mp4)
     const std::string &first = input_.front().file;
-    std::string name = SystemToolkit::base_filename(first);
-    while (!name.empty() && (isdigit(name.back()) || name.back() == '_' || name.back() == '-' || name.back() == '.'))
-        name.pop_back();
+    std::string name;
+    if (options.isImage()) {
+        name = SystemToolkit::base_filename(first);
+        while (!name.empty() && (isdigit(name.back()) || name.back() == '_' || name.back() == '-' || name.back() == '.'))
+            name.pop_back();
+    }
+    else {
+        std::list<std::string> names;
+        for (const auto &item : input_)
+            names.push_back( SystemToolkit::base_filename(item.file) );
+        name = BaseToolkit::common_prefix(names);
+        // no separator left at the end
+        while (!name.empty() && (name.back() == '_' || name.back() == '-' || name.back() == '.' || name.back() == ' '))
+            name.pop_back();
+    }
     if (name.empty())
         name = "sequence";
 
