@@ -948,6 +948,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_tv.ply
     ./rsc/mesh/icon_cube.ply
     ./rsc/mesh/icon_sequence.ply
+    ./rsc/mesh/icon_videosplit.ply
     ./rsc/mesh/icon_receive.ply
     ./rsc/mesh/icon_text.ply
     ./rsc/mesh/icon_play.ply

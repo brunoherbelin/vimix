@@ -26,6 +26,7 @@
 #define ICON_VI_SOURCE_DEVICE_SCREEN 0, 2
 #define ICON_VI_SOURCE_DEVICE        2, 14
 #define ICON_VI_SOURCE_SEQUENCE      3, 9
+#define ICON_VI_SOURCE_VIDEOSPLIT    2,  9
 #define ICON_VI_SOURCE_NETWORK       18, 11
 #define ICON_VI_SOURCE_PATTERN       5, 3
 #define ICON_VI_SOURCE_SESSION       19, 6
@@ -70,6 +71,7 @@
 
 // new source pannel
 #define ICON_VI_OPEN_FILE            2, 5
+#define ICON_VI_OPEN_MULTIPLE        7, 5
 #define ICON_VI_NEW_SOURCE_CONNECTED 10, 9
 #define ICON_VI_SELECT_ADD           1, 5
 #define ICON_VI_SELECT_REMOVE        14, 1
@@ -77,7 +79,7 @@
 #define ICON_VI_SELECT_VISIBLE       8, 1
 #define ICON_VI_RELOAD               5, 15
 #define ICON_VI_CLEAR_LIST           12, 14
-#define ICON_VI_IMAGES_VIDEOS       3, 16
+#define ICON_VI_IMAGES_VIDEOS        3, 16
 
 // files, folders, playlists and sessions
 #define ICON_VI_SHOW_IN_FINDER      3, 5
@@ -326,7 +328,6 @@
 // #define ICON_VI_UNDEFINED_37  14,  4
 // #define ICON_VI_UNDEFINED_38  17,  4
 //
-// #define ICON_VI_UNDEFINED_39   7,  5
 // #define ICON_VI_UNDEFINED_40   8,  5
 // #define ICON_VI_UNDEFINED_41   9,  5
 // #define ICON_VI_UNDEFINED_42  10,  5
@@ -365,7 +366,6 @@
 // #define ICON_VI_UNDEFINED_73  19,  8
 //
 // #define ICON_VI_UNDEFINED_74   1,  9
-// #define ICON_VI_UNDEFINED_75   2,  9
 // #define ICON_VI_UNDEFINED_76   5,  9
 // #define ICON_VI_UNDEFINED_77   9,  9
 // #define ICON_VI_UNDEFINED_78  17,  9

@@ -20,6 +20,7 @@
 #include "Visitor/Visitor.h"
 #include "SplitMediaPlayer.h"
 #include "IconsVimixImage.h"
+#include "Scene/Decorations.h"
 
 #include "SplitMediaSource.h"
 
@@ -58,7 +59,7 @@ std::list<std::string> SplitMediaSource::files() const
 
 glm::ivec2 SplitMediaSource::icon() const
 {
-    return glm::ivec2(ICON_VI_SOURCE_VIDEO);
+    return glm::ivec2(ICON_VI_SOURCE_VIDEOSPLIT);
 }
 
 std::string SplitMediaSource::info() const
@@ -70,4 +71,15 @@ void SplitMediaSource::accept(Visitor& v)
 {
     MediaSource::accept(v);
     v.visit(*this);
+}
+
+void SplitMediaSource::init()
+{
+    MediaSource::init();
+    
+    // replace default symbol with a split media symbol
+    delete symbol_;
+    symbol_ = new Symbol(Symbol::VIDEOSPLIT, glm::vec3(0.75f, 0.75f, 0.01f));            
+    symbol_->scale_.y = 1.5f;
+
 }

@@ -141,7 +141,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon( ICON_VI_IMAGES_VIDEOS, "##SOURCE_MULTIFILE", selected_type[SOURCE_MULTIFILE], iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( ICON_VI_OPEN_MULTIPLE, "##SOURCE_MULTIFILE", selected_type[SOURCE_MULTIFILE], iconsize)) {
             Settings::application.source.new_type = SOURCE_MULTIFILE;
             clearNewPannel();
         }

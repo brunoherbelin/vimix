@@ -521,6 +521,8 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[SEQUENCE]= shadow;
         icons[VIDEO]    = new Mesh("mesh/icon_video.ply");
         shadows[VIDEO]  = shadow;
+        icons[VIDEOSPLIT]    = new Mesh("mesh/icon_videosplit.ply");
+        shadows[VIDEOSPLIT]  = shadow;
         icons[SESSION]  = new Mesh("mesh/icon_vimix.ply");
         shadows[SESSION]= shadow;
         icons[CLONE]    = new Mesh("mesh/icon_clone.ply");

@@ -85,6 +85,7 @@ public:
         IMAGE,
         SEQUENCE,
         VIDEO,
+        VIDEOSPLIT,
         SESSION,
         CLONE,
         RENDER,
