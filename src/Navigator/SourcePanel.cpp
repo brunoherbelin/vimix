@@ -30,6 +30,7 @@
 #include "ActionManager.h"
 #include "MediaPlayer.h"
 #include "Transcoder.h"
+#include "SplitMediaPlayer.h"
 #include "Upscaler.h"
 #include "Source/MediaSource.h"
 #include "Source/MultiFileSource.h"
@@ -180,7 +181,12 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
         if (transcoder == nullptr) {
             if (ImGui::Button(ICON_FA_FILE_EXPORT ICON_FA_FILE_IMPORT " Transcode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
                 transcode_id = id;
-                transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
+                // a split media is transcoded into a single video
+                SplitMediaPlayer *smp = dynamic_cast<SplitMediaPlayer *>(mp);
+                if (smp)
+                    transcoder = new Transcoder(smp->files());
+                else
+                    transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
                 if (!transcoder->start(transcode_options)) {
                     Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
                     delete transcoder;

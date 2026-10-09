@@ -62,6 +62,16 @@ public:
      * */
     static MediaInfo SplitMediaInfo(const std::list<std::string> &files,
                                     const std::vector<MediaInfo> &infos);
+    /**
+     * Gstreamer uri of splitmuxsrc for the list of files
+     * (to be used with SetupSplitSource)
+     * */
+    static std::string SplitUri(const std::list<std::string> &files);
+    /**
+     * Connect a playbin or uridecodebin opening a SplitUri, so that its
+     * splitmuxsrc plays the given list of files (which must outlive the bin)
+     * */
+    static void SetupSplitSource(GstElement *bin, const std::list<std::string> *files);
 
 protected:
     void startDiscovery() override;
@@ -75,8 +85,8 @@ private:
     std::string files_pattern_;
 
     // gst callbacks
-    static void callback_source_setup (GstElement *, GstElement *source, gpointer user_data);
-    static gchar **callback_format_location (GstElement *, gpointer user_data);
+    static void callback_source_setup (GstElement *, GstElement *source, gpointer files);
+    static gchar **callback_format_location (GstElement *, gpointer files);
 };
 
 #endif // SPLITMEDIAPLAYER_H

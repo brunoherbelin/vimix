@@ -21,6 +21,7 @@
 #include "Log.h"
 #include "Settings.h"
 #include "Upscaler.h"
+#include "SplitMediaPlayer.h"
 #include "IconsFontAwesome5.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Toolkit/BaseToolkit.h"
@@ -117,6 +118,33 @@ GstPadProbeReturn limit_jpeg_frames_probe(GstPad *pad, GstPadProbeInfo *info, gp
 
 Transcoder::Transcoder(const std::string& input_filename, const std::string& output_filename)
     : input_filename_(input_filename)
+    , output_filename_(output_filename)
+    , pipeline_(nullptr)
+    , bus_(nullptr)
+    , is_image_sequence_(false)
+    , is_still_image_(false)
+    , started_(false)
+    , finished_(false)
+    , success_(false)
+    , abort_(false)
+    , duration_(-1)
+    , position_(0)
+    , upscale_factor_(1)
+    , range_begin_(GST_CLOCK_TIME_NONE)
+    , range_end_(GST_CLOCK_TIME_NONE)
+    , range_ready_(false)
+    , range_by_eos_(false)
+    , range_pad_(nullptr)
+    , copy_mux_(nullptr)
+    , copy_audio_(false)
+    , copy_failed_(false)
+{
+    // Unless given, output filename will be generated in start() based on options
+}
+
+Transcoder::Transcoder(const std::list<std::string>& input_files, const std::string& output_filename)
+    : input_filename_(input_files.empty() ? std::string() : input_files.front())
+    , input_files_(input_files.size() > 1 ? input_files : std::list<std::string>())
     , output_filename_(output_filename)
     , pipeline_(nullptr)
     , bus_(nullptr)
@@ -282,9 +310,22 @@ bool Transcoder::start(const TranscoderOptions& options)
     const UpscalerModel &upscaler = Upscaler::model(options.upscaler);
     upscale_factor_ = (Upscaler::available() && upscaler.factor > 1) ? upscaler.factor : 1;
 
-    // Generate output filename (or folder, for JPEG_MULTI) based on options
-    if (output_filename_.empty())
-        output_filename_ = generateOutputFilename(input_filename_, options);
+    // Generate output filename (or folder, for JPEG_MULTI) based on options;
+    // a sequence of videos is named after the part common to all files
+    if (output_filename_.empty()) {
+        std::string input = input_filename_;
+        if (!input_files_.empty()) {
+            std::list<std::string> names;
+            for (const auto &f : input_files_)
+                names.push_back( SystemToolkit::base_filename(f) );
+            std::string name = BaseToolkit::common_prefix(names);
+            while (!name.empty() && (name.back() == '_' || name.back() == '-' || name.back() == '.' || name.back() == ' '))
+                name.pop_back();
+            if (!name.empty())
+                input = SystemToolkit::path_filename(input_filename_) + name + ".split";
+        }
+        output_filename_ = generateOutputFilename(input, options);
+    }
 
     // Check if input file exists
     struct stat buffer;
@@ -360,7 +401,18 @@ bool Transcoder::start(const TranscoderOptions& options)
     // Stream copy: no decoding, no encoding
     if (!is_still_image_ && options.stream_copy) {
         g_free(src_uri);
+        if (!input_files_.empty()) {
+            setError("Cannot copy streams of a sequence of videos");
+            return false;
+        }
         return startCopy(input_filename_, has_audio && !options.force_no_audio);
+    }
+
+    // A sequence of videos is decoded as a single stream by splitmuxsrc
+    // (src_uri, of the first file, was used only to discover the videos)
+    if (!input_files_.empty()) {
+        g_free(src_uri);
+        src_uri = g_strdup( SplitMediaPlayer::SplitUri(input_files_).c_str() );
     }
 
     // Upscaling multiplies the frame size: everything downstream (the
@@ -552,6 +604,14 @@ bool Transcoder::start(const TranscoderOptions& options)
         Log::Warning("Transcoder: Could not construct pipeline: %s", error->message);
         g_clear_error(&error);
         return false;
+    }
+
+    // splitmuxsrc of a sequence of videos plays the list of files
+    if (!input_files_.empty()) {
+        GstElement *dec = gst_bin_get_by_name(GST_BIN(pipeline_), "dec");
+        SplitMediaPlayer::SetupSplitSource(dec, &input_files_);
+        if (dec)
+            gst_object_unref(dec);
     }
 
     // Cap the number of JPEG files written
@@ -1033,6 +1093,14 @@ void Transcoder::runUpscale(TranscoderOptions options)
             throw std::runtime_error("Could not construct decoding pipeline: " + what);
         }
         sink = gst_bin_get_by_name(GST_BIN(dec_pipe), "sink");
+
+        // splitmuxsrc of a sequence of videos plays the list of files
+        if (!input_files_.empty()) {
+            GstElement *dec = gst_bin_get_by_name(GST_BIN(dec_pipe), "dec");
+            SplitMediaPlayer::SetupSplitSource(dec, &input_files_);
+            if (dec)
+                gst_object_unref(dec);
+        }
 
         // bounded queue, and never drop: every frame must be encoded
         g_object_set(sink, "sync", FALSE, "drop", FALSE,

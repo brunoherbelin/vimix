@@ -52,14 +52,7 @@ void SplitMediaPlayer::open(const std::list<std::string> &files)
     files_ = files;
     files_pattern_ = FilesPattern(files_);
 
-    // splitmux uri on first file (actual list of files given by format-location)
-    std::string uri = GstToolkit::filename_to_uri( files_.front() );
-    if (uri.rfind("file://", 0) == 0)
-        uri = "splitmux://" + uri.substr(7);
-    else
-        uri.clear();
-
-    MediaPlayer::open(files_.front(), uri);
+    MediaPlayer::open(files_.front(), SplitUri(files_));
 }
 
 std::string SplitMediaPlayer::filename() const
@@ -218,35 +211,47 @@ MediaInfo SplitMediaPlayer::SplitMediaInfo(const std::list<std::string> &files,
     return info;
 }
 
+std::string SplitMediaPlayer::SplitUri(const std::list<std::string> &files)
+{
+    // splitmux uri on first file (actual list of files given by format-location)
+    std::string uri = files.empty() ? std::string() : GstToolkit::filename_to_uri( files.front() );
+    if (uri.rfind("file://", 0) == 0)
+        uri = "splitmux://" + uri.substr(7);
+    else
+        uri.clear();
+    return uri;
+}
+
+void SplitMediaPlayer::SetupSplitSource(GstElement *bin, const std::list<std::string> *files)
+{
+    if (bin && files)
+        g_signal_connect (G_OBJECT (bin), "source-setup", G_CALLBACK (callback_source_setup), (gpointer) files);
+}
+
 void SplitMediaPlayer::setupPipeline()
 {
     // playbin (or uridecodebin) creates the splitmuxsrc source from uri
-    GstElement *bin = pipeline_;
     GstElement *decoder = gst_bin_get_by_name (GST_BIN (pipeline_), "decoder");
-    if (decoder)
-        bin = decoder;
-
-    g_signal_connect (G_OBJECT (bin), "source-setup", G_CALLBACK (callback_source_setup), this);
-
+    SetupSplitSource(decoder ? decoder : pipeline_, &files_);
     if (decoder)
         gst_object_unref (decoder);
 }
 
-void SplitMediaPlayer::callback_source_setup (GstElement *, GstElement *source, gpointer user_data)
+void SplitMediaPlayer::callback_source_setup (GstElement *, GstElement *source, gpointer files)
 {
     GstElementFactory *factory = gst_element_get_factory (source);
     if (factory && g_strcmp0 (GST_OBJECT_NAME (factory), "splitmuxsrc") == 0)
-        g_signal_connect (G_OBJECT (source), "format-location", G_CALLBACK (callback_format_location), user_data);
+        g_signal_connect (G_OBJECT (source), "format-location", G_CALLBACK (callback_format_location), files);
 }
 
-gchar **SplitMediaPlayer::callback_format_location (GstElement *, gpointer user_data)
+gchar **SplitMediaPlayer::callback_format_location (GstElement *, gpointer files)
 {
-    SplitMediaPlayer *mp = static_cast<SplitMediaPlayer *>(user_data);
+    const std::list<std::string> *list_files = static_cast<const std::list<std::string> *>(files);
 
     // NULL-terminated array of filenames, freed by splitmuxsrc
-    gchar **list = g_new0 (gchar *, mp->files_.size() + 1);
+    gchar **list = g_new0 (gchar *, list_files->size() + 1);
     size_t i = 0;
-    for (const std::string &f : mp->files_)
+    for (const std::string &f : *list_files)
         list[i++] = g_strdup (f.c_str());
 
     return list;

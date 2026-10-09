@@ -128,6 +128,14 @@ public:
     Transcoder(const std::string& input_filename, const std::string& output_filename = "");
 
     /**
+     * @brief Construct a new Transcoder of a sequence of videos
+     * @param input_files Paths of compatible videos (as played by a SplitMediaPlayer),
+     *        encoded one after the other into a single output video
+     * @param output_filename Path of the output file; empty to generate it
+     */
+    Transcoder(const std::list<std::string>& input_files, const std::string& output_filename = "");
+
+    /**
      * @brief Destroy the Transcoder and clean up resources
      */
     ~Transcoder();
@@ -237,6 +245,7 @@ private:
     static GstPadProbeReturn callback_range_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data);
 
     std::string input_filename_;
+    std::list<std::string> input_files_;  // sequence of videos (splitmux), empty otherwise
     std::string output_filename_;
 
     // written by the worker thread, read by the UI thread
