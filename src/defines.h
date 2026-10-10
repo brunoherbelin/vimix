@@ -8,6 +8,7 @@
 #define XML_VERSION_MINOR 5
 #define MAX_RECENT_HISTORY 20
 #define MAX_SESSION_LEVEL 3
+#define MAX_BUNDLE_LEVEL 4
 #define MAX_OUTPUT_WINDOW 3
 #define MAX_OUTPUT_CANVAS 12
 
@@ -187,8 +188,8 @@
 #define SHORTCUT_SAVE_FILE    CTRL_MOD "S"
 #define MENU_SAVEAS_FILE      ICON_FA_FILE_DOWNLOAD "  Save as"
 #define MENU_DELETE_FILE      ICON_FA_TRASH_ALT "  Delete"
-#define MENU_SAVE_ON_EXIT     ICON_FA_LEVEL_DOWN_ALT "  Save on exit"
-#define MENU_OPEN_ON_START    ICON_FA_LEVEL_UP_ALT "  Restore on start"
+#define MENU_SAVE_ON_EXIT     ICON_FA_SIGN_OUT_ALT " Save on exit"
+#define MENU_OPEN_ON_START    ICON_FA_SIGN_IN_ALT " Restore on start"
 #define SHORTCUT_SAVEAS_FILE  CTRL_MOD "Shift+S"
 #define MENU_EXPORT_SETTINGS  ICON_FA_FILE_EXCEL "  Export settings"
 #define MENU_QUIT             ICON_FA_POWER_OFF "  Quit"

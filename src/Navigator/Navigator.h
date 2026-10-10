@@ -29,14 +29,16 @@ class Navigator
     int  pannel_main_mode_;
     float pannel_alpha_;
     bool view_pannel_visible;
-    bool selected_button[68];  // NAV_COUNT
+    bool selected_button[69];  // NAV_COUNT
     int  selected_index;
     void clearButtonSelection();
     void applyButtonSelection(int index);
+    int  rootButton() const;
 
     // side pannels
     void RenderMainPannel(const ImVec2 &iconsize);
     void RenderTransitionPannel(const ImVec2 &iconsize);
+    void RenderBundlePannel(const ImVec2 &iconsize);
     void RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2 &size);
     bool RenderMousePointerSelector(const ImVec2 &size);
 

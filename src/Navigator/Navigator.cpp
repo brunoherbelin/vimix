@@ -33,6 +33,9 @@
 #include "Mixer.h"
 #include "Draft.h"
 #include "Source/SourceCallback.h"
+#include "Source/SessionSource.h"
+#include "Visitor/ImGuiVisitor.h"
+#include "Toolkit/BaseToolkit.h"
 #include "RenderingManager.h"
 #include "ControlManager.h"
 #include "MousePointer.h"
@@ -91,6 +94,12 @@ void Navigator::applyButtonSelection(int index)
     pannel_main_mode_ = Settings::application.pannel_main_mode;
 }
 
+int Navigator::rootButton() const
+{
+    // the root of the navigator is the edited bundle instead of the session menu
+    return Mixer::manager().editingBundle() ? NAV_BUNDLE : NAV_MENU;
+}
+
 void Navigator::clearButtonSelection()
 {
     // clear all buttons
@@ -122,6 +131,9 @@ int Navigator::selectedPannelSource()
 
 void Navigator::showConfig()
 {
+    // settings are in the session menu
+    Mixer::manager().exitAllBundles();
+
     selected_button[NAV_MENU] = true;
     applyButtonSelection(NAV_MENU);
     pannel_main_mode_ = 2;
@@ -129,11 +141,12 @@ void Navigator::showConfig()
 
 void Navigator::togglePannelMenu()
 {
-    selected_button[NAV_MENU] = !selected_button[NAV_MENU];
-    applyButtonSelection(NAV_MENU);
+    const int root = rootButton();
+    selected_button[root] = !selected_button[root];
+    applyButtonSelection(root);
 
     if (Settings::application.pannel_always_visible)
-        showPannelSource(NAV_MENU);
+        showPannelSource(root);
 }
 
 void Navigator::togglePannelNew()
@@ -156,8 +169,8 @@ void Navigator::togglePannelAutoHide()
     if (Settings::application.pannel_always_visible) {
         int current = Mixer::manager().indexCurrentSource();
         if ( current < 0 ) {
-            if (!selected_button[NAV_MENU] && !selected_button[NAV_TRANS] && !selected_button[NAV_NEW] )
-                showPannelSource(NAV_MENU);
+            if (!selected_button[NAV_MENU] && !selected_button[NAV_BUNDLE] && !selected_button[NAV_TRANS] && !selected_button[NAV_NEW] )
+                showPannelSource(rootButton());
         }
         else
             showPannelSource( current );
@@ -189,8 +202,8 @@ void Navigator::discardPannel()
             // allows to hide pannel
             clearButtonSelection();
         }
-        // if panel shows a source (i.e. not NEW, TRANS nor MENU selected)
-        else if ( !selected_button[NAV_MENU] )
+        // if panel shows a source (i.e. not NEW, TRANS, MENU nor BUNDLE selected)
+        else if ( !selected_button[NAV_MENU] && !selected_button[NAV_BUNDLE] )
         {
             // revert to menu panel
             togglePannelMenu();
@@ -253,6 +266,16 @@ void Navigator::Render()
     if (sourcelist_height - 2.f * icon_width < Mixer::manager().session()->size() * icon_width )
         sourceiconsize.y *= 0.75f;
 
+    // the root button (menu or bundle) follows entering and leaving bundles
+    const int root = rootButton();
+    const int other_root = root == NAV_MENU ? NAV_BUNDLE : NAV_MENU;
+    if (selected_button[other_root]) {
+        selected_button[other_root] = false;
+        selected_button[root] = true;
+        if (selected_index == other_root)
+            selected_index = root;
+    }
+
     // Left bar top
     ImGui::SetNextWindowPos( ImVec2(0, 0), ImGuiCond_Always );
     ImGui::SetNextWindowSize( ImVec2(width_, sourcelist_height), ImGuiCond_Always );
@@ -263,13 +286,34 @@ void Navigator::Render()
 
         if (Settings::application.current_view != View::TRANSITION) {
 
-            // the vimix icon for menu
-            if (ImGuiToolkit::SelectableIcon(ICON_VI_VIMIX_LOGO, "", selected_button[NAV_MENU], iconsize)) {
-                selected_button[NAV_MENU] = true;
-                applyButtonSelection(NAV_MENU);
+            // the edited bundle replaces the vimix icon for menu
+            SessionGroupSource *bundle = Mixer::manager().editingBundle() ? Mixer::manager().editedBundles().back() : nullptr;
+            float bracket_top = 0.f;
+            if (bundle) {
+                bracket_top = ImGui::GetCursorScreenPos().y;
+                ImGui::PushID("##bundle");
+                ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_HeaderActive));
+                if (ImGui::Selectable(bundle->initials(), selected_button[NAV_BUNDLE], 0, iconsize)) {
+                    selected_button[NAV_BUNDLE] = true;
+                    applyButtonSelection(NAV_BUNDLE);
+                }
+                ImGui::PopStyleColor();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+                    std::string label = bundle->name().size() < 16 ? bundle->name()
+                                                                   : bundle->name().substr(0, 15) + "..";
+                    tooltip = { label, SHORTCUT_MAIN, selected_button[NAV_BUNDLE] ? nullptr : bundle };
+                }
+                ImGui::PopID();
             }
-            if (ImGui::IsItemHovered())
-                tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN, nullptr};
+            // the vimix icon for menu
+            else {
+                if (ImGuiToolkit::SelectableIcon(ICON_VI_VIMIX_LOGO, "", selected_button[NAV_MENU], iconsize)) {
+                    selected_button[NAV_MENU] = true;
+                    applyButtonSelection(NAV_MENU);
+                }
+                if (ImGui::IsItemHovered())
+                    tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN, nullptr};
+            }
 
             // the "+" icon for action of creating new source
             if (!Draft::manager().active()) {
@@ -358,6 +402,14 @@ void Navigator::Render()
                 ImGui::PopID();
             }
 
+            if (bundle) {
+                // bracket along the sources inside the edited bundle
+                const float x = ImGui::GetWindowPos().x + width_ - 0.8f * style.WindowPadding.x;
+                const float y = ImGui::GetCursorScreenPos().y - 0.8f * style.ItemSpacing.y;
+                const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
+                draw_list->AddLine(ImVec2(x, bracket_top), ImVec2(x, y), color, 3.f);
+               // draw_list->AddLine(ImVec2(x - 1.5f, bracket_top), ImVec2(x + style.WindowPadding.x, bracket_top), color, 3.f);
+            }
         }
         else {
             // the ">" icon for transition menu
@@ -550,6 +602,12 @@ void Navigator::Render()
             RenderMainPannel(iconsize);
             reset_visitor = true;
         }
+        // pannel of the edited bundle
+        else if (selected_button[NAV_BUNDLE])
+        {
+            RenderBundlePannel(iconsize);
+            reset_visitor = true;
+        }
         // pannel to manage transition
         else if (selected_button[NAV_TRANS])
         {
@@ -566,7 +624,7 @@ void Navigator::Render()
         else
         {
             if ( selected_index < 0 ) {
-                showPannelSource(NAV_MENU);
+                showPannelSource(rootButton());
             }
             else {
                 // rarely its not the current source that is selected
@@ -643,11 +701,11 @@ bool Navigator::RenderMousePointerSelector(const ImVec2 &size)
 
     // Change color of icons depending on context menu status
     const ImVec4* colors = ImGui::GetStyle().Colors;
-    if (!enabled) 
+    if (!enabled)
         ImGui::PushStyleColor( ImGuiCol_Text, colors[ImGuiCol_TextDisabled] );
     else if (ret || ImGui::IsPopupOpen("MenuMousePointer") )
         ImGui::PushStyleColor( ImGuiCol_Text, colors[ImGuiCol_DragDropTarget]);
-    else        
+    else
         ImGui::PushStyleColor( ImGuiCol_Text, colors[ImGuiCol_Text] );
 
     // Draw centered icon of Mouse pointer
@@ -832,6 +890,82 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
             UserInterface::manager().setView(View::MIXING);
 
         ImGui::End();
+    }
+}
+
+void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
+{
+    const ImGuiStyle& style = ImGui::GetStyle();
+
+    const std::vector<SessionGroupSource *> &bundles = Mixer::manager().editedBundles();
+    if (bundles.empty() || Settings::application.current_view == View::TRANSITION)
+        return;
+    SessionGroupSource *bundle = bundles.back();
+
+    // level of bundle to go back to (-1 if none)
+    int leave_level = -1;
+
+    // Next window is a side pannel
+    ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
+    ImGui::SetNextWindowBgAlpha( pannel_alpha_ ); // Transparent background
+    if (ImGui::Begin("##navigatorBundle", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        // Temporary fix for preventing horizontal scrolling (https://github.com/ocornut/imgui/issues/2915)
+        ImGui::SetScrollX(0);
+
+        // TITLE
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetCursorPosY(0.5f * (iconsize.y - ImGui::GetTextLineHeight()));
+        ImGui::Text("Bundle");
+
+        // icons to leave the bundles, on the right of the title;
+        // from right to left: leave the current bundle, then each parent bundle
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
+        for (int level = (int) bundles.size() - 1; level > -1; --level) {
+            const float x = pannel_width_ - style.WindowPadding.x
+                            - (float) (bundles.size() - level) * iconsize.x;
+            ImGui::SetCursorPos( ImVec2(x, style.WindowPadding.y) );
+            ImGui::PushID(level);
+            if (ImGui::Selectable(ICON_FA_LEVEL_UP_ALT, false, 0, iconsize))
+                leave_level = level;
+            ImGui::PopID();
+            if (ImGui::IsItemHovered()) {
+                const std::string label = std::string("Leave bundle ") + bundles[level]->initials();
+                ImGuiToolkit::ToolTip(label.c_str(), level + 1 == (int) bundles.size() ? "Esc" : nullptr);
+            }
+        }
+        ImGui::PopStyleVar();
+        ImGui::PopFont();
+
+        // name
+        std::string sname = bundle->name();
+        ImGui::SetCursorPosY(width_ - style.WindowPadding.x);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGuiToolkit::InputText("Name", &sname) && !sname.empty()) {
+            // name must be unique in the session containing the bundle
+            Session *parent = bundles.size() > 1 ? bundles[bundles.size() - 2]->session()
+                                                 : Mixer::manager().liveSession();
+            bundle->setName( BaseToolkit::uniqueName(sname, parent->getNameList(bundle->id())) );
+        }
+
+        // properties of the bundle source
+        static ImGuiVisitor v;
+        static SessionGroupSource *visited = nullptr;
+        if (visited != bundle) {
+            v.reset();
+            visited = bundle;
+        }
+        bundle->accept(v);
+
+        ImGui::End();
+    }
+
+    // leave bundle(s) back to the level requested; the bundle becomes current source
+    if (leave_level > -1) {
+        while ((int) Mixer::manager().editedBundles().size() > leave_level)
+            Mixer::manager().exitBundle();
+        showPannelSource( Mixer::manager().indexCurrentSource() );
     }
 }
 

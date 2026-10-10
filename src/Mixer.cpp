@@ -847,6 +847,12 @@ void Mixer::enterBundle(SessionGroupSource *bundle)
         return;
     }
 
+    // limit the number of imbricated bundles edited
+    if (bundles_.size() >= MAX_BUNDLE_LEVEL) {
+        Log::Notify("Cannot edit more than %d levels of bundles.", MAX_BUNDLE_LEVEL);
+        return;
+    }
+
     // only a ready bundle of the edited session can be edited
     if (bundle == nullptr || session_->find(bundle) == session_->end() || !bundle->ready()
         || bundle->failed() || bundle->session() == nullptr || bundle->session()->frame() == nullptr)

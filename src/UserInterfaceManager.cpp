@@ -297,7 +297,7 @@ void UserInterface::handleKeyboard()
                 Mixer::manager().groupSelection();
                 // switch pannel to show first source (created)
                 navigator.showPannelSource(Mixer::manager().indexCurrentSource());
-            } 
+            }
             else {
                 bool can_bundle = false;
                 if (Mixer::manager().currentSource() != nullptr){
@@ -839,7 +839,7 @@ bool UserInterface::TryClose()
         return false;
 
     // always stop all recordings and pending actions
-    FrameGrabbing::manager().stopAll();    
+    FrameGrabbing::manager().stopAll();
     navigator.discardPannel();
 
     // leave BUNDLE mode (the session to save is the live session)
@@ -1012,14 +1012,14 @@ void UserInterface::NewFrame()
     // popup to confirm deletion of session file
     if (!pending_delete_file.empty()) {
         if (!ImGui::IsPopupOpen(MENU_DELETE_FILE)) {
-            if ( !SystemToolkit::file_exists(pending_delete_file) )                
+            if ( !SystemToolkit::file_exists(pending_delete_file) )
                 pending_delete_file.clear();
-            else 
+            else
                 ImGui::OpenPopup(MENU_DELETE_FILE);
         }
         if (ImGui::BeginPopupModal(MENU_DELETE_FILE, NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
-            if ( !SystemToolkit::file_exists(pending_delete_file) ) {                
+            if ( !SystemToolkit::file_exists(pending_delete_file) ) {
                 pending_delete_file.clear();
                 ImGui::CloseCurrentPopup();
             }
@@ -1061,10 +1061,6 @@ void UserInterface::Render()
     // indicator of DRAFT mode over the views
     if (Draft::manager().busy())
         RenderDraftIndicator();
-
-    // indicator of BUNDLE mode over the views
-    if (Mixer::manager().editingBundle())
-        RenderBundleIndicator();
 
     // navigator bar first
     navigator.Render();
@@ -1151,7 +1147,7 @@ void UserInterface::Render()
     RenderPreview();
 
     // render Recording indication overlay
-    if (Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO ) || 
+    if (Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO ) ||
         Outputs::manager().enabled( FrameGrabber::GRABBER_GPU ) ) {
         ImGuiIO& io = ImGui::GetIO();
         ImVec2 center = ImVec2(io.DisplaySize.x - RECORDER_INDICATION_SIZE * 1.5f, io.DisplaySize.y - RECORDER_INDICATION_SIZE * 1.5f);
@@ -1208,55 +1204,6 @@ void UserInterface::RenderDraftIndicator()
     draw_list->AddRect(p0, io.DisplaySize, color, 0.f, 0, 6.f);
 }
 
-void UserInterface::RenderBundleIndicator()
-{
-    const ImGuiIO& io = ImGui::GetIO();
-    const std::vector<SessionGroupSource *> &bundles = Mixer::manager().editedBundles();
-
-    // breadcrumb on top of the views
-    ImVec2 window_pos = ImVec2(navigator.width() + 0.5f * (io.DisplaySize.x - navigator.width()), WINDOW_TOOLBOX_DIST_TO_BORDER);
-    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, ImVec2(0.5f, 0.f));
-    ImGui::SetNextWindowBgAlpha(WINDOW_TOOLBOX_ALPHA);
-
-    if (ImGui::Begin("Bundle", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |
-                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
-                     ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
-    {
-        // level of bundle to go back to (-1 if none)
-        int level = -1;
-
-        // root session
-        if (ImGui::Button(ICON_FA_HOME " Session"))
-            level = 0;
-
-        // edited bundles; the last is the current bundle
-        for (size_t i = 0; i < bundles.size(); ++i) {
-            ImGui::SameLine();
-            ImGui::TextDisabled(ICON_FA_CARET_RIGHT);
-            ImGui::SameLine();
-            if (i + 1 < bundles.size()) {
-                if (ImGui::Button(bundles[i]->name().c_str()))
-                    level = (int) i + 1;
-            }
-            else {
-                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
-                ImGui::TextColored(ImGuiToolkit::HighlightColor(), "%s", bundles[i]->name().c_str());
-                ImGui::PopFont();
-            }
-        }
-
-        // leave current bundle
-        ImGui::SameLine(0, 2.f * ImGui::GetStyle().ItemSpacing.x);
-        if (ImGuiToolkit::IconButton(ICON_FA_LEVEL_UP_ALT, "Leave bundle", "Esc"))
-            level = (int) bundles.size() - 1;
-
-        // go back to the level requested
-        while (level > -1 && (int) Mixer::manager().editedBundles().size() > level)
-            Mixer::manager().exitBundle();
-    }
-    ImGui::End();
-}
-
 void UserInterface::showMenuEdit()
 {
     DraftDisabledMenu disabled;
@@ -1300,13 +1247,13 @@ void UserInterface::showMenuEdit()
 
 void UserInterface::showMenuBundle()
 {
-    DraftDisabledMenu disabled;       
+    DraftDisabledMenu disabled;
     ImVec4 disabled_color = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
     ImGui::MenuItem("Create bundle with:", NULL, false, false);
 
-    // 
+    //
     // Menu Bundle current source
-    // 
+    //
     bool is_bundle = false;
     bool is_clone = false;
     bool has_current = Mixer::manager().currentSource() != nullptr;
@@ -1319,7 +1266,7 @@ void UserInterface::showMenuBundle()
         // disabled menu is tinted in red to show there is a problem
         disabled_color.x = 0.7f;
     ImGui::PushStyleColor(ImGuiCol_TextDisabled, disabled_color);
-    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " Current source", SHORTCUT_BUNDLE, false, 
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " Current source", SHORTCUT_BUNDLE, false,
                         has_current && !is_bundle && !is_clone)) {
         Mixer::manager().groupCurrent();
         // switch pannel to show first source (created)
@@ -1331,9 +1278,9 @@ void UserInterface::showMenuBundle()
     }
     ImGui::PopStyleColor();
 
-    // 
+    //
     // Menu Bundle selected sources
-    // 
+    //
     bool has_selection = Mixer::manager().selection().size() > 1;
     bool cangroup_selection = Mixer::manager().selectionCanBeGroupped();
     disabled_color = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
@@ -1342,7 +1289,7 @@ void UserInterface::showMenuBundle()
         // disabled menu is tinted in red to show there is a problem
         disabled_color.x = 0.7f;
     ImGui::PushStyleColor(ImGuiCol_TextDisabled, disabled_color);
-    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " Selected sources", SHORTCUT_BUNDLE, false, 
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " Selected sources", SHORTCUT_BUNDLE, false,
                         cangroup_selection)) {
         Mixer::manager().groupSelection();
         // switch pannel to show first source (created)
@@ -1354,36 +1301,36 @@ void UserInterface::showMenuBundle()
     }
     ImGui::PopStyleColor();
 
-    // 
+    //
     // Menu Bundle all active sources
-    // 
-    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " All active sources", NULL, false, 
+    //
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " All active sources", NULL, false,
                         Mixer::manager().numSource() > 0)) {
         // create a new group session with only active sources
         Mixer::manager().groupAll( true );
         // switch pannel to show first source (created)
         navigator.showPannelSource(Mixer::manager().indexCurrentSource());
     }
-    // 
+    //
     // Menu Bundle all sources
-    // 
-    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " Everything", NULL, false, 
+    //
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_CREATE, " Everything", NULL, false,
                         Mixer::manager().numSource() > 0)) {
         // create a new group session the whole session
         Mixer::manager().groupAll( false );
         // switch pannel to show first source (created)
         navigator.showPannelSource(0);
     }
-    // 
+    //
     // Menu to unbundle selected bundle sources
-    // 
+    //
     ImGui::Separator();
-    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_UNCOVER, " Uncover selected bundle", NULL, false, 
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_UNCOVER, " Uncover selected bundle", NULL, false,
                         is_bundle)) {
-        // import sourses of bundle 
+        // import sourses of bundle
         Mixer::manager().import( dynamic_cast<SessionSource*>(Mixer::manager().currentSource()) );
     }
-    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_UNCOVER, " Uncover every bundles", NULL, false, 
+    if (ImGuiToolkit::MenuItemIcon(ICON_VI_BUNDLE_UNCOVER, " Expand all bundles", NULL, false,
                         Mixer::manager().numSource() > 0)) {
         // ungroup all bundle sources
         Mixer::manager().ungroupAll();
@@ -1392,7 +1339,7 @@ void UserInterface::showMenuBundle()
     // Menu to edit the sources inside a bundle
     //
     ImGui::Separator();
-    if (ImGui::MenuItem( ICON_FA_SIGN_IN_ALT "  Edit selected bundle", NULL, false, is_bundle))
+    if (ImGui::MenuItem( ICON_FA_LEVEL_DOWN_ALT "  Edit selected bundle", NULL, false, is_bundle))
         Mixer::manager().enterBundle( dynamic_cast<SessionGroupSource*>(Mixer::manager().currentSource()) );
     if (ImGui::MenuItem( ICON_FA_LEVEL_UP_ALT "  Leave bundle", "Esc", false, Mixer::manager().editingBundle()))
         Mixer::manager().exitBundle();
@@ -1419,7 +1366,7 @@ void UserInterface::showMenuWindows()
     ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP, &Settings::application.widget.help );
     // Show Logs
     ImGui::MenuItem( MENU_LOGS, SHORTCUT_LOGS, &Settings::application.widget.logs );
-    // Show Metrics 
+    // Show Metrics
     ImGui::MenuItem( MENU_METRICS, NULL, &Settings::application.widget.stats );
 
     ImGui::Separator();
@@ -1523,7 +1470,7 @@ void UserInterface::showMenuConfig()
     }
     // SAVE
     if (ImGui::MenuItem(  ICON_FA_TV "  Save config")) {
-        if (configexportdialog) 
+        if (configexportdialog)
             configexportdialog->open();
         navigator.discardPannel();
     }
@@ -1540,7 +1487,7 @@ void UserInterface::showMenuConfig()
     ImGui::SameLine(0, IMGUI_SAME_LINE * 3);
     if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
         SystemToolkit::open(SystemToolkit::settings_path());
-    // EXPORT 
+    // EXPORT
     if (ImGui::MenuItem(ICON_FA_SAVE "    Export")) {
         if (settingsexportdialog)
             settingsexportdialog->open();
@@ -1803,7 +1750,7 @@ void UserInterface::RenderPreview()
                 else if (draft)
                     ImGui::Text("Preview Draft");
                 else
-                    ImGui::Text("Preview Mix output");  
+                    ImGui::Text("Preview Mix output");
             }
             ImGui::PopFont();
 
@@ -3205,7 +3152,7 @@ void UserInterface::RenderHelp()
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
     }
-        
+
     if (ImGui::CollapsingHeader("Snap Cursors"))
     {
         ImGui::Text("Maintain the [" ALT_MOD "] key to enable mouse cursor snapping;");

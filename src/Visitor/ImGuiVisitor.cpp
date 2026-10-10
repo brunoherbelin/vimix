@@ -18,6 +18,7 @@
 **/
 
 
+#include <algorithm>
 #include <cstddef>
 #include <iterator>
 #include <string>
@@ -505,8 +506,8 @@ void ImGuiVisitor::visit (Source& s)
                 // open input mapping window
                 Settings::application.widget.inputs = true;
             }
-            if (ImGui::IsItemHovered()) {         
-                std::string tooltip = "Mapped to input";  
+            if (ImGui::IsItemHovered()) {
+                std::string tooltip = "Mapped to input";
                 tooltip +=  inputs.size() > 1 ? "s:" : ":" ;
                 for(const auto& input : inputs) {
                     tooltip += "\n - ";
@@ -540,11 +541,11 @@ void ImGuiVisitor::visit (Source& s)
         ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
 
         // header for Color correction
-        ImGui::BeginChild("header_color_child", ImVec2(preview_width, ImGui::GetFrameHeightWithSpacing()), 
+        ImGui::BeginChild("header_color_child", ImVec2(preview_width, ImGui::GetFrameHeightWithSpacing()),
                         false, ImGuiWindowFlags_NoDecoration);
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
         if (on) {
-            Settings::application.pannel_source[0] = 
+            Settings::application.pannel_source[0] =
                 ImGui::CollapsingHeader("Color correction",Settings::application.pannel_source[0] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
         }
         else {
@@ -564,8 +565,8 @@ void ImGuiVisitor::visit (Source& s)
             counter_menu_timeout=0;
             ImGui::OpenPopup( "MenuImageProcessing" );
         }
-        ImGui::SetCursorPos(pos_bot);   
-        
+        ImGui::SetCursorPos(pos_bot);
+
         // Active panel for image processing
         if (on) {
             // Header Color correction is open
@@ -619,7 +620,7 @@ void ImGuiVisitor::visit (Source& s)
 
         // preview = black rectangle
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRectFilled(ImVec2(pos.x + space, pos.y + space), 
+        draw_list->AddRectFilled(ImVec2(pos.x + space, pos.y + space),
             ImVec2(pos.x + preview_width - space, pos.y + preview_height - space),
             ImColor(0, 0, 0, 255));
 
@@ -638,10 +639,10 @@ void ImGuiVisitor::visit (Source& s)
 
     // Header for Source specific settings
     ImVec2 pos_top = ImGui::GetCursorPos();
-    ImGui::BeginChild("header_source_settings", ImVec2(preview_width, ImGui::GetFrameHeightWithSpacing()), 
+    ImGui::BeginChild("header_source_settings", ImVec2(preview_width, ImGui::GetFrameHeightWithSpacing()),
                     false, ImGuiWindowFlags_NoDecoration);
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
-    Settings::application.pannel_source[1] = ImGui::TreeNodeBehavior(ImGui::GetID("SourcePanelSpecific"), 
+    Settings::application.pannel_source[1] = ImGui::TreeNodeBehavior(ImGui::GetID("SourcePanelSpecific"),
             (Settings::application.pannel_source[1] ? ImGuiTreeNodeFlags_DefaultOpen : 0)  | ImGuiTreeNodeFlags_CollapsingHeader,
             s.info().c_str());
     ImGui::PopStyleColor();
@@ -661,7 +662,7 @@ void ImGuiVisitor::visit (Source& s)
             s.accept(info);
             ImGuiToolkit::ToolTip(info.str().c_str());
         }
-        ImGui::SetCursorPos(pos_bot);   
+        ImGui::SetCursorPos(pos_bot);
     }
 }
 
@@ -745,7 +746,7 @@ void ImGuiVisitor::renderAudioPanel(MediaSource &s)
             }
         }
     }
-    
+
 }
 
 void ImGuiVisitor::visit (MediaSource& s)
@@ -823,9 +824,9 @@ void ImGuiVisitor::visit (MediaSource& s)
                         info.appendf("%d", (int) mp->evaluation().keyframe_count);
                         if (mp->evaluation().gop_size_max - mp->evaluation().gop_size_min > 1)
                             info.appendf(" (1 every %d-%d frames)", (int) mp->evaluation().gop_size_min, (int) mp->evaluation().gop_size_max);
-                        else                            
+                        else
                             info.appendf(" (1 every %d frames)", (int) mp->evaluation().gop_size_max);
-                        
+
                         // tooltip on backward playback and errors
                         float backward_score = GstToolkit::canPlayBackward(mp->evaluation().has_bframes,
                                     mp->width(), mp->height(), mp->evaluation().keyframe_count,
@@ -840,7 +841,7 @@ void ImGuiVisitor::visit (MediaSource& s)
                             tooltip.appendf(", %d discontinuities", mp->evaluation().discontinuity_count);
                         if (mp->evaluation().corrupted_count > 0 )
                             tooltip.appendf(", %d corruptions", mp->evaluation().corrupted_count);
-                    } 
+                    }
                     else {
                         info.appendf("%s", mp->evaluation().log.c_str());
                         tooltip.appendf("%s", mp->evaluation().log.c_str());
@@ -922,7 +923,7 @@ void ImGuiVisitor::visit (MediaSource& s)
             try_software = Settings::application.render.gpu_decoding && !s.mediaplayer()->softwareDecodingForced();
         }
 
-        // offer to reload the source 
+        // offer to reload the source
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
         if ( ImGui::Button( ICON_FA_REDO_ALT " Try again ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
             Mixer::manager().replaceSource(Mixer::manager().currentSource(),
@@ -1052,7 +1053,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
@@ -1084,13 +1085,18 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     }
     ImGui::PopStyleColor(1);
 
-    ImGuiToolkit::PushDisabled(Draft::manager().active());
-    if ( ImGui::Button( ICON_FA_SIGN_IN_ALT "  Edit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-        Mixer::manager().enterBundle( &s );
-    ImGuiToolkit::PopDisabled(Draft::manager().active());
+    // no Edit nor Uncover of a bundle currently edited
+    const std::vector<SessionGroupSource *> &edited = Mixer::manager().editedBundles();
+    if ( std::find(edited.begin(), edited.end(), &s) == edited.end() ) {
+        const bool cannot_edit = Draft::manager().active() || edited.size() >= MAX_BUNDLE_LEVEL;
+        ImGuiToolkit::PushDisabled(cannot_edit);
+        if ( ImGui::Button( ICON_FA_LEVEL_DOWN_ALT "  Enter to edit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+            Mixer::manager().enterBundle( &s );
+        ImGuiToolkit::PopDisabled(cannot_edit);
 
-    if ( ImGui::Button( ICON_FA_TIMES "  Uncover", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
-        Mixer::manager().import( &s );
+        if ( ImGui::Button( ICON_FA_TIMES "  Expand", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+            Mixer::manager().import( &s );
+    }
 
     // edit the bundle and the source selected
     if ( edited_source > 0 && !Draft::manager().active() ) {
@@ -1126,7 +1132,7 @@ void ImGuiVisitor::visit (RenderSource& s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
@@ -1565,7 +1571,7 @@ void ImGuiVisitor::visit (AlphaFilter& f)
     }
 
     if ( m == AlphaFilter::ALPHA_CHROMAKEY || m == AlphaFilter::ALPHA_FILL)
-    {        
+    {
         // read color from filter
         float color[3] = {filter_parameters["Red"], filter_parameters["Green"], filter_parameters["Blue"]};
 
@@ -1707,7 +1713,7 @@ void ImGuiVisitor::visit (CloneSource& s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
@@ -1806,7 +1812,7 @@ void ImGuiVisitor::visit (ShaderSource& s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
@@ -1849,7 +1855,7 @@ void ImGuiVisitor::visit (PatternSource& s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
@@ -1911,7 +1917,7 @@ void ImGuiVisitor::visit (DeviceSource& s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
@@ -1987,7 +1993,7 @@ void ImGuiVisitor::visit (ScreenCaptureSource& s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
@@ -2059,7 +2065,7 @@ void ImGuiVisitor::visit (NetworkSource& s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
@@ -2100,7 +2106,7 @@ void ImGuiVisitor::visit (MultiFileSource& s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     static uint64_t id = 0;
 
     ImVec2 top = ImGui::GetCursorPos();
@@ -2201,7 +2207,7 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
@@ -2271,7 +2277,7 @@ void ImGuiVisitor::visit (SrtReceiverSource& s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
@@ -2311,7 +2317,7 @@ void ImGuiVisitor::visit(TextSource &s)
 {
     if ( !Settings::application.pannel_source[1] )
         return;
-    
+
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
     float w = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;

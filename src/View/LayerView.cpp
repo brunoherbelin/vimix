@@ -130,7 +130,7 @@ void LayerView::draw()
 
             if (s->icon() == glm::ivec2(ICON_VI_SOURCE_GROUP) )
             {
-                if (ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_UNCOVER, "Uncover bundle ", false )) {
+                if (ImGui::Selectable( ICON_FA_TIMES " Expand bundle " )) {
                     Mixer::manager().import( dynamic_cast<SessionSource*>(s) );
                 }
             }
@@ -138,7 +138,7 @@ void LayerView::draw()
                 if ( s->cloned() || s->icon() == glm::ivec2(ICON_VI_SOURCE_CLONE)){
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
                     ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_CREATE, "Bundle source", false );
-                    ImGui::PopStyleColor(); 
+                    ImGui::PopStyleColor();
                     if (ImGui::IsItemHovered()) {
                         ImGuiToolkit::ToolTip("Cannot create bundle; clones "
                             " cannot be separated from their origin source.");
@@ -199,7 +199,7 @@ void LayerView::draw()
         else {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
             ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_CREATE, "Bundle selection", false );
-            ImGui::PopStyleColor(); 
+            ImGui::PopStyleColor();
             if (ImGui::IsItemHovered()) {
                 ImGuiToolkit::ToolTip("Cannot create bundle; selection must be "
                     "contiguous in layer, clones cannot be separated from their origin source.");
@@ -550,7 +550,7 @@ void LayerView::updateSelectionOverlay(glm::vec4 color)
 
     if (overlay_selection_->visible_) {
         // calculate bbox on selection
-        GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(Mixer::selection().getCopy(), 
+        GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(Mixer::selection().getCopy(),
                                                         scene.ws(), View::LAYER);
         overlay_selection_->scale_ = selection_box.scale();
         overlay_selection_->translation_ = selection_box.center();
@@ -614,4 +614,3 @@ Group *LayerGrid::root ()
     // return the node to draw
     return root_;
 }
-

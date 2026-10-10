@@ -1,11 +1,12 @@
 #ifndef __UI_MANAGER_H_
 #define __UI_MANAGER_H_
 
-#define NAV_COUNT 68
+#define NAV_COUNT 69
 #define NAV_MAX   64
 #define NAV_NEW   65
 #define NAV_MENU  66
 #define NAV_TRANS 67
+#define NAV_BUNDLE 68
 
 #include <string>
 
@@ -135,7 +136,6 @@ protected:
     void showMenuWindows();
     void showMenuBundle();
     void RenderDraftIndicator();
-    void RenderBundleIndicator();
     void showMenuConfig();
     bool saveOrSaveAs(bool force_versioning = false);
     void selectSaveFilename();
