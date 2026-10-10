@@ -73,6 +73,7 @@
 #define ICON_VI_OPEN_FILE            2, 5
 #define ICON_VI_OPEN_MULTIPLE        7, 5
 #define ICON_VI_NEW_SOURCE_CONNECTED 10, 9
+#define ICON_VI_NEW_SOURCE_GENERATED 3,  3
 #define ICON_VI_SELECT_ADD           1, 5
 #define ICON_VI_SELECT_REMOVE        14, 1
 #define ICON_VI_SELECT_ALL           13, 1
@@ -313,7 +314,6 @@
 // #define ICON_VI_UNDEFINED_23   0,  3
 // #define ICON_VI_UNDEFINED_24   1,  3
 // #define ICON_VI_UNDEFINED_25   2,  3
-// #define ICON_VI_UNDEFINED_26   3,  3
 // #define ICON_VI_UNDEFINED_27   4,  3
 // #define ICON_VI_UNDEFINED_28   6,  3
 // #define ICON_VI_UNDEFINED_29  14,  3

@@ -151,7 +151,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             clearNewPannel();
         }
         ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon( ICON_VI_SOURCE_PATTERN, "##SOURCE_GENERATED", selected_type[SOURCE_GENERATED], iconsize)) {
+        if (ImGuiToolkit::SelectableIcon( ICON_VI_NEW_SOURCE_GENERATED, "##SOURCE_GENERATED", selected_type[SOURCE_GENERATED], iconsize)) {
             Settings::application.source.new_type = SOURCE_GENERATED;
             clearNewPannel();
         }
@@ -391,7 +391,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                                                                          MEDIA_FILES_TYPE,
                                                                          MEDIA_FILES_PATTERN);
 
-            ImGui::Text("Image or video sequence");
+            ImGui::Text("Sequence of images or videos");
 
             // clic button to load file
             if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open multiple", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) ) {
@@ -408,7 +408,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                                      ICON_FA_CARET_RIGHT " create a video from many images\n\n"
                                      "Create a source playing a sequence of videos;\n"
                                      ICON_FA_CARET_RIGHT " videos played one after the other\n"
-                                     ICON_FA_CARET_RIGHT " convert videos to the same format");
+                                     ICON_FA_CARET_RIGHT " convert videos to a sequence");
 
             // return from thread for folder openning
             bool new_selection = false;
