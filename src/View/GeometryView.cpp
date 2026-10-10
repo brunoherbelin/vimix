@@ -65,6 +65,15 @@
 const char* GeometryView::editor_icons[2]  = { ICON_FA_OBJECT_UNGROUP, ICON_FA_BORDER_ALL };
 const char *GeometryView::editor_names[2] = {"Edit sources", " Edit canvas"};
 
+// true if sources in the workspace w can be edited
+static bool isEditable(Source::Workspace w)
+{
+    // all workspaces are editable inside a bundle
+    return Settings::application.current_workspace == Source::WORKSPACE_ANY
+           || w == Settings::application.current_workspace
+           || Mixer::manager().editingBundle();
+}
+
 
 GeometryView::GeometryView() : View(GEOMETRY)
 {
@@ -78,6 +87,12 @@ GeometryView::GeometryView() : View(GEOMETRY)
     Settings::application.views[mode_].name = "Geometry";
 
     // Geometry Scene background
+    // checkerboard to show transparency (of a bundle frame)
+    output_checker_ = new ImageSurface("images/checker.dds");
+    output_checker_->shader()->color = glm::vec4(1.f, 1.f, 1.f, 0.2f);
+    output_checker_->visible_ = false;
+    scene.bg()->attach(output_checker_);
+
     output_surface_ = new Surface;
     output_surface_->visible_ = true;
     output_surface_->shader()->color = glm::vec4(0.8f, 0.8f, 0.8f, 0.5f);
@@ -188,7 +203,7 @@ GeometryView::GeometryView() : View(GEOMETRY)
 
 void GeometryView::attach(Source *canvas)
 {
-    // attach to scene 
+    // attach to scene
     canvas_scene_->attach( canvas->groups_[View::GEOMETRY] );
     canvas_scene_->attach( canvas->frames_[View::GEOMETRY] );
 }
@@ -219,6 +234,10 @@ void GeometryView::update(float dt)
                 (*node)->scale_.x = aspect_ratio;
             }
             output_surface_->setTextureIndex( output->texture() );
+
+            // keep squares of checkerboard
+            static glm::mat4 Tra = glm::scale(glm::translate(glm::identity<glm::mat4>(), glm::vec3( -32.f, -32.f, 0.f)), glm::vec3( 64.f, 64.f, 1.f));
+            output_checker_->shader()->iTransform = glm::scale(glm::identity<glm::mat4>(), glm::vec3(aspect_ratio, 1.f, 1.f)) * Tra;
 
             // set grid aspect ratio
             if (Settings::application.proportional_grid)
@@ -299,8 +318,7 @@ void GeometryView::draw()
         // count if it is visible
         if (Settings::application.views[mode_].ignore_mix || (*source_iter)->visible()) {
             // if it is in the current workspace
-            if (Settings::application.current_workspace == Source::WORKSPACE_ANY
-                || (*source_iter)->workspace() == Settings::application.current_workspace) {
+            if (isEditable((*source_iter)->workspace())) {
                 // will draw its surface
                 source_surfaces.push_back((*source_iter)->groups_[mode_]);
                 // will draw its frame and locker icon
@@ -316,7 +334,7 @@ void GeometryView::draw()
         hidden_count_ += (*source_iter)->visible() ? 0 : 1;
     }
 
-    // draw all canvases 
+    // draw all canvases
     for (auto canvas_iter = Canvas::manager().begin();
             canvas_iter != Canvas::manager().end(); ++canvas_iter) {
         // will draw its surface
@@ -324,23 +342,26 @@ void GeometryView::draw()
         // will draw its frame
         canvas_overlays.push_back((*canvas_iter)->frames_[GEOMETRY]);
     }
-    
+
     // 0. prepare projection for draw visitors
     glm::mat4 projection = Rendering::manager().Projection();
 
     // 1. Draw output surface (render frame to show global framebuffer, semi transparent)
     output_surface_->shader()->color.a = editor_mode_ == EDIT_CANVAS ? 0.6f : 0.3f;
+    // in BUNDLE mode, the frame of the bundle has transparency and a colored outline
+    output_checker_->visible_ = Mixer::manager().editingBundle();
+    output_frame_->color = Mixer::manager().editingBundle() ? glm::vec4( COLOR_FRAME, 0.9f ) : glm::vec4( 0.f, 0.f, 0.f, 0.4f );
     DrawVisitor draw_rendering(scene.bg(), projection);
     scene.accept(draw_rendering);
 
     if (editor_mode_ != EDIT_CANVAS) {
-        // 2. Draw surface of sources in the current workspace
+        // 2. Draw surface of sources in the current workspace if not editing CANVAS
         DrawVisitor draw_sources(source_surfaces, projection);
         scene.accept(draw_sources);
     }
 
-    if (!Draft::manager().active()) {
-        // 3. Draw canvases on top of sources if not in draft mode
+    if (!Mixer::manager().editingDraft() && !Mixer::manager().editingBundle()) {
+        // 3. Draw canvases on top of sources if not in draft or bundle mode
         DrawVisitor draw_canvases(canvas_surfaces, projection);
         scene.accept(draw_canvases);
     }
@@ -351,9 +372,7 @@ void GeometryView::draw()
         scene.accept(draw_overlays);
 
         // 6. Draw control overlays of current source on top (if selected)
-        if (s != nullptr &&
-            (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
-             s->workspace() == Settings::application.current_workspace) &&
+        if (s != nullptr && isEditable(s->workspace()) &&
             (Settings::application.views[mode_].ignore_mix || s->visible()))
         {
             DrawVisitor dv(s->overlays_[mode_], projection);
@@ -362,17 +381,19 @@ void GeometryView::draw()
             s->setMode(Source::CURRENT);
         }
     }
-    
-    // 7. Draw frames of the canvases
-    DrawVisitor draw_overlays(canvas_overlays, projection);
-    scene.accept(draw_overlays);
+
+    if (!Mixer::manager().editingBundle()) {
+        // 7. Draw frames of the canvases if not in bundle mode
+        DrawVisitor draw_overlays(canvas_overlays, projection);
+        scene.accept(draw_overlays);
+    }
 
     if (editor_mode_ == EDIT_CANVAS && current_canvas_ != nullptr) {
 
         std::vector<Node *> canvas_handles = {
             current_canvas_->handles_[mode_][Handles::CROP_H],
             current_canvas_->handles_[mode_][Handles::CROP_V],
-            current_canvas_->handles_[mode_][Handles::MENU], 
+            current_canvas_->handles_[mode_][Handles::MENU],
             dynamic_cast<CanvasSurface *>(current_canvas_)->label
         };
         DrawVisitor dv(canvas_handles, projection);
@@ -390,195 +411,198 @@ void GeometryView::draw()
     }
 
     //
-    // 10. Display interface
+    // 10. Display interface if not in DRAFT or BUNDLE
     //
-    // Locate window at upper right corner
-    glm::vec2 P(-output_surface_->scale_.x, output_surface_->scale_.y + 0.01f);
-    P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
-    // Set window position depending on icons size
-    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-    ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
-    if (ImGui::Begin("##GeometryViewOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
-                     | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-                     | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
-    {
-        // style
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
-        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+    if (!Mixer::manager().editingDraft() && !Mixer::manager().editingBundle()) {
 
-        // SELECT EDITOR MODE
-        ImGui::SetNextItemWidth(ImGui::GetTextLineHeightWithSpacing() * 2.6);
-        if (ImGui::Button(
-                std::string(std::string(editor_icons[editor_mode_]) + " " + ICON_FA_SORT_DOWN)
-                    .c_str()))
-            ImGui::OpenPopup("Geometry_mode_menu_popup");
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip(editor_names[editor_mode_]);
-        if (ImGui::BeginPopup("Geometry_mode_menu_popup")) {
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-            for (int m = GeometryView::EDIT_SOURCES; m <= GeometryView::EDIT_CANVAS; ++m) {
-                if (ImGui::Selectable(
-                        std::string(std::string(editor_icons[m]) + " " + editor_names[m]).c_str())) {
-                    if (m != editor_mode_) {
-                        // Switch mode
-                        editor_mode_ = m;
-                        // actions to do when changing mode
-                        if (editor_mode_ == GeometryView::EDIT_CANVAS){
-                            // clear selection (disabled for canvases)
-                            Mixer::selection().clear();
-                            // select first canvas as current if not already one selected
-                            setCurrentCanvas(*Canvas::manager().begin());
-                        }
-                        else {
-                            // temporarily disable current mode of canvas
-                            if (current_canvas_ != nullptr) 
-                                current_canvas_->setMode(Source::VISIBLE);
-                            // save status on exit
-                            Canvas::manager().save();
-                        }
-                    }
-                }
-            }
-            ImGui::PopFont();
-            ImGui::EndPopup();
-        }
+        // Locate window at upper right corner
+        glm::vec2 P(-output_surface_->scale_.x, output_surface_->scale_.y + 0.01f);
+        P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
+        // Set window position depending on icons size
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetNextWindowPos(ImVec2(P.x, P.y - 2.f * ImGui::GetFrameHeight() ), ImGuiCond_Always);
+        if (ImGui::Begin("##GeometryViewOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                        | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
+        {
+            // style
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
+            ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
 
-        // CANVAS EDIT OPTIONS
-        if (editor_mode_ == EDIT_CANVAS) {
-
-            // - Remove canvas
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (Canvas::manager().size() > 1) {
-                if (ImGui::Button(ICON_FA_MINUS )) {
-                    // remove last canvas
-                    Canvas::manager().removeSurface();
-                    // set another canvas as current
-                    setCurrentCanvas(*(--Canvas::manager().end()));
-                }
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip("Remove canvas");
-            }
-            else{
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 0.5f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
-                ImGui::Button(ICON_FA_MINUS );
-                ImGui::PopStyleColor(2);
-            }
-
-            // + Add more canvas
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (Canvas::manager().size() < MAX_OUTPUT_CANVAS) {
-                if (ImGui::Button(ICON_FA_PLUS )) {
-                    // create new canvas
-                    Canvas::manager().addSurface();
-                    // set newly created canvas as current
-                    setCurrentCanvas(*(--Canvas::manager().end()));
-                }
-                if (ImGui::IsItemHovered())
-                    ImGuiToolkit::ToolTip("Add canvas");
-            } 
-            else {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 0.5f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
-                ImGui::Button(ICON_FA_MINUS );
-                ImGui::PopStyleColor(2);
-            }
-
-            // layout selection
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGui::Button(ICON_FA_TH ICON_FA_SORT_DOWN ))
-                ImGui::OpenPopup("combinations_popup");
+            // SELECT EDITOR MODE
+            ImGui::SetNextItemWidth(ImGui::GetTextLineHeightWithSpacing() * 2.6);
+            if (ImGui::Button(
+                    std::string(std::string(editor_icons[editor_mode_]) + " " + ICON_FA_SORT_DOWN)
+                        .c_str()))
+                ImGui::OpenPopup("Geometry_mode_menu_popup");
             if (ImGui::IsItemHovered())
-                ImGuiToolkit::ToolTip("Layout");
-            if (ImGui::BeginPopup("combinations_popup", ImGuiWindowFlags_NoMove))  {
-
+                ImGuiToolkit::ToolTip(editor_names[editor_mode_]);
+            if (ImGui::BeginPopup("Geometry_mode_menu_popup")) {
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
-                if (Canvas::manager().size() == 1) {
-                    if (ImGui::Selectable(ICON_FA_EXPAND "   Fit whole output")) 
-                        Canvas::manager().setLayout(1, 0);
-                }
-                else {
-                    // get grid combinations for current number of canvases
-                    int N = Canvas::manager().size();
-                    std::vector<std::pair<int, int>> combinations = BaseToolkit::getGridCombinations(N);
-                    std::vector<std::string> descriptions = BaseToolkit::getGridCombinationDescriptions(N);
-                    for (size_t i = 0; i < descriptions.size(); ++i) {
-                        std::ostringstream oss;
-                        oss << ICON_FA_TH << "   " << descriptions[i];
-                        if (ImGui::Selectable(oss.str().c_str())) {
-                            // // set combination
-                            Canvas::manager().setLayout(combinations[i].first, 
-                                combinations[i].second);
+                for (int m = GeometryView::EDIT_SOURCES; m <= GeometryView::EDIT_CANVAS; ++m) {
+                    if (ImGui::Selectable(
+                            std::string(std::string(editor_icons[m]) + " " + editor_names[m]).c_str())) {
+                        if (m != editor_mode_) {
+                            // Switch mode
+                            editor_mode_ = m;
+                            // actions to do when changing mode
+                            if (editor_mode_ == GeometryView::EDIT_CANVAS){
+                                // clear selection (disabled for canvases)
+                                Mixer::selection().clear();
+                                // select first canvas as current if not already one selected
+                                setCurrentCanvas(*Canvas::manager().begin());
+                            }
+                            else {
+                                // temporarily disable current mode of canvas
+                                if (current_canvas_ != nullptr)
+                                    current_canvas_->setMode(Source::VISIBLE);
+                                // save status on exit
+                                Canvas::manager().save();
+                            }
                         }
                     }
                 }
-
-                // reset option
-                ImGui::Separator();
-                if (ImGui::Selectable(ICON_FA_BACKSPACE "  Reset all")) {
-                    Canvas::manager().reset(true, false);
-                    // clear current canvas
-                    setCurrentCanvas(nullptr);
-                }
-
-                // TODO : add load and save canvas layout ?
                 ImGui::PopFont();
                 ImGui::EndPopup();
             }
 
-            // cancel current canvas edition
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            if (ImGui::Button(ICON_FA_TIMES_CIRCLE )) {
-                // restore saved status
-                Canvas::manager().load();
-                // clear current canvas
-                setCurrentCanvas(nullptr);
-                // switch back to source edition
-                editor_mode_ = EDIT_SOURCES;
+            // CANVAS EDIT OPTIONS
+            if (editor_mode_ == EDIT_CANVAS) {
+
+                // - Remove canvas
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (Canvas::manager().size() > 1) {
+                    if (ImGui::Button(ICON_FA_MINUS )) {
+                        // remove last canvas
+                        Canvas::manager().removeSurface();
+                        // set another canvas as current
+                        setCurrentCanvas(*(--Canvas::manager().end()));
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGuiToolkit::ToolTip("Remove canvas");
+                }
+                else{
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 0.5f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
+                    ImGui::Button(ICON_FA_MINUS );
+                    ImGui::PopStyleColor(2);
+                }
+
+                // + Add more canvas
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (Canvas::manager().size() < MAX_OUTPUT_CANVAS) {
+                    if (ImGui::Button(ICON_FA_PLUS )) {
+                        // create new canvas
+                        Canvas::manager().addSurface();
+                        // set newly created canvas as current
+                        setCurrentCanvas(*(--Canvas::manager().end()));
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGuiToolkit::ToolTip("Add canvas");
+                }
+                else {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 0.5f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
+                    ImGui::Button(ICON_FA_MINUS );
+                    ImGui::PopStyleColor(2);
+                }
+
+                // layout selection
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGui::Button(ICON_FA_TH ICON_FA_SORT_DOWN ))
+                    ImGui::OpenPopup("combinations_popup");
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Layout");
+                if (ImGui::BeginPopup("combinations_popup", ImGuiWindowFlags_NoMove))  {
+
+                    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+                    if (Canvas::manager().size() == 1) {
+                        if (ImGui::Selectable(ICON_FA_EXPAND "   Fit whole output"))
+                            Canvas::manager().setLayout(1, 0);
+                    }
+                    else {
+                        // get grid combinations for current number of canvases
+                        int N = Canvas::manager().size();
+                        std::vector<std::pair<int, int>> combinations = BaseToolkit::getGridCombinations(N);
+                        std::vector<std::string> descriptions = BaseToolkit::getGridCombinationDescriptions(N);
+                        for (size_t i = 0; i < descriptions.size(); ++i) {
+                            std::ostringstream oss;
+                            oss << ICON_FA_TH << "   " << descriptions[i];
+                            if (ImGui::Selectable(oss.str().c_str())) {
+                                // // set combination
+                                Canvas::manager().setLayout(combinations[i].first,
+                                    combinations[i].second);
+                            }
+                        }
+                    }
+
+                    // reset option
+                    ImGui::Separator();
+                    if (ImGui::Selectable(ICON_FA_BACKSPACE "  Reset all")) {
+                        Canvas::manager().reset(true, false);
+                        // clear current canvas
+                        setCurrentCanvas(nullptr);
+                    }
+
+                    // TODO : add load and save canvas layout ?
+                    ImGui::PopFont();
+                    ImGui::EndPopup();
+                }
+
+                // cancel current canvas edition
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGui::Button(ICON_FA_TIMES_CIRCLE )) {
+                    // restore saved status
+                    Canvas::manager().load();
+                    // clear current canvas
+                    setCurrentCanvas(nullptr);
+                    // switch back to source edition
+                    editor_mode_ = EDIT_SOURCES;
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Cancel");
             }
-            if (ImGui::IsItemHovered())
-                ImGuiToolkit::ToolTip("Cancel");
-        }
-        // SOURCES EDIT OPTIONS
-        else {
+            // SOURCES EDIT OPTIONS
+            else {
 
-            // toggle sources visibility flag
-            std::string _label = Settings::application.views[mode_].ignore_mix ? "Show " : "Hide ";
-            _label += "non visible sources\n(";
-            _label += std::to_string(hidden_count_) + " source" + (hidden_count_>1?"s are ":" is ") + "outside mixing circle)";            
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            ImGuiToolkit::ButtonIconToggle(ICON_VI_HIDDEN_SOURCES, &Settings::application.views[mode_].ignore_mix, _label.c_str());
+                // toggle sources visibility flag
+                std::string _label = Settings::application.views[mode_].ignore_mix ? "Show " : "Hide ";
+                _label += "non visible sources\n(";
+                _label += std::to_string(hidden_count_) + " source" + (hidden_count_>1?"s are ":" is ") + "outside mixing circle)";
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGuiToolkit::ButtonIconToggle(ICON_VI_HIDDEN_SOURCES, &Settings::application.views[mode_].ignore_mix, _label.c_str());
 
-            // select layers visibility
-            static std::vector<std::tuple<int, int, std::string> > _workspaces
-                = {{ICON_VI_LAYERS_BACKGROUND, "Show only sources in\nBackground layer ("},
-                   {ICON_VI_LAYERS_CENTRAL,    "Show only sources in\nWorkspace layer ("},
-                   {ICON_VI_LAYERS_FOREGROUND, "Show only sources in\nForeground layer ("},
-                   {ICON_VI_LAYERS,            "Show sources in all layers ("}
-                };
-            ImGui::SameLine(0, IMGUI_SAME_LINE);
-            std::ostringstream oss;
-            oss << std::get<2>(_workspaces[Settings::application.current_workspace]);
-            oss << std::to_string(workspaces_counts_[Settings::application.current_workspace]);
-            oss << ")";
-            if (ImGuiToolkit::ButtonIcon(std::get<0>(
-                                             _workspaces[Settings::application.current_workspace]),
-                                         std::get<1>(
-                                             _workspaces[Settings::application.current_workspace]),
-                                         oss.str().c_str() )) {
-                Settings::application.current_workspace = (Settings::application.current_workspace+1)%4;
+                // select layers visibility
+                static std::vector<std::tuple<int, int, std::string> > _workspaces
+                    = {{ICON_VI_LAYERS_BACKGROUND, "Show only sources in\nBackground layer ("},
+                    {ICON_VI_LAYERS_CENTRAL,    "Show only sources in\nWorkspace layer ("},
+                    {ICON_VI_LAYERS_FOREGROUND, "Show only sources in\nForeground layer ("},
+                    {ICON_VI_LAYERS,            "Show sources in all layers ("}
+                    };
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                std::ostringstream oss;
+                oss << std::get<2>(_workspaces[Settings::application.current_workspace]);
+                oss << std::to_string(workspaces_counts_[Settings::application.current_workspace]);
+                oss << ")";
+                if (ImGuiToolkit::ButtonIcon(std::get<0>(
+                                                _workspaces[Settings::application.current_workspace]),
+                                            std::get<1>(
+                                                _workspaces[Settings::application.current_workspace]),
+                                            oss.str().c_str() )) {
+                    Settings::application.current_workspace = (Settings::application.current_workspace+1)%4;
+                }
+
             }
 
+            ImGui::PopStyleColor(6);
+            ImGui::End();
         }
-
-        ImGui::PopStyleColor(6);
-        ImGui::End();
+        ImGui::PopFont();
     }
-    ImGui::PopFont();
 
     // display popup menu source
     if (show_context_menu_ == MENU_SOURCE) {
@@ -760,7 +784,7 @@ void GeometryView::draw()
     }
     if (ImGui::BeginPopup("GeometryCanvasContextMenu")) {
         if (current_canvas_ != nullptr) {
-            
+
             ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.8f));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 1.f));
 
@@ -788,7 +812,7 @@ void GeometryView::draw()
                         (*sit)->touch();
                     }
                 }
-            }   
+            }
             ImGui::PopStyleColor(2);
         }
         ImGui::EndPopup();
@@ -872,8 +896,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
             // keep current source active if it is clicked
             Source *current = Mixer::manager().currentSource();
             if (current != nullptr) {
-                if ((Settings::application.current_workspace < Source::WORKSPACE_ANY &&
-                     current->workspace() != Settings::application.current_workspace) ||
+                if (!isEditable(current->workspace()) ||
                     (!Settings::application.views[mode_].ignore_mix && !current->visible()) )
                 {
                     current = nullptr;
@@ -957,9 +980,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                         // get if a source was picked
                         Source *s = Mixer::manager().findSource((*itp).first);
                         // accept picked sources in current workspaces
-                        if ( s!=nullptr &&
-                            (Settings::application.current_workspace == Source::WORKSPACE_ANY ||
-                             s->workspace() == Settings::application.current_workspace) &&
+                        if ( s!=nullptr && isEditable(s->workspace()) &&
                             (Settings::application.views[mode_].ignore_mix || s->visible()) )
                         {
                             if ( !UserInterface::manager().ctrlModifier() ) {
@@ -1026,12 +1047,12 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                 }
                 // picking on the menu handle: show context menu & reset picked sources
                 else if ( pick.first == picked_canvas->handles_[mode_][Handles::MENU] ) {
-                    openContextMenu(MENU_CANVAS); 
+                    openContextMenu(MENU_CANVAS);
                     picked_sources.clear();
                 }
                 // picking on the manipulation handle: reset picked sources
                 else if ( pick.first == picked_canvas->handles_[mode_][Handles::CROP_H] ||
-                          pick.first == picked_canvas->handles_[mode_][Handles::CROP_V] ) 
+                          pick.first == picked_canvas->handles_[mode_][Handles::CROP_V] )
                 {
                     picked_sources.clear();
                 }
@@ -1040,7 +1061,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     if (picked_sources.empty()) {
                         // loop over all nodes picked to fill the list of sources clicked
                         for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp) {
-                            SourceList::iterator sit = std::find_if(Canvas::manager().begin(), 
+                            SourceList::iterator sit = std::find_if(Canvas::manager().begin(),
                                 Canvas::manager().end(), Source::hasNode( (*itp).first ));
                             if ( sit != Canvas::manager().end() ) {
                                 picked_sources.insert( *sit );
@@ -1064,7 +1085,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                 for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
 
                     // loop over all canvases to get if one was picked
-                    SourceList::iterator sit = std::find_if(Canvas::manager().begin(), 
+                    SourceList::iterator sit = std::find_if(Canvas::manager().begin(),
                         Canvas::manager().end(), Source::hasNode( (*itp).first ));
 
                     // accept picked canvas
@@ -1093,7 +1114,7 @@ bool GeometryView::canSelect(Source *s)
 
     return ( s!=nullptr && View::canSelect(s) && s->ready() &&
             (Settings::application.views[mode_].ignore_mix || s->visible()) &&
-            (Settings::application.current_workspace == Source::WORKSPACE_ANY || s->workspace() == Settings::application.current_workspace) );
+            isEditable(s->workspace()) );
 }
 
 
@@ -1328,7 +1349,7 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
         return ret;
     }
 
-    // normal source grab 
+    // normal source grab
     Group *sourceNode = s->group(mode_); // groups_[View::GEOMETRY]
 
     // make sure matrix transform of stored status is updated
@@ -1716,9 +1737,9 @@ void GeometryView::updateSelectionOverlay(glm::vec4 color)
 void GeometryView::setCurrentCanvas(Source *c)
 {
     // check if current canvas is still valid
-    SourceList::iterator sit = std::find(Canvas::manager().begin(), 
+    SourceList::iterator sit = std::find(Canvas::manager().begin(),
                             Canvas::manager().end(), current_canvas_);
-    if ( sit == Canvas::manager().end() ) 
+    if ( sit == Canvas::manager().end() )
         // invalid canvas; set current to null
         current_canvas_ = nullptr;
 
@@ -1729,7 +1750,7 @@ void GeometryView::setCurrentCanvas(Source *c)
             current_canvas_ = nullptr;
         }
         return;
-    } 
+    }
     else if (current_canvas_ == c) {
         // nothing to change if same canvas
         return;

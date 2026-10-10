@@ -135,6 +135,7 @@ protected:
     void showMenuWindows();
     void showMenuBundle();
     void RenderDraftIndicator();
+    void RenderBundleIndicator();
     void showMenuConfig();
     bool saveOrSaveAs(bool force_versioning = false);
     void selectSaveFilename();

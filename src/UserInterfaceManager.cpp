@@ -454,8 +454,11 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false )) {
             // hide pannel
             navigator.discardPannel();
-            // toggle clear workspace
-            WorkspaceWindow::toggleClearRestoreWorkspace();
+            // leave bundle /or/ toggle clear workspace
+            if (Mixer::manager().editingBundle())
+                Mixer::manager().exitBundle();
+            else
+                WorkspaceWindow::toggleClearRestoreWorkspace();
             // ESC key is not yet maintained pressed
             esc_repeat_ = false;
         }
@@ -690,11 +693,26 @@ void UserInterface::handleMouse()
             // if double clic event was not used in view
             if ( !Mixer::manager().view()->doubleclic(mousepos) ) {
                 int i = Mixer::manager().indexCurrentSource();
+                // bundle can be edited (enter or leave) from Mixing, Geometry and Layer views
+                const View::Mode m = Mixer::manager().view()->mode();
+                const bool bundle_view = (m == View::MIXING || m == View::GEOMETRY || m == View::LAYER);
+                SessionGroupSource *bundle = nullptr;
+                if (bundle_view)
+                    bundle = dynamic_cast<SessionGroupSource *>(Mixer::manager().currentSource());
                 // if no current source
                 if (i<0){
-                    // hide left pannel & toggle clear workspace
+                    // hide left pannel
                     navigator.discardPannel();
-                    WorkspaceWindow::toggleClearRestoreWorkspace();
+                    // leave bundle /or/ toggle clear workspace
+                    if (bundle_view && Mixer::manager().editingBundle())
+                        Mixer::manager().exitBundle();
+                    else
+                        WorkspaceWindow::toggleClearRestoreWorkspace();
+                }
+                // edit the bundle
+                else if (bundle != nullptr && !Draft::manager().active()) {
+                    navigator.discardPannel();
+                    Mixer::manager().enterBundle(bundle);
                 }
                 else
                     // display current source in left panel /or/ hide left panel if no current source
@@ -1041,6 +1059,10 @@ void UserInterface::Render()
     if (Draft::manager().busy())
         RenderDraftIndicator();
 
+    // indicator of BUNDLE mode over the views
+    if (Mixer::manager().editingBundle())
+        RenderBundleIndicator();
+
     // navigator bar first
     navigator.Render();
 
@@ -1183,6 +1205,55 @@ void UserInterface::RenderDraftIndicator()
     draw_list->AddRect(p0, io.DisplaySize, color, 0.f, 0, 6.f);
 }
 
+void UserInterface::RenderBundleIndicator()
+{
+    const ImGuiIO& io = ImGui::GetIO();
+    const std::vector<SessionGroupSource *> &bundles = Mixer::manager().editedBundles();
+
+    // breadcrumb on top of the views
+    ImVec2 window_pos = ImVec2(navigator.width() + 0.5f * (io.DisplaySize.x - navigator.width()), WINDOW_TOOLBOX_DIST_TO_BORDER);
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, ImVec2(0.5f, 0.f));
+    ImGui::SetNextWindowBgAlpha(WINDOW_TOOLBOX_ALPHA);
+
+    if (ImGui::Begin("Bundle", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |
+                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                     ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        // level of bundle to go back to (-1 if none)
+        int level = -1;
+
+        // root session
+        if (ImGui::Button(ICON_FA_HOME " Session"))
+            level = 0;
+
+        // edited bundles; the last is the current bundle
+        for (size_t i = 0; i < bundles.size(); ++i) {
+            ImGui::SameLine();
+            ImGui::TextDisabled(ICON_FA_CARET_RIGHT);
+            ImGui::SameLine();
+            if (i + 1 < bundles.size()) {
+                if (ImGui::Button(bundles[i]->name().c_str()))
+                    level = (int) i + 1;
+            }
+            else {
+                ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);
+                ImGui::TextColored(ImGuiToolkit::HighlightColor(), "%s", bundles[i]->name().c_str());
+                ImGui::PopFont();
+            }
+        }
+
+        // leave current bundle
+        ImGui::SameLine(0, 2.f * ImGui::GetStyle().ItemSpacing.x);
+        if (ImGuiToolkit::IconButton(ICON_FA_LEVEL_UP_ALT, "Leave bundle", "Esc"))
+            level = (int) bundles.size() - 1;
+
+        // go back to the level requested
+        while (level > -1 && (int) Mixer::manager().editedBundles().size() > level)
+            Mixer::manager().exitBundle();
+    }
+    ImGui::End();
+}
+
 void UserInterface::showMenuEdit()
 {
     DraftDisabledMenu disabled;
@@ -1314,6 +1385,14 @@ void UserInterface::showMenuBundle()
         // ungroup all bundle sources
         Mixer::manager().ungroupAll();
     }
+    //
+    // Menu to edit the sources inside a bundle
+    //
+    ImGui::Separator();
+    if (ImGui::MenuItem( ICON_FA_SIGN_IN_ALT "  Edit selected bundle", NULL, false, is_bundle))
+        Mixer::manager().enterBundle( dynamic_cast<SessionGroupSource*>(Mixer::manager().currentSource()) );
+    if (ImGui::MenuItem( ICON_FA_LEVEL_UP_ALT "  Leave bundle", "Esc", false, Mixer::manager().editingBundle()))
+        Mixer::manager().exitBundle();
 
 }
 void UserInterface::showMenuWindows()
@@ -2038,16 +2117,24 @@ void UserInterface::RenderDraft(bool *p_open, int* p_corner)
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetColorU32(ImGuiCol_HeaderActive));
         }
+        // draft mode is not available when editing a bundle
+        const bool unavailable = Mixer::manager().editingBundle();
+        ImGuiToolkit::PushDisabled(unavailable);
         if ( ImGui::Button(ICON_FA_PAUSE, ImVec2(_width, _height)) ) {
             if (drafting)
                 Draft::manager().apply(Settings::application.draft_duration);
             else
                 Draft::manager().enter();
         }
+        ImGuiToolkit::PopDisabled(unavailable);
         if (drafting)
             ImGui::PopStyleColor(4);
         ImGui::PopFont();
-        if (ImGui::IsItemHovered()) {
+        if (unavailable) {
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGuiToolkit::ToolTip("Not available when editing a bundle");
+        }
+        else if (ImGui::IsItemHovered()) {
             if (drafting)
                 ImGuiToolkit::ToolTip(MENU_DRAFT_APPLY, SHORTCUT_DRAFT);
             else

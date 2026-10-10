@@ -1,6 +1,8 @@
 #ifndef MIXER_H
 #define MIXER_H
 
+#include <vector>
+
 #include "View/GeometryView.h"
 #include "View/MixingView.h"
 #include "View/LayerView.h"
@@ -15,6 +17,7 @@ class XMLElement;
 }
 
 class SessionSource;
+class SessionGroupSource;
 
 class Mixer
 {
@@ -117,9 +120,17 @@ public:
     // DRAFT mode: the session edited is the draft session,
     // while the live session renders the output
     inline Session * liveSession () const { return live_ ? live_ : session_; }
-    inline bool editingDraft () const { return live_ != nullptr; }
+    inline bool editingDraft () const { return live_ != nullptr && bundles_.empty(); }
     void setEditedSession (Session *draft);
     void restoreEditedSession ();
+
+    // BUNDLE mode: the session edited is the session inside a bundle,
+    // while the live session renders the output
+    void enterBundle (SessionGroupSource *bundle);
+    void exitBundle ();
+    void exitAllBundles ();
+    inline bool editingBundle () const { return !bundles_.empty(); }
+    inline const std::vector<SessionGroupSource *> &editedBundles () const { return bundles_; }
     void terminate();
     void save   (bool with_version = false);
     void saveas (const std::string& filename, bool with_version = false, bool with_thumbail = false);
@@ -148,6 +159,8 @@ protected:
     Session *session_;
     Session *back_session_;
     Session *live_;
+    std::vector<SessionGroupSource *> bundles_;
+    bool bundlesUpdateSession () const;
     void attachToViews   (Source *s);
     void detachFromViews (Source *s);
     void switchViews     (Session *from, Session *to);

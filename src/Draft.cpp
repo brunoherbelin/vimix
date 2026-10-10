@@ -45,6 +45,11 @@ bool Draft::enter()
         return false;
     }
 
+    if (Mixer::manager().editingBundle()) {
+        Log::Notify("Draft mode not available while editing a bundle.");
+        return false;
+    }
+
     // create the draft session from the live session
     Session *live = Mixer::manager().session();
     draft_ = DraftSessionLoader::createDraft(live);

@@ -32,6 +32,7 @@ public:
     Source *currentCanvas() const { return current_canvas_; }
 
 private:
+    Surface *output_checker_;
     Surface *output_surface_;
     Frame *output_frame_;
     Node *overlay_position_;

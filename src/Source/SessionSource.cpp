@@ -32,6 +32,7 @@
 #include "Visitor/Visitor.h"
 #include "Session.h"
 #include "SessionCreator.h"
+#include "Mixer.h"
 
 #include "SessionSource.h"
 
@@ -167,7 +168,8 @@ void SessionSource::update(float dt)
     }
 
     // manage sources which failed
-    if ( !session_->failedSources().empty() ) {
+    // (unless the session is edited in the Mixer, which manages them)
+    if ( !session_->failedSources().empty() && session_ != Mixer::manager().session() ) {
 
         SourceListUnique _failedsources = session_->failedSources();
         for(auto it = _failedsources.begin(); it != _failedsources.end(); ++it)  {

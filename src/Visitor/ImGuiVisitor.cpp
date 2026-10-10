@@ -1067,18 +1067,39 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
-    // Show list of sources in text bloc (multi line, dark background)
-    ImGuiTextBuffer listofsources;
-    listofsources.append( BaseToolkit::joinned( session->getNameList(), '\n').c_str() );
+    // List of sources inside the bundle (dark background); select one to edit it
+    uint64_t edited_source = 0;
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::InputTextMultiline("Sources", (char *)listofsources.c_str(), listofsources.size(),
-                              ImVec2(IMGUI_RIGHT_ALIGN, CLAMP(session->size(), 2, 5) * ImGui::GetTextLineHeightWithSpacing()),
-                              ImGuiInputTextFlags_ReadOnly);
+    if ( ImGui::ListBoxHeader("Sources", session->size(), CLAMP(session->size(), 2, 5)) ) {
+        for (auto it = session->begin(); it != session->end(); ++it) {
+            ImGui::PushID( (int) (*it)->id() );
+            if (ImGui::Selectable( (*it)->name().c_str() ))
+                edited_source = (*it)->id();
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Edit in bundle");
+            ImGui::PopID();
+        }
+        ImGui::ListBoxFooter();
+    }
     ImGui::PopStyleColor(1);
+
+    ImGuiToolkit::PushDisabled(Draft::manager().active());
+    if ( ImGui::Button( ICON_FA_SIGN_IN_ALT "  Edit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        Mixer::manager().enterBundle( &s );
+    ImGuiToolkit::PopDisabled(Draft::manager().active());
 
     if ( ImGui::Button( ICON_FA_TIMES "  Uncover", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
         Mixer::manager().import( &s );
+
+    // edit the bundle and the source selected
+    if ( edited_source > 0 && !Draft::manager().active() ) {
+        Mixer::manager().enterBundle( &s );
+        if ( Mixer::manager().editingBundle() && Mixer::manager().editedBundles().back() == &s ) {
+            Mixer::manager().setCurrentSource( edited_source );
+            UserInterface::manager().navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+        }
+    }
 
     ImVec2 botom = ImGui::GetCursorPos();
 
