@@ -842,6 +842,9 @@ bool UserInterface::TryClose()
     FrameGrabbing::manager().stopAll();    
     navigator.discardPannel();
 
+    // leave BUNDLE mode (the session to save is the live session)
+    Mixer::manager().exitAllBundles();
+
     // force close if trying to close again although it is already pending for save
     if (pending_save_on_exit)
         return true;
