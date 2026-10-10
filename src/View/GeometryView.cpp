@@ -296,6 +296,13 @@ int  GeometryView::size ()
 
 void GeometryView::draw()
 {
+    // canvas edition is not possible in DRAFT or BUNDLE: save and revert to sources edition
+    if (editor_mode_ == EDIT_CANVAS && (Mixer::manager().editingDraft() || Mixer::manager().editingBundle())) {
+        Canvas::manager().save();
+        setCurrentCanvas(nullptr);
+        editor_mode_ = EDIT_SOURCES;
+    }
+
     // Drawing of Geometry view is different as it renders
     // only sources in the current workspace
     std::vector<Node *> source_surfaces;
