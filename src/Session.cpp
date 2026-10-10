@@ -34,6 +34,7 @@
 #include "Visitor/SessionVisitor.h"
 #include "ActionManager.h"
 #include "Source/RenderSource.h"
+#include "Source/SessionSource.h"
 #include "MixingGroup.h"
 #include "ControlManager.h"
 #include "Source/SourceCallback.h"
@@ -151,6 +152,20 @@ void Session::detachSource (Source *s)
 bool Session::attached (Source *s) const
 {
     return ( s != nullptr && s->group(View::RENDERING)->refcount_ > 0 );
+}
+
+bool Session::started () const
+{
+    if ( !ready_ )
+        return false;
+
+    // sources inside a bundle become ready only when their bundle updates its session
+    for (auto it = sources_.begin(); it != sources_.end(); ++it) {
+        SessionSource *ss = dynamic_cast<SessionSource *>(*it);
+        if ( ss && ss->session() && ss->active() && ss->playing() && !ss->session()->started() )
+            return false;
+    }
+    return true;
 }
 
 // update all sources

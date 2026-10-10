@@ -102,6 +102,8 @@ public:
 
     // update all sources and mark sources which failed
     inline bool ready () const  { return ready_; }
+    // ready, and so are the sessions inside its active and playing bundles
+    bool started () const;
     void update (float dt);
     uint64_t runtime() const;
 

@@ -218,7 +218,7 @@ void Mixer::update()
     Draft::manager().update(dt_);
 
     // sources of a ready session execute their initial callbacks (e.g. play) in update
-    bool session_was_ready = liveSession()->ready();
+    bool session_was_started = liveSession()->started();
 
     // update live session (DRAFT and BUNDLE modes)
     if (live_)
@@ -230,7 +230,7 @@ void Mixer::update()
         session_->update(dt_);
 
     // history start can be captured after the initial callbacks
-    if (session_was_ready)
+    if (session_was_started)
         Action::manager().refreshInit();
 
     // update canvases
