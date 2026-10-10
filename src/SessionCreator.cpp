@@ -1361,11 +1361,35 @@ void SessionLoader::visit (SessionGroupSource& s)
     // get the inside session
     XMLElement* sessionGroupNode = xmlCurrent_->FirstChildElement("Session");
     if (sessionGroupNode) {
-        // only parse if newly created
-        if (s.session()->empty()) {
-            // load session inside group
-            SessionLoader grouploader( s.session(), level_ + 1 );
-            grouploader.load( sessionGroupNode );
+        Session *se = s.session();
+
+        // ids of all sources inside group before loading
+        SourceIdList previous_sources = se->getIdList();
+
+        // when restoring an existing group (undo, snapshot), mixing groups
+        // and input callbacks are re-created by loading the inside session
+        if (!previous_sources.empty()) {
+            auto group_iter = se->beginMixingGroup();
+            while ( group_iter != se->endMixingGroup() )
+                group_iter = se->deleteMixingGroup(group_iter);
+            if (sessionGroupNode->FirstChildElement("InputCallbacks"))
+                se->inputCallbacks()->clear();
+        }
+
+        // load session inside group:
+        // - existing sources (same id) are updated
+        // - missing sources are created
+        SessionLoader grouploader( se, level_ + 1 );
+        grouploader.load( sessionGroupNode );
+
+        // delete sources inside group that are not in the xml
+        std::map< uint64_t, Source* > loaded_sources = grouploader.getSources();
+        for (auto id = previous_sources.begin(); id != previous_sources.end(); ++id) {
+            if ( loaded_sources.find(*id) == loaded_sources.end() ) {
+                SourceList::iterator its = se->find(*id);
+                if (its != se->end())
+                    se->deleteSource( *its );
+            }
         }
     }
 }
@@ -1780,8 +1804,10 @@ void SessionLoader::visit(ShaderSource &s)
 
 void SessionLoader::visit (CloneSource& s)
 {
+    XMLElement* sourceNode = xmlCurrent_;
+
     // configuration of filter in clone
-    xmlCurrent_ = xmlCurrent_->FirstChildElement("Filter");
+    xmlCurrent_ = sourceNode->FirstChildElement("Filter");
     if (xmlCurrent_) {
         // get type of filter and create
         int t = 0;
@@ -1791,6 +1817,9 @@ void SessionLoader::visit (CloneSource& s)
         // set config filter
         s.filter()->accept(*this);
     }
+
+    // restore current
+    xmlCurrent_ = sourceNode;
 }
 
 void SessionLoader::visit (CanvasSource &c)

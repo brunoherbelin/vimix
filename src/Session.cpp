@@ -872,6 +872,10 @@ void Session::applySnapshot(uint64_t key)
 
         SourceIdList session_sources = getIdList();
 
+        // input callbacks are re-created by loading (if saved)
+        if (snapshot_node_->FirstChildElement("InputCallbacks"))
+            input_callbacks_.clear();
+
         SessionLoader loader( this );
         loader.load( snapshot_node_ );
 

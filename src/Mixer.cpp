@@ -217,12 +217,19 @@ void Mixer::update()
     // animate draft
     Draft::manager().update(dt_);
 
+    // sources of a ready session execute their initial callbacks (e.g. play) in update
+    bool session_was_ready = liveSession()->ready();
+
     // update live session (DRAFT mode)
     if (live_)
         live_->update(dt_);
 
     // update session and associated sources
     session_->update(dt_);
+
+    // history start can be captured after the initial callbacks
+    if (session_was_ready)
+        Action::manager().refreshInit();
 
     // update canvases
     Canvas::manager().update(dt_);
@@ -2079,6 +2086,10 @@ void Mixer::restore(tinyxml2::XMLElement *sessionNode)
     SourceIdList session_sources = session_->getIdList();
 //    for( auto it = sessionsources.begin(); it != sessionsources.end(); it++)
 //        Log::Info("sessionsources  id %s", std::to_string(*it).c_str());
+
+    // input callbacks are re-created by loading (if saved)
+    if (sessionNode->FirstChildElement("InputCallbacks"))
+        session_->inputCallbacks()->clear();
 
     // load history status:
     // - if a source exists, its attributes are updated, and that's all

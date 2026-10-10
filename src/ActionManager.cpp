@@ -47,7 +47,7 @@ using namespace tinyxml2;
 
 
 Action::Action(): history_step_(0), history_max_step_(0), history_min_step_(0),
-    snapshot_id_(0), snapshot_node_(nullptr), interpolator_(nullptr), interpolator_node_(nullptr)
+    history_init_pending_(false), snapshot_id_(0), snapshot_node_(nullptr), interpolator_(nullptr), interpolator_node_(nullptr)
 {
 
 }
@@ -65,6 +65,9 @@ void Action::init(const std::string &label)
     snapshot_node_ = nullptr;
 
     store(label, false);
+
+    // sources are not initialized yet (e.g. media not playing)
+    history_init_pending_ = true;
 }
 
 // must be called in a thread running in parrallel of the rendering
@@ -186,6 +189,28 @@ void Action::storeSession(Session *se, std::string label, bool thumbnail)
 #endif
 }
 
+void Action::refreshInit()
+{
+    if (!history_init_pending_)
+        return;
+    history_init_pending_ = false;
+
+    // do not block if an action is being stored
+    if (!history_access_.try_lock())
+        return;
+
+    // replace initial step only if no other action was stored since init
+    if (history_step_ == 1 && history_max_step_ == 1) {
+        XMLElement *node = history_doc_.FirstChildElement( HISTORY_NODE(1).c_str() );
+        if (node) {
+            std::string label = node->Attribute("label") ? node->Attribute("label") : "";
+            history_doc_.DeleteChild(node);
+            captureMixerSession(Mixer::manager().liveSession(), HISTORY_NODE(1), label, false, &history_doc_);
+        }
+    }
+
+    history_access_.unlock();
+}
 
 void Action::store(const std::string &label, bool threaded)
 {

@@ -29,6 +29,8 @@ public:
         return _instance;
     }
     void init (const std::string &label);
+    // capture again the initial step once the session is ready
+    void refreshInit ();
 
     // Undo History
     void store (const std::string &label, bool threaded = true);
@@ -70,6 +72,7 @@ private:
     uint history_step_;
     uint history_max_step_;
     uint history_min_step_;
+    bool history_init_pending_;
     std::mutex history_access_;
     static void storeSession(Session *se, std::string label, bool thumbnail);
     void restore(uint target);

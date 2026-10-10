@@ -1986,7 +1986,11 @@ void MediaPlayer::setPlaySpeed(double s)
     //  are GST_CLOCK_TIME_NONE, the playback direction does not change
     //  and the seek is not flushing. (Since: 1.18)
     // if all conditions to use GST_SEEK_FLAG_INSTANT_RATE_CHANGE are met
-    if ( rate_change_ == RATE_CHANGE_INSTANT && !change_direction && !media_.isimage) {
+    // NB: a non-flushing seek can block forever on a paused pipeline (e.g. avidemux
+    // waiting for its streaming thread, itself blocked on full queues), so this
+    // is only possible when playing
+    if ( rate_change_ == RATE_CHANGE_INSTANT && !change_direction && !media_.isimage
+         && desired_state_ == GST_STATE_PLAYING ) {
 
         int seek_flags = GST_SEEK_FLAG_INSTANT_RATE_CHANGE;
         seek_flags |= GST_SEEK_FLAG_TRICKMODE;
