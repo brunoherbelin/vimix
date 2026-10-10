@@ -38,6 +38,7 @@ build/
 .cache/
 
 .claude/
+.zed/
 
 toolchain-x86_64.cmake
 # fetched at configure time by cmake/setup-ext.sh
