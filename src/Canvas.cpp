@@ -459,11 +459,10 @@ void Canvas::load(const std::string &filename)
         (*canvas_it)->accept( canvas_loader );
         ++canvas_it;
     }
-    // delete extra canvases if any
-    while ( canvas_it != canvases_.end() ) {
+    // delete extra canvases if any (keep at least one)
+    size_t num_loaded = std::distance(canvases_.begin(), canvas_it);
+    while ( canvases_.size() > MAX(num_loaded, (size_t) 1) )
         removeSurface();
-        canvas_it = --canvases_.end();  
-    }
 
     // Second main element is the list of canvas sources for output session
     XMLElement * sessionNode = pRoot->FirstChildElement("CanvasSources");
