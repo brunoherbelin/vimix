@@ -266,6 +266,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     SourceConfNode->SetAttribute("ratio", application.source.ratio);
     SourceConfNode->SetAttribute("res", application.source.res);
     SourceConfNode->SetAttribute("capture_naming", application.source.capture_naming);
+    SourceConfNode->SetAttribute("capture_format", application.source.capture_format);
     SourceConfNode->SetAttribute("capture_path", application.source.capture_path.c_str());
     SourceConfNode->SetAttribute("inspector_zoom", application.source.inspector_zoom);
     pRoot->InsertEndChild(SourceConfNode);
@@ -665,6 +666,7 @@ void Settings::init(const std::string &filename)
             sourceconfnode->QueryIntAttribute("res", &application.source.res);
 
             sourceconfnode->QueryIntAttribute("capture_naming", &application.source.capture_naming);
+            sourceconfnode->QueryIntAttribute("capture_format", &application.source.capture_format);
             const char *path_ = sourceconfnode->Attribute("capture_path");
             if (path_)
                 application.source.capture_path = std::string(path_);

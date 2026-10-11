@@ -224,6 +224,7 @@ struct SourceConfig
     int res;
     std::string capture_path;
     int capture_naming;
+    int capture_format;
     float inspector_zoom;
 
     SourceConfig() {
@@ -231,6 +232,7 @@ struct SourceConfig
         ratio = 3;
         res = 6;
         capture_naming = 0;
+        capture_format = 0; // GstToolkit::IMAGE_PNG
         inspector_zoom = 8.f;
     }
 };

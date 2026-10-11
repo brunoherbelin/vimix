@@ -231,18 +231,23 @@ void SourceControlWindow::Update()
     //
     // back from capture of FBOs: can save files
     if ( !captures_.empty() ) {
+        // image format of capture (PNG if its encoder is not available)
+        GstToolkit::Image format = (GstToolkit::Image) Settings::application.source.capture_format;
+        if ( GstToolkit::getImageEncodingPipeline(format).empty() )
+            format = GstToolkit::IMAGE_PNG;
+        const char *ext = GstToolkit::imageFileExtension(format);
         std::string filename;
         int n = 0;
         for (auto c = captures_.begin(); c != captures_.end(); c = captures_.erase(c)) {
             if ( c->second->isFull() ){
                 // if sequencial naming of file is selected
                 if (Settings::application.source.capture_naming == 0 )
-                    filename = SystemToolkit::filename_sequential(Settings::application.source.capture_path, c->first, "png");
+                    filename = SystemToolkit::filename_sequential(Settings::application.source.capture_path, c->first, ext);
                 else
-                    filename = SystemToolkit::filename_dateprefix(Settings::application.source.capture_path, c->first, "png");
+                    filename = SystemToolkit::filename_dateprefix(Settings::application.source.capture_path, c->first, ext);
                 // save capture
-                c->second->save( filename );
-                ++n;
+                if ( c->second->save( filename, format ) )
+                    ++n;
             }
             delete c->second;
         }
@@ -470,6 +475,21 @@ void SourceControlWindow::Render()
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (ImGuiToolkit::TextButton("Filename"))
                 Settings::application.source.capture_naming = 0;
+
+            // Image format selection (disable formats that cannot hold the largest source)
+            int max_width = 0, max_height = 0;
+            for (auto s = selection_.begin(); s != selection_.end(); ++s) {
+                FrameBuffer *fb = (*s)->frame();
+                if (fb) {
+                    max_width = MAX(max_width, (int) (fb->width() * fb->projectionSize().x));
+                    max_height = MAX(max_height, (int) (fb->height() * fb->projectionSize().y));
+                }
+            }
+            ImGui::SetNextItemWidth(combo_width);
+            ComboImageFormat("##Format", &Settings::application.source.capture_format, max_width, max_height);
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton("Format"))
+                Settings::application.source.capture_format = GstToolkit::IMAGE_PNG;
 
             ImGui::EndMenu();
         }
