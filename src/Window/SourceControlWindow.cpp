@@ -75,7 +75,7 @@ typedef struct payload
         FADE_OUT_IN,
         CUT,
         CUT_MERGE,
-        CUT_ERASE, 
+        CUT_ERASE,
         FLAG_ADD,
         FLAG_REMOVE
     };
@@ -500,11 +500,15 @@ void SourceControlWindow::Render()
             if (ImGui::MenuItem(ICON_FA_CUT "  Export sections", NULL, false, can_export))
                 mediaplayer_export_sections_ = true;
 
-            bool _alpha_fading = mediaplayer_active_->timelineFadingMode()
-                                 == MediaPlayer::FADING_ALPHA;
-            if (ImGui::MenuItem(ICON_FA_FONT "  Alpha fading", NULL, &_alpha_fading)) {
-                mediaplayer_active_->setTimelineFadingMode(
-                    _alpha_fading ? MediaPlayer::FADING_ALPHA : MediaPlayer::FADING_COLOR);
+            if (ImGuiToolkit::BeginMenuIcon(ICON_VI_FADING_CURVE, " Fading curve"))
+            {
+                bool active = mediaplayer_active_->timelineFadingMode() == MediaPlayer::FADING_COLOR;
+                if (ImGui::MenuItem(" Color ", NULL, active))
+                    mediaplayer_active_->setTimelineFadingMode(MediaPlayer::FADING_COLOR);
+                active = mediaplayer_active_->timelineFadingMode() == MediaPlayer::FADING_ALPHA;
+                if (ImGui::MenuItem(" Alpha ", NULL, active))
+                    mediaplayer_active_->setTimelineFadingMode(MediaPlayer::FADING_ALPHA);
+                ImGui::EndMenu();
             }
 
             if (ImGuiToolkit::BeginMenuIcon(ICON_VI_METRONOME, "Metronome"))
@@ -522,14 +526,6 @@ void SourceControlWindow::Render()
                 ImGui::EndMenu();
             }
 
-            if ( !mediaplayer_active_->isImage()) {
-                ImGui::Separator();
-                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SOURCE_GSTREAMER, "Gstreamer effect", nullptr,
-                                            !mediaplayer_active_->videoEffect().empty(),
-                                            mediaplayer_active_->videoEffectAvailable()) )
-                    mediaplayer_edit_pipeline_ = true;
-            }
-
             ImGui::EndMenu();
         }
 
@@ -543,8 +539,8 @@ void SourceControlWindow::Render()
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
             ImGui::SetCursorScreenPos(p);
             ImGuiToolkit::ButtonToggle( ICON_FA_SEARCH, &magnifying_glass);
-            // FORCE DISABLE IF NOT ENABLED 
-            if (!enabled) 
+            // FORCE DISABLE IF NOT ENABLED
+            if (!enabled)
                 magnifying_glass = false;
             ImGui::PopStyleColor(2);
         }
@@ -706,18 +702,18 @@ bool EditTimeline(const char *label,
             }
             else if (edit_mode == 2) {
                 if (!active) {
-                    // remove flag on mouse press   
+                    // remove flag on mouse press
                     if ( tl->isFlagged(time) ) {
-                        removed_flag_time = time; 
+                        removed_flag_time = time;
                         removed_flag_type = tl->flagTypeAt(time);
                         tl->removeFlagAt(time);
                     }
-                    // add flag on mouse release   
+                    // add flag on mouse release
                     else
-                        active = true;  
+                        active = true;
                 }
                 else if ( !tl->isFlagged(time) ) {
-                    cursor_flag = tl->flagTypeAt(time);; 
+                    cursor_flag = tl->flagTypeAt(time);;
                 }
             }
 
@@ -726,7 +722,7 @@ bool EditTimeline(const char *label,
         }
         // release active widget on mouse release
         else {
-            // add flag on mouse release   
+            // add flag on mouse release
             if (edit_mode == 2 && active) {
                 // exception: if flag was removed at same time, do not add it back
                 if ( removed_flag_time != time ) {
@@ -738,7 +734,7 @@ bool EditTimeline(const char *label,
                 removed_flag_time = 0;
                 removed_flag_type = -1;
             }
-            
+
             active = false;
             ImGui::ClearActiveID();
             previous_index = UINT32_MAX;
@@ -822,7 +818,7 @@ bool EditTimeline(const char *label,
     }
     else {
         if ( edit_mode == 2 && tl->isFlagged(time) ) {
-            cursor_flag = tl->flagTypeAt(time);; 
+            cursor_flag = tl->flagTypeAt(time);;
         }
     }
 
@@ -852,7 +848,7 @@ bool EditTimeline(const char *label,
     // plot flags (transparent background)
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_TabActive]); // cursor color
-    snprintf(buf, 128, "##Flags%s", label);    
+    snprintf(buf, 128, "##Flags%s", label);
     ImGui::PlotHistogram(buf, flags_array, MAX_TIMELINE_ARRAY, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(2);
 
@@ -878,7 +874,7 @@ bool EditTimeline(const char *label,
             cursor_pos = cursor_pos + ImVec2(mouse_pos_in_canvas.x, 12.f);
             window->DrawList->AddLine( cursor_pos, cursor_pos + ImVec2(0.f, size.y - 8.f), cur_color);
             _drawIcon(cursor_pos - ImVec2(2.f, 1.f), 11 + cursor_flag, 6, true, window);
-        } 
+        }
         else {
             cursor_pos = cursor_pos + ImVec2(mouse_pos_in_canvas.x, 4.f);
             window->DrawList->AddLine( cursor_pos, cursor_pos + ImVec2(0.f, size.y - 8.f), cur_color);
@@ -939,7 +935,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
     float time_ = static_cast<float> ( static_cast<double>(*time) / static_cast<double>(tl->duration()) );
 
     //
-    // GET INPUT 
+    // GET INPUT
     //
 
     // read user input from system
@@ -983,7 +979,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
     }
 
     //
-    // FLAGS 
+    // FLAGS
     //
     int index = 0;
     bool flag_pressed = false;
@@ -994,7 +990,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
         GstClockTime flag_time = flag_Interval.midpoint();
         float flag_pos_ = static_cast<float> ( static_cast<double>(flag_time - tl->begin()) / static_cast<double>(tl->duration()) );
         ImVec2 draw_pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), flag_pos_);
-        draw_pos -= ImVec2(2.f, -3.f); 
+        draw_pos -= ImVec2(2.f, -3.f);
 
         // simulate Button behavior : if mouse hovering flag and mouse pressed
         ImRect bb(draw_pos, draw_pos + ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()));
@@ -1011,20 +1007,20 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
         ImGui::PopStyleColor();
 
         // show time when hovering
-        if (hovered) 
+        if (hovered)
             ImGui::SetTooltip(ICON_FA_FLAG " %d (%s)", index, GstToolkit::time_to_string(flag_time).c_str());
 
         ++index;
-    }   
+    }
 
     //
-    // CURSOR 
+    // CURSOR
     //
     bool cursor_pressed = false;
     ImRect grab_slider_bb;
     ImU32 grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrab);
 
-    if (!flag_pressed) 
+    if (!flag_pressed)
     {
         float time_slider = time_ * 10.f; // x 10 precision on grab
         float time_zero = 0.f;
@@ -1041,7 +1037,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
 
             ImGui::MarkItemEdited(id);
         }
-        
+
     }
 
     // draw slider grab handle
@@ -1128,11 +1124,11 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
         // adjust bbox of section and render a timeline
         ImRect section_bbox(section_bbox_min, section_bbox_max);
         // render the timeline
-        ImGuiToolkit::RenderTimeline(section_bbox_min, section_bbox_max, 
-            section->begin, section->end, timeline->step());        
+        ImGuiToolkit::RenderTimeline(section_bbox_min, section_bbox_max,
+            section->begin, section->end, timeline->step());
 
         //
-        // FLAGS 
+        // FLAGS
         //
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, 0.f));
         ImGui::PushStyleColor( ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_Button) );
@@ -1145,13 +1141,13 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
             GstClockTime flag_time = flag_Interval.midpoint();
             float flag_pos_ = static_cast<float> ( static_cast<double>(flag_time - timeline->begin()) / static_cast<double>(timeline->duration()) );
             ImVec2 draw_pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), flag_pos_);
-            draw_pos -= ImVec2(2.f, -3.f); 
+            draw_pos -= ImVec2(2.f, -3.f);
 
             // icon depends on flag type & color on hovered
             _drawIcon(draw_pos, 11 + flag_Interval.type, 6, true, window);
 
             ++index;
-        }   
+        }
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(1);
 
@@ -1171,8 +1167,8 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
         size_t i = timeline->fadingIndexAt(section->begin);
         // number of values is the index after end time of section (+1), minus the start index
         size_t values_count = 1 + timeline->fadingIndexAt(section->end) - i;
-        ImGui::PlotLines("##linessection", lines_array + i, values_count, 
-            0, NULL, 0.f, 1.f, 
+        ImGui::PlotLines("##linessection", lines_array + i, values_count,
+            0, NULL, 0.f, 1.f,
             ImVec2(section_bbox.GetWidth(), plot_bbox.GetHeight()));
         ImGui::PopStyleColor(1);
 
@@ -1182,8 +1178,8 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
         // plot flags (transparent background)
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
         ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_TabActive]); // cursor color
-        ImGui::PlotHistogram("##flagssection", flags_array, MAX_TIMELINE_ARRAY, 
-            0, NULL, 0.f, 1.f, 
+        ImGui::PlotHistogram("##flagssection", flags_array, MAX_TIMELINE_ARRAY,
+            0, NULL, 0.f, 1.f,
             ImVec2(section_bbox.GetWidth(), plot_bbox.GetHeight()));
         ImGui::PopStyleColor(2);
 
@@ -1458,7 +1454,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                 const ImVec2 framesize(1.5f * timeline_height_ * (*source)->frame()->aspectRatio(), 1.5f * timeline_height_);
                 int action = SourceButton(*source, framesize);
                 if (action > 1) {
-                    (*source)->play( ! (*source)->playing() );                    
+                    (*source)->play( ! (*source)->playing() );
                     Action::manager().store((*source)->playing() ? "Source Play" : "Source Pause" );
                 }
                 else if (action > 0)
@@ -1901,7 +1897,7 @@ void SourceControlWindow::RenderSelectedSources()
                 ImVec2 framesize(widthcolumn, widthcolumn / (*source)->frame()->aspectRatio());
                 int action = SourceButton(*source, framesize);
                 if (action > 1) {
-                    (*source)->play( ! (*source)->playing() );                    
+                    (*source)->play( ! (*source)->playing() );
                     Action::manager().store((*source)->playing() ? "Source Play" : "Source Pause" );
                 }
                 else if (action > 0)
@@ -2141,7 +2137,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 {
     static bool show_overlay_info = false;
     static std::vector< std::pair<int,int> > editmode_icon = { {ICON_VI_TOOL_CUT}, {ICON_VI_TOOL_FADE}, {ICON_VI_FLAG_STOP} };
-    editmode_icon[2] = { Settings::application.widget.media_player_timeline_flag + 11, 6 };  
+    editmode_icon[2] = { Settings::application.widget.media_player_timeline_flag + 11, 6 };
     static std::vector< std::string > editmode_tooltip = { "Cutting tool", "Fading tool", "Flag tool" };
 
     mediaplayer_active_ = ms->mediaplayer();
@@ -2370,7 +2366,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::SameLine(0, h_space_);
 
             ImGui::PushButtonRepeat(true);
-            if (ImGui::Button( mediaplayer_active_->playSpeed() < 0 ? ICON_FA_BACKWARD :ICON_FA_FORWARD, 
+            if (ImGui::Button( mediaplayer_active_->playSpeed() < 0 ? ICON_FA_BACKWARD :ICON_FA_FORWARD,
                     ImVec2(ImGui::GetFrameHeightWithSpacing(), 0)) )
                 mediaplayer_active_->jump ();
             ImGui::PopButtonRepeat();
@@ -2400,7 +2396,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 if( mediaplayer_active_->playSpeed() < 0 ) {
                     // Go to previous flag when playing backward
                     TimeInterval target_flag = mediaplayer_active_->timeline()->getPreviousFlag( _paused_time );
-                    bool has_prev = target_flag.is_valid() && 
+                    bool has_prev = target_flag.is_valid() &&
                       !( mediaplayer_active_->currentFlag().is_valid() && mediaplayer_active_->timeline()->numFlags() == 1) &&
                       ( mediaplayer_active_->loop() == MediaPlayer::LOOP_REWIND || (target_flag.end < _paused_time) );
                     if( ImGuiToolkit::ButtonIcon(ICON_VI_FLAG_PREVIOUS, "Go to previous flag", has_prev) )
@@ -2409,7 +2405,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 else {
                     // go to next flag when playing forward
                     TimeInterval target_flag = mediaplayer_active_->timeline()->getNextFlag( _paused_time );
-                    bool has_next = target_flag.is_valid() && 
+                    bool has_next = target_flag.is_valid() &&
                       !( mediaplayer_active_->currentFlag().is_valid() && mediaplayer_active_->timeline()->numFlags() == 1) &&
                       ( mediaplayer_active_->loop() == MediaPlayer::LOOP_REWIND || (target_flag.begin > _paused_time) );
                     if( ImGuiToolkit::ButtonIcon(ICON_VI_FLAG_NEXT, "Go to next flag", has_next) )
@@ -2570,7 +2566,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 oss << ": Play backward";
                 Action::manager().store(oss.str());
             }
-        } 
+        }
         else {
             ImGuiToolkit::MenuItemIcon(ICON_VI_PLAY_BACKWARD, "Play backward", nullptr, false, false);
         }
@@ -2579,14 +2575,21 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             oss << ": Speed x 1.0";
             Action::manager().store(oss.str());
         }
-        ImGui::Separator();
-
-        if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
-            mediaplayer_active_->reopen();
 
         bool option = ms->replayOnDeactivate();
         if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on reactivation", NULL, &option )) {
             ms->setReplayOnDeactivate(option);
+        }
+
+        ImGui::Separator();
+        if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
+            mediaplayer_active_->reopen();
+
+        if ( !mediaplayer_active_->isImage()) {
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_SOURCE_GSTREAMER, "Gstreamer effect", nullptr,
+                                        !mediaplayer_active_->videoEffect().empty(),
+                                        mediaplayer_active_->videoEffectAvailable()) )
+                mediaplayer_edit_pipeline_ = true;
         }
 
         if (ImGui::IsWindowHovered())
@@ -2596,15 +2599,15 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         ImGui::EndPopup();
     }
-    
+
     if (ImGui::BeginPopup( "MenuMediaPlayerFlags" ))
     {
         int num_flags = static_cast<int>(icons_flags.size());
         TimeInterval copy_flag = mediaplayer_active_->currentFlag();
         for (int i = 0; i < num_flags; ++i) {
-            if (ImGuiToolkit::MenuItemIcon(icons_flags[i].first,icons_flags[i].second, 
+            if (ImGuiToolkit::MenuItemIcon(icons_flags[i].first,icons_flags[i].second,
                 tooltips_flags[i].c_str(), nullptr, copy_flag.type == i )) {
-                copy_flag.type = i;    
+                copy_flag.type = i;
                 mediaplayer_active_->timeline()->replaceFlag( copy_flag );
                 mediaplayer_active_->setCurrentFlag( copy_flag );
                 oss << ": Flag changed";
@@ -2933,7 +2936,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::Text("|");
             ImGui::SameLine(0, 0);
 
-            ImGuiToolkit::IconMultistate(icons_flags, 
+            ImGuiToolkit::IconMultistate(icons_flags,
                 &Settings::application.widget.media_player_timeline_flag, tooltips_flags);
 
             /// Enter time value for Flag
@@ -2964,7 +2967,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 tl->refresh();
                 oss << ": Timeline flag add";
                 Action::manager().store(oss.str());
-            }              
+            }
 
             /// CLEAR
             ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -2972,7 +2975,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 tl->clearFlags();
                 oss << ": Timeline flag clear";
                 Action::manager().store(oss.str());
-            }                                                                                                                                                                                                                           
+            }
 
             ImGui::PopStyleColor();
 
@@ -2984,7 +2987,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::PopStyleColor();
     }
 
-    
+
     ///
     /// Dialog to edit timeline fade in and out
     ///
@@ -3089,7 +3092,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         const ImVec2 area = ImGui::GetContentRegionAvail();
         static uint _status = 0;  // 0:unknown, 1:ok, 2:error
         static std::string _status_message = "";
-        static std::vector< std::pair< std::string, std::string> > _examples = { 
+        static std::vector< std::pair< std::string, std::string> > _examples = {
                                                                                  {"Thermal", "coloreffects preset=heat"},
                                                                                  {"Afterimage", "streaktv"},
                                                                                  {"Primary color", "frei0r-filter-primaries" },

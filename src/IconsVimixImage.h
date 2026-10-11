@@ -168,6 +168,7 @@
 #define ICON_VI_GAP_CLEAN_CURVE 3, 7
 #define ICON_VI_SMOOTH_FILTER   2, 7
 #define ICON_VI_CLEAR_TEXT      11, 13
+#define ICON_VI_FADING_CURVE    9,  1
 
 // input mapping, metronome and timer
 #define ICON_VI_KEY_PRESS         2, 13
@@ -190,7 +191,7 @@
 // displays, texture view and settings
 #define ICON_VI_BRIGHTNESS      4, 1
 #define ICON_VI_BRIGHTNESS_LOW  3, 1
-#define ICON_VI_CONTRAST        5, 16   
+#define ICON_VI_CONTRAST        5, 16
 #define ICON_VI_CONTRAST_LOW    6, 16
 #define ICON_VI_TEST_PATTERN    11, 1
 #define ICON_VI_TABLET_PRESSURE 13, 0
@@ -296,7 +297,6 @@
 //
 // #define ICON_VI_UNDEFINED_8    0,  1
 // #define ICON_VI_UNDEFINED_9    1,  1
-// #define ICON_VI_UNDEFINED_10   9,  1
 // #define ICON_VI_UNDEFINED_11  10,  1
 // #define ICON_VI_UNDEFINED_12  12,  1
 // #define ICON_VI_UNDEFINED_13  17,  1
