@@ -227,29 +227,40 @@ void SourceControlWindow::Update()
         Settings::application.source.capture_path = captureFolderDialog->path();
 
     //
-    // Capture frame on current selection
+    // Capture frame on all sources of current selection
     //
-    Source *s = nullptr;
-    if ( selection_.size() == 1 )
-        s = selection_.front();
-    if ( s != nullptr) {
-        // back from capture of FBO: can save file
-        if ( capture.isFull() ){
-            std::string filename;
-            // if sequencial naming of file is selected
-            if (Settings::application.source.capture_naming == 0 )
-                filename = SystemToolkit::filename_sequential(Settings::application.source.capture_path, s->name(), "png");
-            else
-                filename = SystemToolkit::filename_dateprefix(Settings::application.source.capture_path, s->name(), "png");
-            // save capture and inform user
-            capture.save( filename );
+    // back from capture of FBOs: can save files
+    if ( !captures_.empty() ) {
+        std::string filename;
+        int n = 0;
+        for (auto c = captures_.begin(); c != captures_.end(); c = captures_.erase(c)) {
+            if ( c->second->isFull() ){
+                // if sequencial naming of file is selected
+                if (Settings::application.source.capture_naming == 0 )
+                    filename = SystemToolkit::filename_sequential(Settings::application.source.capture_path, c->first, "png");
+                else
+                    filename = SystemToolkit::filename_dateprefix(Settings::application.source.capture_path, c->first, "png");
+                // save capture
+                c->second->save( filename );
+                ++n;
+            }
+            delete c->second;
+        }
+        // inform user
+        if ( n == 1 )
             Log::Notify("Frame saved in %s", filename.c_str() );
+        else if ( n > 1 )
+            Log::Notify("%d frames saved in %s", n, Settings::application.source.capture_path.c_str() );
+    }
+    // request capture : initiate capture of FBO of each source
+    if ( capture_request_ ) {
+        SourceList tocapture = Mixer::manager().validate(selection_);
+        for (auto s = tocapture.begin(); s != tocapture.end(); ++s) {
+            Screenshot *shot = new Screenshot;
+            shot->captureFramebuffer( (*s)->frame() );
+            captures_.emplace_back( (*s)->name(), shot );
         }
-        // request capture : initiate capture of FBO
-        if ( capture_request_ ) {
-            capture.captureFramebuffer( s->frame() );
-            capture_request_ = false;
-        }
+        capture_request_ = false;
     }
 
     // reset on session change
@@ -399,10 +410,13 @@ void SourceControlWindow::Render()
         //
         // Menu for capture frame
         //
-        if ( ImGui::BeginMenu(ICON_FA_ARROW_ALT_CIRCLE_DOWN "  Capture", selection_.size() == 1 ) )
+        if ( ImGui::BeginMenu(ICON_FA_ARROW_ALT_CIRCLE_DOWN "  Capture", !selection_.empty() ) )
         {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
-            if (ImGui::MenuItem( MENU_CAPTUREFRAME, "F10" ))
+            std::string label = MENU_CAPTUREFRAME;
+            if (selection_.size() > 1)
+                label = std::string(ICON_FA_CAMERA_RETRO "  Capture ") + std::to_string(selection_.size()) + " frames";
+            if (ImGui::MenuItem( label.c_str(), "F10" ))
                 capture_request_ = true;
             ImGui::PopStyleColor(1);
 

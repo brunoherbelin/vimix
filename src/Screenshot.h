@@ -7,12 +7,11 @@ class Screenshot
 {
     int             Width, Height, bpp;
     bool            VFlip;
-    unsigned char * Data;
     unsigned int    Pbo;
     unsigned int    Pbo_size;
     bool            Pbo_full;
 
-    static void storeToFile(Screenshot *s, std::string filename);
+    static void storeToFile(unsigned char *pixels, int w, int h, int bpp, bool vflip, std::string filename);
     void capture();
 
 public:

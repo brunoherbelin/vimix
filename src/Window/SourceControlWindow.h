@@ -69,7 +69,7 @@ class SourceControlWindow : public WorkspaceWindow
 
     // dialog to select frame capture location
     DialogToolkit::OpenFolderDialog *captureFolderDialog;
-    Screenshot capture;
+    std::list< std::pair<std::string, Screenshot *> > captures_;
 
 public:
     SourceControlWindow();

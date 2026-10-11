@@ -20,7 +20,6 @@
 #include <memory.h>
 #include <assert.h>
 #include <thread>
-#include <atomic>
 
 #include <glad/glad.h>
 
@@ -37,7 +36,6 @@ Screenshot::Screenshot()
     Width = Height = 0;
     bpp = 3;
     VFlip = true;
-    Data = nullptr;
     Pbo = 0;
     Pbo_size = 0;
     Pbo_full = false;
@@ -47,8 +45,6 @@ Screenshot::~Screenshot()
 {
     if (Pbo > 0)
         glDeleteBuffers(1, &Pbo);
-    if (Data)
-        free(Data);
 }
 
 bool Screenshot::isFull()
@@ -69,9 +65,6 @@ void Screenshot::capture()
     unsigned int size = Width * Height * bpp;
     if (Pbo_size != size) {
         Pbo_size = size;
-        if (Data)
-            free(Data);
-        Data = (unsigned char*) malloc(Pbo_size);
         glBufferData(GL_PIXEL_PACK_BUFFER, Pbo_size, NULL, GL_STREAM_READ);
     }
 
@@ -130,10 +123,12 @@ void Screenshot::save(std::string filename)
         // bind buffer
         glBindBuffer(GL_PIXEL_PACK_BUFFER, Pbo);
 
-        // get pixels (quite fast)
+        // get pixels (quite fast) into a buffer owned by the saving thread
+        unsigned char* pixels = nullptr;
         unsigned char* ptr = (unsigned char*) glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
         if (NULL != ptr) {
-            memmove(Data, ptr, Pbo_size);
+            pixels = (unsigned char*) malloc(Pbo_size);
+            memmove(pixels, ptr, Pbo_size);
             glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
         }
 
@@ -141,7 +136,8 @@ void Screenshot::save(std::string filename)
         glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
         // initiate saving in thread (slow)
-        std::thread(storeToFile, this, filename).detach();
+        if (pixels)
+            std::thread(storeToFile, pixels, Width, Height, bpp, VFlip, filename).detach();
 
         // ready for next
         Pbo_full = false;
@@ -150,18 +146,27 @@ void Screenshot::save(std::string filename)
 }
 
 // Thread to perform slow operation of saving to file
-void Screenshot::storeToFile(Screenshot *s, std::string filename)
+// (takes ownership of pixels, which are freed after saving)
+void Screenshot::storeToFile(unsigned char *pixels, int w, int h, int bpp, bool vflip, std::string filename)
 {
-    static std::atomic<bool> ScreenshotSavePending_ = false;
-    // only one save at a time
-    if (ScreenshotSavePending_)
-        return;
-    ScreenshotSavePending_ = true;
-    // got data to save ?
-    if (s && s->Data) {
-        // save file
-        stbi_flip_vertically_on_write(s->VFlip);
-        stbi_write_png(filename.c_str(), s->Width, s->Height, s->bpp, s->Data, s->Width * s->bpp);
+    const size_t stride = (size_t) w * bpp;
+
+    // flip rows in place
+    // (avoid stbi_flip_vertically_on_write, which is global and not thread safe)
+    if (vflip) {
+        unsigned char *row = (unsigned char*) malloc(stride);
+        for (int y = 0; y < h / 2; ++y) {
+            unsigned char *top = pixels + y * stride;
+            unsigned char *bottom = pixels + (h - 1 - y) * stride;
+            memcpy(row, top, stride);
+            memcpy(top, bottom, stride);
+            memcpy(bottom, row, stride);
+        }
+        free(row);
     }
-    ScreenshotSavePending_ = false;
+
+    // save file
+    stbi_write_png(filename.c_str(), w, h, bpp, pixels, (int) stride);
+
+    free(pixels);
 }
