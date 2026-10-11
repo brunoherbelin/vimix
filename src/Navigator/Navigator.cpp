@@ -958,6 +958,44 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
         }
         bundle->accept(v);
 
+        //
+        // RESOLUTION
+        //
+        const FrameBuffer *output = bundle->frame();
+        Settings::application.pannel_source[3] = ImGui::CollapsingHeader("Resolution",
+                                                                         Settings::application.pannel_source[3] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+        if (Settings::application.pannel_source[3]) {
+            if (output) {
+                // show static info of resolution
+                static char dummy_str[512];
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                snprintf(dummy_str, 512, "%d", output->width());
+                ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                snprintf(dummy_str, 512, "%d", output->height());
+                ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                ImGui::PopStyleColor(1);
+            }
+
+            // resize the bundle to cover its visible sources
+            if ( ImGui::Button( ICON_FA_EXPAND_ARROWS_ALT "  Resize to fit content", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+                Mixer::manager().fitBundle();
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Resize bundle to cover all its visible sources");
+        }
+        else if (output) {
+            // show resolution next to the collapsed header
+            const float space = style.ItemSpacing.y;
+            ImVec2 pos_tmp = ImGui::GetCursorPos();
+            ImVec2 space_size = ImGui::CalcTextSize(" Resolution ", NULL);
+            space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space;
+            ImGui::SetCursorPos( pos_tmp + space_size );
+            ImGui::Text("( %d x %d )", output->width(), output->height());
+            ImGui::SetCursorPos( pos_tmp );
+        }
+
         ImGui::End();
     }
 

@@ -610,6 +610,37 @@ void GeometryView::draw()
         }
         ImGui::PopFont();
     }
+    else if (Mixer::manager().editingBundle()) {
+
+        // Locate window at upper right corner
+        glm::vec2 P(-output_surface_->scale_.x, output_surface_->scale_.y + 0.01f);
+        P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
+        // Set window position depending on icons size
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetNextWindowPos(ImVec2(P.x - 2.f * ImGui::GetFrameHeight() , P.y ), ImGuiCond_Always);
+        if (ImGui::Begin("##GeometryViewBundleOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                        | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
+        {
+            // style
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(COLOR_FRAME_LIGHT, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
+            ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+
+            // resize the edited bundle to cover its visible sources
+            if (ImGui::Button(ICON_FA_EXPAND_ARROWS_ALT ))
+                Mixer::manager().fitBundle();
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Resize to fit content");
+
+            ImGui::PopStyleColor(6);
+            ImGui::End();
+        }
+        ImGui::PopFont();
+    }
 
     // display popup menu source
     if (show_context_menu_ == MENU_SOURCE) {

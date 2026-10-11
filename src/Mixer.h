@@ -129,6 +129,7 @@ public:
     void enterBundle (SessionGroupSource *bundle);
     void exitBundle ();
     void exitAllBundles ();
+    void fitBundle ();
     inline bool editingBundle () const { return !bundles_.empty(); }
     inline const std::vector<SessionGroupSource *> &editedBundles () const { return bundles_; }
     void terminate();

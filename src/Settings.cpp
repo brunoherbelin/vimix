@@ -157,6 +157,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("pannel_source_0", application.pannel_source[0]);
     applicationNode->SetAttribute("pannel_source_1", application.pannel_source[1]);
     applicationNode->SetAttribute("pannel_source_2", application.pannel_source[2]);
+    applicationNode->SetAttribute("pannel_source_3", application.pannel_source[3]);
     applicationNode->SetAttribute("pannel_session_0", application.pannel_session[0]);
     applicationNode->SetAttribute("pannel_session_1", application.pannel_session[1]);
     applicationNode->SetAttribute("pannel_session_2", application.pannel_session[2]);
@@ -533,6 +534,7 @@ void Settings::init(const std::string &filename)
             applicationNode->QueryBoolAttribute("pannel_source_0", &application.pannel_source[0]);
             applicationNode->QueryBoolAttribute("pannel_source_1", &application.pannel_source[1]);
             applicationNode->QueryBoolAttribute("pannel_source_2", &application.pannel_source[2]);
+            applicationNode->QueryBoolAttribute("pannel_source_3", &application.pannel_source[3]);
             applicationNode->QueryBoolAttribute("pannel_session_0", &application.pannel_session[0]);
             applicationNode->QueryBoolAttribute("pannel_session_1", &application.pannel_session[1]);
             applicationNode->QueryBoolAttribute("pannel_session_2", &application.pannel_session[2]);

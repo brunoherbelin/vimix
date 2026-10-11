@@ -29,7 +29,9 @@
 #include "FrameBuffer.h"
 #include "Resource.h"
 #include "Scene/Decorations.h"
+#include "Toolkit/GlmToolkit.h"
 #include "Visitor/Visitor.h"
+#include "Visitor/BoundingBoxVisitor.h"
 #include "Session.h"
 #include "SessionCreator.h"
 #include "Mixer.h"
@@ -452,42 +454,64 @@ void SessionGroupSource::init()
 {
     if ( resolution_.x > 0.f && resolution_.y > 0.f ) {
 
-        // valid resolution given to create render view
-        session_->setResolution( resolution_, true );
-
-        // deep update to make sure reordering of sources
-        ++View::need_deep_update_;
-
-        //  update to draw framebuffer
-        session_->update( dt_ );
-
-        // get the texture index from framebuffer of session, apply it to the surface
-        texturesurface_->setTextureIndex( session_->frame()->texture() );
-
-        // special case for session group using FrameBuffer_alpha
-        // shader should not pre-multiply alpha
-        ImageShader *ish = static_cast<ImageShader *>(texturesurface_->shader());
-        ish->premultiply = 0.f;
-
-        // create Frame buffer matching size of session
-        FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution(), FrameBuffer::FrameBuffer_alpha );
-
-        // set the renderbuffer of the source and attach rendering nodes
-        attach(renderbuffer);
-
-        // render the session frame into frame buffer immediately (avoids 1 frame blank)
-        if ( renderbuffer_->begin() ) {
-            texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
-            renderbuffer_->end();
-        }
+        // create the frame buffers
+        setupFrames();
 
         // done init
         uint N = session_->size();
         std::string numsource = std::to_string(N) + " source" + (N>1 ? "s" : "");
         Log::Info("Bundle Session %s reading %s (%d x %d).", std::to_string(session_->id()).c_str(), numsource.c_str(),
-                  int(renderbuffer->resolution().x), int(renderbuffer->resolution().y) );
+                  int(renderbuffer_->resolution().x), int(renderbuffer_->resolution().y) );
         Log::Info("Source '%s' linked to Bundle Session %s.", name().c_str(), std::to_string(session_->id()).c_str());
     }
+}
+
+void SessionGroupSource::setupFrames()
+{
+    // valid resolution given to create (or change) render view
+    // NB: round to avoid loosing a pixel when converting to integer
+    session_->setResolution( glm::round(resolution_), true );
+
+    // deep update to make sure reordering of sources
+    ++View::need_deep_update_;
+
+    //  update to draw framebuffer
+    session_->update( dt_ );
+
+    // get the texture index from framebuffer of session, apply it to the surface
+    texturesurface_->setTextureIndex( session_->frame()->texture() );
+
+    // special case for session group using FrameBuffer_alpha
+    // shader should not pre-multiply alpha
+    ImageShader *ish = static_cast<ImageShader *>(texturesurface_->shader());
+    ish->premultiply = 0.f;
+
+    // create Frame buffer matching size of session
+    FrameBuffer *renderbuffer = new FrameBuffer( session_->frame()->resolution(), FrameBuffer::FrameBuffer_alpha );
+
+    // set the renderbuffer of the source and attach rendering nodes
+    // (replaces the previous renderbuffer if any)
+    attach(renderbuffer);
+
+    // attach re-created an empty mask buffer: fill it with the stored paint mask
+    if (maskshader_->mode == MaskShader::PAINT && maskimage_ != nullptr)
+        touch(Source::SourceUpdate_Mask_fill);
+
+    // render the session frame into frame buffer immediately (avoids 1 frame blank)
+    if ( renderbuffer_->begin() ) {
+        texturesurface_->draw(glm::identity<glm::mat4>(), renderbuffer_->projection());
+        renderbuffer_->end();
+    }
+}
+
+void SessionGroupSource::setResolution(glm::vec3 v)
+{
+    resolution_ = v;
+
+    // apply change of resolution if already initialized (e.g. undo)
+    if ( renderbuffer_ && session_->frame() && resolution_.x > 0.f && resolution_.y > 0.f
+         && glm::round(resolution_) != session_->frame()->resolution() )
+        setupFrames();
 }
 
 void SessionGroupSource::setSession (Session *s)
@@ -504,14 +528,14 @@ void SessionGroupSource::setSession (Session *s)
 
 void SessionGroupSource::setDimensions(glm::vec3 scale, glm::vec3 center, float height)
 {
+    dimension_scale_ = scale;
+    dimension_center_ = center;
+
     // compute resolution from height if given
     if ( height > 0.f ) {
         float H = height * scale.y;
-        resolution_ = glm::vec3( H * (scale.x / scale.y), H, 0.f );
-    } 
-
-    dimension_scale_ = scale;
-    dimension_center_ = center;
+        setResolution( glm::vec3( H * (scale.x / scale.y), H, 0.f ) );
+    }
 }
 
 bool SessionGroupSource::import(Source *source)
@@ -535,6 +559,95 @@ bool SessionGroupSource::import(Source *source)
     }
 
     return ret;
+}
+
+bool SessionGroupSource::reframe(glm::vec2 center, glm::vec2 halfsize)
+{
+    // need an initialized bundle and a valid area
+    if ( renderbuffer_ == nullptr || session_->frame() == nullptr
+         || halfsize.x < EPSILON || halfsize.y < EPSILON )
+        return false;
+
+    // new resolution keeps the same pixel density (frame height covers 2 units)
+    const glm::vec3 res = session_->frame()->resolution();
+    glm::vec3 newres = glm::vec3( res.y * halfsize.x, res.y * halfsize.y, 0.f );
+    // limit to maximum resolution of the GPU, keeping aspect ratio
+    const glm::vec3 maxres = FrameBuffer::maxResolution();
+    newres *= MIN( 1.f, MIN( maxres.x / newres.x, maxres.y / newres.y ) );
+    newres = glm::max( glm::round(newres), glm::vec3(2.f, 2.f, 0.f) );
+    if ( !FrameBuffer::isValidResolution(newres, session_->frame()->flags()) ) {
+        Log::Notify("Cannot change resolution of bundle '%s' to %d x %d.", name().c_str(),
+                    int(newres.x), int(newres.y) );
+        return false;
+    }
+
+    // adjust geometry of sources inside: center becomes origin, half height becomes unit
+    for (auto it = session_->begin(); it != session_->end(); ++it) {
+        Group *g = (*it)->group(View::GEOMETRY);
+        g->translation_.x = (g->translation_.x - center.x) / halfsize.y;
+        g->translation_.y = (g->translation_.y - center.y) / halfsize.y;
+        g->scale_.x /= halfsize.y;
+        g->scale_.y /= halfsize.y;
+        (*it)->touch();
+    }
+
+    // adjust geometry of the bundle to keep the same rendering
+    // (with crop, the area m +/- h of the frame is shown in the surface)
+    Group *g = groups_[View::GEOMETRY];
+    const glm::vec2 h( (g->crop_[1] - g->crop_[0]) * 0.5f, (g->crop_[2] - g->crop_[3]) * 0.5f );
+    const glm::vec2 m( (g->crop_[1] + g->crop_[0]) * 0.5f, (g->crop_[2] + g->crop_[3]) * 0.5f );
+    // scale and offset of coordinates inside, as seen in the bundle surface
+    const glm::vec2 S = glm::vec2(g->scale_) / h;
+    const glm::vec2 o = S * ( center - glm::vec2(m.x * renderbuffer_->aspectRatio(), m.y) );
+    const float cosa = std::cos(g->rotation_.z), sina = std::sin(g->rotation_.z);
+    g->translation_.x += cosa * o.x - sina * o.y;
+    g->translation_.y += sina * o.x + cosa * o.y;
+    g->scale_.x = S.x * halfsize.y;
+    g->scale_.y = S.y * halfsize.y;
+    // the whole new frame is visible, without distortion
+    g->crop_ = glm::vec4(-1.f, 1.f, 1.f, -1.f);
+    g->data_ = glm::zero<glm::mat4>();
+    touch();
+
+    // keep dimensions consistent with the new resolution (saved in session file)
+    const float ar = newres.x / newres.y;
+    dimension_center_ += dimension_scale_.y * glm::vec3(center, 0.f);
+    dimension_scale_ = dimension_scale_.y * halfsize.y * glm::vec3(ar, 1.f, 1.f);
+
+    // change resolution of frame buffers
+    resolution_ = newres;
+    setupFrames();
+
+    return true;
+}
+
+bool SessionGroupSource::fitToContent()
+{
+    if ( renderbuffer_ == nullptr || session_->frame() == nullptr )
+        return false;
+
+    // area covered by the visible sources inside
+    BoundingBoxVisitor bbox_visitor;
+    for (auto it = session_->begin(); it != session_->end(); ++it) {
+        if ( (*it)->active() && (*it)->visible() ) {
+            bbox_visitor.setModelview( glm::identity<glm::mat4>() );
+            (*it)->group(View::GEOMETRY)->accept(bbox_visitor);
+        }
+    }
+    GlmToolkit::AxisAlignedBoundingBox bbox = bbox_visitor.bbox();
+    if ( bbox.isNull() )
+        return false;
+
+    // nothing to do if already fitting the frame (with a precision of one pixel)
+    const glm::vec2 center( bbox.center() );
+    const glm::vec2 halfsize( bbox.scale() );
+    const glm::vec2 frame( session_->frame()->aspectRatio(), 1.f );
+    const glm::vec2 pixel( 2.f / session_->frame()->resolution().y );
+    if ( glm::all( glm::lessThan( glm::abs(center), pixel ) )
+         && glm::all( glm::lessThan( glm::abs(halfsize - frame), pixel ) ) )
+        return false;
+
+    return reframe(center, halfsize);
 }
 
 void SessionGroupSource::accept(Visitor& v)

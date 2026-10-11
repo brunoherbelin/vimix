@@ -309,7 +309,7 @@ struct Application
     bool pannel_session[4];
     bool pannel_always_visible;
     bool pannel_settings[6];
-    bool pannel_source[3];
+    bool pannel_source[4];
 
     // connection settings
     bool accept_connections;
@@ -426,6 +426,7 @@ struct Application
         pannel_source[0] = true;
         pannel_source[1] = true;
         pannel_source[2] = true;
+        pannel_source[3] = true;
         transcode_options[0] = 1;  // force_keyframes
         transcode_options[1] = 0;  // GstToolkit::H264_RT
         transcode_options[2] = 0;  // force_no_audio

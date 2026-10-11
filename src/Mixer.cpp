@@ -242,7 +242,7 @@ void Mixer::update()
     if (Settings::application.widget.preview_output > -1) {
         Settings::application.widget.preview_output = MIN( Canvas::manager().size()-1, Settings::application.widget.preview_output );
         output = Canvas::manager().at(Settings::application.widget.preview_output)->frame();
-    } 
+    }
     FrameGrabbing::manager().grabFrame(output, static_cast<guint64>(dt__));
 
     // manage sources which failed update
@@ -415,7 +415,7 @@ Source * Mixer::createSourceRender(int provenance)
 {
     // ready to create a source
     RenderSource *s = new RenderSource;
-    s->setRenderingProvenance( (RenderSource::RenderSourceProvenance)provenance );  
+    s->setRenderingProvenance( (RenderSource::RenderSourceProvenance)provenance );
     s->setSession(session_);
 
     // propose a new name based on session name
@@ -902,6 +902,19 @@ void Mixer::exitAllBundles()
     setCurrentSource(bundle);
 }
 
+void Mixer::fitBundle()
+{
+    if (bundles_.empty())
+        return;
+
+    // resize the edited bundle to cover its visible sources
+    SessionGroupSource *bundle = bundles_.back();
+    if ( bundle->fitToContent() ) {
+        ++View::need_deep_update_;
+        Action::manager().store(bundle->name() + std::string(": Resized to content"));
+    }
+}
+
 bool Mixer::bundlesUpdateSession() const
 {
     // a bundle updates its session only when active and playing
@@ -1106,7 +1119,7 @@ bool Mixer::selectionCanBeGroupped () const
                 break;
             }
         }
-    }        
+    }
 
     return ret;
 }
@@ -1142,11 +1155,11 @@ void Mixer::group(SourceList sourcelist)
         if ( (*sit)->active() && (*sit)->visible() )
             visiblelist.push_back( *sit );
     }
-    GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(visiblelist, 
+    GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(visiblelist,
                                                             geometry_.scene.ws(), View::GEOMETRY );
     sessionbundle->setDimensions( selection_box.scale(), selection_box.center(),
                                  session_->frame()->resolution().y );
-                    
+
     // prepare for new session bundle name
     std::string name;
     // prepare for depth to place the group source
@@ -1193,7 +1206,7 @@ void Mixer::group(SourceList sourcelist)
         sessionbundle->group(View::MIXING)->translation_.x = 0.f;
         sessionbundle->group(View::MIXING)->translation_.y = 0.f;
 
-        // set geometry        
+        // set geometry
         sessionbundle->group(View::GEOMETRY)->translation_ = sessionbundle->center();
         sessionbundle->group(View::GEOMETRY)->scale_ = sessionbundle->scale();
         // correct for aspect ratio done by SessionGroupSource resolution
@@ -1218,7 +1231,7 @@ void Mixer::group(SourceList sourcelist)
 
         // avoid display issues
         current_view_->update(0.f);
-            
+
         // store in action manager
         std::ostringstream info;
         info << sessionbundle->name() << ": inserted (" << sessionbundle->session()->size() << " sources group)";
@@ -1253,15 +1266,15 @@ void Mixer::groupAll(bool only_active)
     // loop over sources from the current mixer session
     for(auto it = session_->begin(); it != session_->end(); ++it) {
         // if request for only active, take only active source
-        if ( !only_active || (*it)->active()  ) 
+        if ( !only_active || (*it)->active()  )
             // add to list
             sourcelist.push_back( *it );
     }
     // if a clone was left orphan in the mixer current session, take in in the bundle
     for(auto it = session_->begin(); it != session_->end(); ++it) {
         CloneSource *cs = dynamic_cast<CloneSource*>(*it);
-        if ( cs != nullptr && 
-            std::find(sourcelist.begin(), sourcelist.end(), cs->origin()) == sourcelist.end() ) 
+        if ( cs != nullptr &&
+            std::find(sourcelist.begin(), sourcelist.end(), cs->origin()) == sourcelist.end() )
             sourcelist.push_back( *it );
     }
 
@@ -1278,7 +1291,7 @@ void Mixer::groupAll(bool only_active)
                                                     visiblelist, geometry_.scene.ws(), View::GEOMETRY);
     sessionbundle->setDimensions( bounding_box.scale(), bounding_box.center(),
                                 session_->frame()->resolution().y );
-                        
+
     // remember groups before emptying the session
     std::list<SourceList> allgroups = session_->getMixingGroups();
     std::list<SourceList> bundlegroups;
@@ -1317,12 +1330,12 @@ void Mixer::groupAll(bool only_active)
         sessionbundle->group(View::MIXING)->translation_.x = 0.f;
         sessionbundle->group(View::MIXING)->translation_.y = 0.f;
 
-        // set geometry        
+        // set geometry
         sessionbundle->group(View::GEOMETRY)->translation_ = sessionbundle->center();
         sessionbundle->group(View::GEOMETRY)->scale_ = sessionbundle->scale();
         // correct for aspect ratio done by SessionGroupSource resolution
         sessionbundle->group(View::GEOMETRY)->scale_.x = sessionbundle->group(View::GEOMETRY)->scale_.y;
-        
+
         // set rendering preemptively from update() of sessionbundle
         sessionbundle->group(View::RENDERING)->translation_ = sessionbundle->group(View::GEOMETRY)->translation_;
         sessionbundle->group(View::RENDERING)->translation_.z = sessionbundle->group(View::LAYER)->translation_.z;
@@ -2019,7 +2032,7 @@ void Mixer::swap()
 
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
-    
+
     // adjust canvas to rewly updated framebuffer
     Canvas::manager().setInputFrameBuffer(session_->frame());
 
@@ -2048,7 +2061,7 @@ void Mixer::swap()
         Log::Notify("Session '%s' loaded with %s.", session_->filename().c_str(), numsource.c_str());
     }
 
-    // needs refresh 
+    // needs refresh
     ++View::need_deep_update_;
 }
 
@@ -2074,7 +2087,7 @@ void Mixer::close(bool smooth)
     else {
         set( new Session );
 
-        // switch Mixing view 
+        // switch Mixing view
         setView(View::MIXING);
     }
 
@@ -2288,4 +2301,3 @@ void Mixer::restore(tinyxml2::XMLElement *sessionNode)
 
     ++View::need_deep_update_;
 }
-

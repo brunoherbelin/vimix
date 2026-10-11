@@ -71,7 +71,7 @@ public:
 
     // SessionGroup Source specific interface
     void setSession (Session *s);
-    inline void setResolution (glm::vec3 v) { resolution_ = v; }
+    void setResolution (glm::vec3 v);
     inline glm::vec3 resolution() const { return resolution_; }
     void setDimensions( glm::vec3 scale, glm::vec3 center, float height);
     inline glm::vec3 scale() const { return dimension_scale_; }
@@ -80,12 +80,19 @@ public:
     // import a source
     bool import(Source *source);
 
+    // change the area of the bundle frame, given in coordinates of the sources inside
+    // (sources inside and bundle geometry are adjusted to keep the same rendering)
+    bool reframe(glm::vec2 center, glm::vec2 halfsize);
+    // reframe to cover all the visible sources inside
+    bool fitToContent();
+
     glm::ivec2 icon() const override;
     std::string info() const override;
 
 protected:
 
     void init() override;
+    void setupFrames();
     glm::vec3 resolution_;
     glm::vec3 dimension_scale_, dimension_center_;
 };
