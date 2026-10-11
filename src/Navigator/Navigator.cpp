@@ -31,6 +31,7 @@
 #include "View/View.h"
 #include "Resource.h"
 #include "Mixer.h"
+#include "ActionManager.h"
 #include "Draft.h"
 #include "Source/SourceCallback.h"
 #include "Source/SessionSource.h"
@@ -968,9 +969,39 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
                                                                          Settings::application.pannel_source[3] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
         if (Settings::application.pannel_source[3]) {
             if (output) {
+                // optimal height of bundle frame: one pixel of bundle for one pixel of
+                // the frame of the parent session, given the scale and crop of the bundle
+                Session *parent = bundles.size() > 1 ? bundles[bundles.size() - 2]->session()
+                                                     : Mixer::manager().liveSession();
+                const Group *g = bundle->group(View::GEOMETRY);
+                const glm::vec2 h( (g->crop_[1] - g->crop_[0]) * 0.5f, (g->crop_[2] - g->crop_[3]) * 0.5f );
+                const float optimal_height = parent->frame()->resolution().y
+                                             * MAX( ABS(g->scale_.x) / h.x, ABS(g->scale_.y) / h.y );
+                const float density = optimal_height > 0.f ? (float) output->height() / optimal_height : 1.f;
+
                 // show static info of resolution
                 static char dummy_str[512];
                 ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                snprintf(dummy_str, 512, "%.2f", density);
+                ImGui::InputText("##Density", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("How many pixels are rendered per pixel of the parent session.\n"
+                                          "1.0 is optimal; lower values reduce quality and save resources, "
+                                          "higher values compute pixels that are not visible.");
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                // reset to optimal density (keep aspect ratio, limited to the maximum resolution)
+                if (ImGuiToolkit::TextButton("Density", "Reset to optimal density (1.0)") && optimal_height > 0.f) {
+                    glm::vec3 res( optimal_height * output->aspectRatio(), optimal_height, 0.f );
+                    const glm::vec3 maxres = FrameBuffer::maxResolution();
+                    res *= MIN( 1.f, MIN( maxres.x / res.x, maxres.y / res.y ) );
+                    res = glm::round(res);
+                    if ( res != output->resolution()
+                         && FrameBuffer::isValidResolution(res, bundle->session()->frame()->flags()) ) {
+                        bundle->setResolution( res );
+                        Action::manager().store(bundle->name() + std::string(": Optimal resolution"));
+                    }
+                }
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 snprintf(dummy_str, 512, "%d", output->width());
                 ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
@@ -985,6 +1016,16 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
                 Mixer::manager().fitBundle();
             if (ImGui::IsItemHovered())
                 ImGuiToolkit::ToolTip("Resize bundle to cover all its visible sources");
+
+            // reduce the resolution of the bundle by half (same geometry, less pixels)
+            if (output && output->width() / 2 >= FRAMEBUFFER_MIN_SIZE && output->height() / 2 >= FRAMEBUFFER_MIN_SIZE) {
+                if ( ImGui::Button( ICON_FA_COMPRESS_ALT "  Half resolution", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+                    bundle->setResolution( glm::vec3(output->width() / 2, output->height() / 2, 0.f) );
+                    Action::manager().store(bundle->name() + std::string(": Reduced resolution"));
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Halve the width and height of the bundle frame");
+            }
         }
         else if (output) {
             // show resolution next to the collapsed header
