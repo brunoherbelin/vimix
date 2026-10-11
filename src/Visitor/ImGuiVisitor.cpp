@@ -1090,7 +1090,7 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     if ( std::find(edited.begin(), edited.end(), &s) == edited.end() ) {
         const bool cannot_edit = Draft::manager().active() || edited.size() >= MAX_BUNDLE_LEVEL;
         ImGuiToolkit::PushDisabled(cannot_edit);
-        if ( ImGui::Button( ICON_FA_LEVEL_DOWN_ALT "  Enter to edit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+        if ( ImGui::Button( ICON_FA_LEVEL_DOWN_ALT "  Enter & edit", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
             Mixer::manager().enterBundle( &s );
         ImGuiToolkit::PopDisabled(cannot_edit);
 

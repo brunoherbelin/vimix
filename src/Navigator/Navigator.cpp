@@ -49,6 +49,7 @@
 #include "SourcePanel.h"
 #include "SessionPanel.h"
 #include "SettingsPanel.h"
+#include "imgui.h"
 #include "Navigator.h"
 
 
@@ -962,6 +963,7 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
         // RESOLUTION
         //
         const FrameBuffer *output = bundle->frame();
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
         Settings::application.pannel_source[3] = ImGui::CollapsingHeader("Resolution",
                                                                          Settings::application.pannel_source[3] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
         if (Settings::application.pannel_source[3]) {
@@ -995,6 +997,7 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
             ImGui::Text("( %d x %d )", output->width(), output->height());
             ImGui::SetCursorPos( pos_tmp );
         }
+        ImGui::PopStyleColor(1);
 
         ImGui::End();
     }

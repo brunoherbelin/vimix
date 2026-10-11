@@ -434,7 +434,7 @@ void SourceControlWindow::Render()
                     Settings::application.source.capture_path = SystemToolkit::path_filename( mediaplayer_active_->filename() );
                 // else file location of session
                 else
-                    Settings::application.source.capture_path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+                    Settings::application.source.capture_path = SystemToolkit::path_filename( Mixer::manager().liveSession()->filename() );
             }
             else if (selected_path > 0)
                 Settings::application.source.capture_path = SystemToolkit::home_path();

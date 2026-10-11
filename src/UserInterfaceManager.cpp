@@ -273,8 +273,8 @@ void UserInterface::handleKeyboard()
         }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_O), false )) {
             // SHIFT + CTRL + O : reopen current session
-            if (shift_modifier_active && !Mixer::manager().session()->filename().empty())
-                Mixer::manager().load( Mixer::manager().session()->filename() );
+            if (shift_modifier_active && !Mixer::manager().liveSession()->filename().empty())
+                Mixer::manager().load( Mixer::manager().liveSession()->filename() );
             // CTRL + O : Open session
             else
                 selectOpenFilename();
@@ -823,7 +823,7 @@ bool UserInterface::saveOrSaveAs(bool force_versioning)
 {
     bool finished = false;
 
-    if (Mixer::manager().session()->filename().empty())
+    if (Mixer::manager().liveSession()->filename().empty())
         selectSaveFilename();
     else {
         Mixer::manager().save(force_versioning || Settings::application.save_version_snapshot);
@@ -871,8 +871,8 @@ bool UserInterface::TryClose()
 void UserInterface::selectSaveFilename()
 {
     if (sessionsavedialog) {
-        if (!Mixer::manager().session()->filename().empty())
-            sessionsavedialog->setFolder( Mixer::manager().session()->filename() );
+        if (!Mixer::manager().liveSession()->filename().empty())
+            sessionsavedialog->setFolder( Mixer::manager().liveSession()->filename() );
 
         sessionsavedialog->open();
     }
@@ -1039,7 +1039,7 @@ void UserInterface::NewFrame()
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
             if (ImGui::Button(MENU_DELETE_FILE, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
                 // close the session if it is the file to delete
-                if (Mixer::manager().session()->filename() == pending_delete_file)
+                if (Mixer::manager().liveSession()->filename() == pending_delete_file)
                     Mixer::manager().close();
                 // delete the file from disk
                 if (SystemToolkit::remove_file(pending_delete_file))
@@ -1422,7 +1422,7 @@ void UserInterface::showMenuFile()
 
     // FILE OPEN AND SAVE
     ImGui::Separator();
-    const std::string currentfilename = Mixer::manager().session()->filename();
+    const std::string currentfilename = Mixer::manager().liveSession()->filename();
     const bool currentfileopen = !currentfilename.empty();
 
     ImGui::MenuItem( MENU_OPEN_ON_START, nullptr, &Settings::application.recentSessions.load_at_start);
