@@ -15,6 +15,7 @@ uniform sampler2D iChannel0;        // input channel (texture id).
 uniform sampler2D iChannel1;        // input mask
 uniform float stipple;
 uniform float premultiply;
+uniform float alphafromcolor;       // output alpha derived from color (black is transparent)
 
 void main()
 {
@@ -34,5 +35,11 @@ void main()
     A = clamp(A, 0.0, 1.0);
 
     // output RGB with Alpha pre-multiplied
-    FragColor = vec4(RGB * mix(1.0 / max(A, 0.001), A, premultiply), A);
+    vec3 RGBA = RGB * mix(1.0 / max(A, 0.001), A, premultiply);
+
+    // for additive blending modes (e.g. screen), black has no effect: its alpha should be null
+    // so that it remains transparent when rendered in a frame buffer with alpha channel
+    float outA = mix(A, max(max(RGBA.r, RGBA.g), RGBA.b), alphafromcolor);
+
+    FragColor = vec4(RGBA, outA);
 }
