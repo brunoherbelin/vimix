@@ -284,7 +284,7 @@
 #define LABEL_VIDEO_CONVERT   ICON_FA_FILM "  Convert videos"
 #define DIALOG_TIMELINE_DURATION    ICON_FA_HOURGLASS_HALF " Set timeline duration"
 #define DIALOG_GST_EFFECT     "Gstreamer Video effect"
-#define DIALOG_EXPORT_SECTIONS ICON_FA_CUT " Export sections"
+#define DIALOG_EXPORT_SECTIONS ICON_FA_FILE_EXPORT ICON_FA_FILE_VIDEO "  Export timeline to video"
 #define LABEL_SHADER_EMBEDDED ICON_FA_FILE_ALT "  Embedded code"
 #define LABEL_SHADER_SAVE     ICON_FA_FILE_DOWNLOAD "  Save as"
 #define LABEL_SHADER_ADD      ICON_FA_FILE_MEDICAL  "  Load"

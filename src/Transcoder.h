@@ -2,6 +2,7 @@
 #define TRANSCODER_H
 
 #include <atomic>
+#include <functional>
 #include <list>
 #include <mutex>
 #include <string>
@@ -40,6 +41,7 @@ struct TranscoderOptions {
     guint width, height;          ///< Output frame size, letterboxed (0 to keep the source size)
     guint framerate_n, framerate_d; ///< Output framerate (0 to keep the source framerate)
     GstClockTime begin, end;      ///< Range of the source to transcode (GST_CLOCK_TIME_NONE for start / end)
+    std::function<float(GstClockTime)> fading; ///< Color fading (multiplier of RGB) at a media time; empty for none
 
     /**
      * @brief Options to transcode a video, with sensible defaults
@@ -107,6 +109,11 @@ struct TranscoderOptions {
  * decoding and encoding into two pipelines joined by a worker thread, and
  * the output is video only (any audio stream is dropped). Either way the
  * class is driven identically: start(), then poll finished() / progress().
+ *
+ * When TranscoderOptions gives a fading function, the frames of a video are
+ * faded to black (RGB multiplied by the fading at the time of the frame in
+ * the source), as a MediaSource does in color fading mode. Only the video is
+ * affected, and it cannot be combined with a stream copy.
  */
 class Transcoder
 {
@@ -243,6 +250,12 @@ private:
     void addRangeProbe(GstPad *sinkpad);
     bool applyRange(bool accurate);
     static GstPadProbeReturn callback_range_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data);
+
+    // Fading: a videobalance named 'fading' in the video branch is set,
+    // before each frame, to the fading at the time of that frame
+    void addFadingProbe(GstElement *pipeline);
+    static GstPadProbeReturn callback_fading_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data);
+    std::function<float(GstClockTime)> fading_;
 
     std::string input_filename_;
     std::list<std::string> input_files_;  // sequence of videos (splitmux), empty otherwise

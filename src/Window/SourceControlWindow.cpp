@@ -531,7 +531,7 @@ void SourceControlWindow::Render()
             const bool can_export = !mediaplayer_active_->isImage() &&
                                     mediaplayer_active_->timeline()->numGaps() > 0 &&
                                     dynamic_cast<SplitMediaPlayer *>(mediaplayer_active_) == nullptr;
-            if (ImGui::MenuItem(ICON_FA_CUT "  Export sections", NULL, false, can_export))
+            if (ImGui::MenuItem(ICON_FA_FILE_VIDEO "   Export to video", NULL, false, can_export))
                 mediaplayer_export_sections_ = true;
 
             if (ImGuiToolkit::BeginMenuIcon(ICON_VI_FADING_CURVE, " Fading curve"))
@@ -545,7 +545,7 @@ void SourceControlWindow::Render()
                 ImGui::EndMenu();
             }
 
-            if (ImGuiToolkit::BeginMenuIcon(ICON_VI_METRONOME, "Metronome"))
+            if (ImGuiToolkit::BeginMenuIcon(ICON_VI_METRONOME, " Metronome"))
             {
                 Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
                 bool active = sync == Metronome::SYNC_NONE;
@@ -3331,15 +3331,16 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     DrawExportSectionsDialog(top, rendersize);
 }
 
+#define LABEL_EXPORT_COPY "Copy (fast, no fading)"
+
 void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize)
 {
     static std::unique_ptr<SequenceTranscoder> _exporter;
-    static DialogToolkit::OpenFolderDialog _folder_dialog("Export sections Location");
+    static DialogToolkit::OpenFolderDialog _folder_dialog("Export Location");
     static std::string _folder;
     static std::string _media;
     static std::list< std::pair<GstClockTime, GstClockTime> > _ranges;
     static int _profile = GstToolkit::H264_RT;
-    static int _copy = 0;
 
     if (mediaplayer_export_sections_) {
         // forget previous export (unless still ongoing)
@@ -3362,7 +3363,7 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
     if (_folder_dialog.closed() && !_folder_dialog.path().empty())
         _folder = _folder_dialog.path();
 
-    const ImVec2 dialog_size(buttons_width_ * 3.f, buttons_height_ * 7.f);
+    const ImVec2 dialog_size(buttons_width_ * 3.f, buttons_height_ * 5.f);
     ImGui::SetNextWindowSize(dialog_size, ImGuiCond_Always);
     ImGui::SetNextWindowPos(top + rendersize * 0.5f - dialog_size * 0.5f, ImGuiCond_Always);
     if (ImGui::BeginPopupModal(DIALOG_EXPORT_SECTIONS, NULL, ImGuiWindowFlags_NoResize))
@@ -3370,12 +3371,13 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
         const ImVec2 pos = ImGui::GetCursorPos();
         const ImVec2 area = ImGui::GetContentRegionAvail();
         bool close = false;
+        ImGui::Spacing();
 
         // export ongoing
         if (_exporter) {
             ImGui::Spacing();
             if (!_exporter->finished()) {
-                ImGui::Text("Exporting sections of %s", SystemToolkit::filename(_media).c_str());
+                ImGui::Text("Exporting timeline of %s", SystemToolkit::filename(_media).c_str());
                 ImGui::Text("%s", _exporter->status().c_str());
                 ImGui::Spacing();
                 ImGui::ProgressBar(_exporter->progress());
@@ -3384,15 +3386,27 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
                     _exporter->stop();
             }
             else if (_exporter->success()) {
-                ImGui::TextWrapped("%d videos exported to %s", (int) _exporter->outputFiles().size(),
+                const std::list<std::string> files = _exporter->outputFiles();
+                ImGui::TextWrapped("%d video%s exported to %s", (int) files.size(), files.size() > 1 ? "s" : "",
                                    _exporter->outputFolder().c_str());
+                if (_profile < 0)
+                    ImGui::TextDisabled(ICON_FA_CARET_RIGHT " Original codec in MKV container\n"
+                        ICON_FA_CARET_RIGHT " Cut at closest keyframe\n"
+                        ICON_FA_CARET_RIGHT " Ignoring fading curve.");
+                else
+                    ImGui::TextDisabled(ICON_FA_CARET_RIGHT  " Re-encoded with frame accurate timing\n"
+                        ICON_FA_CARET_RIGHT " Applying color fading curve.");
                 ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
                 if (ImGui::Button(ICON_FA_TIMES "  Close", ImVec2(area.x * 0.3f, 0)))
                     close = true;
                 ImGui::SetCursorPos(pos + ImVec2(area.x * 0.55f, area.y - buttons_height_));
                 ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
                 if (ImGui::Button(ICON_FA_PLUS "  Create source", ImVec2(area.x * 0.45f, 0))) {
-                    Mixer::manager().addSource( Mixer::manager().createSourceSplitMedia(_exporter->outputFiles()) );
+                    // a sequence of videos, or a single video
+                    if (files.size() > 1)
+                        Mixer::manager().addSource( Mixer::manager().createSourceSplitMedia(files) );
+                    else if (!files.empty())
+                        Mixer::manager().addSource( Mixer::manager().createSourceFile(files.front()) );
                     close = true;
                 }
                 ImGui::PopStyleColor(1);
@@ -3404,23 +3418,38 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
         }
         // settings of export
         else {
-            ImGui::Spacing();
-            ImGui::TextWrapped("Export the %d sections between gaps as %d video files, to play them as a sequence of videos.",
-                               (int) _ranges.size(), (int) _ranges.size());
-            ImGui::Spacing();
+            const int width = mediaplayer_active_->width() & ~1;
+            const int height = mediaplayer_active_->height() & ~1;
 
-            ImGui::RadioButton("Encode (frame accurate)", &_copy, 0);
-            ImGui::SameLine();
-            ImGui::RadioButton("Copy (fast, cut on keyframes)", &_copy, 1);
-
-            ImGui::SetNextItemWidth(area.x * 0.7f);
-            if (_copy == 0) {
-                ComboCodec("Codec", &_profile, mediaplayer_active_->width() & ~1, mediaplayer_active_->height() & ~1);
-                if (_profile == GstToolkit::JPEG_MULTI)
-                    _profile = GstToolkit::H264_RT;
-            }
+            ImGui::Spacing();
+            if (_ranges.size() > 1)
+                ImGui::TextWrapped("Export the %d sections between gaps as %d video files.",
+                                   (int) _ranges.size(), (int) _ranges.size());
             else
-                ImGui::TextDisabled("Original codec in Matroska (mkv) files");
+                ImGui::TextWrapped("Export the section of the timeline as a video file.");
+            ImGui::Spacing();
+
+            // codec selection: copy of streams, or encoding with a profile (but multiple JPEG)
+            if (_profile >= GstToolkit::JPEG_MULTI)
+                _profile = GstToolkit::H264_RT;
+            if (_profile >= 0)
+                ValidateCodecResolution(&_profile, width, height);
+            ImGui::SetNextItemWidth(area.x * 0.7f);
+            if (ImGui::BeginCombo("Codec", _profile < 0 ? LABEL_EXPORT_COPY : GstToolkit::profile_name[_profile])) {
+                if (ImGui::Selectable(LABEL_EXPORT_COPY, _profile < 0))
+                    _profile = -1;
+                for (int i = GstToolkit::H264_RT; i < GstToolkit::JPEG_MULTI; ++i) {
+                    const bool supported = GstToolkit::supportsResolution((GstToolkit::Profile) i, width, height,
+                                                                         Settings::application.render.gpu_decoding);
+                    if (ImGui::Selectable( GstToolkit::profile_name[i], _profile == i,
+                                           supported ? ImGuiSelectableFlags_None : ImGuiSelectableFlags_Disabled ))
+                        _profile = i;
+                    if (!supported && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                        ImGuiToolkit::ToolTip( GstToolkit::unsupportedResolution((GstToolkit::Profile) i, width, height,
+                                               Settings::application.render.gpu_decoding).c_str() );
+                }
+                ImGui::EndCombo();
+            }
 
             ImGui::SetNextItemWidth(area.x * 0.7f);
             std::string folder = BaseToolkit::truncated(_folder, 40);
@@ -3436,16 +3465,22 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
             if (ImGui::Button(ICON_FA_CHECK "  Export", ImVec2(area.x * 0.3f, 0))) {
                 // new folder for the videos, named after the media
-                const std::string base = SystemToolkit::full_filename(_folder, SystemToolkit::base_filename(_media) + "_split");
+                const std::string base = SystemToolkit::full_filename(_folder, SystemToolkit::base_filename(_media) + "_export");
                 std::string output = base;
                 for (int counter = 1; SystemToolkit::file_exists(output); ++counter)
                     output = base + "_" + std::to_string(counter);
                 // start export of all sections
-                TranscoderOptions options( (GstToolkit::Profile) _profile, true);
-                options.stream_copy = _copy > 0;
+                TranscoderOptions options( _profile < 0 ? GstToolkit::H264_RT : (GstToolkit::Profile) _profile, true);
+                options.stream_copy = _profile < 0;
+                // force the framerate of the media (as played, i.e. 30 fps if variable)
+                options.framerate_n = mediaplayer_active_->media().framerate_n;
+                options.framerate_d = mediaplayer_active_->media().framerate_d;
+                // when encoding, apply the color fading of the timeline to the frames
+                if ( !options.stream_copy && !mediaplayer_active_->timeline()->fadingIsClear() )
+                    options.fading = [tl = *mediaplayer_active_->timeline()](GstClockTime t) { return tl.fadingAt(t); };
                 _exporter = std::make_unique<SequenceTranscoder>(_media, _ranges);
                 if (!_exporter->start(options, output)) {
-                    Log::Warning("Cannot export sections (%s).", _exporter->error().c_str());
+                    Log::Warning("Cannot export timeline (%s).", _exporter->error().c_str());
                     _exporter.reset();
                     close = true;
                 }

@@ -67,7 +67,7 @@ long long now_ms()
 // Look for a keyframe-interval property in a GstToolkit encoding pipeline
 // fragment -- "key-int-max=" (x264enc/x265enc/vah264enc/vah265enc),
 // "gop-size=" (nvh264enc/nvh265enc/openh264enc),  "keyframe-max-dist="
-// (vp9enc), or "max-keyframe-interval=" (vtenc_) -- and replace its value with `interval`. 
+// (vp9enc), or "max-keyframe-interval=" (vtenc_) -- and replace its value with `interval`.
 // A no-op when none of those are present (ProRes/JPEG): both are all-intra
 // already, so there is nothing to tighten.
 std::string apply_keyframe_interval(const std::string &pipeline, int interval)
@@ -303,6 +303,7 @@ bool Transcoder::start(const TranscoderOptions& options)
     if (!is_still_image_) {
         range_begin_ = options.begin;
         range_end_ = options.end;
+        fading_ = options.fading;
     }
 
     // Resolve the upscaling model: an unknown name, or a build without the
@@ -403,6 +404,10 @@ bool Transcoder::start(const TranscoderOptions& options)
         g_free(src_uri);
         if (!input_files_.empty()) {
             setError("Cannot copy streams of a sequence of videos");
+            return false;
+        }
+        if (fading_) {
+            setError("Cannot apply fading when copying streams");
             return false;
         }
         return startCopy(input_filename_, has_audio && !options.force_no_audio);
@@ -514,8 +519,11 @@ bool Transcoder::start(const TranscoderOptions& options)
         // and the alpha would be dropped further down anyway.
         const bool keep_alpha = is_still_image_ && GstToolkit::imageSupportsAlpha(options.format());
         decode_desc_ += keep_alpha
-            ? "videoconvert ! video/x-raw,format=(string){ RGBA, RGB } ! appsink name=sink"
-            : "videoconvert ! video/x-raw,format=RGB ! appsink name=sink";
+            ? "videoconvert ! video/x-raw,format=(string){ RGBA, RGB } ! "
+            : "videoconvert ! video/x-raw,format=RGB ! ";
+        if (fading_)
+            decode_desc_ += "videobalance name=fading ! ";
+        decode_desc_ += "appsink name=sink";
 
         video_encoder_ = video_encoder;
         g_free(src_uri);
@@ -548,6 +556,11 @@ bool Transcoder::start(const TranscoderOptions& options)
     if (source_interlaced)
         description += "deinterlace method=2 ! ";
     description += "videoconvert ! ";
+    // fade to black: videobalance is limited to the formats it can process, so
+    // that it does not have to renegotiate when it leaves passthrough (fading 1)
+    if (fading_)
+        description += "video/x-raw,format=(string){ I420, NV12, Y42B, Y444 } ! "
+                       "videobalance name=fading ! videoconvert ! ";
     // change framerate and / or size (letterboxed) if requested
     // videorate ensures regular timestamps: sources with missing frames (variable
     // framerate) otherwise lead the parser to drop PTS, and the muxer to fail
@@ -605,6 +618,9 @@ bool Transcoder::start(const TranscoderOptions& options)
         g_clear_error(&error);
         return false;
     }
+
+    // set the fading before each frame
+    addFadingProbe(pipeline_);
 
     // splitmuxsrc of a sequence of videos plays the list of files
     if (!input_files_.empty()) {
@@ -673,6 +689,37 @@ bool Transcoder::start(const TranscoderOptions& options)
 
     started_ = true;
     return true;
+}
+
+void Transcoder::addFadingProbe(GstElement *pipeline)
+{
+    if (!fading_)
+        return;
+    GstElement *balance = gst_bin_get_by_name(GST_BIN(pipeline), "fading");
+    if (balance) {
+        GstPad *pad = gst_element_get_static_pad(balance, "sink");
+        if (pad) {
+            gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, callback_fading_probe, this, nullptr);
+            gst_object_unref(pad);
+        }
+        gst_object_unref(balance);
+    }
+}
+
+GstPadProbeReturn Transcoder::callback_fading_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+    Transcoder *t = static_cast<Transcoder *>(user_data);
+    GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+
+    // set the fading at the time of the frame (in media time, as the range)
+    // before videobalance processes it, in this same streaming thread.
+    // contrast and saturation scale Y and UV around black: a fade to black
+    if (buffer && GST_BUFFER_PTS_IS_VALID(buffer)) {
+        const gdouble f = CLAMP(t->fading_(GST_BUFFER_PTS(buffer)), 0.f, 1.f);
+        g_object_set(G_OBJECT(GST_PAD_PARENT(pad)), "contrast", f, "saturation", f, NULL);
+    }
+
+    return GST_PAD_PROBE_OK;
 }
 
 bool Transcoder::hasRange() const
@@ -1093,6 +1140,7 @@ void Transcoder::runUpscale(TranscoderOptions options)
             throw std::runtime_error("Could not construct decoding pipeline: " + what);
         }
         sink = gst_bin_get_by_name(GST_BIN(dec_pipe), "sink");
+        addFadingProbe(dec_pipe);
 
         // splitmuxsrc of a sequence of videos plays the list of files
         if (!input_files_.empty()) {
@@ -1376,7 +1424,7 @@ bool SequenceTranscoder::start(const TranscoderOptions& options, const std::stri
         name = "sequence";
 
     // Given folder, or new folder next to the input files, named after
-    // them and the options, e.g. 'frames_webp', 'frames_png_upscaled_x4' or 'clip_split'
+    // them and the options, e.g. 'frames_webp', 'frames_png_upscaled_x4' or 'clip_export'
     if (!output_folder.empty())
         output_folder_ = output_folder;
     else {
@@ -1387,7 +1435,7 @@ bool SequenceTranscoder::start(const TranscoderOptions& options, const std::stri
                 name += "_upscaled_x" + std::to_string(factor);
         }
         else
-            name += "_split";
+            name += "_export";
 
         const std::string base = SystemToolkit::path_filename(first) + name;
         output_folder_ = base;
@@ -1419,9 +1467,10 @@ void SequenceTranscoder::run(TranscoderOptions options)
                                         : options.stream_copy ? "mkv"
                                         : options.profile() == GstToolkit::VPX_RT ? "webm" : "mov";
     // video files are numbered after the name of the folder
+    // (without the suffix given to the folder, e.g. 'clip_export')
     std::string name = SystemToolkit::base_filename(output_folder_);
-    if (name.size() > 6 && name.compare(name.size() - 6, 6, "_split") == 0)
-        name.resize(name.size() - 6);
+    if (name.size() > 7 && name.compare(name.size() - 7, 7, "_export") == 0)
+        name.resize(name.size() - 7);
     const char *label = image ? " Image " : " Video ";
     const size_t total = input_.size();
     size_t count = 0;
