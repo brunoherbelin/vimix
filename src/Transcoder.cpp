@@ -879,7 +879,7 @@ GstPadProbeReturn Transcoder::callback_copy_check_pts(GstPad *, GstPadProbeInfo 
     Transcoder *t = static_cast<Transcoder *>(user_data);
     if (!t->copy_failed_.exchange(true)) {
         GError *error = g_error_new_literal(GST_STREAM_ERROR, GST_STREAM_ERROR_FORMAT,
-                        "Cannot copy a video without timestamps; encode it instead");
+                        "Cannot perform copy on a video without timestamps (e.g., MPEG codec); re-encode it instead (e.g. H264)");
         gst_element_post_message(t->pipeline_,
                                  gst_message_new_error(GST_OBJECT(t->pipeline_), error, nullptr));
         g_error_free(error);

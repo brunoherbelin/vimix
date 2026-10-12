@@ -499,21 +499,6 @@ void SourceControlWindow::Render()
         //
         if (ImGui::BeginMenu(ICON_FA_FILM " Timeline", mediaplayer_active_) )
         {
-            if ( mediaplayer_active_->isImage()) {
-                if ( ImGuiToolkit::MenuItemIcon(ICON_VI_TIMELINE_REMOVE, "Remove")){
-                    // set empty timeline
-                    Timeline tl;
-                    mediaplayer_active_->setTimeline(tl);
-                    mediaplayer_active_->play(false);
-                    // re-open the image with NO timeline
-                    mediaplayer_active_->reopen();
-                }
-
-                if ( ImGui::MenuItem(ICON_FA_HOURGLASS_HALF "  Duration")){
-                    mediaplayer_set_duration_ = 1;
-                }
-            }
-
             if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset")){
                 mediaplayer_timeline_zoom_ = 1.f;
                 mediaplayer_active_->timeline()->clearFading();
@@ -529,7 +514,6 @@ void SourceControlWindow::Render()
 
             // export the sections between gaps as a sequence of videos
             const bool can_export = !mediaplayer_active_->isImage() &&
-                                    mediaplayer_active_->timeline()->numGaps() > 0 &&
                                     dynamic_cast<SplitMediaPlayer *>(mediaplayer_active_) == nullptr;
             if (ImGui::MenuItem(ICON_FA_FILE_VIDEO "   Export to video", NULL, false, can_export))
                 mediaplayer_export_sections_ = true;
@@ -558,6 +542,21 @@ void SourceControlWindow::Render()
                 if (ImGuiToolkit::MenuItemIcon(ICON_VI_SYNC_PHASE, " Sync to phase", NULL, active ))
                     mediaplayer_active_->setSyncToMetronome(Metronome::SYNC_PHASE);
                 ImGui::EndMenu();
+            }
+
+            if ( mediaplayer_active_->isImage()) {
+                ImGui::Separator();
+                if ( ImGuiToolkit::MenuItemIcon(ICON_VI_TIMELINE_REMOVE, " Remove")){
+                    // set empty timeline
+                    Timeline tl;
+                    mediaplayer_active_->setTimeline(tl);
+                    mediaplayer_active_->play(false);
+                    // re-open the image with NO timeline
+                    mediaplayer_active_->reopen();
+                }
+                if ( ImGui::MenuItem(ICON_FA_CLOCK "  Duration")){
+                    mediaplayer_set_duration_ = 1;
+                }
             }
 
             ImGui::EndMenu();
@@ -3331,7 +3330,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     DrawExportSectionsDialog(top, rendersize);
 }
 
-#define LABEL_EXPORT_COPY "Copy (fast, no fading)"
+#define LABEL_EXPORT_COPY "Copy (fast, cut at keyframes)"
 
 void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize)
 {
@@ -3360,8 +3359,15 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
         mediaplayer_export_sections_ = false;
     }
 
-    if (_folder_dialog.closed() && !_folder_dialog.path().empty())
-        _folder = _folder_dialog.path();
+    // back from the folder dialog
+    if (_folder_dialog.closed()) {
+        if (!_folder_dialog.path().empty())
+            _folder = _folder_dialog.path();
+        // the 'Busy' modal shown during the file dialog (UserInterface::NewFrame)
+        // replaced this popup: re-open it to resume the export settings
+        if (!ImGui::IsPopupOpen(DIALOG_EXPORT_SECTIONS))
+            ImGui::OpenPopup(DIALOG_EXPORT_SECTIONS);
+    }
 
     const ImVec2 dialog_size(buttons_width_ * 3.f, buttons_height_ * 5.f);
     ImGui::SetNextWindowSize(dialog_size, ImGuiCond_Always);
@@ -3391,17 +3397,17 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
                                    _exporter->outputFolder().c_str());
                 if (_profile < 0)
                     ImGui::TextDisabled(ICON_FA_CARET_RIGHT " Original codec in MKV container\n"
-                        ICON_FA_CARET_RIGHT " Cut at closest keyframe\n"
-                        ICON_FA_CARET_RIGHT " Ignoring fading curve.");
+                        ICON_FA_CARET_RIGHT " Cut at closest keyframe");
                 else
                     ImGui::TextDisabled(ICON_FA_CARET_RIGHT  " Re-encoded with frame accurate timing\n"
-                        ICON_FA_CARET_RIGHT " Applying color fading curve.");
+                        ICON_FA_CARET_RIGHT " Applied color fading curve");
                 ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
                 if (ImGui::Button(ICON_FA_TIMES "  Close", ImVec2(area.x * 0.3f, 0)))
                     close = true;
                 ImGui::SetCursorPos(pos + ImVec2(area.x * 0.55f, area.y - buttons_height_));
                 ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
-                if (ImGui::Button(ICON_FA_PLUS "  Create source", ImVec2(area.x * 0.45f, 0))) {
+                if (ImGui::Button(ICON_FA_PLUS "  Create source", ImVec2(area.x * 0.45f, 0))
+                    || ImGui::IsKeyPressedMap(ImGuiKey_Enter)  || ImGui::IsKeyPressedMap(ImGuiKey_KeyPadEnter) ) {
                     // a sequence of videos, or a single video
                     if (files.size() > 1)
                         Mixer::manager().addSource( Mixer::manager().createSourceSplitMedia(files) );
@@ -3420,6 +3426,8 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
         else {
             const int width = mediaplayer_active_->width() & ~1;
             const int height = mediaplayer_active_->height() & ~1;
+            const bool has_fading = !mediaplayer_active_->timeline()->fadingIsClear();
+            const bool has_segments = mediaplayer_active_->timeline()->numGaps() > 0;
 
             ImGui::Spacing();
             if (_ranges.size() > 1)
@@ -3436,8 +3444,10 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
                 ValidateCodecResolution(&_profile, width, height);
             ImGui::SetNextItemWidth(area.x * 0.7f);
             if (ImGui::BeginCombo("Codec", _profile < 0 ? LABEL_EXPORT_COPY : GstToolkit::profile_name[_profile])) {
+                ImGuiToolkit::PushDisabled(has_fading);
                 if (ImGui::Selectable(LABEL_EXPORT_COPY, _profile < 0))
                     _profile = -1;
+                ImGuiToolkit::PopDisabled(has_fading);
                 for (int i = GstToolkit::H264_RT; i < GstToolkit::JPEG_MULTI; ++i) {
                     const bool supported = GstToolkit::supportsResolution((GstToolkit::Profile) i, width, height,
                                                                          Settings::application.render.gpu_decoding);
@@ -3450,6 +3460,14 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
                 }
                 ImGui::EndCombo();
             }
+            else if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Copy (fast):\n"
+                                      ICON_FA_CARET_RIGHT " fast, without loss of quality\n"
+                                      ICON_FA_CARET_RIGHT " cut at the closest keyframe\n"
+                                      ICON_FA_CARET_RIGHT " disabled if color fading is used\n\n"
+                                      "Other codecs (slow):\n"
+                                      ICON_FA_CARET_RIGHT " cut with frame accurate timing\n"
+                                      ICON_FA_CARET_RIGHT " applies the color fading curve");
 
             ImGui::SetNextItemWidth(area.x * 0.7f);
             std::string folder = BaseToolkit::truncated(_folder, 40);
@@ -3463,7 +3481,8 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
                 close = true;
             ImGui::SetCursorPos(pos + ImVec2(area.x * 0.7f, area.y - buttons_height_));
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
-            if (ImGui::Button(ICON_FA_CHECK "  Export", ImVec2(area.x * 0.3f, 0))) {
+            if (ImGui::Button(ICON_FA_CHECK "  Export", ImVec2(area.x * 0.3f, 0))
+                || ImGui::IsKeyPressedMap(ImGuiKey_Enter)  || ImGui::IsKeyPressedMap(ImGuiKey_KeyPadEnter) ) {
                 // new folder for the videos, named after the media
                 const std::string base = SystemToolkit::full_filename(_folder, SystemToolkit::base_filename(_media) + "_export");
                 std::string output = base;
@@ -3476,7 +3495,7 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
                 options.framerate_n = mediaplayer_active_->media().framerate_n;
                 options.framerate_d = mediaplayer_active_->media().framerate_d;
                 // when encoding, apply the color fading of the timeline to the frames
-                if ( !options.stream_copy && !mediaplayer_active_->timeline()->fadingIsClear() )
+                if ( !options.stream_copy && has_fading )
                     options.fading = [tl = *mediaplayer_active_->timeline()](GstClockTime t) { return tl.fadingAt(t); };
                 _exporter = std::make_unique<SequenceTranscoder>(_media, _ranges);
                 if (!_exporter->start(options, output)) {
@@ -3485,6 +3504,9 @@ void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize
                     close = true;
                 }
             }
+            if (!has_fading && !has_segments && ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Timeline is not affecting the video; better use Transcoding functions in source panel.");
+
             ImGui::PopStyleColor(1);
         }
 
