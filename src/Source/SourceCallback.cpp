@@ -119,7 +119,7 @@ SourceCallback *SourceCallback::create(CallbackType type)
     return loadedcallback;
 }
 
-SourceCallback::SourceCallback(bool revert): status_(PENDING), delay_(0.f), 
+SourceCallback::SourceCallback(bool revert): status_(PENDING), delay_(0.f),
                                             elapsed_(0.f), bidirectional_(revert)
 {
 }
@@ -744,15 +744,15 @@ void Flag::update(Source *s, float dt)
                 if( ms->mediaplayer()->playSpeed() < 0 ) {
                     // Go to previous flag when playing backward
                     TimeInterval target_flag = ms->mediaplayer()->timeline()->getPreviousFlag( _time );
-                    bool has_prev = target_flag.is_valid() && 
+                    bool has_prev = target_flag.is_valid() &&
                         ( ms->mediaplayer()->loop() == MediaPlayer::LOOP_REWIND || (target_flag.end < _time) );
-                    if( has_prev) 
+                    if( has_prev)
                         ms->mediaplayer()->go_to_flag( target_flag );
                 }
                 else {
                     // go to next flag when playing forward
                     TimeInterval target_flag = ms->mediaplayer()->timeline()->getNextFlag( _time );
-                    bool has_next = target_flag.is_valid() && 
+                    bool has_next = target_flag.is_valid() &&
                          ( ms->mediaplayer()->loop() == MediaPlayer::LOOP_REWIND || (target_flag.begin > _time) );
                     if( has_next )
                         ms->mediaplayer()->go_to_flag( target_flag );
@@ -1141,13 +1141,13 @@ SetGamma::SetGamma(glm::vec4 g, float ms, bool revert) : SourceCallback( revert)
 {
 }
 
-SetGammaValue::SetGammaValue(float g, float ms, bool revert) : 
+SetGammaValue::SetGammaValue(float g, float ms, bool revert) :
                SetGamma( glm::vec4(-1.f, -1.f, -1.f, glm::clamp(g, 0.1f, 10.f)  ), ms, revert)
 
 {
 }
 
-SetGammaColor::SetGammaColor(glm::vec3 c, float ms, bool revert) : 
+SetGammaColor::SetGammaColor(glm::vec3 c, float ms, bool revert) :
                SetGamma( glm::vec4(glm::clamp(c, glm::vec3(0.f), glm::vec3(1.f)), -1.f), ms, revert)
 {
 }
@@ -1183,7 +1183,7 @@ void SetGamma::update(Source *s, float dt)
                 // clamp value to avoid invalid gamma values
                 target_.w = glm::clamp(target_.w, 0.1f, 10.f);
                 // apply only gamma value if target color is negative
-                if (target_.x < 0.f || target_.y < 0.f || target_.z < 0.f) 
+                if (target_.x < 0.f || target_.y < 0.f || target_.z < 0.f)
                     s->processingShader()->gamma.w = target_.w;
                 // general case, apply target gamma color and value
                 else
@@ -1202,7 +1202,7 @@ void SetGamma::update(Source *s, float dt)
             }
             else {
                 target_.w = glm::clamp(target_.w, 0.1f, 10.f);
-                if (target_.x < 0.f || target_.y < 0.f || target_.z < 0.f) 
+                if (target_.x < 0.f || target_.y < 0.f || target_.z < 0.f)
                     s->processingShader()->gamma.w = glm::mix(start_.w, target_.w, progress/duration_);
                 else
                     s->processingShader()->gamma = glm::mix(start_, target_, progress/duration_);
@@ -1346,7 +1346,7 @@ void SetFilter::update(Source *s, float dt)
                 // Check if the file is opened successfully
                 if (file.is_open()) {
                     prog.setFilename(target_method_);
-                    __f->setProgram(prog);                
+                    __f->setProgram(prog);
                     file.close();
                 }
                 else
@@ -1469,7 +1469,12 @@ void SetUniform::update(Source *s, float dt)
         // by default it will finish if all tests below fail
         status_ = FINISHED;
         // if there is an image filter in the clone source
-        imagefilter = dynamic_cast<ImageFilter *>(clonesrc->filter());
+        if (clonesrc)
+            imagefilter = dynamic_cast<ImageFilter *>(clonesrc->filter());
+        else if (shadersrc)
+            imagefilter = dynamic_cast<ImageFilter *>(shadersrc->filter());
+        else
+            imagefilter = nullptr;
         if (imagefilter) {
             // get the list of parameters
             std::map<std::string, float> params = imagefilter->program().parameters();
@@ -1560,12 +1565,12 @@ void SetCode::update(Source *s, float dt)
     }
 
     // apply when ready
-    if (status_ == READY) {        
+    if (status_ == READY) {
         // if there is an image filter in the source
         ImageFilter *__f = nullptr;
-        if (clonesrc) 
+        if (clonesrc)
             __f = dynamic_cast<ImageFilter *>(clonesrc->filter());
-        else 
+        else if (shadersrc)
             __f = dynamic_cast<ImageFilter *>(shadersrc->filter());
         if (__f) {
 
