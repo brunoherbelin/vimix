@@ -146,6 +146,7 @@ if(UNIX)
         include_directories(
             ${X11_INCLUDE_DIR}
         )
+        add_definitions(-DHAVE_X11)
 
         # XInput2 for tablet pressure support (optional)
         find_package(X11 COMPONENTS Xi)

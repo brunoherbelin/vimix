@@ -62,15 +62,33 @@ std::string macos_screen_pipeline(size_t index)
     return gst_plugin_vidcap + " device-index=" + std::to_string(index);
 }
 #else
-std::string gst_plugin_vidcap = "ximagesrc show-pointer=false";
+// Linux has two behaviours, chosen once by the ScreenCapture manager:
+//
+//                  | Wayland (portal_ true)             | X11 (portal_ false)
+//  ----------------+------------------------------------+------------------------------
+//  source plugin   | pipewiresrc (fd + node from the    | ximagesrc xid=...
+//                  | screen cast portal)                |
+//  window list     | none; selection in the dialog of   | _NET_CLIENT_LIST polled by
+//                  | the desktop (hasWindowList false)  | the launchMonitoring thread
+//  handles         | added by add(ScreenCastResult),    | added and removed by
+//                  | removed by release() or update()   | launchMonitoring
+//  X error handler | not installed                      | installed (capture errors
+//                  |                                    | are not fatal)
 
 #include <unistd.h>
+#include "IconsVimixImage.h"
+
+#ifdef HAVE_X11
+std::string gst_plugin_vidcap = "ximagesrc show-pointer=false";
+
 #include <xcb/xcb.h>
 #include <X11/Xlib.h>
 #include <xcb/xproto.h>
-#include "IconsVimixImage.h"
+#include <X11/Xproto.h>
 int X11_error_handler(Display *d, XErrorEvent *e);
+void install_X11_error_handler();
 std::map<unsigned long, std::string> getListX11Windows();
+#endif
 
 // Under Wayland, screens and windows are captured with pipewiresrc, after
 // the user selected them in the dialog of the screen cast portal
@@ -174,7 +192,7 @@ void ScreenCapture::add(const std::string &windowname, const std::string &pipeli
 {
     std::string pln = pipeline;
 
-#if defined(LINUX)
+#if defined(HAVE_X11)
     if (id > 0)
         pln += " xid=" + std::to_string(id);
 #endif
@@ -247,59 +265,45 @@ void ScreenCapture::remove(const std::string &windowname, unsigned long id)
 }
 
 
-//#ifdef LINUX
-//Display *x11_display = NULL;
-//#endif
-
 ScreenCapture::ScreenCapture(): portal_(false), monitor_initialized_(false)
 {
 #if defined(LINUX)
     portal_ = wayland_session();
+#endif
+
     if (portal_) {
+#if defined(LINUX)
+        // Wayland: no list; the screens and windows are selected by the user
+        // in the dialog of the screen cast portal
+        if (!FreedesktopToolkit::screencastAvailable())
+            Log::Warning("Screen capture under Wayland requires the screen cast portal (xdg-desktop-portal).");
+
         // the desktop may end a screen cast (e.g. 'stop sharing'); this is
         // handled in the main thread (see update)
         FreedesktopToolkit::setScreencastClosedCallback([this](const std::string &session) {
             std::lock_guard<std::mutex> lock(access_);
             closed_sessions_.push_back(session);
         });
-    }
 #endif
-//#ifdef LINUX
-//    // Capture X11 errors to prevent crashing when capturing a window that is closed
-//    x11_display = XOpenDisplay(NULL);
-//    XSetErrorHandler(X11_error_handler);
-//#endif
-
-    // launch monitor
-    std::thread(launchMonitoring, this).detach();
+    }
+    else {
+#ifdef HAVE_X11
+        // capturing a window that cannot be read (e.g. minimized) must not exit
+        install_X11_error_handler();
+#endif
+        // launch monitor
+        std::thread(launchMonitoring, this).detach();
+    }
 }
 
 
 ScreenCapture::~ScreenCapture()
 {
-//#ifdef LINUX
-//    XCloseDisplay(x11_display);
-//#endif
 }
 
 void ScreenCapture::launchMonitoring(ScreenCapture *sc)
 {
-#if defined(LINUX)
-
-    // Wayland: no list; the screens and windows are selected by the user
-    // in the dialog of the screen cast portal
-    if (sc->portal_) {
-        static bool warned = false;
-        if (!warned && !FreedesktopToolkit::screencastAvailable())
-            Log::Warning("Screen capture under Wayland requires the screen cast portal (xdg-desktop-portal).");
-        warned = true;
-
-        sc->monitor_initialized_ = true;
-        sc->monitor_initialization_.notify_all();
-        std::this_thread::sleep_for ( std::chrono::seconds(2) );
-        sc->monitor_initialized_ = false;
-        return;
-    }
+#if defined(LINUX) && defined(HAVE_X11)
 
     // Get the list of windows in X11
     std::map<unsigned long,std::string> windowlist = getListX11Windows();
@@ -339,7 +343,7 @@ void ScreenCapture::launchMonitoring(ScreenCapture *sc)
     // de-initialize so next call will update
     sc->monitor_initialized_ = false;
 
-#else
+#elif defined(APPLE)
     // Get the list of screens, by device-index of avfvideosrc, with their
     // display id and name
     struct Screen {
@@ -392,6 +396,11 @@ void ScreenCapture::launchMonitoring(ScreenCapture *sc)
 
     // de-initialize so next call will update (e.g. a screen was connected)
     sc->monitor_initialized_ = false;
+
+#else
+    // No list (e.g. Linux without X11): do not block reload()
+    sc->monitor_initialized_ = true;
+    sc->monitor_initialization_.notify_all();
 #endif
 }
 
@@ -402,6 +411,10 @@ bool ScreenCapture::initialized()
 
 void ScreenCapture::reload()
 {
+    // Wayland: no list to refresh, and no monitor
+    if (portal_)
+        return;
+
     if ( !ScreenCapture::initialized() ) {
         // relaunch monitor
         std::thread(launchMonitoring, this).detach();
@@ -862,24 +875,43 @@ std::string ScreenCaptureSource::info() const
 }
 
 
-#if defined(LINUX)
+#ifdef HAVE_X11
 
-//int X11_error_handler(Display *d, XErrorEvent *e)
-//{
-//#ifdef SCREENCAPTURE_DEBUG
-//    char msg[80];
-//    XGetErrorText(d, e->error_code, msg, sizeof(msg));
+static XErrorHandler previous_x11_handler = nullptr;
+static int shm_opcode = -1;
 
-//    g_printerr("\nX11 Error %d (%s): request %d.%d on xid %lu\n",
-//            e->error_code, msg, e->request_code,
-//            e->minor_code, e->resourceid);
-//#endif
+// Reading the image of a window that is not viewable (e.g. minimized, and
+// unmapped by the window manager) fails with BadMatch; the default handler
+// of Xlib would exit. The capture then keeps its last image.
+int X11_error_handler(Display *d, XErrorEvent *e)
+{
+    if (e->error_code == BadMatch &&
+        (e->request_code == X_GetImage || (e->request_code == shm_opcode && e->minor_code == 4 /* X_ShmGetImage */))) {
+#ifdef SCREENCAPTURE_DEBUG
+        static bool warned = false;
+        if (!warned)
+            g_printerr("\nX11 Error: cannot capture window %lu (not viewable)\n", e->resourceid);
+        warned = true;
+#endif
+        return 0;
+    }
 
-//    if (e->request_code == X_GetWindowAttributes || e->request_code == X_GetImage)
-//        ScreenCapture::manager().remove(SCREEN_CAPTURE_NAME, e->resourceid);
+    // other errors are handled as before
+    return previous_x11_handler ? previous_x11_handler(d, e) : 0;
+}
 
-//    return 0;
-//}
+void install_X11_error_handler()
+{
+    // get the major opcode of the MIT-SHM extension used by ximagesrc
+    Display *d = XOpenDisplay(NULL);
+    if (d) {
+        int event, error;
+        if (!XQueryExtension(d, "MIT-SHM", &shm_opcode, &event, &error))
+            shm_opcode = -1;
+        XCloseDisplay(d);
+    }
+    previous_x11_handler = XSetErrorHandler(X11_error_handler);
+}
 
 xcb_atom_t getatom(xcb_connection_t* c, const char *atom_name)
 {
@@ -927,10 +959,10 @@ std::map<unsigned long,std::string> getListX11Windows()
                 if(reply_prop) {
                     int reply_len = xcb_get_property_value_length(reply_prop);
                     if( reply_len > 0) {
-                        char windowname[1000];
-                        snprintf(windowname, reply_len + 1, "%s", (char *) xcb_get_property_value(reply_prop) );
-                        if (isalpha(windowname[0]))
-                            windowlist[ win[i] ] = std::string ( windowname );
+                        std::string name( (char *) xcb_get_property_value(reply_prop), reply_len );
+                        // accept any printable first character (digits, UTF-8...)
+                        if ((unsigned char) name[0] > 0x20 && name[0] != 0x7f)
+                            windowlist[ win[i] ] = name;
                     }
                     free(reply_prop);
                 }
@@ -939,13 +971,9 @@ std::map<unsigned long,std::string> getListX11Windows()
         free(reply_prop_list);
     }
 
+    xcb_disconnect(c);
+
     return windowlist;
 }
 
 #endif
-
-
-
-
-
-
