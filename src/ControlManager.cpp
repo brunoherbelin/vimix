@@ -41,6 +41,20 @@
 #include "Source/Source.h"
 #include "Source/TextSource.h"
 #include "Source/MediaSource.h"
+#include "Source/SplitMediaSource.h"
+#include "Source/StreamSource.h"
+#include "Source/DeviceSource.h"
+#include "Source/ScreenCaptureSource.h"
+#include "Source/NetworkSource.h"
+#include "Source/SrtReceiverSource.h"
+#include "Source/MultiFileSource.h"
+#include "Source/PatternSource.h"
+#include "Source/SessionSource.h"
+#include "Source/RenderSource.h"
+#include "Source/CloneSource.h"
+#include "Source/DraftSource.h"
+#include "Source/ShaderSource.h"
+#include "Source/CanvasSource.h"
 #include "MediaPlayer.h"
 #include "Source/SourceCallback.h"
 #include "ImageProcessingShader.h"
@@ -1483,7 +1497,50 @@ void Control::receiveStreamAttribute(const std::string &attribute,
 
 }
 
-void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, 
+// Numeric identifier of the class of a source, sent with '/vimix/xxx/type'.
+// These codes are part of the public OSC API: do not renumber.
+// Tens digit gives the family: 1 media, 2 stream, 3 session, 4 render/clone, 5 shader, 6 canvas.
+// Most derived classes must be tested before their parent class.
+static int sourceType(Source *s)
+{
+    if (dynamic_cast<SplitMediaSource *>(s))
+        return 11;
+    if (MediaSource *ms = dynamic_cast<MediaSource *>(s))
+        return ms->mediaplayer()->isImage() ? 12 : 10;
+    if (dynamic_cast<DeviceSource *>(s))
+        return 21;
+    if (dynamic_cast<ScreenCaptureSource *>(s))
+        return 22;
+    if (dynamic_cast<NetworkSource *>(s))
+        return 23;
+    if (dynamic_cast<SrtReceiverSource *>(s))
+        return 24;
+    if (dynamic_cast<MultiFileSource *>(s))
+        return 25;
+    if (dynamic_cast<PatternSource *>(s))
+        return 26;
+    if (dynamic_cast<TextSource *>(s))
+        return 27;
+    if (dynamic_cast<GenericStreamSource *>(s))
+        return 20;
+    if (dynamic_cast<SessionFileSource *>(s))
+        return 30;
+    if (dynamic_cast<SessionGroupSource *>(s))
+        return 31;
+    if (dynamic_cast<RenderSource *>(s))
+        return 40;
+    if (dynamic_cast<DraftSource *>(s))
+        return 42;
+    if (dynamic_cast<CloneSource *>(s))
+        return 41;
+    if (dynamic_cast<ShaderSource *>(s))
+        return 50;
+    if (dynamic_cast<CanvasSource *>(s))
+        return 60;
+    return 0;
+}
+
+void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
                                     osc::ReceivedMessageArgumentStream arguments,
                                     std::string target, Source *s)
 {
@@ -1677,6 +1734,15 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
         else if (attr.compare("blending") == 0) {
             address += OSC_SOURCE_BLENDING;
             p << osc::BeginMessage( address.c_str() ) << (osc::int32)_s->blendingShader()->blending << osc::EndMessage;
+        }
+        else if (attr.compare("type") == 0) {
+            address += OSC_SOURCE_TYPE;
+            p << osc::BeginMessage( address.c_str() ) << (osc::int32) sourceType(_s) << osc::EndMessage;
+        }
+        else if (attr.compare("id") == 0) {
+            address += OSC_SOURCE_ID;
+            // unique ids are below 10^18 (BaseToolkit::uniqueId), safe as signed int64
+            p << osc::BeginMessage( address.c_str() ) << (osc::int64) _s->id() << osc::EndMessage;
         }
     }
 

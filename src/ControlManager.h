@@ -81,6 +81,8 @@
 #define OSC_SOURCE_CODE        "/code"
 #define OSC_SOURCE_BLENDING    "/blending"
 #define OSC_SOURCE_FLAG        "/flag"
+#define OSC_SOURCE_TYPE        "/type"
+#define OSC_SOURCE_ID          "/id"
 
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"
