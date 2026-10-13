@@ -2718,10 +2718,10 @@ void UserInterface::RenderNotes()
                 ImGui::SetNextWindowBgAlpha(color.w); // Transparent background
 
                 // draw
-                if (ImGui::Begin((*note).label.c_str(), NULL, ImGuiWindowFlags_NoBringToFrontOnFocus |                
+                if (ImGui::Begin((*note).label.c_str(), NULL, ImGuiWindowFlags_NoBringToFrontOnFocus |
                                 ImGuiWindowFlags_NoFocusOnAppearing |
-                                ImGuiWindowFlags_NoTitleBar | 
-                                ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollbar | 
+                                ImGuiWindowFlags_NoTitleBar |
+                                ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollbar |
                                 ImGuiWindowFlags_NoSavedSettings))
                 {
                     ImVec2 size = ImGui::GetContentRegionAvail();
@@ -2832,6 +2832,8 @@ void ToolBox::Render()
         }
         ImGui::EndMenuBar();
     }
+
+    Annotations::manager().RenderEditor();
 
     ImGui::End();
 

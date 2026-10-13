@@ -68,6 +68,7 @@ public:
     void Menu();
     // draw overlay, handles and editor (editing hidden while capturing)
     void Render(bool capturing);
+    void RenderEditor(bool windowed = false);
 
     // annotation mode : screenshot [F9] saves PNG and XML
     inline bool active() const { return active_; }
@@ -90,7 +91,7 @@ private:
     DialogToolkit::SaveFileDialog *savedialog_;
 
     void RenderHandles();
-    void RenderEditor();
+
 };
 
 #endif // ANNOTATIONS_H

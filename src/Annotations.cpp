@@ -174,10 +174,8 @@ Annotations::Annotations() : selected_(-1), active_(false), edit_(false)
 
 void Annotations::Menu()
 {
-    if (ImGui::MenuItem(ICON_FA_CHALKBOARD_TEACHER "  Active", nullptr, &active_) && !active_)
-        edit_ = false;
-    if (ImGui::MenuItem(ICON_FA_PEN "  Editor", nullptr, &edit_) && edit_)
-        active_ = true;
+    if (ImGui::MenuItem(ICON_FA_CHALKBOARD_TEACHER "  Active", nullptr, &active_))
+        edit_ = true;
 
     ImGui::Separator();
     for (int t = Annotation::ARROW; t < Annotation::INVALID; ++t) {
@@ -261,7 +259,6 @@ void Annotations::Render(bool capturing)
         return;
 
     RenderHandles();
-    RenderEditor();
 }
 
 void Annotations::RenderHandles()
@@ -321,13 +318,15 @@ void Annotations::RenderHandles()
     ImGui::PopStyleVar(3);
 }
 
-void Annotations::RenderEditor()
+void Annotations::RenderEditor(bool windowed)
 {
-    ImGui::SetNextWindowPos(ImVec2(500, 40), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(340, 480), ImGuiCond_FirstUseEver);
-    if ( !ImGui::Begin(ICON_FA_PEN "  Annotations", &edit_) ) {
-        ImGui::End();
-        return;
+    if (windowed) {
+        ImGui::SetNextWindowPos(ImVec2(500, 40), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(340, 480), ImGuiCond_FirstUseEver);
+        if ( !ImGui::Begin(ICON_FA_PEN "  Annotations", &edit_) ) {
+            ImGui::End();
+            return;
+        }
     }
 
     // add new annotations
@@ -374,6 +373,7 @@ void Annotations::RenderEditor()
             ImGui::SliderFloat("Thickness", &a.thickness, 1.f, 12.f, "%.1f px");
 
         ImGui::ColorEdit4("Color", &a.color[0], ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+        ImGui::SameLine();
         ImGui::Checkbox("Shadow", &a.shadow);
 
         duplicate = ImGui::Button(ICON_FA_CLONE "  Duplicate");
@@ -395,11 +395,12 @@ void Annotations::RenderEditor()
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-    ImGui::TextWrapped("Drag handles to edit; SHIFT + drag to move. "
+    ImGui::TextWrapped("Drag handles to edit; SHIFT + drag to move.\n"
                        "[F9] saves screenshot (PNG) and annotations (XML) with the same name.");
     ImGui::PopStyleColor();
 
-    ImGui::End();
+    if (windowed)
+        ImGui::End();
 }
 
 bool Annotations::save(const std::string &filename) const
