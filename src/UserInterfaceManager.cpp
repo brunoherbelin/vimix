@@ -2718,34 +2718,50 @@ void UserInterface::RenderNotes()
                 ImGui::SetNextWindowBgAlpha(color.w); // Transparent background
 
                 // draw
-                if (ImGui::Begin((*note).label.c_str(), NULL, ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing |
-                                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings))
+                if (ImGui::Begin((*note).label.c_str(), NULL, ImGuiWindowFlags_NoBringToFrontOnFocus |                
+                                ImGuiWindowFlags_NoFocusOnAppearing |
+                                ImGuiWindowFlags_NoTitleBar | 
+                                ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollbar | 
+                                ImGuiWindowFlags_NoSavedSettings))
                 {
                     ImVec2 size = ImGui::GetContentRegionAvail();
                     ImVec2 pos = ImGui::GetCursorPos();
                     // close & delete
-                    close = ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET,"Delete");
+                    close = ImGuiToolkit::IconButton(ICON_VI_CLOSE_WIDGET);
                     if (ImGui::IsWindowFocused()) {
-                        // font size
-                        pos.x = size.x - 2.f * ImGui::GetTextLineHeightWithSpacing();
-                        ImGui::SetCursorPos( pos );
+                        ImVec2 top = pos;
+                        // small/big font
+                        top.x = size.x - 2.f * ImGui::GetTextLineHeightWithSpacing();
+                        ImGui::SetCursorPos( top );
                         if (ImGuiToolkit::IconButton(ICON_VI_FONT) )
                             (*note).large = !(*note).large ;
                         // stick to views icon
-                        pos.x = size.x - ImGui::GetTextLineHeightWithSpacing() + 8.f;
-                        ImGui::SetCursorPos( pos );
+                        top.x = size.x - ImGui::GetTextLineHeight();
+                        ImGui::SetCursorPos( top );
                         bool s = (*note).stick > 0;
                         if (ImGuiToolkit::IconToggle(ICON_VI_NOTE_ALL_VIEWS, ICON_VI_NOTE_THIS_VIEW, &s) )
                             (*note).stick = s ? Settings::application.current_view : 0;
+                        if (ImGui::IsItemHovered())
+                            ImGuiToolkit::ToolTip("Stick to view");
                     }
 
                     // Text area
-                    size.y -= ImGui::GetTextLineHeightWithSpacing() + 2.f;
+                    pos.y  += ImGui::GetTextLineHeightWithSpacing();
+                    size.y -= ImGui::GetTextLineHeightWithSpacing();
+                    ImGui::SetCursorPos(pos);
                     ImGuiToolkit::PushFont( (*note).large ? ImGuiToolkit::FONT_LARGE : ImGuiToolkit::FONT_MONO );
+                    // InputTextMultiline uses an internal child window which adds a vertical
+                    // scrollbar : hide it by setting its size to 1 pixel and making it transparent
+                    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 1.0f);
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
                     ImGuiToolkit::InputTextMultiline("##notes", &(*note).text, size);
+                    ImGui::PopStyleColor(4);
+                    ImGui::PopStyleVar();
                     ImGui::PopFont();
 
-                    // TODO smart detect when window moves
                     ImVec2 p = ImGui::GetWindowPos();
                     (*note).pos = glm::vec2( p.x, p.y);
                     p = ImGui::GetWindowSize();
