@@ -19,7 +19,10 @@
 
 #include "FrameGrabbing.h"
 #include "MainWindow.h"
+#include <algorithm>
+#include <chrono>
 #include <cstring>
+#include <thread>
 #include <stdlib.h>
 
 // Desktop OpenGL function loader
@@ -403,14 +406,32 @@ void Rendering::draw()
 
     glfwSwapBuffers(main_.window());
 
-    // software framerate limiter < 60 FPS
-    {
-        static GTimer *timer = g_timer_new ();
-        double elapsed = g_timer_elapsed (timer, NULL) * 1000000.0;
-        if ( (elapsed < 16600.0) && (elapsed > 0.0) )
-            g_usleep( 16600 - (gulong)elapsed  );
-        g_timer_start(timer);
-    }
+    // software framerate limiter at 60 FPS
+    limitFramerate();
+}
+
+// Wait for the next frame of a regular 60 FPS schedule.
+// Implemented with a coarse sleep, short of the deadline by a fifth of the wait, and then
+// short sleeps to reach it. 
+void Rendering::limitFramerate()
+{
+    using clock = std::chrono::steady_clock;
+    static const clock::duration period = std::chrono::nanoseconds(1000000000 / 60);
+    static clock::time_point deadline = clock::now() + period;
+
+    clock::duration remaining = deadline - clock::now();
+    const clock::duration margin = std::max<clock::duration>(remaining / 5, std::chrono::microseconds(500));
+    if (remaining > margin)
+        std::this_thread::sleep_for(remaining - margin);
+    while (clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+
+    // next frame is due one period later; when late (the frame took longer than
+    // a period), restart the schedule from now rather than rushing to catch up
+    const clock::time_point now = clock::now();
+    deadline += period;
+    if (deadline < now)
+        deadline = now + period;
 }
 
 void Rendering::terminate()

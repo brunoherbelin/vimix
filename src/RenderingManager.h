@@ -129,6 +129,9 @@ protected:
 
 private:
 
+    // wait for the next frame of a regular 60 FPS schedule
+    static void limitFramerate();
+
     // list of rendering attributes
     std::list<GlmToolkit::RenderingAttrib> draw_attributes_;
 
