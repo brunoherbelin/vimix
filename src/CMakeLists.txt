@@ -220,7 +220,14 @@ IF(APPLE)
         add_custom_command(TARGET ${VMIX_BINARY} POST_BUILD
             # codesign refuses files with extended attributes (Finder information...)
             COMMAND xattr -cr "$<TARGET_BUNDLE_DIR:${VMIX_BINARY}>"
-            COMMAND codesign --force --sign "${APPLE_CODESIGN_IDENTITY}" "$<TARGET_BUNDLE_DIR:${VMIX_BINARY}>"
+            # Signing with a Developer ID identity requests a secure timestamp
+            # from Apple's server, which fails without internet access. The
+            # script detects that and falls back to signing without timestamp,
+            # so that offline builds still produce a signed bundle.
+            COMMAND ${CMAKE_COMMAND}
+                    "-DBUNDLE=$<TARGET_BUNDLE_DIR:${VMIX_BINARY}>"
+                    "-DIDENTITY=${APPLE_CODESIGN_IDENTITY}"
+                    -P "${CMAKE_SOURCE_DIR}/cmake/modules/CodeSignBundle.cmake"
             COMMENT "Signing ${VMIX_BINARY}.app with ${APPLE_CODESIGN_IDENTITY}"
             VERBATIM
         )
