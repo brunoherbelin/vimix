@@ -159,7 +159,7 @@ SourceCore& SourceCore::operator= (SourceCore const& other)
 
 Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(nullptr),
     active_(true), locked_(false), need_update_(SourceUpdate_None), dt_(16.f), 
-    workspace_(WORKSPACE_CENTRAL), replay_on_disable_(false)
+    workspace_(WORKSPACE_CENTRAL), viewspace_(-1), viewspace_shown_(true), replay_on_disable_(false)
 {
     // create unique id
     if (id_ == 0)
@@ -519,6 +519,10 @@ void Source::setMode(Source::Mode m)
     if ( mode_ == Source::UNINITIALIZED ) {
         for (auto g = groups_.begin(); g != groups_.end(); ++g)
             (*g).second->visible_ = true;
+        // except in views if its ViewSpace is hidden
+        groups_[View::MIXING]->visible_   = viewspace_shown_;
+        groups_[View::GEOMETRY]->visible_ = viewspace_shown_;
+        groups_[View::LAYER]->visible_    = viewspace_shown_;
     }
 
     // Switch frame between visible, selected and current modes
@@ -544,9 +548,30 @@ void Source::setMode(Source::Mode m)
     overlay_mixinggroup_->setActive(current);
 
     // show in texturing view if selected or current
-    groups_[View::TEXTURE]->visible_ = m > Source::VISIBLE;
+    groups_[View::TEXTURE]->visible_ = m > Source::VISIBLE && viewspace_shown_;
 
     mode_ = m;
+}
+
+void Source::setViewSpace(uint v)
+{
+    viewspace_ = (int) MIN(v, MAX_VIEWSPACE - 1);
+}
+
+void Source::setViewSpaceShown(bool on)
+{
+    if (viewspace_shown_ == on)
+        return;
+
+    viewspace_shown_ = on;
+
+    // show or hide in views (never in RENDERING)
+    if ( mode_ > Source::UNINITIALIZED ) {
+        groups_[View::MIXING]->visible_   = on;
+        groups_[View::GEOMETRY]->visible_ = on;
+        groups_[View::LAYER]->visible_    = on;
+        groups_[View::TEXTURE]->visible_  = on && mode_ > Source::VISIBLE;
+    }
 }
 
 

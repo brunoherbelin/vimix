@@ -453,6 +453,10 @@ void SessionLoader::load(XMLElement *sessionNode)
         float t = MIXING_MIN_THRESHOLD;
         sessionNode->QueryFloatAttribute("activationThreshold", &t);
         session_->setActivationThreshold(t);
+        // read and set ViewSpaces shown (keep current if not given)
+        uint vs = session_->viewSpaces();
+        sessionNode->QueryUnsignedAttribute("viewspaces", &vs);
+        session_->setViewSpaces(vs);
 
         std::list<XMLElement*> cloneNodesToAdd;
         std::map<int, uint64_t> loaded_xml_ids;
@@ -1146,6 +1150,10 @@ void SessionLoader::visit (Source& s)
     bool replay = false;
     sourceNode->QueryBoolAttribute("replay_on_deactivate", &replay);
     s.setReplayOnDeactivate(replay);
+    // ViewSpace of the source (first one by default)
+    uint vs = 0;
+    sourceNode->QueryUnsignedAttribute("viewspace", &vs);
+    s.setViewSpace(vs);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Mixing");
     if (xmlCurrent_) s.groupNode(View::MIXING)->accept(*this);

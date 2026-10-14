@@ -83,6 +83,7 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
     // save session attributes
     sessionNode->SetAttribute("id", session->id());
     sessionNode->SetAttribute("activationThreshold", session->activationThreshold());
+    sessionNode->SetAttribute("viewspaces", session->viewSpaces());
 
     // save input callbacks
     XMLElement *inputsNode = SessionVisitor::saveInputCallbacks(&xmlDoc, session);
@@ -628,6 +629,7 @@ void SessionVisitor::visit (Source& s)
     sourceNode->SetAttribute("id", s.id());
     sourceNode->SetAttribute("name", s.name().c_str() );
     sourceNode->SetAttribute("locked", s.locked() );
+    sourceNode->SetAttribute("viewspace", s.viewSpace() );
     sourceNode->SetAttribute("play", s.playing() );
     sourceNode->SetAttribute("replay_on_deactivate", s.replayOnDeactivate());
 

@@ -4,6 +4,7 @@
 #include <mutex>
 #include <string>
 
+#include "defines.h"
 #include "Source/SourceList.h"
 #include "View/GeometryView.h"
 #include "View/RenderView.h"
@@ -140,6 +141,12 @@ public:
     inline void setActivationThreshold(float t) { activation_threshold_ = t; }
     inline float activationThreshold() const { return activation_threshold_;}
 
+    // ViewSpaces shown in views (bitmask, all shown by default)
+    inline uint viewSpaces () const { return viewspaces_; }
+    inline void setViewSpaces (uint mask) { viewspaces_ = mask & ((1 << MAX_VIEWSPACE) - 1); }
+    inline bool viewSpaceShown (uint v) const { return viewspaces_ & (1 << v); }
+    void setViewSpaceShown (uint v, bool on);
+
     // configuration for group nodes of views
     inline Group *config (View::Mode m) const { return config_.at(m); }
 
@@ -188,6 +195,7 @@ protected:
     uint64_t id_;
     bool active_;
     float activation_threshold_;
+    uint viewspaces_;
     RenderView render_;
     std::string filename_;
     SourceListUnique failed_;

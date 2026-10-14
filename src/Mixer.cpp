@@ -233,6 +233,18 @@ void Mixer::update()
     if (session_was_started)
         Action::manager().refreshInit();
 
+    // show in views only the sources of shown ViewSpaces
+    for (auto it = session_->begin(); it != session_->end(); ++it) {
+        const bool shown = viewSpaceShown( (*it)->viewSpace() );
+        (*it)->setViewSpaceShown( shown );
+        // hidden sources cannot be selected
+        if ( !shown && selection().contains(*it) ) {
+            if ( it == current_source_ )
+                unsetCurrentSource();
+            selection().remove(*it);
+        }
+    }
+
     // update canvases
     Canvas::manager().update(dt_);
 
@@ -623,6 +635,11 @@ void Mixer::insertSource(Source *s, View::Mode m)
 {
     if ( s != nullptr )
     {
+        // new sources appear in the first ViewSpace shown
+        // (clones and pasted sources already have a ViewSpace)
+        if ( !s->viewSpaceAssigned() )
+            s->setViewSpace( firstShownViewSpace() );
+
         // avoid duplicate name
         renameSource(s);
 
@@ -683,6 +700,7 @@ void Mixer::replaceSource(Source *previous, Source *s)
     loader.applyImageProcessing(*s, SessionVisitor::getClipboard(previous));
     s->setImageProcessingEnabled( previous->imageProcessingEnabled() );
     s->blendingShader()->blending = previous->blendingShader()->blending;
+    s->setViewSpace( previous->viewSpace() );
 
     // add source 's' and remove source 'previous'
     candidate_sources_.push_back( std::make_pair(s, previous) );
@@ -1202,6 +1220,9 @@ void Mixer::group(SourceList sourcelist)
         // set depth at given location
         sessionbundle->group(View::LAYER)->translation_.z = d;
 
+        // bundle in the ViewSpace of its first source
+        sessionbundle->setViewSpace( sourcelist.front()->viewSpace() );
+
         // set alpha to full opacity
         sessionbundle->group(View::MIXING)->translation_.x = 0.f;
         sessionbundle->group(View::MIXING)->translation_.y = 0.f;
@@ -1399,7 +1420,9 @@ void Mixer::setCurrentSource(SourceList::iterator it)
     unsetCurrentSource();
 
     // change current if 'it' is valid
-    if ( it != session_->end() /*&& (*it)->mode() > Source::UNINITIALIZED */) {
+    // (a source of a hidden ViewSpace cannot be current)
+    if ( it != session_->end() && viewSpaceShown( (*it)->viewSpace() ) ) {
+
         current_source_ = it;
         current_source_index_ = session_->index(current_source_);
 
@@ -1519,32 +1542,85 @@ void Mixer::moveIndex (int current_index, int target_index)
 
 void Mixer::setCurrentNext()
 {
-    if (session_->size() > 0) {
+    SourceList::iterator it = current_source_;
 
-        SourceList::iterator it = current_source_;
-        ++it;
+    // next source in a shown ViewSpace (loop once at most)
+    for (size_t n = 0; n < session_->size(); ++n) {
 
-        if (it == session_->end())  {
+        if (it == session_->end() || ++it == session_->end())
             it = session_->begin();
-        }
 
-        setCurrentSource( it );
+        if ( viewSpaceShown( (*it)->viewSpace() ) ) {
+            setCurrentSource( it );
+            break;
+        }
     }
 }
 
 void Mixer::setCurrentPrevious()
 {
-    if (session_->size() > 0) {
+    SourceList::iterator it = current_source_;
 
-        SourceList::iterator it = current_source_;
+    // previous source in a shown ViewSpace (loop once at most)
+    for (size_t n = 0; n < session_->size(); ++n) {
 
-        if (it == session_->begin())  {
+        if (it == session_->begin())
             it = session_->end();
-        }
-
         --it;
-        setCurrentSource( it );
+
+        if ( viewSpaceShown( (*it)->viewSpace() ) ) {
+            setCurrentSource( it );
+            break;
+        }
     }
+}
+
+bool Mixer::viewSpaceShown(uint v) const
+{
+    // ViewSpaces shown are those of the session saved
+    return liveSession()->viewSpaceShown(v);
+}
+
+void Mixer::showViewSpace(uint v, bool on)
+{
+    // NB: sources of a hidden ViewSpace are hidden and unselected in update()
+    liveSession()->setViewSpaceShown(v, on);
+}
+
+uint Mixer::firstShownViewSpace()
+{
+    for (uint v = 0; v < MAX_VIEWSPACE; ++v) {
+        if ( viewSpaceShown(v) )
+            return v;
+    }
+
+    // none shown: show the first one
+    showViewSpace(0, true);
+    return 0;
+}
+
+void Mixer::setViewSpace(Source *s, uint v)
+{
+    if (s == nullptr)
+        return;
+
+    // linked sources share the same ViewSpace
+    SourceList sources;
+    if (s->mixingGroup() != nullptr)
+        sources = s->mixingGroup()->getCopy();
+    else
+        sources.push_back(s);
+
+    for (auto it = sources.begin(); it != sources.end(); ++it) {
+        (*it)->setViewSpace(v);
+        // in DRAFT mode, apply to the live source too
+        if ( editingDraft() ) {
+            SourceList::iterator live = live_->find( (*it)->id() );
+            if ( live != live_->end() )
+                (*live)->setViewSpace(v);
+        }
+    }
+
 }
 
 void Mixer::unsetCurrentSource()
@@ -1851,6 +1927,9 @@ void Mixer::merge(Session *session)
 
         // Attach source to Mixer
         attachSource(s);
+
+        // show the ViewSpace of imported source
+        showViewSpace(s->viewSpace(), true);
     }
 
     // the imported session is now empty: delete it (this frees its frame buffers)
@@ -1956,6 +2035,9 @@ void Mixer::merge(SessionSource *source)
 
             // Attach source to Mixer
             attachSource(s);
+
+            // show the ViewSpace of imported source
+            showViewSpace(s->viewSpace(), true);
 
             // Select the imported source
             Mixer::selection().add(s);

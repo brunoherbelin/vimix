@@ -65,16 +65,6 @@
 const char* GeometryView::editor_icons[2]  = { ICON_FA_OBJECT_UNGROUP, ICON_FA_BORDER_ALL };
 const char *GeometryView::editor_names[2] = {"Edit sources", " Edit canvas"};
 
-// true if sources in the workspace w can be edited
-static bool isEditable(Source::Workspace w)
-{
-    // all workspaces are editable inside a bundle
-    return Settings::application.current_workspace == Source::WORKSPACE_ANY
-           || w == Settings::application.current_workspace
-           || Mixer::manager().editingBundle();
-}
-
-
 GeometryView::GeometryView() : View(GEOMETRY)
 {
     scene.root()->scale_ = glm::vec3(GEOMETRY_DEFAULT_SCALE, GEOMETRY_DEFAULT_SCALE, 1.0f);
@@ -304,12 +294,11 @@ void GeometryView::draw()
     }
 
     // Drawing of Geometry view is different as it renders
-    // only sources in the current workspace
+    // only sources in shown ViewSpaces
     std::vector<Node *> source_surfaces;
     std::vector<Node *> source_overlays;
     std::vector<Node *> canvas_surfaces;
     std::vector<Node *> canvas_overlays;
-    uint workspaces_counts_[Source::WORKSPACE_ANY+1] = {0};
     uint hidden_count_ = 0;
 
     // work on the current source
@@ -322,21 +311,16 @@ void GeometryView::draw()
 
     for (auto source_iter = Mixer::manager().session()->begin();
             source_iter != Mixer::manager().session()->end(); ++source_iter) {
-        // count if it is visible
-        if (Settings::application.views[mode_].ignore_mix || (*source_iter)->visible()) {
-            // if it is in the current workspace
-            if (isEditable((*source_iter)->workspace())) {
-                // will draw its surface
-                source_surfaces.push_back((*source_iter)->groups_[mode_]);
-                // will draw its frame and locker icon
-                if (editor_mode_ == EDIT_SOURCES) {
-                    source_overlays.push_back((*source_iter)->frames_[mode_]);
-                    source_overlays.push_back((*source_iter)->locker_);
-                }
+        // if it is visible and in a shown ViewSpace
+        if ( (Settings::application.views[mode_].ignore_mix || (*source_iter)->visible())
+             && (*source_iter)->viewSpaceShown() ) {
+            // will draw its surface
+            source_surfaces.push_back((*source_iter)->groups_[mode_]);
+            // will draw its frame and locker icon
+            if (editor_mode_ == EDIT_SOURCES) {
+                source_overlays.push_back((*source_iter)->frames_[mode_]);
+                source_overlays.push_back((*source_iter)->locker_);
             }
-            // count number of sources per workspace
-            workspaces_counts_[(*source_iter)->workspace()]++;
-            workspaces_counts_[Source::WORKSPACE_ANY]++;
         }
         hidden_count_ += (*source_iter)->visible() ? 0 : 1;
     }
@@ -362,7 +346,7 @@ void GeometryView::draw()
     scene.accept(draw_rendering);
 
     if (editor_mode_ != EDIT_CANVAS) {
-        // 2. Draw surface of sources in the current workspace if not editing CANVAS
+        // 2. Draw surface of sources in shown ViewSpaces if not editing CANVAS
         DrawVisitor draw_sources(source_surfaces, projection);
         scene.accept(draw_sources);
     }
@@ -374,12 +358,12 @@ void GeometryView::draw()
     }
 
     if (!source_overlays.empty())  {
-        // 5. Draw frames and icons of sources in the current workspace
+        // 5. Draw frames and icons of sources in shown ViewSpaces
         DrawVisitor draw_overlays(source_overlays, projection);
         scene.accept(draw_overlays);
 
         // 6. Draw control overlays of current source on top (if selected)
-        if (s != nullptr && isEditable(s->workspace()) &&
+        if (s != nullptr && s->viewSpaceShown() &&
             (Settings::application.views[mode_].ignore_mix || s->visible()))
         {
             DrawVisitor dv(s->overlays_[mode_], projection);
@@ -582,27 +566,6 @@ void GeometryView::draw()
                 _label += std::to_string(hidden_count_) + " source" + (hidden_count_>1?"s are ":" is ") + "outside mixing circle)";
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGuiToolkit::ButtonIconToggle(ICON_VI_HIDDEN_SOURCES, &Settings::application.views[mode_].ignore_mix, _label.c_str());
-
-                // select layers visibility
-                static std::vector<std::tuple<int, int, std::string> > _workspaces
-                    = {{ICON_VI_LAYERS_BACKGROUND, "Show only sources in\nBackground layer ("},
-                    {ICON_VI_LAYERS_CENTRAL,    "Show only sources in\nWorkspace layer ("},
-                    {ICON_VI_LAYERS_FOREGROUND, "Show only sources in\nForeground layer ("},
-                    {ICON_VI_LAYERS,            "Show sources in all layers ("}
-                    };
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                std::ostringstream oss;
-                oss << std::get<2>(_workspaces[Settings::application.current_workspace]);
-                oss << std::to_string(workspaces_counts_[Settings::application.current_workspace]);
-                oss << ")";
-                if (ImGuiToolkit::ButtonIcon(std::get<0>(
-                                                _workspaces[Settings::application.current_workspace]),
-                                            std::get<1>(
-                                                _workspaces[Settings::application.current_workspace]),
-                                            oss.str().c_str() )) {
-                    Settings::application.current_workspace = (Settings::application.current_workspace+1)%4;
-                }
-
             }
 
             ImGui::PopStyleColor(6);
@@ -934,7 +897,7 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
             // keep current source active if it is clicked
             Source *current = Mixer::manager().currentSource();
             if (current != nullptr) {
-                if (!isEditable(current->workspace()) ||
+                if (!current->viewSpaceShown() ||
                     (!Settings::application.views[mode_].ignore_mix && !current->visible()) )
                 {
                     current = nullptr;
@@ -1017,8 +980,8 @@ std::pair<Node *, glm::vec2> GeometryView::pick(glm::vec2 P)
                     for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
                         // get if a source was picked
                         Source *s = Mixer::manager().findSource((*itp).first);
-                        // accept picked sources in current workspaces
-                        if ( s!=nullptr && isEditable(s->workspace()) &&
+                        // accept picked sources in shown ViewSpaces
+                        if ( s!=nullptr && s->viewSpaceShown() &&
                             (Settings::application.views[mode_].ignore_mix || s->visible()) )
                         {
                             if ( !UserInterface::manager().ctrlModifier() ) {
@@ -1151,8 +1114,7 @@ bool GeometryView::canSelect(Source *s)
         return false;
 
     return ( s!=nullptr && View::canSelect(s) && s->ready() &&
-            (Settings::application.views[mode_].ignore_mix || s->visible()) &&
-            isEditable(s->workspace()) );
+            (Settings::application.views[mode_].ignore_mix || s->visible()) );
 }
 
 

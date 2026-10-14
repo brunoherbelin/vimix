@@ -112,6 +112,7 @@ void Navigator::clearButtonSelection()
     new_source_panel_.clearNewPannel();
     source_to_replace = nullptr;
     selected_index = -1;
+    hidden_source_ = nullptr;
 }
 
 void Navigator::showPannelSource(int index)
@@ -261,7 +262,7 @@ void Navigator::Render()
     height_ = ImGui::GetIO().DisplaySize.y;                          // cover vertically
     const float icon_width = width_ - 2.f * style.WindowPadding.x;         // icons keep padding
     const ImVec2 iconsize(icon_width, icon_width);
-    const float sourcelist_height = height_ - 6.5f * icon_width - 6.f * style.WindowPadding.y; // space for 4 icons of view
+    const float sourcelist_height = height_ - 7.5f * icon_width - 7.f * style.WindowPadding.y; // space for icons of view
 
     // hack to show more sources if not enough space; make source icons smaller...
     ImVec2 sourceiconsize(icon_width, icon_width);
@@ -347,6 +348,10 @@ void Navigator::Render()
                     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetColorU32(ImGuiCol_ButtonActive));
                     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
                 }
+                // Show sources of hidden workspaces dimmed
+                const bool dimmed = !pushed && !s->viewSpaceShown();
+                if (dimmed)
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
 
                 // draw an indicator for selected sources (a dot) and for the current source (a line)
                 if (s->mode() > Source::VISIBLE) {
@@ -362,8 +367,16 @@ void Navigator::Render()
                 if (ImGui::Selectable(s->initials(), &selected_button[index], 0, sourceiconsize))
                 {
                     applyButtonSelection(index);
-                    if (selected_button[index])
-                        Mixer::manager().setCurrentIndex(index);
+                    if (selected_button[index]) {
+                        if ( Mixer::manager().viewSpaceShown(s->viewSpace()) )
+                            Mixer::manager().setCurrentIndex(index);
+                        // a source of a hidden ViewSpace cannot be current:
+                        // only show its pannel
+                        else {
+                            Mixer::manager().unsetCurrentSource();
+                            Mixer::selection().clear();
+                        }
+                    }
                 }
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
                     std::string label = s->name().size() < 16 ? s->name()
@@ -400,6 +413,8 @@ void Navigator::Render()
 
                 if (pushed)
                     ImGui::PopStyleColor(4);
+                if (dimmed)
+                    ImGui::PopStyleColor(1);
 
                 ImGui::PopID();
             }
@@ -431,6 +446,13 @@ void Navigator::Render()
     if (ImGui::Begin("##navigatorViews", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollWithMouse))
     {
+
+        // Workspaces (ViewSpaces) selector
+        int ws = RenderViewspaceSelector(iconsize);
+        if (ws > -1)
+            tooltip = { std::string(Mixer::manager().viewSpaceShown(ws) ? "Hide" : "Show")
+                        + " workspace " + std::to_string(ws + 1), "", nullptr};
+
         // Mouse pointer selector
         if ( RenderMousePointerSelector(iconsize) )
             tooltip = {TOOLTIP_SNAP_CURSOR, ALT_MOD, nullptr};
@@ -629,11 +651,28 @@ void Navigator::Render()
                 showPannelSource(rootButton());
             }
             else {
-                // rarely its not the current source that is selected
-                if ( selected_index != Mixer::manager().indexCurrentSource())
-                    showPannelSource( Mixer::manager().indexCurrentSource() );
-                // render current sources
-                source_panel_.Render(this, Mixer::manager().currentSource(), iconsize, reset_visitor);
+                Source *s = selected_index < NAV_MAX ? Mixer::manager().sourceAtIndex(selected_index) : nullptr;
+                const bool no_current = Mixer::manager().currentSource() == nullptr;
+                // the source in pannel is not current because its ViewSpace is hidden:
+                // keep showing its pannel (dimmed in the list of sources)
+                if ( s != nullptr && no_current && !Mixer::manager().viewSpaceShown(s->viewSpace()) )
+                    hidden_source_ = s;
+                // the ViewSpace of the source in pannel is shown again: make it current
+                else if ( s != nullptr && no_current && s == hidden_source_ ) {
+                    Mixer::manager().setCurrentIndex(selected_index);
+                    hidden_source_ = nullptr;
+                }
+                else
+                    hidden_source_ = nullptr;
+
+                if ( hidden_source_ == nullptr ) {
+                    // rarely its not the current source that is selected
+                    if ( selected_index != Mixer::manager().indexCurrentSource())
+                        showPannelSource( Mixer::manager().indexCurrentSource() );
+                    s = Mixer::manager().currentSource();
+                }
+                // render source pannel
+                source_panel_.Render(this, s, iconsize, reset_visitor);
                 reset_visitor = false;
             }
         }
@@ -678,6 +717,54 @@ void Navigator::RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2
     }
 }
 
+
+int Navigator::RenderViewspaceSelector(const ImVec2 &size)
+{
+    ImGuiContext& g = *GImGui;
+    const ImVec2 top = ImGui::GetCursorPos();
+    // active area inside a 10% margin, divided in 2x2 cells
+    const ImVec2 padding = size * 0.1f;
+    const ImVec2 cell = (size - padding * 2.f) * 0.5f;
+    const ImVec4* colors = ImGui::GetStyle().Colors;
+    int ret = -1;
+
+    // small icons (FONT_DEFAULT) centered in each cell of a 2x2 grid
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+    const float icon_width = ImGui::GetTextLineHeightWithSpacing();
+    const ImVec2 margin = ImMax( (cell - ImVec2(icon_width, icon_width)) * 0.5f, ImVec2(0.f, 0.f) );
+
+    for (uint c = 0; c < MAX_VIEWSPACE; ++c) {
+        // clockwise from top-left: column 0,1,1,0 and row 0,0,1,1
+        const ImVec2 pos = top + padding + ImVec2( (float)(((c + 1) / 2) % 2) * cell.x, (float)(c / 2) * cell.y );
+        ImGui::PushID( (int) c );
+
+        // toggle action : operate on the whole cell
+        ImGui::SetCursorPos( pos );
+        const bool shown = Mixer::manager().viewSpaceShown(c);
+        if ( ImGui::InvisibleButton("##WorkspaceToggle", cell) )
+            Mixer::manager().showViewSpace(c, !shown);
+        const bool hovered = ImGui::IsItemHovered();
+        if (hovered)
+            ret = (int) c;
+
+        // draw with hovered color
+        ImGui::PushStyleColor( ImGuiCol_Text, hovered ? colors[ImGuiCol_NavHighlight] : colors[ImGuiCol_Text] );
+        ImGui::SetCursorPos( pos + margin );
+        if ( Mixer::manager().viewSpaceShown(c) )
+            ImGuiToolkit::Icon(4, 17);
+        else
+            ImGuiToolkit::Icon(5, 17);
+        ImGui::PopStyleColor();
+
+        ImGui::PopID();
+    }
+    ImGui::PopFont();
+
+    // continue below the grid
+    ImGui::SetCursorPos( top + ImVec2(0.f, size.y + g.Style.ItemSpacing.y) );
+
+    return ret;
+}
 
 bool Navigator::RenderMousePointerSelector(const ImVec2 &size)
 {

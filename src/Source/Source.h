@@ -174,6 +174,14 @@ public:
     } Workspace;
     inline Workspace workspace () const { return workspace_; }
 
+    // ViewSpace : sources are shown in Views only if their ViewSpace is shown
+    // (NB: a new source has no ViewSpace assigned until inserted in Mixer)
+    inline uint viewSpace () const { return viewspace_ < 0 ? 0 : (uint) viewspace_; }
+    inline bool viewSpaceAssigned () const { return viewspace_ > -1; }
+    void setViewSpace (uint v);
+    inline bool viewSpaceShown () const { return viewspace_shown_; }
+    void setViewSpaceShown (bool on);
+
     // a Source shall define a way to play
     virtual bool playable () const  = 0;
     virtual bool playing () const = 0;
@@ -367,6 +375,8 @@ protected:
     UpdateFlags   need_update_;
     float dt_;
     Workspace  workspace_;
+    int  viewspace_;
+    bool viewspace_shown_;
     bool replay_on_disable_;
 
     // callbacks

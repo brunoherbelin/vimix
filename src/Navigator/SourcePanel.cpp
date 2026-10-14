@@ -414,9 +414,11 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
         // index indicator
         ImGui::SetCursorPos(ImVec2(pannel_width_ - 2.8f * ImGui::GetTextLineHeightWithSpacing(), IMGUI_TOP_ALIGN));
 
-        if (Mixer::manager().indexCurrentSource() < 0)
+        // NB: a source of a hidden ViewSpace is shown in pannel without being current
+        if (Mixer::manager().indexCurrentSource() < 0
+            && Mixer::manager().viewSpaceShown(s->viewSpace()))
             Mixer::manager().setCurrentIndex(selected_index);
-        ImGui::TextDisabled("#%d", Mixer::manager().indexCurrentSource());
+        ImGui::TextDisabled("#%d", selected_index);
 
         ImGui::PopFont();
 

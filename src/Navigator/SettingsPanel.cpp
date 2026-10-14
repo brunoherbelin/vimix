@@ -65,7 +65,7 @@ void SettingsPanel::Render()
     ImGui::SetCursorPos(pos);
 
     //
-    // Appearance 
+    // Appearance
     //
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
     Settings::application.pannel_settings[5] = ImGui::CollapsingHeader("Appearance",
@@ -100,7 +100,7 @@ void SettingsPanel::Render()
             // ask Views to update
             View::need_deep_update_++;
         }
-        
+
         // Scale of interface
         ImGui::SetCursorPosX(align_x);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
@@ -113,6 +113,11 @@ void SettingsPanel::Render()
             Settings::application.scale = 1.f;
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
         }
+
+        // behavior of viewspaces
+        ImGui::SetCursorPosX(align_x);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+
     }
 
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
@@ -480,11 +485,11 @@ void SettingsPanel::Render()
         // Change text color if file does not exist
         if (!Settings::application.gamepad_mapping_filename.empty()) {
             std::string expanded_path = Settings::application.gamepad_mapping_filename;
-            if (!expanded_path.empty() && expanded_path[0] == '~') 
+            if (!expanded_path.empty() && expanded_path[0] == '~')
                 expanded_path = SystemToolkit::home_path() + expanded_path.substr(1);
-            if (SystemToolkit::file_exists(expanded_path)) 
+            if (SystemToolkit::file_exists(expanded_path))
                 ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_Text));
-            else 
+            else
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
         }
         else

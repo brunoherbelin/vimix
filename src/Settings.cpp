@@ -294,7 +294,6 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
         // do not save Transition view as current
         int v = application.current_view == 5 ? 1 : application.current_view;
         viewsNode->SetAttribute("current", v);
-        viewsNode->SetAttribute("workspace", application.current_workspace);
 
         std::map<int, Settings::ViewConfig>::iterator iter;
         for (iter=application.views.begin(); iter != application.views.end(); ++iter)
@@ -767,7 +766,6 @@ void Settings::init(const std::string &filename)
             {
                 application.views.clear(); // trash existing list
                 pElement->QueryIntAttribute("current", &application.current_view);
-                pElement->QueryIntAttribute("workspace", &application.current_workspace);
 
                 XMLElement* viewNode = pElement->FirstChildElement("View");
                 for( ; viewNode ; viewNode=viewNode->NextSiblingElement())

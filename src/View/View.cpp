@@ -257,7 +257,7 @@ void View::select(glm::vec2 A, glm::vec2 B)
 
 bool View::canSelect(Source *s) {
 
-    return ( s!=nullptr && !s->locked() );
+    return ( s!=nullptr && !s->locked() && s->viewSpaceShown() );
 }
 
 void View::updateSelectionOverlay(glm::vec4 color)

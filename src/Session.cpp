@@ -49,7 +49,7 @@ SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_str
 }
 
 Session::Session(uint64_t id) : id_(id), active_(true), activation_threshold_(MIXING_MIN_THRESHOLD),
-    filename_(""), thumbnail_(nullptr), ready_(false), input_callbacks_(this)
+    viewspaces_((1 << MAX_VIEWSPACE) - 1), filename_(""), thumbnail_(nullptr), ready_(false), input_callbacks_(this)
 {
     // create unique id
     if (id_ == 0)
@@ -686,12 +686,26 @@ bool Session::hasLink (SourceList sources)
     return _haslink;
 }
 
+void Session::setViewSpaceShown(uint v, bool on)
+{
+    if (v < MAX_VIEWSPACE) {
+        if (on)
+            viewspaces_ |= (1 << v);
+        else
+            viewspaces_ &= ~(1 << v);
+    }
+}
+
 void Session::link(SourceList sources, Group *parent)
 {
     // we need at least 2 sources to make a group
     if (sources.size() > 1) {
 
         unlink(sources);
+
+        // linked sources share the same ViewSpace
+        for (auto it = sources.begin(); it != sources.end(); ++it)
+            (*it)->setViewSpace( sources.front()->viewSpace() );
 
         // create and add a new mixing group
         MixingGroup *g = new MixingGroup(sources);

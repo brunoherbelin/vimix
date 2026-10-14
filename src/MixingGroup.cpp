@@ -121,10 +121,10 @@ void MixingGroup::setAction (Action a)
 void MixingGroup::update (float)
 {
     // after creation, root is not visible: wait that all sources are initialized to make it visible
-    if (!root_->visible_) {
-        auto unintitializedsource = std::find_if_not(sources_.begin(), sources_.end(), Source::isInitialized);
-        root_->visible_ = (unintitializedsource == sources_.end());
-    }
+    // (and hide it with its sources if their ViewSpace is hidden)
+    auto unintitializedsource = std::find_if_not(sources_.begin(), sources_.end(), Source::isInitialized);
+    root_->visible_ = !sources_.empty() && (unintitializedsource == sources_.end())
+                      && sources_.front()->viewSpaceShown();
 
     // group is active if one source in the group is current
     auto currentsource = std::find_if(sources_.begin(), sources_.end(), Source::isCurrent);

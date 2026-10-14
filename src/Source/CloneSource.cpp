@@ -40,6 +40,9 @@ CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(orig
     // initial name copies the origin name: diplucates are namanged in session
     name_ = origin_name_ = origin->name();
 
+    // clone appears in the same ViewSpace as its origin
+    viewspace_ = origin->viewspace_;
+
     // set symbol
     symbol_ = new Symbol(Symbol::CLONE, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;

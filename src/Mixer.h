@@ -114,6 +114,12 @@ public:
     void uncover  (Source *s);
     bool concealed(Source *s);
 
+    // ViewSpaces: sources are shown in views only if their ViewSpace is shown
+    bool viewSpaceShown (uint v) const;
+    void showViewSpace (uint v, bool on);
+    uint firstShownViewSpace ();
+    void setViewSpace (Source *s, uint v);
+
     // manipulate, load and save sessions
     inline Session * session () const { return session_; }
 

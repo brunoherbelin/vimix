@@ -330,7 +330,6 @@ struct Application
 
     // Settings of Views
     int current_view;
-    int current_workspace;
     std::map<int, ViewConfig> views;
 
     // settings brush texture paint
@@ -438,7 +437,6 @@ struct Application
         export_options[1] = false;
         export_options[2] = false;
         current_view = 1;
-        current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
         brush_pressure_mode = 0;
         accept_audio = false;

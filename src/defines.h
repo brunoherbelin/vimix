@@ -11,6 +11,7 @@
 #define MAX_BUNDLE_LEVEL 4
 #define MAX_OUTPUT_WINDOW 3
 #define MAX_OUTPUT_CANVAS 12
+#define MAX_VIEWSPACE 4
 
 #define VIMIX_GL_VERSION "opengl3"
 #define VIMIX_GLSL_VERSION "#version 150"

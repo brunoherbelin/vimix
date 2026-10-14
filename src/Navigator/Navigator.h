@@ -31,6 +31,7 @@ class Navigator
     bool view_pannel_visible;
     bool selected_button[69];  // NAV_COUNT
     int  selected_index;
+    Source *hidden_source_;  // source of a hidden ViewSpace shown in pannel
     void clearButtonSelection();
     void applyButtonSelection(int index);
     int  rootButton() const;
@@ -41,6 +42,7 @@ class Navigator
     void RenderBundlePannel(const ImVec2 &iconsize);
     void RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2 &size);
     bool RenderMousePointerSelector(const ImVec2 &size);
+    int  RenderViewspaceSelector(const ImVec2 &size);
 
 public:
 
