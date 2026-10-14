@@ -169,6 +169,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("pannel_settings_4", application.pannel_settings[4]);
     applicationNode->SetAttribute("pannel_settings_5", application.pannel_settings[5]);
     applicationNode->SetAttribute("pannel_always_visible", application.pannel_always_visible);
+    applicationNode->SetAttribute("pannel_list_all_viewspaces", application.pannel_list_all_viewspaces);
     applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
     applicationNode->SetAttribute("broadcast_port", application.broadcast_port);
     applicationNode->SetAttribute("loopback_camera", application.loopback_camera);
@@ -529,6 +530,7 @@ void Settings::init(const std::string &filename)
             applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
             applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
             applicationNode->QueryBoolAttribute("pannel_always_visible", &application.pannel_always_visible);
+            applicationNode->QueryBoolAttribute("pannel_list_all_viewspaces", &application.pannel_list_all_viewspaces);
             applicationNode->QueryIntAttribute("pannel_main_mode", &application.pannel_main_mode);
             applicationNode->QueryIntAttribute("pannel_playlist_mode", &application.pannel_playlist_mode);
             applicationNode->QueryBoolAttribute("pannel_source_0", &application.pannel_source[0]);

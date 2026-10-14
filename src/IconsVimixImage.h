@@ -282,6 +282,14 @@
 #define ICON_VI_CURVE_LINEAR      18, 3
 #define ICON_VI_CURVE_PROGRESSIVE 19, 3
 
+// Viewspace icons
+#define ICON_VI_VIEWSPACE_ON      4, 17
+#define ICON_VI_VIEWSPACE_OFF     5, 17
+#define ICON_VI_VIEWSPACE_1       6, 17
+#define ICON_VI_VIEWSPACE_2       7, 17
+#define ICON_VI_VIEWSPACE_3       8, 17
+#define ICON_VI_VIEWSPACE_4       9, 17
+
 //
 // UNUSED ICONS
 //

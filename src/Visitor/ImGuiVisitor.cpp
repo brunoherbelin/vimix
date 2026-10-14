@@ -472,7 +472,11 @@ void ImGuiVisitor::visit (Source& s)
         }
 
         // Workspace (ViewSpace)
-        static std::vector< std::pair<int,int> > ws_icon = { {6,17}, {7,17}, {8,17}, {9,17} };
+        static std::vector< std::pair<int,int> > ws_icon = { {ICON_VI_VIEWSPACE_1},
+                                                            {ICON_VI_VIEWSPACE_2},
+                                                            {ICON_VI_VIEWSPACE_3},
+                                                            {ICON_VI_VIEWSPACE_4}
+                                                        };
         static std::vector< std::string > ws_tooltip = { "Workspace 1", "Workspace 2", "Workspace 3", "Workspace 4" };
         static std::vector< std::string > ws_tooltip_linked = { "Workspace 1\n" ICON_FA_LINK " Linked", "Workspace 2\n" ICON_FA_LINK " Linked",
                                                                 "Workspace 3\n" ICON_FA_LINK " Linked", "Workspace 4\n" ICON_FA_LINK " Linked"};

@@ -310,6 +310,7 @@ struct Application
     int  pannel_playlist_mode;
     bool pannel_session[4];
     bool pannel_always_visible;
+    bool pannel_list_all_viewspaces;
     bool pannel_settings[6];
     bool pannel_source[4];
 
@@ -413,6 +414,7 @@ struct Application
         shm_method = 0;
         shm_socket_path = "";
         pannel_main_mode = 0;
+        pannel_list_all_viewspaces = true;
         pannel_playlist_mode = 0;
         pannel_session[0] = true;
         pannel_session[1] = false;

@@ -114,9 +114,12 @@ void SettingsPanel::Render()
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
         }
 
-        // behavior of viewspaces
+        // behavior of left panel with viewspaces
+        ImGuiToolkit::Indication("If enabled, all sources are listed in the left panel (dimmed if inside an INACTIVE workspace).\n"
+            "If disabled, only sources in ACTIVE workspaces are listed.", ICON_VI_VIEWSPACE_1);
+        ImGui::SameLine(0);
         ImGui::SetCursorPosX(align_x);
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGuiToolkit::ButtonSwitch( "List all workspaces", &Settings::application.pannel_list_all_viewspaces);
 
     }
 

@@ -262,12 +262,30 @@ void Navigator::Render()
     height_ = ImGui::GetIO().DisplaySize.y;                          // cover vertically
     const float icon_width = width_ - 2.f * style.WindowPadding.x;         // icons keep padding
     const ImVec2 iconsize(icon_width, icon_width);
-    const float sourcelist_height = height_ - 7.5f * icon_width - 7.f * style.WindowPadding.y; // space for icons of view
+    // number of sources listed (only those in shown ViewSpaces if not listing all)
+    float num_sources = 0.f;
+    for (auto it = Mixer::manager().session()->begin(); it != Mixer::manager().session()->end(); ++it)
+        num_sources += ( Settings::application.pannel_list_all_viewspaces || (*it)->viewSpaceShown() ) ? 1.f : 0.f;
 
-    // hack to show more sources if not enough space; make source icons smaller...
+    // height of the bottom window (7 rows of view icons + fullscreen row)
+    auto views_height = [&](float h) {
+        return 7.f * h + 0.5f * icon_width + 7.f * style.WindowPadding.y;
+    };
+    // height needed by the top window (menu & new icons + one per source)
+    auto sources_height = [&](float h) {
+        return 2.f * (icon_width + style.ItemSpacing.y) + num_sources * (h + style.ItemSpacing.y)
+               + 2.f * style.WindowPadding.y;
+    };
+
+    // if not enough space, reduce height of view icons first, then of source icons
+    ImVec2 viewiconsize(icon_width, icon_width);
     ImVec2 sourceiconsize(icon_width, icon_width);
-    if (sourcelist_height - 2.f * icon_width < Mixer::manager().session()->size() * icon_width )
-        sourceiconsize.y *= 0.75f;
+    if (views_height(viewiconsize.y) + sources_height(sourceiconsize.y) > height_) {
+        viewiconsize.y *= 0.8f;
+        if (views_height(viewiconsize.y) + sources_height(sourceiconsize.y) > height_)
+            sourceiconsize.y *= 0.8f;
+    }
+    const float sourcelist_height = height_ - views_height(viewiconsize.y);
 
     // the root button (menu or bundle) follows entering and leaving bundles
     const int root = rootButton();
@@ -338,6 +356,10 @@ void Navigator::Render()
             for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter, ++index)
             {
                 Source *s = (*iter);
+
+                // skip sources of hidden ViewSpaces if not listing all
+                if ( !Settings::application.pannel_list_all_viewspaces && !s->viewSpaceShown() )
+                    continue;
 
                 // Show failed sources in RED
                 bool pushed = false;
@@ -448,13 +470,13 @@ void Navigator::Render()
     {
 
         // Workspaces (ViewSpaces) selector
-        int ws = RenderViewspaceSelector(iconsize);
+        int ws = RenderViewspaceSelector(viewiconsize);
         if (ws > -1)
             tooltip = { std::string(Mixer::manager().viewSpaceShown(ws) ? "Hide" : "Show")
                         + " workspace " + std::to_string(ws + 1), "", nullptr};
 
         // Mouse pointer selector
-        if ( RenderMousePointerSelector(iconsize) )
+        if ( RenderMousePointerSelector(viewiconsize) )
             tooltip = {TOOLTIP_SNAP_CURSOR, ALT_MOD, nullptr};
 
         // List of icons for View selection
@@ -465,7 +487,7 @@ void Navigator::Render()
         selected_view[ Settings::application.current_view ] = true;
         int previous_view = Settings::application.current_view;
 
-        if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[View::MIXING], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[View::MIXING], 0, viewiconsize))
         {
             UserInterface::manager().setView(View::MIXING);
             if (previous_view == Settings::application.current_view) {
@@ -478,7 +500,7 @@ void Navigator::Render()
             view_options_timeout = 0;
         }
 
-        if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[View::GEOMETRY], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[View::GEOMETRY], 0, viewiconsize))
         {
             UserInterface::manager().setView(View::GEOMETRY);
             if (previous_view == Settings::application.current_view) {
@@ -491,7 +513,7 @@ void Navigator::Render()
             view_options_timeout = 0;
         }
 
-        if (ImGuiToolkit::SelectableIcon(ICON_VI_LAYERS, "", selected_view[View::LAYER], iconsize))
+        if (ImGuiToolkit::SelectableIcon(ICON_VI_LAYERS, "", selected_view[View::LAYER], viewiconsize))
         {
             Settings::application.current_view = View::LAYER;
             UserInterface::manager().setView(View::LAYER);
@@ -505,7 +527,7 @@ void Navigator::Render()
             view_options_timeout = 0;
         }
 
-        if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[View::TEXTURE], 0, iconsize))
+        if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[View::TEXTURE], 0, viewiconsize))
         {
             UserInterface::manager().setView(View::TEXTURE);
             if (previous_view == Settings::application.current_view) {
@@ -519,7 +541,7 @@ void Navigator::Render()
         }
 
         std::pair<int, int> icon_index = Settings::application.render.disabled ? std::make_pair(ICON_VI_DISPLAYS_DISABLED) : std::make_pair(ICON_VI_DISPLAYS);
-        if (ImGuiToolkit::SelectableIcon(icon_index.first, icon_index.second, "", selected_view[View::DISPLAYS], iconsize))
+        if (ImGuiToolkit::SelectableIcon(icon_index.first, icon_index.second, "", selected_view[View::DISPLAYS], viewiconsize))
         {
             UserInterface::manager().setView(View::DISPLAYS);
             Settings::application.current_view = View::DISPLAYS;
@@ -552,7 +574,7 @@ void Navigator::Render()
         ImGui::PopFont();
 
         // render the "PopupViewOptions"
-        RenderViewOptions(&view_options_timeout, view_options_pos, iconsize);
+        RenderViewOptions(&view_options_timeout, view_options_pos, viewiconsize);
 
         ImGui::End();
     }
@@ -722,15 +744,18 @@ int Navigator::RenderViewspaceSelector(const ImVec2 &size)
 {
     ImGuiContext& g = *GImGui;
     const ImVec2 top = ImGui::GetCursorPos();
-    // active area inside a 10% margin, divided in 2x2 cells
-    const ImVec2 padding = size * 0.1f;
-    const ImVec2 cell = (size - padding * 2.f) * 0.5f;
     const ImVec4* colors = ImGui::GetStyle().Colors;
     int ret = -1;
 
     // small icons (FONT_DEFAULT) centered in each cell of a 2x2 grid
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
     const float icon_width = ImGui::GetTextLineHeightWithSpacing();
+
+    // active area inside a 10% margin, divided in 2x2 cells
+    // (vertical margin reduced to keep space for 2 rows of icons)
+    ImVec2 padding = size * 0.1f;
+    padding.y = CLAMP( (size.y - 2.f * icon_width) * 0.5f, 0.f, padding.y );
+    const ImVec2 cell = (size - padding * 2.f) * 0.5f;
     const ImVec2 margin = ImMax( (cell - ImVec2(icon_width, icon_width)) * 0.5f, ImVec2(0.f, 0.f) );
 
     for (uint c = 0; c < MAX_VIEWSPACE; ++c) {
@@ -751,9 +776,9 @@ int Navigator::RenderViewspaceSelector(const ImVec2 &size)
         ImGui::PushStyleColor( ImGuiCol_Text, hovered ? colors[ImGuiCol_NavHighlight] : colors[ImGuiCol_Text] );
         ImGui::SetCursorPos( pos + margin );
         if ( Mixer::manager().viewSpaceShown(c) )
-            ImGuiToolkit::Icon(4, 17);
+            ImGuiToolkit::Icon(ICON_VI_VIEWSPACE_ON);
         else
-            ImGuiToolkit::Icon(5, 17);
+            ImGuiToolkit::Icon(ICON_VI_VIEWSPACE_OFF);
         ImGui::PopStyleColor();
 
         ImGui::PopID();
