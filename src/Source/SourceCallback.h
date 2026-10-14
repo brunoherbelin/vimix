@@ -72,6 +72,11 @@ public:
     virtual SourceCallback *clone () const = 0;
     virtual SourceCallback *reverse (Source *) const { return nullptr; }
     virtual CallbackType type () const { return CALLBACK_GENERIC; }
+    // A new callback normally supersedes every pending callback of the same type() (the
+    // latest wins: a second /alpha cancels the first). SetUniform is the exception: it
+    // carries the uniform NAME, so it must supersede only its OWN name and let the other
+    // uniforms of the same source be set in the same frame.
+    virtual bool overrides (const SourceCallback &other) const { return type() == other.type(); }
     virtual void accept (Visitor& v);
 
     inline void reset () { status_ = PENDING; }
@@ -549,6 +554,7 @@ public:
     void multiply (float factor) override;
     SourceCallback *clone () const override;
     CallbackType type () const override { return CALLBACK_UNIFORM; }
+    bool overrides (const SourceCallback &other) const override;
     void accept (Visitor& v) override;
 };
 

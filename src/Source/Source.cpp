@@ -840,9 +840,9 @@ void Source::call(SourceCallback *callback, bool override)
 
         // if operation should override previous callbacks of same type
         if (override) {
-            // finish all callbacks of the same type
+            // finish all callbacks overridden by the given one
             for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); ++iter) {
-                if ( callback->type() == (*iter)->type() )
+                if ( callback->overrides(**iter) )
                     (*iter)->finish();
             }
         }
