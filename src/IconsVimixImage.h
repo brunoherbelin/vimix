@@ -289,6 +289,7 @@
 #define ICON_VI_VIEWSPACE_2       7, 17
 #define ICON_VI_VIEWSPACE_3       8, 17
 #define ICON_VI_VIEWSPACE_4       9, 17
+#define ICON_VI_VIEWSPACE_ALL    10, 17
 
 //
 // UNUSED ICONS

@@ -166,7 +166,7 @@ bool ImGuiToolkit::ButtonSwitch(const char* label, bool* toggle, const char* too
     ImU32 col_bg;
     if (!enabled)
         col_bg = ImGui::GetColorU32(colors[ImGuiCol_TextDisabled]);
-    else if (ImGui::IsItemHovered()) 
+    else if (ImGui::IsItemHovered())
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBgHovered], colors[ImGuiCol_TabHovered], t));
     else
         col_bg = ImGui::GetColorU32(ImLerp(colors[ImGuiCol_FrameBg], colors[ImGuiCol_TabActive], t));
@@ -216,13 +216,14 @@ void _drawIcon(ImVec2 screenpos, int i, int j, bool enabled,  ImGuiWindow* windo
     if (!enabled)
         tint_color = ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
 
-    ImRect bb(screenpos, screenpos + ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()));
+    ImVec2 pos = screenpos + ImVec2(0, 2);
+    ImRect bb(pos, pos + ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()));
     window->DrawList->AddImage((void*)(intptr_t)textureicons, bb.Min, bb.Max, uv0, uv1, ImGui::GetColorU32(tint_color) );
 }
 
 void ImGuiToolkit::Icon(int i, int j, bool enabled)
 {
-    // icons.dds is a 20 x 20 grid of icons 
+    // icons.dds is a 20 x 20 grid of icons
     if (textureicons == 0)
         textureicons = Resource::getTextureDDS("images/icons.dds");
 
@@ -658,13 +659,13 @@ bool ImGuiToolkit::SelectableIcon(int i, int j, const char* label, bool selected
     draw_pos.y += size_arg.y > 0 ? (size_arg.y - space_size.y) * 0.5 : 0.0;
     draw_pos.x += size_arg.x > 0 ? (size_arg.x - g.FontSize) * 0.5 : 0.0;
 
-    // overlay of icon on top of first item    
+    // overlay of icon on top of first item
     _drawIcon(draw_pos, i, j);
 
     // draw arrow
     if (dir != ImGuiDir_None) {
         draw_pos += size_arg - ImVec2( g.FontSize - g.Style.ItemInnerSpacing.x, g.FontSize - g.Style.ItemInnerSpacing.y);
-        ImGui::RenderArrow(ImGui::GetCurrentWindow()->DrawList, draw_pos, 
+        ImGui::RenderArrow(ImGui::GetCurrentWindow()->DrawList, draw_pos,
             ImGui::GetColorU32(ImGuiCol_Text), dir, 0.6f);
     }
 
@@ -714,7 +715,7 @@ void ImGuiToolkit::ShowIconsWindow(bool* p_open)
         textureicons = Resource::getTextureDDS("images/icons.dds");
 
     const ImGuiIO& io = ImGui::GetIO();
-    
+
     if ( ImGui::Begin("Icons", p_open) ) {
 
         ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -1325,7 +1326,7 @@ void ImGuiToolkit::ValueBar(float fraction, const ImVec2& size_arg)
 void ImGuiToolkit::SetFont (ImGuiToolkit::font_style style, const std::string &ttf_font_name, int pointsize, int oversample)
 {
     // Font Atlas ImGui Management
-    ImGuiIO& io = ImGui::GetIO();    
+    ImGuiIO& io = ImGui::GetIO();
     GLint max = 0;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max);
     io.Fonts->TexDesiredWidth = max / 2;  // optimize use of texture depending on OpenGL drivers
@@ -1335,7 +1336,7 @@ void ImGuiToolkit::SetFont (ImGuiToolkit::font_style style, const std::string &t
     std::string filename = "fonts/" + ttf_font_name +  ".ttf";
     std::string fontname = ttf_font_name + ", " + std::to_string(pointsize) + "px";
     ImFontConfig font_config;
-    fontname.copy(font_config.Name, 40);    
+    fontname.copy(font_config.Name, 40);
     font_config.FontDataOwnedByAtlas = false; // data will be copied in font atlas
     if ( max * max < 16777216 )  // hack: try to avoid font textures too larges by disabling oversamplig
         oversample = 1;
@@ -1349,7 +1350,7 @@ void ImGuiToolkit::SetFont (ImGuiToolkit::font_style style, const std::string &t
     // temporary copy for instanciation
     void *data = malloc( sizeof (char) * data_size);
     memcpy(data, data_src, data_size);
-    
+
     // create and add font
     fontmap[style] = io.Fonts->AddFontFromMemoryTTF(data, (int)data_size, static_cast<float>(pointsize), &font_config, glyph_ranges);
     free(data);
@@ -1362,7 +1363,7 @@ void ImGuiToolkit::SetFont (ImGuiToolkit::font_style style, const std::string &t
         font_config.PixelSnapH = true;
         font_config.GlyphOffset.y = (float) (pointsize/20);
         fontname = "icons" + fontname;
-        fontname.copy(font_config.Name, 40);  
+        fontname.copy(font_config.Name, 40);
         // load FontAwesome only once
         static size_t icons_data_size = 0;
         static const char* icons_data_src = Resource::getData( "fonts/" FONT_ICON_FILE_NAME_FAS, &icons_data_size);
@@ -1373,7 +1374,7 @@ void ImGuiToolkit::SetFont (ImGuiToolkit::font_style style, const std::string &t
         io.Fonts->AddFontFromMemoryTTF(icons_data, (int)icons_data_size, static_cast<float>(pointsize-2), &font_config, icons_ranges);
         free(icons_data);
     }
-    
+
 }
 
 void ImGuiToolkit::PushFont (ImGuiToolkit::font_style style)
@@ -1381,7 +1382,7 @@ void ImGuiToolkit::PushFont (ImGuiToolkit::font_style style)
     if (fontmap.count(style) > 0)
         ImGui::PushFont( fontmap[style] );
     else
-        ImGui::PushFont( NULL );    
+        ImGui::PushFont( NULL );
 }
 
 
@@ -1812,7 +1813,7 @@ std::string ImGuiToolkit::truncatedText(const std::string &text, float width)
     if (available <= 0.f)
         return ellipsis;
 
-    // Measure each half independently and use proportional scaling 
+    // Measure each half independently and use proportional scaling
     const char *mid = begin + 2 * text.size() / 3;
     float first_w   = ImGui::CalcTextSize(begin, mid).x;
     float second_w  = ImGui::CalcTextSize(mid,   end).x;

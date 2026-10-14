@@ -116,7 +116,7 @@ void SettingsPanel::Render()
 
         // behavior of left panel with viewspaces
         ImGuiToolkit::Indication("If enabled, all sources are listed in the left panel (dimmed if inside an INACTIVE workspace).\n"
-            "If disabled, only sources in ACTIVE workspaces are listed.", ICON_VI_VIEWSPACE_1);
+            "If disabled, only sources in ACTIVE workspaces are listed.", ICON_VI_VIEWSPACE_ALL);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(align_x);
         ImGuiToolkit::ButtonSwitch( "List all workspaces", &Settings::application.pannel_list_all_viewspaces);

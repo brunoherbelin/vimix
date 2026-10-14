@@ -1244,17 +1244,17 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
         // Panel Menu
         //
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN) );
-        if (ImGui::BeginMenu("File")) {
+        if (ImGui::BeginMenu("File  ")) {
             UserInterface::manager().showMenuFile();
             ImGui::EndMenu();
         }
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + ImGui::GetTextLineHeightWithSpacing()) );
-        if (ImGui::BeginMenu("Edit")) {
+        if (ImGui::BeginMenu("Edit  ")) {
             UserInterface::manager().showMenuEdit();
             ImGui::EndMenu();
         }
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + 2.f * ImGui::GetTextLineHeightWithSpacing()) );
-        if (ImGui::BeginMenu("Tools")) {
+        if (ImGui::BeginMenu("Tools  ")) {
             UserInterface::manager().showMenuWindows();
             ImGui::EndMenu();
         }
