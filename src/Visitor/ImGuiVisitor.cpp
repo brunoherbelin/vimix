@@ -471,32 +471,31 @@ void ImGuiVisitor::visit (Source& s)
             ImGui::PopFont();
         }
 
+        // Workspace (ViewSpace)
+        static std::vector< std::pair<int,int> > ws_icon = { {6,17}, {7,17}, {8,17}, {9,17} };
+        static std::vector< std::string > ws_tooltip = { "Workspace 1", "Workspace 2", "Workspace 3", "Workspace 4" };
+        static std::vector< std::string > ws_tooltip_linked = { "Workspace 1\n" ICON_FA_LINK " Linked", "Workspace 2\n" ICON_FA_LINK " Linked",
+                                                                "Workspace 3\n" ICON_FA_LINK " Linked", "Workspace 4\n" ICON_FA_LINK " Linked"};
+        int ws_index = (int) s.viewSpace();
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y) );
+        if (ImGuiToolkit::IconMultistate(ws_icon, &ws_index, s.mixingGroup() ? ws_tooltip_linked : ws_tooltip )) {
+            Mixer::manager().setViewSpace(&s, (uint) ws_index);
+            oss << "Workspace " << ws_index + 1;
+            Action::manager().store(oss.str());
+        }
+
         // inform on visibility status
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y ) );
+        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + ImGui::GetFrameHeightWithSpacing() ) );
         if (s.active()) {
             if (s.blendingShader()->color.a > 0.f) {
                 std::string indication = "Visible\nAlpha ";
                 indication += std::to_string((int)(s.blendingShader()->color.a * 100.f)) + "%";
-                if (ImGuiToolkit::IconButton( ICON_FA_SUN,  indication.c_str()) ) {
-                    UserInterface::manager().setView(View::MIXING);
-                }
+                ImGuiToolkit::Indication(  indication.c_str(), ICON_FA_SUN);
             } else
-                ImGuiToolkit::Indication("not Visible", ICON_FA_MOON);
+                ImGuiToolkit::Indication("Not Visible", ICON_FA_MOON);
         }
         else
             ImGuiToolkit::Indication("Inactive", ICON_FA_SNOWFLAKE);
-
-        // Inform on link
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + ImGui::GetFrameHeightWithSpacing()) );
-        if (s.mixingGroup() != nullptr) {
-            if (ImGuiToolkit::IconButton(ICON_FA_LINK, "Linked")){
-                Mixer::selection().clear();
-                Mixer::selection().add( s.mixingGroup()->getCopy() );
-                UserInterface::manager().setView(View::MIXING);
-            }
-        }
-        else
-            ImGuiToolkit::Indication("not Linked", ICON_FA_UNLINK);
 
         // inform of input mapping
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
@@ -517,7 +516,7 @@ void ImGuiVisitor::visit (Source& s)
             }
         }
         else
-            ImGuiToolkit::Indication("not Mapped to an input", ICON_FA_HAND_PAPER);
+            ImGuiToolkit::Indication("Not mapped to an input", ICON_FA_HAND_PAPER);
 
         // locking
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
@@ -533,19 +532,6 @@ void ImGuiVisitor::visit (Source& s)
                 Mixer::selection().set(&s);
                 oss << "Unlocked";
             }
-            Action::manager().store(oss.str());
-        }
-
-        // Workspace (ViewSpace)
-        static std::vector< std::pair<int,int> > ws_icon = { {6,17}, {7,17}, {8,17}, {9,17} };
-        static std::vector< std::string > ws_tooltip = { "Workspace 1", "Workspace 2", "Workspace 3", "Workspace 4" };
-        static std::vector< std::string > ws_tooltip_linked = { "Workspace 1\n(with linked sources)", "Workspace 2\n(with linked sources)",
-                                                                "Workspace 3\n(with linked sources)", "Workspace 4\n(with linked sources)" };
-        int ws_index = (int) s.viewSpace();
-        ImGui::SetCursorPos( ImVec2(preview_width + ImGui::GetFrameHeight() + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
-        if (ImGuiToolkit::IconMultistate(ws_icon, &ws_index, s.mixingGroup() ? ws_tooltip_linked : ws_tooltip )) {
-            Mixer::manager().setViewSpace(&s, (uint) ws_index);
-            oss << "Workspace " << ws_index + 1;
             Action::manager().store(oss.str());
         }
 

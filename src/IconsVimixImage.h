@@ -66,7 +66,7 @@
 #define ICON_VI_ZOOM_RESET        8, 7
 #define ICON_VI_GRID_SQUARE       19, 2
 #define ICON_VI_GRID_ASPECT_RATIO 18, 2
-#define ICON_VI_HIDDEN_SOURCES    12, 0
+#define ICON_VI_HIDDEN_SOURCES    3, 14
 
 // new source pannel
 #define ICON_VI_OPEN_FILE            2, 5
@@ -287,6 +287,7 @@
 //
 //
 // #define ICON_VI_UNDEFINED_1    4,  0
+// #define ICON_VI_UNDEFINED     12,  0
 // #define ICON_VI_UNDEFINED_2   14,  0
 // #define ICON_VI_UNDEFINED_3   15,  0
 // #define ICON_VI_UNDEFINED_4   16,  0
@@ -408,7 +409,6 @@
 // #define ICON_VI_UNDEFINED_113 17, 13
 // #define ICON_VI_UNDEFINED_114 19, 13
 //
-// #define ICON_VI_UNDEFINED_115  3, 14
 // #define ICON_VI_UNDEFINED_116  4, 14
 // #define ICON_VI_UNDEFINED_117  5, 14
 // #define ICON_VI_UNDEFINED_118  6, 14

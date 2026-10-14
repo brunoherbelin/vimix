@@ -68,6 +68,9 @@ LayerView::LayerView() : View(LAYER), aspect_ratio(1.f)
     Frame *border = new Frame(Frame::ROUND, Frame::THIN, Frame::PERSPECTIVE);
     border->color = glm::vec4( COLOR_FRAME, 0.95f );
     frame_->attach(border);
+
+    frame_->translation_.x += 0.02;
+    frame_->translation_.y += 0.03;
     scene.bg()->attach(frame_);
 
     persp_left_ = new Mesh("mesh/perspective_axis_left.ply");
@@ -267,6 +270,8 @@ void LayerView::draw()
                 float depth_inc  = (MAX_DEPTH - 2.f * LAYER_DEFAULT_DEPTH) / static_cast<float>(dsl.size());
                 if (depth_inc < 1.f)
                     depth_inc  = (MAX_DEPTH - 0.5f * LAYER_DEFAULT_DEPTH) / static_cast<float>(dsl.size());
+                else if (depth_inc > 2.f)
+                    depth_inc = 2.f;
                 for (; it != dsl.end(); ++it) {
                     depth += depth_inc;
                     (*it)->call( new SetDepth(depth, 80.f) );
