@@ -1581,8 +1581,12 @@ bool Mixer::viewSpaceShown(uint v) const
     return liveSession()->viewSpaceShown(v);
 }
 
-void Mixer::showViewSpace(uint v, bool on)
+void Mixer::showViewSpace(uint v, bool on, bool exclusive)
 {
+    // exclusive: all other ViewSpaces are hidden
+    if (exclusive)
+        liveSession()->setViewSpaces(0);
+
     // NB: sources of a hidden ViewSpace are hidden and unselected in update()
     liveSession()->setViewSpaceShown(v, on);
 }

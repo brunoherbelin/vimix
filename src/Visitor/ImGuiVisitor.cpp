@@ -486,6 +486,8 @@ void ImGuiVisitor::visit (Source& s)
             Mixer::manager().setViewSpace(&s, (uint) ws_index);
             oss << "Workspace " << ws_index + 1;
             Action::manager().store(oss.str());
+            if (!Settings::application.pannel_list_all_viewspaces)
+                Mixer::manager().showViewSpace((uint) ws_index, true, true);
         }
 
         // inform on visibility status

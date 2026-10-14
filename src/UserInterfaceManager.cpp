@@ -2135,7 +2135,8 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
     if (!p_open || !p_border || !p_mode || !Mixer::manager().session()->ready())
         return;
 
-    Source *s = Mixer::manager().currentSource();
+    // source shown in the navigator pannel (current source, or source of a hidden ViewSpace)
+    Source *s = navigator.pannelSource();
     if (s || !(*p_mode & SourceToolbar_autohide) ) {
 
         ImGuiIO& io = ImGui::GetIO();
@@ -2168,6 +2169,28 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 // get info on source
                 Group *n = s->group(View::GEOMETRY);
                 info << s->name() << ": ";
+
+                //
+                // VIEWSPACE
+                //
+                static std::vector< std::pair<int,int> > ws_icon = { {ICON_VI_VIEWSPACE_1},
+                                                                    {ICON_VI_VIEWSPACE_2},
+                                                                    {ICON_VI_VIEWSPACE_3},
+                                                                    {ICON_VI_VIEWSPACE_4}
+                                                                };
+                static std::vector< std::string > ws_tooltip = { "Workspace 1", "Workspace 2", "Workspace 3", "Workspace 4" };
+
+                int ws_index = (int) s->viewSpace();
+                if (ImGuiToolkit::IconMultistate(ws_icon, &ws_index, ws_tooltip)) {
+                    Mixer::manager().setViewSpace(s, (uint) ws_index);
+                    info << "Workspace " << ws_index + 1;
+                    Action::manager().store(info.str());
+                    if (!Settings::application.pannel_list_all_viewspaces)
+                        Mixer::manager().showViewSpace((uint) ws_index, true, true);
+                }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::Text("|");
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
 
                 //
                 // ALPHA

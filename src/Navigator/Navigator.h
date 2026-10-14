@@ -61,6 +61,7 @@ public:
     void discardPannel();
     void showPannelSource(int index);
     int  selectedPannelSource();
+    Source *pannelSource() const;
     void togglePannelMenu();
     void togglePannelNew();
     void showConfig();

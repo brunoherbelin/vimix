@@ -132,6 +132,18 @@ int Navigator::selectedPannelSource()
     return selected_index;
 }
 
+Source *Navigator::pannelSource() const
+{
+    // source of a hidden ViewSpace shown in pannel (if still in session)
+    if ( hidden_source_ != nullptr ) {
+        Session *se = Mixer::manager().session();
+        if ( se->find(hidden_source_) != se->end() )
+            return hidden_source_;
+    }
+    // otherwise the pannel shows the current source
+    return Mixer::manager().currentSource();
+}
+
 void Navigator::showConfig()
 {
     // settings are in the session menu
@@ -473,7 +485,7 @@ void Navigator::Render()
         int ws = RenderViewspaceSelector(viewiconsize);
         if (ws > -1)
             tooltip = { std::string(Mixer::manager().viewSpaceShown(ws) ? "Hide" : "Show")
-                        + " workspace " + std::to_string(ws + 1), "", nullptr};
+                        + " workspace " + std::to_string(ws + 1), "Double-click toggle one / all", nullptr};
 
         // Mouse pointer selector
         if ( RenderMousePointerSelector(viewiconsize) )
@@ -754,7 +766,7 @@ int Navigator::RenderViewspaceSelector(const ImVec2 &size)
     // active area inside a 10% margin, divided in 2x2 cells
     // (vertical margin reduced to keep space for 2 rows of icons)
     ImVec2 padding = size * 0.1f;
-    padding.y = CLAMP( (size.y - 2.f * icon_width) * 0.5f, 0.f, padding.y );
+    padding.x = padding.y ;
     const ImVec2 cell = (size - padding * 2.f) * 0.5f;
     const ImVec2 margin = ImMax( (cell - ImVec2(icon_width, icon_width)) * 0.5f, ImVec2(0.f, 0.f) );
 
@@ -766,9 +778,38 @@ int Navigator::RenderViewspaceSelector(const ImVec2 &size)
         // toggle action : operate on the whole cell
         ImGui::SetCursorPos( pos );
         const bool shown = Mixer::manager().viewSpaceShown(c);
-        if ( ImGui::InvisibleButton("##WorkspaceToggle", cell) )
-            Mixer::manager().showViewSpace(c, !shown);
+        static int ignore_release = -1;
+        static uint shown_before_clic = 0;
+        const bool pressed = ImGui::InvisibleButton("##WorkspaceToggle", cell);
         const bool hovered = ImGui::IsItemHovered();
+        // double clic
+        if ( hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) ) {
+            // was the only one shown before the first clic: show all workspaces
+            if ( shown_before_clic == (1u << c) ) {
+                for (uint v = 0; v < MAX_VIEWSPACE; ++v)
+                    Mixer::manager().showViewSpace(v, true);
+            }
+            // otherwise show only this workspace
+            else
+                Mixer::manager().showViewSpace(c, true, true);
+            // do not toggle when releasing the double clic
+            ignore_release = (int) c;
+        }
+        // simple clic : toggle this workspace
+        else if ( pressed ) {
+            if ( ignore_release == (int) c )
+                ignore_release = -1;
+            else {
+                // remember which workspaces were shown (for double clic)
+                shown_before_clic = 0;
+                for (uint v = 0; v < MAX_VIEWSPACE; ++v)
+                    shown_before_clic |= Mixer::manager().viewSpaceShown(v) ? (1u << v) : 0;
+                Mixer::manager().showViewSpace(c, !shown);
+            }
+        }
+        // double clic released outside: forget it
+        else if ( ignore_release == (int) c && !ImGui::IsMouseDown(ImGuiMouseButton_Left) )
+            ignore_release = -1;
         if (hovered)
             ret = (int) c;
 
