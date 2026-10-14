@@ -159,7 +159,7 @@ SourceCore& SourceCore::operator= (SourceCore const& other)
 
 Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(nullptr),
     active_(true), locked_(false), need_update_(SourceUpdate_None), dt_(16.f), 
-    workspace_(WORKSPACE_CENTRAL), viewspace_(-1), viewspace_shown_(true), replay_on_disable_(false)
+    viewspace_(-1), viewspace_shown_(true), replay_on_disable_(false)
 {
     // create unique id
     if (id_ == 0)
@@ -1000,19 +1000,6 @@ void Source::update(float dt)
             static_cast<Symbol *>(blendmode_->activeChild())->color.w = 0.6;
             blendmode_->setActive((int) blendingshader_->blending);
             static_cast<Symbol *>(blendmode_->activeChild())->color.w = mode_ >= Source::CURRENT ? 1.0 : 0.6;
-
-            // Update workspace based on depth, and
-            // adjust vertical position of icon depending on workspace
-            if (groups_[View::LAYER]->translation_.x < -LAYER_FOREGROUND) {
-                groups_[View::LAYER]->translation_.y -= 0.3f;
-                workspace_ = Source::WORKSPACE_FOREGROUND;
-            }
-            else if (groups_[View::LAYER]->translation_.x < -LAYER_BACKGROUND) {
-                groups_[View::LAYER]->translation_.y -= 0.15f;
-                workspace_ = Source::WORKSPACE_CENTRAL;
-            }
-            else
-                workspace_ = Source::WORKSPACE_BACKGROUND;
 
             // MODIFY depth based on LAYER node
             groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;

@@ -130,14 +130,14 @@ void LayerView::draw()
 
             if (s->icon() == glm::ivec2(ICON_VI_SOURCE_GROUP) )
             {
-                if (ImGui::Selectable( ICON_FA_TIMES " Expand bundle " )) {
+                if (ImGui::Selectable( ICON_FA_TIMES "  Expand bundle " )) {
                     Mixer::manager().import( dynamic_cast<SessionSource*>(s) );
                 }
             }
             else {
                 if ( s->cloned() || s->icon() == glm::ivec2(ICON_VI_SOURCE_CLONE)){
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
-                    ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_CREATE, "Bundle source", false );
+                    ImGuiToolkit::SelectableIcon( ICON_VI_SOURCE_GROUP, " Bundle source", false );
                     ImGui::PopStyleColor();
                     if (ImGui::IsItemHovered()) {
                         ImGuiToolkit::ToolTip("Cannot create bundle; clones "
@@ -145,7 +145,7 @@ void LayerView::draw()
                     }
                 }
                 else {
-                    if (ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_CREATE, "Bundle source ", false )) {
+                    if (ImGuiToolkit::SelectableIcon( ICON_VI_SOURCE_GROUP, " Bundle source ", false )) {
                         Mixer::manager().groupCurrent();
                     }
                 }
@@ -192,13 +192,13 @@ void LayerView::draw()
 
         // special action of Mixing view
         if (candidate_flatten_group){
-            if (ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_CREATE, "Bundle selection", false )) {
+            if (ImGuiToolkit::SelectableIcon( ICON_VI_SOURCE_GROUP, " Bundle selection", false )) {
                 Mixer::manager().groupSelection();
             }
         }
         else {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
-            ImGuiToolkit::SelectableIcon( ICON_VI_BUNDLE_CREATE, "Bundle selection", false );
+            ImGuiToolkit::SelectableIcon( ICON_VI_SOURCE_GROUP, " Bundle selection", false );
             ImGui::PopStyleColor();
             if (ImGui::IsItemHovered()) {
                 ImGuiToolkit::ToolTip("Cannot create bundle; selection must be "
@@ -243,6 +243,42 @@ void LayerView::draw()
         ImGui::PopStyleColor(2);
         ImGui::EndPopup();
     }
+
+    // Locate window at upper right corner
+    glm::vec2 P(persp_right_->scale_.x , persp_right_->scale_.y);
+    P = Rendering::manager().project(glm::vec3(P, 0.f), scene.root()->transform_, false);
+    // Set window position depending on icons size
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    ImGui::SetNextWindowPos(ImVec2(P.x , P.y), ImGuiCond_Always);
+    if (ImGui::Begin("##LayerViewOptions", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground
+                    | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                    | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus ))
+    {
+        // style
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
+
+        // distribute depth of all sources (including those of hidden ViewSpaces)
+        if (ImGuiToolkit::ButtonIcon(ICON_VI_DISTRIBUTE, "Re-distribute all sources")) {
+            SourceList dsl = Mixer::manager().session()->getDepthSortedList();
+            if (dsl.size() > 1) {
+                SourceList::iterator  it = dsl.begin();
+                float depth = 0;
+                float depth_inc  = (MAX_DEPTH - 2.f * LAYER_DEFAULT_DEPTH) / static_cast<float>(dsl.size());
+                if (depth_inc < 1.f)
+                    depth_inc  = (MAX_DEPTH - 0.5f * LAYER_DEFAULT_DEPTH) / static_cast<float>(dsl.size());
+                for (; it != dsl.end(); ++it) {
+                    depth += depth_inc;
+                    (*it)->call( new SetDepth(depth, 80.f) );
+                }
+                Action::manager().store(std::string("Distribute all " ICON_FA_LAYER_GROUP));
+            }
+        }
+
+        ImGui::PopStyleColor(2);
+        ImGui::End();
+    }
+    ImGui::PopFont();
 }
 
 
@@ -376,14 +412,11 @@ float LayerView::setDepth(Source *s, float d)
 
     // negative or no  depth given; find the front most depth
     if ( depth < 0.f ) {
-        // default to place visible in front of background
-        depth = LAYER_BACKGROUND + LAYER_STEP;
+        // default depth
+        depth = LAYER_DEFAULT_DEPTH + LAYER_STEP;
 
-        // find the front-most souce in the workspace (behind FOREGROUND)
+        // find the front-most souce
         for (NodeSet::iterator node = scene.ws()->begin(); node != scene.ws()->end(); ++node) {
-            // discard foreground
-            if ((*node)->translation_.z > LAYER_FOREGROUND )
-                break;
             // place in front of previous sources
             depth = MAX(depth, (*node)->translation_.z + LAYER_STEP);
             // in case node is already at max depth
@@ -440,13 +473,6 @@ View::Cursor LayerView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pair
     std::ostringstream info;
     info << "Depth " << std::fixed << std::setprecision(2) << d << "  ";
     current_action_ = s->name() + ": " + info.str();
-
-    if ( d > LAYER_FOREGROUND )
-        info << "\n   (Foreground layer)";
-    else if ( d < LAYER_BACKGROUND )
-        info << "\n   (Background layer)";
-    else
-        info << "\n   (Workspace layer)";
 
     return Cursor(Cursor_ResizeNESW, info.str() );
 }
@@ -573,28 +599,11 @@ LayerGrid::LayerGrid(Group *parent) : Grid(parent)
     // Generate groups for all units
     for (uint u = UNIT_PRECISE; u <= UNIT_ONE; u = u + 1) {
         Group *g = new Group;
-        float d = MIN_DEPTH;
-        // Fill background
-        for (; d < LAYER_BACKGROUND ; d += Grid::ortho_units_[u] * 2.f) {
+        // Fill all depths
+        for (float d = MIN_DEPTH; d < MAX_DEPTH ; d += Grid::ortho_units_[u] * 2.f) {
             HLine *l = new HLine(3.f);
             l->translation_.x = -d +1.f;
             l->translation_.y = -d / LAYER_PERSPECTIVE - 1.f;
-            l->scale_.x = 3.5f;
-            g->attach(l);
-        }
-        // Fill workspace
-        for (; d < LAYER_FOREGROUND ; d += Grid::ortho_units_[u] * 2.f) {
-            HLine *l = new HLine(3.f);
-            l->translation_.x = -d +1.f;
-            l->translation_.y = -d / LAYER_PERSPECTIVE - 1.15f;
-            l->scale_.x = 3.5f;
-            g->attach(l);
-        }
-        // Fill foreground
-        for (; d < MAX_DEPTH ; d += Grid::ortho_units_[u] * 2.f) {
-            HLine *l = new HLine(3.f);
-            l->translation_.x = -d +1.f;
-            l->translation_.y = -d / LAYER_PERSPECTIVE - 1.3f;
             l->scale_.x = 3.5f;
             g->attach(l);
         }

@@ -1344,8 +1344,8 @@ void Mixer::groupAll(bool only_active)
         for (auto git = bundlegroups.begin(); git != bundlegroups.end(); ++git)
             sessionbundle->session()->link( *git );
 
-        // set default depth in workspace for the session-group source
-        sessionbundle->group(View::LAYER)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;
+        // set default depth for the session-group source
+        sessionbundle->group(View::LAYER)->translation_.z = LAYER_DEFAULT_DEPTH + LAYER_STEP;
 
         // set alpha to full opacity so that rendering is identical after swap
         sessionbundle->group(View::MIXING)->translation_.x = 0.f;

@@ -118,7 +118,7 @@ void Canvas::attachCanvasSource(CanvasSource *cs)
     cs->setActive( true );
 
     // set initial depth 
-    float depth = output_session_->empty() ? LAYER_BACKGROUND : output_session_->depthRange().second;
+    float depth = output_session_->empty() ? LAYER_DEFAULT_DEPTH : output_session_->depthRange().second;
     cs->group(View::LAYER)->translation_.z = depth + LAYER_STEP; 
 
     // add to output session
@@ -164,7 +164,7 @@ void Canvas::bringToFront(CanvasSource *cs)
 
     if ( depth > MAX_DEPTH - LAYER_STEP ) {
         // renormalize all depths to avoid overflow
-        depth = LAYER_BACKGROUND;
+        depth = LAYER_DEFAULT_DEPTH;
         SourceList dsl = output_session_->getDepthSortedList();
         for (auto it : dsl) {
             depth += LAYER_STEP;
@@ -198,13 +198,13 @@ void Canvas::sendToBack(CanvasSource *cs)
 
     if ( depth < MIN_DEPTH + LAYER_STEP ) {
         // renormalize all depths to avoid overflow
-        depth = LAYER_BACKGROUND;
+        depth = LAYER_DEFAULT_DEPTH;
         SourceList dsl = output_session_->getDepthSortedList();
         for (auto it : dsl) {
             depth += LAYER_STEP;
             it->group(View::LAYER)->translation_.z = depth;
         }        
-        depth = LAYER_BACKGROUND;
+        depth = LAYER_DEFAULT_DEPTH;
     }
 
     // set depth to back

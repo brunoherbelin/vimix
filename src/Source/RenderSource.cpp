@@ -154,7 +154,7 @@ void RenderSource::update(float dt)
                     std::vector<Node *> surfaces;
                     float threshold_z = groups_[View::RENDERING]->translation_.z;   
                     if (threshold_z < 0.f)
-                        threshold_z = LAYER_FOREGROUND;
+                        threshold_z = MAX_DEPTH;
                     for (auto sit = session_->begin(); sit != session_->end(); ++sit) {
                         if ((*sit)->group(View::RENDERING)->translation_.z < threshold_z)
                             surfaces.push_back((*sit)->group(View::RENDERING));

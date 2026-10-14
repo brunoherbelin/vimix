@@ -165,15 +165,6 @@ public:
     inline  bool locked () const { return locked_; }
     virtual void setLocked (bool on);
 
-    // Workspace
-    typedef enum {
-        WORKSPACE_BACKGROUND = 0,
-        WORKSPACE_CENTRAL    = 1,
-        WORKSPACE_FOREGROUND = 2,
-        WORKSPACE_ANY        = 3
-    } Workspace;
-    inline Workspace workspace () const { return workspace_; }
-
     // ViewSpace : sources are shown in Views only if their ViewSpace is shown
     // (NB: a new source has no ViewSpace assigned until inserted in Mixer)
     inline uint viewSpace () const { return viewspace_ < 0 ? 0 : (uint) viewspace_; }
@@ -374,7 +365,6 @@ protected:
     bool  locked_;
     UpdateFlags   need_update_;
     float dt_;
-    Workspace  workspace_;
     int  viewspace_;
     bool viewspace_shown_;
     bool replay_on_disable_;

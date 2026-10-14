@@ -43,9 +43,8 @@
 #define ICON_VI_DISPLAYS          10, 7
 #define ICON_VI_DISPLAYS_DISABLED 10, 8
 #define ICON_VI_LAYERS            13, 16
-#define ICON_VI_LAYERS_BACKGROUND 10, 16
 #define ICON_VI_LAYERS_CENTRAL    11, 16
-#define ICON_VI_LAYERS_FOREGROUND 12, 16
+#define ICON_VI_DISTRIBUTE         4, 6
 
 // filters icons
 #define ICON_VI_FILTER_NONE          7, 11
@@ -198,7 +197,7 @@
 #define ICON_VI_BRUSH_SMALL     15, 1
 #define ICON_VI_BRUSH_LARGE     16, 1
 #define ICON_VI_BLUR_SHARP      8, 16
-#define ICON_VI_BUFFER          4, 6
+#define ICON_VI_BUFFER          0, 3
 #define ICON_VI_GPU             13, 2
 #define ICON_VI_GPU_OFF         14, 2
 
@@ -311,7 +310,6 @@
 // #define ICON_VI_UNDEFINED_21  16,  2
 // #define ICON_VI_UNDEFINED_22  17,  2
 //
-// #define ICON_VI_UNDEFINED_23   0,  3
 // #define ICON_VI_UNDEFINED_24   1,  3
 // #define ICON_VI_UNDEFINED_25   2,  3
 // #define ICON_VI_UNDEFINED_27   4,  3
