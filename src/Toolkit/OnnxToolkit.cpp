@@ -17,11 +17,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include <stdexcept>
 
 #ifdef HAVE_ONNX
 #include <numeric>
-#include <unordered_map>
 #include <onnxruntime_cxx_api.h>
 #endif
 

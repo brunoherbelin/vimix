@@ -24,7 +24,7 @@
 // imgui with math operators and internals (ImVec2 arithmetic, ImRect, GImGui).
 // NB: not included by Navigator.h, which is public (UserInterfaceManager.h).
 
-#include "imgui.h"
+#include "imgui.h" // IWYU pragma: export
 #define IMGUI_DEFINE_MATH_OPERATORS
 #if defined(__clang__)
 #pragma clang diagnostic push

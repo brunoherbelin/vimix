@@ -134,7 +134,7 @@ bool DraftSource::playing () const
     return origin_ ? origin_->playing() : false;
 }
 
-void DraftSource::play (bool on)
+void DraftSource::play (bool)
 {
 }
 

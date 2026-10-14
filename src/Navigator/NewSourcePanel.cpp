@@ -953,8 +953,6 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             
             ImGui::Text("Bundle of sources");
             
-            Source *source_hovered_ = nullptr;
-
             Session *session = Mixer::manager().session();
             SourceList sources = session->getDepthSortedList();
 
@@ -998,10 +996,6 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                     }
                     ImGui::EndGroup();
                     ImGui::PopID();
-
-                    // what item is hovered for tooltip
-                    if (ImGui::IsItemHovered())
-                        source_hovered_ = s;
 
                 }
 

@@ -1416,7 +1416,7 @@ void SessionLoader::visit (RenderSource& s)
     s.setSession( session_ );
 }
 
-void SessionLoader::visit(Stream &n)
+void SessionLoader::visit(Stream &)
 {
 
 }

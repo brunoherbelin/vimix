@@ -32,7 +32,6 @@
 #include <sstream>
 #include <iomanip>
 #include <sstream>
-#include <fstream>
 
 // ImGui
 #include "imgui.h"
@@ -68,7 +67,6 @@
 #include "Log.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Toolkit/DialogToolkit.h"
-#include "Toolkit/BaseToolkit.h"
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/ImGuiToolkit.h"
 #include "ControlManager.h"
@@ -2039,7 +2037,6 @@ void UserInterface::RenderDraft(bool *p_open, int* p_corner)
     }
 
     const bool drafting = Draft::manager().active();
-    const ImGuiStyle &style = ImGui::GetStyle();
     const float _width = 5.f * ImGui::GetTextLineHeightWithSpacing();
 
     // title

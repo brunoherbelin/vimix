@@ -2,7 +2,6 @@
 #define DECORATIONS_H
 
 
-#include <string>
 #include <glm/glm.hpp>
 
 #include "Primitives.h"

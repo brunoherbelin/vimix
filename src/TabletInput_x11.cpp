@@ -26,7 +26,6 @@
 #ifdef HAVE_X11TABLETINPUT
 #include <X11/Xlib.h>
 #include <X11/extensions/XInput2.h>
-#include <cstring>
 #endif
 
 TabletInput::TabletInput()

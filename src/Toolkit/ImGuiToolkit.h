@@ -28,7 +28,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
 
-#include "IconsFontAwesome5.h"
+#include "IconsFontAwesome5.h" // IWYU pragma: export
 
 void _drawIcon(ImVec2 screenpos, int i, int j, bool enabled = true, struct ImGuiWindow* window = nullptr );
     

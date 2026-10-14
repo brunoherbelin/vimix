@@ -129,7 +129,7 @@
 class Session;
 class Source;
 class SourceCallback;
-class GLFWwindow;
+struct GLFWwindow;
 
 class Control
 {

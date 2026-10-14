@@ -839,8 +839,8 @@ bool ImGuiToolkit::SliderTiming (const char* label, uint* ms, uint v_min, uint v
 //    *ms = val * v_step;
 
     // quadratic scale
-    float val = (float) (*ms / v_step);
-    bool ret = ImGui::SliderFloat(label, &val, (float) (v_min / v_step), (float) (v_max / v_step), text_buf, 2.f);
+    float val = (float) (*ms) / (float) v_step;
+    bool ret = ImGui::SliderFloat(label, &val, (float) (v_min) / (float) v_step, (float) (v_max) / (float) v_step, text_buf, 2.f);
     *ms = int(floor(val)) * v_step;
 
     return ret;
@@ -1361,7 +1361,7 @@ void ImGuiToolkit::SetFont (ImGuiToolkit::font_style style, const std::string &t
         static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
         font_config.MergeMode = true; // Merging glyphs into current font
         font_config.PixelSnapH = true;
-        font_config.GlyphOffset.y = (float) (pointsize/20);
+        font_config.GlyphOffset.y = (float) (pointsize) / 20.f;
         fontname = "icons" + fontname;
         fontname.copy(font_config.Name, 40);
         // load FontAwesome only once

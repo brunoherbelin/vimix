@@ -28,7 +28,6 @@
 #include <glm/gtc/matrix_access.hpp>
 
 
-#include "IconsFontAwesome5.h"
 #include "Scene/Scene.h"
 #include "MediaPlayer.h"
 #include "Source/MediaSource.h"

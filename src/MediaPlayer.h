@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <list>
 #include <mutex>
 #include <future>
 #include <memory>

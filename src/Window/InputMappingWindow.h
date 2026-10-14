@@ -3,7 +3,6 @@
 
 #include <string>
 #include <array>
-#include <list>
 
 #include "Source/SourceList.h"
 #include "WorkspaceWindow.h"

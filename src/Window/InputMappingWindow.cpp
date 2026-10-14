@@ -19,7 +19,6 @@
 
 #include "IconsFontAwesome5.h"
 #include "Source/MediaSource.h"
-#include "Source/SessionSource.h"
 #include "Source/SourceList.h"
 #include <string>
 #include <algorithm>

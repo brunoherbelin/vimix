@@ -148,7 +148,7 @@ void CanvasSurface::update(float dt)
 
 }
 
-void CanvasSurface::play (bool on)
+void CanvasSurface::play (bool)
 {
 }
 

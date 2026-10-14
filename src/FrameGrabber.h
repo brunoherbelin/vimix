@@ -64,7 +64,7 @@ protected:
 
     // only FrameGrabbing manager can add frame
     virtual void addFrame(GstBuffer *buffer, GstCaps *read_caps, GstCaps *write_caps);
-    virtual void addFrame(guint texture_id, GstCaps *read_caps, GstCaps *write_caps) {}
+    virtual void addFrame(guint, GstCaps *, GstCaps *) {}
 
     // only addFrame method shall call those
     virtual std::string init(GstCaps *read_caps, GstCaps *write_caps) = 0;

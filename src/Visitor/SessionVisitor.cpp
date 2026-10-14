@@ -18,6 +18,7 @@
 **/
 
 #include <iostream>
+#include <sstream>
 
 #include <tinyxml2.h>
 using namespace tinyxml2;

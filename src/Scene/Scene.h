@@ -7,7 +7,6 @@
 #include <set>
 #include <list>
 #include <vector>
-#include <map>
 
 #include "UpdateCallback.h"
 #include "Toolkit/GlmToolkit.h"

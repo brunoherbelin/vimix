@@ -3,7 +3,6 @@
 
 #include <string>
 #include <map>
-#include <atomic>
 #include <mutex>
 #include <list>
 

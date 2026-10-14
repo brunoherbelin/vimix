@@ -17,7 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include "Log.h"
 #include "FrameBuffer.h"
 #include "Resource.h"
 #include "Scene/Primitives.h"

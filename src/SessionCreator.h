@@ -1,6 +1,7 @@
 #ifndef SESSIONCREATOR_H
 #define SESSIONCREATOR_H
 
+#include <string>
 #include <list>
 #include <map>
 #include <chrono>

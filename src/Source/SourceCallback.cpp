@@ -851,7 +851,7 @@ void SetGeometry::update(Source *s, float dt)
     }
 }
 
-void SetGeometry::multiply (float factor)
+void SetGeometry::multiply (float /*factor*/)
 {
     // TODO
 }

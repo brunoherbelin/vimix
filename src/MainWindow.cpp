@@ -391,7 +391,7 @@ void MainWindow::WindowResizeCallback( GLFWwindow *w, int width, int height)
 
 }
 
-void MainWindow::WindowMoveCallback( GLFWwindow *w, int x, int y)
+void MainWindow::WindowMoveCallback( GLFWwindow *, int x, int y)
 {
     if (!Settings::application.mainwindow.fullscreen) {
         Settings::application.mainwindow.x = x;

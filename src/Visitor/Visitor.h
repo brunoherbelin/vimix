@@ -1,7 +1,6 @@
 ﻿#ifndef VISITOR_H
 #define VISITOR_H
 
-#include <string>
 
 // Declares the interface for the visitors
 class Visitor {

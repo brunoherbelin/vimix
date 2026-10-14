@@ -762,7 +762,7 @@ void DisplaysView::contextMenuCanvasSource()
 
     // list of available canvases
     size_t selected = current_canvas_source_->canvas();
-    for (auto canvas_index = 0;
+    for (size_t canvas_index = 0;
         canvas_index < Canvas::manager().size(); ++canvas_index) {
     
         // label with canvas name

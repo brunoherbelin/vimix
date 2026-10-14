@@ -2,12 +2,8 @@
 #define __NAVIGATOR_H_
 
 #include <string>
-#include <list>
-#include <vector>
-#include <utility>
 
 #include "Source/Source.h"
-#include "NavigatorWidgets.h"
 #include "NewSourcePanel.h"
 #include "PlaylistPanel.h"
 #include "SourcePanel.h"

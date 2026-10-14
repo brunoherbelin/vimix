@@ -21,7 +21,6 @@
 #include <thread>
 #include <regex>
 #include <mutex>
-#include <condition_variable>
 
 #include "Log.h"
 #include "View/View.h"

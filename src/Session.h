@@ -8,7 +8,6 @@
 #include "Source/SourceList.h"
 #include "View/GeometryView.h"
 #include "View/RenderView.h"
-#include "Metronome.h"
 #include "InputCallbacks.h"
 
 namespace tinyxml2 {

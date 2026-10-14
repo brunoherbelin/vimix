@@ -437,7 +437,7 @@ void GeometryView::draw()
                 for (int m = GeometryView::EDIT_SOURCES; m <= GeometryView::EDIT_CANVAS; ++m) {
                     if (ImGui::Selectable(
                             std::string(std::string(editor_icons[m]) + " " + editor_names[m]).c_str())) {
-                        if (m != editor_mode_) {
+                        if ((uint) m != editor_mode_) {
                             // Switch mode
                             editor_mode_ = m;
                             // actions to do when changing mode

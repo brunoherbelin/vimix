@@ -3,6 +3,7 @@
 
 #include "Visitor.h"
 #include <cstdint>
+#include <string>
 
 class InfoVisitor : public Visitor
 {

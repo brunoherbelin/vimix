@@ -313,7 +313,7 @@ bool OutputWindow::draw(FrameBuffer *fb)
     return true;
 }
 
-void OutputWindow::MouseButtonCallback(GLFWwindow *w, int button, int action, int)
+void OutputWindow::MouseButtonCallback(GLFWwindow *, int button, int action, int)
 {
     // detect mouse press
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)

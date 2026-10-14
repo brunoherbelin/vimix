@@ -1165,8 +1165,6 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
         //
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, 0.f));
         ImGui::PushStyleColor( ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_Button) );
-        int index = 0;
-        bool flag_pressed = false;
         const TimeIntervalSet flags = timeline->flags();
         for (const auto &flag_Interval : flags) {
 
@@ -1178,8 +1176,6 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
 
             // icon depends on flag type & color on hovered
             _drawIcon(draw_pos, 11 + flag_Interval.type, 6, true, window);
-
-            ++index;
         }
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(1);
@@ -2872,7 +2868,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             /// DURATION SLIDER
             ///
             float seconds = (float) d / 1000.f;
-            float maxi = (float) GST_TIME_AS_MSECONDS(tl->duration()) / 1000.f;
+            float maxi = (float) ((double) tl->duration() / GST_SECOND);
             float w = gap_dialog_size.x - 4.f * ImGui::GetTextLineHeightWithSpacing();
 
             ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -3263,7 +3259,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     if (mediaplayer_set_duration_) {
         // get current duration of mediaplayer
         GstClockTime end = mediaplayer_active_->timeline()->end();
-        timeline_duration_ = (double) (GST_TIME_AS_MSECONDS(end)) / 1000.f;
+        timeline_duration_ = (double) end / GST_SECOND;
         // remember previous duration for Cancel
         // NB: trick with var 'mediaplayer_set_duration_' set to 2 when first time created
         timeline_duration_previous = mediaplayer_set_duration_ > 1 ? 0.0 : timeline_duration_;

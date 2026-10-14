@@ -27,7 +27,6 @@
 #include "Toolkit/BaseToolkit.h"
 #include "Toolkit/SystemToolkit.h"
 #include "MediaPlayer.h"
-#include "Log.h"
 
 #include "MultiFileSource.h"
 #include "IconsVimixImage.h"

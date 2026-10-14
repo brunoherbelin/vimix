@@ -17,9 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
-#include "Toolkit/GlmToolkit.h"
 #include "Scene/Scene.h"
-#include "Source/Source.h"
 
 #include "CopyVisitor.h"
 
@@ -36,7 +34,7 @@ CopyVisitor::CopyVisitor() : current_(nullptr)
 
 }
 
-void CopyVisitor::visit(Node &n)
+void CopyVisitor::visit(Node &)
 {
 }
 

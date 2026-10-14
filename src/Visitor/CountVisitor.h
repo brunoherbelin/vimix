@@ -1,6 +1,8 @@
 #ifndef COUNTVISITOR_H
 #define COUNTVISITOR_H
 
+#include <sys/types.h>
+
 #include "Visitor.h"
 
 class CountVisitor : public Visitor

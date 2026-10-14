@@ -326,7 +326,7 @@ const char *GL_TO_GL = "";
 const char *GL_TO_SYSTEM = "gldownload ! videoconvert ! ";
 // - the encoder takes NV12 in system memory only (nvcudah264enc before GStreamer 1.26):
 //   convert to NV12 on the GPU (3 MB instead of 8 MB of RGBA per 1080p frame), then download
-const char *GL_TO_SYSTEM_NV12 = "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! gldownload ! ";
+[[maybe_unused]] const char *GL_TO_SYSTEM_NV12 = "glcolorconvert ! video/x-raw(memory:GLMemory),format=NV12 ! gldownload ! ";
 // - the encoder takes VAMemory (VA-API): gldownload exports a DMABuf when the GL platform
 //   supports it (Mesa), and falls back to system memory otherwise; vapostproc puts it into a
 //   VA surface and performs the RGBA to NV12 conversion on the VA hardware (faster than in GL).

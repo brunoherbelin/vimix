@@ -772,7 +772,9 @@ int Navigator::RenderViewspaceSelector(const ImVec2 &size)
 
     for (uint c = 0; c < MAX_VIEWSPACE; ++c) {
         // clockwise from top-left: column 0,1,1,0 and row 0,0,1,1
-        const ImVec2 pos = top + padding + ImVec2( (float)(((c + 1) / 2) % 2) * cell.x, (float)(c / 2) * cell.y );
+        const uint col = ((c + 1) / 2) % 2;
+        const uint row = c / 2;
+        const ImVec2 pos = top + padding + ImVec2( (float) col * cell.x, (float) row * cell.y );
         ImGui::PushID( (int) c );
 
         // toggle action : operate on the whole cell
