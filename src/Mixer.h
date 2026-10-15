@@ -117,6 +117,8 @@ public:
     // ViewSpaces: sources are shown in views only if their ViewSpace is shown
     bool viewSpaceShown (uint v) const;
     void showViewSpace (uint v, bool on, bool exclusive = false);
+    void showAllViewSpaces ();
+    bool viewSpaceOnlyShown (uint v) const;
     uint firstShownViewSpace ();
     void setViewSpace (Source *s, uint v);
 

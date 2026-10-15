@@ -2178,11 +2178,12 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 static std::vector< std::string > ws_tooltip = { "Workspace 1", "Workspace 2", "Workspace 3", "Workspace 4" };
 
                 int ws_index = (int) s->viewSpace();
+                bool singleviewspace = Mixer::manager().viewSpaceOnlyShown((uint) ws_index);
                 if (ImGuiToolkit::IconMultistate(ws_icon, &ws_index, ws_tooltip)) {
                     Mixer::manager().setViewSpace(s, (uint) ws_index);
                     info << "Workspace " << ws_index + 1;
                     Action::manager().store(info.str());
-                    if (!Settings::application.pannel_list_all_viewspaces)
+                    if ( singleviewspace )
                         Mixer::manager().showViewSpace((uint) ws_index, true, true);
                 }
                 ImGui::SameLine(0, IMGUI_SAME_LINE);

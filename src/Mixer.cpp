@@ -1591,6 +1591,16 @@ void Mixer::showViewSpace(uint v, bool on, bool exclusive)
     liveSession()->setViewSpaceShown(v, on);
 }
 
+void Mixer::showAllViewSpaces()
+{
+    liveSession()->setViewSpaces( (1u << MAX_VIEWSPACE) - 1 );
+}
+
+bool Mixer::viewSpaceOnlyShown(uint v) const
+{
+    return v < MAX_VIEWSPACE && liveSession()->viewSpaces() == (1u << v);
+}
+
 uint Mixer::firstShownViewSpace()
 {
     for (uint v = 0; v < MAX_VIEWSPACE; ++v) {

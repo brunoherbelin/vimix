@@ -69,6 +69,8 @@ Navigator::Navigator()
     pannel_alpha_ = 0.85f;
     view_pannel_visible = false;
     clearButtonSelection();
+    for (uint v = 0; v < MAX_VIEWSPACE; ++v)
+        viewspace_current_[v] = 0;
 
     // restore media mode as saved
     if (Settings::application.recentImportFolders.path.empty() ||
@@ -484,8 +486,9 @@ void Navigator::Render()
         // Workspaces (ViewSpaces) selector
         int ws = RenderViewspaceSelector(viewiconsize);
         if (ws > -1)
-            tooltip = { std::string(Mixer::manager().viewSpaceShown(ws) ? "Hide" : "Show")
-                        + " workspace " + std::to_string(ws + 1), "Double-click toggle one / all", nullptr};
+            tooltip = { Mixer::manager().viewSpaceOnlyShown(ws) ? std::string("Show all workspaces")
+                                                                 : "Show only workspace " + std::to_string(ws + 1),
+                        "", nullptr };
 
         // Mouse pointer selector
         if ( RenderMousePointerSelector(viewiconsize) )
@@ -759,6 +762,11 @@ int Navigator::RenderViewspaceSelector(const ImVec2 &size)
     const ImVec4* colors = ImGui::GetStyle().Colors;
     int ret = -1;
 
+    // remember the current source of its ViewSpace
+    Source *cs = Mixer::manager().currentSource();
+    if ( cs != nullptr )
+        viewspace_current_[cs->viewSpace()] = cs->id();
+
     // small icons (FONT_DEFAULT) centered in each cell of a 2x2 grid
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
     const float icon_width = ImGui::GetTextLineHeightWithSpacing();
@@ -779,39 +787,40 @@ int Navigator::RenderViewspaceSelector(const ImVec2 &size)
 
         // toggle action : operate on the whole cell
         ImGui::SetCursorPos( pos );
-        const bool shown = Mixer::manager().viewSpaceShown(c);
-        static int ignore_release = -1;
-        static uint shown_before_clic = 0;
-        const bool pressed = ImGui::InvisibleButton("##WorkspaceToggle", cell);
-        const bool hovered = ImGui::IsItemHovered();
-        // double clic
-        if ( hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) ) {
-            // was the only one shown before the first clic: show all workspaces
-            if ( shown_before_clic == (1u << c) ) {
-                for (uint v = 0; v < MAX_VIEWSPACE; ++v)
-                    Mixer::manager().showViewSpace(v, true);
-            }
+        if ( ImGui::InvisibleButton("##WorkspaceToggle", cell) ) {
+            // clic on the only workspace shown: show all
+            if ( Mixer::manager().viewSpaceOnlyShown(c) )
+                Mixer::manager().showAllViewSpaces();
             // otherwise show only this workspace
-            else
-                Mixer::manager().showViewSpace(c, true, true);
-            // do not toggle when releasing the double clic
-            ignore_release = (int) c;
-        }
-        // simple clic : toggle this workspace
-        else if ( pressed ) {
-            if ( ignore_release == (int) c )
-                ignore_release = -1;
             else {
-                // remember which workspaces were shown (for double clic)
-                shown_before_clic = 0;
-                for (uint v = 0; v < MAX_VIEWSPACE; ++v)
-                    shown_before_clic |= Mixer::manager().viewSpaceShown(v) ? (1u << v) : 0;
-                Mixer::manager().showViewSpace(c, !shown);
+                Mixer::manager().showViewSpace(c, true, true);
+                // no source in pannel, or not in this workspace
+                Source *ps = pannelSource();
+                if ( ps == nullptr || ps->viewSpace() != c ) {
+                    hidden_source_ = nullptr;
+                    // restore the source previously current in this workspace
+                    Session *se = Mixer::manager().session();
+                    SourceList::iterator it = se->find( viewspace_current_[c] );
+                    if ( it != se->end() && (*it)->viewSpace() != c )
+                        it = se->end();
+                    // otherwise, replace the source in pannel by the first source listed in this workspace
+                    if ( it == se->end() && ps != nullptr )
+                        for (it = se->begin(); it != se->end() && (*it)->viewSpace() != c; ++it);
+                    // make it current and show its pannel
+                    if ( it != se->end() ) {
+                        Mixer::manager().setCurrentSource( *it );
+                        showPannelSource( se->index(it) );
+                    }
+                    // no source in this workspace to replace the source in pannel: clear current
+                    else if ( ps != nullptr ) {
+                        Mixer::manager().unsetCurrentSource();
+                        if ( selected_index > -1 && selected_index < NAV_MAX )
+                            showPannelSource(-1);
+                    }
+                }
             }
         }
-        // double clic released outside: forget it
-        else if ( ignore_release == (int) c && !ImGui::IsMouseDown(ImGuiMouseButton_Left) )
-            ignore_release = -1;
+        const bool hovered = ImGui::IsItemHovered();
         if (hovered)
             ret = (int) c;
 

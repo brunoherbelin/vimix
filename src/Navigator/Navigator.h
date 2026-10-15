@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include "defines.h"
+
 #include "Source/Source.h"
 #include "NewSourcePanel.h"
 #include "PlaylistPanel.h"
@@ -28,6 +30,7 @@ class Navigator
     bool selected_button[69];  // NAV_COUNT
     int  selected_index;
     Source *hidden_source_;  // source of a hidden ViewSpace shown in pannel
+    uint64_t viewspace_current_[MAX_VIEWSPACE];  // id of last current source per ViewSpace
     void clearButtonSelection();
     void applyButtonSelection(int index);
     int  rootButton() const;

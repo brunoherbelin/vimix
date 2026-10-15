@@ -479,12 +479,13 @@ void ImGuiVisitor::visit (Source& s)
         static std::vector< std::string > ws_tooltip_linked = { "Workspace 1\n" ICON_FA_LINK " Linked", "Workspace 2\n" ICON_FA_LINK " Linked",
                                                                 "Workspace 3\n" ICON_FA_LINK " Linked", "Workspace 4\n" ICON_FA_LINK " Linked"};
         int ws_index = (int) s.viewSpace();
+        bool singleviewspace = Mixer::manager().viewSpaceOnlyShown((uint) ws_index);
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y) );
         if (ImGuiToolkit::IconMultistate(ws_icon, &ws_index, s.mixingGroup() ? ws_tooltip_linked : ws_tooltip )) {
             Mixer::manager().setViewSpace(&s, (uint) ws_index);
             oss << "Workspace " << ws_index + 1;
             Action::manager().store(oss.str());
-            if (!Settings::application.pannel_list_all_viewspaces)
+            if ( singleviewspace )
                 Mixer::manager().showViewSpace((uint) ws_index, true, true);
         }
 
