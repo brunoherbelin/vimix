@@ -228,32 +228,37 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     }
                 }
             }
-            // #ID sources target
+            // #ID sources target: index ('/#n' or '/n') or unique id ('/n') of source
             else if ( std::regex_match(target, osc_sourceid_reg_exp) )
             {
-                int i = 0;
                 std::string num = target.substr( target.find("#") == std::string::npos ? 1 : 2 );
-                if ( BaseToolkit::is_a_number(num, &i)){
-                    // special case of creating an alias for given source target
-                    if (attribute.compare(OSC_SOURCE_ALIAS) == 0) {
-                        const char *label = nullptr;
-                        m.ArgumentStream() >> label >> osc::EndMessage;
-                        Control::manager().aliases_[std::string("/").append(label)] = target;
-                        Log::Info(CONTROL_OSC_MSG "New alias /%s for target %s.", label, target.c_str());
+                // special case of creating an alias for given source target
+                if (attribute.compare(OSC_SOURCE_ALIAS) == 0) {
+                    const char *label = nullptr;
+                    m.ArgumentStream() >> label >> osc::EndMessage;
+                    Control::manager().aliases_[std::string("/").append(label)] = target;
+                    Log::Info(CONTROL_OSC_MSG "New alias /%s for target %s.", label, target.c_str());
 
+                }
+                // usual case, addressing the source by index or by id
+                else {
+                    Source *s = nullptr;
+                    int i = 0;
+                    uint64_t id = 0;
+                    // try to interpret number as index of source
+                    if ( BaseToolkit::is_a_number(num, &i) )
+                        s = Mixer::manager().sourceAtIndex(i);
+                    // otherwise try to interpret number as unique id of source
+                    if ( !s && BaseToolkit::is_a_number(num, &id) )
+                        s = Mixer::manager().findSource(id);
+                    if (s) {
+                        // apply attributes to source
+                        if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
+                            // and send back feedback if needed
+                            Control::manager().sendSourceAttibutes(remoteEndpoint, m.ArgumentStream(), target, s);
                     }
-                    // usual case, addressing the source by '#n'
-                    else {
-                        Source *s = Mixer::manager().sourceAtIndex(i);
-                        if (s) {
-                            // apply attributes to source
-                            if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
-                                // and send back feedback if needed
-                                Control::manager().sendSourceAttibutes(remoteEndpoint, m.ArgumentStream(), target, s);
-                        }
-                        else
-                            Log::Info(CONTROL_OSC_MSG "No source at ID %s targetted by %s.", num.c_str(), sender);
-                    }
+                    else
+                        Log::Info(CONTROL_OSC_MSG "No source with index or id %s targetted by %s.", num.c_str(), sender);
                 }
             }
             // General case: try to identify the target by name
