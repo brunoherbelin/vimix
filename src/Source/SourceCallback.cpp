@@ -1520,6 +1520,14 @@ void SetUniform::multiply (float factor)
     target_ *= factor;
 }
 
+bool SetUniform::overrides (const SourceCallback &other) const
+{
+    // Only the SAME uniform name supersedes: two different uniforms of one source can be
+    // set in the same frame (the shared CALLBACK_UNIFORM type used to drop the first one).
+    const SetUniform *uniform = dynamic_cast<const SetUniform *>(&other);
+    return (uniform != nullptr) && (uniform->uniform_ == uniform_);
+}
+
 SourceCallback *SetUniform::clone() const
 {
     return new SetUniform(uniform_, target_, duration_);
