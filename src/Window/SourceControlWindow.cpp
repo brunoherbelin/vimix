@@ -63,9 +63,6 @@
 
 #include "SourceControlWindow.h"
 
-#define CHECKER_RESOLUTION 5000
-class Stream *checker_background_ = new Stream;
-
 typedef struct payload
 {
     enum Action {
@@ -120,17 +117,6 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     info_.setExtendedStringMode();
 
     captureFolderDialog = new DialogToolkit::OpenFolderDialog("Capture frame Location");
-
-    // initialize checkerboard background texture
-    checker_background_->open("videotestsrc name=bgchecker pattern=checkers-8 ! "
-                              "videobalance saturation=0 contrast=1",
-                              CHECKER_RESOLUTION, CHECKER_RESOLUTION);
-    checker_background_->play(false);
-    while (checker_background_->texture() == Resource::getTextureBlack()){
-        std::this_thread::sleep_for (std::chrono::milliseconds(30));
-        checker_background_->update();
-    }
-    checker_background_->close();
 }
 
 
@@ -1652,7 +1638,7 @@ void SourceControlWindow::DrawSource(Source *s, ImVec2 framesize, ImVec2 top_ima
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
 
     // pre-draw background with checkerboard pattern
-    ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
+    ImGui::Image((void*)(uintptr_t) UserInterface::manager().checkerboard(), framesize,
                  ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
     // get back to top image corner after draw
     ImGui::SetCursorScreenPos(top_image);
@@ -1780,7 +1766,7 @@ ImRect SourceControlWindow::DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 r
     ImGui::SetCursorScreenPos(top_image);
 
     // // pre-draw background with checkerboard pattern
-    // ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
+    // ImGui::Image((void*)(uintptr_t) UserInterface::manager().checkerboard(), framesize,
     //              ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
 
     // draw source

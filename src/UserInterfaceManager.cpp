@@ -32,6 +32,7 @@
 #include <sstream>
 #include <iomanip>
 #include <sstream>
+#include <thread>
 
 // ImGui
 #include "imgui.h"
@@ -84,6 +85,7 @@
 #include "FrameGrabbing.h"
 #include "Canvas.h"
 #include "Annotations.h"
+#include "Stream.h"
 
 #include "UserInterfaceManager.h"
 
@@ -122,6 +124,7 @@ UserInterface::UserInterface()
     sessionopendialog = nullptr;
     sessionimportdialog = nullptr;
     sessionsavedialog = nullptr;
+    checker_background_ = nullptr;
 }
 
 bool UserInterface::Init(int font_size)
@@ -228,12 +231,29 @@ bool UserInterface::Init(int font_size)
     // show about dialog on first run
     show_vimix_about = (Settings::application.total_runtime < 1);
 
+    // initialize checkerboard background texture
+    checker_background_ = new Stream;
+    checker_background_->open("videotestsrc name=bgchecker pattern=checkers-8 ! "
+                              "videobalance saturation=0 contrast=1",
+                              CHECKER_RESOLUTION, CHECKER_RESOLUTION);
+    checker_background_->play(false);
+    while (checker_background_->texture() == Resource::getTextureBlack()){
+        std::this_thread::sleep_for (std::chrono::milliseconds(30));
+        checker_background_->update();
+    }
+    checker_background_->close();
+
     return true;
 }
 
 uint64_t UserInterface::Runtime() const
 {
     return gst_util_get_timestamp () - start_time;
+}
+
+uint UserInterface::checkerboard() const
+{
+    return checker_background_ ? checker_background_->texture() : Resource::getTextureBlack();
 }
 
 
@@ -1103,7 +1123,7 @@ void UserInterface::Render()
                     &Settings::application.widget.draft_corner);
 
     // source editor
-    if (Settings::application.widget.source_toolbar)
+    if (Settings::application.widget.source_toolbar && Mixer::manager().view()->mode() < View::TRANSITION)
         RenderSourceToolbar(&Settings::application.widget.source_toolbar,
                            &Settings::application.widget.source_toolbar_border,
                            &Settings::application.widget.source_toolbar_mode);
@@ -1708,8 +1728,13 @@ void UserInterface::RenderPreview()
             show_preview = PREVIEW_NONE;
     }
 
-    if (ImGui::BeginPopupModal("##RENDERPREVIEW", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
-                               ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNav)) {
+    // darker background for the preview popup (modal popups use PopupBg color)
+    ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.f, 0.f, 0.f, 0.8f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.f, 0.f, 0.f, 0.6f));
+    const bool preview_open = ImGui::BeginPopupModal("##RENDERPREVIEW", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
+                                                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoNav);
+    ImGui::PopStyleColor(2);
+    if (preview_open) {
         // making sure the pointer is still valid
         if (_framebuffer != nullptr)
         {
@@ -1719,39 +1744,44 @@ void UserInterface::RenderPreview()
             if (show_preview == PREVIEW_OUTPUT && Draft::manager().active())
                 draft = Mixer::manager().session()->frame();
             const uint preview_texture = draft ? draft->texture() : _framebuffer->texture();
+
             float ar = _framebuffer->aspectRatio();
             // image takes the available window area
             ImVec2 imagesize = io.DisplaySize;
             // image height respects original aspect ratio but is at most the available window height
-            imagesize.y = MIN( imagesize.x / ar, imagesize.y) * 0.95f;
+            imagesize.y = MIN( imagesize.x / ar, imagesize.y) * 0.9f;
             // image respects original aspect ratio
             imagesize.x = imagesize.y * ar;
 
-            // 100% opacity for the image (ensures true colors)
+            // closing icon in top left corner and title
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+            if (ImGuiToolkit::IconButton(ICON_FA_TIMES))
+                show_preview = PREVIEW_NONE;
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (show_preview == PREVIEW_SOURCE)
+                ImGui::Text("Preview Player");
+            else if (show_preview == PREVIEW_OUTPUT) {
+                if (draft)
+                    ImGui::Text("Preview Draft");
+                else
+                    ImGui::Text("Preview Mix");
+            }
+            ImGui::PopFont();
+
             ImVec2 draw_pos = ImGui::GetCursorScreenPos();
+            // 100% opacity for the image (ensures true colors)
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
+            // pre-draw background with checkerboard pattern
+            ImGui::Image((void*)(uintptr_t) checkerboard(), imagesize,
+                         ImVec2(0,0), ImVec2(imagesize.x/CHECKER_RESOLUTION, imagesize.y/CHECKER_RESOLUTION));
+            // get back to top image corner after draw
+            ImGui::SetCursorScreenPos(draw_pos);
             ImGui::Image((void*)(intptr_t)preview_texture, imagesize);
             ImGui::PopStyleVar();
             if (draft)
                 ImGui::GetWindowDrawList()->AddRect(draw_pos, draw_pos + imagesize,
                                                     ImGui::GetColorU32(ImGuiToolkit::HighlightColor()), 0.f, 0, 4.f);
-
-            // closing icon in top left corner
-            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-            ImGui::SetCursorScreenPos(draw_pos + ImVec2(IMGUI_SAME_LINE, IMGUI_SAME_LINE));
-            if (ImGuiToolkit::IconButton(ICON_FA_TIMES))
-                show_preview = PREVIEW_NONE;
-            if (ImGui::IsItemHovered()) {
-
-                ImGui::SameLine();
-                if (show_preview == PREVIEW_SOURCE)
-                    ImGui::Text("Preview Player source");
-                else if (draft)
-                    ImGui::Text("Preview Draft");
-                else
-                    ImGui::Text("Preview Mix output");
-            }
-            ImGui::PopFont();
+            ImGui::Spacing();
 
             // handle mouse clic and hovering on image
             const ImRect bb(draw_pos, draw_pos + imagesize);

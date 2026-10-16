@@ -454,7 +454,9 @@ void ImGuiVisitor::visit (Source& s)
             // on mouse over show source original image
             if (ImGui::IsMouseHoveringRect( up_left, down_right )) {
                 ImGui::Image((void*)(uintptr_t) s.texture(), ImVec2(width, height));
-                ImGuiToolkit::ToolTip("Source original image");
+                ImGui::SetCursorScreenPos(up_left);
+                ImGui::Text(" Source input");
+                ImGui::SetCursorScreenPos(down_right);
             }
             // draw source processed frame by default
             else {

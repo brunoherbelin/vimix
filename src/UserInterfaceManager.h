@@ -8,6 +8,8 @@
 #define NAV_TRANS 67
 #define NAV_BUNDLE 68
 
+#define CHECKER_RESOLUTION 5000
+
 #include <string>
 
 #include "View/View.h"
@@ -22,6 +24,7 @@
 
 
 struct ImVec2;
+class Stream;
 void DrawInspector(uint texture, ImVec2 texturesize, ImVec2 cropsize, ImVec2 origin);
 
 class ToolBox
@@ -112,6 +115,10 @@ protected:
     std::string pending_delete_file;
     typedef enum { PREVIEW_NONE = 0, PREVIEW_OUTPUT, PREVIEW_SOURCE } PreviewMode;
     PreviewMode show_preview;
+
+    // checkerboard background texture
+    Stream *checker_background_;
+    uint checkerboard() const;
 
     // Dialogs
     DialogToolkit::OpenFileDialog *sessionopendialog;
