@@ -472,8 +472,10 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false )) {
             // hide pannel
             navigator.discardPannel();
-            // leave bundle /or/ toggle clear workspace
-            if (Mixer::manager().editingBundle())
+            // leave presentation /or/ leave bundle /or/ toggle clear workspace
+            if (Mixer::manager().view()->mode() == View::PRESENTATION)
+                setView(View::MIXING);
+            else if (Mixer::manager().editingBundle())
                 Mixer::manager().exitBundle();
             else
                 WorkspaceWindow::toggleClearRestoreWorkspace();
@@ -1155,8 +1157,9 @@ void UserInterface::Render()
             ShowAboutOpengl(&show_opengl_about);
     }
 
-    // Notes
-    RenderNotes();
+    // Notes (not in views switching sessions)
+    if ( !View::isSwitchingView(Settings::application.current_view) )
+        RenderNotes();
 
     // Navigator
     if (show_view_navigator > 0)
@@ -1633,8 +1636,8 @@ int UserInterface::RenderViewNavigator(int *shift)
 
         // 5 subtitles (text centered in column)
         for (int v = View::MIXING; v < View::INVALID; ++v) {
-            // skip TRANSITION view
-            if (v == View::TRANSITION)
+            // skip TRANSITION and PRESENTATION views
+            if (View::isSwitchingView(v))
                 continue;
             ImGui::NextColumn();
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize(Settings::application.views[v].name.c_str()).x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);

@@ -93,6 +93,8 @@ SourceCore::SourceCore()
     groups_[View::TEXTURE]->visible_ = false;
     groups_[View::TRANSITION] = new Group;
     groups_[View::TRANSITION]->visible_ = false;
+    groups_[View::PRESENTATION] = new Group;
+    groups_[View::PRESENTATION]->visible_ = false;
     // temp node
     stored_status_  = new Group;
 
@@ -118,6 +120,7 @@ SourceCore::~SourceCore()
     delete groups_[View::LAYER];
     delete groups_[View::TEXTURE];
     delete groups_[View::TRANSITION];
+    delete groups_[View::PRESENTATION];
     delete stored_status_;
 
     // don't forget that the processing shader

@@ -88,6 +88,7 @@ set(VMIX_SRCS
     Source/RenderSource.cpp
     Source/ScreenCaptureSource.cpp
     Source/SessionSource.cpp
+    Source/SessionThumbnailSource.cpp
     Source/ShaderSource.cpp
     Source/Source.cpp
     Source/SourceCallback.cpp
@@ -118,6 +119,7 @@ set(VMIX_SRCS
     View/RenderView.cpp
     View/TextureView.cpp
     View/TransitionView.cpp
+    View/PresentationView.cpp
     View/View.cpp
     
     # Visitor/ folder

@@ -606,6 +606,39 @@ void PlaylistPanel::Render()
 
     ImGui::SetCursorPos(pos_bottom);
 
+    // list of session files of the current mode (favorites, playlist or folder)
+    auto current_playlist = [&](std::string *name = nullptr) {
+        Playlist tmp;
+        if (Settings::application.pannel_playlist_mode == 0) {
+            tmp = UserInterface::manager().favorites;
+            if (name)
+                *name = SystemToolkit::base_filename(UserInterface::manager().favorites.filename());
+        } else if (Settings::application.pannel_playlist_mode == 1) {
+            tmp = active_playlist;
+            if (name)
+                *name = SystemToolkit::base_filename(active_playlist.filename());
+        } else {
+            tmp.add(folder_session_files);
+            if (name)
+                *name = SystemToolkit::filename(Settings::application.recentFolders.path);
+        }
+        return tmp;
+    };
+
+    // start presentation of the list
+    {
+        std::string name;
+        Playlist tmp = current_playlist(&name);
+        if (tmp.size() < 1)
+            ImGuiToolkit::ButtonDisabled(ICON_FA_PLAY "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+        else if (ImGui::Button(ICON_FA_PLAY "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
+            PresentationView *pv = static_cast<PresentationView *>(Mixer::manager().view(View::PRESENTATION));
+            pv->setPlaylist(tmp, name);
+            UserInterface::manager().setView(View::PRESENTATION);
+            WorkspaceWindow::clearWorkspace();
+        }
+    }
+
     // export all to folder
     static Exporter *playlist_exporter = nullptr;
     static bool _playlist_exporting = false;
@@ -660,19 +693,8 @@ void PlaylistPanel::Render()
                 ImGuiToolkit::ButtonDisabled(ICON_FA_SAVE "  Export all", ImVec2(IMGUI_RIGHT_ALIGN, 0));
             }
             else if (ImGui::Button(ICON_FA_SAVE "  Export all", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
-                Playlist tmp;
                 std::string archive_name;
-                if (Settings::application.pannel_playlist_mode == 0) {
-                    tmp = UserInterface::manager().favorites;
-                    archive_name = SystemToolkit::base_filename(
-                        UserInterface::manager().favorites.filename());
-                } else if (Settings::application.pannel_playlist_mode == 1) {
-                    tmp = active_playlist;
-                    archive_name = SystemToolkit::base_filename(active_playlist.filename());
-                } else {
-                    tmp.add(folder_session_files);
-                    archive_name = SystemToolkit::filename(Settings::application.recentFolders.path);
-                }
+                Playlist tmp = current_playlist(&archive_name);
                 playlist_exporter = new Exporter(tmp, Settings::application.recentExportFolder.path,
                                                   Settings::application.export_options[0],
                                                   Settings::application.export_options[2],

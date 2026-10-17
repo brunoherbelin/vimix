@@ -8,6 +8,7 @@
 #include "View/LayerView.h"
 #include "View/TextureView.h"
 #include "View/TransitionView.h"
+#include "View/PresentationView.h"
 #include "View/DisplaysView.h"
 #include "Session.h"
 #include "Selection.h"
@@ -21,6 +22,8 @@ class SessionGroupSource;
 
 class Mixer
 {
+    friend class PresentationView;
+
     // Private Constructor
     Mixer();
     Mixer(Mixer const& copy) = delete;
@@ -199,6 +202,7 @@ protected:
     TextureView appearance_;
     TransitionView transition_;
     DisplaysView displays_;
+    PresentationView presentation_;
 
     bool busy_;
     float dt_;

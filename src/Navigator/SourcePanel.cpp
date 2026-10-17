@@ -397,7 +397,7 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
 {
     // index of this source in the Navigator, given at every frame
     const int selected_index = navigator->selectedPannelSource();
-    if (s == nullptr || Settings::application.current_view == View::TRANSITION)
+    if (s == nullptr || View::isSwitchingView(Settings::application.current_view))
         return;
 
     // Next window is a side pannel

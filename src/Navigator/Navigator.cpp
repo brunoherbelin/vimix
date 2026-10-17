@@ -319,7 +319,7 @@ void Navigator::Render()
     {
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-        if (Settings::application.current_view != View::TRANSITION) {
+        if (!View::isSwitchingView(Settings::application.current_view)) {
 
             // the edited bundle replaces the vimix icon for menu
             SessionGroupSource *bundle = Mixer::manager().editingBundle() ? Mixer::manager().editedBundles().back() : nullptr;
@@ -464,13 +464,20 @@ void Navigator::Render()
                // draw_list->AddLine(ImVec2(x - 1.5f, bracket_top), ImVec2(x + style.WindowPadding.x, bracket_top), color, 3.f);
             }
         }
-        else {
+        else if (Settings::application.current_view == View::TRANSITION) {
             // the ">" icon for transition menu
             if (ImGui::Selectable( ICON_FA_ARROW_CIRCLE_RIGHT, &selected_button[NAV_TRANS], 0, iconsize))
             {
                 Mixer::manager().unsetCurrentSource();
                 applyButtonSelection(NAV_TRANS);
             }
+        }
+        else {
+            // the "x" icon to end presentation
+            if (ImGui::Selectable( ICON_FA_TIMES_CIRCLE, false, 0, iconsize))
+                UserInterface::manager().setView(View::MIXING);
+            if (ImGui::IsItemHovered())
+                tooltip = {"End presentation", "Esc", nullptr};
         }
         ImGui::End();
     }
@@ -760,6 +767,7 @@ int Navigator::RenderViewspaceSelector(const ImVec2 &size)
     ImGuiContext& g = *GImGui;
     const ImVec2 top = ImGui::GetCursorPos();
     const ImVec4* colors = ImGui::GetStyle().Colors;
+    const bool enabled = !View::isSwitchingView(Settings::application.current_view);
     int ret = -1;
 
     // remember the current source of its ViewSpace
@@ -787,7 +795,7 @@ int Navigator::RenderViewspaceSelector(const ImVec2 &size)
 
         // toggle action : operate on the whole cell
         ImGui::SetCursorPos( pos );
-        if ( ImGui::InvisibleButton("##WorkspaceToggle", cell) ) {
+        if ( ImGui::InvisibleButton("##WorkspaceToggle", cell) && enabled ) {
             // clic on the only workspace shown: show all
             if ( Mixer::manager().viewSpaceOnlyShown(c) )
                 Mixer::manager().showAllViewSpaces();
@@ -824,8 +832,9 @@ int Navigator::RenderViewspaceSelector(const ImVec2 &size)
         if (hovered)
             ret = (int) c;
 
-        // draw with hovered color
-        ImGui::PushStyleColor( ImGuiCol_Text, hovered ? colors[ImGuiCol_NavHighlight] : colors[ImGuiCol_Text] );
+        // draw with disabled or hovered color
+        ImGui::PushStyleColor( ImGuiCol_Text, !enabled ? colors[ImGuiCol_TextDisabled]
+                                              : hovered ? colors[ImGuiCol_NavHighlight] : colors[ImGuiCol_Text] );
         ImGui::SetCursorPos( pos + margin );
         if ( Mixer::manager().viewSpaceShown(c) )
             ImGuiToolkit::Icon(ICON_VI_VIEWSPACE_ON);
@@ -847,7 +856,7 @@ bool Navigator::RenderMousePointerSelector(const ImVec2 &size)
 {
     ImGuiContext& g = *GImGui;
     ImVec2 top = ImGui::GetCursorPos();
-    bool enabled = Settings::application.current_view != View::TRANSITION;
+    bool enabled = !View::isSwitchingView(Settings::application.current_view);
     bool ret = false;
     ///
     /// interactive button of the given size: show menu if clic or mouse over
@@ -1064,7 +1073,7 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
     const ImGuiStyle& style = ImGui::GetStyle();
 
     const std::vector<SessionGroupSource *> &bundles = Mixer::manager().editedBundles();
-    if (bundles.empty() || Settings::application.current_view == View::TRANSITION)
+    if (bundles.empty() || View::isSwitchingView(Settings::application.current_view))
         return;
     SessionGroupSource *bundle = bundles.back();
 
@@ -1219,7 +1228,7 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
 {
     const ImGuiStyle& style = ImGui::GetStyle();
 
-    if (Settings::application.current_view == View::TRANSITION)
+    if (View::isSwitchingView(Settings::application.current_view))
         return;
 
     // Next window is a side pannel

@@ -30,10 +30,14 @@ public:
         TEXTURE   = 4,
         TRANSITION = 5,
         DISPLAYS  = 6,
-        INVALID   = 7
+        PRESENTATION = 7,
+        INVALID   = 8
     } Mode;
 
     inline Mode mode () const { return mode_; }
+
+    // views switching between sessions (no source editing)
+    static bool isSwitchingView (int m) { return m == TRANSITION || m == PRESENTATION; }
 
     virtual void update (float dt);
     virtual void draw ();

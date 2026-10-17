@@ -29,6 +29,11 @@ public:
     void open();
     void cancel();
 
+    // apply transition progress d in [-1, 0] to the mixing of ts and the fading of session
+    static void apply(SessionFileSource *ts, float d, bool cross_fade);
+    // initial progress of a transition (in [-1, 0]) and its mode, given the current fading
+    static float initialProgress(bool &cross_fade);
+
 private:
     Surface *output_surface_;
     Symbol *fastopenicon;

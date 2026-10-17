@@ -38,6 +38,7 @@ Playlist& Playlist::operator = (const Playlist& b)
         path_.clear();
         for(auto it = b.path_.cbegin(); it != b.path_.cend(); ++it)
             path_.push_back(*it);
+        filename_ = b.filename_;
     }
     return *this;
 }
@@ -45,6 +46,8 @@ Playlist& Playlist::operator = (const Playlist& b)
 void Playlist::clear()
 {
     path_.clear();
+    // a cleared playlist is no longer associated to its file
+    filename_.clear();
 }
 
 void Playlist::load(const std::string &filename)

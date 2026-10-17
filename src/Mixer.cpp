@@ -319,6 +319,7 @@ void Mixer::update()
         appearance_.update(dt_);
         transition_.update(dt_);
         displays_.update(dt_);
+        presentation_.update(dt_);
 
         // deep update was performed
         --View::need_deep_update_;
@@ -1706,8 +1707,12 @@ void Mixer::setView(View::Mode m)
             Log::Info("Transition interrupted.");
     }
 
+    // special case when leaving presentation view
+    if ( current_view_ == &presentation_ && m != View::PRESENTATION )
+        presentation_.leave();
+
     // no transition inside a bundle
-    if ( m == View::TRANSITION )
+    if ( View::isSwitchingView(m) )
         exitAllBundles();
 
     switch (m) {
@@ -1716,6 +1721,9 @@ void Mixer::setView(View::Mode m)
         break;
     case View::TRANSITION:
         current_view_ = &transition_;
+        break;
+    case View::PRESENTATION:
+        current_view_ = &presentation_;
         break;
     case View::GEOMETRY:
         current_view_ = &geometry_;
@@ -1758,6 +1766,8 @@ View *Mixer::view(View::Mode m)
         return &displays_;
     case View::TRANSITION:
         return &transition_;
+    case View::PRESENTATION:
+        return &presentation_;
     case View::GEOMETRY:
         return &geometry_;
     case View::LAYER:
@@ -1828,7 +1838,9 @@ void Mixer::load(const std::string& filename)
         && Settings::application.recentSessions.front_is_valid
         && Settings::application.recentSessions.filenames.size() > 0) {
         sessionfile = Settings::application.recentSessions.filenames.front();
-        setView((View::Mode) Settings::application.current_view);
+        // do not restore views switching between sessions
+        const View::Mode v = (View::Mode) Settings::application.current_view;
+        setView( View::isSwitchingView(v) ? View::MIXING : v );
     }
 
     // ignore invalid file name
@@ -2204,6 +2216,10 @@ void Mixer::terminate()
 
     // cancel transition
     transition_.detach();
+
+    // leave presentation (NB: user interface is already terminated)
+    if ( current_view_ == &presentation_ )
+        presentation_.leave(false);
 
     // set for an empty session
     set(new Session);

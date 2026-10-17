@@ -111,7 +111,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
 {
     // the source to replace belongs to the Navigator (shared with the source pannel)
     Source *&source_to_replace = navigator->sourceToReplace();
-    if (Settings::application.current_view == View::TRANSITION)
+    if (View::isSwitchingView(Settings::application.current_view))
         return;
 
     const ImGuiStyle& style = ImGui::GetStyle();

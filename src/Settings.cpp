@@ -292,8 +292,8 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
-        // do not save Transition view as current
-        int v = application.current_view == 5 ? 1 : application.current_view;
+        // do not save Transition or Presentation view as current
+        int v = (application.current_view == 5 || application.current_view == 7) ? 1 : application.current_view;
         viewsNode->SetAttribute("current", v);
 
         std::map<int, Settings::ViewConfig>::iterator iter;

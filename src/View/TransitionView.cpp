@@ -125,42 +125,7 @@ void TransitionView::update(float dt)
         else {
             // apply transition
             float d = transition_source_->group(View::TRANSITION)->translation_.x;
-
-            // Transfer this movement to changes in mixing
-            // cross fading
-            if ( transition_cross_fade )
-            {
-                float f = 0.f;
-                // change alpha of session:
-                if (!Settings::application.transition.profile)
-                    // linear => identical coordinates in Mixing View
-                    f = d;
-                else
-                    // quadratic => square coordinates in Mixing View
-                    f = (d+1.f)*(d+1.f) -1.f;
-                transition_source_->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
-                transition_source_->group(View::MIXING)->translation_.y = 0.f;
-
-                // no fading when cross fading
-                Mixer::manager().session()->setFadingTarget( 0.f );
-            }
-            // fade to black
-            else
-            {
-                // change alpha of session ; hidden before -0.5, visible after
-                transition_source_->group(View::MIXING)->translation_.x = d < -0.5f ? -1.f : 0.f;
-                transition_source_->group(View::MIXING)->translation_.y = 0.f;
-
-                // fade to black at 50% : fade-out [-1.0 -0.5], fade-in [-0.5 0.0]
-                float f = 0.f;
-                if (!Settings::application.transition.profile)
-                    f = ABS(2.f * d + 1.f);  // linear
-                else {
-                    f = ( 2.f * d + 1.f);  // quadratic
-                    f *= f;
-                }
-                Mixer::manager().session()->setFadingTarget( 1.f - f );
-            }
+            TransitionView::apply(transition_source_, d, transition_cross_fade);
 
             // request update
             transition_source_->touch();
@@ -277,29 +242,77 @@ void TransitionView::attach(SessionFileSource *ts)
         tg->visible_ = true;
         scene.ws()->attach(tg);
 
-        transition_cross_fade = Settings::application.transition.cross_fade;
+        // start transition from current fading value
+        transition_source_->group(View::TRANSITION)->translation_.x = TransitionView::initialProgress(transition_cross_fade);
+    }
+}
 
-        // automatically change fading mode to 'fade to black' if
-        // the session is already faded to black
-        if (Mixer::manager().session()->fading() > 0.01
-            && Settings::application.transition.cross_fade) {
-            transition_cross_fade = false;
+void TransitionView::apply(SessionFileSource *ts, float d, bool cross_fade)
+{
+    if (ts == nullptr)
+        return;
+
+    // Transfer this movement to changes in mixing
+    // cross fading
+    if ( cross_fade )
+    {
+        float f = 0.f;
+        // change alpha of session:
+        if (!Settings::application.transition.profile)
+            // linear => identical coordinates in Mixing View
+            f = d;
+        else
+            // quadratic => square coordinates in Mixing View
+            f = (d+1.f)*(d+1.f) -1.f;
+        ts->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
+        ts->group(View::MIXING)->translation_.y = 0.f;
+
+        // no fading when cross fading
+        Mixer::manager().session()->setFadingTarget( 0.f );
+    }
+    // fade to black
+    else
+    {
+        // change alpha of session ; hidden before -0.5, visible after
+        ts->group(View::MIXING)->translation_.x = d < -0.5f ? -1.f : 0.f;
+        ts->group(View::MIXING)->translation_.y = 0.f;
+
+        // fade to black at 50% : fade-out [-1.0 -0.5], fade-in [-0.5 0.0]
+        float f = 0.f;
+        if (!Settings::application.transition.profile)
+            f = ABS(2.f * d + 1.f);  // linear
+        else {
+            f = ( 2.f * d + 1.f);  // quadratic
+            f *= f;
         }
+        Mixer::manager().session()->setFadingTarget( 1.f - f );
+    }
+}
 
-        // in fade to black transition, start transition from current fading value
-        if ( !transition_cross_fade) {
+float TransitionView::initialProgress(bool &cross_fade)
+{
+    cross_fade = Settings::application.transition.cross_fade;
 
-            // reverse calculate x position to match actual fading of session
-            float d = 0.f;
-            if (!Settings::application.transition.profile)
-                d = -1.f + 0.5f * Mixer::manager().session()->fading();  // linear
-            else {
-                d = -1.f - 0.5f * ( sqrt(1.f - Mixer::manager().session()->fading()) - 1.f);  // quadratic
-            }
+    // automatically change fading mode to 'fade to black' if
+    // the session is already faded to black
+    if (Mixer::manager().session()->fading() > 0.01
+        && Settings::application.transition.cross_fade) {
+        cross_fade = false;
+    }
 
-            transition_source_->group(View::TRANSITION)->translation_.x = d;
+    // in fade to black transition, start transition from current fading value
+    float d = -1.f;
+    if ( !cross_fade ) {
+
+        // reverse calculate x position to match actual fading of session
+        if (!Settings::application.transition.profile)
+            d = -1.f + 0.5f * Mixer::manager().session()->fading();  // linear
+        else {
+            d = -1.f - 0.5f * ( sqrt(1.f - Mixer::manager().session()->fading()) - 1.f);  // quadratic
         }
     }
+
+    return d;
 }
 
 Session *TransitionView::detach()

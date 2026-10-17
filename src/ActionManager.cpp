@@ -338,6 +338,9 @@ void Action::restore(uint target)
         int view = Settings::application.current_view ;
         if (Settings::application.action_history_follow_view)
             sessionNode->QueryIntAttribute("view", &view);
+        // never enter a view switching between sessions
+        if (View::isSwitchingView(view))
+            view = Settings::application.current_view;
         Mixer::manager().setView( (View::Mode) view);
 
         // actually restore
