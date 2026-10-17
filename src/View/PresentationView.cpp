@@ -444,6 +444,14 @@ void PresentationView::draw()
     ImGui::PopStyleVar();
     if (visible)
     {
+        // colors for UI
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.15f, 0.99f));
+
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
         // no navigation during a transition
@@ -531,7 +539,19 @@ void PresentationView::draw()
             ImGui::NewLine();
             ImGui::TextDisabled("Ready to start...");
         }
+
+        // Button to disable outputs, at the bottom of the window
+        // (or below the notes if they are too long)
+        const float bottom = ImGui::GetScrollY() + ImGui::GetWindowHeight()
+                             - ImGui::GetStyle().WindowPadding.y - ImGui::GetFrameHeight();
+        ImGui::SetCursorPosY( MAX(ImGui::GetCursorPosY(), bottom) );
+        ImGuiToolkit::ButtonToggle(ICON_FA_EYE_SLASH, &Settings::application.render.disabled);
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip(MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE);
+
+        ImGui::PopStyleColor(6);
     }
+
     ImGui::End();
 }
 
