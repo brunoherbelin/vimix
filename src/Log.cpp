@@ -295,7 +295,8 @@ void Log::Render(bool *showWarnings)
         ImGui::SetNextWindowSize( ImVec2(width, height), ImGuiCond_Always );
         ImGui::SetNextWindowBgAlpha(0.9f); // opaque background
         if (ImGui::Begin("##notification", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |
-                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav ))
+                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav |
+                         ImGuiWindowFlags_NoFocusOnAppearing ))
         {
             ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + width);
             for (list<string>::iterator it=notifications.begin(); it != notifications.end(); ++it) {
