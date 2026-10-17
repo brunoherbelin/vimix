@@ -472,8 +472,10 @@ void UserInterface::handleKeyboard()
         else if (ImGui::IsKeyPressed( GLFW_KEY_ESCAPE, false )) {
             // hide pannel
             navigator.discardPannel();
-            // leave presentation /or/ leave bundle /or/ toggle clear workspace
-            if (Mixer::manager().view()->mode() == View::PRESENTATION)
+            // leave transition or presentation /or/ leave bundle /or/ toggle clear workspace
+            if (Mixer::manager().view()->mode() == View::TRANSITION)
+                static_cast<TransitionView *>(Mixer::manager().view())->quit();
+            else if (Mixer::manager().view()->mode() == View::PRESENTATION)
                 setView(View::MIXING);
             else if (Mixer::manager().editingBundle())
                 Mixer::manager().exitBundle();

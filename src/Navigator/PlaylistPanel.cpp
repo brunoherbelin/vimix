@@ -184,7 +184,7 @@ void PlaylistPanel::Render()
         //
         // icon menu playlist
         //
-        ImGui::SameLine(0, IMGUI_SAME_LINE );      
+        ImGui::SameLine(0, IMGUI_SAME_LINE );
         if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
             counter_menu_timeout=0;
             ImGui::OpenPopup( "menu_playlist_popup" );
@@ -196,30 +196,30 @@ void PlaylistPanel::Render()
     else if (playlist_edit_action < 3) {
 
         // initial name of playlist to edit
-        if (playlist_name_str.empty()) 
+        if (playlist_name_str.empty())
             playlist_name_str = playlist_edit_name;
 
         // If filename exists show name in red (should not duplicate with same name)
         std::string filename = SystemToolkit::full_filename( UserInterface::manager().playlists_path, playlist_name_str + "."  VIMIX_PLAYLIST_FILE_EXT);
-        if (SystemToolkit::file_exists(filename)) 
+        if (SystemToolkit::file_exists(filename))
             ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor::HSV(0.0f, 0.6f, 0.4f));
-        else 
+        else
             ImGui::PushStyleColor(ImGuiCol_FrameBg, style.Colors[ImGuiCol_FrameBg]);
         // Edit name of playlist
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        bool changed = ImGuiToolkit::InputText("##RenamePlaylist", &playlist_name_str, 
+        bool changed = ImGuiToolkit::InputText("##RenamePlaylist", &playlist_name_str,
             ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_EnterReturnsTrue);
         ImGui::PopStyleColor();
 
         // Cancel button
-        ImGui::SameLine(0, ImGui::GetTextLineHeightWithSpacing() + IMGUI_SAME_LINE / 2.f);      
+        ImGui::SameLine(0, ImGui::GetTextLineHeightWithSpacing() + IMGUI_SAME_LINE / 2.f);
         if (ImGui::Button(ICON_FA_TIMES)) {
             // discard
             playlist_edit_action = 0;
             playlist_name_str.clear();
         }
         // Validate button
-        ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f); 
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f);
         changed |= ImGui::Button(ICON_FA_CHECK);
         if (changed) {
 
@@ -244,7 +244,7 @@ void PlaylistPanel::Render()
             // reset the edit action
             playlist_edit_action = 0;
             playlist_name_str.clear();
-        }  
+        }
     }
     //
     // Show name and confirm delete of a playlist
@@ -257,12 +257,12 @@ void PlaylistPanel::Render()
         ImGuiToolkit::InputText("##DeletePlaylist", &playlist_header, ImGuiInputTextFlags_ReadOnly);
         ImGui::PopStyleColor(1);
 
-        // Cancel button 
-        ImGui::SameLine(0, ImGui::GetTextLineHeightWithSpacing() + IMGUI_SAME_LINE / 2.f);      
-        if (ImGui::Button(ICON_FA_TIMES)) 
+        // Cancel button
+        ImGui::SameLine(0, ImGui::GetTextLineHeightWithSpacing() + IMGUI_SAME_LINE / 2.f);
+        if (ImGui::Button(ICON_FA_TIMES))
             playlist_edit_action = 0;
         // Validate button
-        ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f);      
+        ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f);
         if (ImGui::Button(ICON_FA_TRASH_ALT)) {
             // delete the file
             SystemToolkit::remove_file(Settings::application.recentPlaylists.path);
@@ -275,7 +275,7 @@ void PlaylistPanel::Render()
             // reload list
             Settings::application.recentPlaylists.changed = true;
             playlist_edit_action = 0;
-        }  
+        }
     }
 
     ImVec2 pos_top = ImGui::GetCursorPos();
@@ -569,7 +569,7 @@ void PlaylistPanel::Render()
 
             // list session files in folder
             for(auto it = folder_session_files.begin(); it != folder_session_files.end(); ++it) {
-                
+
                 float width = ImGui::GetContentRegionAvail().x;
                 std::string label = ImGuiToolkit::truncatedText(SystemToolkit::filename(*it), width);
 
@@ -603,6 +603,14 @@ void PlaylistPanel::Render()
         ImGui::PopID();
 
     }
+
+    // help indicator
+    pos_top.y += list_size.y;
+    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - ImGui::GetFrameHeight()));
+    ImGuiToolkit::HelpToolTip("Double-clic on a filename to open the session.\n\n "
+                              ICON_FA_ARROWS_ALT_V   "   Drag to reorder the sessions in the playlist.\n"
+                              ICON_FA_ARROW_CIRCLE_RIGHT "  With Smooth transition enabled,"
+                                                         " the session will open with a cross fade or a fade to black.");
 
     ImGui::SetCursorPos(pos_bottom);
 
@@ -638,15 +646,31 @@ void PlaylistPanel::Render()
             WorkspaceWindow::clearWorkspace();
         }
     }
+    pos_bottom = ImGui::GetCursorPos();
+
+    // toggle button for smooth transition
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition, "Smooth transition");
+
+    // transition mode icon if enabled
+    if (Settings::application.smooth_transition) {
+        const char *tooltip[2] = {"Fade to black", "Cross fading"};
+        ImGui::SameLine(0, IMGUI_SAME_LINE);
+        if (Mixer::manager().liveSession()->fading() > 0.01)
+            ImGuiToolkit::Icon(ICON_VI_TRANSITION_FADE_BLACK, false);
+        else
+            ImGuiToolkit::IconToggle(ICON_VI_TRANSITION_FADE_BLACK, ICON_VI_TRANSITION_CROSS_FADE, &Settings::application.transition.cross_fade, tooltip );
+    }
 
     // export all to folder
     static Exporter *playlist_exporter = nullptr;
     static bool _playlist_exporting = false;
 
+    ImGui::SetCursorPos(pos_bottom);
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
     _playlist_exporting = ImGui::CollapsingHeader("Export",
         _playlist_exporting ? ImGuiTreeNodeFlags_DefaultOpen : 0);
-    
+
     if (_playlist_exporting ) {
 
         // check for completion
@@ -790,27 +814,6 @@ void PlaylistPanel::Render()
         // discard any pending edit action
         playlist_edit_action = 0;
     }
-    // help indicator
-    pos_top.y += list_size.y;
-    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-    ImGuiToolkit::HelpToolTip("Double-clic on a filename to open the session.\n\n "
-                              ICON_FA_ARROWS_ALT_V   "   Drag to reorder the sessions in the playlist.\n"
-                              ICON_FA_ARROW_CIRCLE_RIGHT "  With Smooth transition enabled,"
-                                                         " the session will open with a cross fade or a fade to black.");
-
-    // toggle button for smooth transition
-    ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - ImGui::GetFrameHeightWithSpacing()) );
-    ImGuiToolkit::ButtonToggle(ICON_FA_ARROW_CIRCLE_RIGHT, &Settings::application.smooth_transition, "Smooth transition");
-
-    // transition mode icon if enabled
-    if (Settings::application.smooth_transition) {
-        const char *tooltip[2] = {"Fade to black", "Cross fading"};
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (Mixer::manager().liveSession()->fading() > 0.01)
-            ImGuiToolkit::Icon(ICON_VI_TRANSITION_FADE_BLACK, false);
-        else
-            ImGuiToolkit::IconToggle(ICON_VI_TRANSITION_FADE_BLACK, ICON_VI_TRANSITION_CROSS_FADE, &Settings::application.transition.cross_fade, tooltip );
-    }
 
     //
     // Popup window of menu playlist
@@ -823,10 +826,10 @@ void PlaylistPanel::Render()
                 playlist_edit = UserInterface::manager().favorites;
                 playlist_edit_name = "Favorites_copy";
                 playlist_edit_action = 1;
-            }        
+            }
             ImGui::TextDisabled("Rename");
             ImGui::TextDisabled("Remove");
-        } 
+        }
         // Menu for Playlists
         else if ( Settings::application.pannel_playlist_mode == 1) {
             if (ImGui::MenuItem("Duplicate" )){
@@ -834,16 +837,16 @@ void PlaylistPanel::Render()
                 playlist_edit_name = SystemToolkit::base_filename(Settings::application.recentPlaylists.path);
                 playlist_edit_name += "_copy";
                 playlist_edit_action = 1;
-            }        
+            }
             if (ImGui::MenuItem("Rename" )){
                 playlist_edit = active_playlist;
                 playlist_edit_name = SystemToolkit::base_filename(Settings::application.recentPlaylists.path);
                 playlist_edit_action = 2;
-            }        
+            }
             if (ImGui::MenuItem("Remove" )){
                 playlist_edit_action = 3;
             }
-        } 
+        }
         // Menu for Directory list
         else if ( Settings::application.pannel_playlist_mode == 2) {
             if (ImGui::MenuItem("Duplicate" )){
@@ -851,7 +854,7 @@ void PlaylistPanel::Render()
                 playlist_edit.add(folder_session_files);
                 playlist_edit_name = SystemToolkit::base_filename(Settings::application.recentFolders.path);
                 playlist_edit_action = 1;
-            }                    
+            }
             ImGui::TextDisabled("Rename");
             if (ImGui::MenuItem("Remove" )){
                 Settings::application.recentFolders.filenames.remove(Settings::application.recentFolders.path);

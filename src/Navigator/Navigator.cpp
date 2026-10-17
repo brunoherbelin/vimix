@@ -464,7 +464,9 @@ void Navigator::Render()
                // draw_list->AddLine(ImVec2(x - 1.5f, bracket_top), ImVec2(x + style.WindowPadding.x, bracket_top), color, 3.f);
             }
         }
-        else if (Settings::application.current_view == View::TRANSITION) {
+        else if (Settings::application.smooth_transition &&
+            (Settings::application.current_view == View::TRANSITION ||
+            Settings::application.current_view == View::PRESENTATION) ) {
             // the ">" icon for transition menu
             if (ImGui::Selectable( ICON_FA_ARROW_CIRCLE_RIGHT, &selected_button[NAV_TRANS], 0, iconsize))
             {
@@ -988,7 +990,8 @@ bool Navigator::RenderMousePointerSelector(const ImVec2 &size)
 
 void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
 {
-    if (Settings::application.current_view != View::TRANSITION) {
+    if (Settings::application.current_view != View::TRANSITION &&
+        Settings::application.current_view != View::PRESENTATION) {
         discardPannel();
         return;
     }
@@ -1007,7 +1010,6 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
 
         // Transition options
         ImGuiToolkit::Spacing();
-        ImGui::Text("Parameters");
 
         static std::vector< std::tuple<int, int, std::string> > profile_fading = {
             {ICON_VI_TRANSITION_CROSS_FADE, "Cross fading"},
@@ -1042,22 +1044,6 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton("Duration "))
             Settings::application.transition.duration = 1.f;
-
-        // transition actions
-        ImGuiToolkit::Spacing();
-        ImGui::Text("Actions");
-        if ( ImGui::Button( ICON_FA_PLAY "  Play & Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->play(true);
-        }
-        if ( ImGui::Button( ICON_FA_FAST_FORWARD "  Fast Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->open();
-        }
-        if ( ImGui::Button( ICON_FA_TIMES "  Cancel ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->cancel();
-        }
 
         // Exit transition
         ImGui::Text(" ");

@@ -459,6 +459,19 @@ View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     return Cursor(Cursor_ResizeEW, info.str() );
 }
 
+void TransitionView::quit()
+{
+    // transition not started: cancel (same as Cancel button)
+    if (transition_source_ != nullptr &&
+        transition_source_->group(View::TRANSITION)->translation_.x < -1.f + EPSILON)
+        cancel();
+    // otherwise interrupt transition (same as double clic)
+    else {
+        Mixer::manager().setView(View::MIXING);
+        WorkspaceWindow::restoreWorkspace();
+    }
+}
+
 bool TransitionView::doubleclic (glm::vec2 )
 {
     Mixer::manager().setView(View::MIXING);

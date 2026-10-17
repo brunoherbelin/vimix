@@ -28,6 +28,7 @@ public:
     void play(bool open);
     void open();
     void cancel();
+    void quit();
 
     // apply transition progress d in [-1, 0] to the mixing of ts and the fading of session
     static void apply(SessionFileSource *ts, float d, bool cross_fade);
