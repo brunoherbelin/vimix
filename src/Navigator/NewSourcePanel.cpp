@@ -340,10 +340,10 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                 // Bottom Right side of the list: helper and options of Recent Recordings
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
                 ImGuiToolkit::HelpToolTip("Recently recorded videos (lastest on top). Clic on a filename to open.\n\n"
-                                         ICON_FA_CHEVRON_CIRCLE_RIGHT "  Auto-preload prepares this panel with the "
+                                         ICON_FA_LIST "  Auto-preload prepares this panel with the "
                                          "most recent recording after 'Stop Record' or 'Save & continue'.");
                 ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-                if (ImGuiToolkit::ButtonToggle( ICON_FA_CHEVRON_CIRCLE_RIGHT, &Settings::application.recentRecordings.load_at_start, "Auto-preload" ) ){
+                if (ImGuiToolkit::ButtonToggle( ICON_FA_LIST, &Settings::application.recentRecordings.load_at_start, "Auto-preload" ) ){
                     // demonstrate action
                     if (Settings::application.recentRecordings.load_at_start
                             && Settings::application.recentRecordings.filenames.size() > 0) {
@@ -469,7 +469,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             bool update_new_source = false;
 
             ImGui::Text("Patterns & generated graphics");
-            
+
             std::string current_pattern;
             if (generated_type == 2 && pattern_type < (int) Pattern::count())
                 current_pattern = Pattern::get(pattern_type).label;
@@ -679,7 +679,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             // if shader source selected
             else if (generated_type == 3 ) {
                 static bool auto_open_shader_editor = true;
-                if (ImGuiToolkit::ButtonSwitch( ICON_FA_CODE " Open editor at creation", &auto_open_shader_editor) ) 
+                if (ImGuiToolkit::ButtonSwitch( ICON_FA_CODE " Open editor at creation", &auto_open_shader_editor) )
                     request_open_shader_editor = auto_open_shader_editor;
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 if (ImGui::Combo("Ratio", &Settings::application.source.ratio,
@@ -724,7 +724,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
         else if (Settings::application.source.new_type == SOURCE_CONNECTED){
 
             ImGui::Text("Input devices & streams");
-            
+
             std::string current_connection;
             if (custom_type == 0)
                 current_connection = "Display Loopback";
@@ -950,9 +950,9 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             }
         }
         else if (Settings::application.source.new_type == SOURCE_BUNDLE) {
-            
+
             ImGui::Text("Bundle of sources");
-            
+
             Session *session = Mixer::manager().session();
             SourceList sources = session->getDepthSortedList();
 
@@ -1015,18 +1015,18 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                 // Check if the current source can be grouped
                 bool is_bundle = Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_GROUP);
                 bool is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_CLONE);
-                can_create_bundle = !is_bundle && !is_clone;   
+                can_create_bundle = !is_bundle && !is_clone;
             }
-            else 
+            else
                 Mixer::manager().unsetCurrentSource();
-            
+
             if (can_create_bundle) {
                 // Indicator of the selection
                 ImGui::NewLine();
                 ImGuiToolkit::Icon(ICON_VI_SOURCE_GROUP);
                 ImGui::SameLine();
-                ImGui::Text("Bundle of %d source%c", 
-                    (int) Mixer::manager().selection().size(), 
+                ImGui::Text("Bundle of %d source%c",
+                    (int) Mixer::manager().selection().size(),
                     Mixer::manager().selection().size() > 1 ? 's' : ' ');
 
                 // Validate button
@@ -1046,12 +1046,12 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y + style.ItemSpacing.y + ImGui::GetFrameHeightWithSpacing()));
             if ( ImGuiToolkit::IconButton( ICON_VI_SELECT_VISIBLE, "Select visible")) {
                 SourceList visible = joinClones ( visible_only(sources) );
-                Mixer::selection().set(visible);          
-            }            
+                Mixer::selection().set(visible);
+            }
             ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN + ImGui::GetFrameHeightWithSpacing(), pos_top.y + style.ItemSpacing.y));
             if ( ImGuiToolkit::IconButton( ICON_VI_CLEAR_LIST, "Clear selection")) {
                 Mixer::manager().unsetCurrentSource();
-                Mixer::selection().clear();                 
+                Mixer::selection().clear();
             }
 
             // help indicator bundle list
@@ -1134,8 +1134,8 @@ void NewSourcePanel::RenderImageSequence(bool new_selection)
     // show info sequence
     ImGuiTextBuffer info;
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-    info.appendf("%d %s (%d x %d)", 
-        (int) sourceImageFiles.size(), 
+    info.appendf("%d %s (%d x %d)",
+        (int) sourceImageFiles.size(),
         _numbered_sequence.codec.c_str(),
         sequence_width,
         sequence_height);
@@ -1157,7 +1157,7 @@ void NewSourcePanel::RenderImageSequence(bool new_selection)
     // select CODEC: decide for gst sequence (codec_id = -1) or encoding a video
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
     std::string codec_current = Settings::application.image_sequence.profile < 0 ? ICON_FA_SORT_NUMERIC_DOWN "  Image sequence"
-                                             : Settings::application.image_sequence.profile < GstToolkit::JPEG_MULTI ? 
+                                             : Settings::application.image_sequence.profile < GstToolkit::JPEG_MULTI ?
                                               std::string(ICON_FA_FILM " ") + GstToolkit::profile_name[Settings::application.image_sequence.profile]
                                               : std::string(ICON_FA_IMAGES " ") + GstToolkit::profile_name[GstToolkit::JPEG_MULTI ];
     if (ImGui::BeginCombo("##CodecSequence", codec_current.c_str(), ImGuiComboFlags_HeightLarge)) {
@@ -1256,7 +1256,7 @@ void NewSourcePanel::RenderImageSequence(bool new_selection)
             (float) Settings::application.image_sequence.buffering_mode + 1.f), 0, 5);
         Settings::application.image_sequence.buffering_mode = pow(2, num)-1;
         char buf[64];
-        ImFormatString(buf, IM_ARRAYSIZE(buf), "%d  intermediate frames", 
+        ImFormatString(buf, IM_ARRAYSIZE(buf), "%d  intermediate frames",
                         Settings::application.image_sequence.buffering_mode);
         ImGui::SliderInt("##Interpolate", &num, 0, 5, buf);
         ImGui::SameLine();
@@ -1275,7 +1275,7 @@ void NewSourcePanel::RenderImageSequence(bool new_selection)
 #endif
 #endif
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::Combo("##SequenceLoop", &Settings::application.image_sequence.priority_mode, 
+        ImGui::Combo("##SequenceLoop", &Settings::application.image_sequence.priority_mode,
             "None\0Rewind\0Mirror\0");
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (ImGuiToolkit::TextButton("Loop")) {
@@ -1321,7 +1321,7 @@ void NewSourcePanel::RenderImageSequence(bool new_selection)
                             label);
                 // select id of image sequence
                 Settings::application.image_sequence.profile = -1;
-            } 
+            }
 
         }
         else {

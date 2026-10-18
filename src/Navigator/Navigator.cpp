@@ -1047,7 +1047,7 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
 
         // Exit transition
         ImGui::Text(" ");
-        if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+        if ( ImGui::Button( ICON_FA_TIMES_CIRCLE " Exit", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             UserInterface::manager().setView(View::MIXING);
 
         ImGui::End();

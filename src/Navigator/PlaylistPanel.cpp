@@ -42,6 +42,7 @@
 #include "UserInterfaceManager.h"
 
 #include "NavigatorWidgets.h"
+#include "imgui.h"
 #include "PlaylistPanel.h"
 
 #define PLAYLIST_FAVORITES ICON_FA_HEART " Favorites"
@@ -638,8 +639,8 @@ void PlaylistPanel::Render()
         std::string name;
         Playlist tmp = current_playlist(&name);
         if (tmp.size() < 1)
-            ImGuiToolkit::ButtonDisabled(ICON_FA_PLAY "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0));
-        else if (ImGui::Button(ICON_FA_PLAY "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
+            ImGuiToolkit::ButtonDisabled(ICON_FA_CHALKBOARD_TEACHER "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+        else if (ImGui::Button(ICON_FA_CHALKBOARD_TEACHER "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
             PresentationView *pv = static_cast<PresentationView *>(Mixer::manager().view(View::PRESENTATION));
             pv->setPlaylist(tmp, name);
             UserInterface::manager().setView(View::PRESENTATION);
@@ -666,7 +667,7 @@ void PlaylistPanel::Render()
     static Exporter *playlist_exporter = nullptr;
     static bool _playlist_exporting = false;
 
-    ImGui::SetCursorPos(pos_bottom);
+    ImGui::SetCursorPos(pos_bottom + ImVec2(0.f, style.ItemSpacing.y));
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
     _playlist_exporting = ImGui::CollapsingHeader("Export",
         _playlist_exporting ? ImGuiTreeNodeFlags_DefaultOpen : 0);

@@ -494,9 +494,14 @@ void UserInterface::handleKeyboard()
             esc_repeat_ = false;
         }
         // Space bar
-        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false ))
-            // Space bar to toggle play / pause
-            sourcecontrol.Play();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false )) {
+            // space bar presentation to switch to next
+            if (Mixer::manager().view()->mode() == View::PRESENTATION)
+                static_cast<PresentationView *>(Mixer::manager().view())->next();
+            else
+                // Space bar to toggle play / pause
+                sourcecontrol.Play();
+        }
         // Backspace to delete source
         else if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
             Mixer::manager().deleteSelection();

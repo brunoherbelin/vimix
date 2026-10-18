@@ -25,7 +25,7 @@ public:
     void selectAll() override {}
 
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
-    bool doubleclic (glm::vec2) override { return true; }
+    bool doubleclic (glm::vec2) override;
     void arrow (glm::vec2) override;
     Cursor over (glm::vec2) override;
     Cursor drag (glm::vec2, glm::vec2) override { return Cursor(); }
@@ -71,6 +71,8 @@ private:
     bool transition_cross_fade_;
 
     bool arrow_latched_;
+    // leave the view once this session is opened (double clic)
+    std::string leave_target_;
     int64_t start_time_;
 };
 

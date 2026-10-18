@@ -174,7 +174,7 @@ Annotations::Annotations() : selected_(-1), active_(false), edit_(false)
 
 void Annotations::Menu()
 {
-    if (ImGui::MenuItem(ICON_FA_CHALKBOARD_TEACHER "  Active", nullptr, &active_))
+    if (ImGui::MenuItem(ICON_FA_PEN "  Active", nullptr, &active_))
         edit_ = true;
 
     ImGui::Separator();

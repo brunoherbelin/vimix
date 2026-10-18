@@ -259,6 +259,7 @@ void PresentationView::leave(bool restore_workspace)
     playlist_.clear();
     playlist_name_.clear();
     live_filename_.clear();
+    leave_target_.clear();
 
     // presentation started with a clear workspace
     if (restore_workspace)
@@ -290,8 +291,12 @@ void PresentationView::updateTransition(float dt)
     if (transition_d_ >= 0.f) {
         Session *se = transition_source_->detach();
         transition_source_ = nullptr;
-        if (se != nullptr)
+        if (se != nullptr) {
             Mixer::manager().set(se);
+            // leave view if requested (session is set at next update)
+            if ( !leave_target_.empty() )
+                Mixer::manager().setView(View::MIXING);
+        }
     }
 }
 
@@ -389,6 +394,15 @@ void PresentationView::update(float dt)
 
     // perform transition
     updateTransition(dt);
+
+    // leave view once the requested session is opened (without transition)
+    if ( !leave_target_.empty() && !busy() ) {
+        if ( Mixer::manager().liveSession()->filename() == leave_target_ )
+            Mixer::manager().setView(View::MIXING);
+        // failed to open: stay
+        else
+            leave_target_.clear();
+    }
 }
 
 void PresentationView::draw()
@@ -467,11 +481,13 @@ void PresentationView::draw()
             ImGuiToolkit::ToolTip("Previous session");
 
         // Indication session advance
+        ImGuiToolkit::PushDisabled(is_busy);
         ImGui::SameLine(0, IMGUI_SAME_LINE);
         if (current_ > -1) {
             ImGui::Text(" %d/%ld ", current_ + 1, items_.size());
             ImGui::SameLine(0, IMGUI_SAME_LINE);
         }
+        ImGuiToolkit::PopDisabled(is_busy);
 
         // Button NEXT
         const bool no_next = is_busy || nextIndex() < 0;
@@ -501,12 +517,15 @@ void PresentationView::draw()
         if (current_ > -1) {
 
             // right aligned filename
+            ImGuiToolkit::PushDisabled(is_busy);
             ImGui::SameLine();
-            snprintf(label, sizeof(label), "%s", SystemToolkit::filename( items_[current_]->path() ).c_str());
+            snprintf(label, sizeof(label), "%s  %s", is_busy ? ICON_FA_HOURGLASS_HALF : " ",
+                    SystemToolkit::filename( items_[current_]->path() ).c_str());
             label_size = ImGui::CalcTextSize(label, NULL);
             ImGui::SetCursorPosX(ImGui::GetWindowContentRegionWidth() - label_size.x);
             ImGui::Text("%s", label);
             ImGui::NewLine();
+            ImGuiToolkit::PopDisabled(is_busy);
 
             // Session of current item: the one loaded for transition, or the live session
             Session *se = nullptr;
@@ -573,6 +592,37 @@ std::pair<Node *, glm::vec2> PresentationView::pick(glm::vec2 P)
     return pick;
 }
 
+bool PresentationView::doubleclic (glm::vec2 P)
+{
+    std::pair<Node *, glm::vec2> pick = View::pick(P);
+
+    // double clic on a session icon
+    if (pick.first != nullptr) {
+        for (size_t i = 0; i < items_.size(); ++i) {
+            if ( items_[i]->contains(pick.first) ) {
+                const std::string path = items_[i]->path();
+                if ( !busy() ) {
+                    // double clic on the currently opened session: just exit
+                    if ( path == Mixer::manager().liveSession()->filename() ) {
+                        Mixer::manager().setView(View::MIXING);
+                        return true;
+                    }
+                    // otherwise open it
+                    open( static_cast<int>(i) );
+                }
+                // exit when done opening the session
+                // (NB: usually already started on first clic)
+                if ( static_cast<int>(i) == current_ && busy() )
+                    leave_target_ = path;
+                break;
+            }
+        }
+    }
+
+    // double clic is always used in this view
+    return true;
+}
+
 View::Cursor PresentationView::over(glm::vec2 P)
 {
     std::pair<Node *, glm::vec2> pick = View::pick(P);
@@ -582,7 +632,7 @@ View::Cursor PresentationView::over(glm::vec2 P)
             if ( items_[i]->contains(pick.first) ) {
                 if ( items_[i]->missing() )
                     return Cursor(Cursor_NotAllowed, "Missing file");
-                return Cursor(Cursor_Hand, "Open " + SystemToolkit::base_filename( items_[i]->path() ));
+                return Cursor(Cursor_Hand);
             }
         }
     }
