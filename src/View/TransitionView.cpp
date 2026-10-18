@@ -23,6 +23,7 @@
 #include <glm/gtc/matrix_access.hpp>
 
 #include "Toolkit/ImGuiToolkit.h"
+#include "Toolkit/SystemToolkit.h"
 
 #include <string>
 #include <sstream>
@@ -55,6 +56,13 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
     else
         restoreSettings();
     Settings::application.views[mode_].name = "Transition";
+
+    // dark background covering the view, behind all
+    Surface *background = new Surface( new Shader );
+    background->scale_ = glm::vec3(20.f, 20.f, 1.f);
+    background->translation_.z = -0.5f;
+    background->shader()->color = glm::vec4( COLOR_PRESENTATION_BGROUND, 0.7f );
+    scene.root()->attach(background);
 
     // Geometry Scene background
     gradient_ = new Switch;
@@ -169,6 +177,20 @@ void TransitionView::draw()
         const Group *tg = transition_source_->group(View::TRANSITION);
         if (tg) {
 
+            // display filename on top of transition source
+            // (centered, one line of text above the top of the source)
+            const glm::vec3 coord = tg->translation_ + glm::vec3(0.f, 1.1f * tg->scale_.y, 0.f);
+            const glm::vec2 pos = Rendering::manager().project(coord, scene.root()->transform_, false);
+            const std::string label = SystemToolkit::filename( transition_source_->path() );
+            const ImVec2 label_size = ImGui::CalcTextSize(label.c_str());
+            // same color as the frame of the source: highlighted if current
+            const ImVec4 color = transition_source_->mode() == Source::CURRENT
+                                     ? ImVec4(COLOR_TRANSITION_SOURCE, 1.f)
+                                     : ImVec4(COLOR_DEFAULT_SOURCE, 1.f);
+            ImGui::GetBackgroundDrawList()->AddText(ImVec2(pos.x - 0.5f * label_size.x,
+                                                           pos.y - ImGui::GetTextLineHeightWithSpacing()),
+                                                    ImGui::GetColorU32(color), label.c_str());
+
             // display interface below timeline
             glm::vec2 pos_window = Rendering::manager().project(glm::vec3(-1.2f, -0.10f, 0.f), scene.root()->transform_, false);
             ImGui::SetNextWindowPos(ImVec2(pos_window.x, pos_window.y), ImGuiCond_Always);
@@ -181,13 +203,11 @@ void TransitionView::draw()
                 const glm::vec2 pos_play = Rendering::manager().project(glm::vec3(0.f, -0.15f, 0.f), scene.root()->transform_, false);
 
                 // style grey
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
-                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
-                ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.27f, 0.27f, 0.27f, 0.7f));
-                ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.10f, 0.10f, 0.10f, 1.00f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.215f, 0.215f, 0.215f, 0.5f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.216f, 0.216f, 0.216f, 0.99f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.327f, 0.327f, 0.327f, 0.7f));
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.55f)); // 7 colors
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.55f)); // 5 colors
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
                 // "Cancel" button at the begining of the timeline, only if transition not started
@@ -218,7 +238,7 @@ void TransitionView::draw()
                                    TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
 
                 ImGui::PopFont();
-                ImGui::PopStyleColor(7);  // 7 colors
+                ImGui::PopStyleColor(5);  //  colors
                 ImGui::End();
             }
 

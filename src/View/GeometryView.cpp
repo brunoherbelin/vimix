@@ -63,7 +63,7 @@
 #include "GeometryHandleManipulation.h"
 
 const char* GeometryView::editor_icons[2]  = { ICON_FA_OBJECT_UNGROUP, ICON_FA_BORDER_ALL };
-const char *GeometryView::editor_names[2] = {"Edit sources", " Edit canvas"};
+const char *GeometryView::editor_names[2] = {" Sources edit", " Canvas edit"};
 
 GeometryView::GeometryView() : View(GEOMETRY)
 {
@@ -561,7 +561,7 @@ void GeometryView::draw()
             else {
 
                 // toggle sources visibility flag
-                std::string _label = Settings::application.views[mode_].ignore_mix ? "Show " : "Hide ";
+                std::string _label = Settings::application.views[mode_].ignore_mix ? "Showing " : "Hiding ";
                 _label += "non visible sources\n(";
                 _label += std::to_string(hidden_count_) + " source" + (hidden_count_>1?"s are ":" is ") + "outside mixing circle)";
                 ImGui::SameLine(0, IMGUI_SAME_LINE);

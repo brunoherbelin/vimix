@@ -329,8 +329,9 @@ void UserInterface::handleKeyboard()
                 }
             }
         }
-        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_D), false )) {
-            // Draft mode
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_D), false )
+                 && !View::isSwitchingView(Settings::application.current_view)) {
+            // Draft mode (not in views switching sessions)
             if (Draft::manager().active()) {
                 if (shift_modifier_active)
                     Draft::manager().cancel();
@@ -1106,30 +1107,32 @@ void UserInterface::Render()
     if ( WorkspaceWindow::clear())
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4);
 
-    // Output controller
-    if (outputcontrol.Visible())
-        outputcontrol.Render();
+    if (!View::isSwitchingView(Settings::application.current_view)) {
+        // Output controller
+        if (outputcontrol.Visible())
+            outputcontrol.Render();
 
-    // Source controller
-    if (sourcecontrol.Visible())
-        sourcecontrol.Render();
+        // Source controller
+        if (sourcecontrol.Visible())
+            sourcecontrol.Render();
 
-    // Timer controller
-    if (timercontrol.Visible())
-        timercontrol.Render();
+        // Timer controller
+        if (timercontrol.Visible())
+            timercontrol.Render();
 
-    // Keyboards controller
-    if (inputscontrol.Visible())
-        inputscontrol.Render();
+        // Keyboards controller
+        if (inputscontrol.Visible())
+            inputscontrol.Render();
 
-    // Shader controller
-    if (shadercontrol.Visible())
-        shadercontrol.Render();
+        // Shader controller
+        if (shadercontrol.Visible())
+            shadercontrol.Render();
 
-    // draft toolbox in the corner
-    if (Settings::application.widget.draft || Draft::manager().active())
-        RenderDraft(&Settings::application.widget.draft,
-                    &Settings::application.widget.draft_corner);
+        // draft toolbox in the corner (not in views switching sessions)
+        if ( (Settings::application.widget.draft || Draft::manager().active()) )
+            RenderDraft(&Settings::application.widget.draft,
+                        &Settings::application.widget.draft_corner);
+    }
 
     // source editor
     if (Settings::application.widget.source_toolbar && Mixer::manager().view()->mode() < View::TRANSITION)

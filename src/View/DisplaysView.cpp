@@ -216,14 +216,14 @@ void DisplaysView::update(float dt)
         // update the selection overlay
         const ImVec4 c = ImGuiToolkit::HighlightColor();
         updateSelectionOverlay(glm::vec4(c.x, c.y, c.z, c.w));
-        
+
     }
 }
 
 float setCoordinates(Node *node, glm::ivec4 coordinates, glm::ivec4 bounding_box)
 {
     glm::vec4 rect = DISPLAYS_UNIT * glm::vec4(coordinates);
-    
+
     // screen coordinates to scene coordinates
     node->scale_ = glm::vec3( 0.5f * rect.z, 0.5f * rect.w, 1.f );
     node->translation_ = glm::vec3( rect.x + 0.5f * rect.z, - (rect.y + 0.5f * rect.w), 0.f );
@@ -233,11 +233,11 @@ float setCoordinates(Node *node, glm::ivec4 coordinates, glm::ivec4 bounding_box
     node->translation_.y += 0.5f * DISPLAYS_UNIT * (bounding_box.y + bounding_box.w);
 
     // scaling to fit in scene
-    // scale to height (w component of bounding box) 
+    // scale to height (w component of bounding box)
     // because projection in OutputWindow is based on height 1.0
     float scalingratio = 1.f / (0.5f * DISPLAYS_UNIT * float(bounding_box.w) );
-    node->scale_ *= glm::vec3( scalingratio, scalingratio, 1.f ); 
-    node->translation_ *= glm::vec3( scalingratio, scalingratio, 1.f ); 
+    node->scale_ *= glm::vec3( scalingratio, scalingratio, 1.f );
+    node->translation_ *= glm::vec3( scalingratio, scalingratio, 1.f );
 
     return scalingratio;
 }
@@ -247,7 +247,7 @@ void  DisplaysView::recenter ()
 {
     glm::ivec4 bbox;
     bbox.x = bbox.y =  std::numeric_limits<int>::max();
-    bbox.z = bbox.w =  std::numeric_limits<int>::min(); 
+    bbox.z = bbox.w =  std::numeric_limits<int>::min();
 
     // lock monitors list while reading it
     std::lock_guard<std::mutex> lock(Rendering::manager().getMonitorsMutex());
@@ -257,7 +257,7 @@ void  DisplaysView::recenter ()
         bbox.x = MIN(bbox.x, monitor.geometry.x);
         bbox.y = MIN(bbox.y, monitor.geometry.y);
         bbox.z = MAX(bbox.z, monitor.geometry.x + monitor.geometry.z);
-        bbox.w = MAX(bbox.w, monitor.geometry.y + monitor.geometry.w);  
+        bbox.w = MAX(bbox.w, monitor.geometry.y + monitor.geometry.w);
     }
     monitors_scaling_ratio_ = setCoordinates(boundingbox_surface_, bbox, bbox);
 
@@ -364,7 +364,7 @@ int  DisplaysView::size ()
 
 
 void popup_adjustment_color(Settings::MonitorConfig &conf) {
-    
+
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
 
     // top icons
@@ -416,7 +416,7 @@ void popup_adjustment_color(Settings::MonitorConfig &conf) {
 
 void DisplaysView::addCanvasSource()
 {
-    // create a canvas source of default Canvas 01 
+    // create a canvas source of default Canvas 01
     CanvasSource *s = new CanvasSource;
     Canvas::manager().attachCanvasSource( s );
 
@@ -532,7 +532,7 @@ void DisplaysView::menuCanvasSource ()
         }
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip("Add new canvas frame");
-        
+
         ImGui::PopStyleColor(8);
         ImGui::End();
     }
@@ -546,7 +546,7 @@ void DisplaysView::draw()
 
     for (auto source_iter = Canvas::manager().session()->begin();
             source_iter != Canvas::manager().session()->end(); ++source_iter) {
-                
+
         // will draw its surface
         source_surfaces.push_back((*source_iter)->rendersurface_);
         // will draw its frame and manipulators
@@ -566,11 +566,11 @@ void DisplaysView::draw()
     DrawVisitor draw_monitors(monitors_layout_, projection);
     scene.accept(draw_monitors);
 
-    // Draw surface of Canvas sources 
-    DrawVisitor draw_sources(source_surfaces, projection); 
+    // Draw surface of Canvas sources
+    DrawVisitor draw_sources(source_surfaces, projection);
     scene.accept(draw_sources);
 
-    // Draw frames and icons of Canvas sources on top 
+    // Draw frames and icons of Canvas sources on top
     DrawVisitor draw_overlays(source_overlays, projection);
     scene.accept(draw_overlays);
 
@@ -584,7 +584,7 @@ void DisplaysView::draw()
         DrawVisitor draw_grid(grid->root(), projection, true);
         scene.accept(draw_grid);
     }
-        
+
     //
     // 10. Display interface
     //
@@ -640,17 +640,17 @@ void DisplaysView::draw()
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
                 if (monitor.output.isActive()) {
                     // deactivate output
-                    if (ImGui::Button(ICON_FA_TOGGLE_ON )) 
+                    if (ImGui::Button(ICON_FA_TOGGLE_ON ))
                         monitor.output.setActive(false);
                     if (ImGui::IsItemHovered())
-                        ImGuiToolkit::ToolTip(std::string("Deactivate ").append(monitor_title).c_str());
+                        ImGuiToolkit::ToolTip(monitor_title.append("\nActive").c_str());
                 }
                 else {
                     // activate output
-                    if (ImGui::Button(ICON_FA_TOGGLE_OFF )) 
+                    if (ImGui::Button(ICON_FA_TOGGLE_OFF ))
                         monitor.output.setActive(true);
                     if (ImGui::IsItemHovered())
-                        ImGuiToolkit::ToolTip(std::string("Activate ").append(monitor_title).c_str());
+                        ImGuiToolkit::ToolTip(monitor_title.append("\nNot active").c_str());
 
                     // skip rest of window
                     ImGui::PopStyleColor(8);
@@ -661,7 +661,7 @@ void DisplaysView::draw()
                 // TEST PATTERN BUTTON
                 if (horizontal_layout_)
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
-                static bool show_test_pattern = false;  
+                static bool show_test_pattern = false;
                 show_test_pattern = monitor.output.isShowPattern();
                 if ( ImGuiToolkit::ButtonIconToggle(ICON_VI_TEST_PATTERN, &show_test_pattern, "Test pattern") )
                     monitor.output.setShowPattern(show_test_pattern);
@@ -671,7 +671,7 @@ void DisplaysView::draw()
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
                     ImGui::SetCursorPosY(2.f * ImGui::GetStyle().FramePadding.y); // hack to align color button to text
                 }
-                
+
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
                 glm::vec4 color = Settings::application.monitors[monitor.name].whitebalance;
                 if (ImGui::ColorButton("White balance", ImVec4(color.x, color.y, color.z, 1.f),
@@ -707,7 +707,7 @@ void DisplaysView::draw()
                 }
 
                 // RESET BUTTON
-                if (horizontal_layout_) 
+                if (horizontal_layout_)
                     ImGui::SameLine(0, IMGUI_SAME_LINE);
                 if (ImGui::Button(ICON_FA_BACKSPACE )) {
                     Settings::application.monitors[monitor.name] = Settings::MonitorConfig();
@@ -764,18 +764,18 @@ void DisplaysView::contextMenuCanvasSource()
     size_t selected = current_canvas_source_->canvas();
     for (size_t canvas_index = 0;
         canvas_index < Canvas::manager().size(); ++canvas_index) {
-    
+
         // label with canvas name
         std::string label = ICON_FA_BORDER_ALL "  ";
-        label += Canvas::manager().at(canvas_index)->name();    
+        label += Canvas::manager().at(canvas_index)->name();
 
         // select a canvas surface for current canvas source
         if (ImGui::MenuItem(label.c_str(), NULL, selected == canvas_index)) {
             if (selected != canvas_index)
                 current_canvas_source_->setCanvas(canvas_index);
-        }   
+        }
     }
-    
+
     ImGui::Separator();
 
     // CROP source manipulation mode
@@ -877,7 +877,7 @@ void DisplaysView::contextMenuCanvasSource()
 
 
 void DisplaysView::contextMenuCanvasSelection()
-{        
+{
     // colored context menu
     ImGui::PushStyleColor(ImGuiCol_Text, ImGuiToolkit::HighlightColor());
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(COLOR_MENU_HOVERED, 0.8f));
@@ -1030,7 +1030,7 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
             else {
                 // ctrl pressed: maybe remove from selection
                 if (UserInterface::manager().ctrlModifier()) {
-                    if ( selected_canvas_sources_.contains(picked_current_source) && 
+                    if ( selected_canvas_sources_.contains(picked_current_source) &&
                          selected_canvas_sources_.size() > 1 ) {
                         selected_canvas_sources_.remove( picked_current_source );
                         setCurrentCanvasSource(selected_canvas_sources_.front());
@@ -1051,14 +1051,14 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
             for (auto itp = pv.rbegin(); itp != pv.rend(); ++itp){
 
                 // loop over all canvas sources to get if one was picked
-                SourceList::iterator sit = std::find_if(Canvas::manager().session()->begin(), 
+                SourceList::iterator sit = std::find_if(Canvas::manager().session()->begin(),
                     Canvas::manager().session()->end(), Source::hasNode( (*itp).first ));
 
                 // accept picked canvas source
                 if ( sit != Canvas::manager().session()->end() ) {
 
                     Source *s = *sit;
-                    
+
                     // if ctrl is pressed
                     if (UserInterface::manager().ctrlModifier()) {
 
@@ -1068,25 +1068,25 @@ std::pair<Node *, glm::vec2> DisplaysView::pick(glm::vec2 P)
                             selected_canvas_sources_.remove( s );
                             s = selected_canvas_sources_.front();
                         }
-                    } 
+                    }
                     else {
                         // a source is picked but is not in an active selection? don't pick this one!
                         if ( selected_canvas_sources_.size() > 1 && !selected_canvas_sources_.contains(s) )
                             continue;
                     }
-                    
+
                     if (s) {
                         // set as current canvas source
-                        setCurrentCanvasSource(s);                            
+                        setCurrentCanvasSource(s);
                         pick = { s->group(View::GEOMETRY), (*itp).second };
                     }
-                    else 
-                        setCurrentCanvasSource(nullptr);        
+                    else
+                        setCurrentCanvasSource(nullptr);
                     break;
                 }
                 //  not a source clicked, maybe a handle of the selection?
                 else if ( pick.first == nullptr && selected_canvas_sources_.size() > 1 ) {
-                    
+
                     // picked on selection handles
                     if ( (*itp).first == overlay_selection_scale_ || (*itp).first == overlay_selection_rotate_ ) {
                         pick = (*itp);
@@ -1124,7 +1124,7 @@ void DisplaysView::setCurrentCanvasSource(Source *c)
     if (current_canvas_source_ != nullptr) {
 
         // current source is part of the selection, keep inside and change status
-        if (selected_canvas_sources_.size() > 1) 
+        if (selected_canvas_sources_.size() > 1)
             current_canvas_source_->setMode(Source::SELECTED);
         // current source is the only selected source, unselect fully
         else
@@ -1139,24 +1139,24 @@ void DisplaysView::setCurrentCanvasSource(Source *c)
     }
 
     // no new current canvas source requested
-    if (c == nullptr) 
+    if (c == nullptr)
         return;
 
     // SET CURRENT CANVAS SOURCE
     current_canvas_source_ = static_cast<CanvasSource *>(c);
 
     // set selection for this only source if not already part of a selection
-    if (!selected_canvas_sources_.contains(c)) 
+    if (!selected_canvas_sources_.contains(c))
         selected_canvas_sources_.set(c);
 
-    if (selected_canvas_sources_.size() > 1) 
+    if (selected_canvas_sources_.size() > 1)
         current_canvas_source_->setMode(Source::SELECTED);
-    else 
+    else
         current_canvas_source_->setMode(Source::CURRENT);
 }
 
-Source *DisplaysView::currentCanvasSource() const { 
-    return static_cast<Source *>(current_canvas_source_); 
+Source *DisplaysView::currentCanvasSource() const {
+    return static_cast<Source *>(current_canvas_source_);
 }
 
 bool DisplaysView::canSelect(Source *) {
@@ -1403,8 +1403,8 @@ View::Cursor DisplaysView::grab (Source *, glm::vec2 from, glm::vec2 to, std::pa
     if ( current_canvas_source_ == nullptr )
         return ret;
 
-    /* canvas source grab */    
-    Group *sourceNode = current_canvas_source_->group(View::GEOMETRY); 
+    /* canvas source grab */
+    Group *sourceNode = current_canvas_source_->group(View::GEOMETRY);
 
     // make sure matrix transform of stored status is updated
     current_canvas_source_->stored_status_->update(0);
@@ -1675,7 +1675,7 @@ void DisplaysView::updateSelectionOverlay(glm::vec4 color)
         if ( !overlay_selection_active_) {
 
             // calculate ORIENTED bbox on selection
-            GlmToolkit::OrientedBoundingBox selection_box = BoundingBoxVisitor::OBB(selected_canvas_sources_.getCopy(), 
+            GlmToolkit::OrientedBoundingBox selection_box = BoundingBoxVisitor::OBB(selected_canvas_sources_.getCopy(),
                                                         scene.ws(), View::GEOMETRY);
 
             // apply transform

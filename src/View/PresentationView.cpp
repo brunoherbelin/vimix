@@ -53,8 +53,6 @@
 #define OUTPUT_MARGIN 0.82f
 // padding of the information window, in fraction of window height
 #define INFO_PADDING 0.04f
-// color of the background of the view
-#define COLOR_PRESENTATION_BGROUND 0.1f, 0.1f, 0.1f
 // default aspect ratio of thumbnails not yet loaded
 #define DEFAULT_ASPECT_RATIO (16.f / 9.f)
 
@@ -418,8 +416,8 @@ void PresentationView::draw()
         const Group *g = items_[i]->group(View::PRESENTATION);
         const glm::vec3 center = strip_->translation_ + g->translation_;
         const float half_width = g->scale_.x * (items_[i]->frame() ? items_[i]->frame()->aspectRatio() : DEFAULT_ASPECT_RATIO);
-        const glm::vec2 left  = Rendering::manager().project(center + glm::vec3(-half_width, -1.1f * item_height_, 0.f), scene.root()->transform_, false);
-        const glm::vec2 right = Rendering::manager().project(center + glm::vec3( half_width, -1.1f * item_height_, 0.f), scene.root()->transform_, false);
+        const glm::vec2 left  = Rendering::manager().project(center + glm::vec3(-half_width, 1.1f * item_height_, 0.f), scene.root()->transform_, false);
+        const glm::vec2 right = Rendering::manager().project(center + glm::vec3( half_width, 1.1f * item_height_, 0.f), scene.root()->transform_, false);
 
         // ignore labels outside of window
         if (right.x < 0.f || left.x > io.DisplaySize.x)
@@ -437,7 +435,7 @@ void PresentationView::draw()
         ImVec4 color = static_cast<int>(i) == current_ ? ImVec4(COLOR_TRANSITION_SOURCE, 1.f) : ImVec4(COLOR_DEFAULT_SOURCE, 1.f);
         if (items_[i]->missing())
             color.w = 0.4f;
-        draw_list->AddText(ImVec2(0.5f * (left.x + right.x - size.x), left.y), ImGui::GetColorU32(color), label.c_str());
+        draw_list->AddText(ImVec2(0.5f * (left.x + right.x - size.x), left.y - ImGui::GetTextLineHeightWithSpacing()), ImGui::GetColorU32(color), label.c_str());
     }
 
     const float pad = INFO_PADDING * io.DisplaySize.y;

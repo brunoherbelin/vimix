@@ -20,7 +20,6 @@
 #include <glib.h>
 #include <iostream>
 #include <iomanip>
-#include <thread>
 #include <algorithm>
 
 #include <gst/gst.h>
@@ -48,7 +47,6 @@
 #include "Toolkit/BaseToolkit.h"
 #include "Toolkit/DialogToolkit.h"
 #include "Toolkit/GstToolkit.h"
-#include "Resource.h"
 
 #include "Mixer.h"
 #include "Source/MediaSource.h"

@@ -77,7 +77,7 @@ TextureView::TextureView() : View(TEXTURE), edit_source_(nullptr), need_edit_upd
     // global dark
     Surface *tmp = new Surface( new Shader);
     tmp->scale_ = glm::vec3(20.f, 20.f, 1.f);
-    tmp->shader()->color = glm::vec4( 0.1f, 0.1f, 0.1f, 0.6f );
+    tmp->shader()->color = glm::vec4( 0.1f, 0.1f, 0.1f, 0.5f );
     scene.bg()->attach(tmp);
     // frame showing the source original shape
     background_surface_= new Surface( new Shader);
@@ -854,7 +854,7 @@ void TextureView::draw()
                             ImGuiToolkit::ButtonIconToggle(ICON_VI_TABLET_PRESSURE, &enable_tablet_input, "Tablet pressure sensitive");
                             if (enable_tablet_input)
                                 Settings::application.brush_pressure_mode |= TabletInput_brush_size;
-                            else 
+                            else
                                 Settings::application.brush_pressure_mode &= ~TabletInput_brush_size;
                         }
                         // max brush size
@@ -891,7 +891,7 @@ void TextureView::draw()
                             ImGuiToolkit::ButtonIconToggle(ICON_VI_TABLET_PRESSURE, &enable_tablet_input, "Tablet pressure sensitive");
                             if (enable_tablet_input)
                                 Settings::application.brush_pressure_mode |= TabletInput_brush_pressure;
-                            else 
+                            else
                                 Settings::application.brush_pressure_mode &= ~TabletInput_brush_pressure;
                         }
                         // max brush pressure
@@ -1158,7 +1158,7 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
             scene_brush_pos = scene_to;
 
             // no previous brush position : restart at same coordinates
-            if ( glm::length( previous_scene_brush_pos ) < EPSILON) 
+            if ( glm::length( previous_scene_brush_pos ) < EPSILON)
                 previous_scene_brush_pos = scene_brush_pos;
 
             if ( pick.first == mask_cursor_circle_ ) {
@@ -1171,7 +1171,7 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
                 // Apply tablet pressure to brush if available
                 if (TabletInput::instance().hasPressure() && TabletInput::instance().isPressed()) {
                     float tablet_pressure = TabletInput::instance().getPressure();
-                    // apply pressure depending on mode    
+                    // apply pressure depending on mode
                     // scale size of brush
                     if (Settings::application.brush_pressure_mode & TabletInput_brush_size)
                         edit_source_->maskShader()->brush.x = CLAMP( Settings::application.brush.x * tablet_pressure, BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);
