@@ -64,6 +64,7 @@ public:
     void togglePannelMenu();
     void togglePannelNew();
     void showConfig();
+    void showPlaylist();
     void togglePannelAutoHide();
 
     typedef NewSourcePanel::MediaCreateMode MediaCreateMode;

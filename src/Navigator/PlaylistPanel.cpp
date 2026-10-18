@@ -47,6 +47,13 @@
 
 #define PLAYLIST_FAVORITES ICON_FA_HEART " Favorites"
 
+// true for a playlist file opened from outside of the vimix playlists folder
+static bool isExternalPlaylist(const std::string &path)
+{
+    return SystemToolkit::path_filename(path) !=
+           SystemToolkit::full_filename(UserInterface::manager().playlists_path, "");
+}
+
 void PlaylistPanel::Render()
 {
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -146,7 +153,12 @@ void PlaylistPanel::Render()
             // Mode 1 : Playlists
             for(auto playlistname = Settings::application.recentPlaylists.filenames.begin();
                 playlistname != Settings::application.recentPlaylists.filenames.end(); playlistname++) {
-                if (ImGuiToolkit::SelectableIcon( ICON_VI_PLAYLIST, SystemToolkit::base_filename( *playlistname ).c_str(), false )) {
+                bool selected = false;
+                if (isExternalPlaylist(*playlistname))
+                    selected = ImGuiToolkit::SelectableIcon( ICON_VI_PLAYLIST_FILE, SystemToolkit::base_filename( *playlistname ).c_str(), false );
+                else
+                    selected = ImGuiToolkit::SelectableIcon( ICON_VI_PLAYLIST, SystemToolkit::base_filename( *playlistname ).c_str(), false );
+                if (selected) {
                     // remember which path was selected
                     Settings::application.recentPlaylists.assign(*playlistname);
                     // set mode
@@ -264,9 +276,12 @@ void PlaylistPanel::Render()
             playlist_edit_action = 0;
         // Validate button
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f);
-        if (ImGui::Button(ICON_FA_TRASH_ALT)) {
+        // external playlist file is only removed from the list, not deleted
+        const bool external = isExternalPlaylist(Settings::application.recentPlaylists.path);
+        if (ImGui::Button(external ? ICON_FA_CHECK : ICON_FA_TRASH_ALT)) {
             // delete the file
-            SystemToolkit::remove_file(Settings::application.recentPlaylists.path);
+            if (!external)
+                SystemToolkit::remove_file(Settings::application.recentPlaylists.path);
             // remove from the list
             Settings::application.recentPlaylists.filenames.remove(Settings::application.recentPlaylists.path);
             if (Settings::application.recentPlaylists.filenames.empty())
@@ -839,13 +854,22 @@ void PlaylistPanel::Render()
                 playlist_edit_name += "_copy";
                 playlist_edit_action = 1;
             }
-            if (ImGui::MenuItem("Rename" )){
-                playlist_edit = active_playlist;
-                playlist_edit_name = SystemToolkit::base_filename(Settings::application.recentPlaylists.path);
-                playlist_edit_action = 2;
+            // external playlist files cannot be renamed (rename deletes the file)
+            if (isExternalPlaylist(Settings::application.recentPlaylists.path)) {
+                ImGui::TextDisabled("Rename");
+                if (ImGui::MenuItem("Remove from list" )){
+                    playlist_edit_action = 3;
+                }
             }
-            if (ImGui::MenuItem("Remove" )){
-                playlist_edit_action = 3;
+            else {
+                if (ImGui::MenuItem("Rename" )){
+                    playlist_edit = active_playlist;
+                    playlist_edit_name = SystemToolkit::base_filename(Settings::application.recentPlaylists.path);
+                    playlist_edit_action = 2;
+                }
+                if (ImGui::MenuItem("Remove" )){
+                    playlist_edit_action = 3;
+                }
             }
         }
         // Menu for Directory list

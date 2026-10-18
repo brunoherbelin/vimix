@@ -156,6 +156,16 @@ void Navigator::showConfig()
     pannel_main_mode_ = 2;
 }
 
+void Navigator::showPlaylist()
+{
+    // playlists are in the session menu
+    Mixer::manager().exitAllBundles();
+
+    selected_button[NAV_MENU] = true;
+    applyButtonSelection(NAV_MENU);
+    Settings::application.pannel_main_mode = pannel_main_mode_ = 1;
+}
+
 void Navigator::togglePannelMenu()
 {
     const int root = rootButton();

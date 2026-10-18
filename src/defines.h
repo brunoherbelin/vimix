@@ -28,6 +28,13 @@
     { \
         "*.lix" \
     }
+
+#define VIMIX_ALL_FILES_TYPE "vimix files (sessions, playlists)"
+#define VIMIX_ALL_FILES_PATTERN \
+    { \
+        "*.mix", "*.lix" \
+    }
+
 #define MEDIA_FILES_TYPE "Supported formats (videos, images, sessions)"
 #define MEDIA_FILES_PATTERN \
     { \
