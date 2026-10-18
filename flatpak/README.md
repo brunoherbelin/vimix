@@ -86,3 +86,10 @@ Note that the flatpak of vimix only has access to the Videos, Pictures, Music, D
 Outdated flatpack drivers can cause vimix to fail. Keep your flatpak up to date; 
 
     flatpak update
+
+With an NVIDIA GPU, the flatpak needs a GL extension matching *exactly* the version of the NVIDIA driver of your system. Every time your system updates the NVIDIA driver, run `flatpak update` again to install the matching extension. Otherwise vimix cannot use the GPU (errors like `failed to load driver: nvidia-drm`), and the launcher prints a warning. To check which one is installed:
+
+    cat /sys/module/nvidia/version
+    flatpak list --runtime | grep GL.nvidia
+
+Do not replace the X11 socket by the Wayland socket (e.g. with Flatseal): vimix uses X11 / xWayland under GNOME and fails to open its window without it.
