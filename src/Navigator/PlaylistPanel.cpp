@@ -396,7 +396,11 @@ void PlaylistPanel::Render()
     else if ( Settings::application.pannel_playlist_mode == 1) {
 
         // set header
-        playlist_header = std::string(ICON_FA_STAR) + " " + SystemToolkit::base_filename(Settings::application.recentPlaylists.path);
+        if (isExternalPlaylist(Settings::application.recentPlaylists.path))
+            playlist_header = std::string(ICON_FA_FILE_ALT);
+        else
+            playlist_header = std::string(ICON_FA_STAR);
+        playlist_header += " " + SystemToolkit::base_filename(Settings::application.recentPlaylists.path);
 
         // how many session files in favorite playlist
         size_t index_max = active_playlist.size();
