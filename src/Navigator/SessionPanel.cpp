@@ -145,7 +145,8 @@ void SessionPanel::Render()
         //
         ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - 2.f * ImGui::GetFrameHeightWithSpacing()) );
         if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE " +", "Add a sticky note")) {
-            Mixer::manager().liveSession()->addNote();
+            Mixer::manager().liveSession()->addNote(
+                SessionNote("", false, (int) Mixer::manager().view()->mode()) );
         }
 
         //
@@ -560,7 +561,7 @@ void SessionPanel::Render()
 
     //
     // EXPORT
-    //    
+    //
     static DialogToolkit::OpenFolderDialog exportFolder("Export to Folder");
     // return from thread for export folder selection
     if (exportFolder.closed() && !exportFolder.path().empty()){

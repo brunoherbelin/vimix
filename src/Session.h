@@ -91,7 +91,7 @@ public:
 
     // manage sources by #id (ordered index)
     SourceList::iterator at (int index);
-    int index (SourceList::iterator it) const;    
+    int index (SourceList::iterator it) const;
     void move (int current_index, int target_index);
 
     // get total number of sources (recursively)
@@ -154,7 +154,7 @@ public:
     std::string filename () const { return filename_; }
 
     // get the list of notes
-    void addNote(SessionNote note = SessionNote());
+    void addNote(SessionNote note);
     std::list<SessionNote>::iterator beginNotes ();
     std::list<SessionNote>::iterator endNotes ();
     std::list<SessionNote>::iterator deleteNote (std::list<SessionNote>::iterator n);
