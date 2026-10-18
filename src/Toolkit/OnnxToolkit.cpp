@@ -18,6 +18,8 @@
 **/
 
 
+#include <stdexcept>
+
 #ifdef HAVE_ONNX
 #include <numeric>
 #include <onnxruntime_cxx_api.h>
