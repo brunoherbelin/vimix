@@ -74,7 +74,7 @@ void DelayFilter::update (float dt)
         now_ += double(dt) * 0.001;
 
         // fill the queue until we reach the delay time
-        if (now_ - elapsed_.front() < delay_){
+        if (!elapsed_.empty() && now_ - elapsed_.front() < delay_){
 
             if (Rendering::shouldHaveEnoughMemory(input_->resolution(), input_->flags()) )
             {
@@ -86,14 +86,14 @@ void DelayFilter::update (float dt)
         // empty the queue if we exceed the delay time
         else if (!frames_.empty()) {
 
-            // temp pointer to loop 
+            // temp pointer to loop
             FrameBuffer *temp_ = nullptr;
 
             do {
                 // after first iteration, delete temp_
-                if (temp_ != nullptr) 
+                if (temp_ != nullptr)
                     delete temp_;
-                
+
                 // take and remove front element of the queue
                 // (does not fail as we check !frames_.empty())
                 temp_ = frames_.front();
@@ -148,4 +148,3 @@ void DelayFilter::accept (Visitor& v)
     FrameBufferFilter::accept(v);
     v.visit(*this);
 }
-
