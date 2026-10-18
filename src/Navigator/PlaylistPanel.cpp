@@ -276,12 +276,9 @@ void PlaylistPanel::Render()
             playlist_edit_action = 0;
         // Validate button
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f);
-        // external playlist file is only removed from the list, not deleted
-        const bool external = isExternalPlaylist(Settings::application.recentPlaylists.path);
-        if (ImGui::Button(external ? ICON_FA_CHECK : ICON_FA_TRASH_ALT)) {
+        if (ImGui::Button(ICON_FA_TRASH_ALT)) {
             // delete the file
-            if (!external)
-                SystemToolkit::remove_file(Settings::application.recentPlaylists.path);
+            SystemToolkit::remove_file(Settings::application.recentPlaylists.path);
             // remove from the list
             Settings::application.recentPlaylists.filenames.remove(Settings::application.recentPlaylists.path);
             if (Settings::application.recentPlaylists.filenames.empty())
@@ -861,8 +858,15 @@ void PlaylistPanel::Render()
             // external playlist files cannot be renamed (rename deletes the file)
             if (isExternalPlaylist(Settings::application.recentPlaylists.path)) {
                 ImGui::TextDisabled("Rename");
-                if (ImGui::MenuItem("Remove from list" )){
-                    playlist_edit_action = 3;
+                // external playlist file is only removed from the list, not deleted
+                if (ImGui::MenuItem("Remove" )){
+                    Settings::application.recentPlaylists.filenames.remove(Settings::application.recentPlaylists.path);
+                    if (Settings::application.recentPlaylists.filenames.empty())
+                        Settings::application.pannel_playlist_mode = 0;
+                    else
+                        Settings::application.recentPlaylists.assign( Settings::application.recentPlaylists.filenames.front() );
+                    // reload list
+                    Settings::application.recentPlaylists.changed = true;
                 }
             }
             else {
@@ -871,7 +875,7 @@ void PlaylistPanel::Render()
                     playlist_edit_name = SystemToolkit::base_filename(Settings::application.recentPlaylists.path);
                     playlist_edit_action = 2;
                 }
-                if (ImGui::MenuItem("Remove" )){
+                if (ImGui::MenuItem("Delete" )){
                     playlist_edit_action = 3;
                 }
             }
