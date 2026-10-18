@@ -74,11 +74,23 @@ void Playlist::load(const std::string &filename)
     path_.clear();
 
     // Then it should contain a list of path
+    const std::string playlistPath = SystemToolkit::path_filename(filename);
     XMLElement* pathNode = pRoot->FirstChildElement("path");
     for( ; pathNode ; pathNode = pathNode->NextSiblingElement()) {
         const char *p = pathNode->GetText();
-        if (p)
-            add( std::string(p) );
+        if (p) {
+            std::string path(p);
+            // fallback to relative path if absolute path does not exist (e.g. moved folder)
+            if (!SystemToolkit::file_exists(path)) {
+                const char *relative = nullptr;
+                if (pathNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS && relative) {
+                    const std::string rel = SystemToolkit::path_absolute_from_path(relative, playlistPath);
+                    if (SystemToolkit::file_exists(rel))
+                        path = rel;
+                }
+            }
+            add( path );
+        }
     }
 }
 
@@ -100,10 +112,12 @@ void Playlist::saveAs(const std::string &filename)
     XMLElement *pRoot = xmlDoc.NewElement("vimixplaylist");
     xmlDoc.InsertEndChild(pRoot);
 
+    const std::string playlistPath = SystemToolkit::path_filename(filename);
     for(auto it = path_.cbegin(); it != path_.cend(); ++it) {
         XMLElement *pathNode = xmlDoc.NewElement("path");
         XMLText *text = xmlDoc.NewText( it->c_str() );
         pathNode->InsertEndChild( text );
+        pathNode->SetAttribute("relative", SystemToolkit::path_relative_to_path(*it, playlistPath).c_str());
         pRoot->InsertEndChild(pathNode);
     }
 

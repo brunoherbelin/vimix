@@ -41,14 +41,18 @@ public:
      * @param playlist      Playlist whose referenced files are to be exported.
      * @param destination   Absolute path of the destination folder.
      * @param copy_media    If true, also copy media files; otherwise only session files.
-     * @param compress      If true (and VIMIX_USE_MINIZ is defined), pack all copied
-     *                      files into @p archive_name .zip and remove the flat copies.
+     * @param compress      If true (and VIMIX_USE_MINIZ is defined), copy files in a
+     *                      hidden temporary subfolder of the destination, pack them into @p archive_name .zip and
+     *                      move only the ZIP file to the destination.
      * @param archive_name  Stem of the ZIP file (e.g. "myplaylist" → "myplaylist.zip").
      *                      Falls back to the destination folder name when empty.
+     * @param write_playlist If true, also write a playlist file (archive_name.lix) in the
+     *                      destination, listing the exported sessions of the playlist.
      */
     Exporter(const Playlist &playlist, const std::string &destination, bool copy_media,
              bool discard_versions = false,
-             bool compress = false, const std::string &archive_name = "");
+             bool compress = false, const std::string &archive_name = "",
+             bool write_playlist = false);
 
     /**
      * @brief Destroy the Exporter.
@@ -113,9 +117,15 @@ public:
 
 private:
     std::list<std::string> files_;
+    std::list<std::string> sessions_;
     std::string            destination_;
     std::string            error_message_;
+    std::string            archive_name_;
+    std::string            source_playlist_;
     bool                   discard_versions_;
+    bool                   write_playlist_;
+
+    std::string exportName() const;
 
     int                   total_;
     std::atomic<int>      done_;
@@ -127,7 +137,6 @@ private:
 
 #ifdef VIMIX_USE_MINIZ
     bool              compress_;
-    std::string       archive_name_;
     std::atomic<bool> compressing_;
     std::atomic<int>  compress_done_;
 #endif

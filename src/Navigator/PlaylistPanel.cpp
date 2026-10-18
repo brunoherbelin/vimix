@@ -724,7 +724,7 @@ void PlaylistPanel::Render()
                                                   Settings::application.export_options[0],
                                                   Settings::application.export_options[2],
                                                   Settings::application.export_options[1],
-                                                  archive_name);
+                                                  archive_name, true);
                 if (!playlist_exporter->start()) {
                     Log::Warning("Export failed to start: %s", playlist_exporter->error().c_str());
                     delete playlist_exporter;

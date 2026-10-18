@@ -30,6 +30,7 @@
 #include "Log.h"
 #include "defines.h"
 #include "Playlist.h"
+#include "Toolkit/BaseToolkit.h"
 #include "Toolkit/SystemToolkit.h"
 
 using namespace tinyxml2;
@@ -161,25 +162,48 @@ static void patchSessionFile(const std::string &dst_path,
     xmlDoc.SaveFile(dst_path.c_str());
 }
 
+// Rewrite every <path> of a playlist file to point to the same filename in dest.
+static void patchPlaylistFile(const std::string &playlist_path, const std::string &dest)
+{
+    XMLDocument xmlDoc;
+    if (xmlDoc.LoadFile(playlist_path.c_str()) != XML_SUCCESS) return;
+
+    XMLElement *pRoot = xmlDoc.FirstChildElement("vimixplaylist");
+    if (!pRoot) return;
+
+    for (XMLElement *pathNode = pRoot->FirstChildElement("path");
+         pathNode != nullptr; pathNode = pathNode->NextSiblingElement("path")) {
+        const char *text = pathNode->GetText();
+        if (text) {
+            const std::string fname = SystemToolkit::filename(text);
+            pathNode->SetText((dest + PATH_SEP + fname).c_str());
+            pathNode->SetAttribute("relative", fname.c_str());
+        }
+    }
+
+    xmlDoc.SaveFile(playlist_path.c_str());
+}
 
 Exporter::Exporter(const Playlist &playlist, const std::string &destination, bool copy_media,
-                   bool discard_versions, bool compress, const std::string &archive_name)
+                   bool discard_versions, bool compress, const std::string &archive_name,
+                   bool write_playlist)
     : destination_(destination)
+    , archive_name_(archive_name)
+    , source_playlist_(playlist.filename())
     , discard_versions_(discard_versions)
+    , write_playlist_(write_playlist)
     , done_(0)
     , cancel_(false)
     , finished_(false)
     , success_(false)
 #ifdef VIMIX_USE_MINIZ
     , compress_(compress)
-    , archive_name_(archive_name)
     , compressing_(false)
     , compress_done_(0)
 #endif
 {
 #ifndef VIMIX_USE_MINIZ
     (void)compress;
-    (void)archive_name;
 #endif
     const std::list<std::string> all_files = playlist.paths();
     for (const auto &f : all_files) {
@@ -187,6 +211,28 @@ Exporter::Exporter(const Playlist &playlist, const std::string &destination, boo
             files_.push_back(f);
     }
     total_ = (int)files_.size();
+
+    // top-level sessions of the playlist, in order, to list in the exported playlist file
+    for (size_t i = 0; i < playlist.size(); ++i) {
+        if (SystemToolkit::has_extension(playlist.at(i), VIMIX_FILE_EXT))
+            sessions_.push_back(playlist.at(i));
+    }
+}
+
+// Name used for the exported playlist and ZIP files: archive_name_ or
+// fall back to the last path component of the destination folder.
+std::string Exporter::exportName() const
+{
+    std::string name = archive_name_;
+    if (name.empty()) {
+        std::string dest_copy = destination_;
+        if (!dest_copy.empty() && dest_copy.back() == PATH_SEP)
+            dest_copy.pop_back();
+        name = SystemToolkit::filename(dest_copy);
+    }
+    if (name.empty())
+        name = "export";
+    return name;
 }
 
 Exporter::~Exporter()
@@ -234,10 +280,27 @@ bool Exporter::start()
         return false;
     }
 
-    task_ = std::async(std::launch::async, [this, files_set, dirs_set]() {
+    // Copies are made directly in the destination folder, unless compressing:
+    // then they are staged in a hidden temporary subfolder of the destination
+    // (same file system, so no RAM-backed /tmp and an instant move) and only
+    // the ZIP file is moved to the destination after compression.
+    std::string workdir = destination_;
+#ifdef VIMIX_USE_MINIZ
+    if (compress_) {
+        workdir = destination_ + PATH_SEP + ".vimix_export_" + std::to_string(BaseToolkit::uniqueId());
+        std::error_code ec;
+        if (!std::filesystem::create_directory(workdir, ec)) {
+            error_message_ = "Cannot create temporary folder: " + workdir;
+            Log::Warning("Exporter: %s", error_message_.c_str());
+            return false;
+        }
+    }
+#endif
+
+    task_ = std::async(std::launch::async, [this, files_set, dirs_set, workdir]() {
         for (const auto &src : files_) {
             if (cancel_) break;
-            const std::string dst = destination_ + PATH_SEP + SystemToolkit::filename(src);
+            const std::string dst = workdir + PATH_SEP + SystemToolkit::filename(src);
             try {
                 std::filesystem::copy_file(src, dst,
                     std::filesystem::copy_options::overwrite_existing);
@@ -253,50 +316,72 @@ bool Exporter::start()
         }
         success_ = !cancel_ && (done_ == total_);
 
+        // names of all files written in workdir (copies + playlist)
+        std::list<std::string> exported_files;
+        for (const auto &src : files_)
+            exported_files.push_back(SystemToolkit::filename(src));
+
+        // Write a playlist file listing the exported sessions (pointing to their copies)
+        if (success_ && write_playlist_) {
+            Playlist exported;
+            for (const auto &src : sessions_) {
+                const std::string dst = workdir + PATH_SEP + SystemToolkit::filename(src);
+                if (SystemToolkit::file_exists(dst))
+                    exported.add(dst);
+            }
+            std::string playlist_name = exportName() + "." + VIMIX_PLAYLIST_FILE_EXT;
+            // never overwrite the original playlist file (export into its own folder)
+            if (workdir + PATH_SEP + playlist_name == source_playlist_)
+                playlist_name = exportName() + "_export." + VIMIX_PLAYLIST_FILE_EXT;
+            exported.saveAs(workdir + PATH_SEP + playlist_name);
+            if (exported.filename().empty())
+                Log::Warning("Exporter: Could not write playlist '%s'.", playlist_name.c_str());
+            else {
+                // staged playlist should reference the destination, like the sessions
+                if (workdir != destination_)
+                    patchPlaylistFile(exported.filename(), destination_);
+                exported_files.push_back(playlist_name);
+            }
+        }
+
 #ifdef VIMIX_USE_MINIZ
         if (success_ && compress_) {
             compressing_ = true;
 
-            // Determine ZIP filename: use archive_name_ or fall back to the
-            // last path component of the destination folder.
-            std::string zip_stem = archive_name_;
-            if (zip_stem.empty()) {
-                std::string dest_copy = destination_;
-                if (!dest_copy.empty() && dest_copy.back() == PATH_SEP)
-                    dest_copy.pop_back();
-                zip_stem = SystemToolkit::filename(dest_copy);
-            }
-            if (zip_stem.empty())
-                zip_stem = "export";
-            const std::string zip_path = destination_ + PATH_SEP + zip_stem + ".zip";
+            const std::string zip_name = exportName() + ".zip";
+            const std::string zip_path = workdir + PATH_SEP + zip_name;
 
             mz_zip_archive zip;
             memset(&zip, 0, sizeof(zip));
 
             if (mz_zip_writer_init_file(&zip, zip_path.c_str(), 0)) {
                 bool zip_ok = true;
-                for (const auto &src : files_) {
+                for (const auto &entry_name : exported_files) {
                     if (cancel_) { zip_ok = false; break; }
-                    const std::string entry_name = SystemToolkit::filename(src);
-                    const std::string dst = destination_ + PATH_SEP + entry_name;
+                    const std::string dst = workdir + PATH_SEP + entry_name;
                     if (!mz_zip_writer_add_file(&zip, entry_name.c_str(), dst.c_str(),
                                                 nullptr, 0, MZ_BEST_COMPRESSION))
                         Log::Warning("Exporter: Could not add '%s' to ZIP.", entry_name.c_str());
-                    ++compress_done_;
+                    if (compress_done_ < total_)
+                        ++compress_done_;
                 }
                 if (zip_ok) {
                     mz_zip_writer_finalize_archive(&zip);
                     mz_zip_writer_end(&zip);
-                    // Remove the flat copies — they are now inside the archive.
-                    for (const auto &src : files_) {
-                        const std::string dst = destination_ + PATH_SEP + SystemToolkit::filename(src);
-                        std::filesystem::remove(dst);
+                    // Move the archive to destination
+                    const std::string target = destination_ + PATH_SEP + zip_name;
+                    std::error_code ec;
+                    std::filesystem::rename(zip_path, target, ec);
+                    if (!ec)
+                        Log::Info("Exporter: Created ZIP '%s'.", target.c_str());
+                    else {
+                        error_message_ = "Failed to move ZIP to " + target + ": " + ec.message();
+                        Log::Warning("Exporter: %s", error_message_.c_str());
+                        success_ = false;
                     }
-                    Log::Info("Exporter: Created ZIP '%s'.", zip_path.c_str());
                 } else {
-                    // Cancelled mid-zip: discard the partial archive.
+                    // Cancelled mid-zip: partial archive is discarded with workdir
                     mz_zip_writer_end(&zip);
-                    std::filesystem::remove(zip_path);
                     success_ = false;
                 }
             } else {
@@ -307,6 +392,12 @@ bool Exporter::start()
             compressing_ = false;
         }
 #endif
+
+        // Remove the temporary folder with all staged copies
+        if (workdir != destination_) {
+            std::error_code ec;
+            std::filesystem::remove_all(workdir, ec);
+        }
 
         finished_ = true;
     });
