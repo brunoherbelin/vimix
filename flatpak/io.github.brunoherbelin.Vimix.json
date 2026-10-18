@@ -8,6 +8,7 @@
     "rename-icon": "vimix",
     "finish-args": [
         "--socket=x11",
+        "--socket=wayland",
         "--socket=pulseaudio",
         "--system-talk-name=org.freedesktop.Avahi",
         "--share=ipc",
