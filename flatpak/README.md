@@ -73,6 +73,9 @@ To run from command line:
 
     flatpak run io.github.brunoherbelin.Vimix
 
+vimix session files (*.mix*) and playlists (*.lix*) can be opened from the file explorer (double clic or 'open with'). 
+Note that the flatpak of vimix only has access to the Videos, Pictures, Music, Downloads and Documents folders, and to removable media; a session file located elsewhere is passed to vimix alone (without access to its folder), and its media files cannot be loaded. 
+
 
 ## Uninstall vimix flatpak
 

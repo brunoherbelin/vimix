@@ -955,19 +955,8 @@ void UserInterface::NewFrame()
     handleScreenshot();
 
     // handle FileDialogs
-    if (sessionopendialog && sessionopendialog->closed() && !sessionopendialog->path().empty()) {
-        const std::string path = sessionopendialog->path();
-        // open playlist file: add to playlists and show it in Playlist panel
-        if (SystemToolkit::has_extension(path, VIMIX_PLAYLIST_FILE_EXT)) {
-            Settings::application.recentPlaylists.push(path);
-            Settings::application.recentPlaylists.assign(path);
-            Settings::application.pannel_playlist_mode = 1;
-            navigator.showPlaylist();
-        }
-        // open session file
-        else
-            Mixer::manager().open(path);
-    }
+    if (sessionopendialog && sessionopendialog->closed() && !sessionopendialog->path().empty())
+        openFile(sessionopendialog->path());
 
     if (sessionimportdialog && sessionimportdialog->closed() && !sessionimportdialog->path().empty())
         Mixer::manager().import(sessionimportdialog->path());
@@ -1546,6 +1535,20 @@ void UserInterface::showMenuConfig()
 void UserInterface::StartScreenshot()
 {
     screenshot_step = 1;
+}
+
+void UserInterface::openFile(const std::string &path)
+{
+    // open playlist file: add to playlists and show it in Playlist panel
+    if (SystemToolkit::has_extension(path, VIMIX_PLAYLIST_FILE_EXT)) {
+        Settings::application.recentPlaylists.push(path);
+        Settings::application.recentPlaylists.assign(path);
+        Settings::application.pannel_playlist_mode = 1;
+        navigator.showPlaylist();
+    }
+    // open session file
+    else
+        Mixer::manager().open(path);
 }
 
 void UserInterface::handleScreenshot()

@@ -91,6 +91,9 @@ public:
 
     void StartScreenshot();
 
+    // open a session (.mix) or a playlist (.lix) file
+    void openFile(const std::string &path);
+
     // Favorites and playlists (used by the Navigator panels)
     Playlist favorites;
     std::string playlists_path;
