@@ -1681,16 +1681,18 @@ int UserInterface::RenderViewNavigator(int *shift)
 
 void UserInterface::setSourceInPanel(int index)
 {
+    bool repeating = Mixer::manager().indexCurrentSource() == index;
     Mixer::manager().setCurrentIndex(index);
-    if (navigator.pannelVisible())
+    if (navigator.pannelVisible() || repeating)
         navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
 }
 
 void UserInterface::setSourceInPanel(Source *s)
 {
     if (s) {
+        bool repeating = Mixer::manager().currentSource()->id() == s->id();
         Mixer::manager().setCurrentSource( s );
-        if (navigator.pannelVisible())
+        if (navigator.pannelVisible() || repeating)
             navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
     }
 }
