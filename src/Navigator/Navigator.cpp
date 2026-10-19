@@ -166,6 +166,12 @@ void Navigator::showPlaylist()
     Settings::application.pannel_main_mode = pannel_main_mode_ = 1;
 }
 
+void Navigator::startPresentation()
+{
+    showPlaylist();
+    playlist_panel_.startPresentation();
+}
+
 void Navigator::togglePannelMenu()
 {
     const int root = rootButton();

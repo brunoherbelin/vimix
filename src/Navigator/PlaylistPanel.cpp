@@ -656,12 +656,14 @@ void PlaylistPanel::Render()
         Playlist tmp = current_playlist(&name);
         if (tmp.size() < 1)
             ImGuiToolkit::ButtonDisabled(ICON_FA_CHALKBOARD_TEACHER "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0));
-        else if (ImGui::Button(ICON_FA_CHALKBOARD_TEACHER "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
+        else if (ImGui::Button(ICON_FA_CHALKBOARD_TEACHER "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0))
+                 || start_presentation_) {
             PresentationView *pv = static_cast<PresentationView *>(Mixer::manager().view(View::PRESENTATION));
             pv->setPlaylist(tmp, name);
             UserInterface::manager().setView(View::PRESENTATION);
             WorkspaceWindow::clearWorkspace();
         }
+        start_presentation_ = false;
     }
     pos_bottom = ImGui::GetCursorPos();
 

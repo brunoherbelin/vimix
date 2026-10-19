@@ -454,6 +454,8 @@ void UserInterface::handleKeyboard()
             show_preview = PREVIEW_OUTPUT;
         else if (ImGui::IsKeyPressed( GLFW_KEY_F7,  false ))
             show_preview = PREVIEW_SOURCE;
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F8, false ))
+            navigator.startPresentation();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F9, false ))
             StartScreenshot();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
