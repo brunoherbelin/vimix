@@ -79,28 +79,6 @@ void PlaylistPanel::Render()
     static int playlist_edit_action = 0; // 0 = none, 1 = save, 2 = rename, 3 = delete
     static std::string playlist_name_str;
 
-    //    static DialogToolkit::OpenPlaylistDialog openPlaylist("Open Playlist");
-    //    static DialogToolkit::SavePlaylistDialog savePlaylist("Save Playlist");
-
-    //    // return from thread for playlist file openning
-    //    if (openPlaylist.closed() && !openPlaylist.path().empty()) {
-    //        Settings::application.recentPlaylists.push(openPlaylist.path());
-    //        Settings::application.recentPlaylists.assign(openPlaylist.path());
-    //        Settings::application.pannel_playlist_mode = 1;
-    //    }
-
-    //    ImGui::SameLine();
-    //    ImGui::SetCursorPosX( pannel_width_ IMGUI_RIGHT_ALIGN);
-    //    if ( ImGuiToolkit::IconButton( ICON_VI_PLAYLIST_CREATE, "Create playlist")) {
-    //        savePlaylist.open();
-    //    }
-    //    if (savePlaylist.closed() && !savePlaylist.path().empty()) {
-    //        Settings::application.recentPlaylists.push(savePlaylist.path());
-    //        Settings::application.recentPlaylists.assign(savePlaylist.path());
-    //        Settings::application.pannel_playlist_mode = 1;
-    //    }
-
-
     // return from thread for folder openning
     if (customFolder.closed() && !customFolder.path().empty()) {
         Settings::application.recentFolders.push(customFolder.path());
@@ -625,9 +603,10 @@ void PlaylistPanel::Render()
     pos_top.y += list_size.y;
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - ImGui::GetFrameHeight()));
     ImGuiToolkit::HelpToolTip("Double-clic on a filename to open the session.\n\n "
-                              ICON_FA_ARROWS_ALT_V   "   Drag to reorder the sessions in the playlist.\n"
+                              ICON_FA_ARROWS_ALT_V   "   Drag items to reorder the sessions of the playlist.\n"
                               ICON_FA_ARROW_CIRCLE_RIGHT "  With Smooth transition enabled,"
-                                                         " the session will open with a cross fade or a fade to black.");
+                                                         " the session will open with a cross fade or a fade to black.\n"
+                              ICON_FA_CHALKBOARD_TEACHER " Start presentation [F8] to perform a slide-show.");
 
     ImGui::SetCursorPos(pos_bottom);
 
@@ -733,9 +712,9 @@ void PlaylistPanel::Render()
         // export button or progress bar
         if (playlist_exporter == nullptr) {
             if (Settings::application.recentExportFolder.path.empty()){
-                ImGuiToolkit::ButtonDisabled(ICON_FA_SAVE "  Export all", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+                ImGuiToolkit::ButtonDisabled(ICON_FA_DOLLY_FLATBED "  Export all", ImVec2(IMGUI_RIGHT_ALIGN, 0));
             }
-            else if (ImGui::Button(ICON_FA_SAVE "  Export all", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
+            else if (ImGui::Button(ICON_FA_DOLLY_FLATBED "  Export all", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
                 std::string archive_name;
                 Playlist tmp = current_playlist(&archive_name);
                 playlist_exporter = new Exporter(tmp, Settings::application.recentExportFolder.path,
@@ -752,7 +731,7 @@ void PlaylistPanel::Render()
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Export the playlist to a target folder.\n\n"
                     ICON_FA_FOLDER_OPEN "  Choose a destination folder where to copy "
-                    "the session files of the playlist. ");
+                    "the playlist and all its session files. ");
         }
         else {
             float progress = playlist_exporter->progress();

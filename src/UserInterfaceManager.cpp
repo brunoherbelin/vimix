@@ -1396,13 +1396,6 @@ void UserInterface::showMenuWindows()
     if ( ImGui::MenuItem( MENU_SHADEREDITOR, SHORTCUT_SHADEREDITOR, &Settings::application.widget.shader_editor) )
         UserInterface::manager().shadercontrol.setVisible(Settings::application.widget.shader_editor);
 
-    // Show Help
-    ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP, &Settings::application.widget.help );
-    // Show Logs
-    ImGui::MenuItem( MENU_LOGS, SHORTCUT_LOGS, &Settings::application.widget.logs );
-    // Show Metrics
-    ImGui::MenuItem( MENU_METRICS, NULL, &Settings::application.widget.stats );
-
     ImGui::Separator();
 
     // Enable / disable draft toolbar
@@ -1411,6 +1404,13 @@ void UserInterface::showMenuWindows()
     ImGui::MenuItem( MENU_SOURCE_TOOL, NULL, &Settings::application.widget.source_toolbar );
 
     ImGui::Separator();
+
+    // Show Metrics
+    ImGui::MenuItem( MENU_METRICS, NULL, &Settings::application.widget.stats );
+    // Show Logs
+    ImGui::MenuItem( MENU_LOGS, SHORTCUT_LOGS, &Settings::application.widget.logs );
+    // Show Help
+    ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP, &Settings::application.widget.help );
 
     // Enter / exit Fullscreen
     if (Settings::application.mainwindow.fullscreen){
@@ -3032,28 +3032,31 @@ void UserInterface::RenderHelp()
         ImGui::Text ("Preview the output of the mix (frame buffer). Control video recording and streaming.");
         ImGui::NextColumn();
         ImGui::Text(IMGUI_TITLE_MEDIAPLAYER); ImGui::NextColumn();
-        ImGui::Text ("Play, pause, rewind videos or dynamic sources. Control play duration, speed and synchronize multiple videos.");
+        ImGui::Text ("Play, pause, rewind videos or dynamic sources. Control timeline duration, speed and synchronize multiple videos.");
         ImGui::NextColumn();
         ImGui::Text(IMGUI_TITLE_TIMER); ImGui::NextColumn();
         ImGui::Text ("Setup the metronome (Ableton Link) that is used to trigger actions, and keep track of time with a stopwatch.");
         ImGui::NextColumn();
-        ImGui::Text(ICON_FA_HAND_PAPER "  Inputs"); ImGui::NextColumn();
-        ImGui::Text ("Map several user inputs (e.g. keyboard, joystick) to custom actions in the session.");
+        ImGui::Text(ICON_FA_HAND_PAPER "  Input mapping"); ImGui::NextColumn();
+        ImGui::Text ("Map several user inputs (e.g. key press, OSC app, gamepad actions, metronome beats) to actions on sources.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_CODE "  Shader"); ImGui::NextColumn();
-        ImGui::Text ("Edit and compiles the GLSL code of custom shader sources and filters. Load .glsl text files.");
+        ImGui::Text ("Edit and compiles the GLSL code of custom shader sources and filters. Loads .glsl text files.");
         ImGui::NextColumn();
-        ImGui::Text(IMGUI_TITLE_LOGS); ImGui::NextColumn();
-        ImGui::Text ("History of program logs, with information on success and failure of commands.");
-        ImGui::NextColumn();
-        ImGui::Text(IMGUI_TITLE_HELP); ImGui::NextColumn();
-        ImGui::Text ("Link to online documentation and list of concepts (this window).");
+        ImGui::Text(ICON_FA_PENCIL_RULER " Daft"); ImGui::NextColumn();
+        ImGui::Text ("Draft mode allows changing source without affecting live mix output; the the draft can be canceled or applied with smooth interpolation.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_WRENCH " Source"); ImGui::NextColumn();
         ImGui::Text ("Toolbar to show and edit alpha and geometry of the current source.");
         ImGui::NextColumn();
+        ImGui::Text(IMGUI_TITLE_LOGS); ImGui::NextColumn();
+        ImGui::Text ("History of program logs, with information on success and failure of commands.");
+        ImGui::NextColumn();
         ImGui::Text(ICON_FA_TACHOMETER_ALT "  Metrics"); ImGui::NextColumn();
-        ImGui::Text ("Monitoring of metrics on the system (e.g. FPS, RAM) and runtime (e.g. session duration).");
+        ImGui::Text ("Monitoring metrics of vimix performance (e.g. FPS, RAM).");
+        ImGui::NextColumn();
+        ImGui::Text(IMGUI_TITLE_HELP); ImGui::NextColumn();
+        ImGui::Text ("Link to online documentation and list of concepts (this window).");
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
@@ -3130,8 +3133,11 @@ void UserInterface::RenderHelp()
         ImGuiToolkit::Icon(ICON_VI_SOURCE_SESSION); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Session"); ImGui::NextColumn();
         ImGui::Text ("Render a vimix session (*.mix) as a source. Recursion is limited.");
         ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_VI_SOURCE_SEQUENCE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Sequence"); ImGui::NextColumn();
-        ImGui::Text ("Displays a set of images numbered sequentially (*.jpg, *.png, etc.) or assemble a video from a selection of images.");
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_SEQUENCE); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Image\nSequence"); ImGui::NextColumn();
+        ImGui::Text ("Plays a set of images numbered sequentially (same dimensions) as an animation.");
+        ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_VI_SOURCE_VIDEOSPLIT); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Video\nSequence"); ImGui::NextColumn();
+        ImGui::Text ("Plays a set of videos numbered sequentially (same dimensions and framerate) as an integrated video.");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_VI_SOURCE_RENDER); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Loopback"); ImGui::NextColumn();
         ImGui::Text ("Loopback the rendering output as a source, with or without recursion.");
@@ -3173,8 +3179,8 @@ void UserInterface::RenderHelp()
         ImGui::Text ("Clones the frames of a source into another one and optionnaly applies a filter (see below).");
         ImGui::NextColumn();
         ImGuiToolkit::Icon(ICON_VI_SOURCE_GROUP); ImGui::SameLine(0, IMGUI_SAME_LINE);ImGui::Text("Bundle"); ImGui::NextColumn();
-        ImGui::Text ("Bundles together several sources and renders them as an internal session, "
-            " e.g., select multiple sources in the Layers view and choose 'Bundle selection'.");
+        ImGui::Text ("Bundles together several sources and renders them as an internal session. "
+            "Double-clic on a bundle to navigate into it and modify its content.");
 
         ImGui::Columns(1);
         ImGui::PopTextWrapPos();
@@ -3245,7 +3251,7 @@ void UserInterface::RenderHelp()
         ImGuiToolkit::ButtonOpenUrl("Install TouchOSC", "https://github.com/brunoherbelin/vimix/wiki/TouchOSC-companion", ImVec2(ImGui::GetContentRegionAvail().x, 0));
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_GAMEPAD " Gamepad"); ImGui::NextColumn();
-        ImGui::Text ("React to button press and axis movement on a gamepad or a joystick.");
+        ImGui::Text ("React to button press and axis movement of one or two gamepads.");
         ImGui::NextColumn();
         ImGui::Text(ICON_FA_CLOCK " Timer"); ImGui::NextColumn();
         ImGui::Text ("React to beats of the metronome (configured in the Timer window).");
@@ -3316,14 +3322,22 @@ void UserInterface::RenderHelp()
         ImGui::Text("F5"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_TV " Displays view"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_PREVIEW_OUT); ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Output"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Output");
+        ImGui::SameLine(0, IMGUI_SAME_LINE); ImGuiToolkit::Indication("Press & hold for momentary on/off", ICON_FA_INFO_CIRCLE);
+        ImGui::NextColumn();
         ImGui::Text(SHORTCUT_PREVIEW_SRC); ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Source"); ImGui::NextColumn();
+        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Source");
+        ImGui::SameLine(0, IMGUI_SAME_LINE); ImGuiToolkit::Indication("Press & hold for momentary on/off", ICON_FA_INFO_CIRCLE);
         ImGui::NextColumn();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC); ImGui::Text("Press & hold for momentary on/off"); ImGui::PopFont();
-        ImGui::NextColumn();
+        ImGui::Text("F8"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CHALKBOARD_TEACHER " Start presentation of current playlist"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
+        ImGui::Text(CTRL_MOD "D"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_PENCIL_RULER " Toggle Draft mode");
+        ImGui::SameLine(0, IMGUI_SAME_LINE); ImGuiToolkit::Indication("When Drafting, user actions in views are "
+            "not applied to the Mix immediately; they can be canceled or applied with smooth interpolation when leaving Draft.", ICON_FA_INFO_CIRCLE);
+        ImGui::NextColumn();
         ImGui::Text(SHORTCUT_FULLSCREEN); ImGui::NextColumn();
         ImGui::Text(ICON_FA_EXPAND_ALT " " TOOLTIP_FULLSCREEN " window"); ImGui::NextColumn();
         ImGui::Separator();
@@ -3337,10 +3351,8 @@ void UserInterface::RenderHelp()
         ImGui::Text(ICON_FA_HAND_PAPER " " TOOLTIP_INPUTS "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_SHADEREDITOR); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CODE " " TOOLTIP_SHADEREDITOR "window"); ImGui::NextColumn();
-        ImGui::Text("ESC"); ImGui::NextColumn();
-        ImGui::Text(" Hide | Show all windows"); ImGui::NextColumn();
-        ImGui::NextColumn();
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC); ImGui::Text("Press & hold for momentary on/off"); ImGui::PopFont();
+        ImGui::Text("ESC"); ImGui::NextColumn(); ImGui::Text(" Hide | Show all windows");
+        ImGui::SameLine(0, IMGUI_SAME_LINE); ImGuiToolkit::Indication("Press & hold for momentary on/off", ICON_FA_INFO_CIRCLE);
         ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_NEW_FILE); ImGui::NextColumn();

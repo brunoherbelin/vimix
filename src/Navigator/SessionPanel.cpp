@@ -541,11 +541,11 @@ void SessionPanel::Render()
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
         ImGuiToolkit::HelpToolTip("History of actions (latest on top). "
                                  "Double-clic on an action to restore its status.\n\n"
-                                 ICON_FA_MAP_MARKED_ALT " With Show action View enabled, navigate "
+                                 ICON_FA_HAND_POINT_RIGHT " With Follow action enabled, navigate "
                                  "automatically to the view showing the action on undo/redo.");
         // toggle button for shhow in view
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - ImGui::GetFrameHeightWithSpacing()) );
-        ImGuiToolkit::ButtonToggle(ICON_FA_MAP_MARKED_ALT, &Settings::application.action_history_follow_view, "Show action View");
+        ImGuiToolkit::ButtonToggle(ICON_FA_HAND_POINT_RIGHT, &Settings::application.action_history_follow_view, "Follow action");
     }
     else {
         if ( Action::manager().max() > 1 )  {
@@ -617,9 +617,9 @@ void SessionPanel::Render()
             if (Settings::application.recentExportFolder.path.empty() ||
                 Mixer::manager().liveSession()->filename().empty() ||
                 SystemToolkit::path_filename(Mixer::manager().liveSession()->filename()) == Settings::application.recentExportFolder.path + PATH_SEP) {
-                ImGuiToolkit::ButtonDisabled(ICON_FA_SAVE "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+                ImGuiToolkit::ButtonDisabled(ICON_FA_DOLLY "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0));
             }
-            else if (ImGui::Button(ICON_FA_SAVE "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
+            else if (ImGui::Button(ICON_FA_DOLLY "  Export", ImVec2(IMGUI_RIGHT_ALIGN, 0))) {
                 const std::string archive_name =
                     SystemToolkit::base_filename(Mixer::manager().liveSession()->filename());
                 Playlist tmp;
