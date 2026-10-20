@@ -1790,7 +1790,7 @@ void UserInterface::RenderPreview()
                 show_preview = PREVIEW_NONE;
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             if (show_preview == PREVIEW_SOURCE)
-                ImGui::Text("Preview Player");
+                ImGui::Text("Preview Player Render");
             else if (show_preview == PREVIEW_OUTPUT) {
                 if (draft)
                     ImGui::Text("Preview Draft");
@@ -1811,7 +1811,7 @@ void UserInterface::RenderPreview()
             ImGui::PopStyleVar();
             if (draft)
                 ImGui::GetWindowDrawList()->AddRect(draw_pos, draw_pos + imagesize,
-                                                    ImGui::GetColorU32(ImGuiToolkit::HighlightColor()), 0.f, 0, 4.f);
+                                                    ImGui::GetColorU32(ImGuiCol_PlotHistogram), 0.f, 0, 3.f);
             ImGui::Spacing();
 
             // handle mouse clic and hovering on image
