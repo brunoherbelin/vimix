@@ -104,8 +104,8 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
     if (Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU  ) ) {
         if (save_and_continue) {
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-            if ( Settings::application.render.gst_glmemory_context && 
-                 Settings::application.render.gpu_decoding && 
+            if ( Settings::application.render.gst_glmemory_context &&
+                 Settings::application.render.gpu_decoding &&
                  GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
                 Outputs::manager().chain(
                     new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename()))
@@ -117,8 +117,8 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
                     new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename()))
                 );
             }
-        } 
-        else  
+        }
+        else
             Outputs::manager().stop( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU  );
     }
     else {
@@ -127,14 +127,14 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
             timeout = 0;
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-        if ( Settings::application.render.gst_glmemory_context && 
-             Settings::application.render.gpu_decoding && 
+        if ( Settings::application.render.gst_glmemory_context &&
+             Settings::application.render.gpu_decoding &&
              GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
             Outputs::manager().start(
                 new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename())),
                 std::chrono::seconds(Settings::application.record.delay), timeout
             );
-        } else 
+        } else
 #endif
         {
             Outputs::manager().start(
@@ -186,7 +186,7 @@ void OutputPreviewWindow::ToggleSharedMemory()
 bool OutputPreviewWindow::ToggleLoopbackCamera()
 {
     bool need_initialization = false;
-    if (Outputs::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) 
+    if (Outputs::manager().enabled( FrameGrabber::GRABBER_LOOPBACK ))
         Outputs::manager().stop( FrameGrabber::GRABBER_LOOPBACK );
     else {
         if (Settings::application.loopback_camera < 1)
@@ -221,8 +221,8 @@ void OutputPreviewWindow::Render()
         // get dimensions of canvas
         const glm::vec2 _crop = output->projectionSize();
         _cropsize = ImVec2(_crop.x, _crop.y);
-    } 
-    
+    }
+
     // ensure valid output
     if (output)
     {
@@ -261,13 +261,13 @@ void OutputPreviewWindow::Render()
                 // select what to show in window & for recording
                 ImGui::Separator();
 
-                bool busy = Outputs::manager().enabled( 
-                    FrameGrabber::GRABBER_VIDEO, 
-                    FrameGrabber::GRABBER_GPU, 
+                bool busy = Outputs::manager().enabled(
+                    FrameGrabber::GRABBER_VIDEO,
+                    FrameGrabber::GRABBER_GPU,
                     FrameGrabber::GRABBER_P2P,
                     FrameGrabber::GRABBER_BROADCAST,
                     FrameGrabber::GRABBER_SHM,
-                    FrameGrabber::GRABBER_LOOPBACK 
+                    FrameGrabber::GRABBER_LOOPBACK
                 );
 
                 if (ImGui::MenuItem(ICON_FA_EXPAND "   Full Mix Output", nullptr, Settings::application.widget.preview_output == -1, !busy))
@@ -311,7 +311,7 @@ void OutputPreviewWindow::Render()
                 }
                 // Stop recording menu (recorder already exists)
                 else if (Outputs::manager().enabled(FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU)) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));                    
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", SHORTCUT_RECORD) ) {
                         // prepare for next time user open new source panel to show the recording
                         if (Settings::application.recentRecordings.load_at_start)
@@ -534,7 +534,7 @@ void OutputPreviewWindow::Render()
             imagesize.y = MIN( imagesize.x  * _cropsize.y / _cropsize.x, imagesize.y);
             // image respects original aspect ratio
             imagesize.x = imagesize.y * ar * _cropsize.x / _cropsize.y;
-        } 
+        }
         else {
             imagesize.x = MIN( imagesize.y  * ar * _cropsize.x / _cropsize.y, imagesize.x);
             // image respects original aspect ratio
@@ -575,15 +575,15 @@ void OutputPreviewWindow::Render()
         if (Draft::manager().busy())
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            const ImU32 draft_color = ImGui::GetColorU32(ImGuiCol_Header);
+            const ImU32 draft_color = ImGui::GetColorU32(ImGuiCol_PlotHistogram, 0.5f);
 
             // frame around image
-            draw_list->AddRect(imagepos, imagepos + imagesize, draft_color, 0.f, 0, 3.f);
+            draw_list->AddRect(imagepos, imagepos + imagesize, draft_color, 0.f, 0, 1.f);
 
             if (draft) {
                 // pre-calculate slider coordinates in rendering area
                 const ImVec2 slider = imagesize * ImVec2(split, 1.f);
-                ImU32 slider_color = ImGui::GetColorU32(ImGuiCol_HeaderHovered);
+                ImU32 slider_color = ImGui::GetColorU32(ImGuiCol_PlotHistogram, 0.8f);
                 if (!magnifying_glass)
                 {
                     // user input : move slider horizontally
@@ -592,7 +592,7 @@ void OutputPreviewWindow::Render()
                     // affordance: cursor change to horizontal arrows
                     if (ImGui::IsItemHovered() || ImGui::IsItemFocused()) {
                         ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
-                        slider_color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
+                        slider_color = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
                     }
                     // graphical indication of slider
                     draw_list->AddCircleFilled(imagepos + slider * ImVec2(1.f, 0.5f), 20.f, slider_color, 26);
@@ -606,12 +606,12 @@ void OutputPreviewWindow::Render()
                 const ImVec2 size_live = ImGui::CalcTextSize(label_live);
                 if (xs - size_live.x - 6.f > imagepos.x) {
                     ImGui::SetCursorScreenPos(ImVec2(xs - size_live.x - 6.f, imagepos.y + 4.f));
-                    ImGui::TextColored(ImGuiToolkit::HighlightColor(), "%s", label_live);
+                    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram), "%s", label_live);
                 }
                 const char *label_draft = ICON_FA_CARET_RIGHT " Draft";
                 if (xs + ImGui::CalcTextSize(label_draft).x + 6.f < imagepos.x + imagesize.x) {
                     ImGui::SetCursorScreenPos(ImVec2(xs + 6.f, imagepos.y + 4.f));
-                    ImGui::TextColored(ImGuiToolkit::HighlightColor(), "%s", label_draft);
+                    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram), "%s", label_draft);
                 }
             }
         }
@@ -747,7 +747,7 @@ void OutputPreviewWindow::Render()
             h += (Settings::application.accept_connections ? 1.f : 0.f);
             draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + areasize.x, draw_pos.y + h * r), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(draw_pos);
-            ImGui::Text(" " ICON_FA_DESKTOP "  %.0f x %.0f px, %.d fps", 
+            ImGui::Text(" " ICON_FA_DESKTOP "  %.0f x %.0f px, %.d fps",
                     float(output->width()) * _cropsize.x, float(output->height()) * _cropsize.y, int(Mixer::manager().fps()) );
             if (Settings::application.accept_connections)
                 ImGui::Text( "  " ICON_FA_SHARE_ALT_SQUARE "   Available as %s (%ld peer connected)",
@@ -808,5 +808,3 @@ void OutputPreviewWindow::Render()
         ImGui::EndPopup();
     }
 }
-
-

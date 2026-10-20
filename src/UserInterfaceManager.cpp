@@ -1231,7 +1231,7 @@ void UserInterface::RenderDraftIndicator()
 {
     const ImGuiIO& io = ImGui::GetIO();
     ImDrawList *draw_list = ImGui::GetBackgroundDrawList();
-    const ImU32 color = ImGui::GetColorU32(ImGuiToolkit::HighlightColor());
+    const ImU32 color = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
 
     // frame around the views
     ImVec2 p0 = ImVec2(navigator.width(), 0.f);
@@ -2089,7 +2089,7 @@ void UserInterface::RenderDraft(bool *p_open, int* p_corner)
 
     ImGui::SetNextWindowBgAlpha(WINDOW_TOOLBOX_ALPHA); // Transparent background
 
-    if (!ImGui::Begin("Draft", NULL, (*p_corner != -1 ? ImGuiWindowFlags_NoMove : 0) |
+    if (!ImGui::Begin("##Draft", NULL, (*p_corner != -1 ? ImGuiWindowFlags_NoMove : 0) |
                       ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                       ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
@@ -2097,14 +2097,12 @@ void UserInterface::RenderDraft(bool *p_open, int* p_corner)
         return;
     }
 
-    const bool drafting = Draft::manager().active();
-    const float _width = 5.f * ImGui::GetTextLineHeightWithSpacing();
+    // keep the draft window above other windows (but below popups)
+    if (GImGui->OpenPopupStack.Size < 1)
+        ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
 
-    // title
-    ImGui::Text( MENU_DRAFT );
-    ImGui::SameLine(_width - ImGui::GetTextLineHeight());
-    if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS))
-        ImGui::OpenPopup("draft_menu");
+    const bool drafting = Draft::manager().active();
+    const float _width = 4.f * ImGui::GetTextLineHeightWithSpacing();
 
     // height of the big Pause button (frame height in large font)
     ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
@@ -2113,32 +2111,37 @@ void UserInterface::RenderDraft(bool *p_open, int* p_corner)
 
     // animation in progress replaces the Pause button
     if (Draft::manager().state() == Draft::DRAFT_ANIMATE) {
-        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImGuiToolkit::HighlightColor(false));
         ImGui::ProgressBar(Draft::manager().progress(), ImVec2(_width, _height), "Applying");
-        ImGui::PopStyleColor();
     }
     // big Pause button, toggled when drafting
     else {
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         if (drafting) {
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_Text));
-            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_HeaderActive));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetColorU32(ImGuiCol_HeaderActive));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_PlotHistogram));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetColorU32(ImGuiCol_PlotHistogram, 0.8f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetColorU32(ImGuiCol_PlotHistogram));
         }
+        else
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetColorU32(ImGuiCol_PlotHistogram, 0.5f));
+
         // draft mode is not available when editing a bundle
         const bool unavailable = Mixer::manager().editingBundle();
         ImGuiToolkit::PushDisabled(unavailable);
-        if ( ImGui::Button(ICON_FA_PAUSE, ImVec2(_width, _height)) ) {
+        if ( ImGui::Button(ICON_FA_PENCIL_RULER, ImVec2(_width, _height)) ) {
             if (drafting)
                 Draft::manager().apply(Settings::application.draft_duration);
             else
                 Draft::manager().enter();
         }
         ImGuiToolkit::PopDisabled(unavailable);
+
         if (drafting)
             ImGui::PopStyleColor(4);
+        else
+            ImGui::PopStyleColor(1);
         ImGui::PopFont();
+
         if (unavailable) {
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
                 ImGuiToolkit::ToolTip("Not available when editing a bundle");
@@ -2151,18 +2154,27 @@ void UserInterface::RenderDraft(bool *p_open, int* p_corner)
         }
     }
 
-    // Duration / Cancel (enabled only when drafting)
-    ImGuiToolkit::PushDisabled(!drafting);
-    ImGui::SetNextItemWidth(_width);
-    ImGui::DragFloat("##draft_duration", &Settings::application.draft_duration, 10.f, 0.f, 5000.f,
-                     ICON_FA_STOPWATCH " %.0f ms");
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip("Duration of transition to draft");
-    if (ImGui::Button(ICON_FA_TIMES " Cancel", ImVec2(_width, 0.f)))
-        Draft::manager().cancel();
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip(MENU_DRAFT_CANCEL, SHORTCUT_DRAFT_CANCEL);
-    ImGuiToolkit::PopDisabled(!drafting);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::BeginGroup();
+    {
+        // Duration / Cancel (enabled only when drafting)
+        ImGuiToolkit::PushDisabled(!drafting);
+        ImGui::SetNextItemWidth(_width);
+        ImGui::DragFloat("##draft_duration", &Settings::application.draft_duration, 10.f, 0.f, 5000.f,
+                         ICON_FA_STOPWATCH " %.0f ms");
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Duration of transition to draft");
+        if (ImGui::Button(ICON_FA_TIMES " Cancel", ImVec2(_width, 0.f)))
+            Draft::manager().cancel();
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip(MENU_DRAFT_CANCEL, SHORTCUT_DRAFT_CANCEL);
+        ImGuiToolkit::PopDisabled(!drafting);
+    }
+    ImGui::EndGroup();
+
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    if (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS))
+        ImGui::OpenPopup("draft_menu");
 
     if (ImGui::BeginPopup("draft_menu"))
     {
