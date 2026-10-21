@@ -1908,8 +1908,11 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     // create seek event depending on direction
     GstEvent *seek_event = nullptr;
     if (rate_ > 0) {
+        // NB: stop is 'none' (i.e. play until end) and not END-relative, which
+        // parsers of audio files (e.g. mp3) refuse; SET also resets the stop
+        // of a previous backward seek (NONE would keep it)
         seek_event = gst_event_new_seek (rate_, GST_FORMAT_TIME, (GstSeekFlags) seek_flags,
-            GST_SEEK_TYPE_SET, seek_pos, GST_SEEK_TYPE_END, 0);
+            GST_SEEK_TYPE_SET, seek_pos, GST_SEEK_TYPE_SET, GST_CLOCK_TIME_NONE);
     }
     else {
         seek_event = gst_event_new_seek (rate_, GST_FORMAT_TIME, (GstSeekFlags) seek_flags,

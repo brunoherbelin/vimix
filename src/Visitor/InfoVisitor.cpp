@@ -147,8 +147,6 @@ void InfoVisitor::visit (AudioSource& s)
     if (current_id_ == mp->id())
         return;
 
-    // audio file: no resolution
-
     std::ostringstream oss;
     if (mp->failed()) {
         oss << mp->filename() << std::endl << std::endl << mp->log();
@@ -412,7 +410,7 @@ void InfoVisitor::visit (NetworkSource& s)
     if (current_id_ == s.id())
         return;
 
-    std::ostringstream oss;    
+    std::ostringstream oss;
 
     NetworkStream *ns = s.networkStream();
     if (ns) {

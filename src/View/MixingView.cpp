@@ -565,7 +565,7 @@ View::Cursor MixingView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pai
             slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );
             slider_arrows_->visible_ = true;
             std::ostringstream info;
-            info << ICON_FA_ADJUST << " Output fading " << 100 - int(f * 100.0) << " %";
+            info << ICON_FA_ADJUST << " Session fading " << 100 - int(f * 100.0) << " %";
             return Cursor(Cursor_Hand, info.str() );
         }
         else if (pick.first == limbo_slider_) {

@@ -156,7 +156,7 @@ void MediaSource::setActive (bool on)
     // change status of media player only if status changed
     if ( active_ != was_active ) {
         // option to automatically rewind each time the source is disabled
-        if (!on && replay_on_disable_) 
+        if (!on && replay_on_disable_)
             mediaplayer_->rewind(true);
 
         mediaplayer_->enable(active_);
@@ -271,4 +271,3 @@ bool MediaSource::texturePostProcessed() const
     return !mediaplayer_->timeline()->fadingIsClear() ||
            mediaplayer_->loopStatus() == MediaPlayer::LOOP_STATUS_BLACKOUT;
 }
-

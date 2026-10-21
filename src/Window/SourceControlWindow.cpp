@@ -2207,7 +2207,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         show_overlay_info = ImGui::IsItemHovered();
         if (show_overlay_info){
             // information visitor
-            mediaplayer_active_->accept(info_);
+            ms->accept(info_);
             float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
             draw_list->AddRectFilled(imgarea.GetTL(), imgarea.GetTL() + ImVec2(imgarea.GetWidth(), tooltip_height), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));

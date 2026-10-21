@@ -26,12 +26,6 @@
 
 #include "AudioPlayer.h"
 
-// example test gstreamer pipeline
-//
-// gst-launch-1.0 playbin uri=file:///path/to/audio.mp3 flags=0x0b vis-plugin=monoscope
-//
-// playbin renders the audio visualization (vis-plugin) into its video-sink
-// when the media has no video stream and the VIS flag is set.
 
 AudioPlayer::AudioPlayer() : MediaPlayer()
 {
@@ -60,8 +54,6 @@ void AudioPlayer::setupPipeline()
     g_object_set( G_OBJECT (pipeline_), "flags", flags, NULL);
 
     // set the visualization plugin
-    // NB: monoscope outputs BGRx, and conversion to RGBA copies the padding byte
-    // (i.e. alpha = 0) : convert to RGB first to obtain an opaque image
     GError *error = NULL;
     GstElement *vis = gst_parse_bin_from_description (AUDIO_VISUALIZATION_PLUGIN
                                                       " ! videoconvert ! capsfilter caps=video/x-raw,format=RGB",

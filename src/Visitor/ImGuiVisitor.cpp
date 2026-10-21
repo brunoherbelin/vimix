@@ -738,14 +738,14 @@ void ImGuiVisitor::renderAudioPanel(MediaSource &s)
                         s.setAudioVolumeMix(flags & ~Source::Volume_mult_alpha);
                 }
                 mix = flags & Source::Volume_mult_opacity;
-                if (ImGui::MenuItem("Source fading", NULL, &mix)) {
+                if (ImGui::MenuItem("Timeline fading", NULL, &mix)) {
                     if (mix)
                         s.setAudioVolumeMix(flags | Source::Volume_mult_opacity);
                     else
                         s.setAudioVolumeMix(flags & ~Source::Volume_mult_opacity);
                 }
                 mix = flags & Source::Volume_mult_session;
-                if (ImGui::MenuItem("Output fading", NULL, &mix)) {
+                if (ImGui::MenuItem("Session fading", NULL, &mix)) {
                     if (mix)
                         s.setAudioVolumeMix(flags | Source::Volume_mult_session);
                     else
