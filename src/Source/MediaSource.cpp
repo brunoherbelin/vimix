@@ -117,12 +117,14 @@ void MediaSource::init()
             float height = float(mediaplayer_->width()) / mediaplayer_->aspectRatio();
             FrameBuffer *renderbuffer = new FrameBuffer(mediaplayer_->width(), (uint)height, FrameBuffer::FrameBuffer_alpha);
 
-            // icon in mixing view
-            if (mediaplayer_->isImage())
-                symbol_ = new Symbol(Symbol::IMAGE, glm::vec3(0.75f, 0.75f, 0.01f));
-            else
-                symbol_ = new Symbol(Symbol::VIDEO, glm::vec3(0.75f, 0.75f, 0.01f));
-            symbol_->scale_.y = 1.5f;
+            // icon in mixing view (unless sub-class created its own)
+            if (symbol_ == nullptr) {
+                if (mediaplayer_->isImage())
+                    symbol_ = new Symbol(Symbol::IMAGE, glm::vec3(0.75f, 0.75f, 0.01f));
+                else
+                    symbol_ = new Symbol(Symbol::VIDEO, glm::vec3(0.75f, 0.75f, 0.01f));
+                symbol_->scale_.y = 1.5f;
+            }
 
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);

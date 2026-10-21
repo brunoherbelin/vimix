@@ -26,6 +26,9 @@
 
 SplitMediaSource::SplitMediaSource(uint64_t id) : MediaSource(id, new SplitMediaPlayer)
 {
+    // split media symbol (instead of default video symbol of MediaSource::init)
+    symbol_ = new Symbol(Symbol::VIDEOSPLIT, glm::vec3(0.75f, 0.75f, 0.01f));
+    symbol_->scale_.y = 1.5f;
 }
 
 SplitMediaPlayer *SplitMediaSource::splitmediaplayer() const
@@ -71,15 +74,4 @@ void SplitMediaSource::accept(Visitor& v)
 {
     MediaSource::accept(v);
     v.visit(*this);
-}
-
-void SplitMediaSource::init()
-{
-    MediaSource::init();
-    
-    // replace default symbol with a split media symbol
-    delete symbol_;
-    symbol_ = new Symbol(Symbol::VIDEOSPLIT, glm::vec3(0.75f, 0.75f, 0.01f));            
-    symbol_->scale_.y = 1.5f;
-
 }

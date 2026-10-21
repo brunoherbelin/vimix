@@ -27,11 +27,6 @@ public:
     std::list<std::string> files () const;
 
     SplitMediaPlayer *splitmediaplayer () const;
-
-protected:
-    
-    void init() override;
-    
 };
 
 #endif // SPLITMEDIASOURCE_H
