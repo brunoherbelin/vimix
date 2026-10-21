@@ -24,7 +24,7 @@ class Visitor;
 #define MIN_PLAY_SPEED 0.1
 #define N_VFRAME 10
 #define DISCOVER_TIMOUT 15
-#define EVALUATE_TIMEOUT 5
+#define EVALUATE_TIMEOUT 15
 #define MAX_KEYFRAME_STORED 10000
 
 struct MediaInfo {
@@ -119,8 +119,8 @@ public:
      * Get unique id
      */
     inline uint64_t id() const { return id_; }
-    /** 
-     * Open a media using gstreamer URI 
+    /**
+     * Open a media using gstreamer URI
      * */
     void open ( const std::string &filename, const std::string &uri = "");
     void reopen ();
@@ -166,7 +166,7 @@ public:
     /**
      * True if its an image
      * */
-    bool isImage() const;   
+    bool isImage() const;
     /**
      * True if it has only one frame
      * */
