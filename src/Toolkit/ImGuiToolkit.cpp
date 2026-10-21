@@ -216,7 +216,7 @@ void _drawIcon(ImVec2 screenpos, int i, int j, bool enabled,  ImGuiWindow* windo
     if (!enabled)
         tint_color = ImGui::GetStyle().Colors[ImGuiCol_TextDisabled];
 
-    ImVec2 pos = screenpos + ImVec2(0, 2);
+    ImVec2 pos = screenpos;
     ImRect bb(pos, pos + ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()));
     window->DrawList->AddImage((void*)(intptr_t)textureicons, bb.Min, bb.Max, uv0, uv1, ImGui::GetColorU32(tint_color) );
 }
@@ -702,6 +702,12 @@ bool ImGuiToolkit::BeginMenuIcon(int i, int j, const char *label, bool enabled)
 
     // draw menu item
     bool ret = ImGui::BeginMenu(text_buf, enabled);
+
+    if (win->DC.LayoutType == ImGuiLayoutType_Horizontal)
+    {
+        ImGuiContext& g = *GImGui;
+        draw_pos.y += g.Style.ItemInnerSpacing.y;
+    }
 
     // overlay of icon on top of first item
     _drawIcon(draw_pos, i, j, enabled, win);
