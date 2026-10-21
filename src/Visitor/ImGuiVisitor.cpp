@@ -418,7 +418,7 @@ void ImGuiVisitor::visit (Source& s)
 {
     const float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
     const float preview_height = 4.5f * ImGui::GetFrameHeightWithSpacing();
-    const float space = ImGui::GetStyle().ItemSpacing.y;
+    const ImVec2 space = ImGui::GetStyle().ItemSpacing;
 
     ImGui::PushID(std::to_string(s.id()).c_str());
 
@@ -440,13 +440,13 @@ void ImGuiVisitor::visit (Source& s)
         // preview
         float width = preview_width;
         float height = s.frame()->projectionSize().y * width / ( s.frame()->projectionSize().x * s.frame()->aspectRatio());
-        if (height > preview_height - space) {
-            height = preview_height - space;
+        if (height > preview_height - space.y) {
+            height = preview_height - space.y;
             width = height * s.frame()->aspectRatio() * ( s.frame()->projectionSize().x / s.frame()->projectionSize().y);
         }
         // centered image
         if (s.ready()) {
-            ImVec2 dpos = ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space));
+            ImVec2 dpos = ImVec2(pos.x + 0.5f * (preview_width-width), pos.y + 0.5f * (preview_height-height-space.y));
             ImGui::SetCursorPos( dpos );
             // get mouse over before drawing
             ImVec2 up_left = ImGui::GetCursorScreenPos();
@@ -482,7 +482,7 @@ void ImGuiVisitor::visit (Source& s)
                                                                 "Workspace 3\n" ICON_FA_LINK " Linked", "Workspace 4\n" ICON_FA_LINK " Linked"};
         int ws_index = (int) s.viewSpace();
         bool singleviewspace = Mixer::manager().viewSpaceOnlyShown((uint) ws_index);
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y) );
+        ImGui::SetCursorPos( ImVec2(pos.x + width + space.x, pos.y) );
         if (ImGuiToolkit::IconMultistate(ws_icon, &ws_index, s.mixingGroup() ? ws_tooltip_linked : ws_tooltip )) {
             Mixer::manager().setViewSpace(&s, (uint) ws_index);
             oss << "Workspace " << ws_index + 1;
@@ -492,7 +492,7 @@ void ImGuiVisitor::visit (Source& s)
         }
 
         // inform on visibility status
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + ImGui::GetFrameHeightWithSpacing() ) );
+        ImGui::SetCursorPos( ImVec2(pos.x + width + space.x, pos.y + ImGui::GetFrameHeightWithSpacing() ) );
         if (s.active()) {
             if (s.blendingShader()->color.a > 0.f) {
                 std::string indication = "Visible\nAlpha ";
@@ -505,7 +505,7 @@ void ImGuiVisitor::visit (Source& s)
             ImGuiToolkit::Indication("Inactive", ICON_FA_SNOWFLAKE);
 
         // inform of input mapping
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
+        ImGui::SetCursorPos( ImVec2(pos.x + width + space.x, pos.y + 2.1f * ImGui::GetFrameHeightWithSpacing()) );
         std::list<uint> inputs = Mixer::manager().session()->inputCallbacks()->inputsForSource( s.id() );
         if (!inputs.empty())    {
             if (ImGuiToolkit::IconButton( ICON_FA_HAND_PAPER ) ) {
@@ -526,7 +526,7 @@ void ImGuiVisitor::visit (Source& s)
             ImGuiToolkit::Indication("Not mapped to an input", ICON_FA_HAND_PAPER);
 
         // locking
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
+        ImGui::SetCursorPos( ImVec2(pos.x + width + space.x, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
         static const char *tooltip[2] = {"Unlocked", "Locked"};
         bool l = s.locked();
         if (ImGuiToolkit::IconToggle(ICON_VI_UNLOCKED, ICON_VI_LOCKED, &l, tooltip ) ) {
@@ -566,7 +566,7 @@ void ImGuiVisitor::visit (Source& s)
         // menu icon for image processing
         static uint counter_menu_timeout = 0;
         ImVec2 pos_bot = ImGui::GetCursorPos();
-        ImGui::SetCursorPos( ImVec2( pos.x + preview_width + IMGUI_SAME_LINE, pos.y + preview_height + ImGui::GetStyle().ItemSpacing.y));
+        ImGui::SetCursorPos( ImVec2( pos.x + width + space.x, pos.y + preview_height + ImGui::GetStyle().ItemSpacing.y));
         if ( (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) )) {
             counter_menu_timeout=0;
             ImGui::OpenPopup( "MenuImageProcessing" );
@@ -626,13 +626,13 @@ void ImGuiVisitor::visit (Source& s)
 
         // preview = black rectangle
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRectFilled(ImVec2(pos.x + space, pos.y + space),
-            ImVec2(pos.x + preview_width - space, pos.y + preview_height - space),
+        draw_list->AddRectFilled(ImVec2(pos.x + space.x, pos.y + space.y),
+            ImVec2(pos.x + preview_width - space.x, pos.y + preview_height - space.y),
             ImColor(0, 0, 0, 255));
 
         // centered icon of failed (skull)
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        ImGui::SetCursorScreenPos( ImVec2(pos.x + space + (preview_width  -ImGui::GetFrameHeight())* 0.5f ,
+        ImGui::SetCursorScreenPos( ImVec2(pos.x + space.x + (preview_width  -ImGui::GetFrameHeight())* 0.5f ,
                                     pos.y + (preview_height -ImGui::GetFrameHeight()) * 0.5f) );
         ImGui::Text(ICON_FA_SKULL);
         ImGui::PopFont();

@@ -67,6 +67,8 @@
 #define ICON_VI_GRID_SQUARE       19, 2
 #define ICON_VI_GRID_ASPECT_RATIO 18, 2
 #define ICON_VI_HIDDEN_SOURCES    3, 14
+#define ICON_VI_CROSS             3,  2
+
 
 // new source pannel
 #define ICON_VI_OPEN_FILE            2, 5
@@ -313,7 +315,6 @@
 //
 // #define ICON_VI_UNDEFINED_15   1,  2
 // #define ICON_VI_UNDEFINED_16   2,  2
-// #define ICON_VI_UNDEFINED_17   3,  2
 // #define ICON_VI_UNDEFINED_18   8,  2
 // #define ICON_VI_UNDEFINED_19  12,  2
 // #define ICON_VI_UNDEFINED_20  15,  2

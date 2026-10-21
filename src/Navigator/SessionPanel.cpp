@@ -43,6 +43,7 @@
 #include "UserInterfaceManager.h"
 
 #include "NavigatorWidgets.h"
+#include "imgui.h"
 #include "SessionPanel.h"
 
 // utility function defined in UserInterfaceManager.cpp
@@ -52,7 +53,7 @@ void SessionPanel::Render()
 {
     const float preview_width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
     const float preview_height = 4.5f * ImGui::GetFrameHeightWithSpacing();
-    const float space = ImGui::GetStyle().ItemSpacing.y;
+    const ImVec2 space = ImGui::GetStyle().ItemSpacing;
 
     //
     // Session
@@ -93,17 +94,13 @@ void SessionPanel::Render()
     ImVec2 pos = ImGui::GetCursorPos();
     if (!Mixer::manager().liveSession()->filename().empty()) {
         ImGui::SameLine();
-        if ( ImGuiToolkit::IconButton(ICON_FA_TIMES, "Close"))
+        ImGui::SetCursorPosX( pos.x + preview_width + space.x);
+        if ( ImGuiToolkit::IconButton(ICON_VI_CROSS, "Close"))
             Mixer::manager().close();
         ImGui::SetCursorPos(pos);
     }
-////    if ( Mixer::manager().liveSession()->filename().empty()) {
-////        if ( ImGuiToolkit::IconButton(ICON_FA_FILE_DOWNLOAD, "Save as"))
-////            UserInterface::manager().saveOrSaveAs();
-////    } else {
-////        if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
-////            SystemToolkit::open(SystemToolkit::path_filename(Mixer::manager().liveSession()->filename()));
-////    }
+    ImGui::Spacing();
+    pos = ImGui::GetCursorPos();
 
     //
     // Preview session
@@ -112,8 +109,8 @@ void SessionPanel::Render()
     if (se->frame()) {
         float width = preview_width;
         float height = se->frame()->projectionSize().y * width / ( se->frame()->projectionSize().x * se->frame()->aspectRatio());
-        if (height > preview_height - space) {
-            height = preview_height - space;
+        if (height > preview_height - space.y) {
+            height = preview_height - space.y;
             width = height * se->frame()->aspectRatio() * ( se->frame()->projectionSize().x / se->frame()->projectionSize().y);
         }
         // centered image
@@ -127,7 +124,7 @@ void SessionPanel::Render()
         //
         // Right align icon top : heart to add to favorites
         //
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + space) );
+        ImGui::SetCursorPos( ImVec2(pos.x + preview_width + space.x, pos.y + space.y) );
         // if session is in favorites
         if ( UserInterface::manager().favorites.has( Mixer::manager().liveSession()->filename() ) > 0 ) {
             // offer to remove from favorites
@@ -143,7 +140,7 @@ void SessionPanel::Render()
         //
         // Right align icon middle : sticky note
         //
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - 2.f * ImGui::GetFrameHeightWithSpacing()) );
+        ImGui::SetCursorPos( ImVec2(pos.x + preview_width + space.x, pos.y + preview_height - 2.f * ImGui::GetFrameHeightWithSpacing()) );
         if ( ImGuiToolkit::IconButton( ICON_FA_STICKY_NOTE " +", "Add a sticky note")) {
             Mixer::manager().liveSession()->addNote(
                 SessionNote("", false, (int) Mixer::manager().view()->mode()) );
@@ -155,7 +152,7 @@ void SessionPanel::Render()
         static Thumbnail _session_thumbnail;
         static FrameBufferImage *_thumbnail = nullptr;
         bool _user_thumbnail = Mixer::manager().liveSession()->thumbnail() != nullptr;
-        ImGui::SetCursorPos( ImVec2(preview_width + 20, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
+        ImGui::SetCursorPos( ImVec2(pos.x + preview_width + space.x, pos.y + preview_height - ImGui::GetFrameHeightWithSpacing()) );
         if (ImGuiToolkit::IconToggle(ICON_VI_THUMBNAIL_AUTOMATIC, ICON_VI_THUMBNAIL_CUSTOM, &_user_thumbnail)) {
             if (_user_thumbnail)
                 Mixer::manager().liveSession()->setThumbnail();
@@ -284,7 +281,7 @@ void SessionPanel::Render()
             ImVec2 pos_tmp = ImGui::GetCursorPos();
             ImVec2 space_size = ImGui::CalcTextSize(" Resolution ", NULL);
             space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
-            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space.y;
             ImGui::SetCursorPos( pos_tmp + space_size );
             ImGui::Text("( %d x %d )", output->width(), output->height());
             ImGui::SetCursorPos( pos_tmp );
@@ -443,7 +440,7 @@ void SessionPanel::Render()
             ImVec2 pos_tmp = ImGui::GetCursorPos();
             ImVec2 space_size = ImGui::CalcTextSize(" Versions ", NULL);
             space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
-            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space.y;
             ImGui::SetCursorPos( pos_tmp + space_size );
             ImGui::Text("( %zu )", Action::manager().snapshots().size());
             ImGui::SetCursorPos( pos_tmp );
@@ -552,7 +549,7 @@ void SessionPanel::Render()
             ImVec2 pos_tmp = ImGui::GetCursorPos();
             ImVec2 space_size = ImGui::CalcTextSize(" Undo history ", NULL);
             space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
-            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space.y;
             ImGui::SetCursorPos( pos_tmp + space_size );
             ImGui::Text("( %u )", Action::manager().max() - 1);
             ImGui::SetCursorPos( pos_tmp );
