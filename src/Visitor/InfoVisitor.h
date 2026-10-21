@@ -29,6 +29,7 @@ public:
     void visit (Stream& n) override;
     void visit (MediaPlayer& n) override;
     void visit (MediaSource& s) override;
+    void visit (AudioSource& s) override;
     void visit (SessionFileSource& s) override;
     void visit (SessionGroupSource& s) override;
     void visit (RenderSource& s) override;

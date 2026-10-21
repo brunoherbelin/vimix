@@ -326,7 +326,7 @@ void TextureView::select(glm::vec2 A, glm::vec2 B)
 
 bool TextureView::canSelect(Source *s) {
 
-    return ( s!=nullptr && ( s == Mixer::manager().currentSource() || s == edit_source_ ));
+    return ( s!=nullptr && s->hasImage() && ( s == Mixer::manager().currentSource() || s == edit_source_ ));
 }
 
 View::Cursor TextureView::over (glm::vec2 pos)
@@ -620,6 +620,9 @@ Source *TextureView::getEditOrCurrentSource()
         // then get the source previously active
         // _source = UserInterface::manager().sourceInPanel();
         _source = Mixer::manager().previousCurrentSource();
+        // cannot edit the texture of a source without image
+        if (_source != nullptr && !_source->hasImage())
+            _source = nullptr;
         // nothing yet?
         if (_source == nullptr && edit_source_ != nullptr) {
             // then keep the current edit source ( if still available )
@@ -632,8 +635,8 @@ Source *TextureView::getEditOrCurrentSource()
         Mixer::selection().set(_source);
     }
 
-    // do not work on a failed source
-    if (_source != nullptr && _source->failed() ) {
+    // do not work on a failed source, or on a source without image
+    if (_source != nullptr && (_source->failed() || !_source->hasImage()) ) {
         _source = nullptr;
     }
 
@@ -762,6 +765,9 @@ void TextureView::draw()
                     SourceList::iterator iter;
                     for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter)
                     {
+                        // only sources with image can be used as mask
+                        if ( !(*iter)->hasImage() )
+                            continue;
                         label = std::string("Source ") + (*iter)->initials() + " - " + (*iter)->name();
                         if (ImGui::Selectable( label.c_str(), *iter == ref_source )) {
                             edit_source_->maskSource()->connect( *iter );

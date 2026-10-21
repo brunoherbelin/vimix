@@ -339,7 +339,7 @@ public:
      * audio implementation
      * */
     inline bool audioAvailable() const { return media_.hasaudio; }
-    void setAudioEnabled(bool on);
+    virtual void setAudioEnabled(bool on);
     void setAudioVolume(gdouble v);
     gdouble audioVolume() const;
 
@@ -368,6 +368,26 @@ public:
 
 
 protected:
+
+    // GstPlayFlags flags from playbin. It is the policy of GStreamer to
+    // not publicly expose element-specific enums. That's why this
+    // GstPlayFlags enum has been copied here.
+    // https://gstreamer.freedesktop.org/documentation/playback/playsink.html?gi-language=c#GstPlayFlags
+    typedef enum {
+        GST_PLAY_FLAG_VIDEO         = 0x00000001,
+        GST_PLAY_FLAG_AUDIO         = 0x00000002,
+        GST_PLAY_FLAG_TEXT          = 0x00000004,
+        GST_PLAY_FLAG_VIS           = 0x00000008,
+        GST_PLAY_FLAG_SOFT_VOLUME   = 0x00000010,
+        GST_PLAY_FLAG_NATIVE_AUDIO  = 0x00000020,
+        GST_PLAY_FLAG_NATIVE_VIDEO  = 0x00000040,
+        GST_PLAY_FLAG_DOWNLOAD      = 0x00000080,
+        GST_PLAY_FLAG_BUFFERING     = 0x00000100,
+        GST_PLAY_FLAG_DEINTERLACE   = 0x00000200,
+        GST_PLAY_FLAG_SW_COLOR      = 0x00000400,
+        GST_PLAY_FLAG_FORCE_FILTER  = 0x00000800,
+        GST_PLAY_FLAG_SW_DECODER    = 0x00001000
+    } GstPlayFlags;
 
     // hooks for sub-classes
     // start async discovery (and evaluation) of uri_, called by open()

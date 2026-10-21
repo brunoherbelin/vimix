@@ -50,6 +50,7 @@
 #include "Source/ScreenCaptureSource.h"
 #include "Source/MultiFileSource.h"
 #include "Source/SplitMediaSource.h"
+#include "Source/AudioSource.h"
 #include "Source/StreamSource.h"
 #include "Source/NetworkSource.h"
 #include "Source/ShaderSource.h"
@@ -336,6 +337,18 @@ void Mixer::draw()
 
 }
 
+// test if the file has the extension of an audio file
+static bool is_audio_file(const std::string &path)
+{
+    static const std::vector<std::string> patterns = AUDIO_FILES_PATTERN;
+    for (const std::string &p : patterns) {
+        // pattern is '*.ext'
+        if ( SystemToolkit::has_extension(path, p.substr(2)) )
+            return true;
+    }
+    return false;
+}
+
 // manangement of sources
 Source * Mixer::createSourceFile(const std::string &path, bool disable_hw_decoding)
 {
@@ -352,6 +365,18 @@ Source * Mixer::createSourceFile(const std::string &path, bool disable_hw_decodi
             SessionFileSource *ss = new SessionFileSource;
             ss->load(path);
             s = ss;
+        }
+        else if ( is_audio_file(path) ) {
+            // audio files can be used only if audio is enabled
+            if ( !Settings::application.accept_audio ) {
+                Log::Notify("Enable audio in Settings to use audio files.");
+                return nullptr;
+            }
+            // create an audio source
+            AudioSource *as = new AudioSource;
+            as->setPath(path);
+            as->play(true);
+            s = as;
         }
         else {
             // (try to) create media source by default
@@ -579,8 +604,8 @@ CloneSource * Mixer::createSourceClone(const std::string &namesource, bool copy_
     else if (current_source_ != session_->end())
         origin = current_source_;
 
-    // have an origin, can clone it
-    if (origin != session_->end()) {
+    // have an origin with an image, can clone it
+    if (origin != session_->end() && (*origin)->hasImage()) {
         // create a source
         s = (*origin)->clone();
 
@@ -779,10 +804,13 @@ void Mixer::attachToViews(Source *s)
         // force update
         s->touch();
         // attach to views
+        // (sources without image are only in Mixing view)
         mixing_.scene.ws()->attach( s->group(View::MIXING) );
-        geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
-        layer_.scene.ws()->attach( s->group(View::LAYER) );
-        appearance_.scene.ws()->attach( s->group(View::TEXTURE) );
+        if ( s->hasImage() ) {
+            geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
+            layer_.scene.ws()->attach( s->group(View::LAYER) );
+            appearance_.scene.ws()->attach( s->group(View::TEXTURE) );
+        }
     }
 }
 
@@ -952,10 +980,13 @@ void Mixer::attachSource(Source *s)
         // force update
         s->touch();
         // attach to views
+        // (sources without image are only in Mixing view)
         mixing_.scene.ws()->attach( s->group(View::MIXING) );
-        geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
-        layer_.scene.ws()->attach( s->group(View::LAYER) );
-        appearance_.scene.ws()->attach( s->group(View::TEXTURE) );
+        if ( s->hasImage() ) {
+            geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
+            layer_.scene.ws()->attach( s->group(View::LAYER) );
+            appearance_.scene.ws()->attach( s->group(View::TEXTURE) );
+        }
         // attach to session
         session_->attachSource(s);
     }

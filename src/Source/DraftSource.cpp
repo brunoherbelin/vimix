@@ -161,6 +161,11 @@ uint DraftSource::texture() const
     return origin_ ? origin_->texture() : Resource::getTextureBlack();
 }
 
+bool DraftSource::hasImage() const
+{
+    return origin_ ? origin_->hasImage() : true;
+}
+
 Source::Failure DraftSource::failed() const
 {
     return origin_ == nullptr ? FAIL_CRITICAL : FAIL_NONE;

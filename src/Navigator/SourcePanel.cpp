@@ -153,7 +153,7 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
     if (Draft::manager().active() || (id != transcode_id && transcoder != nullptr)) {
         // if source changed while transcoding;
         //    show a disabled transcoding panel
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));    
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.f,0.f,0.f,0.f));
         ImGui::CollapsingHeader("Transcoding", ImGuiTreeNodeFlags_Bullet);
@@ -439,14 +439,15 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
         s->accept(v);
 
         ///
-        /// Transcoding panel for media player and MultiFileSource 
+        /// Transcoding panel for media player and MultiFileSource
+        /// (no transcoding of audio files)
         ///
         if (!s->failed()) {
             MediaSource* ms = dynamic_cast<MediaSource*>(s);
-            if (ms != nullptr) {
-                if (renderTranscodingPanel(ms->id(), ms->mediaplayer())) 
+            if (ms != nullptr && ms->hasImage()) {
+                if (renderTranscodingPanel(ms->id(), ms->mediaplayer()))
                     v.reset();
-            } 
+            }
             else {
                 MultiFileSource* mfs = dynamic_cast<MultiFileSource*>(s);
                 if (mfs != nullptr) {
@@ -466,12 +467,14 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
 
             ImGuiToolkit::PushDisabled(Draft::manager().active());
 
-            // clone button
-            if ( s->failed() )
-                ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", size);
-            else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", size) ) {
-                Mixer::manager().addSource ( (Source *) Mixer::manager().createSourceClone() );
-                UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+            // clone button (not for sources without image)
+            if ( s->hasImage() ) {
+                if ( s->failed() )
+                    ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", size);
+                else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", size) ) {
+                    Mixer::manager().addSource ( (Source *) Mixer::manager().createSourceClone() );
+                    UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+                }
             }
 
             // replace button
@@ -480,7 +483,7 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
                 // prepare panel for new source of same type
                 glm::ivec2 i = s->icon();
                 if ( i == glm::ivec2(ICON_VI_SOURCE_VIDEO) || i == glm::ivec2(ICON_VI_SOURCE_IMAGE)
-                     || i == glm::ivec2(ICON_VI_SOURCE_CLONE) )
+                     || i == glm::ivec2(ICON_VI_SOURCE_CLONE) || i == glm::ivec2(ICON_VI_SOURCE_AUDIO) )
                     Settings::application.source.new_type = Navigator::SOURCE_FILE;
                 else if ( i == glm::ivec2(ICON_VI_SOURCE_SEQUENCE) )
                     Settings::application.source.new_type = Navigator::SOURCE_SEQUENCE;
@@ -506,7 +509,7 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
             ImGuiToolkit::PopDisabled(Draft::manager().active());
 
             // delete all button
-            if ( Mixer::manager().session()->failedSources().size() > 1 && 
+            if ( Mixer::manager().session()->failedSources().size() > 1 &&
                 Mixer::manager().session()->find(s) != Mixer::manager().session()->end() && s->failed()) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
                 if ( ImGui::Button( ICON_FA_REDO_ALT " Retry all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {

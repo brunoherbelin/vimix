@@ -644,26 +644,6 @@ GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer 
 
 #ifdef USE_GST_PLAYBIN
 
-// GstPlayFlags flags from playbin. It is the policy of GStreamer to
-// not publicly expose element-specific enums. That's why this
-// GstPlayFlags enum has been copied here.
-// https://gstreamer.freedesktop.org/documentation/playback/playsink.html?gi-language=c#GstPlayFlags
-typedef enum {
-    GST_PLAY_FLAG_VIDEO         = 0x00000001,
-    GST_PLAY_FLAG_AUDIO         = 0x00000002,
-    GST_PLAY_FLAG_TEXT          = 0x00000004,
-    GST_PLAY_FLAG_VIS           = 0x00000008,
-    GST_PLAY_FLAG_SOFT_VOLUME   = 0x00000010,
-    GST_PLAY_FLAG_NATIVE_AUDIO  = 0x00000020,
-    GST_PLAY_FLAG_NATIVE_VIDEO  = 0x00000040,
-    GST_PLAY_FLAG_DOWNLOAD      = 0x00000080,
-    GST_PLAY_FLAG_BUFFERING     = 0x00000100,
-    GST_PLAY_FLAG_DEINTERLACE   = 0x00000200,
-    GST_PLAY_FLAG_SW_COLOR      = 0x00000400,
-    GST_PLAY_FLAG_FORCE_FILTER  = 0x00000800,
-    GST_PLAY_FLAG_SW_DECODER    = 0x00001000
-} GstPlayFlags;
-
 //
 // Setup a media player using gstreamer playbin
 //
@@ -677,9 +657,6 @@ void MediaPlayer::execute_open()
 
     // connect to callback for elements monitoring
     g_signal_connect ( G_OBJECT (pipeline_), "element-setup", G_CALLBACK (callback_element_setup), this);
-
-    // sub-class specific setup
-    setupPipeline();
 
     // Get and modify playbin flags
     // ENABLE ONLY VIDEO, NOT AUDIO AND TEXT SUBTITLES
@@ -695,6 +672,9 @@ void MediaPlayer::execute_open()
         flags |= GST_PLAY_FLAG_SW_DECODER;
     }
     g_object_set( G_OBJECT (pipeline_), "flags", flags, NULL);
+
+    // sub-class specific setup (can modify the flags)
+    setupPipeline();
 
     // hack to compensate for lack of PTS in gif animations
     if (media_.codec_name.compare("image/gst-libav-gif") == 0) {

@@ -279,11 +279,13 @@ void ShaderEditWindow::Render()
                 UserInterface::manager().showPannel(  Mixer::manager().numSource() );                 
             }
             if (ImGui::MenuItem(ICON_FA_SHARE_SQUARE "  Clone source & add shader",
-                                nullptr, nullptr, cs != nullptr)) {
+                                nullptr, nullptr, cs != nullptr && cs->hasImage())) {
                 CloneSource *filteredclone = Mixer::manager().createSourceClone();
-                filteredclone->setFilter(FrameBufferFilter::FILTER_IMAGE);
-                Mixer::manager().addSource ( filteredclone );
-                UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+                if (filteredclone) {
+                    filteredclone->setFilter(FrameBufferFilter::FILTER_IMAGE);
+                    Mixer::manager().addSource ( filteredclone );
+                    UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+                }
             }
 
             // Menu entry to rebuild all

@@ -655,7 +655,10 @@ void Source::attach(FrameBuffer *renderbuffer)
     if ( rendersurface_ == nullptr) {
         // create the surfaces to draw the frame buffer in the views
         rendersurface_ = new FrameBufferMeshSurface(renderbuffer_, blendingshader_);
-        groups_[View::RENDERING]->attach(rendersurface_);
+        // sources without image never render in the session
+        // (NB: the RENDERING group is still attached to the session, see Session::attached)
+        if (hasImage())
+            groups_[View::RENDERING]->attach(rendersurface_);
         groups_[View::GEOMETRY]->attach(rendersurface_);
     }
     else

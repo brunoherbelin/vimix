@@ -29,6 +29,7 @@ public:
     void reload () override;
     guint64 playtime () const override;
     uint texture() const override;
+    bool hasImage() const override;
     Failure failed() const override;
     FrameBuffer *frame () const override;
     void accept (Visitor& v) override;

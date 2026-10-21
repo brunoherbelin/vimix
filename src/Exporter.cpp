@@ -71,7 +71,7 @@ static void patchSessionNode(XMLElement *sessionNode,
                 }
             }
         }
-        else if (type == "MediaSource") {
+        else if (type == "MediaSource" || type == "AudioSource") {
             // <uri relative="...">absolute_path</uri>
             XMLElement *uriNode = sourceNode->FirstChildElement("uri");
             if (uriNode) {

@@ -37,6 +37,7 @@
 #define ICON_VI_SOURCE_SRT           14, 5
 #define ICON_VI_SOURCE_TEXT          0, 13
 #define ICON_VI_SOURCE_SHADER        16, 14
+#define ICON_VI_SOURCE_AUDIO         1, 2
 #define ICON_VI_SOURCE               14, 11
 
 // views icons
@@ -313,7 +314,6 @@
 // #define ICON_VI_UNDEFINED_13  17,  1
 // #define ICON_VI_UNDEFINED_14  18,  1
 //
-// #define ICON_VI_UNDEFINED_15   1,  2
 // #define ICON_VI_UNDEFINED_16   2,  2
 // #define ICON_VI_UNDEFINED_18   8,  2
 // #define ICON_VI_UNDEFINED_19  12,  2

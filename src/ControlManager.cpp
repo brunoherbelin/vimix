@@ -42,6 +42,7 @@
 #include "Source/TextSource.h"
 #include "Source/MediaSource.h"
 #include "Source/SplitMediaSource.h"
+#include "Source/AudioSource.h"
 #include "Source/StreamSource.h"
 #include "Source/DeviceSource.h"
 #include "Source/ScreenCaptureSource.h"
@@ -1510,6 +1511,8 @@ static int sourceType(Source *s)
 {
     if (dynamic_cast<SplitMediaSource *>(s))
         return 11;
+    if (dynamic_cast<AudioSource *>(s))
+        return 13;
     if (MediaSource *ms = dynamic_cast<MediaSource *>(s))
         return ms->mediaplayer()->isImage() ? 12 : 10;
     if (dynamic_cast<DeviceSource *>(s))

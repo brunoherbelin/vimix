@@ -84,6 +84,7 @@ public:
         IMAGE,
         SEQUENCE,
         VIDEO,
+        MUSIC,
         VIDEOSPLIT,
         SESSION,
         CLONE,

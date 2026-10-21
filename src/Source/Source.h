@@ -192,6 +192,9 @@ public:
 
     // a Source shall define a way to get a texture
     virtual uint texture () const = 0;
+    // false for sources that do not contribute an image to the mix
+    // (e.g. audio files: shown only in Mixing view and Player)
+    virtual bool hasImage () const { return true; }
     void setTextureMirrored (bool on);
     bool textureMirrored ();
 

@@ -356,6 +356,12 @@ int  MixingView::size ()
     return (int) ( sqrt(z) * 100.f);
 }
 
+bool MixingView::canSelect(Source *s) {
+
+    // all sources can be selected in Mixing view, including those without image
+    return ( s!=nullptr && !s->locked() && s->viewSpaceShown() );
+}
+
 void MixingView::centerSource(Source *s)
 {
     // calculate screen area visible in the default view

@@ -35,6 +35,7 @@ using namespace tinyxml2;
 #include "Source/RenderSource.h"
 #include "Source/MediaSource.h"
 #include "Source/SplitMediaSource.h"
+#include "Source/AudioSource.h"
 #include "Session.h"
 #include "Source/SessionSource.h"
 #include "Source/PatternSource.h"
@@ -724,6 +725,12 @@ void SessionVisitor::visit (SplitMediaSource& s)
             file->SetAttribute("relative", SystemToolkit::path_relative_to_path(f, sessionFilePath_).c_str());
         list->InsertEndChild(file);
     }
+}
+
+void SessionVisitor::visit (AudioSource&)
+{
+    // uri and timeline saved as a MediaSource
+    xmlCurrent_->SetAttribute("type", "AudioSource");
 }
 
 void SessionVisitor::visit (SessionFileSource& s)

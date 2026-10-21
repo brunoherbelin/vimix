@@ -30,6 +30,7 @@ set(VMIX_SRCS
     MainWindow.cpp
     MediaPlayer.cpp
     SplitMediaPlayer.cpp
+    AudioPlayer.cpp
     Metronome.cpp
     Mixer.cpp
     MixingGroup.cpp
@@ -82,6 +83,7 @@ set(VMIX_SRCS
     Source/DeviceSource.cpp
     Source/MediaSource.cpp
     Source/SplitMediaSource.cpp
+    Source/AudioSource.cpp
     Source/MultiFileSource.cpp
     Source/NetworkSource.cpp
     Source/PatternSource.cpp

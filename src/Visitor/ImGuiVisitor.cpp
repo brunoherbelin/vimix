@@ -425,11 +425,13 @@ void ImGuiVisitor::visit (Source& s)
     oss = std::ostringstream();
     oss << s.name() << ": ";
 
-    // blending selection
-    Shader::BlendMode prevblend = s.blendingShader()->blending;
-    s.blendingShader()->accept(*this);
-    if (s.blendingShader()->blending != prevblend)
-        s.touch();
+    // blending selection (not for sources without image)
+    if ( s.hasImage() ) {
+        Shader::BlendMode prevblend = s.blendingShader()->blending;
+        s.blendingShader()->accept(*this);
+        if (s.blendingShader()->blending != prevblend)
+            s.touch();
+    }
 
     // Draw different info if failed or succeed
     if ( !s.failed() ) {
@@ -452,7 +454,7 @@ void ImGuiVisitor::visit (Source& s)
             ImVec2 up_left = ImGui::GetCursorScreenPos();
             ImVec2 down_right = ImVec2( up_left.x + width, up_left.y + height );
             // on mouse over show source original image
-            if (ImGui::IsMouseHoveringRect( up_left, down_right )) {
+            if (s.hasImage() && ImGui::IsMouseHoveringRect( up_left, down_right )) {
                 ImGui::Image((void*)(uintptr_t) s.texture(), ImVec2(width, height));
                 ImGui::SetCursorScreenPos(up_left);
                 ImGui::Text(" Source input");
@@ -543,79 +545,81 @@ void ImGuiVisitor::visit (Source& s)
         }
 
         // Image processing header and menu
-        bool on = s.imageProcessingEnabled();
         ImGui::SetCursorPos( ImVec2( pos.x, pos.y + preview_height));
+        if ( s.hasImage() ) {
+            bool on = s.imageProcessingEnabled();
 
-        // header for Color correction
-        ImGui::BeginChild("header_color_child", ImVec2(preview_width, ImGui::GetFrameHeightWithSpacing()),
-                        false, ImGuiWindowFlags_NoDecoration);
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
-        if (on) {
-            Settings::application.pannel_source[0] =
-                ImGui::CollapsingHeader("Color correction",Settings::application.pannel_source[0] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
-        }
-        else {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.f,0.f,0.f,0.f));
-            ImGui::CollapsingHeader("Color correction", ImGuiTreeNodeFlags_Bullet);
-            ImGui::PopStyleColor(2);
-        }
-        ImGui::PopStyleColor();
-        ImGui::EndChild();
+            // header for Color correction
+            ImGui::BeginChild("header_color_child", ImVec2(preview_width, ImGui::GetFrameHeightWithSpacing()),
+                            false, ImGuiWindowFlags_NoDecoration);
+            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
+            if (on) {
+                Settings::application.pannel_source[0] =
+                    ImGui::CollapsingHeader("Color correction",Settings::application.pannel_source[0] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+            }
+            else {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.f,0.f,0.f,0.f));
+                ImGui::CollapsingHeader("Color correction", ImGuiTreeNodeFlags_Bullet);
+                ImGui::PopStyleColor(2);
+            }
+            ImGui::PopStyleColor();
+            ImGui::EndChild();
 
-        // menu icon for image processing
-        static uint counter_menu_timeout = 0;
-        ImVec2 pos_bot = ImGui::GetCursorPos();
-        ImGui::SetCursorPos( ImVec2( pos.x + preview_width + space.x, pos.y + preview_height + ImGui::GetStyle().ItemSpacing.y));
-        if ( (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) )) {
-            counter_menu_timeout=0;
-            ImGui::OpenPopup( "MenuImageProcessing" );
-        }
-        ImGui::SetCursorPos(pos_bot);
-
-        // Active panel for image processing
-        if (on) {
-            // Header Color correction is open
-            if (Settings::application.pannel_source[0]) {
-                s.processingShader()->accept(*this);
-            }
-        }
-
-        // context menu for image processing
-        if (ImGui::BeginPopup( "MenuImageProcessing" ))
-        {
-            if (ImGui::MenuItem("Enable", NULL, &on)) {
-                oss << ( on ? "Enable Color correction" : "Disable Color correction");
-                Action::manager().store(oss.str());
-                s.setImageProcessingEnabled(on);
-                Settings::application.pannel_source[0] = true;
-            }
-            if (ImGui::MenuItem("Reset", NULL, false, on )){
-                ImageProcessingShader defaultvalues;
-                s.processingShader()->copy(defaultvalues);
-                s.processingshader_link_.disconnect();
-                oss << "Reset Filter";
-                Action::manager().store(oss.str());
-            }
-            if (ImGui::MenuItem("Copy", NULL, false, on )){
-                std::string clipboard = SessionVisitor::getClipboard(s.processingShader());
-                if (!clipboard.empty())
-                    ImGui::SetClipboardText(clipboard.c_str());
-            }
-            const char *clipboard = ImGui::GetClipboardText();
-            const bool can_paste = (clipboard != nullptr && SessionLoader::isClipboard(clipboard));
-            if (ImGui::MenuItem("Paste", NULL, false, can_paste)) {
-                SessionLoader::applyImageProcessing(s, clipboard);
-                oss << "Change Filter";
-                Action::manager().store(oss.str());
-            }
-
-            if (ImGui::IsWindowHovered())
+            // menu icon for image processing
+            static uint counter_menu_timeout = 0;
+            ImVec2 pos_bot = ImGui::GetCursorPos();
+            ImGui::SetCursorPos( ImVec2( pos.x + preview_width + space.x, pos.y + preview_height + ImGui::GetStyle().ItemSpacing.y));
+            if ( (ImGuiToolkit::IconButton(ICON_VI_MENU_OPTIONS) || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup) )) {
                 counter_menu_timeout=0;
-            else if (++counter_menu_timeout > 10)
-                ImGui::CloseCurrentPopup();
+                ImGui::OpenPopup( "MenuImageProcessing" );
+            }
+            ImGui::SetCursorPos(pos_bot);
 
-            ImGui::EndPopup();
+            // Active panel for image processing
+            if (on) {
+                // Header Color correction is open
+                if (Settings::application.pannel_source[0]) {
+                    s.processingShader()->accept(*this);
+                }
+            }
+
+            // context menu for image processing
+            if (ImGui::BeginPopup( "MenuImageProcessing" ))
+            {
+                if (ImGui::MenuItem("Enable", NULL, &on)) {
+                    oss << ( on ? "Enable Color correction" : "Disable Color correction");
+                    Action::manager().store(oss.str());
+                    s.setImageProcessingEnabled(on);
+                    Settings::application.pannel_source[0] = true;
+                }
+                if (ImGui::MenuItem("Reset", NULL, false, on )){
+                    ImageProcessingShader defaultvalues;
+                    s.processingShader()->copy(defaultvalues);
+                    s.processingshader_link_.disconnect();
+                    oss << "Reset Filter";
+                    Action::manager().store(oss.str());
+                }
+                if (ImGui::MenuItem("Copy", NULL, false, on )){
+                    std::string clipboard = SessionVisitor::getClipboard(s.processingShader());
+                    if (!clipboard.empty())
+                        ImGui::SetClipboardText(clipboard.c_str());
+                }
+                const char *clipboard = ImGui::GetClipboardText();
+                const bool can_paste = (clipboard != nullptr && SessionLoader::isClipboard(clipboard));
+                if (ImGui::MenuItem("Paste", NULL, false, can_paste)) {
+                    SessionLoader::applyImageProcessing(s, clipboard);
+                    oss << "Change Filter";
+                    Action::manager().store(oss.str());
+                }
+
+                if (ImGui::IsWindowHovered())
+                    counter_menu_timeout=0;
+                else if (++counter_menu_timeout > 10)
+                    ImGui::CloseCurrentPopup();
+
+                ImGui::EndPopup();
+            }
         }
 
     }
@@ -681,6 +685,9 @@ void ImGuiVisitor::renderAudioPanel(MediaSource &s)
     if (Settings::application.accept_audio && s.audioFlags() & Source::Audio_available) {
         ImGuiIO &io = ImGui::GetIO();
 
+        // audio of sources without image cannot be disabled
+        const bool can_disable = s.hasImage();
+
         // test audio and read volume
         bool audio_is_on = s.audioFlags() & Source::Audio_enabled;
         int vol = audio_is_on ? (int) (s.audioVolumeFactor(Source::VOLUME_BASE) * 100.f) : -1;
@@ -689,12 +696,12 @@ void ImGuiVisitor::renderAudioPanel(MediaSource &s)
                                         : ICON_FA_VOLUME_MUTE " Disabled";
         // VOLUME & on/off slider
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        bool volume_change = ImGui::SliderInt("##VolumeAudio", &vol, -1, 100, label.c_str());
+        bool volume_change = ImGui::SliderInt("##VolumeAudio", &vol, can_disable ? -1 : 0, 100, label.c_str());
         if (ImGui::IsItemHovered()) {
             if (io.MouseWheel != 0.f) {
                 vol = CLAMP(vol + int(10.f * io.MouseWheel), 0, 100);
                 volume_change = true;
-            } else if (!audio_is_on)
+            } else if (!audio_is_on && can_disable)
                 ImGuiToolkit::ToolTip("When enabling audio, the source will be reloaded.");
         }
         if (volume_change) {
@@ -707,7 +714,7 @@ void ImGuiVisitor::renderAudioPanel(MediaSource &s)
             }
         }
         ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (ImGuiToolkit::TextButton("Audio")) {
+        if (ImGuiToolkit::TextButton("Audio") && can_disable) {
             s.setAudioEnabled(false);
         }
 
@@ -796,7 +803,7 @@ void ImGuiVisitor::visit (MediaSource& s)
         if (mp && !mp->isImage()) {
 
             // information on gstreamer effect filter
-            if ( mp->videoEffectAvailable() &&  !mp->videoEffect().empty()) {
+            if ( s.hasImage() && mp->videoEffectAvailable() &&  !mp->videoEffect().empty()) {
                 top.x += ImGui::GetFrameHeight();
                 ImGui::SetCursorPos(top);
                 std::string desc = mp->videoEffect();
@@ -805,105 +812,110 @@ void ImGuiVisitor::visit (MediaSource& s)
                 ImGuiToolkit::Indication(desc.c_str(), ICON_VI_SOURCE_GSTREAMER);
             }
 
-            // Information on keyframes and GOP size, and tooltip on backward playback and errors
             ImGui::SetCursorPos(botom);
-            ImGuiTextBuffer label;
-            ImGuiTextBuffer info;
-            ImGuiTextBuffer tooltip;
 
-            SplitMediaPlayer *smp = dynamic_cast<SplitMediaPlayer *>(mp);
-            if (smp) {
+            // video specific information and decoding (none for audio files)
+            if ( s.hasImage() ) {
 
-                label.appendf("Files");
-                info.appendf("%d segments ", (int) smp->files().size());
-                info.appendf("(.%s)", SystemToolkit::extension_filename(smp->filename()).c_str());
-                tooltip.appendf("%s", BaseToolkit::joinned( smp->files(), '\n').c_str());
+                // Information on keyframes and GOP size, and tooltip on backward playback and errors
+                ImGuiTextBuffer label;
+                ImGuiTextBuffer info;
+                ImGuiTextBuffer tooltip;
 
-            }
-            else {
+                SplitMediaPlayer *smp = dynamic_cast<SplitMediaPlayer *>(mp);
+                if (smp) {
 
-                label.appendf("Keyframes");
-                if (mp->evaluation().done) {
-                    if (mp->evaluation().log.empty() && mp->evaluation().keyframe_count > 0) {
+                    label.appendf("Files");
+                    info.appendf("%d segments ", (int) smp->files().size());
+                    info.appendf("(.%s)", SystemToolkit::extension_filename(smp->filename()).c_str());
+                    tooltip.appendf("%s", BaseToolkit::joinned( smp->files(), '\n').c_str());
 
-                        // information on keyframes and GOP size
-                        info.appendf("%d", (int) mp->evaluation().keyframe_count);
-                        if (mp->evaluation().gop_size_max - mp->evaluation().gop_size_min > 1)
-                            info.appendf(" (1 every %d-%d frames)", (int) mp->evaluation().gop_size_min, (int) mp->evaluation().gop_size_max);
-                        else
-                            info.appendf(" (1 every %d frames)", (int) mp->evaluation().gop_size_max);
+                }
+                else {
 
-                        // tooltip on backward playback and errors
-                        float backward_score = GstToolkit::canPlayBackward(mp->evaluation().has_bframes,
-                                    mp->width(), mp->height(), mp->evaluation().keyframe_count,
-                                    mp->evaluation().gop_size_min, mp->evaluation().gop_size_max);
-                        if (backward_score <= 0.f)
-                            tooltip.appendf(ICON_FA_MINUS_CIRCLE " Cannot play backward");
-                        else if (backward_score < 1.f)
-                            tooltip.appendf(ICON_FA_EXCLAMATION_TRIANGLE " Unstable backward playback");
-                        else
-                            tooltip.appendf(ICON_FA_CHECK " Smooth backward playback");
-                        if (mp->evaluation().discontinuity_count > 0 )
-                            tooltip.appendf(", %d discontinuities", mp->evaluation().discontinuity_count);
-                        if (mp->evaluation().corrupted_count > 0 )
-                            tooltip.appendf(", %d corruptions", mp->evaluation().corrupted_count);
+                    label.appendf("Keyframes");
+                    if (mp->evaluation().done) {
+                        if (mp->evaluation().log.empty() && mp->evaluation().keyframe_count > 0) {
+
+                            // information on keyframes and GOP size
+                            info.appendf("%d", (int) mp->evaluation().keyframe_count);
+                            if (mp->evaluation().gop_size_max - mp->evaluation().gop_size_min > 1)
+                                info.appendf(" (1 every %d-%d frames)", (int) mp->evaluation().gop_size_min, (int) mp->evaluation().gop_size_max);
+                            else
+                                info.appendf(" (1 every %d frames)", (int) mp->evaluation().gop_size_max);
+
+                            // tooltip on backward playback and errors
+                            float backward_score = GstToolkit::canPlayBackward(mp->evaluation().has_bframes,
+                                        mp->width(), mp->height(), mp->evaluation().keyframe_count,
+                                        mp->evaluation().gop_size_min, mp->evaluation().gop_size_max);
+                            if (backward_score <= 0.f)
+                                tooltip.appendf(ICON_FA_MINUS_CIRCLE " Cannot play backward");
+                            else if (backward_score < 1.f)
+                                tooltip.appendf(ICON_FA_EXCLAMATION_TRIANGLE " Unstable backward playback");
+                            else
+                                tooltip.appendf(ICON_FA_CHECK " Smooth backward playback");
+                            if (mp->evaluation().discontinuity_count > 0 )
+                                tooltip.appendf(", %d discontinuities", mp->evaluation().discontinuity_count);
+                            if (mp->evaluation().corrupted_count > 0 )
+                                tooltip.appendf(", %d corruptions", mp->evaluation().corrupted_count);
+                        }
+                        else {
+                            info.appendf("%s", mp->evaluation().log.c_str());
+                            tooltip.appendf("%s", mp->evaluation().log.c_str());
+                        }
                     }
                     else {
-                        info.appendf("%s", mp->evaluation().log.c_str());
-                        tooltip.appendf("%s", mp->evaluation().log.c_str());
+                        static const char* animation[] = { ICON_FA_HOURGLASS_START,ICON_FA_HOURGLASS_HALF,ICON_FA_HOURGLASS_END,ICON_FA_HOURGLASS };
+                        info.appendf("  %s", animation[(g_get_monotonic_time() / 300000) % 4]);
+                    }
+                }
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                ImGui::InputText((char *)label.c_str(), (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+                ImGui::PopStyleColor(1);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text( "%s", tooltip.c_str() );
+                    ImGui::EndTooltip();
+                }
+
+                // Selector for Hardware or software decoding, if available
+                if ( Settings::application.render.gpu_decoding ) {
+
+                    // Build string information on decoder name with icon HW/SW
+                    bool hwdec = !mp->softwareDecodingForced();
+                    std::string decoder = mp->decoderName();
+                    if (hwdec) {
+                        if ( decoder.compare("software") != 0)
+                            decoder = ICON_FA_MICROCHIP " Hardware (" + decoder + ")";
+                        else
+                            decoder = ICON_FA_COGS " Software";
+                    }
+                    else
+                        decoder = ICON_FA_COGS " Software only";
+                    // Combo selector shoing the current state and the option to choose
+                    // between auto select and forced software decoding
+                    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                    if (ImGui::BeginCombo("Decoding", decoder.c_str() ) )
+                    {
+                        if (ImGui::Selectable( ICON_FA_MICROCHIP " / " ICON_FA_COGS " Auto select", &hwdec ))
+                            mp->setSoftwareDecodingForced(false);
+                        if (ImGui::IsItemHovered() && !hwdec)
+                            ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
+                        hwdec = mp->softwareDecodingForced();
+                        if (ImGui::Selectable( ICON_FA_COGS " Software only", &hwdec ))
+                            mp->setSoftwareDecodingForced(true);
+                        if (ImGui::IsItemHovered() && !hwdec)
+                            ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
+                        ImGui::EndCombo();
                     }
                 }
                 else {
-                    static const char* animation[] = { ICON_FA_HOURGLASS_START,ICON_FA_HOURGLASS_HALF,ICON_FA_HOURGLASS_END,ICON_FA_HOURGLASS };
-                    info.appendf("  %s", animation[(g_get_monotonic_time() / 300000) % 4]);
+                    // info of software only decoding if disabled
+                    ImGuiToolkit::Icon(ICON_VI_HARDWARE_DECODING_OFF,false);
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("Hardware decoding disabled");
                 }
-            }
-            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-            ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-            ImGui::InputText((char *)label.c_str(), (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
-            ImGui::PopStyleColor(1);
-            if (ImGui::IsItemHovered()) {
-                ImGui::BeginTooltip();
-                ImGui::Text( "%s", tooltip.c_str() );
-                ImGui::EndTooltip();
-            }
-
-            // Selector for Hardware or software decoding, if available
-            if ( Settings::application.render.gpu_decoding ) {
-
-                // Build string information on decoder name with icon HW/SW
-                bool hwdec = !mp->softwareDecodingForced();
-                std::string decoder = mp->decoderName();
-                if (hwdec) {
-                    if ( decoder.compare("software") != 0)
-                        decoder = ICON_FA_MICROCHIP " Hardware (" + decoder + ")";
-                    else
-                        decoder = ICON_FA_COGS " Software";
-                }
-                else
-                    decoder = ICON_FA_COGS " Software only";
-                // Combo selector shoing the current state and the option to choose
-                // between auto select and forced software decoding
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                if (ImGui::BeginCombo("Decoding", decoder.c_str() ) )
-                {
-                    if (ImGui::Selectable( ICON_FA_MICROCHIP " / " ICON_FA_COGS " Auto select", &hwdec ))
-                        mp->setSoftwareDecodingForced(false);
-                    if (ImGui::IsItemHovered() && !hwdec)
-                        ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
-                    hwdec = mp->softwareDecodingForced();
-                    if (ImGui::Selectable( ICON_FA_COGS " Software only", &hwdec ))
-                        mp->setSoftwareDecodingForced(true);
-                    if (ImGui::IsItemHovered() && !hwdec)
-                        ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
-                    ImGui::EndCombo();
-                }
-            }
-            else {
-                // info of software only decoding if disabled
-                ImGuiToolkit::Icon(ICON_VI_HARDWARE_DECODING_OFF,false);
-                ImGui::SameLine();
-                ImGui::TextDisabled("Hardware decoding disabled");
             }
 
             // Audio panel
@@ -926,7 +938,7 @@ void ImGuiVisitor::visit (MediaSource& s)
         // replace current source with one created with a flag forcing software decoding
         bool try_software = false;
         if (SystemToolkit::file_exists(s.path())) {
-            try_software = Settings::application.render.gpu_decoding && !s.mediaplayer()->softwareDecodingForced();
+            try_software = Settings::application.render.gpu_decoding && !s.mediaplayer()->softwareDecodingForced() && s.hasImage();
         }
 
         // offer to reload the source
@@ -1687,6 +1699,9 @@ void list_textures_(ImageFilter &f, std::ostringstream &oss)
             SourceList::iterator iter;
             for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter)
             {
+                // only sources with image can be used as texture
+                if ( !(*iter)->hasImage() )
+                    continue;
                 label = std::string((*iter)->initials()) + " - " + (*iter)->name();
                 if (ImGui::Selectable( label.c_str())) {
                     f.setProgramTexture(tex->first, (*iter)->id() );

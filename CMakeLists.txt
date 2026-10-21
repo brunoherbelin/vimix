@@ -80,7 +80,7 @@ include(MacroFindGStreamerLibrary)
 set(BUILD_STATIC_LIBS ON)
 set(CMAKE_INCLUDE_CURRENTDIR ON)
 
-# NCNN and ONNX Runtime are optional 
+# NCNN and ONNX Runtime are optional
 option(USE_NCNN "Enable NCNN with Vulkan GPU backend" ON)
 option(USE_ONNX "Enable ONNX Runtime backend" ON)
 
@@ -121,10 +121,10 @@ if(UNIX)
         set(APPLE_CODESIGN_STORED_CREDENTIAL "vimix" CACHE STRING "")
 
         # find icu4c in OSX (pretty well hidden...)
-        if (CMAKE_OSX_ARCHITECTURES STREQUAL "arm64" OR 
+        if (CMAKE_OSX_ARCHITECTURES STREQUAL "arm64" OR
             (NOT CMAKE_OSX_ARCHITECTURES AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64"))
             set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/opt/homebrew/opt/icu4c/lib/pkgconfig")
-        elseif (CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64" OR 
+        elseif (CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64" OR
                 (NOT CMAKE_OSX_ARCHITECTURES AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"))
             set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/opt/icu4c/lib/pkgconfig")
         endif()
@@ -154,7 +154,7 @@ if(UNIX)
             add_definitions(-DHAVE_X11TABLETINPUT)
             macro_log_feature(X11_Xi_FOUND "XInput2" "X11 Input extension for tablet support" "https://www.x.org/wiki/" FALSE)
         else()
-       
+
             # alternatively libinput and libudev for tablet pressure support
             if (PKG_CONFIG_FOUND)
                 pkg_check_modules(LIBINPUT libinput>=1.19)
@@ -454,7 +454,7 @@ endif(UNIX)
 
 # ONNX backend for Accelerated machine learning inference by Microsoft.
 # Used by RIFE frame interpolator as CPU fallback.
-# Search for system-installed package 
+# Search for system-installed package
 if(USE_ONNX)
   set(ORT_ROOT "" CACHE PATH "Extra prefix to search for ONNX Runtime")
 
@@ -474,7 +474,7 @@ if(USE_ONNX)
       set(USE_ONNX OFF)
     endif()
   endif()
-    
+
   macro_log_feature(USE_ONNX "ONNX" "Backend for Accelerated machine learning inference" "https://onnxruntime.ai/" FALSE)
 
 endif()
@@ -571,7 +571,7 @@ message(STATUS "Compiling 'OSCPack' from http://www.rossbencina.com/code/oscpack
 #
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/miniz/CMakeLists.txt")
     set(MINIZ_LIBRARIES miniz)
-    # temporarily disable warning of CMake version 
+    # temporarily disable warning of CMake version
     set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
     # BUILD_EXAMPLES/BUILD_TESTS/INSTALL_PROJECT default to OFF when miniz detects
     # it is included as a subdirectory (MINIZ_STANDALONE_PROJECT = OFF).
@@ -589,10 +589,10 @@ endif()
 macro_display_feature_log()
 
 #
-# NCNN Vulkan GPU backend. 
-# Neural network inference framework, developed by Tencent, that utilizes 
+# NCNN Vulkan GPU backend.
+# Neural network inference framework, developed by Tencent, that utilizes
 # the Vulkan API for hardware-accelerated GPU computing.
-# Used by RIFE frame interpolator and Real-ESRGAN upscaler. 
+# Used by RIFE frame interpolator and Real-ESRGAN upscaler.
 # The script setup-ext.sh runs automatically on first configure.
 #
 if(USE_NCNN)
@@ -604,7 +604,7 @@ endif()
 
 if(USE_NCNN)
   set(RIFE_NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/rife-ncnn-vulkan/src)
-  set(RIFE_NCNN_INCLUDE_DIRS ${RIFE_NCNN_DIR} ${CMAKE_CURRENT_BINARY_DIR}) 
+  set(RIFE_NCNN_INCLUDE_DIRS ${RIFE_NCNN_DIR} ${CMAKE_CURRENT_BINARY_DIR})
   set(ESRGAN_NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/realesrgan-ncnn-vulkan/src)
   set(ESRGAN_NCNN_INCLUDE_DIRS ${ESRGAN_NCNN_DIR} ${CMAKE_CURRENT_BINARY_DIR})
   set(NCNN_DIR ${CMAKE_SOURCE_DIR}/ext/ncnn)
@@ -924,6 +924,7 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/square_point.ply
     ./rsc/mesh/triangle_point.ply
     ./rsc/mesh/icon_video.ply
+    ./rsc/mesh/icon_music.ply
     ./rsc/mesh/icon_image.ply
     ./rsc/mesh/icon_render.ply
     ./rsc/mesh/icon_pattern.ply

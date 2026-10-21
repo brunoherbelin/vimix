@@ -215,7 +215,7 @@ static void scanSessionNode(XMLElement *sessionNode,
                     list.push_back(path);
             }
         }
-        else if (type == "MediaSource") {
+        else if (type == "MediaSource" || type == "AudioSource") {
             XMLElement *uriNode = sourceNode->FirstChildElement("uri");
             if (uriNode) {
                 const char *text = uriNode->GetText();

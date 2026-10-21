@@ -31,6 +31,7 @@
 #include "Scene/Scene.h"
 #include "MediaPlayer.h"
 #include "Source/MediaSource.h"
+#include "Source/AudioSource.h"
 #include "Source/CloneSource.h"
 #include "Source/DraftSource.h"
 #include "Source/RenderSource.h"
@@ -46,6 +47,7 @@
 #include "Session.h"
 #include "Toolkit/BaseToolkit.h"
 #include "Toolkit/SystemToolkit.h"
+#include "Toolkit/GstToolkit.h"
 
 #include "InfoVisitor.h"
 
@@ -135,6 +137,45 @@ void InfoVisitor::visit (MediaSource& s)
 
     s.mediaplayer()->accept(*this);
 
+}
+
+void InfoVisitor::visit (AudioSource& s)
+{
+    // NB: visited after MediaSource, which filled-in the information of the
+    // media player but did not remember it (no evaluation of audio players)
+    MediaPlayer *mp = s.mediaplayer();
+    if (current_id_ == mp->id())
+        return;
+
+    // audio file: no resolution
+
+    std::ostringstream oss;
+    if (mp->failed()) {
+        oss << mp->filename() << std::endl << std::endl << mp->log();
+    }
+    else {
+        const GstClockTime d = mp->timeline()->duration();
+        if (brief_) {
+            oss << SystemToolkit::filename(mp->filename()) << std::endl;
+            oss << mp->media().codec_name.substr(0, mp->media().codec_name.find_first_of("(,"));
+            if (GST_CLOCK_TIME_IS_VALID(d) && d > 0)
+                oss << ", " << GstToolkit::time_to_string(d, GstToolkit::TIME_STRING_READABLE);
+        }
+        else {
+            oss << mp->filename() << std::endl;
+            oss << mp->media().codec_name << std::endl;
+            if (GST_CLOCK_TIME_IS_VALID(d) && d > 0)
+                oss << "Duration " << GstToolkit::time_to_string(d, GstToolkit::TIME_STRING_READABLE);
+            if (mp->media().bitrate > 0)
+                oss << ", " << mp->media().bitrate / 1000 << " kbps";
+        }
+    }
+
+    information_ = oss.str();
+
+    // remember
+    if ( mp->isOpen() )
+        current_id_ = mp->id();
 }
 
 void InfoVisitor::visit (SessionFileSource& s)

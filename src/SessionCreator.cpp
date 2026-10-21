@@ -34,6 +34,7 @@
 #include "Filter/ImageFilter.h"
 #include "Source/MediaSource.h"
 #include "Source/SplitMediaSource.h"
+#include "Source/AudioSource.h"
 #include "Source/SessionSource.h"
 #include "Source/StreamSource.h"
 #include "Source/PatternSource.h"
@@ -410,6 +411,8 @@ Source *SessionLoader::newSource(const std::string &type, uint64_t id)
         load_source = new MediaSource(id);
     else if ( type == "SplitMediaSource")
         load_source = new SplitMediaSource(id);
+    else if ( type == "AudioSource")
+        load_source = new AudioSource(id);
     else if ( type == "SessionSource")
         load_source = new SessionFileSource(id);
     else if ( type == "GroupSource")
@@ -547,7 +550,7 @@ void SessionLoader::load(XMLElement *sessionNode)
                     }
 
                     // found the orign source!
-                    if (origin != session_->end()) {
+                    if (origin != session_->end() && (*origin)->hasImage()) {
                         // create a new source of type Clone
                         CloneSource *clone_source = (*origin)->clone(id_xml_);
 
@@ -676,8 +679,14 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
 
     // for CLONE, find the source with the given id in the session
     SourceList::iterator sit = session_->end();
-    if (mode == CLONE)
+    if (mode == CLONE) {
         sit = session_->find(id__);
+        // sources without image cannot be cloned: create a new one instead
+        if ( sit != session_->end() && !(*sit)->hasImage() ) {
+            sit = session_->end();
+            id__ = 0;
+        }
+    }
 
     // no source with this id exists or Mode DUPLICATE
     if ( sit == session_->end() ) {
@@ -693,6 +702,9 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
             }
             else if ( std::string(pType) == "SplitMediaSource") {
                 load_source = new SplitMediaSource(id__);
+            }
+            else if ( std::string(pType) == "AudioSource") {
+                load_source = new AudioSource(id__);
             }
             else if ( std::string(pType) == "SessionSource") {
                 load_source = new SessionFileSource(id__);
@@ -742,7 +754,7 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
                     else
                         origin = session_->find( std::string ( originNode->GetText() ) );
                     // found the orign source
-                    if (origin != session_->end())
+                    if (origin != session_->end() && (*origin)->hasImage())
                         load_source = (*origin)->clone(id__);
                 }
             }

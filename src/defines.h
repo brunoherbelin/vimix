@@ -42,6 +42,11 @@
         "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.hevc", "*.asf", "*.jpg", "*.jpeg", \
         "*.png", "*.gif", "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg" \
     }
+#define AUDIO_FILES_TYPE "Audio (WAV, MP3, FLAC, AAC, OPUS, AIFF, etc.)"
+#define AUDIO_FILES_PATTERN \
+    { \
+        "*.wav", "*.mp3", "*.flac", "*.aac", "*.m4a", "*.oga", "*.opus", "*.aif", "*.aiff", "*.wma" \
+    }
 #define IMAGES_FILES_TYPE "Image (JPG, PNG, WEBP, BMP, PPM, GIF)"
 #define IMAGES_FILES_PATTERN \
     { \

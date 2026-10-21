@@ -51,6 +51,7 @@
 #include "Mixer.h"
 #include "Source/MediaSource.h"
 #include "SplitMediaPlayer.h"
+#include "AudioPlayer.h"
 #include "Transcoder.h"
 #include "Navigator/NavigatorCodec.h"
 #include "Source/StreamSource.h"
@@ -498,7 +499,8 @@ void SourceControlWindow::Render()
 
             // export the sections between gaps as a sequence of videos
             const bool can_export = !mediaplayer_active_->isImage() &&
-                                    dynamic_cast<SplitMediaPlayer *>(mediaplayer_active_) == nullptr;
+                                    dynamic_cast<SplitMediaPlayer *>(mediaplayer_active_) == nullptr &&
+                                    dynamic_cast<AudioPlayer *>(mediaplayer_active_) == nullptr;
             if (ImGui::MenuItem(ICON_FA_FILE_VIDEO "   Export to video", NULL, false, can_export))
                 mediaplayer_export_sections_ = true;
 
@@ -2598,7 +2600,8 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
             mediaplayer_active_->reopen();
 
-        if ( !mediaplayer_active_->isImage()) {
+        // (no video effect on audio files)
+        if ( !mediaplayer_active_->isImage() && ms->hasImage() ) {
             if (ImGuiToolkit::MenuItemIcon(ICON_VI_SOURCE_GSTREAMER, "Gstreamer effect", nullptr,
                                         !mediaplayer_active_->videoEffect().empty(),
                                         mediaplayer_active_->videoEffectAvailable()) )

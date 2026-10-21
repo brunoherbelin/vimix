@@ -37,6 +37,7 @@ public:
     virtual void visit (class Source&) {}
     virtual void visit (class MediaSource&) {}
     virtual void visit (class SplitMediaSource&) {}
+    virtual void visit (class AudioSource&) {}
     virtual void visit (class StreamSource&) {}
     virtual void visit (class NetworkSource&) {}
     virtual void visit (class SrtReceiverSource&) {}

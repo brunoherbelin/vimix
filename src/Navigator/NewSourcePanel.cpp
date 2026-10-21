@@ -54,6 +54,24 @@
 #include "NavigatorCodec.h"
 #include "NewSourcePanel.h"
 
+// patterns of media files accepted to create a source from file
+// (audio files only if audio is enabled; requires restart to change)
+static std::vector<std::string> mediaFilesPattern()
+{
+    std::vector<std::string> patterns = MEDIA_FILES_PATTERN;
+    if (Settings::application.accept_audio) {
+        std::vector<std::string> audio = AUDIO_FILES_PATTERN;
+        patterns.insert(patterns.end(), audio.begin(), audio.end());
+    }
+    return patterns;
+}
+
+static std::string mediaFilesType()
+{
+    return Settings::application.accept_audio ? "Supported formats (videos, images, audio, sessions)"
+                                              : MEDIA_FILES_TYPE;
+}
+
 NewSourcePanel::NewSourcePanel() : new_media_mode(MEDIA_RECENT), new_media_mode_changed(true),
     pattern_type(-1), generated_type(-1), custom_type(-1)
 {
@@ -174,18 +192,28 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
         if (Settings::application.source.new_type == SOURCE_FILE) {
 
             static DialogToolkit::OpenFileDialog fileimportdialog("Open Media",
-                                                                   MEDIA_FILES_TYPE,
-                                                                   MEDIA_FILES_PATTERN );
+                                                                   mediaFilesType(),
+                                                                   mediaFilesPattern() );
             static DialogToolkit::OpenFolderDialog folderimportdialog("Select Folder");
 
-            ImGui::Text("Video, image & session files");
+            ImGui::Text(Settings::application.accept_audio ? "Video, image, audio & session files"
+                                                           : "Video, image & session files");
 
             // clic button to load file
             if ( ImGui::Button( ICON_FA_FOLDER_OPEN " Open", ImVec2(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 0)) )
                 fileimportdialog.open();
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Create a source from a file:\n"
+            if (Settings::application.accept_audio)
+                ImGuiToolkit::HelpToolTip("Create a source from a file:\n"
+                                                 ICON_FA_CARET_RIGHT " Video (*.mpg, *mov, *.avi, etc.)\n"
+                                                 ICON_FA_CARET_RIGHT " Image (*.jpg, *.png, etc.)\n"
+                                                 ICON_FA_CARET_RIGHT " Vector graphics (*.svg)\n"
+                                                 ICON_FA_CARET_RIGHT " Audio (*.wav, *.mp3, *.flac, etc.)\n"
+                                                 ICON_FA_CARET_RIGHT " Vimix session (*.mix)\n"
+                                                 "\nNB: Equivalent to dropping the file in the workspace");
+            else
+                ImGuiToolkit::HelpToolTip("Create a source from a file:\n"
                                                  ICON_FA_CARET_RIGHT " Video (*.mpg, *mov, *.avi, etc.)\n"
                                                  ICON_FA_CARET_RIGHT " Image (*.jpg, *.png, etc.)\n"
                                                  ICON_FA_CARET_RIGHT " Vector graphics (*.svg)\n"
@@ -277,7 +305,9 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                 // MODE LIST FOLDER
                 else if ( new_media_mode == MEDIA_FOLDER) {
                     // show list of media files in folder
-                    sourceMediaFiles = SystemToolkit::list_directory( Settings::application.recentImportFolders.path, { MEDIA_FILES_PATTERN },
+                    static const std::vector<std::string> patterns = mediaFilesPattern();
+                    sourceMediaFiles = SystemToolkit::list_directory( Settings::application.recentImportFolders.path,
+                                                                      std::list<std::string>(patterns.begin(), patterns.end()),
                                                                       (SystemToolkit::Ordering) Settings::application.recentImportFolders.ordering);
                 }
                 // indicate the list changed (do not change at every frame)
