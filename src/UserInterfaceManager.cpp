@@ -2234,6 +2234,9 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
 
             const float sliderwidth = 3.f * ImGui::GetTextLineHeightWithSpacing();
 
+            // small upper margin
+            ImGui::Spacing();
+
             if (s) {
 
                 // get info on source
@@ -2243,6 +2246,8 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                 //
                 // VIEWSPACE
                 //
+                ImGui::BeginGroup();
+                ImGui::Spacing();                // Minor additional margin to better align vertically
                 static std::vector< std::pair<int,int> > ws_icon = { {ICON_VI_VIEWSPACE_1},
                                                                     {ICON_VI_VIEWSPACE_2},
                                                                     {ICON_VI_VIEWSPACE_3},
@@ -2259,6 +2264,7 @@ void UserInterface::RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode
                     if ( singleviewspace )
                         Mixer::manager().showViewSpace((uint) ws_index, true, true);
                 }
+                ImGui::EndGroup();
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 ImGui::Text("|");
                 ImGui::SameLine(0, IMGUI_SAME_LINE);

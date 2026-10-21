@@ -124,6 +124,7 @@ public:
     bool viewSpaceOnlyShown (uint v) const;
     uint firstShownViewSpace ();
     void setViewSpace (Source *s, uint v);
+    void setViewSpace (SourceList selection, uint v);
 
     // manipulate, load and save sessions
     inline Session * session () const { return session_; }

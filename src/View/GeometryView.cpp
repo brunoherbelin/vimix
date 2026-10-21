@@ -775,6 +775,20 @@ void GeometryView::draw()
             Action::manager().store(std::string("Mirror selected " ICON_FA_OBJECT_UNGROUP));
         }
 
+        // Viewspace assignment of selection
+        ImGui::Separator();
+        if (ImGuiToolkit::BeginMenuIcon( ICON_VI_VIEWSPACE_ALL, "Workspace" )) {
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_VIEWSPACE_1, "1"))
+                Mixer::manager().setViewSpace(Mixer::selection().getCopy(), 0);
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_VIEWSPACE_2, "2"))
+                Mixer::manager().setViewSpace(Mixer::selection().getCopy(), 1);
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_VIEWSPACE_3, "3"))
+                Mixer::manager().setViewSpace(Mixer::selection().getCopy(), 2);
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_VIEWSPACE_4, "4"))
+                Mixer::manager().setViewSpace(Mixer::selection().getCopy(), 3);
+            ImGui::EndMenu();
+        }
+
         ImGui::PopStyleColor(2);
         ImGui::EndPopup();
     }

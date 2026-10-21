@@ -1638,6 +1638,17 @@ void Mixer::setViewSpace(Source *s, uint v)
 
 }
 
+void Mixer::setViewSpace(SourceList selection, uint v)
+{
+    if (selection.empty())
+        return;
+
+    for (auto it = selection.begin(); it != selection.end(); ++it)
+        setViewSpace(*it, v);
+
+    Action::manager().store(std::string("Assign selection to Workspace ") + std::to_string(v + 1));
+}
+
 void Mixer::unsetCurrentSource()
 {
     // discard overlay for previously current source

@@ -29,6 +29,7 @@
 #include <glm/gtx/vector_angle.hpp>
 
 #include "Toolkit/ImGuiToolkit.h"
+#include "IconsVimixImage.h"
 
 #include "Mixer.h"
 #include "defines.h"
@@ -313,6 +314,21 @@ void MixingView::draw()
             }
             Action::manager().store(std::string("Compress & show selected " ICON_FA_BULLSEYE));
         }
+
+        // Viewspace assignment of selection
+        ImGui::Separator();
+        if (ImGuiToolkit::BeginMenuIcon( ICON_VI_VIEWSPACE_ALL, "Workspace" )) {
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_VIEWSPACE_1, "1"))
+                Mixer::manager().setViewSpace(Mixer::selection().getCopy(), 0);
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_VIEWSPACE_2, "2"))
+                Mixer::manager().setViewSpace(Mixer::selection().getCopy(), 1);
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_VIEWSPACE_3, "3"))
+                Mixer::manager().setViewSpace(Mixer::selection().getCopy(), 2);
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_VIEWSPACE_4, "4"))
+                Mixer::manager().setViewSpace(Mixer::selection().getCopy(), 3);
+            ImGui::EndMenu();
+        }
+
         ImGui::PopStyleColor(2);
         ImGui::EndPopup();
     }
@@ -647,7 +663,7 @@ View::Cursor MixingView::over (glm::vec2 pos)
     //
     // mouse over opacity slider
     if ( pick.first == slider_ ) {
-        slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );        
+        slider_->color = glm::vec4( COLOR_CIRCLE_OVER, 0.9f );
         slider_arrows_->visible_ = true;
         ret.type = Cursor_Hand;
     }
@@ -808,7 +824,7 @@ void MixingView::updateSelectionOverlay(glm::vec4 color)
 
     if (overlay_selection_->visible_) {
         // calculate bbox on selection
-        GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(Mixer::selection().getCopy(), 
+        GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(Mixer::selection().getCopy(),
                                                         scene.ws(), View::MIXING);
         overlay_selection_->scale_ = selection_box.scale();
         overlay_selection_->translation_ = selection_box.center();
@@ -886,7 +902,7 @@ MixingGrid::MixingGrid(Group *parent) : Grid(parent, Grid::GRID_POLAR)
     root_->visible_ = false;
     parent_->attach(root_);
 
-    polar_grids_ = new Switch;    
+    polar_grids_ = new Switch;
     polar_grids_->attach(new LineCircleGrid(Grid::polar_units_[UNIT_PRECISE], 50,
                                             Grid::ortho_units_[UNIT_PRECISE], 0.5f));
     polar_grids_->attach(new LineCircleGrid(Grid::polar_units_[UNIT_SMALL], 30,
@@ -930,4 +946,3 @@ Group *MixingGrid::root ()
 //        Mixer::manager().uncover(s);
 //        s->group(mode_)->scale_ = glm::vec3(MIXING_ICON_SCALE);
 //    }
-
