@@ -1015,21 +1015,23 @@ void UserInterface::NewFrame()
         {
             ImGui::Spacing();
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
-            ImGui::Text(" Looks like you started some work ");
-            ImGui::Text(" but didn't save the session. ");
+            ImGui::Text(" Looks like you started some work \n but didn't save the session. ");
+            ImVec2 _button_size = ImGui::CalcTextSize("  Looks like you started some work  ", NULL);
+            _button_size.y=0;
             ImGui::PopFont();
             ImGui::Spacing();
-            if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+
+            if (ImGui::Button(ICON_FA_TIMES "  Cancel", _button_size)) {
                 pending_save_on_exit = false;
                 ImGui::CloseCurrentPopup();
             }
-            if (ImGui::Button(MENU_SAVEAS_FILE, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+            if (ImGui::Button(MENU_SAVEAS_FILE, _button_size)) {
                 pending_save_on_exit = false;
                 saveOrSaveAs();
                 ImGui::CloseCurrentPopup();
             }
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
-            if (ImGui::Button(MENU_QUIT, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))
+            if (ImGui::Button(MENU_QUIT, _button_size)
                      || ImGui::IsKeyPressed(GLFW_KEY_ENTER)  || ImGui::IsKeyPressed(GLFW_KEY_KP_ENTER) ) {
                 Rendering::manager().close();
                 ImGui::CloseCurrentPopup();
@@ -1058,16 +1060,18 @@ void UserInterface::NewFrame()
             ImGui::Text("Delete this file ?\n\n");
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_MONO);
             ImGui::Text("%s", pending_delete_file.c_str());
+            ImVec2 _button_size = ImGui::CalcTextSize(pending_delete_file.c_str(), NULL);
+            _button_size.y=0;
             ImGui::PopFont();
             ImGui::Text("\nThis cannot be undone. ");
             ImGui::Spacing();
-            if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))
+            if (ImGui::Button(ICON_FA_TIMES "  Cancel", _button_size)
                      || ImGui::IsKeyPressed(GLFW_KEY_ESCAPE) ) {
                 pending_delete_file.clear();
                 ImGui::CloseCurrentPopup();
             }
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
-            if (ImGui::Button(MENU_DELETE_FILE, ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+            if (ImGui::Button(MENU_DELETE_FILE, _button_size)) {
                 // close the session if it is the file to delete
                 if (Mixer::manager().liveSession()->filename() == pending_delete_file)
                     Mixer::manager().close();
@@ -1597,7 +1601,7 @@ int UserInterface::RenderViewNavigator(int *shift)
     // - current_view : indices are >= 1 (Mixing) and < 7 (INVALID)
     // - Modulo 6 to allow multiple repetition of shift increment
     // - skipping TRANSITION view 5 that is called only during transition
-    int target_index = ( (Settings::application.current_view -1) + (*shift -1) )%6 + 1;
+    int target_index = ( (Settings::application.current_view ) + (*shift -1) )%6 + 1;
 
     // skip TRANSITION view
     if (target_index == View::TRANSITION)
@@ -1608,75 +1612,81 @@ int UserInterface::RenderViewNavigator(int *shift)
     ImVec2 window_pos = ImVec2(io.DisplaySize.x / 2.f, io.DisplaySize.y / 2.f);
     ImVec2 window_pos_pivot = ImVec2(0.5f, 0.5f);
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-    ImGui::SetNextWindowSize(ImVec2(5.f * 120.f, 120.f + 2.f * ImGui::GetTextLineHeight()), ImGuiCond_Always);
+    ImVec2 iconsize( 3.f * ImGui::GetFrameHeightWithSpacing(), 3.f * ImGui::GetFrameHeightWithSpacing());
+    ImGui::SetNextWindowSize(ImVec2(5.f * iconsize.x + 2.f * ImGui::GetTextLineHeight(), iconsize.y + 2.f * ImGui::GetTextLineHeight()), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.85f);
 
     // show window
-    if (ImGui::Begin("Views", NULL,  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);
+    if (!ImGui::Begin("Views", NULL,  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration
+                                    | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
     {
-        // prepare rendering of the array of selectable icons
-        bool selected_view[View::INVALID] = { };
-        selected_view[ target_index ] = true;
-        ImVec2 iconsize(120.f, 120.f);
-
-        // draw icons centered horizontally and vertically
-        ImVec2 alignment = ImVec2(0.4f, 0.5f);
-        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, alignment);
-
-        // draw in 5 columns
-        ImGui::Columns(5, NULL, false);
-
-        // 4 selectable large icons
-        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
-        if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[1], 0, iconsize))
-        {
-            setView(View::MIXING);
-            *shift = 0;
-        }
-        ImGui::NextColumn();
-        if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
-        {
-            setView(View::GEOMETRY);
-            *shift = 0;
-        }
-        ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon(ICON_VI_LAYERS, "", selected_view[3], iconsize))
-        {
-            setView(View::LAYER);
-            *shift = 0;
-        }
-        ImGui::NextColumn();
-        if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[4], 0, iconsize))
-        {
-            setView(View::TEXTURE);
-            *shift = 0;
-        }
-        // skip TRANSITION view
-        ImGui::NextColumn();
-        if (ImGuiToolkit::SelectableIcon(ICON_VI_VIEW_DISPLAYS, "", selected_view[6], iconsize))
-        {
-            setView(View::DISPLAYS);
-            *shift = 0;
-        }
-        ImGui::PopFont();
-
-        // 5 subtitles (text centered in column)
-        for (int v = View::MIXING; v < View::INVALID; ++v) {
-            // skip TRANSITION and PRESENTATION views
-            if (View::isSwitchingView(v))
-                continue;
-            ImGui::NextColumn();
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize(Settings::application.views[v].name.c_str()).x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
-            ImGuiToolkit::PushFont(Settings::application.current_view == v ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
-            ImGui::Text("%s", Settings::application.views[v].name.c_str());
-            ImGui::PopFont();
-        }
-
-        ImGui::Columns(1);
-        ImGui::PopStyleVar();
-
         ImGui::End();
+        return target_index;
     }
+    ImGui::PopStyleVar();
+
+    // prepare rendering of the array of selectable icons
+    bool selected_view[View::INVALID] = { };
+    selected_view[ target_index ] = true;
+
+    // draw icons centered horizontally and vertically
+    ImVec2 alignment = ImVec2(0.4f, 0.5f);
+    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, alignment);
+
+    // draw in 5 columns
+    ImGui::Columns(5, NULL, false);
+
+    // 4 selectable large icons
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[1], 0, iconsize))
+    {
+        setView(View::MIXING);
+        *shift = 0;
+    }
+    ImGui::NextColumn();
+    if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[2], 0, iconsize))
+    {
+        setView(View::GEOMETRY);
+        *shift = 0;
+    }
+    ImGui::NextColumn();
+    if (ImGuiToolkit::SelectableIcon(ICON_VI_LAYERS, "", selected_view[3], iconsize))
+    {
+        setView(View::LAYER);
+        *shift = 0;
+    }
+    ImGui::NextColumn();
+    if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[4], 0, iconsize))
+    {
+        setView(View::TEXTURE);
+        *shift = 0;
+    }
+    // skip TRANSITION view
+    ImGui::NextColumn();
+    if (ImGuiToolkit::SelectableIcon(ICON_VI_VIEW_DISPLAYS, "", selected_view[6], iconsize))
+    {
+        setView(View::DISPLAYS);
+        *shift = 0;
+    }
+    ImGui::PopFont();
+
+    // 5 subtitles (text centered in column)
+    for (int v = View::MIXING; v < View::INVALID; ++v) {
+        // skip TRANSITION and PRESENTATION views
+        if (View::isSwitchingView(v))
+            continue;
+        ImGui::NextColumn();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - ImGui::CalcTextSize(Settings::application.views[v].name.c_str()).x) * 0.5f - ImGui::GetStyle().ItemSpacing.x);
+        ImGuiToolkit::PushFont(Settings::application.current_view == v ? ImGuiToolkit::FONT_BOLD : ImGuiToolkit::FONT_DEFAULT);
+        ImGui::Text("%s", Settings::application.views[v].name.c_str());
+        ImGui::PopFont();
+    }
+
+    ImGui::Columns(1);
+    ImGui::PopStyleVar();
+
+    ImGui::End();
 
     return target_index;
 }
