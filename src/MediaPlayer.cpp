@@ -332,7 +332,7 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
 }
 
 // Convert a raw buffer PTS to stream time using the active segment, undoing
-// the shift a container's edit list applies to compensate for encoder B-frame reorder delay 
+// the shift a container's edit list applies to compensate for encoder B-frame reorder delay
 // Positions before segment.start are still treated as invalid: those are the
 // buffered priming frames the edit list exists to trim from playback.
 static GstClockTime segment_stream_time(const GstSegment *segment, GstClockTime pts)
@@ -476,7 +476,7 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
     bool cancelled_flag = false;
-    GstClockTime elapsed = 0; 
+    GstClockTime elapsed = 0;
     const GstClockTime chunk = 200 * GST_MSECOND;
     const GstClockTime timeout_ns = (GstClockTime)EVALUATE_TIMEOUT * GST_SECOND;
 
@@ -552,7 +552,7 @@ void MediaPlayer::open (const std::string & filename, const std::string &uri)
         return;
 
     // set path
-    filename_ = BaseToolkit::transliterate( filename );
+    filename_ = filename;
 
     // set uri to open
     if (uri.empty())
@@ -612,11 +612,11 @@ GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer 
         g_error_free(error);
 
         // register failure in source
-        reinterpret_cast<MediaPlayer *>(ptr)->close();  
+        reinterpret_cast<MediaPlayer *>(ptr)->close();
         reinterpret_cast<MediaPlayer *>(ptr)->failed_ = true;
     }
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-    // setup OpenGL contexts for GStreamer elements from global Rendering opengl 
+    // setup OpenGL contexts for GStreamer elements from global Rendering opengl
     else if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_NEED_CONTEXT) {
         const gchar* contextType;
         gst_message_parse_context_type(msg, &contextType);
@@ -728,7 +728,7 @@ void MediaPlayer::execute_open()
     if (use_gl_memory_) {
         glsinkbin = gst_element_factory_make("glsinkbin", "glsink");
         if (!glsinkbin) {
-            // if glsinkbin is not available, fallback to system memory 
+            // if glsinkbin is not available, fallback to system memory
             use_gl_memory_ = false;
             Log::Info("MediaPlayer %s failed to get glsinkbin for %s decoder.", std::to_string(id_).c_str(), decoderName().c_str());
         }
@@ -850,7 +850,7 @@ void MediaPlayer::execute_open()
 
     // all good
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d, %d kbps)", std::to_string(id_).c_str(),
-              SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(), 
+              SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(),
               media_.width, media_.height, media_.bitrate / 1000);
 
     if (!singleFrame())
@@ -1088,7 +1088,7 @@ void MediaPlayer::pipeline_terminate( GstElement *p, GstBus *b )
     if (ret == GST_STATE_CHANGE_ASYNC)
         gst_element_get_state(p, NULL, NULL, 1000000);
 
-    // empty pipeline bus 
+    // empty pipeline bus
     GstMessage *msg = NULL;
     do {
         if (msg)
@@ -1441,7 +1441,7 @@ bool MediaPlayer::go_to(GstClockTime pos)
         if (ABS_DIFF (position_, jumpPts) > 2 * timeline_.step() ) {
             ret = true;
             seek( jumpPts );
-            
+
             // Revert loop status to default
             loop_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
         }
@@ -1542,7 +1542,7 @@ void MediaPlayer::init_texture(guint index)
         if (use_gl_memory_)
             Log::Info("MediaPlayer %s Uses %s decoding and OpenGL GLMemory texturing (zero-copy).", std::to_string(id_).c_str(), decoderName().c_str());
         else
-#endif 
+#endif
         {
             // set pbo image size
             pbo_size_ = media_.height * media_.width * 4;
@@ -1719,12 +1719,12 @@ void MediaPlayer::update()
                           evaluation_.frame_count, evaluation_.keyframe_count,
                           evaluation_.gop_size_min, evaluation_.gop_size_max,
                           evaluation_.has_bframes ? 1 : 0);
-                    // adjust timeline to media frames range 
+                    // adjust timeline to media frames range
                     timeline_.setFirst(evaluation_.pts_first);
                     timeline_.setLast(evaluation_.pts_last);
                 }
-            } 
-             
+            }
+
         }
     }
 
@@ -1805,7 +1805,7 @@ void MediaPlayer::update()
         // manage timeline:
         TimeInterval gap;
         // ensure we remain within the first to last range
-        if (( timeline_.last()  != GST_CLOCK_TIME_NONE && position_ > timeline_.last()) || 
+        if (( timeline_.last()  != GST_CLOCK_TIME_NONE && position_ > timeline_.last()) ||
             ( timeline_.first() != GST_CLOCK_TIME_NONE && position_ < timeline_.first()) ) {
             need_loop = true;
         }
@@ -1828,9 +1828,9 @@ void MediaPlayer::update()
                     need_loop = true;
             }
         }
-        // detect flags if playing 
+        // detect flags if playing
         else if ( isPlaying() ) {
-            // check if position is flagged 
+            // check if position is flagged
             TimeInterval flag = timeline_.getFlagAt(position_);
             // if type of flag requires stop and not already current
             if ( flag.is_valid() && flag.type > 0 ) {
@@ -1842,8 +1842,8 @@ void MediaPlayer::update()
                 // effectively stop playing
                 play(false);
               }
-            } 
-            else 
+            }
+            else
                 current_flag_.reset();
         }
     }
@@ -2117,7 +2117,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status, const GstSegmen
         // Convert raw buffer PTS to stream time using the sample's segment;
         // fall back to the raw PTS if the buffer falls outside the segment
         GstClockTime pts = segment_stream_time(segment, GST_BUFFER_DTS_OR_PTS(buf));
-        if (!GST_CLOCK_TIME_IS_VALID(pts)) 
+        if (!GST_CLOCK_TIME_IS_VALID(pts))
             pts = buf->pts;
 
         // set presentation time stamp
@@ -2330,4 +2330,3 @@ void MediaPlayer::callback_element_setup (GstElement *pipeline, GstElement *elem
 #endif
     }
 }
-

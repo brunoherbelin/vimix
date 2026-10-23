@@ -492,7 +492,7 @@ void SourceControlWindow::Render()
                 if (!mediaplayer_active_->videoEffect().empty() && mediaplayer_active_->videoEffectAvailable())
                     mediaplayer_active_->setVideoEffect("");
                 std::ostringstream oss;
-                oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
+                oss << BaseToolkit::transliterate( SystemToolkit::base_filename( mediaplayer_active_->filename() ) );
                 oss << ": Reset timeline";
                 Action::manager().store(oss.str());
             }
@@ -1417,7 +1417,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                                 if ( ImGuiToolkit::ButtonIcon(ICON_VI_TIMELINE_CUT, text_buf) ) {
                                     if ( mp->timeline()->cut(cutposition, false, true) ) {
                                         std::ostringstream info;
-                                        info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline " <<text_buf;
+                                        info << BaseToolkit::transliterate( SystemToolkit::base_filename( mp->filename() ) ) << ": Timeline " <<text_buf;
                                         Action::manager().store(info.str());
                                     }
                                 }
@@ -1438,7 +1438,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                             if ( ImGuiToolkit::ButtonIcon(ICON_VI_GAP_REMOVE_END, "Remove end gap" )){
                                 if ( mp->timeline()->removeGaptAt(mp->timeline()->end()) ) {
                                     std::ostringstream info;
-                                    info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline Remove end gap";
+                                    info << BaseToolkit::transliterate( SystemToolkit::base_filename( mp->filename() ) ) << ": Timeline Remove end gap";
                                     Action::manager().store(info.str());
                                 }
                             }
@@ -1564,7 +1564,7 @@ void SourceControlWindow::RenderSelectionContextMenu()
     if (ImGui::BeginPopup("source_controller_selection_context_menu"))
     {
         std::ostringstream info;
-        info << SystemToolkit::base_filename( selection_mediaplayer_->filename() );
+        info << BaseToolkit::transliterate( SystemToolkit::base_filename( selection_mediaplayer_->filename() ) );
 
         if ( ImGuiToolkit::MenuItemIcon(ICON_VI_SPEED_ACCELERATE,  ICON_FA_CARET_LEFT " Accelerate", NULL, false, fabs(selection_target_faster_) > 0 )){
             selection_mediaplayer_->setPlaySpeed( selection_target_faster_ );
@@ -2159,7 +2159,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
     // for action manager
     std::ostringstream oss;
-    oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
+    oss << BaseToolkit::transliterate( SystemToolkit::base_filename( mediaplayer_active_->filename() ) );
 
     // for draw
     const float slider_zoom_width = timeline_height_ / 2.f;

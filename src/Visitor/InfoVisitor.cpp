@@ -93,18 +93,18 @@ void InfoVisitor::visit(MediaPlayer &mp)
 
     std::ostringstream oss;
     if (mp.failed()) {
-        oss << mp.filename() << std::endl << std::endl << mp.log();
+        oss << BaseToolkit::transliterate(mp.filename()) << std::endl << std::endl << mp.log();
     }
     else {
         if (brief_) {
-            oss << SystemToolkit::filename(mp.filename()) << std::endl;
+            oss << BaseToolkit::transliterate(SystemToolkit::filename(mp.filename())) << std::endl;
             oss << mp.media().codec_name.substr(0, mp.media().codec_name.find_first_of("(,")) << ", ";
             oss << mp.width() << " x " << mp.height();
             if (!mp.singleFrame() && mp.frameRate() > 0.)
                 oss << ", " << std::fixed << std::setprecision(1) << mp.frameRate() << " fps";
         }
         else {
-            oss << mp.filename() << std::endl;
+            oss << BaseToolkit::transliterate(mp.filename()) << std::endl;
             oss << mp.media().codec_name << std::endl;
             oss << mp.width() << " x " << mp.height() << " px";
             if (!mp.singleFrame() && mp.frameRate() > 0.)
@@ -149,18 +149,18 @@ void InfoVisitor::visit (AudioSource& s)
 
     std::ostringstream oss;
     if (mp->failed()) {
-        oss << mp->filename() << std::endl << std::endl << mp->log();
+        oss << BaseToolkit::transliterate(mp->filename()) << std::endl << std::endl << mp->log();
     }
     else {
         const GstClockTime d = mp->timeline()->duration();
         if (brief_) {
-            oss << SystemToolkit::filename(mp->filename()) << std::endl;
+            oss << BaseToolkit::transliterate(SystemToolkit::filename(mp->filename())) << std::endl;
             oss << mp->media().codec_name.substr(0, mp->media().codec_name.find_first_of("(,"));
             if (GST_CLOCK_TIME_IS_VALID(d) && d > 0)
                 oss << ", " << GstToolkit::time_to_string(d, GstToolkit::TIME_STRING_READABLE);
         }
         else {
-            oss << mp->filename() << std::endl;
+            oss << BaseToolkit::transliterate(mp->filename()) << std::endl;
             oss << mp->media().codec_name << std::endl;
             if (GST_CLOCK_TIME_IS_VALID(d) && d > 0)
                 oss << "Duration " << GstToolkit::time_to_string(d, GstToolkit::TIME_STRING_READABLE);
