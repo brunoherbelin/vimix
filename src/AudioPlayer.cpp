@@ -53,6 +53,15 @@ void AudioPlayer::setupPipeline()
     flags |= GST_PLAY_FLAG_AUDIO | GST_PLAY_FLAG_VIS;
     g_object_set( G_OBJECT (pipeline_), "flags", flags, NULL);
 
+    // setup audio sink
+#ifdef APPLE
+    GstElement *sink = gst_element_factory_make ("osxaudiosink", "osxaudiosink");
+    if (!sink)
+        Log::Warning("AudioPlayer %s Could not configure OSX audio sink", std::to_string(id_).c_str());
+    else
+        g_object_set ( G_OBJECT (pipeline_), "audio-sink", sink, NULL);
+#endif
+
     // set the visualization plugin
     GError *error = NULL;
     GstElement *vis = gst_parse_bin_from_description (AUDIO_VISUALIZATION_PLUGIN
