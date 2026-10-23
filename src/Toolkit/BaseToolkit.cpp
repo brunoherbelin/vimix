@@ -111,7 +111,7 @@ std::string BaseToolkit::transliterate(const std::string &input)
 
     status = U_ZERO_ERROR;
     icu::Transliterator *secondTrans = icu::Transliterator::createInstance(
-                "any-NFKD ; [:Nonspacing Mark:] Remove; [@!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
+                "any-NFKD ; [:Nonspacing Mark:] Remove; [!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
     if (secondTrans != nullptr && U_SUCCESS(status)) {
         secondTrans->transliterate(ucs);
         delete secondTrans;
