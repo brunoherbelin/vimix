@@ -458,12 +458,9 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                 }
                 // sort images and videos
                 else {
-                    static const std::vector<std::string> image_ext = { "jpg", "jpeg", "png", "webp", "bmp",
-                                                                        "ppm", "gif", "tif", "tiff", "svg" };
                     size_t num_others = 0;
                     for (const auto &f : files) {
-                        if (std::any_of(image_ext.begin(), image_ext.end(),
-                                        [&f](const std::string &e) { return SystemToolkit::has_extension(f, e); }))
+                        if (SystemToolkit::is_image_file(f))
                             sourceImageFiles.push_back(f);
                         else if (!SystemToolkit::has_extension(f, VIMIX_FILE_EXT))
                             sourceVideoFiles.push_back(f);

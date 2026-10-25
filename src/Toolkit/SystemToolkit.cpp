@@ -26,6 +26,8 @@
 #include <chrono>
 #include <algorithm>
 #include <vector>
+#include <map>
+#include <tuple>
 
 using namespace std;
 
@@ -165,6 +167,82 @@ bool SystemToolkit::has_extension(const std::string& filename, const std::string
     std::transform (ext.begin(), ext.end(), ext.begin(), ::tolower);
 
     return ext.compare(extension) == 0;
+}
+
+bool SystemToolkit::is_image_file(const std::string& filename)
+{
+    static const std::vector<std::string> image_ext = { "jpg", "jpeg", "png", "webp", "bmp",
+                                                        "ppm", "gif", "tif", "tiff", "svg" };
+    return std::any_of(image_ext.begin(), image_ext.end(),
+                       [&filename](const std::string &e) { return has_extension(filename, e); });
+}
+
+bool SystemToolkit::is_shader_file(const std::string& filename)
+{
+    return has_extension(filename, "glsl");
+}
+
+std::vector< std::list<std::string> > SystemToolkit::group_numbered_files(const std::list<std::string>& files)
+{
+    // key: (dir + stem without number, digit width, lowercase extension)
+    typedef std::tuple<std::string, size_t, std::string> Key;
+    // value: number -> filename (ordered, removes duplicates)
+    std::map< Key, std::map<unsigned long long, std::string> > groups;
+    // first appearance order of groups, to keep a predictable output
+    std::vector<Key> order;
+    // files without number
+    std::vector< std::list<std::string> > singles;
+
+    for (const auto &f : files) {
+        const size_t sep = f.find_last_of("/\\");
+        const size_t dot = f.find_last_of('.');
+        const size_t stem_end = (dot != std::string::npos && (sep == std::string::npos || dot > sep)) ? dot : f.size();
+        const std::string stem = f.substr(0, stem_end);
+        std::string ext = f.substr(stem_end);
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+        // last run of digits in the stem (only in the file name, not in the directory)
+        const size_t name_start = (sep == std::string::npos) ? 0 : sep + 1;
+        size_t last = stem.size();
+        while (last > name_start && !isdigit((unsigned char)stem[last - 1]))
+            --last;
+        size_t first = last;
+        while (first > name_start && isdigit((unsigned char)stem[first - 1]))
+            --first;
+
+        // no number, or number too long to be stored
+        if (first == last || last - first > 18) {
+            singles.push_back( std::list<std::string>(1, f) );
+            continue;
+        }
+
+        // NB: separator keeps the position of the number part of the key
+        Key k( stem.substr(0, first) + "\n" + stem.substr(last), last - first, ext);
+        if (groups.find(k) == groups.end())
+            order.push_back(k);
+        groups[k].emplace( std::stoull(stem.substr(first, last - first)), f );
+    }
+
+    // maximal runs of consecutive numbers in each group
+    std::vector< std::list<std::string> > runs;
+    for (const auto &k : order) {
+        std::list<std::string> run;
+        unsigned long long previous = 0;
+        for (const auto &n : groups[k]) {
+            if (!run.empty() && n.first != previous + 1) {
+                runs.push_back(run);
+                run.clear();
+            }
+            run.push_back(n.second);
+            previous = n.first;
+        }
+        if (!run.empty())
+            runs.push_back(run);
+    }
+
+    // unnumbered files go last
+    runs.insert(runs.end(), singles.begin(), singles.end());
+    return runs;
 }
 
 std::string SystemToolkit::home_path()

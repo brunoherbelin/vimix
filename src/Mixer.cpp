@@ -581,6 +581,25 @@ Source *Mixer::createSourceShader(glm::ivec2 res)
     return s;
 }
 
+Source *Mixer::createSourceShaderFile(const std::string &path, glm::ivec2 res)
+{
+    if (SystemToolkit::get_text_content(path).empty()) {
+        Log::Notify("File '%s' not found or not a text file.", path.c_str());
+        return nullptr;
+    }
+
+    ShaderSource *s = new ShaderSource;
+    s->setResolution(glm::vec3(res.x, res.y, 0.f));
+
+    // the shader code is read from the file
+    s->setProgram( FilteringProgram(SystemToolkit::base_filename(path), "", "", { }, path) );
+
+    // propose a new name
+    s->setName( SystemToolkit::base_filename(path) );
+
+    return s;
+}
+
 Source * Mixer::createSourceGroup()
 {
     SessionGroupSource *s = new SessionGroupSource;
