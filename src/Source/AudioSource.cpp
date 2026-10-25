@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "defines.h"
 #include "Visitor/Visitor.h"
 #include "AudioPlayer.h"
 #include "Resource.h"
@@ -64,6 +65,11 @@ void AudioSource::updateAudio()
 glm::ivec2 AudioSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE_AUDIO);
+}
+
+std::string_view AudioSource::type() const
+{
+    return SOURCE_TYPE_AUDIO;
 }
 
 std::string AudioSource::info() const

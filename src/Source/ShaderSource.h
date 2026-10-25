@@ -27,6 +27,7 @@ public:
     void accept (Visitor& v) override;
     void render() override;
     glm::ivec2 icon() const override;
+    std::string_view type() const override;
     std::string info() const override;
     bool texturePostProcessed() const override { return true; }
 

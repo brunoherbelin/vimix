@@ -131,14 +131,14 @@ void LayerView::draw()
                 ImGui::EndMenu();
             }
 
-            if (s->icon() == glm::ivec2(ICON_VI_SOURCE_GROUP) )
+            if (s->type() == SOURCE_TYPE_GROUP )
             {
                 if (ImGui::Selectable( ICON_FA_TIMES "  Expand bundle " )) {
                     Mixer::manager().import( dynamic_cast<SessionSource*>(s) );
                 }
             }
             else {
-                if ( s->cloned() || s->icon() == glm::ivec2(ICON_VI_SOURCE_CLONE)){
+                if ( s->cloned() || s->type() == SOURCE_TYPE_CLONE){
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6, 0.6, 0.6, 0.9f));
                     ImGuiToolkit::SelectableIcon( ICON_VI_SOURCE_GROUP, " Bundle source", false );
                     ImGui::PopStyleColor();

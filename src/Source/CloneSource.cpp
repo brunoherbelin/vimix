@@ -268,6 +268,11 @@ glm::ivec2 CloneSource::icon() const
     return glm::ivec2(ICON_VI_SOURCE_CLONE);
 }
 
+std::string_view CloneSource::type() const
+{
+    return SOURCE_TYPE_CLONE;
+}
+
 std::string CloneSource::info() const
 {
     return "Clone";

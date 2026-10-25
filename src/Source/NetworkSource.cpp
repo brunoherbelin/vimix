@@ -27,6 +27,7 @@
 #if ((ULONG_MAX) != (UINT_MAX))
 #define _M_X64
 #endif
+#include "defines.h"
 #include "osc/OscOutboundPacketStream.h"
 
 #include "Toolkit/SystemToolkit.h"
@@ -352,6 +353,11 @@ void NetworkSource::accept(Visitor& v)
 glm::ivec2 NetworkSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE_NETWORK);
+}
+
+std::string_view NetworkSource::type() const
+{
+    return SOURCE_TYPE_NETWORK;
 }
 
 std::string NetworkSource::info() const

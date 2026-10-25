@@ -57,7 +57,7 @@ static void patchSessionNode(XMLElement *sessionNode,
         if (!pType) continue;
         const std::string type(pType);
 
-        if (type == "SplitMediaSource") {
+        if (type == SOURCE_TYPE_SPLIT_MEDIA) {
             // <SplitFiles><file relative="...">absolute_path</file>...</SplitFiles>
             XMLElement *listNode = sourceNode->FirstChildElement("SplitFiles");
             for (XMLElement *fileNode = listNode ? listNode->FirstChildElement("file") : nullptr;
@@ -71,7 +71,7 @@ static void patchSessionNode(XMLElement *sessionNode,
                 }
             }
         }
-        else if (type == "MediaSource" || type == "AudioSource") {
+        else if (type == SOURCE_TYPE_MEDIA || type == SOURCE_TYPE_AUDIO) {
             // <uri relative="...">absolute_path</uri>
             XMLElement *uriNode = sourceNode->FirstChildElement("uri");
             if (uriNode) {
@@ -84,7 +84,7 @@ static void patchSessionNode(XMLElement *sessionNode,
                 }
             }
         }
-        else if (type == "SessionSource") {
+        else if (type == SOURCE_TYPE_SESSION) {
             // <path relative="...">absolute_path</path>
             XMLElement *pathNode = sourceNode->FirstChildElement("path");
             if (pathNode) {
@@ -97,13 +97,13 @@ static void patchSessionNode(XMLElement *sessionNode,
                 }
             }
         }
-        else if (type == "GroupSource") {
+        else if (type == SOURCE_TYPE_GROUP) {
             // Inline session: recurse into its <Session> node
             XMLElement *innerSession = sourceNode->FirstChildElement("Session");
             if (innerSession)
                 patchSessionNode(innerSession, dest, files_set, dirs_set);
         }
-        else if (type == "MultiFileSource") {
+        else if (type == SOURCE_TYPE_MULTI_FILE) {
             // <Sequence min=... max=... codec=... relative="...">printf_pattern</Sequence>
             // The individual frame files are identified via their parent directory (dirs_set).
             XMLElement *seqNode = sourceNode->FirstChildElement("Sequence");
@@ -121,7 +121,7 @@ static void patchSessionNode(XMLElement *sessionNode,
                 }
             }
         }
-        else if (type == "CloneSource" || type == "ShaderSource") {
+        else if (type == SOURCE_TYPE_CLONE || type == SOURCE_TYPE_SHADER) {
             // <Filter filename="absolute_path" ...> — external .glsl shader file
             XMLElement *filterNode = sourceNode->FirstChildElement("Filter");
             if (filterNode) {

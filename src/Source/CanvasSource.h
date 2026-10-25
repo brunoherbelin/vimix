@@ -26,6 +26,7 @@ public:
     bool playable () const  override { return false; }
     Failure failed () const override;
     uint texture() const override;
+    std::string_view type() const override;
 
     glm::vec3 resolution() const;
     float aspectRatio() const ;
@@ -71,6 +72,7 @@ public:
     glm::vec3 resolution() const;
 
     glm::ivec2 icon() const override;
+    std::string_view type() const override;
     std::string info() const override;
 
 protected:

@@ -127,6 +127,27 @@
 #define SESSION_THUMBNAIL_HEIGHT 120.f
 #define RECORD_MAX_TIMEOUT 1200000
 
+#define SOURCE_TYPE_MEDIA "MediaSource"
+#define SOURCE_TYPE_SPLIT_MEDIA "SplitMediaSource"
+#define SOURCE_TYPE_AUDIO "AudioSource"
+#define SOURCE_TYPE_SESSION "SessionSource"
+#define SOURCE_TYPE_GROUP "GroupSource"
+#define SOURCE_TYPE_RENDER "RenderSource"
+#define SOURCE_TYPE_CLONE "CloneSource"
+#define SOURCE_TYPE_PATTERN "PatternSource"
+#define SOURCE_TYPE_TEXT "TextSource"
+#define SOURCE_TYPE_SHADER "ShaderSource"
+#define SOURCE_TYPE_DEVICE "DeviceSource"
+#define SOURCE_TYPE_SCREEN_CAPTURE "ScreenCaptureSource"
+#define SOURCE_TYPE_NETWORK "NetworkSource"
+#define SOURCE_TYPE_MULTI_FILE "MultiFileSource"
+#define SOURCE_TYPE_GENERIC_STREAM "GenericStreamSource"
+#define SOURCE_TYPE_SRT_RECEIVER "SrtReceiverSource"
+#define SOURCE_TYPE_CANVAS "CanvasSource"
+#define SOURCE_TYPE_CANVAS_SURFACE "CanvasSurface"
+#define SOURCE_TYPE_DRAFT "DraftSource"
+#define SOURCE_TYPE_THUMBNAIL "SessionThumbnailSource"
+
 #define IMGUI_TITLE_LOGS ICON_FA_LIST_UL "  Logs"
 #define IMGUI_LABEL_RECENT_FILES " Recent files"
 #define IMGUI_LABEL_RECENT_RECORDS " Recent recordings"

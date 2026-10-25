@@ -434,6 +434,11 @@ glm::ivec2 SessionFileSource::icon() const
     return glm::ivec2(ICON_VI_SOURCE_SESSION);
 }
 
+std::string_view SessionFileSource::type() const
+{
+    return SOURCE_TYPE_SESSION;
+}
+
 std::string SessionFileSource::info() const
 {
     return "Child Session";
@@ -659,6 +664,11 @@ void SessionGroupSource::accept(Visitor& v)
 glm::ivec2 SessionGroupSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE_GROUP);
+}
+
+std::string_view SessionGroupSource::type() const
+{
+    return SOURCE_TYPE_GROUP;
 }
 
 std::string SessionGroupSource::info() const

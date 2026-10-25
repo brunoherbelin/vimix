@@ -262,6 +262,11 @@ glm::ivec2 RenderSource::icon() const
     return glm::ivec2(ICON_VI_SOURCE_RENDER);
 }
 
+std::string_view RenderSource::type() const
+{
+    return SOURCE_TYPE_RENDER;
+}
+
 std::string RenderSource::info() const
 {
     return "Display loopback";

@@ -20,6 +20,7 @@
 #include <sstream>
 #include <algorithm>
 
+#include "defines.h"
 #include "Scene/Decorations.h"
 #include "Stream.h"
 #include "Visitor/Visitor.h"
@@ -279,6 +280,11 @@ MultiFile *MultiFileSource::multifile () const
 glm::ivec2 MultiFileSource::icon () const
 {
     return glm::ivec2(ICON_VI_SOURCE_SEQUENCE);
+}
+
+std::string_view MultiFileSource::type() const
+{
+    return SOURCE_TYPE_MULTI_FILE;
 }
 
 std::string MultiFileSource::info() const

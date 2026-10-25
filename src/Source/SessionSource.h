@@ -49,6 +49,7 @@ public:
     inline std::string path() const { return path_; }
 
     glm::ivec2 icon() const override;
+    std::string_view type() const override;
     std::string info() const override;
 
 protected:
@@ -87,6 +88,7 @@ public:
     bool fitToContent();
 
     glm::ivec2 icon() const override;
+    std::string_view type() const override;
     std::string info() const override;
 
 protected:

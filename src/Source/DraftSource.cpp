@@ -19,6 +19,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "defines.h"
 #include "Resource.h"
 #include "ImageShader.h"
 #include "FrameBuffer.h"
@@ -185,6 +186,11 @@ void DraftSource::accept(Visitor& v)
 glm::ivec2 DraftSource::icon() const
 {
     return origin_ ? origin_->icon() : glm::ivec2(ICON_VI_SOURCE_CLONE);
+}
+
+std::string_view DraftSource::type() const
+{
+    return SOURCE_TYPE_DRAFT;
 }
 
 std::string DraftSource::info() const

@@ -35,7 +35,6 @@ using namespace tinyxml2;
 #include "Source/RenderSource.h"
 #include "Source/MediaSource.h"
 #include "Source/SplitMediaSource.h"
-#include "Source/AudioSource.h"
 #include "Session.h"
 #include "Source/SessionSource.h"
 #include "Source/PatternSource.h"
@@ -634,6 +633,7 @@ void SessionVisitor::visit (Source& s)
     sourceNode->SetAttribute("viewspace", s.viewSpace() );
     sourceNode->SetAttribute("play", s.playing() );
     sourceNode->SetAttribute("replay_on_deactivate", s.replayOnDeactivate());
+    sourceNode->SetAttribute("type", std::string(s.type()).c_str() );
 
     // insert into hierarchy
     xmlCurrent_->InsertEndChild(sourceNode);
@@ -698,8 +698,6 @@ void SessionVisitor::visit (Source& s)
 
 void SessionVisitor::visit (MediaSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "MediaSource");
-
     XMLElement *uri = xmlDoc_->NewElement("uri");
     xmlCurrent_->InsertEndChild(uri);
     XMLText *text = xmlDoc_->NewText( s.path().c_str() );
@@ -714,8 +712,6 @@ void SessionVisitor::visit (MediaSource& s)
 
 void SessionVisitor::visit (SplitMediaSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "SplitMediaSource");
-
     XMLElement *list = xmlDoc_->NewElement("SplitFiles");
     xmlCurrent_->InsertEndChild(list);
     for (const std::string &f : s.files()) {
@@ -727,15 +723,8 @@ void SessionVisitor::visit (SplitMediaSource& s)
     }
 }
 
-void SessionVisitor::visit (AudioSource&)
-{
-    // uri and timeline saved as a MediaSource
-    xmlCurrent_->SetAttribute("type", "AudioSource");
-}
-
 void SessionVisitor::visit (SessionFileSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "SessionSource");
     if (s.session() != nullptr)
         xmlCurrent_->SetAttribute("fading", s.session()->fading());
 
@@ -750,7 +739,6 @@ void SessionVisitor::visit (SessionFileSource& s)
 
 void SessionVisitor::visit (SessionGroupSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "GroupSource");
     xmlCurrent_->SetAttribute("height", (float) s.frame()->height() / s.scale().y );
 
     XMLElement *center = xmlDoc_->NewElement("center");
@@ -780,7 +768,6 @@ void SessionVisitor::visit (SessionGroupSource& s)
 
 void SessionVisitor::visit (RenderSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "RenderSource");
     xmlCurrent_->SetAttribute("provenance", (int) s.renderingProvenance());
     xmlCurrent_->SetAttribute("canvas", (int) s.canvasProvenance());
 }
@@ -903,8 +890,6 @@ void SessionVisitor::visit (ImageFilter& f)
 void SessionVisitor::visit (CloneSource& s)
 {
     XMLElement *cloneNode = xmlCurrent_;
-    cloneNode->SetAttribute("type", "CloneSource");
-
     // origin of clone
     XMLElement *origin = xmlDoc_->NewElement( "origin" );
     XMLText *text = xmlDoc_->NewText( s.origin_name().c_str() );
@@ -929,8 +914,6 @@ void SessionVisitor::visit (StreamSource& s)
 
 void SessionVisitor::visit (PatternSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "PatternSource");
-
     if (s.pattern()) {
         xmlCurrent_->SetAttribute("pattern", s.pattern()->type() );
 
@@ -942,8 +925,6 @@ void SessionVisitor::visit (PatternSource& s)
 
 void SessionVisitor::visit (TextSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "TextSource");
-
     if (s.contents()) {
         XMLElement *contents = xmlDoc_->NewElement("contents");
         // simple text node to store filename of subtitle
@@ -979,8 +960,6 @@ void SessionVisitor::visit (TextSource& s)
 void SessionVisitor::visit (ShaderSource& s)
 {
     XMLElement *_node = xmlCurrent_;
-    _node->SetAttribute("type", "ShaderSource");
-
     XMLElement *resolution = xmlDoc_->NewElement("resolution");
     resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.filter()->resolution()) );
     _node->InsertEndChild(resolution);
@@ -995,13 +974,11 @@ void SessionVisitor::visit (ShaderSource& s)
 
 void SessionVisitor::visit (DeviceSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "DeviceSource");
     xmlCurrent_->SetAttribute("device", s.device().c_str() );
 }
 
 void SessionVisitor::visit (ScreenCaptureSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "ScreenCaptureSource");
     xmlCurrent_->SetAttribute("window", s.window().c_str() );
     // Wayland: token to restore the screen cast without asking the user
     if (!s.restoreToken().empty())
@@ -1010,7 +987,6 @@ void SessionVisitor::visit (ScreenCaptureSource& s)
 
 void SessionVisitor::visit (NetworkSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "NetworkSource");
     xmlCurrent_->SetAttribute("connection", s.connection().c_str() );
 }
 
@@ -1027,8 +1003,6 @@ void SessionVisitor::visit (MixingGroup& g)
 
 void SessionVisitor::visit (MultiFileSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "MultiFileSource");
-
     XMLElement *sequence = xmlDoc_->NewElement("Sequence");
     // play properties
     sequence->SetAttribute("fps", s.framerate());
@@ -1054,8 +1028,6 @@ void SessionVisitor::visit (MultiFileSource& s)
 
 void SessionVisitor::visit (GenericStreamSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "GenericStreamSource");
-
     XMLElement *desc = xmlDoc_->NewElement("Description");
 
     XMLText *text = xmlDoc_->NewText( s.description().c_str() );
@@ -1067,8 +1039,6 @@ void SessionVisitor::visit (GenericStreamSource& s)
 
 void SessionVisitor::visit (SrtReceiverSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "SrtReceiverSource");
-
     XMLElement *ip = xmlDoc_->NewElement("ip");
     XMLText *iptext = xmlDoc_->NewText( s.ip().c_str() );
     ip->InsertEndChild( iptext );
@@ -1083,7 +1053,6 @@ void SessionVisitor::visit (SrtReceiverSource& s)
 
 void SessionVisitor::visit (CanvasSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "CanvasSource");
     xmlCurrent_->SetAttribute("canvas", (uint64_t) s.canvas());
 }
 

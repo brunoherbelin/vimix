@@ -407,35 +407,35 @@ Source *SessionLoader::newSource(const std::string &type, uint64_t id)
 {
     Source *load_source = nullptr;
 
-    if ( type == "MediaSource")
+    if ( type == SOURCE_TYPE_MEDIA)
         load_source = new MediaSource(id);
-    else if ( type == "SplitMediaSource")
+    else if ( type == SOURCE_TYPE_SPLIT_MEDIA)
         load_source = new SplitMediaSource(id);
-    else if ( type == "AudioSource")
+    else if ( type == SOURCE_TYPE_AUDIO)
         load_source = new AudioSource(id);
-    else if ( type == "SessionSource")
+    else if ( type == SOURCE_TYPE_SESSION)
         load_source = new SessionFileSource(id);
-    else if ( type == "GroupSource")
+    else if ( type == SOURCE_TYPE_GROUP)
         load_source = new SessionGroupSource(id);
-    else if ( type == "RenderSource")
+    else if ( type == SOURCE_TYPE_RENDER)
         load_source = new RenderSource(id);
-    else if ( type == "PatternSource")
+    else if ( type == SOURCE_TYPE_PATTERN)
         load_source = new PatternSource(id);
-    else if ( type == "DeviceSource")
+    else if ( type == SOURCE_TYPE_DEVICE)
         load_source = new DeviceSource(id);
-    else if ( type == "ScreenCaptureSource")
+    else if ( type == SOURCE_TYPE_SCREEN_CAPTURE)
         load_source = new ScreenCaptureSource(id);
-    else if ( type == "NetworkSource")
+    else if ( type == SOURCE_TYPE_NETWORK)
         load_source = new NetworkSource(id);
-    else if ( type == "MultiFileSource")
+    else if ( type == SOURCE_TYPE_MULTI_FILE)
         load_source = new MultiFileSource(id);
-    else if ( type == "GenericStreamSource")
+    else if ( type == SOURCE_TYPE_GENERIC_STREAM)
         load_source = new GenericStreamSource(id);
-    else if ( type == "SrtReceiverSource")
+    else if ( type == SOURCE_TYPE_SRT_RECEIVER)
         load_source = new SrtReceiverSource(id);
-    else if ( type == "TextSource")
+    else if ( type == SOURCE_TYPE_TEXT)
         load_source = new TextSource(id);
-    else if ( type == "ShaderSource")
+    else if ( type == SOURCE_TYPE_SHADER)
         load_source = new ShaderSource(id);
     else
         Log::Info("Unknown source type '%s' ignored.", type.c_str());
@@ -489,7 +489,7 @@ void SessionLoader::load(XMLElement *sessionNode)
                 if (!pType)
                     continue;
                 // clones are created after all other sources
-                if ( std::string(pType) == "CloneSource") {
+                if ( std::string(pType) == SOURCE_TYPE_CLONE) {
                     cloneNodesToAdd.push_front(xmlCurrent_);
                     continue;
                 }
@@ -608,7 +608,7 @@ DraftSessionLoader::DraftSessionLoader(Session *draft, Session *live) : SessionL
 Source *DraftSessionLoader::newSource(const std::string &type, uint64_t id)
 {
     // sources computing their content are created
-    if ( type == "ShaderSource" || type == "RenderSource")
+    if ( type == SOURCE_TYPE_SHADER || type == SOURCE_TYPE_RENDER)
         return SessionLoader::newSource(type, id);
 
     // other sources are proxies of the sources of the live session
@@ -697,52 +697,52 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
         // create a new source depending on type
         const char *pType = xmlCurrent_->Attribute("type");
         if (pType) {
-            if ( std::string(pType) == "MediaSource") {
+            if ( std::string(pType) == SOURCE_TYPE_MEDIA) {
                 load_source = new MediaSource(id__);
             }
-            else if ( std::string(pType) == "SplitMediaSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_SPLIT_MEDIA) {
                 load_source = new SplitMediaSource(id__);
             }
-            else if ( std::string(pType) == "AudioSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_AUDIO) {
                 load_source = new AudioSource(id__);
             }
-            else if ( std::string(pType) == "SessionSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_SESSION) {
                 load_source = new SessionFileSource(id__);
             }
-            else if ( std::string(pType) == "GroupSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_GROUP) {
                 load_source = new SessionGroupSource(id__);
             }
-            else if ( std::string(pType) == "RenderSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_RENDER) {
                 load_source = new RenderSource(id__);
             }
-            else if ( std::string(pType) == "PatternSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_PATTERN) {
                 load_source = new PatternSource(id__);
             }
-            else if ( std::string(pType) == "DeviceSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_DEVICE) {
                 load_source = new DeviceSource(id__);
             }
-            else if ( std::string(pType) == "ScreenCaptureSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_SCREEN_CAPTURE) {
                 load_source = new ScreenCaptureSource(id__);
             }
-            else if ( std::string(pType) == "NetworkSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_NETWORK) {
                 load_source = new NetworkSource(id__);
             }
-            else if ( std::string(pType) == "MultiFileSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_MULTI_FILE) {
                 load_source = new MultiFileSource(id__);
             }
-            else if ( std::string(pType) == "GenericStreamSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_GENERIC_STREAM) {
                 load_source = new GenericStreamSource(id__);
             }
-            else if ( std::string(pType) == "SrtReceiverSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_SRT_RECEIVER) {
                 load_source = new SrtReceiverSource(id__);
             }
-            else if ( std::string(pType) == "TextSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_TEXT) {
                 load_source = new TextSource(id__);
             }
-            else if ( std::string(pType) == "ShaderSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_SHADER) {
                 load_source = new ShaderSource(id__);
             }
-            else if ( std::string(pType) == "CloneSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_CLONE) {
                 // clone from given origin
                 XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
                 if (originNode) {

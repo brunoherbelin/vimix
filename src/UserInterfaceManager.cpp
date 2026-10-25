@@ -319,8 +319,8 @@ void UserInterface::handleKeyboard()
             else {
                 bool can_bundle = false;
                 if (Mixer::manager().currentSource() != nullptr){
-                    can_bundle = !(Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_GROUP)) &&
-                    !(Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_CLONE));
+                    can_bundle = !(Mixer::manager().currentSource()->type() == SOURCE_TYPE_GROUP) &&
+                    !(Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->type() == SOURCE_TYPE_CLONE);
                 }
                 if (can_bundle) {
                     Mixer::manager().groupCurrent();
@@ -1296,8 +1296,8 @@ void UserInterface::showMenuBundle()
     bool is_clone = false;
     bool has_current = Mixer::manager().currentSource() != nullptr;
     if (has_current){
-        is_bundle = Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_GROUP);
-        is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_CLONE);
+        is_bundle = Mixer::manager().currentSource()->type() == SOURCE_TYPE_GROUP;
+        is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->type() == SOURCE_TYPE_CLONE;
     }
     // cannot be bundled if no current source, or if current source is a bundle or a clone
     if (has_current && (is_bundle || is_clone) )

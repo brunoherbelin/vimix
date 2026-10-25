@@ -77,6 +77,11 @@ Source::Failure CanvasSurface::failed() const
     return FAIL_NONE;
 }
 
+std::string_view CanvasSurface::type() const
+{
+    return SOURCE_TYPE_CANVAS_SURFACE;
+}
+
 uint CanvasSurface::texture() const
 {
     if (renderbuffer_ != nullptr)
@@ -329,6 +334,11 @@ void CanvasSource::accept(Visitor& v)
 glm::ivec2 CanvasSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE); // TODO NEW ICON SOURCE_CANVAS
+}
+
+std::string_view CanvasSource::type() const
+{
+    return SOURCE_TYPE_CANVAS;
 }
 
 std::string CanvasSource::info() const

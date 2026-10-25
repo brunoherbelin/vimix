@@ -25,6 +25,7 @@
 #include <gst/pbutils/pbutils.h>
 #include <gst/gst.h>
 
+#include "defines.h"
 #include "Log.h"
 #include "Scene/Decorations.h"
 #include "Stream.h"
@@ -633,6 +634,11 @@ Source::Failure DeviceSource::failed() const
 glm::ivec2 DeviceSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE_DEVICE);
+}
+
+std::string_view DeviceSource::type() const
+{
+    return SOURCE_TYPE_DEVICE;
 }
 
 std::string DeviceSource::info() const

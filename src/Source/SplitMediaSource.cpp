@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "defines.h"
 #include "Visitor/Visitor.h"
 #include "SplitMediaPlayer.h"
 #include "IconsVimixImage.h"
@@ -63,6 +64,11 @@ std::list<std::string> SplitMediaSource::files() const
 glm::ivec2 SplitMediaSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE_VIDEOSPLIT);
+}
+
+std::string_view SplitMediaSource::type() const
+{
+    return SOURCE_TYPE_SPLIT_MEDIA;
 }
 
 std::string SplitMediaSource::info() const

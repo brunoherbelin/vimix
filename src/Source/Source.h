@@ -2,6 +2,7 @@
 #define SOURCE_H
 
 #include <string>
+#include <string_view>
 #include <map>
 #include <mutex>
 #include <list>
@@ -304,6 +305,8 @@ public:
 
     // class-dependent icon
     virtual glm::ivec2 icon () const { return glm::ivec2(ICON_VI_SOURCE); }
+    // class-dependent type name (SOURCE_TYPE_* in defines.h)
+    virtual std::string_view type () const = 0;
 
     // class-dependent notification
     virtual std::string info () const { return "Undefined"; }

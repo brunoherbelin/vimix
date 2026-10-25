@@ -3,6 +3,7 @@
 
 #include <future>
 
+#include "defines.h"
 #include "SessionCreator.h"
 #include "Source.h"
 
@@ -23,6 +24,7 @@ public:
     uint texture () const override;
 
     glm::ivec2 icon() const override { return glm::ivec2(ICON_VI_SOURCE_SESSION); }
+    std::string_view type() const override { return SOURCE_TYPE_THUMBNAIL; }
     std::string info() const override { return "Session thumbnail"; }
 
     // SessionThumbnail Source specific interface

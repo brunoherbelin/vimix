@@ -1043,8 +1043,8 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             else if (Mixer::manager().selection().size() > 0){
                 Mixer::manager().setCurrentSource(*Mixer::manager().selection().begin());
                 // Check if the current source can be grouped
-                bool is_bundle = Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_GROUP);
-                bool is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->icon() == glm::ivec2(ICON_VI_SOURCE_CLONE);
+                bool is_bundle = Mixer::manager().currentSource()->type() == SOURCE_TYPE_GROUP;
+                bool is_clone = Mixer::manager().currentSource()->cloned() || Mixer::manager().currentSource()->type() == SOURCE_TYPE_CLONE;
                 can_create_bundle = !is_bundle && !is_clone;
             }
             else

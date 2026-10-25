@@ -19,6 +19,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "defines.h"
 #include "Scene/Decorations.h"
 #include "Stream.h"
 #include "Visitor/Visitor.h"
@@ -181,6 +182,11 @@ Pattern *PatternSource::pattern() const
 glm::ivec2 PatternSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE_PATTERN);
+}
+
+std::string_view PatternSource::type() const
+{
+    return SOURCE_TYPE_PATTERN;
 }
 
 std::string PatternSource::info() const

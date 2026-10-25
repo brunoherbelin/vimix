@@ -22,6 +22,7 @@
 #include <sstream>
 #include <thread>
 
+#include "defines.h"
 #include "Log.h"
 #include "Scene/Decorations.h"
 #include "Stream.h"
@@ -867,6 +868,11 @@ Source::Failure ScreenCaptureSource::failed() const
 glm::ivec2 ScreenCaptureSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE_DEVICE_SCREEN);
+}
+
+std::string_view ScreenCaptureSource::type() const
+{
+    return SOURCE_TYPE_SCREEN_CAPTURE;
 }
 
 std::string ScreenCaptureSource::info() const

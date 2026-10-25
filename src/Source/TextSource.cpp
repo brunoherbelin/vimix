@@ -21,6 +21,7 @@
 #include <gst/pbutils/pbutils.h>
 #include <gst/app/gstappsink.h>
 
+#include "defines.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Scene/Decorations.h"
 #include "Visitor/Visitor.h"
@@ -401,6 +402,11 @@ void TextSource::accept(Visitor& v)
 glm::ivec2 TextSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE_TEXT);
+}
+
+std::string_view TextSource::type() const
+{
+    return SOURCE_TYPE_TEXT;
 }
 
 std::string TextSource::info() const

@@ -23,6 +23,7 @@
 #include <tinyxml2.h>
 #include "Toolkit/tinyxml2Toolkit.h"
 #include "Toolkit/SystemToolkit.h"
+#include "defines.h"
 using namespace tinyxml2;
 
 #include "Playlist.h"
@@ -198,7 +199,7 @@ static void scanSessionNode(XMLElement *sessionNode,
         if (!pType) continue;
         const std::string type(pType);
 
-        if (type == "SplitMediaSource") {
+        if (type == SOURCE_TYPE_SPLIT_MEDIA) {
             XMLElement *listNode = sourceNode->FirstChildElement("SplitFiles");
             for (XMLElement *fileNode = listNode ? listNode->FirstChildElement("file") : nullptr;
                  fileNode != nullptr; fileNode = fileNode->NextSiblingElement("file")) {
@@ -215,7 +216,7 @@ static void scanSessionNode(XMLElement *sessionNode,
                     list.push_back(path);
             }
         }
-        else if (type == "MediaSource" || type == "AudioSource") {
+        else if (type == SOURCE_TYPE_MEDIA || type == SOURCE_TYPE_AUDIO) {
             XMLElement *uriNode = sourceNode->FirstChildElement("uri");
             if (uriNode) {
                 const char *text = uriNode->GetText();
@@ -232,7 +233,7 @@ static void scanSessionNode(XMLElement *sessionNode,
                 }
             }
         }
-        else if (type == "SessionSource") {
+        else if (type == SOURCE_TYPE_SESSION) {
             XMLElement *pathNode = sourceNode->FirstChildElement("path");
             if (pathNode) {
                 const char *text = pathNode->GetText();
@@ -251,12 +252,12 @@ static void scanSessionNode(XMLElement *sessionNode,
                 }
             }
         }
-        else if (type == "GroupSource") {
+        else if (type == SOURCE_TYPE_GROUP) {
             XMLElement *innerSession = sourceNode->FirstChildElement("Session");
             if (innerSession)
                 scanSessionNode(innerSession, sessionFilePath, list, visited);
         }
-        else if (type == "MultiFileSource") {
+        else if (type == SOURCE_TYPE_MULTI_FILE) {
             XMLElement *seqNode = sourceNode->FirstChildElement("Sequence");
             if (seqNode) {
                 const char *text = seqNode->GetText();
@@ -276,7 +277,7 @@ static void scanSessionNode(XMLElement *sessionNode,
                 }
             }
         }
-        else if (type == "CloneSource" || type == "ShaderSource") {
+        else if (type == SOURCE_TYPE_CLONE || type == SOURCE_TYPE_SHADER) {
             // Both source types embed a FilteringProgram whose external shader file
             // is stored as the 'filename' attribute of the <Filter> child element.
             XMLElement *filterNode = sourceNode->FirstChildElement("Filter");

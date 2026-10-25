@@ -23,7 +23,6 @@
 
 #include "IconsFontAwesome5.h"
 #include "defines.h"
-#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Log.h"
 #include "Mixer.h"
@@ -481,14 +480,13 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
             if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
 
                 // prepare panel for new source of same type
-                glm::ivec2 i = s->icon();
-                if ( i == glm::ivec2(ICON_VI_SOURCE_VIDEO) || i == glm::ivec2(ICON_VI_SOURCE_IMAGE)
-                     || i == glm::ivec2(ICON_VI_SOURCE_CLONE) || i == glm::ivec2(ICON_VI_SOURCE_AUDIO) )
+                std::string_view t = s->type();
+                if ( t == SOURCE_TYPE_MEDIA || t == SOURCE_TYPE_AUDIO || t == SOURCE_TYPE_CLONE )
                     Settings::application.source.new_type = Navigator::SOURCE_FILE;
-                else if ( i == glm::ivec2(ICON_VI_SOURCE_SEQUENCE) )
+                else if ( t == SOURCE_TYPE_MULTI_FILE || t == SOURCE_TYPE_SPLIT_MEDIA )
                     Settings::application.source.new_type = Navigator::SOURCE_SEQUENCE;
-                else if ( i == glm::ivec2(ICON_VI_SOURCE_PATTERN) || i == glm::ivec2(ICON_VI_SOURCE_TEXT)
-                          || i == glm::ivec2(ICON_VI_SOURCE_GSTREAMER) || i == glm::ivec2(ICON_VI_SOURCE_SHADER)  )
+                else if ( t == SOURCE_TYPE_PATTERN || t == SOURCE_TYPE_TEXT
+                          || t == SOURCE_TYPE_GENERIC_STREAM || t == SOURCE_TYPE_SHADER )
                     Settings::application.source.new_type = Navigator::SOURCE_GENERATED;
                 else
                     Settings::application.source.new_type = Navigator::SOURCE_CONNECTED;

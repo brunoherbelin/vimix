@@ -497,7 +497,7 @@ void Canvas::load(const std::string &filename)
             const char *pType = sourceCanvasNode->Attribute("type");
             if (!pType) 
                 continue;
-            else if ( std::string(pType) == "CanvasSource") 
+            else if ( std::string(pType) == SOURCE_TYPE_CANVAS) 
                 load_source = new CanvasSource(id_xml_);
             else 
                 continue;
