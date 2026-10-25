@@ -970,7 +970,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             else
                 arguments >> t >> osc::EndMessage;
             target->call( new Resize( x, y, t) );
-        }        
+        }
         /// e.g. '/vimix/current/size ff 1.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_SIZE) == 0) {
             Group transform;
@@ -1557,15 +1557,15 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
     if ( target.compare(OSC_CURRENT) == 0 )
         _s = Mixer::manager().currentSource();
 
-    // ignore if no source 
-    if (!_s) 
+    // ignore if no source
+    if (!_s)
         return;
 
     // MediaSource cast, needed for playback-only attributes (seek, speed)
     MediaSource *_ms = dynamic_cast<MediaSource *>(_s);
 
     // read arguments list of string
-    std::vector<std::string> attributes;    
+    std::vector<std::string> attributes;
     while ( !arguments.Eos()) {
         try {
             // try to get a string
@@ -1578,7 +1578,7 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
         }
     }
 
-    // if no attribute is given, send default list of attributes 
+    // if no attribute is given, send default list of attributes
     if (attributes.size() == 0) {
         attributes.push_back("name");
         attributes.push_back("lock");
@@ -1599,7 +1599,7 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
 
     for (const std::string &attr : attributes) {
 
-        // message always starts with '/vimix/' + target 
+        // message always starts with '/vimix/' + target
         std::string address = std::string(OSC_PREFIX) + target;
 
         if (attr.compare("name") == 0) {
@@ -1808,6 +1808,10 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
         // send name
         snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
         p << osc::BeginMessage( oscaddr ) <<  Mixer::manager().sourceAtIndex(i)->name().c_str() << osc::EndMessage;
+
+        // send id
+        snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_ID, i);
+        p << osc::BeginMessage( oscaddr ) <<  (osc::int64) Mixer::manager().sourceAtIndex(i)->id() << osc::EndMessage;
     }
     // zeros for non listed sources
     for (; i < (int) N ; ++i) {
@@ -1819,9 +1823,13 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
         snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
         p << osc::BeginMessage( oscaddr ) <<  0.f << osc::EndMessage;
 
-        /// name
+        // no name
         snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
         p << osc::BeginMessage( oscaddr ) <<  "" << osc::EndMessage;
+
+        // no id
+        snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_ID, i);
+        p << osc::BeginMessage( oscaddr ) << (osc::int64) 0 << osc::EndMessage;
     }
 
     p << osc::EndBundle;
@@ -1944,7 +1952,7 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
                 Control::manager().input_values[INPUT_NUMPAD_FIRST + _key - GLFW_KEY_KP_0] = action > GLFW_RELEASE ? 1.f : 0.f;
             }
             Control::manager().input_access_.unlock();
-            
+
         }
 
         // keys in non-main window
