@@ -19,7 +19,7 @@
 
 #include "defines.h"
 #include "Visitor/Visitor.h"
-#include "SplitMediaPlayer.h"
+#include "Player/SplitMediaPlayer.h"
 #include "IconsVimixImage.h"
 #include "Scene/Decorations.h"
 

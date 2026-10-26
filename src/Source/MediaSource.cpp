@@ -23,7 +23,7 @@
 #include "defines.h"
 #include "Resource.h"
 #include "Scene/Decorations.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "Visitor/Visitor.h"
 #include "Log.h"
 

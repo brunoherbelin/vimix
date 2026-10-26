@@ -48,7 +48,7 @@
 #include "Session.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Visitor/SessionVisitor.h"
 #include "Source/ShaderSource.h"

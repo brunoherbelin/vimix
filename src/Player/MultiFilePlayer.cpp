@@ -25,7 +25,7 @@
 #include "Toolkit/BaseToolkit.h"
 #include "Toolkit/SystemToolkit.h"
 
-#include "MultiFilePlayer.h"
+#include "Player/MultiFilePlayer.h"
 
 // example test gstreamer pipelines
 //

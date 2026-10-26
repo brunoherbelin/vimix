@@ -33,7 +33,7 @@
 #include "Metronome.h"
 #include "Settings.h"
 
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 
 #ifndef NDEBUG
 #define MEDIA_PLAYER_DEBUG

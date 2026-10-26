@@ -56,7 +56,7 @@
 #include "Source/DraftSource.h"
 #include "Source/ShaderSource.h"
 #include "Source/CanvasSource.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "Source/SourceCallback.h"
 #include "ImageProcessingShader.h"
 #include "ActionManager.h"

@@ -27,7 +27,7 @@
 #include "Filter/ImageFilter.h"
 #include "Filter/DelayFilter.h"
 #include "MediaSource.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "Visitor/Visitor.h"
 #include "Log.h"
 #include "Mixer.h"

@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 
 /**
  * @brief The SplitMediaPlayer class plays an ordered list of video files

@@ -4,7 +4,7 @@
 #include <list>
 #include <string>
 
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 
 /**
  * @brief Description of a sequence of consecutively numbered images,

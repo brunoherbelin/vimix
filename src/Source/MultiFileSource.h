@@ -5,7 +5,7 @@
 #include <list>
 
 #include "MediaSource.h"
-#include "MultiFilePlayer.h"
+#include "Player/MultiFilePlayer.h"
 
 /**
  * @brief The MultiFileSource class is a MediaSource playing

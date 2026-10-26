@@ -28,10 +28,6 @@ set(VMIX_SRCS
     Draft.cpp
     Loopback.cpp
     MainWindow.cpp
-    MediaPlayer.cpp
-    SplitMediaPlayer.cpp
-    MultiFilePlayer.cpp
-    AudioPlayer.cpp
     Metronome.cpp
     Mixer.cpp
     MixingGroup.cpp
@@ -78,6 +74,12 @@ set(VMIX_SRCS
     Scene/Scene.cpp
     Scene/UpdateCallback.cpp
     
+    # Player/ folder
+    Player/MediaPlayer.cpp
+    Player/SplitMediaPlayer.cpp
+    Player/MultiFilePlayer.cpp
+    Player/AudioPlayer.cpp
+
     # Source/ folder
     Source/CloneSource.cpp
     Source/DraftSource.cpp

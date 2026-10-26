@@ -60,7 +60,7 @@
 
 #include "Canvas.h"
 #include "SessionCreator.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
 #include "FrameGrabbing.h"

@@ -10,7 +10,7 @@
 #include "Toolkit/BaseToolkit.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Settings.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 
 #include "MultiFileRecorder.h"
 

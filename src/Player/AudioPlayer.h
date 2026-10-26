@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 
 #define AUDIO_VISUALIZATION_PLUGIN "wavescope"
 #define AUDIO_VISUALIZATION_WIDTH 320

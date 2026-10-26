@@ -28,7 +28,7 @@
 #include "GPUVideoRecorder.h"
 #include "RenderingManager.h"
 #include "Settings.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Audio.h"

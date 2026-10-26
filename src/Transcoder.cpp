@@ -21,7 +21,7 @@
 #include "Log.h"
 #include "Settings.h"
 #include "Upscaler.h"
-#include "SplitMediaPlayer.h"
+#include "Player/SplitMediaPlayer.h"
 #include "IconsFontAwesome5.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Toolkit/BaseToolkit.h"

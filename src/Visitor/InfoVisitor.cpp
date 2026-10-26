@@ -29,7 +29,7 @@
 
 
 #include "Scene/Scene.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "Source/MediaSource.h"
 #include "Source/AudioSource.h"
 #include "Source/CloneSource.h"

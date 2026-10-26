@@ -46,7 +46,7 @@ using namespace tinyxml2;
 #include "Source/TextSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "MixingGroup.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Source/ShaderSource.h"

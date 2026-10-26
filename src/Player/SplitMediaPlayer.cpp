@@ -23,7 +23,7 @@
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/SystemToolkit.h"
 
-#include "SplitMediaPlayer.h"
+#include "Player/SplitMediaPlayer.h"
 
 // example test gstreamer pipelines
 //
