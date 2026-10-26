@@ -142,6 +142,7 @@ static void renderTranscodingPanelImage(int source_width, int source_height, boo
 
 static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
 {
+    const float _width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
     static Transcoder *transcoder = nullptr;
     static guint64 transcode_id = 0;
     bool ret = false;
@@ -152,19 +153,25 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
     if (Draft::manager().active() || (id != transcode_id && transcoder != nullptr)) {
         // if source changed while transcoding;
         //    show a disabled transcoding panel
+        ImGui::BeginChild("header_Transcoding_disabled", ImVec2(_width, ImGui::GetFrameHeightWithSpacing()),
+                        false, ImGuiWindowFlags_NoDecoration);
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.f,0.f,0.f,0.f));
         ImGui::CollapsingHeader("Transcoding", ImGuiTreeNodeFlags_Bullet);
         ImGui::PopStyleColor(3);
+        ImGui::EndChild();
         return ret;
     }
 
     // Transcoding panel
+    ImGui::BeginChild("header_Transcoding_enabled", ImVec2(_width, ImGui::GetFrameHeightWithSpacing()),
+                    false, ImGuiWindowFlags_NoDecoration);
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
     Settings::application.pannel_source[2] = ImGui::CollapsingHeader("Transcoding",
                                                                       Settings::application.pannel_source[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
     ImGui::PopStyleColor();
+    ImGui::EndChild();
 
     if (Settings::application.pannel_source[2]) {
 
@@ -274,6 +281,7 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
 
 static bool renderTranscodingPanelMultifile(guint64 id, MultiFileSource *mfs)
 {
+    const float _width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
     static SequenceTranscoder *transcoder = nullptr;
     static guint64 transcode_id = 0;
     bool ret = false;
@@ -285,19 +293,25 @@ static bool renderTranscodingPanelMultifile(guint64 id, MultiFileSource *mfs)
     if (Draft::manager().active() || (id != transcode_id && transcoder != nullptr)) {
         // if source changed while transcoding;
         //    show a disabled transcoding panel
+        ImGui::BeginChild("header_Transcodingmf_disabled", ImVec2(_width, ImGui::GetFrameHeightWithSpacing()),
+                        false, ImGuiWindowFlags_NoDecoration);
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.f,0.f,0.f,0.f));
         ImGui::CollapsingHeader("Transcoding", ImGuiTreeNodeFlags_Bullet);
         ImGui::PopStyleColor(3);
+        ImGui::EndChild();
         return ret;
     }
 
     // Transcoding panel
+    ImGui::BeginChild("header_Transcodingmf_enabled", ImVec2(_width, ImGui::GetFrameHeightWithSpacing()),
+                    false, ImGuiWindowFlags_NoDecoration);
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
     Settings::application.pannel_source[2] = ImGui::CollapsingHeader("Transcoding",
                                                                       Settings::application.pannel_source[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
     ImGui::PopStyleColor();
+    ImGui::EndChild();
 
     if (Settings::application.pannel_source[2]) {
 
