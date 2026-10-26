@@ -48,17 +48,18 @@
 #include "Toolkit/DialogToolkit.h"
 #include "Toolkit/GstToolkit.h"
 
-#include "Mixer.h"
-#include "Source/MediaSource.h"
-#include "Player/SplitMediaPlayer.h"
-#include "Player/AudioPlayer.h"
-#include "Transcoder.h"
 #include "Navigator/NavigatorCodec.h"
 #include "Source/StreamSource.h"
-#include "Player/MediaPlayer.h"
-#include "ActionManager.h"
+#include "Source/MediaSource.h"
 #include "Source/SourceCallback.h"
+#include "Player/MediaPlayer.h"
+#include "Player/SplitMediaPlayer.h"
+#include "Player/AudioPlayer.h"
+#include "Player/MultiFilePlayer.h"
+#include "ActionManager.h"
 #include "UserInterfaceManager.h"
+#include "Transcoder.h"
+#include "Mixer.h"
 
 #include "SourceControlWindow.h"
 
@@ -499,9 +500,10 @@ void SourceControlWindow::Render()
 
             // export the sections between gaps as a sequence of videos
             const bool can_export = !mediaplayer_active_->isImage() &&
+                                    dynamic_cast<MultiFilePlayer *>(mediaplayer_active_) == nullptr &&
                                     dynamic_cast<SplitMediaPlayer *>(mediaplayer_active_) == nullptr &&
                                     dynamic_cast<AudioPlayer *>(mediaplayer_active_) == nullptr;
-            if (ImGui::MenuItem(ICON_FA_FILE_VIDEO "   Export to video", NULL, false, can_export))
+            if (ImGui::MenuItem(ICON_FA_FILE_VIDEO "   Export sections", NULL, false, can_export))
                 mediaplayer_export_sections_ = true;
 
             if (ImGuiToolkit::BeginMenuIcon(ICON_VI_FADING_CURVE, " Fading curve"))

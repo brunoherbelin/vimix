@@ -90,5 +90,5 @@ std::string_view MultiFileSource::type() const
 
 std::string MultiFileSource::info() const
 {
-    return "Images sequence";
+    return "Image Sequence ( " + std::to_string(sequence().max - sequence().min) + " )";
 }

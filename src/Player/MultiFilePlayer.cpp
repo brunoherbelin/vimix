@@ -26,6 +26,7 @@
 #include "Toolkit/SystemToolkit.h"
 
 #include "Player/MultiFilePlayer.h"
+#include "Player/SplitMediaPlayer.h"
 
 // example test gstreamer pipelines
 //
@@ -184,11 +185,22 @@ void MultiFilePlayer::open(const MultiFileSequence &sequence, uint framerate)
     // set path
     filename_ = sequence_.location;
 
+    // readable name of the sequence: bracket range in place of the numbers
+    char first[4096], last[4096];
+    snprintf(first, sizeof(first), sequence_.location.c_str(), sequence_.min);
+    snprintf(last, sizeof(last), sequence_.location.c_str(), sequence_.max);
+    sequence_name_ = SplitMediaPlayer::FilesPattern( {first, last} );
+
     // set uri
     uri_ = SequenceUri(sequence_, fps_);
 
     // start URI discovering thread:
     startDiscovery();
+}
+
+std::string MultiFilePlayer::filename() const
+{
+    return sequence_name_.empty() ? MediaPlayer::filename() : sequence_name_;
 }
 
 void MultiFilePlayer::startDiscovery()

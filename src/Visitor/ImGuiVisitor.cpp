@@ -828,8 +828,8 @@ void ImGuiVisitor::visit (MediaSource& s)
                 if (mfp) {
 
                     label.appendf("Images");
-                    info.appendf("%d ", mfp->sequence().max - mfp->sequence().min + 1);
-                    info.appendf("(%s)", SystemToolkit::base_filename(mfp->sequence().location).c_str());
+                    info.appendf("%d images ", mfp->sequence().max - mfp->sequence().min + 1);
+                    info.appendf("(.%s)", SystemToolkit::extension_filename(mfp->sequence().location).c_str());
                     tooltip.appendf("%s\n[%d - %d]", mfp->sequence().location.c_str(),
                                     mfp->sequence().min, mfp->sequence().max);
 

@@ -43,6 +43,12 @@ public:
      * */
     void open(const MultiFileSequence &sequence, uint framerate);
     inline MultiFileSequence sequence() const { return sequence_; }
+
+    /**
+     * Name representing all the images,
+     * e.g. 'frames0[02-47].png' for frames002.png to frames047.png
+     * */
+    std::string filename() const override;
     inline uint framerate() const { return fps_; }
 
     /**
@@ -76,6 +82,7 @@ protected:
 
 private:
     MultiFileSequence sequence_;
+    std::string sequence_name_;
     uint fps_;
 };
 
