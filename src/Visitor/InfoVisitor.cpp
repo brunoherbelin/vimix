@@ -41,7 +41,6 @@
 #include "Source/ScreenCaptureSource.h"
 #include "Source/NetworkSource.h"
 #include "Source/SrtReceiverSource.h"
-#include "Source/MultiFileSource.h"
 #include "Source/TextSource.h"
 #include "Source/ShaderSource.h"
 #include "Session.h"
@@ -88,7 +87,7 @@ void InfoVisitor::visit(Primitive &)
 void InfoVisitor::visit(MediaPlayer &mp)
 {
     // do not ask twice
-    if (current_id_ == mp.id())
+    if (known(mp.id()))
         return;
 
     std::ostringstream oss;
@@ -144,7 +143,7 @@ void InfoVisitor::visit (AudioSource& s)
     // NB: visited after MediaSource, which filled-in the information of the
     // media player but did not remember it (no evaluation of audio players)
     MediaPlayer *mp = s.mediaplayer();
-    if (current_id_ == mp->id())
+    if (known(mp->id()))
         return;
 
     std::ostringstream oss;
@@ -178,7 +177,7 @@ void InfoVisitor::visit (AudioSource& s)
 
 void InfoVisitor::visit (SessionFileSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;
@@ -218,7 +217,7 @@ void InfoVisitor::visit (DraftSource& s)
 
 void InfoVisitor::visit (SessionGroupSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;
@@ -252,7 +251,7 @@ void InfoVisitor::visit (SessionGroupSource& s)
 
 void InfoVisitor::visit (RenderSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;
@@ -278,7 +277,7 @@ void InfoVisitor::visit (RenderSource& s)
 
 void InfoVisitor::visit (CloneSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;
@@ -305,7 +304,7 @@ void InfoVisitor::visit (CloneSource& s)
 
 void InfoVisitor::visit (PatternSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;
@@ -334,7 +333,7 @@ void InfoVisitor::visit (PatternSource& s)
 
 void InfoVisitor::visit (DeviceSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;
@@ -368,7 +367,7 @@ void InfoVisitor::visit (DeviceSource& s)
 
 void InfoVisitor::visit (ScreenCaptureSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;
@@ -407,7 +406,7 @@ void InfoVisitor::visit (ScreenCaptureSource& s)
 
 void InfoVisitor::visit (NetworkSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;
@@ -439,41 +438,9 @@ void InfoVisitor::visit (NetworkSource& s)
 }
 
 
-void InfoVisitor::visit (MultiFileSource& s)
-{
-    // NB: visited after MediaSource, which filled-in the information of the
-    // media player but did not remember it
-    MediaPlayer *mp = s.mediaplayer();
-    if (current_id_ == mp->id() || mp->failed())
-        return;
-
-    std::ostringstream oss;
-    const MultiFileSequence sequence = s.sequence();
-
-    if (brief_) {
-        oss << sequence.max - sequence.min + 1 << " images [";
-        oss << sequence.min << " - " << sequence.max << "]" << std::endl;
-        oss << sequence.codec << ", ";
-        oss << sequence.width << " x " << sequence.height;
-    }
-    else {
-        oss << sequence.location << " [";
-        oss << sequence.min << " - " << sequence.max << "]" << std::endl;
-        oss << sequence.max - sequence.min + 1 << " ";
-        oss << sequence.codec << " images" << std::endl;
-        oss << sequence.width << " x " << sequence.height << ", " << s.framerate() << " fps";
-    }
-
-    information_ = oss.str();
-
-    // remember
-    if ( mp->isOpen() )
-        current_id_ = mp->id();
-}
-
 void InfoVisitor::visit (GenericStreamSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;
@@ -507,7 +474,7 @@ void InfoVisitor::visit (GenericStreamSource& s)
 
 void InfoVisitor::visit (SrtReceiverSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;
@@ -548,7 +515,7 @@ void InfoVisitor::visit (SrtReceiverSource& s)
 
 void InfoVisitor::visit (TextSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;
@@ -577,7 +544,7 @@ void InfoVisitor::visit (TextSource& s)
 
 void InfoVisitor::visit (ShaderSource& s)
 {
-    if (current_id_ == s.id())
+    if (known(s.id()))
         return;
 
     std::ostringstream oss;

@@ -16,6 +16,8 @@ public:
     inline void setBriefStringMode () { brief_ = true; current_id_ = 0; }
     inline void setExtendedStringMode () { brief_ = false; current_id_ = 0; }
     inline void reset () { current_id_ = 0; }
+    // true if information_ is already the one of this id; otherwise forget it, as it is about to be replaced
+    inline bool known (uint64_t id) { if (current_id_ == id) return true; current_id_ = 0; return false; }
     inline std::string str () const { return information_; }
 
     // Elements of Scene
@@ -39,7 +41,6 @@ public:
     void visit (DeviceSource& s) override;
     void visit (ScreenCaptureSource& s) override;
     void visit (NetworkSource& s) override;
-    void visit (MultiFileSource& s) override;
     void visit (GenericStreamSource& s) override;
     void visit (SrtReceiverSource& s) override;
     void visit (TextSource& s) override;
