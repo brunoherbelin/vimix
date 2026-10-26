@@ -343,9 +343,10 @@ static bool renderTranscodingPanelMultifile(guint64 id, MultiFileSource *mfs)
                         Source *s = Mixer::manager().createSourceMultifile(transcoder->outputFiles(), src->framerate());
                         MultiFileSource *newmfs = dynamic_cast<MultiFileSource *>(s);
                         if (newmfs != nullptr) {
-                            // same numbering: keep the range and loop of the source
-                            newmfs->setLoop(src->loop());
-                            newmfs->setRange(src->begin(), src->end());
+                            // same numbering: keep the timeline and loop of the source
+                            // (NB: framerate is the same, so timing is the same)
+                            newmfs->mediaplayer()->setLoop(src->mediaplayer()->loop());
+                            newmfs->mediaplayer()->setTimeline(*src->mediaplayer()->timeline());
                             Mixer::manager().replaceSource(src, newmfs);
                         }
                         else
@@ -442,17 +443,15 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
         /// (no transcoding of audio files)
         ///
         if (!s->failed()) {
+            MultiFileSource* mfs = dynamic_cast<MultiFileSource*>(s);
             MediaSource* ms = dynamic_cast<MediaSource*>(s);
-            if (ms != nullptr && ms->hasImage()) {
-                if (renderTranscodingPanel(ms->id(), ms->mediaplayer()))
+            if (mfs != nullptr) {
+                if (renderTranscodingPanelMultifile(mfs->id(), mfs))
                     v.reset();
             }
-            else {
-                MultiFileSource* mfs = dynamic_cast<MultiFileSource*>(s);
-                if (mfs != nullptr) {
-                    if (renderTranscodingPanelMultifile(mfs->id(), mfs))
-                        v.reset();
-                }
+            else if (ms != nullptr && ms->hasImage()) {
+                if (renderTranscodingPanel(ms->id(), ms->mediaplayer()))
+                    v.reset();
             }
         }
 

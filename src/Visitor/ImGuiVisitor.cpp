@@ -70,6 +70,7 @@
 #include "ControlManager.h"
 #include "Canvas.h"
 #include "SplitMediaPlayer.h"
+#include "MultiFilePlayer.h"
 
 #include "imgui.h"
 #include "Toolkit/ImGuiToolkit.h"
@@ -823,7 +824,17 @@ void ImGuiVisitor::visit (MediaSource& s)
                 ImGuiTextBuffer tooltip;
 
                 SplitMediaPlayer *smp = dynamic_cast<SplitMediaPlayer *>(mp);
-                if (smp) {
+                MultiFilePlayer *mfp = dynamic_cast<MultiFilePlayer *>(mp);
+                if (mfp) {
+
+                    label.appendf("Images");
+                    info.appendf("%d ", mfp->sequence().max - mfp->sequence().min + 1);
+                    info.appendf("(%s)", SystemToolkit::base_filename(mfp->sequence().location).c_str());
+                    tooltip.appendf("%s\n[%d - %d]", mfp->sequence().location.c_str(),
+                                    mfp->sequence().min, mfp->sequence().max);
+
+                }
+                else if (smp) {
 
                     label.appendf("Files");
                     info.appendf("%d segments ", (int) smp->files().size());
@@ -879,42 +890,71 @@ void ImGuiVisitor::visit (MediaSource& s)
                     ImGui::EndTooltip();
                 }
 
-                // Selector for Hardware or software decoding, if available
-                if ( Settings::application.render.gpu_decoding ) {
-
-                    // Build string information on decoder name with icon HW/SW
-                    bool hwdec = !mp->softwareDecodingForced();
-                    std::string decoder = mp->decoderName();
-                    if (hwdec) {
-                        if ( decoder.compare("software") != 0)
-                            decoder = ICON_FA_MICROCHIP " Hardware (" + decoder + ")";
-                        else
-                            decoder = ICON_FA_COGS " Software";
+                MultiFileSource *mfs = dynamic_cast<MultiFileSource *>(&s);
+                if (mfs) {
+                    // change framerate of the sequence
+                    static int _fps = -1;
+                    static uint64_t _fps_id = 0;
+                    if (_fps < 0 || _fps_id != s.id()) {
+                        _fps = mfs->framerate();
+                        _fps_id = s.id();
                     }
-                    else
-                        decoder = ICON_FA_COGS " Software only";
-                    // Combo selector shoing the current state and the option to choose
-                    // between auto select and forced software decoding
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                    if (ImGui::BeginCombo("Decoding", decoder.c_str() ) )
-                    {
-                        if (ImGui::Selectable( ICON_FA_MICROCHIP " / " ICON_FA_COGS " Auto select", &hwdec ))
-                            mp->setSoftwareDecodingForced(false);
-                        if (ImGui::IsItemHovered() && !hwdec)
-                            ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
-                        hwdec = mp->softwareDecodingForced();
-                        if (ImGui::Selectable( ICON_FA_COGS " Software only", &hwdec ))
-                            mp->setSoftwareDecodingForced(true);
-                        if (ImGui::IsItemHovered() && !hwdec)
-                            ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
-                        ImGui::EndCombo();
+                    ImGui::SliderInt("##Framerate", &_fps, 1, 30, "%d fps");
+                    if (ImGui::IsItemDeactivatedAfterEdit()){
+                        mfs->setFramerate(_fps);
+                        oss << "Framerate " << _fps << " fps";
+                        Action::manager().store(oss.str());
+                        _fps = -1;
                     }
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    if (ImGuiToolkit::TextButton("Framerate")) {
+                        mfs->setFramerate(25);
+                        oss << "Framerate 25 fps";
+                        Action::manager().store(oss.str());
+                        _fps = -1;
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGuiToolkit::ToolTip("Changing framerate will\nre-open the sequence");
                 }
                 else {
-                    // info of software only decoding if disabled
-                    ImGuiToolkit::Icon(ICON_VI_HARDWARE_DECODING_OFF,false);
-                    ImGui::SameLine();
-                    ImGui::TextDisabled("Hardware decoding disabled");
+                    // Selector for Hardware or software decoding, if available
+                    if ( Settings::application.render.gpu_decoding ) {
+
+                        // Build string information on decoder name with icon HW/SW
+                        bool hwdec = !mp->softwareDecodingForced();
+                        std::string decoder = mp->decoderName();
+                        if (hwdec) {
+                            if ( decoder.compare("software") != 0)
+                                decoder = ICON_FA_MICROCHIP " Hardware (" + decoder + ")";
+                            else
+                                decoder = ICON_FA_COGS " Software";
+                        }
+                        else
+                            decoder = ICON_FA_COGS " Software only";
+                        // Combo selector shoing the current state and the option to choose
+                        // between auto select and forced software decoding
+                        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                        if (ImGui::BeginCombo("Decoding", decoder.c_str() ) )
+                        {
+                            if (ImGui::Selectable( ICON_FA_MICROCHIP " / " ICON_FA_COGS " Auto select", &hwdec ))
+                                mp->setSoftwareDecodingForced(false);
+                            if (ImGui::IsItemHovered() && !hwdec)
+                                ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
+                            hwdec = mp->softwareDecodingForced();
+                            if (ImGui::Selectable( ICON_FA_COGS " Software only", &hwdec ))
+                                mp->setSoftwareDecodingForced(true);
+                            if (ImGui::IsItemHovered() && !hwdec)
+                                ImGuiToolkit::ToolTip( "Changing decoding will\nre-open the media" );
+                            ImGui::EndCombo();
+                        }
+                    }
+                    else {
+                        // info of software only decoding if disabled
+                        ImGuiToolkit::Icon(ICON_VI_HARDWARE_DECODING_OFF,false);
+                        ImGui::SameLine();
+                        ImGui::TextDisabled("Hardware decoding disabled");
+                    }
                 }
             }
 
@@ -933,6 +973,12 @@ void ImGuiVisitor::visit (MediaSource& s)
         info.reset();
 
         ImGui::SetCursorPos(botom);
+
+        // sequence of images cannot be recreated from its path
+        if (dynamic_cast<MultiFileSource *>(&s) != nullptr) {
+            ImGui::SetCursorPos(botom);
+            return;
+        }
 
         // because sometimes the error comes from gpu decoding
         // replace current source with one created with a flag forcing software decoding
@@ -1248,8 +1294,6 @@ void ImGuiVisitor::visit (DraftSource& s)
     else if ( ScreenCaptureSource *src = dynamic_cast<ScreenCaptureSource *>(o) )
         visit(*src);
     else if ( NetworkSource *src = dynamic_cast<NetworkSource *>(o) )
-        visit(*src);
-    else if ( MultiFileSource *src = dynamic_cast<MultiFileSource *>(o) )
         visit(*src);
     else if ( GenericStreamSource *src = dynamic_cast<GenericStreamSource *>(o) )
         visit(*src);
@@ -2122,107 +2166,6 @@ void ImGuiVisitor::visit (NetworkSource& s)
     ImGui::SetCursorPos(botom);
 }
 
-
-void ImGuiVisitor::visit (MultiFileSource& s)
-{
-    if ( !Settings::application.pannel_source[1] )
-        return;
-
-    static uint64_t id = 0;
-
-    ImVec2 top = ImGui::GetCursorPos();
-    top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
-
-    // information text
-    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
-    s.accept(info);
-    ImGui::Text("%s", info.str().c_str());
-    ImGui::PopTextWrapPos();
-    ImGui::Spacing();
-
-    ImVec2 botom = ImGui::GetCursorPos();
-
-    if ( !s.failed() ) {
-        // Filename pattern
-        ImGuiTextBuffer info;
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
-        info.appendf("%s", SystemToolkit::base_filename(s.sequence().location).c_str());
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::InputText("Filenames", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopStyleColor(1);
-
-        // change range
-        static int _begin = -1;
-        if (_begin < 0 || id != s.id())
-            _begin = s.begin();
-        static int _end = -1;
-        if (_end < 0 || id != s.id())
-            _end = s.end();
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::DragIntRange2("##Range", &_begin, &_end, 1, s.sequence().min, s.sequence().max);
-        if (ImGui::IsItemDeactivatedAfterEdit()){
-            s.setRange( _begin, _end );
-            oss << "Range " << _begin << "-" << _end;
-            Action::manager().store(oss.str());
-            _begin = _end = -1;
-        }
-        ImGui::SameLine(0, 0);
-        if (ImGuiToolkit::TextButton("Range")) {
-            s.setRange( s.sequence().min, s.sequence().max );
-            oss << "Range " << s.sequence().min << "-" << s.sequence().max;
-            Action::manager().store(oss.str());
-            _begin = _end = -1;
-        }
-
-        // change framerate
-        static int _fps = -1;
-        if (_fps < 0 || id != s.id())
-            _fps = s.framerate();
-        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::SliderInt("##Framerate", &_fps, 1, 30, "%d fps");
-        if (ImGui::IsItemDeactivatedAfterEdit()){
-            s.setFramerate(_fps);
-            oss << "Framerate " << _fps << " fps";
-            Action::manager().store(oss.str());
-            _fps = -1;
-        }
-        ImGui::SameLine(0, IMGUI_SAME_LINE);
-        if (ImGuiToolkit::TextButton("Framerate")) {
-            s.setFramerate(25);
-            oss << "Framerate 25 fps";
-            Action::manager().store(oss.str());
-            _fps = -1;
-        }
-
-        botom = ImGui::GetCursorPos();
-
-        // icon (>) to open player
-        if ( s.playable() ) {
-            ImGui::SetCursorPos(top);
-            if (s.playing()) {
-                if (ImGuiToolkit::IconButton(ICON_FA_PAUSE_CIRCLE, "Pause") )
-                    s.play(false);
-            } else {
-                if (ImGuiToolkit::IconButton(ICON_FA_PLAY_CIRCLE, "Play") )
-                    s.play(true);
-            }
-            top.x += ImGui::GetFrameHeight();
-        }
-
-    }
-    else
-        info.reset();
-
-    // offer to open file browser at location
-    ImGui::SetCursorPos(top);
-    if (ImGuiToolkit::IconButton(ICON_VI_SHOW_IN_FINDER, "Show in finder"))
-        SystemToolkit::open(SystemToolkit::path_filename( s.sequence().location ));
-
-    ImGui::SetCursorPos(botom);
-
-    if (id != s.id())
-        id = s.id();
-}
 
 void ImGuiVisitor::visit (GenericStreamSource& s)
 {

@@ -1304,7 +1304,7 @@ void MediaPlayer::execute_play_command(bool on)
 
 void MediaPlayer::play(bool on)
 {
-    // ignore if disabled, and cannot play a single frame
+    // cannot play a single frame
     if (singleFrame())
         return;
 

@@ -139,13 +139,6 @@ void CountVisitor::visit (NetworkSource& s)
         ++num_playable_;
 }
 
-void CountVisitor::visit (MultiFileSource& s)
-{
-    ++num_source_;
-    if (s.playable())
-        ++num_playable_;
-}
-
 void CountVisitor::visit (GenericStreamSource& s)
 {
     ++num_source_;

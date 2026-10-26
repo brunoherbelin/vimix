@@ -30,6 +30,7 @@ set(VMIX_SRCS
     MainWindow.cpp
     MediaPlayer.cpp
     SplitMediaPlayer.cpp
+    MultiFilePlayer.cpp
     AudioPlayer.cpp
     Metronome.cpp
     Mixer.cpp

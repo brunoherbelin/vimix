@@ -1272,8 +1272,57 @@ void SessionLoader::visit (MediaSource& s)
             freshload = true;
         }
     }
+    // set sequence of images
+    MultiFileSource *mfs = dynamic_cast<MultiFileSource *>(&s);
+    bool legacy_loop = true;
+    if (mfs) {
+        XMLElement* seq = xmlCurrent_->FirstChildElement("Sequence");
+        const char *text = seq ? seq->GetText() : nullptr;
+        if (text) {
+
+            MultiFileSequence sequence;
+            sequence.location = std::string (text);
+
+            // fix path if absolute path is not found
+            std::string folder = SystemToolkit::path_filename(sequence.location);
+            std::string dir = SystemToolkit::path_directory(folder);
+            if ( dir.empty() ){
+                const char * relative;
+                if ( seq->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
+                    std::string rel = SystemToolkit::path_absolute_from_path(std::string(relative), sessionFilePath_);
+                    Log::Info("Folder %s not found; Trying %s instead.", folder.c_str(), rel.c_str());
+                    sequence.location = rel;
+                }
+            }
+
+            // set sequence parameters
+            seq->QueryIntAttribute("min", &sequence.min);
+            seq->QueryIntAttribute("max", &sequence.max);
+            seq->QueryUnsignedAttribute("width", &sequence.width);
+            seq->QueryUnsignedAttribute("height", &sequence.height);
+            const char *codec = seq->Attribute("codec");
+            if (codec)
+                sequence.codec = std::string(codec);
+
+            uint fps = 0;
+            seq->QueryUnsignedAttribute("fps", &fps);
+
+            // different sequence
+            if ( sequence != mfs->sequence() ) {
+                mfs->setSequence( sequence, fps);
+                freshload = true;
+            }
+            // same sequence, different framerate
+            else if ( fps != mfs->framerate() )
+                mfs->setFramerate( fps );
+
+            // backward compatibility: loop was a property of the sequence
+            // (begin and end are replaced by gaps of the timeline)
+            seq->QueryBoolAttribute("loop", &legacy_loop);
+        }
+    }
     // set uri
-    XMLElement* pathNode = sms ? nullptr : xmlCurrent_->FirstChildElement("uri"); // TODO change to "path" but keep backward compatibility
+    XMLElement* pathNode = (sms || mfs) ? nullptr : xmlCurrent_->FirstChildElement("uri"); // TODO change to "path" but keep backward compatibility
     if (pathNode) {
         const char * text = pathNode->GetText();
         if (text) {
@@ -1307,6 +1356,10 @@ void SessionLoader::visit (MediaSource& s)
 
     // set config media player
     s.mediaplayer()->accept(*this);
+
+    // backward compatibility: sequence that does not loop
+    if (mfs && !legacy_loop && !mediaplayerNode)
+        s.mediaplayer()->setLoop(MediaPlayer::LOOP_NONE);
 
     // read source play speed from media player SessionLoader::visit
     double r = s.mediaplayer()->playSpeed();
@@ -1575,67 +1628,6 @@ void SessionLoader::visit (NetworkSource& s)
         s.setConnection(connect);
 }
 
-
-void SessionLoader::visit (MultiFileSource& s)
-{
-    XMLElement* seq = xmlCurrent_->FirstChildElement("Sequence");
-
-    if (seq) {
-
-        MultiFileSequence sequence;
-
-        const char *text = seq->GetText();
-        if (text) {
-            sequence.location = std::string (text);
-
-            // fix path if absolute path is not found
-            std::string folder = SystemToolkit::path_filename(sequence.location);
-            std::string dir = SystemToolkit::path_directory(folder);
-            if ( dir.empty() ){
-                const char * relative;
-                if ( seq->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
-                    std::string rel = SystemToolkit::path_absolute_from_path(std::string(relative), sessionFilePath_);
-                    Log::Info("Folder %s not found; Trying %s instead.", folder.c_str(), rel.c_str());
-                    sequence.location = rel;
-                }
-            }
-
-            // set sequence parameters
-            seq->QueryIntAttribute("min", &sequence.min);
-            seq->QueryIntAttribute("max", &sequence.max);
-            seq->QueryUnsignedAttribute("width", &sequence.width);
-            seq->QueryUnsignedAttribute("height", &sequence.height);
-            const char *codec = seq->Attribute("codec");
-            if (codec)
-                sequence.codec = std::string(codec);
-
-            uint fps = 0;
-            seq->QueryUnsignedAttribute("fps", &fps);
-
-            // different sequence
-            if ( sequence != s.sequence() ) {
-                s.setSequence( sequence, fps);
-            }
-            // same sequence, different framerate
-            else if ( fps != s.framerate() )  {
-                s.setFramerate( fps );
-            }
-
-            int begin = -1;
-            seq->QueryIntAttribute("begin", &begin);
-            int end = INT_MAX;
-            seq->QueryIntAttribute("end", &end);
-            if ( begin != s.begin() || end != s.end() )
-                s.setRange(begin, end);
-
-            bool loop = true;
-            seq->QueryBoolAttribute("loop", &loop);
-            if ( loop != s.loop() )
-                s.setLoop(loop);
-        }
-    }
-
-}
 
 void SessionLoader::visit (GenericStreamSource& s)
 {

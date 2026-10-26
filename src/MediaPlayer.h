@@ -321,8 +321,8 @@ public:
      * (i.e. without hadrware decoding)
      * NB: this reopens the video and reset decoder name
      * */
-    void setSoftwareDecodingForced(bool on);
-    bool softwareDecodingForced();
+    virtual void setSoftwareDecodingForced(bool on);
+    virtual bool softwareDecodingForced();
     /**
      * Option to synchronize with metronome
      * */

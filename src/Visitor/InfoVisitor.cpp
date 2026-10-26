@@ -441,34 +441,34 @@ void InfoVisitor::visit (NetworkSource& s)
 
 void InfoVisitor::visit (MultiFileSource& s)
 {
-    if (current_id_ == s.id())
+    // NB: visited after MediaSource, which filled-in the information of the
+    // media player but did not remember it
+    MediaPlayer *mp = s.mediaplayer();
+    if (current_id_ == mp->id() || mp->failed())
         return;
 
     std::ostringstream oss;
+    const MultiFileSequence sequence = s.sequence();
 
-    if (s.stream()) {
-        if (s.stream()->failed()) {
-            oss << s.sequence().location << std::endl << s.stream()->log();
-        }
-        else {
-            if (brief_) {
-                oss << s.sequence().max - s.sequence().min + 1 << " images [";
-                oss << s.sequence().min << " - " << s.sequence().max << "]" << std::endl;
-                oss << s.sequence().codec << ", ";
-                oss << s.sequence().width << " x " << s.sequence().height;
-            }
-            else {
-                oss << s.sequence().location << " [";
-                oss << s.sequence().min << " - " << s.sequence().max << "]" << std::endl;
-                oss << s.sequence().max - s.sequence().min + 1 << " ";
-                oss << s.sequence().codec << " images" << std::endl;
-                oss << s.sequence().width << " x " << s.sequence().height << ", " << s.framerate() << " fps";
-            }
-        }
+    if (brief_) {
+        oss << sequence.max - sequence.min + 1 << " images [";
+        oss << sequence.min << " - " << sequence.max << "]" << std::endl;
+        oss << sequence.codec << ", ";
+        oss << sequence.width << " x " << sequence.height;
+    }
+    else {
+        oss << sequence.location << " [";
+        oss << sequence.min << " - " << sequence.max << "]" << std::endl;
+        oss << sequence.max - sequence.min + 1 << " ";
+        oss << sequence.codec << " images" << std::endl;
+        oss << sequence.width << " x " << sequence.height << ", " << s.framerate() << " fps";
     }
 
     information_ = oss.str();
-    current_id_ = s.id();
+
+    // remember
+    if ( mp->isOpen() )
+        current_id_ = mp->id();
 }
 
 void InfoVisitor::visit (GenericStreamSource& s)

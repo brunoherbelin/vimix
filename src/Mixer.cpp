@@ -415,6 +415,7 @@ Source * Mixer::createSourceMultifile(const std::list<std::string> &list_files, 
             // try to create a sequence
             MultiFileSource *mfs = new MultiFileSource;
             mfs->setSequence(sequence, fps);
+            mfs->play(true);
             s = mfs;
 
             // propose a new name

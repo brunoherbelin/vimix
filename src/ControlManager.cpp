@@ -1511,6 +1511,8 @@ static int sourceType(Source *s)
 {
     if (dynamic_cast<SplitMediaSource *>(s))
         return 11;
+    if (dynamic_cast<MultiFileSource *>(s))
+        return 25;
     if (dynamic_cast<AudioSource *>(s))
         return 13;
     if (MediaSource *ms = dynamic_cast<MediaSource *>(s))
@@ -1523,8 +1525,6 @@ static int sourceType(Source *s)
         return 23;
     if (dynamic_cast<SrtReceiverSource *>(s))
         return 24;
-    if (dynamic_cast<MultiFileSource *>(s))
-        return 25;
     if (dynamic_cast<PatternSource *>(s))
         return 26;
     if (dynamic_cast<TextSource *>(s))

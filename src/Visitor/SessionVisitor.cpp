@@ -698,13 +698,16 @@ void SessionVisitor::visit (Source& s)
 
 void SessionVisitor::visit (MediaSource& s)
 {
-    XMLElement *uri = xmlDoc_->NewElement("uri");
-    xmlCurrent_->InsertEndChild(uri);
-    XMLText *text = xmlDoc_->NewText( s.path().c_str() );
-    uri->InsertEndChild( text );
+    // a sequence of images is described by its own node (see visit (MultiFileSource&))
+    if ( dynamic_cast<MultiFileSource *>(&s) == nullptr ) {
+        XMLElement *uri = xmlDoc_->NewElement("uri");
+        xmlCurrent_->InsertEndChild(uri);
+        XMLText *text = xmlDoc_->NewText( s.path().c_str() );
+        uri->InsertEndChild( text );
 
-    if (!sessionFilePath_.empty())
-        uri->SetAttribute("relative", SystemToolkit::path_relative_to_path(s.path(), sessionFilePath_).c_str());
+        if (!sessionFilePath_.empty())
+            uri->SetAttribute("relative", SystemToolkit::path_relative_to_path(s.path(), sessionFilePath_).c_str());
+    }
 
     if (!s.failed())
         s.mediaplayer()->accept(*this);
@@ -1004,11 +1007,8 @@ void SessionVisitor::visit (MixingGroup& g)
 void SessionVisitor::visit (MultiFileSource& s)
 {
     XMLElement *sequence = xmlDoc_->NewElement("Sequence");
-    // play properties
+    // play properties (timeline and loop are saved with the media player)
     sequence->SetAttribute("fps", s.framerate());
-    sequence->SetAttribute("begin", s.begin());
-    sequence->SetAttribute("end", s.end());
-    sequence->SetAttribute("loop", s.loop());
     // file sequence description
     sequence->SetAttribute("min", s.sequence().min);
     sequence->SetAttribute("max", s.sequence().max);
