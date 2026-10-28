@@ -774,7 +774,9 @@ void ImGuiVisitor::visit (MediaSource& s)
     // Media info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
@@ -1009,7 +1011,9 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     // info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
@@ -1128,7 +1132,9 @@ void ImGuiVisitor::visit (SessionGroupSource& s)
     // info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
@@ -1203,7 +1209,9 @@ void ImGuiVisitor::visit (RenderSource& s)
     // info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
@@ -1785,7 +1793,9 @@ void ImGuiVisitor::visit (CloneSource& s)
     // info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
@@ -1884,7 +1894,9 @@ void ImGuiVisitor::visit (ShaderSource& s)
     // stream info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
@@ -1927,7 +1939,9 @@ void ImGuiVisitor::visit (PatternSource& s)
     // stream info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
@@ -1988,7 +2002,9 @@ void ImGuiVisitor::visit (DeviceSource& s)
 
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
@@ -2064,7 +2080,9 @@ void ImGuiVisitor::visit (ScreenCaptureSource& s)
 
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
@@ -2134,16 +2152,19 @@ void ImGuiVisitor::visit (NetworkSource& s)
     ImVec2 top = ImGui::GetCursorPos();
     top.x = 0.5f * ImGui::GetFrameHeight() + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
 
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_STREAM, 0.9f));
-    ImGui::Text("%s", s.connection().c_str());
-    ImGui::PopStyleColor(1);
-
     // network info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
+
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+    ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGui::InputText("Peer", (char *)s.connection().c_str(), s.connection().size(), ImGuiInputTextFlags_ReadOnly);
+    ImGui::PopStyleColor(1);
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -2179,6 +2200,7 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
 
     // stream info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + w);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     s.accept(info);
     if ( !s.failed() )
         ImGui::Text("%s", info.str().c_str());
@@ -2187,6 +2209,7 @@ void ImGuiVisitor::visit (GenericStreamSource& s)
         ImGui::Text("%s", info.str().c_str());
         ImGui::PopStyleColor(1);
     }
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
@@ -2248,7 +2271,9 @@ void ImGuiVisitor::visit (SrtReceiverSource& s)
     // network info
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
@@ -2290,7 +2315,9 @@ void ImGuiVisitor::visit(TextSource &s)
     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x
                            + ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN);
     s.accept(info);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_ITALIC);
     ImGui::Text("%s", info.str().c_str());
+    ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
