@@ -52,6 +52,7 @@
 
 #include "Navigator.h"
 #include "NavigatorCodec.h"
+#include "imgui.h"
 #include "NewSourcePanel.h"
 
 // patterns of media files accepted to create a source from file
@@ -564,7 +565,7 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             static ImVec2 fieldsize(ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN, 100);
             static int numlines = 0;
             const ImGuiContext& g = *GImGui;
-            fieldsize.y = MAX(3, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y;
+            fieldsize.y = MAX(4, numlines) * g.FontSize + g.Style.ItemSpacing.y + g.Style.FramePadding.y;
 
             // Indication
             ImGui::SameLine();
@@ -577,8 +578,8 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                                                                                          {"Checker", "videotestsrc pattern=checkers-8 ! video/x-raw, width=64, height=64 "},
                                                                                          {"Color", "videotestsrc pattern=gradient foreground-color= 0xff55f54f background-color= 0x000000 "},
                                                                                          {"Text", "videotestsrc pattern=black ! textoverlay text=\"vimix\" halignment=center valignment=center font-desc=\"Sans,72\" "},
-                                                                                         {"GStreamer Webcam", "udpsrc port=5000 buffer-size=200000 ! h264parse ! avdec_h264 "},
-                                                                                         {"SRT listener", "srtsrc uri=\"srt://:5000?mode=listener\" ! decodebin "}
+                                                                                         {"Frei0r demo", "frei0r-src-plasma param-1-move=0.5 param-2-speed=0.3 param-4-speed=0.2 ! video/x-raw,width=1280,height=720,framerate=30/1 "},
+                                                                                         {"Clock", "videotestsrc pattern=gradient foreground-color=0xff55f54f background-color=0xff0b1d51 ! video/x-raw,width=640,height=480,framerate=30/1 ! clockoverlay halignment=center valignment=center font-desc=\"Sans Bold,72\" time-format=\"%H:%M:%S\""}
                                                                                        };
                 static std::string _description = _examples[0].second;
 
@@ -637,39 +638,49 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                                      IM_ARRAYSIZE(dummy_str),
                                      ImGuiInputTextFlags_ReadOnly);
                     ImGui::PopStyleColor(1);
-                }
-                else if (ImGuiToolkit::InputTextMultiline("Text", &_contents, fieldsize, &numlines))
-                    update_new_source = true;
 
-                // Local menu for list of examples
-                ImVec2 pos_bot = ImGui::GetCursorPos();
-                ImGui::SetCursorPos(
-                    pos_bot
-                    + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -ImGui::GetFrameHeightWithSpacing()));
-                if (ImGui::BeginCombo("##Examples",
-                                      "Examples",
-                                      ImGuiComboFlags_NoPreview | ImGuiComboFlags_HeightLarge)) {
-                    if (ImGui::Selectable(ICON_FA_FOLDER_OPEN " Open subtitle"))
-                         subtitleopenialog.open();
-                    ImGui::Separator();
-                    ImGui::TextDisabled("Examples");
-                    for (auto it = _examples.begin(); it != _examples.end(); ++it) {
-                         if (ImGui::Selectable(it->first.c_str())) {
-                            _contents = it->second;
-                            update_new_source = true;
-                         }
+                    if (ImGui::Button(ICON_FA_TIMES " Close subtitle", ImVec2(IMGUI_RIGHT_ALIGN, 0))){
+                        _contents = _examples[0].second;
+                        update_new_source = true;
                     }
-                    ImGui::Separator();
-                    ImGui::TextDisabled("Explore online");
-                    if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " Pango markup syntax"))
-                         SystemToolkit::open("https://docs.gtk.org/Pango/pango_markup.html");
-                    if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " SubRip file format"))
-                         SystemToolkit::open("https://en.wikipedia.org/wiki/SubRip");
-                    ImGui::EndCombo();
                 }
-                ImGui::SameLine(0, IMGUI_SAME_LINE);
-                ImGuiToolkit::Indication("Format and layout options will be available after source creation.", ICON_FA_INFO_CIRCLE);
-                ImGui::SetCursorPos(pos_bot);
+                else {
+                    if (ImGuiToolkit::InputTextMultiline("Text", &_contents, fieldsize, &numlines))
+                        update_new_source = true;
+
+                    // Local menu for list of examples
+                    ImVec2 pos_bot = ImGui::GetCursorPos();
+                    ImGui::SetCursorPos(
+                        pos_bot
+                        + ImVec2(fieldsize.x + IMGUI_SAME_LINE, -ImGui::GetFrameHeightWithSpacing()));
+                    if (ImGui::BeginCombo("##Examples",
+                                          "Examples",
+                                          ImGuiComboFlags_NoPreview | ImGuiComboFlags_HeightLarge)) {
+                        // if (ImGui::Selectable(ICON_FA_FOLDER_OPEN " Open subtitle"))
+                        //      subtitleopenialog.open();
+                        // ImGui::Separator();
+                        ImGui::TextDisabled("Examples");
+                        for (auto it = _examples.begin(); it != _examples.end(); ++it) {
+                             if (ImGui::Selectable(it->first.c_str())) {
+                                _contents = it->second;
+                                update_new_source = true;
+                             }
+                        }
+                        ImGui::Separator();
+                        ImGui::TextDisabled("Explore online");
+                        if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " Pango markup syntax"))
+                             SystemToolkit::open("https://docs.gtk.org/Pango/pango_markup.html");
+                        if (ImGui::Selectable(ICON_FA_EXTERNAL_LINK_ALT " SubRip file format"))
+                             SystemToolkit::open("https://en.wikipedia.org/wiki/SubRip");
+                        ImGui::EndCombo();
+                    }
+                    ImGui::SameLine(0, IMGUI_SAME_LINE);
+                    ImGuiToolkit::Indication("Format and layout options will be available after source creation.", ICON_FA_INFO_CIRCLE);
+                    ImGui::SetCursorPos(pos_bot);
+
+                    if (ImGui::Button(ICON_FA_FOLDER_OPEN " Open subtitle", ImVec2(IMGUI_RIGHT_ALIGN, 0)))
+                        subtitleopenialog.open();
+                }
 
                 // resolution
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
