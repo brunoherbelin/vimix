@@ -7,7 +7,7 @@
   <summary>Video live mixer</summary>
   <description>
     <p>vimix performs graphical mixing and blending of several movie clips and
-   computer generated graphics, with image processing effects in real-time. 
+   computer generated graphics, with image processing effects in real-time.
    Its intuitive and hands-on user interface gives direct control on image opacity and
    shape video mapping of live graphics during concerts and VJ-ing sessions.</p>
    <p>Can read almost all video codecs (hardware accelerated for many),
@@ -37,6 +37,12 @@
     <mediatype>application/x-vimix-playlist</mediatype>
   </provides>
   <releases>
+    <release version="0.9.3" date="2026-10-29">
+      <description>
+      <p>Version 0.9.3</p>
+      </description>
+      <url>https://github.com/brunoherbelin/vimix/releases/tag/0.9.3</url>
+    </release>
     <release version="0.9.2a" date="2026-10-03">
       <description>
       <p>Version 0.9.2a</p>
@@ -104,4 +110,3 @@
   <metadata_license>CC0-1.0</metadata_license>
   <content_rating type="oars-1.1" />
 </component>
-
