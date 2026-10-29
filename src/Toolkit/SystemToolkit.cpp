@@ -62,7 +62,7 @@ using namespace std;
 
 /// The amount of memory currently being used by this process, in bytes.
 /// it will try to report the resident set in RAM
-long SystemToolkit::memory_usage()
+uint64_t SystemToolkit::memory_usage()
 {
 #if defined(LINUX)
     // Grabbing info directly from the /proc pseudo-filesystem.  Reading from
@@ -81,7 +81,7 @@ long SystemToolkit::memory_usage()
         if (ret>0 && ret2>0)
             size = m * getpagesize();
     }
-    return (long)size;
+    return (uint64_t)size;
 
 // ALTERNATIVE implementation (less reactive)
 //    struct rusage r_usage;

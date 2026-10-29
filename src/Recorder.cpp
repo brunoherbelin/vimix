@@ -369,13 +369,13 @@ void VideoRecorder::terminate()
     // statistics on expected number of frames
     guint64 N = MAX( (guint64) duration_ / (guint64) frame_duration_, frame_count_);
     float loss = 100.f * ((float) (N - frame_count_) ) / (float) N;
-    Log::Info("Video Recording : %ld frames captured in %s (aming for %ld, %.0f%% lost)",
+    Log::Info("Video Recording : %" G_GUINT64_FORMAT " frames captured in %s (aming for %" G_GUINT64_FORMAT ", %.0f%% lost)",
               frame_count_, GstToolkit::time_to_string(duration_, GstToolkit::TIME_STRING_READABLE).c_str(), N, loss);
 
     // warn user if more than 10% lost
     if (loss > 10.f) {
         if (timestamp_on_clock_)
-            Log::Warning("Video Recording lost %.0f%% of frames: framerate could not be maintained at %ld FPS.", loss, GST_SECOND / frame_duration_);
+            Log::Warning("Video Recording lost %.0f%% of frames: framerate could not be maintained at %" G_GUINT64_FORMAT " FPS.", loss, GST_SECOND / frame_duration_);
         else
             Log::Warning("Video Recording lost %.0f%% of frames: video is only %s long.",
                          loss, GstToolkit::time_to_string(timestamp_, GstToolkit::TIME_STRING_READABLE).c_str());

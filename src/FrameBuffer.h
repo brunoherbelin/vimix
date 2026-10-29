@@ -1,6 +1,8 @@
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
 
+#include <cstdint>
+
 #include "RenderingManager.h" // IWYU pragma: keep
 
 #ifndef NDEBUG
@@ -110,15 +112,15 @@ public:
     bool fill(FrameBufferImage *image);
 
     // how much memory is used by all frame buffers, in Bytes
-    static unsigned long memory_usage();
+    static uint64_t memory_usage();
 
     // estimated GPU memory, in Bytes, needed for such a frame buffer
     // (0 if the resolution is not finite or smaller than one pixel)
-    static unsigned long memoryUsage(glm::vec3 resolution, FrameBufferFlags flags);
+    static uint64_t memoryUsage(glm::vec3 resolution, FrameBufferFlags flags);
     // maximum resolution supported by the GPU (GL_MAX_TEXTURE_SIZE)
     static glm::vec3 maxResolution();
     // how much memory, in Bytes, a single frame buffer is allowed to use
-    static unsigned long memoryBudget();
+    static uint64_t memoryBudget();
     // false if the resolution is not finite, too small, larger than
     // maxResolution(), or needs more memory than memoryBudget()
     static bool isValidResolution(glm::vec3 resolution, FrameBufferFlags flags);
@@ -140,8 +142,8 @@ private:
     uint textureid_, multisampling_textureid_;
     uint framebufferid_, multisampling_framebufferid_;
     bool failed_;
-    unsigned long mem_usage_;
-    static unsigned long total_mem_usage;
+    uint64_t mem_usage_;
+    static uint64_t total_mem_usage;
 };
 
 

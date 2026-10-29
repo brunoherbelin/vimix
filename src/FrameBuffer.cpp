@@ -32,8 +32,8 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 
-unsigned long FrameBuffer::total_mem_usage = 0;
-unsigned long FrameBuffer::memory_usage()
+uint64_t FrameBuffer::total_mem_usage = 0;
+uint64_t FrameBuffer::memory_usage()
 {
     return total_mem_usage;
 }
@@ -65,15 +65,15 @@ glm::vec3 FrameBuffer::maxResolution()
     return glm::vec3(max_texture_size, max_texture_size, 0.f);
 }
 
-unsigned long FrameBuffer::memoryBudget()
+uint64_t FrameBuffer::memoryBudget()
 {
-    static unsigned long budget = 0;
+    static uint64_t budget = 0;
     if (budget == 0) {
         // total RAM of the graphics card, in kBytes (or INT_MAX if unknown)
         const glm::ivec2 RAM = Rendering::getGPUMemoryInformation();
         if (RAM.y > 0 && RAM.y < INT_MAX)
             // a single frame buffer should not take more than a third of the GPU RAM
-            budget = ( static_cast<unsigned long>(RAM.y) * 1024UL ) / 3UL;
+            budget = ( static_cast<uint64_t>(RAM.y) * 1024UL ) / 3UL;
         else
             // no information available: apply a fixed limit
             budget = FRAMEBUFFER_MAX_MEMORY;
@@ -81,7 +81,7 @@ unsigned long FrameBuffer::memoryBudget()
     return budget;
 }
 
-unsigned long FrameBuffer::memoryUsage(glm::vec3 resolution, FrameBufferFlags flags)
+uint64_t FrameBuffer::memoryUsage(glm::vec3 resolution, FrameBufferFlags flags)
 {
     // reject NaN, infinity and degenerate resolutions
     // (e.g. a division by a null scale when reading a session file)
@@ -90,17 +90,17 @@ unsigned long FrameBuffer::memoryUsage(glm::vec3 resolution, FrameBufferFlags fl
          resolution.x > float(INT_MAX) || resolution.y > float(INT_MAX) )
         return 0;
 
-    // NB: all computed in unsigned long to avoid integer overflow on large resolutions
-    const unsigned long w = static_cast<unsigned long>(resolution.x);
-    const unsigned long h = static_cast<unsigned long>(resolution.y);
-    const unsigned long bpp = (flags & FrameBuffer_alpha) ? 4UL : 3UL;
+    // NB: all computed in uint64_t to avoid integer overflow on large resolutions
+    const uint64_t w = static_cast<uint64_t>(resolution.x);
+    const uint64_t h = static_cast<uint64_t>(resolution.y);
+    const uint64_t bpp = (flags & FrameBuffer_alpha) ? 4UL : 3UL;
 
     // the RGB(A) texture
-    unsigned long bytes = w * h * bpp;
+    uint64_t bytes = w * h * bpp;
 
     // the mipmap levels add about a third
     if (flags & FrameBuffer_mipmap) {
-        unsigned long mw = w, mh = h;
+        uint64_t mw = w, mh = h;
         for (int i = 1; i < MIPMAP_LEVEL; ++i) {
             mw = MAX(1UL, mw / 2UL);
             mh = MAX(1UL, mh / 2UL);
@@ -111,7 +111,7 @@ unsigned long FrameBuffer::memoryUsage(glm::vec3 resolution, FrameBufferFlags fl
     // the multisample texture holds N samples per pixel
     // (same condition as in init(), which drops the flag if multisampling is disabled)
     if ( (flags & FrameBuffer_multisampling) && Settings::application.render.multisampling > 0 )
-        bytes += static_cast<unsigned long>(Settings::application.render.multisampling) * w * h * bpp;
+        bytes += static_cast<uint64_t>(Settings::application.render.multisampling) * w * h * bpp;
 
     return bytes;
 }
@@ -119,7 +119,7 @@ unsigned long FrameBuffer::memoryUsage(glm::vec3 resolution, FrameBufferFlags fl
 bool FrameBuffer::isValidResolution(glm::vec3 resolution, FrameBufferFlags flags)
 {
     // not finite, or smaller than one pixel
-    const unsigned long bytes = memoryUsage(resolution, flags);
+    const uint64_t bytes = memoryUsage(resolution, flags);
     if (bytes == 0)
         return false;
 
@@ -167,8 +167,8 @@ void FrameBuffer::init()
     if ( !isValidResolution(resolution(), flags_) ) {
         failed_ = true;
         const glm::vec3 maxres = maxResolution();
-        Log::Warning("Frame buffer %d x %d not created: it would need %lu MB of GPU memory.\n\n"
-                     "The maximum is %d x %d pixels and %lu MB per frame buffer.",
+        Log::Warning("Frame buffer %d x %d not created: it would need %" G_GUINT64_FORMAT " MB of GPU memory.\n\n"
+                     "The maximum is %d x %d pixels and %" G_GUINT64_FORMAT " MB per frame buffer.",
                      attrib_.viewport.x, attrib_.viewport.y,
                      memoryUsage(resolution(), flags_) / 1000000,
                      (int) maxres.x, (int) maxres.y, memoryBudget() / 1000000);
@@ -176,7 +176,7 @@ void FrameBuffer::init()
     }
 
     // memory needed for this frame buffer (in Bytes)
-    const unsigned long usage = memoryUsage(resolution(), flags_);
+    const uint64_t usage = memoryUsage(resolution(), flags_);
 
     // test currently available memory if the buffer is big (more than 20 MByte)
     if ( usage > 20000000UL ) {
@@ -185,10 +185,10 @@ void FrameBuffer::init()
         const glm::ivec2 RAM = Rendering::getGPUMemoryInformation();
 
         // bad case: not enough RAM available (asking for twice the needed space)
-        if ( RAM.x < INT_MAX && static_cast<unsigned long>(RAM.x) * 1024UL < usage * 2UL ) {
+        if ( RAM.x < INT_MAX && static_cast<uint64_t>(RAM.x) * 1024UL < usage * 2UL ) {
             failed_ = true;
             Log::Warning("Frame buffer %d x %d not created: only %d MB of RAM left in the "
-                         "graphics card to allocate %lu MB.",
+                         "graphics card to allocate %" G_GUINT64_FORMAT " MB.",
                          attrib_.viewport.x, attrib_.viewport.y, RAM.x / 1000, usage / 1000000);
             if (RAM.y < INT_MAX)
                 Log::Warning("Only %.1f %% of %d MB GPU RAM available.",
@@ -303,7 +303,7 @@ void FrameBuffer::init()
         mem_usage_ = usage;
         total_mem_usage += mem_usage_;
 #ifdef FRAMEBUFFER_DEBUG
-         g_printerr("~%lu kB allocated \t(%lu kB total)\n", mem_usage_ / 1000, total_mem_usage / 1000);
+         g_printerr("~%" G_GUINT64_FORMAT " kB allocated \t(%" G_GUINT64_FORMAT " kB total)\n", mem_usage_ / 1000, total_mem_usage / 1000);
 #endif
     }
 
@@ -314,7 +314,7 @@ FrameBuffer::~FrameBuffer()
 {
 #ifdef FRAMEBUFFER_DEBUG
     if (framebufferid_)
-         g_printerr("Framebuffer %d deleted - ~%lu kB freed (%lu kB total)\n", framebufferid_, mem_usage_ / 1000, (total_mem_usage - mem_usage_) / 1000);
+         g_printerr("Framebuffer %d deleted - ~%" G_GUINT64_FORMAT " kB freed (%" G_GUINT64_FORMAT " kB total)\n", framebufferid_, mem_usage_ / 1000, (total_mem_usage - mem_usage_) / 1000);
     registry().remove(this);
 #endif
 
@@ -542,11 +542,11 @@ bool FrameBuffer::checkFramebufferStatus()
 #ifdef FRAMEBUFFER_DEBUG
 void FrameBuffer::dumpRegistry()
 {
-    g_printerr("\nFramebuffer: %lu buffer(s) still alive, %lu kB not freed\n",
+    g_printerr("\nFramebuffer: %lu buffer(s) still alive, %" G_GUINT64_FORMAT " kB not freed\n",
                (unsigned long) registry().size(), total_mem_usage / 1000);
 
     for (auto fb = registry().cbegin(); fb != registry().cend(); ++fb) {
-        g_printerr("   %p id %d \t%d x %d \t%s%s%s \t~%lu kB\n", (void *) *fb,
+        g_printerr("   %p id %d \t%d x %d \t%s%s%s \t~%" G_GUINT64_FORMAT " kB\n", (void *) *fb,
                    (*fb)->framebufferid_, (*fb)->attrib_.viewport.x, (*fb)->attrib_.viewport.y,
                    ((*fb)->flags_ & FrameBuffer_alpha) ? "RGBA" : "RGB ",
                    ((*fb)->flags_ & FrameBuffer_multisampling) ? " multisampling" : "",

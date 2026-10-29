@@ -11,6 +11,7 @@
 #include <list>
 #include <vector>
 #include <chrono>
+#include <cstdint>
 
 namespace SystemToolkit
 {
@@ -124,7 +125,7 @@ namespace SystemToolkit
     void execute(const std::string& command);
 
     // return memory used by the program (in Kbytes)
-    long memory_usage();
+    uint64_t memory_usage();
 
     // RAII redirect of stderr (fd 2) to /dev/null for its lifetime,
     // to suppressany third-party output (e.g. fprintf(stderr)). 

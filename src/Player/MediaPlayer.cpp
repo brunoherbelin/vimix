@@ -854,8 +854,9 @@ void MediaPlayer::execute_open()
               media_.width, media_.height, media_.bitrate / 1000);
 
     if (!singleFrame())
-        Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
-                  timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
+        Log::Info("MediaPlayer %s Timeline [%" G_GUINT64_FORMAT " %" G_GUINT64_FORMAT "] %" G_GUINT64_FORMAT " frames, %d gaps",
+                  std::to_string(id_).c_str(), timeline_.begin(), timeline_.end(),
+                  (guint64) timeline_.numFrames(), timeline_.numGaps());
 
     if (media_.hasaudio)
         Log::Info("MediaPlayer %s Audio track %s", std::to_string(id_).c_str(), audio_enabled_ ? "enabled" : "disabled");
@@ -1029,8 +1030,9 @@ void MediaPlayer::execute_open()
               SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(), media_.width, media_.height);
 
     if (!singleFrame())
-        Log::Info("MediaPlayer %s Timeline [%ld %ld] %ld frames, %d gaps", std::to_string(id_).c_str(),
-                  timeline_.begin(), timeline_.end(), timeline_.numFrames(), timeline_.numGaps());
+        Log::Info("MediaPlayer %s Timeline [%" G_GUINT64_FORMAT " %" G_GUINT64_FORMAT "] %" G_GUINT64_FORMAT " frames, %d gaps",
+                  std::to_string(id_).c_str(), timeline_.begin(), timeline_.end(),
+                  (guint64) timeline_.numFrames(), timeline_.numGaps());
 
     opened_ = true;
 
@@ -1294,7 +1296,7 @@ void MediaPlayer::execute_play_command(bool on)
     else if (on)
         Log::Info("MediaPlayer %s Start", std::to_string(id_).c_str());
     else
-        Log::Info("MediaPlayer %s Stop [%ld]", std::to_string(id_).c_str(), position());
+        Log::Info("MediaPlayer %s Stop [%" G_GUINT64_FORMAT "]", std::to_string(id_).c_str(), position());
 #endif
 
     // Revert loop status to default when playing
@@ -1714,7 +1716,7 @@ void MediaPlayer::update()
                 if (!evaluation_.log.empty())
                     Log::Warning("MediaPlayer %s Evaluation: %s", std::to_string(id_).c_str(), evaluation_.log.c_str());
                 else {
-                    Log::Info("MediaPlayer %s Evaluation: %lu frames, %lu keyframes, GOP %d-%d, B-frames %d",
+                    Log::Info("MediaPlayer %s Evaluation: %" G_GUINT64_FORMAT " frames, %" G_GUINT64_FORMAT " keyframes, GOP %d-%d, B-frames %d",
                           std::to_string(id_).c_str(),
                           evaluation_.frame_count, evaluation_.keyframe_count,
                           evaluation_.gop_size_min, evaluation_.gop_size_max,

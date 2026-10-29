@@ -278,7 +278,7 @@ bool Rendering::init()
     // query and cache GPU limits now that the OpenGL context is current
     // (FrameBuffer relies on them to refuse allocating oversized frame buffers)
     const glm::vec3 maxres = FrameBuffer::maxResolution();
-    Log::Info("OpenGL maximum texture size %d x %d, frame buffer memory budget %lu MB",
+    Log::Info("OpenGL maximum texture size %d x %d, frame buffer memory budget %" G_GUINT64_FORMAT " MB",
               (int) maxres.x, (int) maxres.y, FrameBuffer::memoryBudget() / 1000000);
 
 
@@ -612,8 +612,8 @@ bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags, int num_
 {
     // RAM needed for such FBOs, in Bytes
     // NB: same estimation as used by FrameBuffer to account for its memory
-    const unsigned long needed = FrameBuffer::memoryUsage(resolution, flags)
-                                 * static_cast<unsigned long>(num_buffers + 1);
+    const uint64_t needed = FrameBuffer::memoryUsage(resolution, flags)
+                                 * static_cast<uint64_t>(num_buffers + 1);
 
     // invalid resolution
     if (needed == 0)
@@ -626,7 +626,7 @@ bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags, int num_
     if (RAM.x == INT_MAX)
         return needed <= FrameBuffer::memoryBudget();
 
-    return ( static_cast<unsigned long>(RAM.x) * 1024UL > needed );
+    return ( static_cast<uint64_t>(RAM.x) * 1024UL > needed );
 }
 
 glm::vec3 Rendering::monitorsResolution()
