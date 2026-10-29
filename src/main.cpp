@@ -231,13 +231,16 @@ int main(int argc, char *argv[])
     ///
     /// GStreamer
     ///
+    // (unless the GST_DEBUG environment variable sets the debug level)
+    if (g_getenv("GST_DEBUG") == nullptr) {
 #ifndef NDEBUG
-    gst_debug_set_default_threshold (GST_LEVEL_WARNING);
-    gst_debug_set_active(TRUE);
+        gst_debug_set_default_threshold (GST_LEVEL_WARNING);
+        gst_debug_set_active(TRUE);
 #else
-    gst_debug_set_default_threshold (GST_LEVEL_ERROR);
-    gst_debug_set_active(FALSE);
+        gst_debug_set_default_threshold (GST_LEVEL_ERROR);
+        gst_debug_set_active(FALSE);
 #endif
+    }
 
     ///
     /// AUDIO INIT
