@@ -5,14 +5,13 @@
 
 #include "Player/MediaPlayer.h"
 
-#define AUDIO_VISUALIZATION_PLUGIN "wavescope"
 #define AUDIO_VISUALIZATION_WIDTH 320
 #define AUDIO_VISUALIZATION_HEIGHT 180
 #define AUDIO_VISUALIZATION_FPS 25
 
 /**
  * @brief The AudioPlayer class plays an audio file as a media,
- * using the playbin audio visualization (monoscope) as video.
+ * using the playbin audio visualization (wavescope, or monoscope for GStreamer <= 1.24) as video.
  *
  * The timeline, seeking, speed, loop and volume are those of a MediaPlayer;
  * the frames are images of the audio waveform.

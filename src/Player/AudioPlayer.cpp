@@ -44,6 +44,15 @@ void AudioPlayer::startDiscovery()
     discoverer_ = std::async( AudioPlayer::AudioDiscoverer, uri_);
 }
 
+// wavescope does not scroll correctly with GStreamer 1.24 and older (e.g. Ubuntu 24.04 snap)
+// where monoscope is used instead (fixed size 256x128, scaled in the pipeline)
+static const char *visualizationPlugin()
+{
+    guint major = 0, minor = 0, micro = 0, nano = 0;
+    gst_version (&major, &minor, &micro, &nano);
+    return (major == 1 && minor <= 24) ? "monoscope" : "wavescope";
+}
+
 void AudioPlayer::setupPipeline()
 {
     // playbin renders audio and its visualization
@@ -64,14 +73,14 @@ void AudioPlayer::setupPipeline()
 
     // set the visualization plugin
     GError *error = NULL;
-    GstElement *vis = gst_parse_bin_from_description (AUDIO_VISUALIZATION_PLUGIN
-                                                      " ! videoconvert ! capsfilter caps=video/x-raw,format=RGB",
-                                                      TRUE, &error);
+    const std::string vis_description = std::string(visualizationPlugin())
+            + " ! videoconvert ! videoscale ! capsfilter caps=video/x-raw,format=RGB";
+    GstElement *vis = gst_parse_bin_from_description (vis_description.c_str(), TRUE, &error);
     if (vis)
         g_object_set( G_OBJECT (pipeline_), "vis-plugin", vis, NULL);
     else
         Log::Warning("AudioPlayer %s Could not create '%s' visualization: %s",
-                     std::to_string(id_).c_str(), AUDIO_VISUALIZATION_PLUGIN,
+                     std::to_string(id_).c_str(), visualizationPlugin(),
                      error ? error->message : "");
     g_clear_error (&error);
 }
@@ -90,9 +99,9 @@ MediaInfo AudioPlayer::AudioDiscoverer(const std::string &uri)
     }
 
     // visualization plugin is required
-    GstElementFactory *factory = gst_element_factory_find (AUDIO_VISUALIZATION_PLUGIN);
+    GstElementFactory *factory = gst_element_factory_find (visualizationPlugin());
     if ( factory == NULL ) {
-        audio_stream_info.log = AUDIO_VISUALIZATION_PLUGIN " plugin missing";
+        audio_stream_info.log = std::string(visualizationPlugin()) + " plugin missing";
         return audio_stream_info;
     }
     gst_object_unref (factory);
