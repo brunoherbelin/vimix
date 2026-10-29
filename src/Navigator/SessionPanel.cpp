@@ -192,8 +192,7 @@ void SessionPanel::Render()
     //
     // RESOLUTION
     //
-    Settings::application.pannel_session[0] = ImGui::CollapsingHeader("Resolution",
-                                                                      Settings::application.pannel_session[0] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Resolution", Settings::application.pannel_session, 0);
     if (Settings::application.pannel_session[0]) {
 
         // Information and resolution
@@ -290,8 +289,7 @@ void SessionPanel::Render()
     //
     // VERSIONS
     //
-    Settings::application.pannel_session[1] = ImGui::CollapsingHeader("Versions",
-                                                                      Settings::application.pannel_session[1] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Versions", Settings::application.pannel_session, 1);
     if (Settings::application.pannel_session[1]){
         static uint64_t _over = 0;
         static bool _tooltip = 0;
@@ -449,8 +447,7 @@ void SessionPanel::Render()
     //
     // UNDO History
     //
-    Settings::application.pannel_session[2] = ImGui::CollapsingHeader("Undo history",
-                                                                      Settings::application.pannel_session[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Undo history", Settings::application.pannel_session, 2);
     if (Settings::application.pannel_session[2]){
 
         static uint _over = 0;
@@ -566,8 +563,7 @@ void SessionPanel::Render()
     }
 
     static Exporter *exporter = nullptr;
-    Settings::application.pannel_session[3] = ImGui::CollapsingHeader("Export",
-                                                                      Settings::application.pannel_session[3] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Export", Settings::application.pannel_session, 3);
     if (Settings::application.pannel_session[3]) {
 
         // check for completion

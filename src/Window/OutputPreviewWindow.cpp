@@ -360,7 +360,9 @@ void OutputPreviewWindow::Render()
                     // offer to open config panel from here for more options
                     ImGui::SameLine(combo_width, IMGUI_SAME_LINE);
                     if (ImGuiToolkit::IconButton(ICON_VI_PANNEL_SETTINGS, "Settings")) {
-                        Settings::application.pannel_settings[0] = true;
+                        ImGuiToolkit::OpenHeader(Settings::application.pannel_settings, 0,
+                                                 IM_ARRAYSIZE(Settings::application.pannel_settings),
+                                                 Settings::application.exclusive_header);
                         UserInterface::manager().navigator.showConfig();
                     }
 

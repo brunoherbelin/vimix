@@ -1127,8 +1127,7 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
         //
         const FrameBuffer *output = bundle->frame();
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
-        Settings::application.pannel_source[3] = ImGui::CollapsingHeader("Resolution",
-                                                                         Settings::application.pannel_source[3] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+        PannelHeader("Resolution", Settings::application.pannel_source, 3);
         if (Settings::application.pannel_source[3]) {
             if (output) {
                 // optimal height of bundle frame: one pixel of bundle for one pixel of

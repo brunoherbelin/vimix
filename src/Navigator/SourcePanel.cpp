@@ -168,8 +168,7 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
     ImGui::BeginChild("header_Transcoding_enabled", ImVec2(_width, ImGui::GetFrameHeightWithSpacing()),
                     false, ImGuiWindowFlags_NoDecoration);
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
-    Settings::application.pannel_source[2] = ImGui::CollapsingHeader("Transcoding",
-                                                                      Settings::application.pannel_source[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Transcoding", Settings::application.pannel_source, 2);
     ImGui::PopStyleColor();
     ImGui::EndChild();
 
@@ -308,8 +307,7 @@ static bool renderTranscodingPanelMultifile(guint64 id, MultiFileSource *mfs)
     ImGui::BeginChild("header_Transcodingmf_enabled", ImVec2(_width, ImGui::GetFrameHeightWithSpacing()),
                     false, ImGuiWindowFlags_NoDecoration);
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
-    Settings::application.pannel_source[2] = ImGui::CollapsingHeader("Transcoding",
-                                                                      Settings::application.pannel_source[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Transcoding", Settings::application.pannel_source, 2);
     ImGui::PopStyleColor();
     ImGui::EndChild();
 

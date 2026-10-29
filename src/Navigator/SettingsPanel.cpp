@@ -46,6 +46,7 @@
 #include "UserInterfaceManager.h"
 
 #include "NavigatorCodec.h"
+#include "imgui.h"
 #include "SettingsPanel.h"
 
 void SettingsPanel::Render()
@@ -68,8 +69,7 @@ void SettingsPanel::Render()
     // Appearance
     //
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
-    Settings::application.pannel_settings[5] = ImGui::CollapsingHeader("Appearance",
-                                                                       Settings::application.pannel_settings[5] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Appearance", Settings::application.pannel_settings, 5);
     ImGui::PopStyleColor(1);
     if (Settings::application.pannel_settings[5]){
         //
@@ -114,9 +114,18 @@ void SettingsPanel::Render()
             ImGui::GetIO().FontGlobalScale = Settings::application.scale;
         }
 
+        ImGui::Spacing();
+
+        // behavior of sections in panels
+        ImGuiToolkit::Indication("If enabled, opening a section in a panel closes the other sections.\n"
+            "If disabled, several sections can be open at the same time.", ICON_FA_INDENT);
+        ImGui::SameLine(0);
+        ImGui::SetCursorPosX(align_x);
+        ImGuiToolkit::ButtonSwitch( "One section at a time", &Settings::application.exclusive_header);
+
         // behavior of left panel with viewspaces
-        ImGuiToolkit::Indication("If enabled, all sources are listed in the left panel (dimmed if inside an INACTIVE workspace).\n"
-            "If disabled, only sources in ACTIVE workspaces are listed.", ICON_VI_VIEWSPACE_ALL);
+        ImGuiToolkit::Indication("If enabled, all sources always are listed in the left panel (dimmed if inside an HIDDEN workspace).\n"
+            "If disabled, only sources in VISIBLE workspaces are listed.", ICON_FA_TH_LARGE);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(align_x);
         ImGuiToolkit::ButtonSwitch( "List all workspaces", &Settings::application.pannel_list_all_viewspaces);
@@ -127,8 +136,7 @@ void SettingsPanel::Render()
     //
     // Recording preferences
     //
-    Settings::application.pannel_settings[0] = ImGui::CollapsingHeader("Recording",
-                                                                       Settings::application.pannel_settings[0] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Recording", Settings::application.pannel_settings, 0);
 
     if (Settings::application.pannel_settings[0]){
 
@@ -266,8 +274,7 @@ void SettingsPanel::Render()
     //
     // Steaming preferences
     //
-    Settings::application.pannel_settings[1] = ImGui::CollapsingHeader("Streaming",
-                                                                       Settings::application.pannel_settings[1] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Streaming", Settings::application.pannel_settings, 1);
 
     if (Settings::application.pannel_settings[1]){
         ImGuiToolkit::Indication("Peer-to-peer sharing local network\n\n"
@@ -373,8 +380,7 @@ void SettingsPanel::Render()
     //
     // OSC preferences
     //
-    Settings::application.pannel_settings[2] = ImGui::CollapsingHeader("Open Sound Control",
-                                                                       Settings::application.pannel_settings[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Open Sound Control", Settings::application.pannel_settings, 2);
 
     if (Settings::application.pannel_settings[2]){
         // ImGuiToolkit::Spacing();
@@ -434,8 +440,7 @@ void SettingsPanel::Render()
     //
     // Gamepad preferences
     //
-    Settings::application.pannel_settings[3] = ImGui::CollapsingHeader("Gamepads",
-                                                                       Settings::application.pannel_settings[3] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Gamepads", Settings::application.pannel_settings, 3);
 
     if (Settings::application.pannel_settings[3]){
 
@@ -536,8 +541,7 @@ void SettingsPanel::Render()
     //
     // System preferences
     //
-    Settings::application.pannel_settings[4] = ImGui::CollapsingHeader("System",
-                                                                       Settings::application.pannel_settings[4] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("System", Settings::application.pannel_settings, 4);
 
     if (Settings::application.pannel_settings[4]){
         static bool need_restart = false;

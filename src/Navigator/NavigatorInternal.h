@@ -39,6 +39,25 @@
 #include <vector>
 #include <utility>
 
+#include "Settings.h"
+#include "Toolkit/ImGuiToolkit.h"
+
+// Collapsing header of a pannel: its open state is stored in the group (e.g.
+// Settings::application.pannel_session) at the given index. If the setting
+// exclusive_header is on, opening it closes the other headers of the group.
+template <size_t N>
+inline bool PannelHeader(const char *label, bool (&group)[N], int index, const char *id = nullptr)
+{
+    return ImGuiToolkit::CollapsingHeader(label, group, index, (int) N, Settings::application.exclusive_header, id);
+}
+
+// Open a header of a pannel from outside of its rendering.
+template <size_t N>
+inline void PannelHeaderOpen(bool (&group)[N], int index)
+{
+    ImGuiToolkit::OpenHeader(group, index, (int) N, Settings::application.exclusive_header);
+}
+
 // Icons and tooltips of the multistate button selecting the ordering of a
 // list of files; shared by the New source pannel and the Playlist pannel.
 extern std::vector< std::pair<int, int> > icons_ordering_files;

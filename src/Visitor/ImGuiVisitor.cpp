@@ -62,6 +62,7 @@
 #include "SessionCreator.h"
 #include "SessionVisitor.h"
 #include "Settings.h"
+#include "Navigator/NavigatorInternal.h"
 #include "Mixer.h"
 #include "Draft.h"
 #include "Source/DraftSource.h"
@@ -555,8 +556,7 @@ void ImGuiVisitor::visit (Source& s)
                             false, ImGuiWindowFlags_NoDecoration);
             ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
             if (on) {
-                Settings::application.pannel_source[0] =
-                    ImGui::CollapsingHeader("Color correction",Settings::application.pannel_source[0] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+                PannelHeader("Color correction", Settings::application.pannel_source, 0);
             }
             else {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
@@ -592,7 +592,7 @@ void ImGuiVisitor::visit (Source& s)
                     oss << ( on ? "Enable Color correction" : "Disable Color correction");
                     Action::manager().store(oss.str());
                     s.setImageProcessingEnabled(on);
-                    Settings::application.pannel_source[0] = true;
+                    PannelHeaderOpen(Settings::application.pannel_source, 0);
                 }
                 if (ImGui::MenuItem("Reset", NULL, false, on )){
                     ImageProcessingShader defaultvalues;
@@ -653,9 +653,7 @@ void ImGuiVisitor::visit (Source& s)
     ImGui::BeginChild("header_source_settings", ImVec2(preview_width, ImGui::GetFrameHeightWithSpacing()),
                     false, ImGuiWindowFlags_NoDecoration);
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
-    Settings::application.pannel_source[1] = ImGui::TreeNodeBehavior(ImGui::GetID("SourcePanelSpecific"),
-            (Settings::application.pannel_source[1] ? ImGuiTreeNodeFlags_DefaultOpen : 0)  | ImGuiTreeNodeFlags_CollapsingHeader,
-            s.info().c_str());
+    PannelHeader(s.info().c_str(), Settings::application.pannel_source, 1, "SourcePanelSpecific");
     ImGui::PopStyleColor();
     ImGui::EndChild();
 

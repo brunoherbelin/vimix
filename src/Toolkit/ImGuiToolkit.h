@@ -53,6 +53,13 @@ namespace ImGuiToolkit
     bool SelectableIcon(int i, int j, const char* label, bool selected, const ImVec2& size_arg = ImVec2(0,0), ImGuiDir dir = ImGuiDir_None);
     bool ComboIcon (const char* label, int* current_item, std::vector<std::tuple<int, int, std::string> > items, std::vector<std::string> tooltips = {});
 
+    // collapsing header with open state stored in group[index] (of count headers);
+    // if exclusive, opening it closes the other headers of the group
+    // (an id can be given if the label is not constant)
+    bool CollapsingHeader (const char* label, bool* group, int index, int count, bool exclusive, const char* id = nullptr);
+    // open a header of the group from outside (also closes the others if exclusive)
+    void OpenHeader (bool* group, int index, int count, bool exclusive);
+
     // buttons
     bool ButtonToggle  (const char* label, bool* toggle, const char *tooltip = nullptr);
     bool ButtonSwitch  (const char* label, bool* toggle, const char *tooltip = nullptr, bool enabled = true);

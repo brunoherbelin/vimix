@@ -674,6 +674,32 @@ bool ImGuiToolkit::SelectableIcon(int i, int j, const char* label, bool selected
     return ret;
 }
 
+void ImGuiToolkit::OpenHeader(bool* group, int index, int count, bool exclusive)
+{
+    group[index] = true;
+    if (exclusive)
+        for (int i = 0; i < count; ++i)
+            if (i != index)
+                group[i] = false;
+}
+
+bool ImGuiToolkit::CollapsingHeader(const char* label, bool* group, int index, int count, bool exclusive, const char* id)
+{
+    // state of the header is driven by the group (can be changed from elsewhere)
+    const bool was_open = group[index];
+    ImGui::SetNextItemOpen(was_open, ImGuiCond_Always);
+    if (id != nullptr)
+        group[index] = ImGui::TreeNodeBehavior(ImGui::GetID(id), ImGuiTreeNodeFlags_CollapsingHeader, label);
+    else
+        group[index] = ImGui::CollapsingHeader(label);
+
+    // just opened: close all others (those after are closed in this frame, those before in the next)
+    if (exclusive && group[index] && !was_open)
+        OpenHeader(group, index, count, true);
+
+    return group[index];
+}
+
 bool ImGuiToolkit::MenuItemIcon (int i, int j, const char* label, const char* shortcut, bool selected, bool enabled)
 {
     ImVec2 draw_pos = ImGui::GetCursorScreenPos();
