@@ -297,9 +297,9 @@ void Navigator::Render()
     for (auto it = Mixer::manager().session()->begin(); it != Mixer::manager().session()->end(); ++it)
         num_sources += ( Settings::application.pannel_list_all_viewspaces || (*it)->viewSpaceShown() ) ? 1.f : 0.f;
 
-    // height of the bottom window (7 rows of view icons + fullscreen row)
-    auto views_height = [&](float h) {
-        return 7.f * h + 0.5f * icon_width + 7.f * style.WindowPadding.y;
+    // height of the bottom window (rows of view icons + fullscreen row)
+    auto views_height = [&](int rows, float h) {
+        return (float) rows * h + 0.5f * icon_width + (float) rows * style.WindowPadding.y;
     };
     // height needed by the top window (menu & new icons + one per source)
     auto sources_height = [&](float h) {
@@ -307,15 +307,22 @@ void Navigator::Render()
                + 2.f * style.WindowPadding.y;
     };
 
-    // if not enough space, reduce height of view icons first, then of source icons
-    ImVec2 viewiconsize(icon_width, icon_width);
+    // rows of icons in the bottom window: workspaces, pointer, 4 views, displays
+    // (or workspaces, pointer, 1 grid of 4 views, displays)
+    constexpr int ROWS_VIEWS_FULL = 7;
+    constexpr int ROWS_VIEWS_COMPACT = 4;
+
+    // if not enough space, merge the 4 view icons in a grid first, then reduce height of source icons
+    const ImVec2 viewiconsize(icon_width, icon_width);
     ImVec2 sourceiconsize(icon_width, icon_width);
-    if (views_height(viewiconsize.y) + sources_height(sourceiconsize.y) > height_) {
-        viewiconsize.y *= 0.8f;
-        if (views_height(viewiconsize.y) + sources_height(sourceiconsize.y) > height_)
+    bool compact_views = false;
+    if (views_height(ROWS_VIEWS_FULL, viewiconsize.y) + sources_height(sourceiconsize.y) > height_) {
+        compact_views = true;
+        if (views_height(ROWS_VIEWS_COMPACT, viewiconsize.y) + sources_height(sourceiconsize.y) > height_)
             sourceiconsize.y *= 0.8f;
     }
-    const float sourcelist_height = height_ - views_height(viewiconsize.y);
+    const float sourcelist_height = height_ - views_height(compact_views ? ROWS_VIEWS_COMPACT : ROWS_VIEWS_FULL,
+                                                           viewiconsize.y);
 
     // the root button (menu or bundle) follows entering and leaving bundles
     const int root = rootButton();
@@ -527,73 +534,53 @@ void Navigator::Render()
         selected_view[ Settings::application.current_view ] = true;
         int previous_view = Settings::application.current_view;
 
-        if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[View::MIXING], 0, viewiconsize))
-        {
-            UserInterface::manager().setView(View::MIXING);
-            if (previous_view == Settings::application.current_view) {
-                ImGui::OpenPopup( "PopupViewOptions" );
-                view_options_pos = ImGui::GetCursorScreenPos();
+        // a button to select a view; clicking on the current view opens its options (zoom)
+        bool view_options_opened = false;
+        auto view_button = [&](bool pressed, View::Mode mode, const char *shortcut) {
+            if (pressed) {
+                UserInterface::manager().setView(mode);
+                if (previous_view == Settings::application.current_view) {
+                    ImGui::OpenPopup( "PopupViewOptions" );
+                    view_options_pos = ImGui::GetCursorScreenPos();
+                    view_options_opened = true;
+                }
             }
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::MIXING].name, "F1", nullptr};
-            view_options_timeout = 0;
-        }
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+                tooltip = {Settings::application.views[mode].name, shortcut, nullptr};
+                view_options_timeout = 0;
+            }
+        };
 
-        if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[View::GEOMETRY], 0, viewiconsize))
-        {
-            UserInterface::manager().setView(View::GEOMETRY);
-            if (previous_view == Settings::application.current_view) {
-                ImGui::OpenPopup( "PopupViewOptions" );
-                view_options_pos = ImGui::GetCursorScreenPos();
-            }
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::GEOMETRY].name, "F2", nullptr};
-            view_options_timeout = 0;
-        }
+        // the 4 first views: full size rows, or small icons in a 2x2 grid of the size of one row
+        const ImVec2 viewcellsize = compact_views ? ImVec2((viewiconsize.x - style.ItemSpacing.x) * 0.5f,
+                                                           (viewiconsize.y - style.ItemSpacing.y) * 0.5f)
+                                                  : viewiconsize;
+        if (compact_views)
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
 
-        if (ImGuiToolkit::SelectableIcon(ICON_VI_LAYERS, "", selected_view[View::LAYER], viewiconsize))
-        {
-            Settings::application.current_view = View::LAYER;
-            UserInterface::manager().setView(View::LAYER);
-            if (previous_view == Settings::application.current_view) {
-                ImGui::OpenPopup( "PopupViewOptions" );
-                view_options_pos = ImGui::GetCursorScreenPos();
-            }
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::LAYER].name, "F3", nullptr};
-            view_options_timeout = 0;
-        }
+        view_button(ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[View::MIXING], 0, viewcellsize),
+                    View::MIXING, "F1");
+        if (compact_views)
+            ImGui::SameLine();
+        view_button(ImGui::Selectable( ICON_FA_OBJECT_UNGROUP, &selected_view[View::GEOMETRY], 0, viewcellsize),
+                    View::GEOMETRY, "F2");
+        view_button(ImGuiToolkit::SelectableIcon(ICON_VI_LAYERS, "", selected_view[View::LAYER], viewcellsize),
+                    View::LAYER, "F3");
+        if (compact_views)
+            ImGui::SameLine();
+        view_button(ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[View::TEXTURE], 0, viewcellsize),
+                    View::TEXTURE, "F4");
 
-        if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[View::TEXTURE], 0, viewiconsize))
-        {
-            UserInterface::manager().setView(View::TEXTURE);
-            if (previous_view == Settings::application.current_view) {
-                ImGui::OpenPopup( "PopupViewOptions" );
+        if (compact_views) {
+            ImGui::PopFont();
+            // popup aligned with the grid, whichever cell was clicked
+            if (view_options_opened)
                 view_options_pos = ImGui::GetCursorScreenPos();
-            }
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::TEXTURE].name, "F4", nullptr};
-            view_options_timeout = 0;
         }
 
         std::pair<int, int> icon_index = Settings::application.render.disabled ? std::make_pair(ICON_VI_DISPLAYS_DISABLED) : std::make_pair(ICON_VI_DISPLAYS);
-        if (ImGuiToolkit::SelectableIcon(icon_index.first, icon_index.second, "", selected_view[View::DISPLAYS], viewiconsize))
-        {
-            UserInterface::manager().setView(View::DISPLAYS);
-            Settings::application.current_view = View::DISPLAYS;
-            if (previous_view == Settings::application.current_view) {
-                ImGui::OpenPopup( "PopupViewOptions" );
-                view_options_pos = ImGui::GetCursorScreenPos();
-            }
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::DISPLAYS].name, "F5", nullptr};
-            view_options_timeout = 0;
-        }
+        view_button(ImGuiToolkit::SelectableIcon(icon_index.first, icon_index.second, "", selected_view[View::DISPLAYS], viewiconsize),
+                    View::DISPLAYS, "F5");
 
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SetCursorPos(pos + ImVec2(0.f, style.WindowPadding.y));
