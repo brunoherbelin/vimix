@@ -1,0 +1,58 @@
+name: Windows build
+
+# Build the portable Windows package with the same script and the same
+# locked package versions as a local build (see windows/build.ps1)
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'rsc/**'
+      - 'ext/**'
+      - 'windows/**'
+      - 'CMakeLists.txt'
+      - '.gitmodules'
+      - '.github/workflows/windows-build.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'rsc/**'
+      - 'ext/**'
+      - 'windows/**'
+      - 'CMakeLists.txt'
+      - '.gitmodules'
+      - '.github/workflows/windows-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0   # version is read from git tags
+
+      # cache the downloads only (MSYS2 base and locked packages, ~400 MB):
+      # the installed toolchain is 3 GB of small files, slow to restore
+      - name: Cache toolchain downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            .win-toolchain/*.sfx.exe
+            .win-toolchain/pkgcache
+          key: win-toolchain-${{ hashFiles('windows/packages.lock', 'windows/build.ps1') }}
+
+      - name: Build and package
+        shell: pwsh
+        run: windows/build.ps1 -Locked
+
+      - name: Check vimix starts
+        shell: pwsh
+        run: |
+          $p = Start-Process dist/bin/vimix.exe -ArgumentList '--version' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "vimix --version failed ($($p.ExitCode))" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vimix-windows-x86_64
+          path: dist/

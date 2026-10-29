@@ -56,6 +56,23 @@ It should say;
     branch 'beta' set up to track 'origin/beta'.
     Switched to a new branch 'beta'
 
+## Windows (experimental)
+
+The Windows build uses a private [MSYS2](https://www.msys2.org) UCRT64 toolchain that is downloaded into the
+clone itself, so nothing gets installed on the system. Only git is needed:
+
+    git clone --recursive https://github.com/brunoherbelin/vimix.git
+    cd vimix
+    powershell -ExecutionPolicy Bypass -File windows\build.ps1 -Locked
+
+This downloads about 2 GB the first time. The result is a portable folder, `dist\`: run `dist\bin\vimix.exe`
+(64-bit Windows 10 version 1903 or later, or Windows 11).
+`-Locked` installs the exact library versions of the last verified build; leave it out to get the latest ones.
+To see the messages of vimix, build a console version with `windows\build.ps1 -Step configure -Console`,
+then `-Step build`, and run `build-win\src\vimix.exe --verbose`.
+
+To undo everything, delete the `.win-toolchain`, `build-win` and `dist` folders.
+
 ## Dependencies
 
 **Compiling tools:**

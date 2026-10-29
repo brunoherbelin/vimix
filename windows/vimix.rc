@@ -1,0 +1,5 @@
+// Windows resources of vimix.exe
+#include <winuser.h>
+
+// application manifest (UTF-8 code page)
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "vimix.manifest"

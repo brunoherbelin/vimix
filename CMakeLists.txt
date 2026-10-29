@@ -191,8 +191,24 @@ if(UNIX)
     endif()
     add_definitions(-DUNIX)
 elseif(WIN32)
+    # Windows build with the MSYS2 UCRT64 toolchain (see windows/build.ps1)
     add_definitions(-DWIN32)
     add_definitions(-DMINGW32)
+    # do not let windows.h define min() and max() macros
+    add_definitions(-DNOMINMAX -DWIN32_LEAN_AND_MEAN)
+    # POSIX types and functions missing on Windows, in every compilation unit
+    add_compile_options(-include ${CMAKE_CURRENT_SOURCE_DIR}/windows/win32_compat.h)
+
+    # CPACK
+    set(CPACK_SYSTEM_NAME "Windows_${CMAKE_SYSTEM_PROCESSOR}")
+    set(CPACK_GENERATOR ZIP)
+
+    # libraries are found with pkg-config, as on Linux
+    find_package(PkgConfig REQUIRED)
+
+    # NCNN Vulkan GPU backend is not yet supported on Windows
+    set(USE_NCNN OFF)
+    set(USE_ONNX OFF)
 endif()
 
 #####
@@ -556,6 +572,9 @@ include_directories(
     ${OSCPACK_INCLUDE_DIR}
 )
 add_library(OSCPACK "${OSCPACK_SRCS}")
+if(WIN32)
+    target_link_libraries(OSCPACK PUBLIC ws2_32 winmm)
+endif()
 set_property(TARGET OSCPACK PROPERTY CXX_STANDARD 17)
 set_property(TARGET OSCPACK PROPERTY C_STANDARD 11)
 # if(APPLE)

@@ -49,9 +49,22 @@ Install the stable debian package (slower release frequency)
 
 Download and install the [latest vimix Release](https://github.com/brunoherbelin/vimix/releases)
 
+### Windows (experimental)
+
+There is no released Windows version yet, but GitHub Actions builds a portable pre-release of vimix for every change.
+It needs 64-bit Windows 10 (version 1903 or later) or Windows 11.
+
+1. Open the [latest successful Windows builds](../../actions/workflows/windows-build.yml?query=is%3Asuccess) and click the most recent run.
+2. Under *Artifacts* at the bottom of the page, download `vimix-windows-x86_64` (about 110 MB; you need to be signed in to GitHub).
+3. Extract the whole zip to a folder (right-click, *Extract All*); vimix does not run from inside the zip.
+4. Run `bin\vimix.exe`. The pre-release is not signed, so Windows may show "Windows protected your PC": click *More info*, then *Run anyway*.
+
+Nothing is installed: to remove vimix, delete the folder (and its settings in `%APPDATA%\vimix`).
+
 # Build vimix
 
 To compile vimix from source, read these [instructions in the documentation](https://github.com/brunoherbelin/vimix/tree/master/docs).
+On Windows, a single script downloads a private toolchain into the clone and builds a portable vimix (see [docs/README.md](docs/README.md#windows-experimental)).
 
 For linux, it is simpler to build a flatpak package of the latest beta version. Detailed instructions are [here](https://github.com/brunoherbelin/vimix/tree/master/flatpak);
 

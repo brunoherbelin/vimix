@@ -2,3 +2,7 @@
 # GLSL shaders...): keep them with LF line endings on every system,
 # whatever core.autocrlf says (Windows checkouts would otherwise get CRLF)
 rsc/** text=auto eol=lf
+
+# Read by the MSYS2 bash of the Windows build (see windows/build.ps1)
+windows/*.sh text eol=lf
+windows/packages.* text eol=lf

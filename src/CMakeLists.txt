@@ -179,6 +179,13 @@ IF(APPLE)
     list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/osx/ScreenCapture_macos.mm)
     set_source_files_properties(${CMAKE_SOURCE_DIR}/osx/ScreenCapture_macos.mm PROPERTIES COMPILE_FLAGS "-x objective-c++")
 
+ELSEIF(WIN32)
+
+    # Windows tablet input (no pressure support yet), and no freedesktop services
+    list(APPEND VMIX_SRCS TabletInput_win32.cpp)
+    # resources: manifest with the UTF-8 code page
+    list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/windows/vimix.rc)
+
 ELSE(APPLE)
 
 
@@ -248,6 +255,26 @@ IF(APPLE)
         "-framework CoreGraphics"
         "-framework OpenGL"
         "-framework Appkit"
+    )
+
+ELSEIF(WIN32)
+
+    # a GUI application, without console window, unless the console is
+    # wanted to read the messages of vimix and GStreamer
+    option(WIN32_CONSOLE "Build vimix as a console application, to see its messages" OFF)
+    if(WIN32_CONSOLE)
+        add_executable(${VMIX_BINARY} ${VMIX_SRCS})
+    else()
+        add_executable(${VMIX_BINARY} WIN32 ${VMIX_SRCS})
+    endif()
+
+    set(PLATFORM_LIBS
+        opengl32
+        ws2_32
+        iphlpapi
+        winmm
+        psapi
+        shlwapi
     )
 
 ELSE(APPLE)

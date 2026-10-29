@@ -1,0 +1,25 @@
+# MSYS2 UCRT64 packages needed to build and package vimix on Windows.
+# Names are given without the 'mingw-w64-ucrt-x86_64-' prefix.
+# Exact versions used for the last verified build are in packages.lock.
+
+# toolchain
+gcc
+cmake
+ninja
+pkgconf
+ntldd
+
+# required libraries
+gstreamer
+gst-plugins-base
+gst-plugins-good
+gst-plugins-bad
+gst-plugins-ugly
+gst-libav
+glfw
+icu
+libpng
+
+# optional libraries (vimix falls back to its ext/ copies otherwise)
+glm
+tinyxml2
