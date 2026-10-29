@@ -29,15 +29,20 @@
 #include <map>
 #include <tuple>
 
-using namespace std;
-
 #ifdef WIN32
 #include <windows.h>
+#include <psapi.h>
+#include <shellapi.h>
+#include <shlwapi.h>
+#include <direct.h>
 #define mkdir(dir, mode) _mkdir(dir)
-#include <include/dirent.h>
-#include <sys/resource.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
 #define PATH_SEP '\\'
-#define PATH_SETTINGS "\\\AppData\\Roaming\\"
+// paths are split on both separators, to read paths written on other systems
+#define PATH_SEPS "\\/"
+#define PATH_SETTINGS "\\AppData\\Roaming\\"
 #elif defined(LINUX) or defined(APPLE)
 #include <sys/resource.h>
 #include <sys/types.h>
@@ -46,6 +51,7 @@ using namespace std;
 #include <dirent.h>
 #include <fnmatch.h>
 #define PATH_SEP '/'
+#define PATH_SEPS "/"
 #endif
 
 #if defined(APPLE)
@@ -59,6 +65,9 @@ using namespace std;
 
 #include "defines.h"
 #include "SystemToolkit.h"
+
+// after system headers (std::byte would conflict with byte of windows.h)
+using namespace std;
 
 /// The amount of memory currently being used by this process, in bytes.
 /// it will try to report the resident set in RAM
@@ -175,7 +184,7 @@ string SystemToolkit::readable_date_time_string(chrono::system_clock::time_point
 
 string SystemToolkit::filename(const string& path)
 {
-    return path.substr(path.find_last_of(PATH_SEP) + 1);
+    return path.substr(path.find_last_of(PATH_SEPS) + 1);
 }
 
 string SystemToolkit::base_filename(const string& path)
@@ -191,7 +200,7 @@ string SystemToolkit::base_filename(const string& path)
 
 string SystemToolkit::path_filename(const string& path)
 {
-    return path.substr(0, path.find_last_of(PATH_SEP) + 1);
+    return path.substr(0, path.find_last_of(PATH_SEPS) + 1);
 }
 
 string SystemToolkit::extension_filename(const string& filename)
@@ -290,6 +299,11 @@ std::vector< std::list<std::string> > SystemToolkit::group_numbered_files(const 
 std::string SystemToolkit::home_path()
 {
     string homePath;
+#ifdef WIN32
+    const char *profile = getenv("USERPROFILE");
+    if (profile)
+        homePath = std::string(profile);
+#else
     // try the system user info
     // NB: avoids depending on changes of the $HOME env. variable
     struct passwd* pwd = getpwuid(getuid());
@@ -298,6 +312,7 @@ std::string SystemToolkit::home_path()
     else
         // try the $HOME environment variable
         homePath = std::string(getenv("HOME"));
+#endif
 
     return homePath + PATH_SEP;
 }
@@ -316,6 +331,11 @@ std::string SystemToolkit::cwd_path()
 std::string SystemToolkit::username()
 {
     string userName;
+#ifdef WIN32
+    const char *user = getenv("USERNAME");
+    if (user)
+        userName = std::string(user);
+#else
     // try the system user info
     struct passwd* pwd = getpwuid(getuid());
     if (pwd)
@@ -323,6 +343,7 @@ std::string SystemToolkit::username()
     else
         // try the $USER environment variable
         userName = std::string(getenv("USER"));
+#endif
 
     return userName;
 }
@@ -350,7 +371,12 @@ string SystemToolkit::settings_path()
     // start from home folder
     // NB: use the env.variable $HOME to allow system to specify
     // another directory (e.g. inside a snap)
-    string home(getenv("HOME"));
+#ifdef WIN32
+    const char *env = getenv("USERPROFILE");
+#else
+    const char *env = getenv("HOME");
+#endif
+    string home(env ? env : "");
 
     // 2. try to access user settings folder
     string settingspath = home + PATH_SETTINGS;
@@ -385,6 +411,10 @@ string SystemToolkit::temp_path()
     else {
         // alternative (works on OSX): use system temporary directory
         const char *tmpdir = getenv("TMPDIR");
+#ifdef WIN32
+        if (!tmpdir)
+            tmpdir = getenv("TEMP");
+#endif
         if (tmpdir)
             temp = std::string(tmpdir);
         else
@@ -525,6 +555,19 @@ list<string> SystemToolkit::list_directory(const string& path, const list<string
         // list all the files and directories within directory
         struct dirent *ent;
         while ((ent = readdir (dir)) != NULL) {
+#ifdef WIN32
+            // no d_type in dirent on Windows
+            struct stat st;
+            if ( stat( full_filename(path, ent->d_name).c_str(), &st) == 0 && S_ISREG(st.st_mode) )
+            {
+                bool found = false;
+                for (auto it = patterns.cbegin(); it != patterns.cend() && !found; ++it)
+                    // test pattern (case insensitive on Windows)
+                    found = PathMatchSpecA( ent->d_name, it->c_str() );
+                if (found)
+                    ls.push_back( full_filename(path, ent->d_name) );
+            }
+#else
             if ( ent->d_type == DT_REG)
             {
                 int found = FNM_NOMATCH;
@@ -534,6 +577,7 @@ list<string> SystemToolkit::list_directory(const string& path, const list<string
                 if (found != FNM_NOMATCH)
                     ls.push_back( full_filename(path, ent->d_name) );
             }
+#endif
         }
         closedir (dir);
     }
@@ -570,7 +614,7 @@ void SystemToolkit::open(const string& url)
 {
     int ignored __attribute__((unused));
 #ifdef WIN32
-        ShellExecuteA( nullptr, nullptr, url.c_str(), nullptr, nullptr, 0 );
+        ShellExecuteA( nullptr, nullptr, url.c_str(), nullptr, nullptr, SW_SHOWNORMAL );
 #elif defined APPLE
         char buf[2048];
         snprintf( buf, 2048, "open '%s'", url.c_str() );
@@ -586,7 +630,7 @@ void SystemToolkit::execute(const string& command)
 {
     int ignored __attribute__((unused));
 #ifdef WIN32
-        ShellExecuteA( nullptr, nullptr, url.c_str(), nullptr, nullptr, 0 );
+    (void) system( command.c_str() );
 #elif defined APPLE
     (void) system( command.c_str() );
 #else
@@ -603,8 +647,8 @@ vector<string> split_path(const string& path) {
     vector<string> strings;
     size_t start;
     size_t end = 0;
-    while ((start = path.find_first_not_of(PATH_SEP, end)) != string::npos) {
-        end = path.find(PATH_SEP, start);
+    while ((start = path.find_first_not_of(PATH_SEPS, end)) != string::npos) {
+        end = path.find_first_of(PATH_SEPS, start);
         strings.push_back(path.substr(start, end - start));
     }
     return strings;
@@ -657,7 +701,12 @@ string SystemToolkit::path_relative_to_path( const string& absolutePath, const s
 
 string SystemToolkit::path_absolute_from_path(const string& relativePath, const string& relativeTo)
 {
+#ifdef WIN32
+    // absolute paths start with the drive (e.g. 'C:'), the first directory
+    string absolutePath;
+#else
     string absolutePath = string(1, PATH_SEP);
+#endif
     vector<string> relativeDirectories = split_path(relativePath);
     vector<string> relativeToDirectories = split_path(relativeTo);
 

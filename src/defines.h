@@ -187,6 +187,7 @@
 #define COLOR_SLIDER_CIRCLE 0.11f, 0.11f, 0.11f
 #define COLOR_STASH_CIRCLE 0.06f, 0.06f, 0.06f
 #define COLOR_MONITOR 0.90f, 0.90f, 0.90f
+#undef COLOR_WINDOW  // (a constant of windows.h)
 #define COLOR_WINDOW 0.2f, 0.85f, 0.85f
 #define COLOR_MENU_HOVERED 0.3f, 0.3f, 0.3f
 #define COLOR_AUTOMATON 0.95f, 0.3f, 0.3f

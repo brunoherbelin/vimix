@@ -30,7 +30,7 @@
 
 #include "ScreenCaptureSource.h"
 
-#if defined(APPLE)
+#if defined(APPLE) || defined(WIN32)
 #include <map>
 #endif
 
@@ -57,10 +57,63 @@ bool screen_recording_allowed()
 // in osx/ScreenCapture_macos.mm
 std::vector< std::pair<unsigned long, std::string> > getListMacOSScreens();
 
+// List of screens, by device-index of avfvideosrc, with their display id and name
+std::vector< std::pair<unsigned long, std::string> > getListScreens()
+{
+    return getListMacOSScreens();
+}
+
 // Pipeline of the screen at the given device-index of avfvideosrc
-std::string macos_screen_pipeline(size_t index)
+std::string screen_pipeline(size_t index)
 {
     return gst_plugin_vidcap + " device-index=" + std::to_string(index);
+}
+#elif defined(WIN32)
+std::string gst_plugin_vidcap = "d3d11screencapturesrc show-cursor=false";
+
+#include <mutex>
+#include <windows.h>
+
+// Monitor handles of the screens, in the order of the last getListScreens()
+// (updated by the monitoring thread, read by the pipelines of the sources)
+std::vector<HMONITOR> screen_monitors;
+std::mutex screen_monitors_access;
+
+BOOL CALLBACK enum_monitor(HMONITOR monitor, HDC, LPRECT, LPARAM data)
+{
+    reinterpret_cast<std::vector<HMONITOR> *>(data)->push_back(monitor);
+    return TRUE;
+}
+
+// List of screens, with an id (index from 1) and name
+// (Windows names most monitors 'Generic PnP Monitor': use number and resolution)
+std::vector< std::pair<unsigned long, std::string> > getListScreens()
+{
+    std::vector< std::pair<unsigned long, std::string> > list;
+    std::vector<HMONITOR> monitors;
+    EnumDisplayMonitors(NULL, NULL, enum_monitor, reinterpret_cast<LPARAM>(&monitors));
+
+    for (size_t i = 0; i < monitors.size(); ++i) {
+        std::string name = "Screen " + std::to_string(i + 1);
+        MONITORINFO info;
+        info.cbSize = sizeof(info);
+        if (GetMonitorInfoA(monitors[i], &info))
+            name += " " + std::to_string(info.rcMonitor.right - info.rcMonitor.left) + "x" +
+                    std::to_string(info.rcMonitor.bottom - info.rcMonitor.top);
+        list.push_back({ (unsigned long) (i + 1), name });
+    }
+
+    std::lock_guard<std::mutex> lock(screen_monitors_access);
+    screen_monitors = monitors;
+    return list;
+}
+
+// Pipeline of the screen at the given index of the list of screens
+std::string screen_pipeline(size_t index)
+{
+    std::lock_guard<std::mutex> lock(screen_monitors_access);
+    guint64 handle = index < screen_monitors.size() ? (guint64) (uintptr_t) screen_monitors[index] : 0;
+    return gst_plugin_vidcap + " monitor-handle=" + std::to_string(handle);
 }
 #else
 // Linux has two behaviours, chosen once by the ScreenCapture manager:
@@ -344,15 +397,15 @@ void ScreenCapture::launchMonitoring(ScreenCapture *sc)
     // de-initialize so next call will update
     sc->monitor_initialized_ = false;
 
-#elif defined(APPLE)
-    // Get the list of screens, by device-index of avfvideosrc, with their
-    // display id and name
+#elif defined(APPLE) || defined(WIN32)
+    // Get the list of screens, by device-index of avfvideosrc (macOS) or
+    // monitor (Windows), with their display id and name
     struct Screen {
         unsigned long display;
         std::string name;
     };
     std::map<int, Screen> screens;
-    const auto list = getListMacOSScreens();
+    const auto list = getListScreens();
     for (size_t i = 0; i < list.size(); ++i)
         screens[(int) i] = { list[i].first, list[i].second };
 
@@ -372,7 +425,7 @@ void ScreenCapture::launchMonitoring(ScreenCapture *sc)
     for (auto hit = sc->handles_.begin(); hit != sc->handles_.end();) {
         auto s = std::find_if(screens.begin(), screens.end(), [&](const auto &screen) {
             return hit->id == screen.second.display && hit->name == screen.second.name &&
-                   hit->pipeline == macos_screen_pipeline(screen.first);
+                   hit->pipeline == screen_pipeline(screen.first);
         });
         if (s != screens.end()) {
             // known already: nothing to add
@@ -386,7 +439,7 @@ void ScreenCapture::launchMonitoring(ScreenCapture *sc)
 
     // Add in handles list the remaining screens
     for (const auto &screen : screens)
-        sc->add(screen.second.name, macos_screen_pipeline(screen.first), screen.second.display);
+        sc->add(screen.second.name, screen_pipeline(screen.first), screen.second.display);
 
     // monitor is initialized
     sc->monitor_initialized_ = true;
@@ -655,7 +708,7 @@ void ScreenCaptureSource::setWindow(const std::string &name)
     if (windowname == SCREEN_CAPTURE_NAME) {
         ScreenCapture::manager().access_.lock();
         auto h = std::find_if(ScreenCapture::manager().handles_.cbegin(), ScreenCapture::manager().handles_.cend(),
-                              [](const ScreenCaptureHandle &handle) { return handle.pipeline == macos_screen_pipeline(0); });
+                              [](const ScreenCaptureHandle &handle) { return handle.pipeline == screen_pipeline(0); });
         if (h != ScreenCapture::manager().handles_.cend())
             windowname = h->name;
         ScreenCapture::manager().access_.unlock();

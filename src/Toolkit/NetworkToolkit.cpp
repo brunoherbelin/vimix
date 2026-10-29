@@ -20,6 +20,12 @@
 #include <algorithm>
 
 #include <string.h>
+
+#ifdef WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+#else
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -27,6 +33,7 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <netdb.h>
+#endif
 
 #ifdef linux
 #include <linux/netdevice.h>
@@ -112,6 +119,75 @@ bool initialized_ = false;
 std::vector<std::string> ipstrings_;
 std::vector<unsigned long> iplongs_;
 
+#ifdef WIN32
+
+// Call fn(address, mask) for each IPv4 address of the interfaces that are up
+template<typename F>
+void for_each_ipv4(F fn)
+{
+    ULONG size = 16384;
+    std::vector<unsigned char> buf(size);
+    ULONG flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER;
+    PIP_ADAPTER_ADDRESSES adapters = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(buf.data());
+    ULONG ret = GetAdaptersAddresses(AF_INET, flags, NULL, adapters, &size);
+    if (ret == ERROR_BUFFER_OVERFLOW) {
+        buf.resize(size);
+        adapters = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(buf.data());
+        ret = GetAdaptersAddresses(AF_INET, flags, NULL, adapters, &size);
+    }
+    if (ret != NO_ERROR)
+        return;
+
+    for (PIP_ADAPTER_ADDRESSES a = adapters; a != NULL; a = a->Next) {
+        if (a->OperStatus != IfOperStatusUp)
+            continue;
+        for (PIP_ADAPTER_UNICAST_ADDRESS u = a->FirstUnicastAddress; u != NULL; u = u->Next) {
+            struct sockaddr_in *sin = reinterpret_cast<struct sockaddr_in *>(u->Address.lpSockaddr);
+            ULONG mask = 0;
+            ConvertLengthToIpv4Mask(u->OnLinkPrefixLength, &mask);
+            fn(sin->sin_addr, mask);
+        }
+    }
+}
+
+void list_interfaces()
+{
+    for_each_ipv4([](struct in_addr addr, ULONG) {
+        char host[INET_ADDRSTRLEN] = {};
+        inet_ntop(AF_INET, &addr, host, sizeof host);
+        // add only if not already listed
+        std::string hostip(host);
+        if ( std::find(ipstrings_.begin(), ipstrings_.end(), hostip) == ipstrings_.end() )
+        {
+            ipstrings_.push_back( hostip );
+            iplongs_.push_back( GetHostByName(host) );
+        }
+    });
+    initialized_ = true;
+}
+
+std::vector<std::pair<std::string,std::string>> NetworkToolkit::interface_broadcasts()
+{
+    std::vector<std::pair<std::string,std::string>> result;
+
+    for_each_ipv4([&result](struct in_addr addr, ULONG mask) {
+        struct in_addr broadcast;
+        broadcast.s_addr = addr.s_addr | ~mask;
+        char src[INET_ADDRSTRLEN] = {}, bcast[INET_ADDRSTRLEN] = {};
+        inet_ntop(AF_INET, &addr, src, sizeof src);
+        inet_ntop(AF_INET, &broadcast, bcast, sizeof bcast);
+        std::string src_s(src), bcast_s(bcast);
+        // exclude loopback, limited broadcast and duplicates
+        if (src_s.rfind("127.", 0) != 0 && bcast_s != "255.255.255.255" &&
+            std::find_if(result.begin(), result.end(),
+                [&bcast_s](const auto& p){ return p.second == bcast_s; }) == result.end())
+            result.push_back({src_s, bcast_s});
+    });
+
+    return result;
+}
+
+#else
 
 void add_interface(int fd, const char *name) {
     struct ifreq ifreq;
@@ -167,14 +243,6 @@ void list_interfaces()
     initialized_ = true;
 }
 
-std::vector<std::string> NetworkToolkit::host_ips()
-{
-    if (!initialized_)
-        list_interfaces();
-
-    return ipstrings_;
-}
-
 std::vector<std::pair<std::string,std::string>> NetworkToolkit::interface_broadcasts()
 {
     std::vector<std::pair<std::string,std::string>> result;
@@ -224,6 +292,16 @@ std::vector<std::pair<std::string,std::string>> NetworkToolkit::interface_broadc
     return result;
 }
 
+#endif
+
+std::vector<std::string> NetworkToolkit::host_ips()
+{
+    if (!initialized_)
+        list_interfaces();
+
+    return ipstrings_;
+}
+
 bool NetworkToolkit::is_host_ip(const std::string &ip)
 {
     if ( ip.compare("localhost") == 0)
@@ -269,7 +347,14 @@ std::string NetworkToolkit::hostname()
 {
     char hostname[1024];
     hostname[1023] = '\0';
+#ifdef WIN32
+    // (gethostname needs Winsock to be initialized)
+    DWORD size = 1023;
+    if (!GetComputerNameExA(ComputerNameDnsHostname, hostname, &size))
+        hostname[0] = '\0';
+#else
     gethostname(hostname, 1023);
+#endif
 
     return std::string(hostname);
 }
