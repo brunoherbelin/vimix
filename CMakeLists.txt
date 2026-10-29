@@ -1030,18 +1030,21 @@ set(RSC_DB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/rsc/gamecontrollerdb.txt")
 
 # Check if submodule file exists
 if(EXISTS "${SUBMODULE_DB_PATH}")
-    # Compare the files to see if they differ
+    # Compare the files to see if they differ, with LF line endings as in rsc/
+    # (the submodule may be checked out with CRLF, e.g. on Windows)
     set(FILES_DIFFER FALSE)
+    file(READ "${SUBMODULE_DB_PATH}" SUBMODULE_DB)
+    string(REPLACE "\r\n" "\n" SUBMODULE_DB "${SUBMODULE_DB}")
 
     if(NOT EXISTS "${RSC_DB_PATH}")
         # rsc file doesn't exist, copy it
         set(FILES_DIFFER TRUE)
     else()
         # Both files exist, compare them
-        file(MD5 "${SUBMODULE_DB_PATH}" SUBMODULE_MD5)
-        file(MD5 "${RSC_DB_PATH}" RSC_MD5)
+        file(READ "${RSC_DB_PATH}" RSC_DB)
+        string(REPLACE "\r\n" "\n" RSC_DB "${RSC_DB}")
 
-        if(NOT "${SUBMODULE_MD5}" STREQUAL "${RSC_MD5}")
+        if(NOT "${SUBMODULE_DB}" STREQUAL "${RSC_DB}")
             set(FILES_DIFFER TRUE)
         else()
             message(STATUS "gamecontrollerdb.txt is up-to-date with submodule")
@@ -1050,7 +1053,7 @@ if(EXISTS "${SUBMODULE_DB_PATH}")
 
     # Copy if different
     if(FILES_DIFFER)
-        file(COPY "${SUBMODULE_DB_PATH}" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/rsc/")
+        file(WRITE "${RSC_DB_PATH}" "${SUBMODULE_DB}")
         message(STATUS "Updated rsc/gamecontrollerdb.txt from ext/mdqinc submodule")
 
         # Show version info if available

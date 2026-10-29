@@ -1,0 +1,4 @@
+# Resources are embedded in the binary and parsed by vimix (PLY meshes,
+# GLSL shaders...): keep them with LF line endings on every system,
+# whatever core.autocrlf says (Windows checkouts would otherwise get CRLF)
+rsc/** text=auto eol=lf
