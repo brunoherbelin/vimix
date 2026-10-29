@@ -927,6 +927,14 @@ const char *plugins[15] = { "vulkanh264dec", "vulkanh265dec", "vaav1dec", "nvav1
 #elif GST_GL_HAVE_PLATFORM_CGL
     const char *plugins[2] = { "vtdec_hw", "vtdechw" };
     const int N = 2;
+#elif GST_GL_HAVE_PLATFORM_WGL
+// list ordered with higher priority at the end (nvidia, which outputs GLMemory, before direct3d 11 and 12)
+// (direct3d 12 decoders are the GStreamer default on Windows: listed to be disabled with gpu decoding)
+const char *plugins[18] = { "d3d12av1dec", "d3d11av1dec", "nvav1dec", "d3d12h264dec", "d3d11h264dec", "nvh264dec",
+                                "d3d12h265dec", "d3d11h265dec", "nvh265dec", "d3d12mpeg2dec", "d3d11mpeg2dec", "nvmpeg2videodec",
+                                "d3d12vp8dec", "d3d11vp8dec", "nvvp8dec", "d3d12vp9dec", "d3d11vp9dec", "nvvp9dec"
+                               };
+    const int N = 18;
 #else
     const char *plugins[0] = { };
     const int N = 0;

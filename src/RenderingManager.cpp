@@ -35,6 +35,9 @@
 #ifdef APPLE
 #define GLFW_EXPOSE_NATIVE_COCOA
 #define GLFW_EXPOSE_NATIVE_NSGL
+#elif defined(WIN32)
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
 #else
 #define GLFW_EXPOSE_NATIVE_X11
 #define GLFW_EXPOSE_NATIVE_GLX
@@ -57,6 +60,9 @@
 #include <GLFW/glfw3native.h>
 #ifdef APPLE
 #include <OpenGL/OpenGL.h>  // CGLGetCurrentContext
+#endif
+#ifdef WIN32
+#undef RGB  // macro of windows.h, conflicts with DialogToolkit::ColorPickerDialog::RGB()
 #endif
 #endif
 
@@ -285,9 +291,42 @@ bool Rendering::init()
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
     global_display = NULL;
     global_gl_context = NULL;
-#if GST_GL_HAVE_PLATFORM_WGL
-    global_gl_context = gst_gl_context_new_wrapped (display, (guintptr) wglGetCurrentContext (),
-                                                   GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL);
+#if defined(WIN32) && GST_GL_HAVE_PLATFORM_WGL
+    // Windows: wrap the WGL context of the main window, an OpenGL 3.3 core
+    // profile context, for GStreamer to create its own contexts shared with it.
+    global_display = gst_gl_display_new();
+    if (global_display != NULL)
+        global_gl_context = gst_gl_context_new_wrapped (global_display,
+                                                   (guintptr) glfwGetWGLContext(main_.window()),
+                                                   GST_GL_PLATFORM_WGL, GST_GL_API_OPENGL3);
+    if (global_gl_context == NULL) {
+        g_printerr("Failed to wrap GStreamer WGL context\n");
+        Log::Warning("Failed to wrap GStreamer WGL context.");
+        global_display = NULL;
+    }
+    else {
+        // the wrapped context is current in this thread: let GStreamer read its config
+        gst_gl_context_activate(global_gl_context, TRUE);
+        gst_gl_context_fill_info(global_gl_context, NULL);
+        gst_gl_context_activate(global_gl_context, FALSE);
+
+        // WGL cannot share with a context that is current in another thread,
+        // which the main context always is when GStreamer elements create their
+        // own context. So create the GStreamer context now, with the main context
+        // released, and add it to the display, where all elements will reuse it.
+        static GstGLContext *gst_context = NULL;
+        GError *error = NULL;
+        glfwMakeContextCurrent(NULL);
+        GST_OBJECT_LOCK(global_display);
+        if (gst_gl_display_create_context(global_display, global_gl_context, &gst_context, &error))
+            gst_gl_display_add_context(global_display, gst_context);
+        GST_OBJECT_UNLOCK(global_display);
+        glfwMakeContextCurrent(main_.window());
+        if (error != NULL) {
+            Log::Warning("Failed to create GStreamer WGL context: %s", error->message);
+            g_clear_error(&error);
+        }
+    }
 #elif GST_GL_HAVE_PLATFORM_CGL
     // macOS: wrap the CGL context of the main window (current here), an OpenGL
     // 3.3 core profile context, for GStreamer to create its own contexts shared
@@ -885,6 +924,19 @@ void Rendering::inhibitScreensaver (bool on)
             screensaver_inhibit_cookie_ = 0;
         }
     }
+}
+#elif defined(WIN32)
+#include <windows.h>
+
+void Rendering::inhibitScreensaver (bool on)
+{
+    // keep the display on (no screensaver, no sleep) until cleared
+    if (on) {
+        SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
+        Log::Info("Screensaver inhibited for vimix");
+    }
+    else
+        SetThreadExecutionState(ES_CONTINUOUS);
 }
 #else
 // TODO Implement for other platforms (e.g. macOS)
