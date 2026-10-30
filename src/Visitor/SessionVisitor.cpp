@@ -165,6 +165,7 @@ void SessionVisitor::saveSnapshots(tinyxml2::XMLDocument *doc, Session *session)
     {
         // create element
         XMLElement *snapshots = doc->NewElement("Snapshots");
+        snapshots->SetAttribute("duration", session->snapshots()->duration_);
 
         // access to session snapshot
         session->snapshots()->access_.lock();

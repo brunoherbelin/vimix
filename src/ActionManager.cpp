@@ -21,6 +21,7 @@
 #include <thread>
 #include <regex>
 #include <mutex>
+#include <algorithm>
 
 #include "Log.h"
 #include "View/View.h"
@@ -46,9 +47,10 @@ using namespace tinyxml2;
 
 
 Action::Action(): history_step_(0), history_max_step_(0), history_min_step_(0),
-    history_init_pending_(false), snapshot_id_(0), snapshot_node_(nullptr), interpolator_(nullptr), interpolator_node_(nullptr)
+    history_init_pending_(false), snapshot_id_(0), snapshot_node_(nullptr), restored_id_(0),
+    animating_(false), duration_(0.f), progress_(0.f)
 {
-
+    interpolator_ = new Interpolator;
 }
 
 void Action::init(const std::string &label)
@@ -62,6 +64,7 @@ void Action::init(const std::string &label)
     // reset snapshot
     snapshot_id_ = 0;
     snapshot_node_ = nullptr;
+    restored_id_ = 0;
 
     store(label, false);
 
@@ -234,8 +237,9 @@ void Action::undo()
         Log::Notify("Not available in Draft mode.");
         return;
     }
-    // finish draft animation
+    // finish draft or snapshot animation
     Draft::manager().terminate();
+    finish();
     // not possible to go to 1 -1 = 0
     if (history_step_ <= 1)
         return;
@@ -250,8 +254,9 @@ void Action::redo()
         Log::Notify("Not available in Draft mode.");
         return;
     }
-    // finish draft animation
+    // finish draft or snapshot animation
     Draft::manager().terminate();
+    finish();
     // not possible to go to max_step_ + 1
     if (history_step_ >= history_max_step_)
         return;
@@ -267,8 +272,9 @@ void Action::stepTo(uint target)
         Log::Notify("Not available in Draft mode.");
         return;
     }
-    // finish draft animation
+    // finish draft or snapshot animation
     Draft::manager().terminate();
+    finish();
     // get reasonable target
     uint t = CLAMP(target, 1, history_max_step_);
 
@@ -324,8 +330,9 @@ void Action::restore(uint target)
         Log::Notify("Not available in Draft mode.");
         return;
     }
-    // finish draft animation
+    // finish draft or snapshot animation
     Draft::manager().terminate();
+    finish();
     history_access_.lock();
 
     // get history node of target step
@@ -379,8 +386,9 @@ void Action::snapshot(const std::string &label)
         Log::Notify("Not available in Draft mode.");
         return;
     }
-    // finish draft animation
+    // finish draft or snapshot animation
     Draft::manager().terminate();
+    finish();
     // ensure label is unique
     std::string snap_label = BaseToolkit::uniqueName(label, labels());
 
@@ -406,8 +414,6 @@ void Action::open(uint64_t snapshotid)
             snapshot_id_ = snapshotid;
         else
             snapshot_id_ = 0;
-
-        interpolator_node_ = nullptr;
     }
 }
 
@@ -417,8 +423,9 @@ void Action::replace(uint64_t snapshotid)
         Log::Notify("Not available in Draft mode.");
         return;
     }
-    // finish draft animation
+    // finish draft or snapshot animation
     Draft::manager().terminate();
+    finish();
     if (snapshotid > 0)
         open(snapshotid);
 
@@ -550,84 +557,171 @@ void Action::restore(uint64_t snapshotid)
         Log::Notify("Not available in Draft mode.");
         return;
     }
-    // finish draft animation
+    // finish draft or snapshot animation
     Draft::manager().terminate();
-    if (snapshotid > 0)
-        open(snapshotid);
-
-    if (snapshot_node_)
-        // actually restore
-        Mixer::manager().restore(snapshot_node_);
-
-    store("Snapshot " + label(snapshot_id_));
-}
-
-float Action::interpolation()
-{
-    float ret = 0.f;
-    if ( interpolator_node_ == snapshot_node_  && interpolator_)
-        ret = interpolator_->current();
-
-    return ret;
-}
-
-void Action::interpolate(float val, uint64_t snapshotid)
-{
-    if (Draft::manager().active()) {
-        Log::Notify("Not available in Draft mode.");
-        return;
-    }
-    // finish draft animation
-    Draft::manager().terminate();
+    finish();
     if (snapshotid > 0)
         open(snapshotid);
 
     if (snapshot_node_) {
+        // actually restore
+        Mixer::manager().restore(snapshot_node_);
+        restored_id_ = snapshot_id_;
+    }
 
-        if ( interpolator_node_ != snapshot_node_ ) {
+    store("Snapshot " + label(snapshot_id_));
+}
 
-            // change interpolator
-            if (interpolator_)
-                delete interpolator_;
+// position of the source moved on the border of the mixing circle (alpha 0)
+static SourceCore faded(const Source *s)
+{
+    SourceCore core;
+    SourceCoreField::copy(core, *s, SourceCoreField::bit(SourceCoreField::MIXING_POSITION));
+    glm::vec3 &pos = core.group(View::MIXING)->translation_;
+    const glm::vec2 p(pos);
+    const float d = glm::length(p);
+    const glm::vec2 dir = d > EPSILON ? p / d : glm::vec2(1.f, 0.f);
+    const glm::vec2 out = dir * MAX(d, 1.f);
+    pos.x = out.x;
+    pos.y = out.y;
+    return core;
+}
 
-            // create new interpolator
-            interpolator_ = new Interpolator;
+void Action::restore(uint64_t snapshotid, float duration)
+{
+    // no animation
+    if (duration < 1.f || Mixer::manager().editingBundle()) {
+        restore(snapshotid);
+        return;
+    }
 
-            // current session
-            Session *se = Mixer::manager().liveSession();
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // finish draft or snapshot animation
+    Draft::manager().terminate();
+    finish();
+    if (snapshotid > 0)
+        open(snapshotid);
 
-            XMLElement* N = snapshot_node_->FirstChildElement("Source");
-            for( ; N ; N = N->NextSiblingElement()) {
+    if (!snapshot_node_)
+        return;
 
-                // check if a source with the given id exists in the session
-                uint64_t id_xml_ = 0;
-                N->QueryUnsigned64Attribute("id", &id_xml_);
-                SourceList::iterator sit = se->find(id_xml_);
+    Session *se = Mixer::manager().liveSession();
 
-                // a source with this id exists
-                if ( sit != se->end() ) {
-                    // read target in the snapshot xml
-                    SourceCore target;
-                    SessionLoader::XMLToSourcecore(N, target);
+    // state of sources before restore
+    std::map<uint64_t, SourceCore> from;
+    std::map<uint64_t, Source::Parameters> from_parameters;
+    std::map<uint64_t, bool> from_processing;
+    for (auto it = se->begin(); it != se->end(); ++it) {
+        SourceCoreField::copy(from[(*it)->id()], **it);
+        from_parameters[(*it)->id()] = (*it)->parameters();
+        from_processing[(*it)->id()] = (*it)->imageProcessingEnabled();
+    }
 
-                    // add an interpolator for this source
-                    interpolator_->add(*sit, target);
-                }
-            }
+    // restore all at once (keeping the sources to remove)
+    removed_.clear();
+    Mixer::manager().restore(snapshot_node_, &removed_);
+    restored_id_ = snapshot_id_;
 
-            // operate interpolation on opened snapshot
-            interpolator_node_ = snapshot_node_;
+    // animate sources from previous to restored state
+    interpolator_->clear();
+    for (auto it = se->begin(); it != se->end(); ++it) {
+        Source *s = *it;
+        const bool remove = std::find(removed_.begin(), removed_.end(), s) != removed_.end();
+        auto f = from.find(s->id());
+
+        // source not in snapshot: fade out
+        if (remove)
+            interpolator_->add(s, faded(s), SourceCoreField::bit(SourceCoreField::MIXING_POSITION));
+        // source created by snapshot: fade in
+        else if (f == from.end()) {
+            SourceCore target;
+            SourceCoreField::copy(target, *s, SourceCoreField::bit(SourceCoreField::MIXING_POSITION));
+            SourceCoreField::copy(*s, faded(s), SourceCoreField::bit(SourceCoreField::MIXING_POSITION));
+            s->touch();
+            interpolator_->add(s, target, SourceCoreField::bit(SourceCoreField::MIXING_POSITION));
         }
+        // source existing before: from previous to restored state
+        else {
+            SourceCore target;
+            SourceCoreField::copy(target, *s);
+            SourceCoreField::Mask mask = SourceCoreField::diff(target, f->second);
+            Source::Parameters parameters = SourceCoreField::diff( s->parameters(), from_parameters[s->id()] );
+            // image processing switched in snapshot
+            SourceInterpolator::ProcessingSwitch processing = SourceInterpolator::PROCESSING_KEEP;
+            if ( s->imageProcessingEnabled() != from_processing[s->id()] )
+                processing = s->imageProcessingEnabled() ? SourceInterpolator::PROCESSING_ENABLE
+                                                         : SourceInterpolator::PROCESSING_DISABLE;
 
-        if (interpolator_) {
-//            Log::Info("Action::interpolate %f", val);
-            interpolator_->apply( val );
+            if ( mask != 0 || !parameters.empty() || processing != SourceInterpolator::PROCESSING_KEEP ) {
+                // back to previous state
+                SourceCoreField::copy(*s, f->second);
+                s->setParameters( from_parameters[s->id()] );
+                s->setImageProcessingEnabled( from_processing[s->id()] );
+                s->touch();
+                interpolator_->add(s, target, mask, parameters, processing);
+            }
         }
     }
 
+    // start the animation (or finish if nothing to animate)
+    animating_ = true;
+    duration_ = duration;
+    progress_ = 0.f;
+    if (interpolator_->empty())
+        finish();
+    else
+        interpolator_->apply(0.f);
 }
 
+float Action::progress() const
+{
+    if (animating_ && duration_ > 0.f)
+        return CLAMP(progress_ / duration_, 0.f, 1.f);
+    return 0.f;
+}
 
+void Action::update(float dt)
+{
+    if (!animating_)
+        return;
+
+    progress_ += dt;
+
+    if (progress_ < duration_)
+        interpolator_->apply(progress_ / duration_);
+    else
+        finish();
+}
+
+void Action::finish(bool store_history)
+{
+    if (!animating_)
+        return;
+    animating_ = false;
+
+    interpolator_->apply(1.f);
+    interpolator_->clear();
+
+    // delete sources faded out (as in Mixer::restore)
+    for (auto it = removed_.begin(); it != removed_.end(); ++it) {
+        Mixer::manager().detachSource( *it );
+        Mixer::manager().liveSession()->deleteSource( *it );
+    }
+    removed_.clear();
+    ++View::need_deep_update_;
+
+    if (store_history)
+        store("Snapshot " + label(restored_id_));
+}
+
+void Action::forget(Source *s)
+{
+    interpolator_->remove(s);
+    removed_.remove(s);
+}
 
 // static multithreaded version saving
 static void saveSnapshot(const std::string& filename, tinyxml2::XMLElement *snapshot_node)

@@ -45,7 +45,7 @@ class UserInterface
     friend class Navigator;
     friend class SessionPanel;
     friend class PlaylistPanel;
-    friend class PresentationView;
+    friend class StripView;
     friend class SettingsPanel;
     friend class OutputPreviewWindow;
     friend class SourceControlWindow;

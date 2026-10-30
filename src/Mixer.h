@@ -9,6 +9,7 @@
 #include "View/TextureView.h"
 #include "View/TransitionView.h"
 #include "View/PresentationView.h"
+#include "View/SnapshotsView.h"
 #include "View/DisplaysView.h"
 #include "Session.h"
 #include "Selection.h"
@@ -23,6 +24,7 @@ class SessionGroupSource;
 class Mixer
 {
     friend class PresentationView;
+    friend class Action;
 
     // Private Constructor
     Mixer();
@@ -166,7 +168,9 @@ public:
     void paste  (const std::string& clipboard);
 
     // version and undo management
-    void restore(tinyxml2::XMLElement *sessionNode);
+    // restore the session described in xml; sources not in xml are deleted,
+    // or kept and appended to the removed list if given
+    void restore(tinyxml2::XMLElement *sessionNode, SourceList *removed = nullptr);
 
 protected:
 
@@ -205,6 +209,7 @@ protected:
     TransitionView transition_;
     DisplaysView displays_;
     PresentationView presentation_;
+    SnapshotsView snapshots_;
 
     bool busy_;
     float dt_;

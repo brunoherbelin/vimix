@@ -30,13 +30,26 @@
 #include "SessionThumbnailSource.h"
 
 SessionThumbnailSource::SessionThumbnailSource(const std::string &path) : Source(), path_(path),
-    missing_(!SystemToolkit::file_exists(path)), texture_(0), rendered_(false)
+    missing_(!SystemToolkit::file_exists(path)), texture_(0), rendered_(false), image_(nullptr)
 {
     setName( SystemToolkit::base_filename(path_) );
 
     // read session information (and thumbnail) in a thread
     infoLoader_ = std::async(std::launch::async, SessionCreator::info, path_, true);
 
+    createFrames();
+}
+
+SessionThumbnailSource::SessionThumbnailSource(FrameBufferImage *image, const std::string &name) : Source(),
+    missing_(false), texture_(0), rendered_(false), image_(image)
+{
+    setName( name );
+
+    createFrames();
+}
+
+void SessionThumbnailSource::createFrames()
+{
     // specific node for presentation view
     frames_[View::PRESENTATION] = new Switch;
     Frame *frame = new Frame(Frame::ROUND, Frame::THIN, Frame::DROP);  // visible
@@ -71,6 +84,8 @@ SessionThumbnailSource::~SessionThumbnailSource()
         if (info.thumbnail)
             delete info.thumbnail;
     }
+    if (image_)
+        delete image_;
 
     if (texture_)
         glDeleteTextures(1, &texture_);
@@ -83,27 +98,31 @@ uint SessionThumbnailSource::texture() const
 
 void SessionThumbnailSource::init()
 {
-    // wait for session information to be loaded
-    if ( !infoLoader_.valid() ||
-         infoLoader_.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready )
-        return;
+    FrameBufferImage *thumbnail = image_;
+    image_ = nullptr;
 
-    SessionInformation info = infoLoader_.get();
+    // wait for session information to be loaded
+    if ( !path_.empty() ) {
+        if ( !infoLoader_.valid() ||
+             infoLoader_.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready )
+            return;
+        thumbnail = infoLoader_.get().thumbnail;
+    }
 
     // default size of image if no thumbnail (16:9)
     int h = static_cast<int>(SESSION_THUMBNAIL_HEIGHT);
     int w = 16 * h / 9;
 
     // create texture from thumbnail
-    if (info.thumbnail) {
-        w = info.thumbnail->width;
-        h = info.thumbnail->height;
+    if (thumbnail) {
+        w = thumbnail->width;
+        h = thumbnail->height;
         glGenTextures(1, &texture_);
         glBindTexture( GL_TEXTURE_2D, texture_);
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB8, w, h);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, info.thumbnail->rgb);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, thumbnail->rgb);
         glBindTexture(GL_TEXTURE_2D, 0);
-        delete info.thumbnail;
+        delete thumbnail;
     }
 
     // set the texture to draw in the frame buffer

@@ -7,6 +7,8 @@
 
 #include <tinyxml2.h>
 
+#include "Source/SourceList.h"
+
 #define MAX_COUNT_HISTORY 1000
 
 class Session;
@@ -64,8 +66,22 @@ public:
     void setLabel (uint64_t snapshotid, const std::string &label);
     FrameBufferImage *thumbnail (uint64_t snapshotid) const;
 
-    float interpolation ();
-    void interpolate (float val, uint64_t snapshotid = 0);
+    // last snapshot restored (instantly or with animation)
+    uint64_t restoredSnapshot () const { return restored_id_; }
+
+    // restore with an animation of given duration (ms) from current state to the snapshot
+    // (sources created by the snapshot fade in, sources removed fade out)
+    void restore (uint64_t snapshotid, float duration);
+    // animation of restore is ongoing
+    inline bool animating () const { return animating_; }
+    // progress of animation [0 1]
+    float progress () const;
+    // finish animation immediately (and store the result in history)
+    void finish (bool store_history = true);
+    // to be called at each frame (dt in ms)
+    void update (float dt);
+    // a source is deleted
+    void forget (Source *s);
 
 private:
     tinyxml2::XMLDocument history_doc_;
@@ -80,8 +96,14 @@ private:
     uint64_t snapshot_id_;
     tinyxml2::XMLElement *snapshot_node_;
 
+    uint64_t restored_id_;
+
+    // animation of restore
     Interpolator *interpolator_;
-    tinyxml2::XMLElement *interpolator_node_;
+    SourceList removed_;
+    bool animating_;
+    float duration_;
+    float progress_;
 
 };
 

@@ -66,6 +66,7 @@ public:
     void showConfig();
     void showPlaylist();
     void startPresentation();
+    void startVersions();
     void togglePannelAutoHide();
 
     typedef NewSourcePanel::MediaCreateMode MediaCreateMode;

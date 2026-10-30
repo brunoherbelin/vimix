@@ -432,6 +432,14 @@ void SessionPanel::Render()
         ImGuiToolkit::ButtonToggle(" " ICON_FA_CODE_BRANCH " ", &Settings::application.save_version_snapshot, "Iterative saving");
 
         ImGui::SetCursorPos( pos_bot );
+
+        // start presentation of versions
+        if (snapshots.empty())
+            ImGuiToolkit::ButtonDisabled(ICON_FA_CHALKBOARD_TEACHER "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0));
+        else if (ImGui::Button(ICON_FA_CHALKBOARD_TEACHER "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0)))
+            UserInterface::manager().navigator.startVersions();
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Step through versions with smooth transitions", "Shift+F8");
     }
     else {
         if (!Action::manager().snapshots().empty())  {

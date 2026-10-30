@@ -454,8 +454,12 @@ void UserInterface::handleKeyboard()
             show_preview = PREVIEW_OUTPUT;
         else if (ImGui::IsKeyPressed( GLFW_KEY_F7,  false ))
             show_preview = PREVIEW_SOURCE;
-        else if (ImGui::IsKeyPressed( GLFW_KEY_F8, false ))
-            navigator.startPresentation();
+        else if (ImGui::IsKeyPressed( GLFW_KEY_F8, false )) {
+            if (shift_modifier_active)
+                navigator.startVersions();
+            else
+                navigator.startPresentation();
+        }
         else if (ImGui::IsKeyPressed( GLFW_KEY_F9, false ))
             StartScreenshot();
         else if (ImGui::IsKeyPressed( GLFW_KEY_F10, false ))
@@ -478,7 +482,8 @@ void UserInterface::handleKeyboard()
             // leave transition or presentation /or/ leave bundle /or/ toggle clear workspace
             if (Mixer::manager().view()->mode() == View::TRANSITION)
                 static_cast<TransitionView *>(Mixer::manager().view())->quit();
-            else if (Mixer::manager().view()->mode() == View::PRESENTATION)
+            else if (Mixer::manager().view()->mode() == View::PRESENTATION ||
+                     Mixer::manager().view()->mode() == View::SNAPSHOTS)
                 setView(View::MIXING);
             else if (Mixer::manager().editingBundle())
                 Mixer::manager().exitBundle();
@@ -499,8 +504,9 @@ void UserInterface::handleKeyboard()
         // Space bar
         else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false )) {
             // space bar presentation to switch to next
-            if (Mixer::manager().view()->mode() == View::PRESENTATION)
-                static_cast<PresentationView *>(Mixer::manager().view())->next();
+            if (Mixer::manager().view()->mode() == View::PRESENTATION ||
+                Mixer::manager().view()->mode() == View::SNAPSHOTS)
+                static_cast<StripView *>(Mixer::manager().view())->next();
             else
                 // Space bar to toggle play / pause
                 sourcecontrol.Play();
@@ -3359,6 +3365,8 @@ void UserInterface::RenderHelp()
         ImGui::NextColumn();
         ImGui::Text("F8"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CHALKBOARD_TEACHER " Start presentation of current playlist"); ImGui::NextColumn();
+        ImGui::Text("Shift+F8"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_CHALKBOARD_TEACHER " Start presentation of versions of session"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "TAB"); ImGui::NextColumn();
         ImGui::Text("Switch view"); ImGui::NextColumn();
         ImGui::Text(CTRL_MOD "D"); ImGui::NextColumn();

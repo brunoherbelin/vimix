@@ -41,7 +41,9 @@
 #include "ControlManager.h"
 #include "MousePointer.h"
 #include "SessionCreator.h"
+#include "Log.h"
 #include "Window/WorkspaceWindow.h"
+#include "View/SnapshotsView.h"
 #include "UserInterfaceManager.h"
 #include "FrameGrabbing.h"
 
@@ -170,6 +172,19 @@ void Navigator::startPresentation()
 {
     showPlaylist();
     playlist_panel_.startPresentation();
+}
+
+void Navigator::startVersions()
+{
+    if (Action::manager().snapshots().empty()) {
+        Log::Notify("No version of the session to present.");
+        return;
+    }
+
+    SnapshotsView *sv = static_cast<SnapshotsView *>(Mixer::manager().view(View::SNAPSHOTS));
+    sv->setSnapshots();
+    UserInterface::manager().setView(View::SNAPSHOTS);
+    WorkspaceWindow::clearWorkspace();
 }
 
 void Navigator::togglePannelMenu()

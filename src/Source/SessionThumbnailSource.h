@@ -7,12 +7,13 @@
 #include "SessionCreator.h"
 #include "Source.h"
 
-// Light Source showing the thumbnail of a session file
-// (never inserted in a Session; owned and driven by the PresentationView)
+// Light Source showing the thumbnail of a session file, or a given thumbnail
+// (never inserted in a Session; owned and driven by a StripView)
 class SessionThumbnailSource : public Source
 {
 public:
     SessionThumbnailSource(const std::string &path);
+    SessionThumbnailSource(FrameBufferImage *image, const std::string &name);
     ~SessionThumbnailSource();
 
     // implementation of source API
@@ -40,6 +41,10 @@ protected:
     uint texture_;
     bool rendered_;
     std::future<SessionInformation> infoLoader_;
+    FrameBufferImage *image_;
+
+private:
+    void createFrames();
 };
 
 #endif // SESSIONTHUMBNAILSOURCE_H

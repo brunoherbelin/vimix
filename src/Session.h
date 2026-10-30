@@ -37,6 +37,8 @@ struct SessionSnapshots {
     tinyxml2::XMLDocument *xmlDoc_;
     std::list<uint64_t> keys_;
     std::mutex access_;
+    // duration of transition between snapshots (ms)
+    float duration_ = 1000.f;
 };
 
 class Session

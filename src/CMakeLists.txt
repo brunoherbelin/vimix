@@ -124,7 +124,9 @@ set(VMIX_SRCS
     View/RenderView.cpp
     View/TextureView.cpp
     View/TransitionView.cpp
+    View/StripView.cpp
     View/PresentationView.cpp
+    View/SnapshotsView.cpp
     View/View.cpp
     
     # Visitor/ folder

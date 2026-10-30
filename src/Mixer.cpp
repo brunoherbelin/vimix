@@ -215,8 +215,9 @@ void Mixer::update()
     // compute stabilized dt__
     dt__ = 0.05f * dt_ + 0.95f * dt__;
 
-    // animate draft
+    // animate draft and restore of snapshot
     Draft::manager().update(dt_);
+    Action::manager().update(dt_);
 
     // sources of a ready session execute their initial callbacks (e.g. play) in update
     bool session_was_started = liveSession()->started();
@@ -321,6 +322,7 @@ void Mixer::update()
         transition_.update(dt_);
         displays_.update(dt_);
         presentation_.update(dt_);
+        snapshots_.update(dt_);
 
         // deep update was performed
         --View::need_deep_update_;
@@ -761,8 +763,9 @@ bool Mixer::recreateSource(Source *s)
     if (replacement == nullptr)
         return false;
 
-    // stop draft animation of source
+    // stop draft or snapshot animation of source
     Draft::manager().forget(s);
+    Action::manager().forget(s);
 
     // remove source Nodes from all views
     detachSource(s);
@@ -792,8 +795,9 @@ void Mixer::deleteSource(Source *s)
         // keep name for log
         std::string name = s->name();
 
-        // stop draft animation of source
+        // stop draft or snapshot animation of source
         Draft::manager().forget(s);
+        Action::manager().forget(s);
 
         // remove source Nodes from all views
         detachSource(s);
@@ -1773,6 +1777,10 @@ void Mixer::setView(View::Mode m)
     if ( current_view_ == &presentation_ && m != View::PRESENTATION )
         presentation_.leave();
 
+    // special case when leaving snapshots view
+    if ( current_view_ == &snapshots_ && m != View::SNAPSHOTS )
+        snapshots_.leave();
+
     // no transition inside a bundle
     if ( View::isSwitchingView(m) )
         exitAllBundles();
@@ -1786,6 +1794,9 @@ void Mixer::setView(View::Mode m)
         break;
     case View::PRESENTATION:
         current_view_ = &presentation_;
+        break;
+    case View::SNAPSHOTS:
+        current_view_ = &snapshots_;
         break;
     case View::GEOMETRY:
         current_view_ = &geometry_;
@@ -1830,6 +1841,8 @@ View *Mixer::view(View::Mode m)
         return &transition_;
     case View::PRESENTATION:
         return &presentation_;
+    case View::SNAPSHOTS:
+        return &snapshots_;
     case View::GEOMETRY:
         return &geometry_;
     case View::LAYER:
@@ -2165,8 +2178,9 @@ void Mixer::swap()
     if (!back_session_)
         return;
 
-    // leave DRAFT mode on the current session
+    // leave DRAFT mode and finish snapshot animation on the current session
     Draft::manager().terminate();
+    Action::manager().finish(false);
     // leave BUNDLE mode
     exitAllBundles();
 
@@ -2267,8 +2281,9 @@ void Mixer::close(bool smooth)
 
 void Mixer::terminate()
 {
-    // leave DRAFT mode
+    // leave DRAFT mode and finish snapshot animation
     Draft::manager().terminate();
+    Action::manager().finish(false);
     // leave BUNDLE mode
     exitAllBundles();
 
@@ -2282,6 +2297,8 @@ void Mixer::terminate()
     // leave presentation (NB: user interface is already terminated)
     if ( current_view_ == &presentation_ )
         presentation_.leave(false);
+    if ( current_view_ == &snapshots_ )
+        snapshots_.leave(false);
 
     // set for an empty session
     set(new Session);
@@ -2381,7 +2398,7 @@ void Mixer::paste(const std::string& clipboard)
 }
 
 
-void Mixer::restore(tinyxml2::XMLElement *sessionNode)
+void Mixer::restore(tinyxml2::XMLElement *sessionNode, SourceList *removed)
 {
     // restore the live session, and edit the same bundles after
     SourceIdList edited_bundles;
@@ -2421,10 +2438,12 @@ void Mixer::restore(tinyxml2::XMLElement *sessionNode)
             lsit++;
     }
 
-    // remaining ids in list sessionsources : to remove
+    // remaining ids in list sessionsources : to remove (or to keep in removed list)
     while ( !session_sources.empty() ){
         Source *s = Mixer::manager().findSource( session_sources.front() );
-        if (s!=nullptr) {
+        if (s!=nullptr && removed != nullptr)
+            removed->push_back( s );
+        else if (s!=nullptr) {
 #ifdef ACTION_DEBUG
             Log::Info("Delete   id %s\n", std::to_string(session_sources.front() ).c_str());
 #endif

@@ -231,6 +231,8 @@ void SessionCreator::loadSnapshots(XMLElement *snapshotsNode)
 {
     if (snapshotsNode != nullptr && session_ != nullptr) {
 
+        snapshotsNode->QueryFloatAttribute("duration", &session_->snapshots()->duration_);
+
         const XMLElement* N = snapshotsNode->FirstChildElement();
         for( ; N ; N = N->NextSiblingElement()) {
 
