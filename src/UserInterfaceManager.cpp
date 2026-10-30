@@ -1173,8 +1173,8 @@ void UserInterface::Render()
             ShowAboutOpengl(&show_opengl_about);
     }
 
-    // Notes (not in views switching sessions)
-    if ( !View::isSwitchingView(Settings::application.current_view) )
+    // Notes (only in views editing the session)
+    if ( Settings::application.current_view < View::TRANSITION )
         RenderNotes();
 
     // Navigator

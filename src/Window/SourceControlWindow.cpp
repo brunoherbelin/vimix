@@ -2121,7 +2121,7 @@ void SourceControlWindow::RenderSingleSource(Source *s)
                     s->reload();
                 // NB: ss is playable (tested above), and thus ss->stream() is not null
                 bool option = s->replayOnDeactivate();
-                if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on reactivation", NULL, &option ))
+                if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option ))
                     s->setReplayOnDeactivate(option);
                 if (ImGui::IsWindowHovered())
                     counter_menu_timeout=0;
@@ -2499,7 +2499,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::SameLine(0, h_space_);
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - buttons_height_ - h_space_);
             float s = fabs(static_cast<float>(current_play_speed));
-            if (ImGui::DragFloat( "##Speed", &s, 0.01f, 0.1f, 10.f, UNICODE_MULTIPLY " %.2f"))
+            if (ImGui::DragFloat( "##Speed", &s, 0.01f, 0.1f, 10.f, current_play_speed < 0 ? ICON_FA_ANGLE_LEFT " %.2f" : ICON_FA_ANGLE_RIGHT " %.2f" ))
                 mediaplayer_active_->setPlaySpeed( SIGN(current_play_speed) * static_cast<double>(s) );
             // store action on mouse release
             if (ImGui::IsItemDeactivatedAfterEdit()){
@@ -2594,7 +2594,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         }
 
         bool option = ms->replayOnDeactivate();
-        if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on reactivation", NULL, &option )) {
+        if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option )) {
             ms->setReplayOnDeactivate(option);
         }
 

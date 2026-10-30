@@ -657,7 +657,7 @@ void ImGuiVisitor::visit (Source& s)
     ImGui::PopStyleColor();
     ImGui::EndChild();
 
-    if (!Settings::application.pannel_source[1]) {
+    {
         // Source specific icon to the right of Header
         ImVec2 pos_bot = ImGui::GetCursorPos();
         ImGui::SetCursorPos( ImVec2( pos_top.x + preview_width + IMGUI_SAME_LINE, pos_top.y + ImGui::GetStyle().ItemSpacing.y));
@@ -777,9 +777,6 @@ void ImGuiVisitor::visit (MediaSource& s)
     ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
-
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip( s.path().c_str() );
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -1014,9 +1011,6 @@ void ImGuiVisitor::visit (SessionFileSource& s)
     ImGui::PopFont();
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
-
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip( s.path().c_str() );
 
     ImVec2 botom = ImGui::GetCursorPos();
 

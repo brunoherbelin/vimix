@@ -351,7 +351,7 @@ void Navigator::Render()
                 bracket_top = ImGui::GetCursorScreenPos().y;
                 ImGui::PushID("##bundle");
                 ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_HeaderActive));
-                if (ImGui::Selectable(bundle->initials(), selected_button[NAV_BUNDLE], 0, iconsize)) {
+                if (ImGuiToolkit::SelectableIcon(ICON_VI_SOURCE_GROUP, "", selected_button[NAV_BUNDLE], iconsize)) {
                     selected_button[NAV_BUNDLE] = true;
                     applyButtonSelection(NAV_BUNDLE);
                 }
@@ -484,7 +484,6 @@ void Navigator::Render()
                 const float y = ImGui::GetCursorScreenPos().y - 0.8f * style.ItemSpacing.y;
                 const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
                 draw_list->AddLine(ImVec2(x, bracket_top), ImVec2(x, y), color, 3.f);
-               // draw_list->AddLine(ImVec2(x - 1.5f, bracket_top), ImVec2(x + style.WindowPadding.x, bracket_top), color, 3.f);
             }
         }
         else if (Settings::application.smooth_transition &&
@@ -1142,6 +1141,13 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
 
                 // show static info of resolution
                 static char dummy_str[512];
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                snprintf(dummy_str, 512, "%d", output->width());
+                ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                snprintf(dummy_str, 512, "%d", output->height());
+                ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                ImGui::PopStyleColor(1);
                 ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 snprintf(dummy_str, 512, "%.2f", density);
@@ -1163,13 +1169,6 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
                         Action::manager().store(bundle->name() + std::string(": Optimal resolution"));
                     }
                 }
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                snprintf(dummy_str, 512, "%d", output->width());
-                ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                snprintf(dummy_str, 512, "%d", output->height());
-                ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                ImGui::PopStyleColor(1);
             }
 
             // resize the bundle to cover its visible sources
@@ -1180,7 +1179,7 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
 
             // reduce the resolution of the bundle by half (same geometry, less pixels)
             if (output && output->width() / 2 >= FRAMEBUFFER_MIN_SIZE && output->height() / 2 >= FRAMEBUFFER_MIN_SIZE) {
-                if ( ImGui::Button( ICON_FA_COMPRESS_ALT "  Half resolution", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+                if ( ImGui::Button( UNICODE_HALF "  Half resolution", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
                     bundle->setResolution( glm::vec3(output->width() / 2, output->height() / 2, 0.f) );
                     Action::manager().store(bundle->name() + std::string(": Reduced resolution"));
                 }
