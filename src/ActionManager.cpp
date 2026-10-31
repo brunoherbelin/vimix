@@ -23,6 +23,7 @@
 #include <mutex>
 #include <algorithm>
 #include <cstring>
+#include <cctype>
 #include <memory>
 #include <vector>
 
@@ -361,6 +362,26 @@ void Action::restore(uint target)
 }
 
 
+// Unique label for a snapshot: the label followed by '_' and a number, incremented
+// from the highest number found in labels of the same base.
+static std::string uniqueSnapshotLabel(const std::string &base, const std::list<std::string> &existing)
+{
+    const std::string prefix = base + "_";
+    int last = 0;
+
+    for (auto it = existing.begin(); it != existing.end(); ++it) {
+        if (it->size() <= prefix.size() || it->compare(0, prefix.size(), prefix) != 0)
+            continue;
+        // number following the prefix (digits only, limited to avoid overflow)
+        const std::string number = it->substr(prefix.size());
+        if (number.size() < 9 && std::all_of(number.begin(), number.end(),
+                                             [](unsigned char c) { return std::isdigit(c); }))
+            last = MAX(last, std::stoi(number));
+    }
+
+    return prefix + std::to_string(last + 1);
+}
+
 void Action::takeSnapshot(Session *se, const std::string &label, bool create_thread)
 {
     if (se !=nullptr) {
@@ -368,17 +389,28 @@ void Action::takeSnapshot(Session *se, const std::string &label, bool create_thr
         // create snapshot id
         u_int64_t id = BaseToolkit::uniqueId();
 
+        // create unique label among the labels of snapshots of the session
+        std::list<std::string> names;
+        se->snapshots()->access_.lock();
+        for (const XMLElement *snap = se->snapshots()->xmlDoc_->FirstChildElement(); snap; snap = snap->NextSiblingElement()) {
+            const char *l = snap->Attribute("label");
+            if (l)
+                names.push_back(l);
+        }
+        se->snapshots()->access_.unlock();
+        const std::string _label = uniqueSnapshotLabel(label, names);
+
         // inform session of its new snapshot
         se->snapshots()->keys_.push_back(id);
 
         if (create_thread)
             // threaded capture state of current session
-            std::thread(captureMixerSession, se, SNAPSHOT_NODE(id), label, true, nullptr).detach();
+            std::thread(captureMixerSession, se, SNAPSHOT_NODE(id), _label, true, nullptr).detach();
         else
-            captureMixerSession(se, SNAPSHOT_NODE(id), label, false);
+            captureMixerSession(se, SNAPSHOT_NODE(id), _label, false);
 
 #ifdef ACTION_DEBUG
-        Log::Info("Snapshot stored %d '%s'", id, label.c_str());
+        Log::Info("Snapshot stored %d '%s'", id, _label.c_str());
 #endif
     }
 }
@@ -392,11 +424,8 @@ void Action::snapshot(const std::string &label)
     // finish draft or snapshot animation
     Draft::manager().terminate();
     finish();
-    // ensure label is unique
-    std::string snap_label = BaseToolkit::uniqueName(label, labels());
-
-    // take the snapshot on current session
-    takeSnapshot(Mixer::manager().liveSession(), snap_label, true);
+    // take the snapshot on current session (with a unique label)
+    takeSnapshot(Mixer::manager().liveSession(), label, true);
 
 }
 

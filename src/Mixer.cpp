@@ -1891,7 +1891,7 @@ void Mixer::saveas(const std::string& filename, bool with_version, bool with_thu
         // prepare argument for saving a version (if requested)
         std::string versionname;
         if (with_version)
-            versionname = SystemToolkit::date_time_string();
+            versionname = SystemToolkit::base_filename(filename);
         // launch a thread to save the session
         // Will be captured in the future in update()
         sessionSavers_.emplace_back( std::async(std::launch::async, Session::save, filename, session_, versionname) );
