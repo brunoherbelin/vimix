@@ -4,6 +4,7 @@
 #include <list>
 #include <string>
 #include <mutex>
+#include <chrono>
 
 #include <tinyxml2.h>
 
@@ -61,7 +62,8 @@ public:
     void saveas  (const std::string& filename, uint64_t snapshotid = 0);
 
     std::string label (uint64_t snapshotid) const;
-    std::string date  (uint64_t snapshotid) const;
+    // date of snapshot (default time_point, i.e. epoch, if unknown)
+    std::chrono::system_clock::time_point date (uint64_t snapshotid) const;
     std::list<std::string> labels () const;
     void setLabel (uint64_t snapshotid, const std::string &label);
     FrameBufferImage *thumbnail (uint64_t snapshotid) const;

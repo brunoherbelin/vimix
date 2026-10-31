@@ -19,6 +19,11 @@
 
 #include <string>
 #include <list>
+#include <map>
+#include <vector>
+#include <chrono>
+#include <ctime>
+#include <cstdio>
 
 #include "NavigatorInternal.h"
 
@@ -45,9 +50,6 @@
 #include "NavigatorWidgets.h"
 #include "imgui.h"
 #include "SessionPanel.h"
-
-// utility function defined in UserInterfaceManager.cpp
-std::string readable_date_time_string(std::string date);
 
 void SessionPanel::Render()
 {
@@ -293,6 +295,12 @@ void SessionPanel::Render()
     if (Settings::application.pannel_session[1]){
         static uint64_t _over = 0;
         static bool _tooltip = 0;
+        static Thumbnail _snap_thumbnail;
+        static std::string _snap_label = "";
+        static std::string _snap_date = "";
+
+        ImVec2 size ;
+        bool _open_menu = false;
 
         // list snapshots
         std::list<uint64_t> snapshots = Action::manager().snapshots();
@@ -300,83 +308,81 @@ void SessionPanel::Render()
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::ListBoxHeader("##Snapshots", snapshots.size(), CLAMP(snapshots.size(), 4, 8)) ) {
 
-            static uint64_t _selected = 0;
-            static Thumbnail _snap_thumbnail;
-            static std::string _snap_label = "";
-            static std::string _snap_date = "";
-
-            int count_over = 0;
-            ImVec2 size = ImVec2( ImGui::GetContentRegionAvailWidth(), ImGui::GetTextLineHeight() );
+            // int count_over = 0;
             for (auto snapit = snapshots.rbegin(); snapit != snapshots.rend(); ++snapit)
             {
                 // entry
                 ImVec2 pos = ImGui::GetCursorPos();
+                size = ImVec2( ImGui::GetContentRegionAvailWidth() - ImGui::GetTextLineHeightWithSpacing(),
+                                            ImGui::GetTextLineHeight() );
 
-                // context menu icon on currently hovered item
-                if ( _over == *snapit ) {
-                    // open context menu
-                    ImGui::SetCursorPos(ImVec2(size.x-ImGui::GetTextLineHeight()/2.f, pos.y));
-                    if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) ) {
-                        // current list item
-                        Action::manager().open(*snapit);
-                        // open menu
-                        ImGui::OpenPopup( "MenuSnapshot" );
-                    }
-                    // show tooltip and select on mouse over menu icon
-                    if (ImGui::IsItemHovered()) {
-                        _selected = *snapit;
-                        _tooltip = true;
-                    }
-                    ImGui::SetCursorPos(pos);
-                }
+                // unique ID for item (filename can be at different index)
+                ImGui::PushID( Action::manager().label(*snapit).c_str() );
 
                 // snapshot item
-                if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), (*snapit == _selected), ImGuiSelectableFlags_AllowDoubleClick, size )) {
-                    // shot tooltip on clic
-                    _tooltip = true;
+                ImGui::BeginGroup();
+                if (ImGui::Selectable( Action::manager().label(*snapit).c_str(), false,
+                                    ImGuiSelectableFlags_AllowDoubleClick, size )) {
                     // trigger snapshot on double clic
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                         Action::manager().restore(*snapit);
+                    // show tooltip on clic
+                    else {
+                        _tooltip = true;
+                        _over = *snapit;
+                    }
                 }
+                ImGui::SameLine();
+                if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) ) {
+                    // current list item
+                    Action::manager().open(*snapit);
+                    // open menu (below, at the same ID level as BeginPopup)
+                    _open_menu = true;
+                    _over = *snapit;
+                }
+
+                ImGui::EndGroup();
+                ImGui::PopID();
+
                 // mouse over
                 if (ImGui::IsItemHovered()) {
                     _over = *snapit;
-                    _selected = 0;
-                }
-
-                // if mouse over (only once)
-                if (_tooltip && _over > 0 && count_over < 1) {
-                    static uint64_t current_over = 0;
-                    // load label and thumbnail only if current changed
-                    if (current_over != _over) {
-                        _snap_label = Action::manager().label(_over);
-                        _snap_date  = "Version of " + readable_date_time_string(Action::manager().date(_over));
-                        FrameBufferImage *im = Action::manager().thumbnail(_over);
-                        if (im) {
-                            // set image content to thumbnail display
-                            _snap_thumbnail.fill( im );
-                            delete im;
-                        }
-                        else
-                            _snap_thumbnail.reset();
-                        current_over = _over;
-                    }
-                    // draw thumbnail in tooltip
-                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
-                    ImGui::BeginTooltip();
-                    _snap_thumbnail.Render(size.x);
-                    ImGui::Text("%s", _snap_date.c_str());
-                    ImGui::EndTooltip();
-                    ImGui::PopStyleVar();
-                    ++count_over; // prevents display twice on item overlap
                 }
             }
 
-            // context menu on currently open snapshot
+            // end list snapshots
+            ImGui::ListBoxFooter();
+        }
+
+        // update thumbnail for tooltip or menu
+        if (_over > 0 && (_open_menu || _tooltip) ) {
+            // load label and thumbnail only if current changed
+            static uint64_t current_over = 0;
+            if (current_over != _over) {
+                _snap_label = Action::manager().label(_over);
+                _snap_date  = SystemToolkit::readable_date_time_string(Action::manager().date(_over));
+                FrameBufferImage *im = Action::manager().thumbnail(_over);
+                if (im) {
+                    // set image content to thumbnail display
+                    _snap_thumbnail.fill( im );
+                    delete im;
+                }
+                else
+                    _snap_thumbnail.reset();
+                current_over = _over;
+            }
+        }
+
+        // context menu on currently open snapshot
+        if (_open_menu)
+            ImGui::OpenPopup( "MenuSnapshot" );
+        if (ImGui::BeginPopup( "MenuSnapshot" ))
+        {
             uint64_t current = Action::manager().currentSnapshot();
-            if (ImGui::BeginPopup( "MenuSnapshot" ) && current > 0 )
-            {
-                _selected = current;
+            // snapshot was removed or is not open anymore
+            if (current < 1)
+                ImGui::CloseCurrentPopup();
+            else {
                 // snapshot thumbnail
                 _snap_thumbnail.Render(size.x);
                 // snapshot editable label
@@ -384,7 +390,7 @@ void SessionPanel::Render()
                 if ( ImGuiToolkit::InputText("##Rename", &_snap_label ) )
                     Action::manager().setLabel( current, _snap_label);
                 // snapshot actions
-                if (ImGui::Selectable( ICON_FA_ANGLE_DOUBLE_RIGHT "    Restore", false, 0, size ))
+                if (ImGui::Selectable( ICON_FA_CHECK_DOUBLE "    Restore", false, 0, size ))
                     Action::manager().restore();
                 if (ImGui::Selectable( ICON_FA_CODE_BRANCH "-    Remove", false, 0, size ))
                     Action::manager().remove();
@@ -395,15 +401,22 @@ void SessionPanel::Render()
                         Action::manager().saveas(filename);
                     }
                 }
-                ImGui::EndPopup();
             }
-            else
-                _selected = 0;
-
-            // end list snapshots
-            ImGui::ListBoxFooter();
+            ImGui::EndPopup();
         }
-        // cancel tooltip and mouse over on mouse exit
+        // tooltips
+        if (_tooltip && _over > 0) {
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
+                ImGui::BeginTooltip();
+                // draw thumbnail in tooltip
+                _snap_thumbnail.Render(size.x);
+                // tooltip text
+                ImGui::Text("%s", _snap_date.c_str());
+                ImGui::EndTooltip();
+                ImGui::PopStyleVar();
+        }
+
+        // cancel all tooltips on mouse exit of the listbox
         if ( !ImGui::IsItemHovered()) {
             _tooltip = false;
             _over = 0;
@@ -417,14 +430,73 @@ void SessionPanel::Render()
         if (ImGuiToolkit::IconButton( ICON_FA_CODE_BRANCH "+", "Save & Keep version"))
             UserInterface::manager().saveOrSaveAs(true);
         if (!snapshots.empty()) {
-            ImGui::SameLine();
-            if (ImGuiToolkit::IconButton( ICON_VI_CLEAR_LIST, "Clear list"))
-                Action::manager().clearSnapshots();
+            ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN,
+                        pos_top.y + ImGui::GetTextLineHeightWithSpacing() + space.y ));
+            // dates of versions (versions without valid date are only removed with 'Remove all')
+            static std::map< uint64_t, std::chrono::system_clock::time_point > dates;
+            if ( ImGuiToolkit::IconButton( ICON_VI_MULTIPLE_REMOVE, "Remove versions")) {
+                dates.clear();
+                for (auto id = snapshots.begin(); id != snapshots.end(); ++id) {
+                    const std::chrono::system_clock::time_point time = Action::manager().date(*id);
+                    if (time != std::chrono::system_clock::time_point())
+                        dates[*id] = time;
+                }
+                // show popup menu to select versions to remove
+                ImGui::OpenPopup( "remove_versions_selection" );
+            }
+            if (ImGui::BeginPopup("remove_versions_selection")) {
+                // ages, sorted from the longest
+                static const std::vector< std::pair<std::string, std::chrono::minutes> > ages = {
+                    { "Older than 1 year",     std::chrono::hours(8766) },  // 365.25 days
+                    { "Older than 1 month",    std::chrono::hours(730) },   // 365.25 / 12 days
+                    { "Older than 1 week",     std::chrono::hours(168) },
+                    { "Older than 1 day",      std::chrono::hours(24) },
+                    { "Older than 1 hour",     std::chrono::hours(1) },
+                    { "Older than 30 minutes", std::chrono::minutes(30) },
+                    { "Older than 1 minute",   std::chrono::minutes(1) }
+                };
+                // list versions older than each age
+                const auto now = std::chrono::system_clock::now();
+                std::vector< std::list<uint64_t> > older(ages.size());
+                for (size_t i = 0; i < ages.size(); ++i) {
+                    for (auto it = dates.begin(); it != dates.end(); ++it) {
+                        if (now - it->second > ages[i].second)
+                            older[i].push_back(it->first);
+                    }
+                }
+                // ages are sorted from the oldest: a list contains the previous ones.
+                // Show only the lists that are not empty, and different from the previous (longer age);
+                // otherwise they would remove exactly the same versions, and the longer age is more informative.
+                // (NB: a list equal to 'Remove all' is kept: it tells that all versions are that old)
+                bool title = false;
+                for (size_t i = 0; i < ages.size(); ++i) {
+                    if (older[i].empty() ||
+                        (i > 0 && older[i].size() == older[i - 1].size()))
+                        continue;
+                    if (!title) {
+                        ImGui::TextDisabled("Remove by date");
+                        title = true;
+                    }
+                    std::string label = ages[i].first + " (" + std::to_string(older[i].size()) + ")";
+                    if (ImGui::Selectable(label.c_str())) {
+                        for (auto it = older[i].begin(); it != older[i].end(); ++it)
+                            Action::manager().remove(*it);
+                    }
+                }
+                if (title)
+                    ImGui::Separator();
+                std::string label = "Remove all (" + std::to_string(snapshots.size()) + ")";
+                if (ImGui::Selectable(label.c_str())) {
+                    Action::manager().clearSnapshots();
+                }
+                ImGui::EndPopup();
+            }
         }
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-        ImGuiToolkit::HelpToolTip("Previous versions of the session (latest on top). "
-                                 "Double-clic on a version to restore it.\n\n"
+        ImGuiToolkit::HelpToolTip("Previous versions of the session (latest on top).\n\n"
+                                ICON_FA_CHECK_DOUBLE " Double-clic on a version to restore it.\n"
+                                ICON_FA_CHEVRON_DOWN " Open menu to edit or remove it.\n\n"
                                 ICON_FA_CODE_BRANCH " With Iterative saving enabled, a new version "
                                 "is kept automatically each time the session is saved.");
         // toggle button for versioning
@@ -541,8 +613,8 @@ void SessionPanel::Render()
             ImGui::TextDisabled( ICON_FA_REDO );
 
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
-        ImGuiToolkit::HelpToolTip("History of actions (latest on top). "
-                                 "Double-clic on an action to restore its status.\n\n"
+        ImGuiToolkit::HelpToolTip("History of actions (latest on top).\n\n"
+                                 ICON_FA_CHECK_DOUBLE " Double-clic on an action to restore its status.\n\n"
                                  ICON_FA_HAND_POINT_RIGHT " With Follow action enabled, navigate "
                                  "automatically to the view showing the action on undo/redo.");
         // toggle button for shhow in view

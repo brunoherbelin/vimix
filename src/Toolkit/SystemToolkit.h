@@ -10,11 +10,23 @@
 #include <string>
 #include <list>
 #include <vector>
+#include <chrono>
 
 namespace SystemToolkit
 {
-    // get fixed length string (17 chars) YYYYMMDDHHmmssiii
+    // get fixed length string (17 chars) YYYYMMDDHHmmssiii of the current time
     std::string date_time_string();
+
+    // same for a given time (local time)
+    std::string date_time_string(std::chrono::system_clock::time_point time);
+
+    // get the time from a string YYYYMMDDHHmm[ss[iii]] (local time)
+    // returns false if the string is not a valid date
+    bool date_time_parse(const std::string &date, std::chrono::system_clock::time_point &time);
+
+    // get a string to display, 'DD/MM/YYYY @ HH:mm', from a time (local time)
+    // returns an empty string for the default time_point (epoch), i.e. an unknown date
+    std::string readable_date_time_string(std::chrono::system_clock::time_point time);
 
     // get the OS dependent username
     std::string username();

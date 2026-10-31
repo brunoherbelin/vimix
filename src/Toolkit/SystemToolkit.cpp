@@ -111,11 +111,15 @@ long SystemToolkit::memory_usage()
 
 string SystemToolkit::date_time_string()
 {
-    chrono::system_clock::time_point now = chrono::system_clock::now();
-    time_t t = chrono::system_clock::to_time_t(now);
+    return date_time_string( chrono::system_clock::now() );
+}
+
+string SystemToolkit::date_time_string(chrono::system_clock::time_point time)
+{
+    time_t t = chrono::system_clock::to_time_t(time);
     tm* datetime = localtime(&t);
 
-    auto duration = now.time_since_epoch();
+    auto duration = time.time_since_epoch();
     auto millis = chrono::duration_cast<chrono::milliseconds>(duration).count() % 1000;
 
     ostringstream oss;
@@ -129,6 +133,44 @@ string SystemToolkit::date_time_string()
 
     // fixed length string (17 chars) YYYYMMDDHHmmssiii
     return oss.str();
+}
+
+bool SystemToolkit::date_time_parse(const string &date, chrono::system_clock::time_point &time)
+{
+    int year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0;
+    int n = 0;
+    if (date.length() >= 14)
+        n = sscanf(date.substr(0, 14).c_str(), "%4d%2d%2d%2d%2d%2d", &year, &month, &day, &hour, &min, &sec);
+    else if (date.length() >= 12)
+        n = sscanf(date.substr(0, 12).c_str(), "%4d%2d%2d%2d%2d", &year, &month, &day, &hour, &min) + 1;
+    if (n < 6)
+        return false;
+
+    tm t = {};
+    t.tm_year = year - 1900;
+    t.tm_mon = month - 1;
+    t.tm_mday = day;
+    t.tm_hour = hour;
+    t.tm_min = min;
+    t.tm_sec = sec;
+    t.tm_isdst = -1;
+    const time_t tt = mktime(&t);
+    if (tt == static_cast<time_t>(-1))
+        return false;
+
+    time = chrono::system_clock::from_time_t(tt);
+    return true;
+}
+
+string SystemToolkit::readable_date_time_string(chrono::system_clock::time_point time)
+{
+    if (time == chrono::system_clock::time_point())
+        return "";
+
+    time_t t = chrono::system_clock::to_time_t(time);
+    char buffer[32];
+    strftime(buffer, sizeof(buffer), "%d/%m/%Y @ %H:%M", localtime(&t));
+    return string(buffer);
 }
 
 string SystemToolkit::filename(const string& path)

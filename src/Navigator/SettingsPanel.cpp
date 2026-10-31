@@ -194,7 +194,7 @@ void SettingsPanel::Render()
         ImGuiToolkit::Indication("Priority when buffer is full and recorder has to skip frames;\n"
                                  ICON_FA_CARET_RIGHT " Duration: Correct duration, variable framerate.\n"
                                  ICON_FA_CARET_RIGHT " Framerate: Correct framerate, shorter duration.",
-                                 ICON_FA_CHECK_DOUBLE);
+                                 ICON_FA_BALANCE_SCALE_RIGHT);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(align_x);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);

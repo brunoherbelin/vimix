@@ -482,9 +482,9 @@ std::string Action::label(uint64_t snapshotid) const
     return label;
 }
 
-std::string Action::date(uint64_t snapshotid) const
+std::chrono::system_clock::time_point Action::date(uint64_t snapshotid) const
 {
-    std::string date = "";
+    std::chrono::system_clock::time_point date;
 
     // get snapshot node of target in current session
     Session *se = Mixer::manager().liveSession();
@@ -493,7 +493,7 @@ std::string Action::date(uint64_t snapshotid) const
     if (snap){
         const char *d = snap->Attribute("date");
         if (d)
-            date = std::string(d);
+            SystemToolkit::date_time_parse(std::string(d), date);
     }
 
     return date;

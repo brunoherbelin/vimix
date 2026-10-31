@@ -478,7 +478,9 @@ void PlaylistPanel::Render()
                         }
                         SessionInformation info = SessionCreator::info(filename, false);
                         resolutions[info.resolution].insert(filename);
-                        dates[filename] = info.date;
+                        // sessions without date (epoch) are not removed by date
+                        if (info.date != std::chrono::system_clock::time_point())
+                            dates[filename] = info.date;
                     }
                     // show popup menu to select sessions to remove
                     ImGui::OpenPopup( "menu_playlist_selection" );
@@ -495,26 +497,38 @@ void PlaylistPanel::Render()
                             active_playlist.save();
                         }
                     }
-                    ImGui::Separator();
-                    ImGui::TextDisabled("Remove by date");
+                    // ages, sorted from the longest
                     static const std::vector< std::pair<std::string, std::chrono::hours> > ages = {
                         { "Older than 1 year",  std::chrono::hours(8766) },  // 365.25 days
                         { "Older than 1 month", std::chrono::hours(730) },   // 365.25 / 12 days
                         { "Older than 1 week",  std::chrono::hours(168) },
                         { "Older than 1 day",   std::chrono::hours(24) }
                     };
+                    // list sessions older than each age
                     const auto now = std::chrono::system_clock::now();
-                    for (auto it = ages.begin(); it != ages.end(); ++it) {
-                        // list sessions older than this age
-                        std::list<std::string> older;
-                        for (auto it2 = dates.begin(); it2 != dates.end(); ++it2) {
-                            if (now - it2->second > it->second)
-                                older.push_back(it2->first);
+                    std::vector< std::list<std::string> > older(ages.size());
+                    for (size_t i = 0; i < ages.size(); ++i) {
+                        for (auto it = dates.begin(); it != dates.end(); ++it) {
+                            if (now - it->second > ages[i].second)
+                                older[i].push_back(it->first);
                         }
-                        std::string label = it->first + " (" + std::to_string(older.size()) + ")";
-                        if (ImGui::Selectable(label.c_str(), false, older.empty() ? ImGuiSelectableFlags_Disabled : ImGuiSelectableFlags_None)) {
-                            for (auto it2 = older.begin(); it2 != older.end(); ++it2) {
-                                active_playlist.remove(*it2);
+                    }
+                    // Show only the lists that are not empty, and different from the previous (longer age);
+                    // otherwise they would remove exactly the same sessions, and the longer age is more informative.
+                    bool title = false;
+                    for (size_t i = 0; i < ages.size(); ++i) {
+                        if (older[i].empty() ||
+                            (i > 0 && older[i].size() == older[i - 1].size()))
+                            continue;
+                        if (!title) {
+                            ImGui::Separator();
+                            ImGui::TextDisabled("Remove by date");
+                            title = true;
+                        }
+                        std::string label = ages[i].first + " (" + std::to_string(older[i].size()) + ")";
+                        if (ImGui::Selectable(label.c_str())) {
+                            for (auto it = older[i].begin(); it != older[i].end(); ++it) {
+                                active_playlist.remove(*it);
                             }
                             active_playlist.save();
                         }
@@ -602,11 +616,10 @@ void PlaylistPanel::Render()
     // help indicator
     pos_top.y += list_size.y;
     ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_top.y - ImGui::GetFrameHeight()));
-    ImGuiToolkit::HelpToolTip("Double-clic on a filename to open the session.\n\n "
-                              ICON_FA_ARROWS_ALT_V   "   Drag items to reorder the sessions of the playlist.\n"
+    ImGuiToolkit::HelpToolTip(ICON_FA_CHECK_DOUBLE " Double-clic on a filename to open the session.\n "
+                              ICON_FA_ARROWS_ALT_V   "   Drag items to reorder the sessions of the playlist.\n\n"
                               ICON_FA_ARROW_CIRCLE_RIGHT "  With Smooth transition enabled,"
-                                                         " the session will open with a cross fade or a fade to black.\n"
-                              ICON_FA_CHALKBOARD_TEACHER " Start presentation [F8] to perform a slide-show.");
+                                                         " the session will open with a cross fade or a fade to black.");
 
     ImGui::SetCursorPos(pos_bottom);
 
@@ -642,6 +655,8 @@ void PlaylistPanel::Render()
             UserInterface::manager().setView(View::PRESENTATION);
             WorkspaceWindow::clearWorkspace();
         }
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Slide show of playlist sessions", "F8");
         start_presentation_ = false;
     }
     pos_bottom = ImGui::GetCursorPos();

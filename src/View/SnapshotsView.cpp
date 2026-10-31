@@ -35,8 +35,6 @@
 #include "imgui.h"
 #include "SnapshotsView.h"
 
-std::string readable_date_time_string(std::string date);
-
 SnapshotsView::SnapshotsView() : StripView(SNAPSHOTS, "version"), session_(nullptr), date_id_(0)
 {
     // fixed layout: no settings to restore
@@ -173,7 +171,7 @@ void SnapshotsView::drawInformation(bool is_busy)
 
         // date of current version
         if (date_id_ != ids_[current_]) {
-            date_ = "Version of " + readable_date_time_string(Action::manager().date(ids_[current_]));
+            date_ = "Version of " + SystemToolkit::readable_date_time_string(Action::manager().date(ids_[current_]));
             date_id_ = ids_[current_];
         }
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);

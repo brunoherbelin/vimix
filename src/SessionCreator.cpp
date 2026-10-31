@@ -26,6 +26,7 @@
 
 #include "Log.h"
 #include "defines.h"
+#include "Toolkit/SystemToolkit.h"
 #include "Source/Source.h"
 #include "Source/SourceCallback.h"
 #include "Source/CloneSource.h"
@@ -91,17 +92,9 @@ SessionInformation SessionCreator::info(const std::string& filename, bool with_t
                 }
                 att_string = header->Attribute("date");
                 if (att_string) {
-                    std::string date( att_string );
-                    ret.description += date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4) + " @ ";
-                    ret.description += date.substr(8,2) + ":" + date.substr(10,2);
                     // convert date string YYYYMMDDHHMMSS (local time) to time_point
-                    std::tm tm = {};
-                    std::istringstream ss(date);
-                    ss >> std::get_time(&tm, "%Y%m%d%H%M%S");
-                    if (!ss.fail()) {
-                        tm.tm_isdst = -1;
-                        ret.date = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-                    }
+                    if (SystemToolkit::date_time_parse(std::string(att_string), ret.date))
+                        ret.description += SystemToolkit::readable_date_time_string(ret.date);
                 }
             }
             if (with_thumbnail) {

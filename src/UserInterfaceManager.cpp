@@ -97,14 +97,6 @@ void ShowSandbox(bool* p_open);
 void SetMouseCursor(ImVec2 mousepos, View::Cursor c = View::Cursor());
 
 
-std::string readable_date_time_string(std::string date){
-    if (date.length()<12)
-        return "";
-    std::string s = date.substr(6, 2) + "/" + date.substr(4, 2) + "/" + date.substr(0, 4);
-    s += " @ " + date.substr(8, 2) + ":" + date.substr(10, 2);
-    return s;
-}
-
 UserInterface::UserInterface()
 {
     start_time = gst_util_get_timestamp ();
