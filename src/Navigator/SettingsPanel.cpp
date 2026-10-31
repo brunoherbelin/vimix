@@ -124,8 +124,8 @@ void SettingsPanel::Render()
         ImGuiToolkit::ButtonSwitch( "One section at a time", &Settings::application.exclusive_header);
 
         // behavior of left panel with viewspaces
-        ImGuiToolkit::Indication("If enabled, all sources always are listed in the left panel (dimmed if inside an HIDDEN workspace).\n"
-            "If disabled, only sources in VISIBLE workspaces are listed.", ICON_FA_TH_LARGE);
+        ImGuiToolkit::Indication("If enabled, always list all sources in the left panel (dimmed if in a HIDDEN workspace).\n"
+            "If disabled, list only sources in VISIBLE workspaces.", ICON_FA_TH_LARGE);
         ImGui::SameLine(0);
         ImGui::SetCursorPosX(align_x);
         ImGuiToolkit::ButtonSwitch( "List all workspaces", &Settings::application.pannel_list_all_viewspaces);

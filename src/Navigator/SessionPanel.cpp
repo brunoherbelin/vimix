@@ -298,6 +298,8 @@ void SessionPanel::Render()
         static Thumbnail _snap_thumbnail;
         static std::string _snap_label = "";
         static std::string _snap_date = "";
+        // the label typed in the menu is available (not used by another version)
+        static bool _snap_label_valid = true;
 
         ImVec2 size ;
         bool _open_menu = false;
@@ -306,7 +308,7 @@ void SessionPanel::Render()
         std::list<uint64_t> snapshots = Action::manager().snapshots();
         ImVec2 pos_top = ImGui::GetCursorPos();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        if ( ImGui::ListBoxHeader("##Snapshots", snapshots.size(), CLAMP(snapshots.size(), 4, 8)) ) {
+        if ( ImGui::ListBoxHeader("##Snapshots", snapshots.size(), CLAMP(snapshots.size(), 5, 10)) ) {
 
             // int count_over = 0;
             for (auto snapit = snapshots.rbegin(); snapit != snapshots.rend(); ++snapit)
@@ -333,9 +335,13 @@ void SessionPanel::Render()
                     }
                 }
                 ImGui::SameLine();
-                if ( ImGuiToolkit::IconButton( ICON_FA_CHEVRON_DOWN ) ) {
+                if ( ImGui::Selectable( ICON_FA_CARET_DOWN ) ) {
+                    // if ( ImGuiToolkit::IconButton( ICON_FA_CARET_DOWN ) ) {
                     // current list item
                     Action::manager().open(*snapit);
+                    // label to edit in the menu
+                    _snap_label = Action::manager().label(*snapit);
+                    _snap_label_valid = true;
                     // open menu (below, at the same ID level as BeginPopup)
                     _open_menu = true;
                     _over = *snapit;
@@ -387,8 +393,15 @@ void SessionPanel::Render()
                 _snap_thumbnail.Render(size.x);
                 // snapshot editable label
                 ImGui::SetNextItemWidth(size.x);
+                // text in red if the label is not available
+                // (NB: evaluated once, as the label changes validity during InputText)
+                const bool red_text = !_snap_label_valid;
+                if (red_text)
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.2f, 0.2f, 1.f));
                 if ( ImGuiToolkit::InputText("##Rename", &_snap_label ) )
-                    Action::manager().setLabel( current, _snap_label);
+                    _snap_label_valid = Action::manager().setLabel( current, _snap_label);
+                if (red_text)
+                    ImGui::PopStyleColor();
                 // snapshot actions
                 if (ImGui::Selectable( ICON_FA_CHECK_DOUBLE "    Restore", false, 0, size ))
                     Action::manager().restore();
@@ -434,7 +447,7 @@ void SessionPanel::Render()
                         pos_top.y + ImGui::GetTextLineHeightWithSpacing() + space.y ));
             // dates of versions (versions without valid date are only removed with 'Remove all')
             static std::map< uint64_t, std::chrono::system_clock::time_point > dates;
-            if ( ImGuiToolkit::IconButton( ICON_VI_MULTIPLE_REMOVE, "Remove versions")) {
+            if ( ImGuiToolkit::IconButton( ICON_VI_BROOM, "Remove versions")) {
                 dates.clear();
                 for (auto id = snapshots.begin(); id != snapshots.end(); ++id) {
                     const std::chrono::system_clock::time_point time = Action::manager().date(*id);
@@ -505,7 +518,7 @@ void SessionPanel::Render()
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, pos_bot.y - 2.f * ImGui::GetFrameHeightWithSpacing()));
         ImGuiToolkit::HelpToolTip("Previous versions of the session (latest on top).\n\n"
                                 ICON_FA_CHECK_DOUBLE " Double-clic on a version to restore it.\n"
-                                ICON_FA_CHEVRON_DOWN " Open menu to edit or remove it.\n\n"
+                                ICON_FA_CARET_DOWN " Open menu to rename or remove.\n\n"
                                 ICON_FA_CODE_BRANCH " With Iterative saving enabled, a new version "
                                 "is kept automatically each time the session is saved.");
         // toggle button for versioning
@@ -520,7 +533,7 @@ void SessionPanel::Render()
         else if (ImGui::Button(ICON_FA_CHALKBOARD_TEACHER "  Start presentation", ImVec2(IMGUI_RIGHT_ALIGN, 0)))
             UserInterface::manager().navigator.startVersions();
         if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip("Step through versions with smooth transitions", "Shift+F8");
+            ImGuiToolkit::ToolTip("Step through versions\nwith smooth transitions", "Shift+F8");
     }
     else {
         if (!Action::manager().snapshots().empty())  {

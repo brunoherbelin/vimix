@@ -644,16 +644,25 @@ std::chrono::system_clock::time_point Action::date(uint64_t snapshotid) const
     return date;
 }
 
-void Action::setLabel (uint64_t snapshotid, const std::string &label)
+bool Action::setLabel (uint64_t snapshotid, const std::string &label)
 {
     open(snapshotid);
 
     if (snapshot_node_){
-        // ensure unique snapshot label
-        std::string snap_label = BaseToolkit::uniqueName(label, labels());
+        // nothing to change if it is already the label of this version
+        const char *current = snapshot_node_->Attribute("label");
+        if (current != nullptr && label == current)
+            return true;
+        // do not change the label if another version already has it
+        const std::list<std::string> names = labels();
+        if (std::find(names.begin(), names.end(), label) != names.end())
+            return false;
         // change attribute
-        snapshot_node_->SetAttribute("label", snap_label.c_str());
+        snapshot_node_->SetAttribute("label", label.c_str());
+        return true;
     }
+
+    return false;
 }
 
 FrameBufferImage *Action::thumbnail(uint64_t snapshotid) const

@@ -74,7 +74,9 @@ public:
     // date of snapshot (default time_point, i.e. epoch, if unknown)
     std::chrono::system_clock::time_point date (uint64_t snapshotid) const;
     std::list<std::string> labels () const;
-    void setLabel (uint64_t snapshotid, const std::string &label);
+    // change the label of a version; returns false (and does not change it)
+    // if another version already has this label
+    bool setLabel (uint64_t snapshotid, const std::string &label);
     FrameBufferImage *thumbnail (uint64_t snapshotid) const;
 
     // last snapshot restored (instantly or with animation)

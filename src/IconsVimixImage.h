@@ -110,6 +110,7 @@
 #define ICON_VI_MENU_FLAGS      3, 0
 #define ICON_VI_WARNING         7, 14
 #define ICON_VI_STREAM          19, 11
+#define ICON_VI_BROOM           1,  6
 
 // bundles
 #define ICON_VI_BUNDLE_CREATE  11, 2
