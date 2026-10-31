@@ -485,6 +485,15 @@ void SessionPanel::Render()
                 }
                 if (title)
                     ImGui::Separator();
+                // identical versions (searched in a thread, so no count is shown)
+                // (NB: evaluated once: the search starts when clicking, between push and pop)
+                const bool no_identical = snapshots.size() < 2 || Action::manager().searching();
+                ImGuiToolkit::PushDisabled(no_identical);
+                if (ImGui::Selectable("Remove identical"))
+                    Action::manager().removeIdentical();
+                ImGuiToolkit::PopDisabled(no_identical);
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Remove the versions identical to an older one");
                 std::string label = "Remove all (" + std::to_string(snapshots.size()) + ")";
                 if (ImGui::Selectable(label.c_str())) {
                     Action::manager().clearSnapshots();

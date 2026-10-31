@@ -22,6 +22,9 @@
 #include <regex>
 #include <mutex>
 #include <algorithm>
+#include <cstring>
+#include <memory>
+#include <vector>
 
 #include "Log.h"
 #include "View/View.h"
@@ -74,8 +77,8 @@ void Action::init(const std::string &label)
 
 // must be called in a thread running in parrallel of the rendering
 // (needs opengl update to get thumbnail)
-void captureMixerSession(Session *se, std::string node, 
-    std::string label, 
+void captureMixerSession(Session *se, std::string node,
+    std::string label,
     bool thumbnail,
     tinyxml2::XMLDocument *doc = nullptr)
 {
@@ -184,7 +187,7 @@ void Action::storeSession(Session *se, std::string label, bool thumbnail)
                         );
 
     Action::manager().history_access_.unlock();
-    
+
 #ifdef ACTION_DEBUG
     Log::Info("Action stored %d '%s'", Action::manager().history_step_, label.c_str());
      //  XMLSaveDoc(&Action::manager().history_doc_, "/home/bh/history.xml");
@@ -372,7 +375,7 @@ void Action::takeSnapshot(Session *se, const std::string &label, bool create_thr
             // threaded capture state of current session
             std::thread(captureMixerSession, se, SNAPSHOT_NODE(id), label, true, nullptr).detach();
         else
-            captureMixerSession(se, SNAPSHOT_NODE(id), label, false); 
+            captureMixerSession(se, SNAPSHOT_NODE(id), label, false);
 
 #ifdef ACTION_DEBUG
         Log::Info("Snapshot stored %d '%s'", id, label.c_str());
@@ -450,6 +453,119 @@ void Action::replace(uint64_t snapshotid)
 
         }
     }
+}
+
+bool Action::identical(const XMLElement *a, const XMLElement *b)
+{
+    if (a == nullptr || b == nullptr)
+        return a == b;
+
+    if (std::strcmp(a->Name(), b->Name()) != 0)
+        return false;
+
+    // same attributes, in the same order
+    const XMLAttribute *x = a->FirstAttribute();
+    const XMLAttribute *y = b->FirstAttribute();
+    for (; x && y; x = x->Next(), y = y->Next()) {
+        if (std::strcmp(x->Name(), y->Name()) != 0 || std::strcmp(x->Value(), y->Value()) != 0)
+            return false;
+    }
+    if (x || y)
+        return false;
+
+    // same children, in the same order
+    const XMLNode *ca = a->FirstChild();
+    const XMLNode *cb = b->FirstChild();
+    for (; ca && cb; ca = ca->NextSibling(), cb = cb->NextSibling()) {
+        const XMLElement *ea = ca->ToElement();
+        const XMLElement *eb = cb->ToElement();
+        if (ea && eb) {
+            if (!identical(ea, eb))
+                return false;
+        }
+        // text, comments
+        else if (!ca->ShallowEqual(cb))
+            return false;
+    }
+
+    return ca == nullptr && cb == nullptr;
+}
+
+// Remove the information that does not influence rendering:
+// - the id of the elements inside a source (nodes, shaders, players, etc.), generated
+//   each time the source is created
+// - the name and play state of a source
+static void removeNonRendering(XMLElement *element, bool inside_source)
+{
+    if (inside_source)
+        element->DeleteAttribute("id");
+
+    if (std::strcmp(element->Name(), "Source") == 0) {
+        element->DeleteAttribute("name");
+        element->DeleteAttribute("play");
+        inside_source = true;
+    }
+    for (XMLElement *child = element->FirstChildElement(); child; child = child->NextSiblingElement())
+        removeNonRendering(child, inside_source);
+}
+
+// Search, in the given snapshots (from the oldest), the ones identical to a previous one.
+static std::list<uint64_t> searchIdentical(std::shared_ptr<tinyxml2::XMLDocument> doc,
+                                           std::vector< std::pair<uint64_t, const XMLElement *> > snapshots)
+{
+    std::list<uint64_t> found;
+    std::vector<const XMLElement *> kept;
+
+    for (auto s = snapshots.begin(); s != snapshots.end(); ++s) {
+        bool duplicate = false;
+        for (auto k = kept.begin(); k != kept.end() && !duplicate; ++k)
+            duplicate = Action::identical(s->second, *k);
+        if (duplicate)
+            found.push_back(s->first);
+        else
+            kept.push_back(s->second);
+    }
+
+    return found;
+}
+
+void Action::removeIdentical()
+{
+    if (search_.valid() || Mixer::manager().liveSession() == nullptr)
+        return;
+
+    // Copy of the snapshots to search in without blocking or being disturbed.
+    // The copy has no thumbnail and no information that does not influence rendering
+    // (label, date, view, ids of nodes, shaders and players, name and play state of sources).
+    std::shared_ptr<tinyxml2::XMLDocument> doc = std::make_shared<tinyxml2::XMLDocument>();
+    std::vector< std::pair<uint64_t, const XMLElement *> > snapshots;
+
+    Session *se = Mixer::manager().liveSession();
+    se->snapshots()->access_.lock();
+    for (auto id = se->snapshots()->keys_.begin(); id != se->snapshots()->keys_.end(); ++id) {
+        // (snapshot being captured by a thread does not exist yet)
+        const XMLElement *node = se->snapshots()->xmlDoc_->FirstChildElement( SNAPSHOT_NODE(*id).c_str() );
+        if (node == nullptr)
+            continue;
+        XMLElement *copy = doc->NewElement("Snapshot");
+        for (const XMLAttribute *a = node->FirstAttribute(); a; a = a->Next()) {
+            const std::string name(a->Name());
+            if (name != "label" && name != "shortlabel" && name != "date" && name != "view")
+                copy->SetAttribute(a->Name(), a->Value());
+        }
+        for (const XMLNode *c = node->FirstChild(); c; c = c->NextSibling()) {
+            const XMLElement *e = c->ToElement();
+            if (e == nullptr || std::strcmp(e->Name(), "Image") != 0)
+                copy->InsertEndChild( c->DeepClone(doc.get()) );
+        }
+        removeNonRendering(copy, false);
+        doc->InsertEndChild(copy);
+        snapshots.push_back( std::make_pair(*id, copy) );
+    }
+    se->snapshots()->access_.unlock();
+
+    // search in a thread (snapshots removed in update)
+    search_ = std::async(std::launch::async, searchIdentical, doc, std::move(snapshots));
 }
 
 std::list<uint64_t> Action::snapshots() const
@@ -685,6 +801,17 @@ float Action::progress() const
 
 void Action::update(float dt)
 {
+    // end of search of identical snapshots: remove them
+    if (search_.valid() && search_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        const std::list<uint64_t> found = search_.get();
+        for (auto id = found.begin(); id != found.end(); ++id)
+            remove(*id);
+        if (found.empty())
+            Log::Notify("No identical version found.");
+        else
+            Log::Notify("%d identical version%s removed.", static_cast<int>(found.size()), found.size() > 1 ? "s" : "");
+    }
+
     if (!animating_)
         return;
 

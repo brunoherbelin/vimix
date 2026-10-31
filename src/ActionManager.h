@@ -5,6 +5,7 @@
 #include <string>
 #include <mutex>
 #include <chrono>
+#include <future>
 
 #include <tinyxml2.h>
 
@@ -59,6 +60,14 @@ public:
     void replace (uint64_t snapshotid = 0);
     void restore (uint64_t snapshotid = 0);
     void remove  (uint64_t snapshotid = 0);
+
+    // Search in a thread the snapshots identical to an older one (all content except
+    // label, date, view, thumbnail, generated ids of nodes, shaders and players,
+    // and name and play state of sources), and remove them when found (see update).
+    void removeIdentical ();
+    bool searching () const { return search_.valid(); }
+    // compare two XML elements (names, attributes and, recursively, all children)
+    static bool identical (const tinyxml2::XMLElement *a, const tinyxml2::XMLElement *b);
     void saveas  (const std::string& filename, uint64_t snapshotid = 0);
 
     std::string label (uint64_t snapshotid) const;
@@ -99,6 +108,9 @@ private:
     tinyxml2::XMLElement *snapshot_node_;
 
     uint64_t restored_id_;
+
+    // search of identical snapshots
+    std::future< std::list<uint64_t> > search_;
 
     // animation of restore
     Interpolator *interpolator_;
