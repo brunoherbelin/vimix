@@ -39,6 +39,9 @@ SnapshotsView::SnapshotsView() : StripView(SNAPSHOTS, "version"), session_(nullp
 {
     // fixed layout: no settings to restore
     Settings::application.views[mode_].name = "Versions";
+
+    // the strip starts on the latest version
+    start_from_end_ = true;
 }
 
 int SnapshotsView::indexOf(uint64_t id) const
@@ -93,6 +96,10 @@ void SnapshotsView::build()
 
     // current item is the version restored last, if in the list
     setCurrent( indexOf(Action::manager().restoredSnapshot()), false );
+
+    // otherwise the strip starts on the latest version (at the end of the list)
+    if (current_ < 0)
+        setCenter( static_cast<int>(items_.size()) - 1 );
 }
 
 void SnapshotsView::sync()

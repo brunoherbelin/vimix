@@ -49,7 +49,7 @@
 // default aspect ratio of thumbnails not yet loaded
 #define DEFAULT_ASPECT_RATIO (16.f / 9.f)
 
-StripView::StripView(Mode m, const std::string &item_name) : View(m), current_(-1), leave_target_(-1),
+StripView::StripView(Mode m, const std::string &item_name) : View(m), current_(-1), center_(-1), start_from_end_(false), leave_target_(-1),
     item_name_(item_name), strip_animate_(false), strip_scroll_(0.f), strip_target_(glm::vec3(1e6f)),
     item_height_(1.f), arrow_latched_(false), start_time_(0)
 {
@@ -81,6 +81,7 @@ void StripView::clearItems()
     }
     items_.clear();
     current_ = -1;
+    center_ = -1;
     leave_target_ = -1;
 }
 
@@ -103,9 +104,18 @@ void StripView::restart()
     ++View::need_deep_update_;
 }
 
+void StripView::setCenter(int i)
+{
+    center_ = i;
+
+    // scroll strip to center on it
+    strip_scroll_ = 0.f;
+}
+
 void StripView::setCurrent(int i, bool animate)
 {
     current_ = i;
+    center_ = -1;
 
     // current item has a large frame
     for (size_t j = 0; j < items_.size(); ++j)
@@ -126,6 +136,10 @@ void StripView::zoom(float factor)
 
 int StripView::nextIndex() const
 {
+    // no item after the start when starting from the end
+    if (current_ < 0 && start_from_end_)
+        return -1;
+
     // nearest valid item after current (no wrap-around)
     for (int i = current_ + 1; i < static_cast<int>(items_.size()); ++i) {
         if ( available(i) )
@@ -137,7 +151,9 @@ int StripView::nextIndex() const
 int StripView::previousIndex() const
 {
     // nearest valid item before current (no wrap-around)
-    for (int i = current_ - 1; i > -1; --i) {
+    // (or from the last item when starting from the end)
+    const int start = (current_ < 0 && start_from_end_) ? static_cast<int>(items_.size()) : current_;
+    for (int i = start - 1; i > -1; --i) {
         if ( available(i) )
             return i;
     }
@@ -203,7 +219,9 @@ void StripView::layout()
     // (keeping the center of the area between the first and last items)
     float x_current = 0.f;
     if (!items_.empty()) {
-        x_current = items_[ MAX(current_, 0) ]->group(View::PRESENTATION)->translation_.x;
+        // centered on the current item, or on the item set otherwise (default to the first)
+        const int center = current_ > -1 ? current_ : center_;
+        x_current = items_[ CLAMP(center, 0, static_cast<int>(items_.size()) - 1) ]->group(View::PRESENTATION)->translation_.x;
         strip_scroll_ = CLAMP(strip_scroll_, x_current - x, x_current);
     }
     else

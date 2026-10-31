@@ -66,11 +66,16 @@ protected:
     // start of a new list: jump to the current item
     void restart();
     void setCurrent(int i, bool animate);
+    // center the strip on item i, as long as there is no current item
+    void setCenter(int i);
     int  nextIndex() const;
     int  previousIndex() const;
 
     std::vector<SessionThumbnailSource *> items_;
     int current_;
+    int center_;
+    // without current item, navigation starts from the end of the list (previous is the last item)
+    bool start_from_end_;
     // leave the view once this item is opened (double clic)
     int leave_target_;
 
