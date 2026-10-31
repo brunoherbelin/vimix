@@ -3202,13 +3202,13 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         // display message line
         if (_status > 1) {
             // On Error
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.2, 0.2, 0.95f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RED, 0.95f));
             ImGui::TextWrapped("Error - %s", _status_message.c_str());
             ImGui::PopStyleColor(1);
         }
         else if (_status > 0) {
             // All ok
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.2, 1.0, 0.2, 0.85f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_GREEN, 0.85f));
             ImGui::Text("Ok %s", _status_message.c_str());
             ImGui::PopStyleColor(1);
         }

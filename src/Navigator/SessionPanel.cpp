@@ -210,7 +210,7 @@ void SessionPanel::Render()
                      Outputs::manager().enabled( FrameGrabber::GRABBER_GPU ) ) {
                     // show static info (same size than combo)
                     static char dummy_str[512];
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                    ImGuiToolkit::PushDisabled(true);
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     snprintf(dummy_str, 512, "%s", RenderView::ratio_preset_name[preset.x]);
                     ImGui::InputText("Ratio", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
@@ -226,7 +226,7 @@ void SessionPanel::Render()
                         snprintf(dummy_str, 512, "%d", custom.y);
                         ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                     }
-                    ImGui::PopStyleColor(1);
+                    ImGuiToolkit::PopDisabled(true);
                 }
                 // offer to change filename, ratio and resolution
                 else {
@@ -248,12 +248,12 @@ void SessionPanel::Render()
                             glm::vec3 res = RenderView::resolutionFromPreset(preset.x, preset.y);
                             Mixer::manager().setResolution(res);
                         }
-                        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                        ImGuiToolkit::PushDisabled(true);
                         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                         static char dummy_str[512];
                         snprintf(dummy_str, 512, "%d", custom.x );
                         ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                        ImGui::PopStyleColor(1);
+                        ImGuiToolkit::PopDisabled(true);
                     }
                     //  - custom aspect ratio : input width and height
                     else {
@@ -397,7 +397,7 @@ void SessionPanel::Render()
                 // (NB: evaluated once, as the label changes validity during InputText)
                 const bool red_text = !_snap_label_valid;
                 if (red_text)
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.2f, 0.2f, 1.f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RED, 0.95f));
                 if ( ImGuiToolkit::InputText("##Rename", &_snap_label ) )
                     _snap_label_valid = Action::manager().setLabel( current, _snap_label);
                 if (red_text)
@@ -556,7 +556,7 @@ void SessionPanel::Render()
         static uint64_t _displayed_over = 0;
         static bool _tooltip = 0;
 
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.39f, 0.39f, 0.39f, 0.55f));
+        ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_PopupBg));
         ImVec2 pos_top = ImGui::GetCursorPos();
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
         if ( ImGui::ListBoxHeader("##UndoHistory", Action::manager().max(), CLAMP(Action::manager().max(), 4, 8)) ) {
@@ -684,9 +684,9 @@ void SessionPanel::Render()
         // path display + folder choose button
         std::string label = BaseToolkit::truncated(Settings::application.recentExportFolder.path, 23);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
+        ImGuiToolkit::PushDisabled(true);
         ImGuiToolkit::InputText("##session_export_path", &label, ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopStyleColor();
+        ImGuiToolkit::PopDisabled(true);
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", Settings::application.recentExportFolder.path.c_str());
         ImVec2 pos_bot = ImGui::GetCursorPos();
@@ -732,8 +732,8 @@ void SessionPanel::Render()
             }
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Export the session to a target folder or archive.\n\n"
-                    ICON_FA_FOLDER_OPEN "  Choose a destination folder where to save "
-                    "a complete copy of the session. ");
+                ICON_FA_FOLDER_OPEN "  Choose a destination folder where to save the zip or "
+                "the session with all its associated files. ");
         }
         else {
             float progress = exporter->progress();

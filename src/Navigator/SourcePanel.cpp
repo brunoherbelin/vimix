@@ -201,16 +201,16 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
             }
             ImGui::SameLine();
             if (mp->isImage())
-                ImGuiToolkit::HelpToolTip("Re-encode the source image file in the specified format and options.\n\n "
-                        ICON_FA_FILE_IMAGE "  The new image will be used by the source once transcoding is successful. "
-                        "Current file is left unchanged, new file is created in the same folder.\n\n "
+                ImGuiToolkit::HelpToolTip("Save the image file in the specified format.\n\n "
+                        ICON_FA_FILE_IMAGE "  The new image file will replace the current one in the source. "
+                        "Current file is not affected. New file is saved in the same folder.\n\n "
                         ICON_FA_MAGIC "  Upscale will enlarge the image with a neural "
                         "network model. Models are downloaded on first run. "
                         "Largest and slowest ones give the best result.");
             else
-                ImGuiToolkit::HelpToolTip("Re-encode the source video file using the specified codec and options.\n\n "
-                        ICON_FA_FILE_VIDEO "  The new video will be used by the source once transcoding is successful. "
-                        "Current file is left unchanged, new file is created in the same folder.\n\n "
+                ImGuiToolkit::HelpToolTip("Re-encode and save the video file using the specified codec and options.\n\n "
+                        ICON_FA_FILE_VIDEO "  The new video file will replace the current one in the source. "
+                        "Current file is not affected. New file is saved in the same folder.\n\n "
                         ICON_FA_MAGIC "  Upscale will enlarge every frame with a neural "
                         "network model. Models are downloaded on first run. "
                         "Process can be very slow for high resolution. Audio track is not kept.");
@@ -337,9 +337,9 @@ static bool renderTranscodingPanelMultifile(guint64 id, MultiFileSource *mfs)
                 }
             }
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Re-encode the images of the sequence in the specified format and options.\n\n "
-                    ICON_FA_FOLDER "  The new images will be used by the source once transcoding is successful. "
-                    "Current files are left unchanged, new files are created in a new folder next to them.\n\n "
+            ImGuiToolkit::HelpToolTip("Re-encode the images of the sequence in the specified format.\n\n "
+                    ICON_FA_FOLDER "  The new images will be used by the source as a sequence. "
+                    "Current files are not affected. New files are created in a new folder next to them.\n\n "
                     ICON_FA_MAGIC "  Upscale will enlarge every image with a neural "
                     "network model. Models are downloaded on first run. "
                     "Largest and slowest ones give the best result.");

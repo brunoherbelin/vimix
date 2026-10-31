@@ -877,15 +877,17 @@ void ImGuiVisitor::visit (MediaSource& s)
                         info.appendf("  %s", animation[(g_get_monotonic_time() / 300000) % 4]);
                     }
                 }
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::InputText((char *)label.c_str(), (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
-                ImGui::PopStyleColor(1);
+                ImGuiToolkit::PushDisabled(true);
+                ImGui::InputText("##labelEvaluation", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
+                ImGuiToolkit::PopDisabled(true);
                 if (ImGui::IsItemHovered()) {
                     ImGui::BeginTooltip();
                     ImGui::Text( "%s", tooltip.c_str() );
                     ImGui::EndTooltip();
                 }
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGui::Text("%s", (char *)label.c_str());
 
                 MultiFileSource *mfs = dynamic_cast<MultiFileSource *>(&s);
                 if (mfs) {
@@ -2153,10 +2155,12 @@ void ImGuiVisitor::visit (NetworkSource& s)
     ImGui::PopTextWrapPos();
     ImGui::Spacing();
 
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-    ImGui::InputText("Peer", (char *)s.connection().c_str(), s.connection().size(), ImGuiInputTextFlags_ReadOnly);
-    ImGui::PopStyleColor(1);
+    ImGuiToolkit::PushDisabled(true);
+    ImGui::InputText("##LabelPeer", (char *)s.connection().c_str(), s.connection().size(), ImGuiInputTextFlags_ReadOnly);
+    ImGuiToolkit::PopDisabled(true);
+    ImGui::SameLine(0, IMGUI_SAME_LINE);
+    ImGui::Text("Peer");
 
     ImVec2 botom = ImGui::GetCursorPos();
 
@@ -2329,9 +2333,9 @@ void ImGuiVisitor::visit(TextSource &s)
             static char dummy_str[1024];
             ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
             snprintf(dummy_str, 1024, "%s", _contents.c_str());
-            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+            ImGuiToolkit::PushDisabled(true);
             ImGui::InputText("##Filesubtitle", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-            ImGui::PopStyleColor(1);
+            ImGuiToolkit::PopDisabled(true);
             botom = ImGui::GetCursorPos();
             // Action on the filename
             ImGui::SetCursorPos(ImVec2(top.x, botom.y - ImGui::GetFrameHeight()));

@@ -244,9 +244,9 @@ void PlaylistPanel::Render()
 
         // Disabled name field to show the name of the playlist to delete
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+        ImGuiToolkit::PushDisabled(true);
         ImGuiToolkit::InputText("##DeletePlaylist", &playlist_header, ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopStyleColor(1);
+        ImGuiToolkit::PopDisabled(true);
 
         // Cancel button
         ImGui::SameLine(0, ImGui::GetTextLineHeightWithSpacing() + IMGUI_SAME_LINE / 2.f);
@@ -702,9 +702,9 @@ void PlaylistPanel::Render()
         // path display + folder choose button
         std::string label = BaseToolkit::truncated(Settings::application.recentExportFolder.path, 23);
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
+        ImGuiToolkit::PushDisabled(true);
         ImGuiToolkit::InputText("##export_path", &label, ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopStyleColor();
+        ImGuiToolkit::PopDisabled(true);
 
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", Settings::application.recentExportFolder.path.c_str());
@@ -745,8 +745,8 @@ void PlaylistPanel::Render()
             }
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Export the playlist to a target folder.\n\n"
-                    ICON_FA_FOLDER_OPEN "  Choose a destination folder where to copy "
-                    "the playlist and all its session files. ");
+                    ICON_FA_FOLDER_OPEN "  Choose a destination folder where to save the zip or "
+                    "the playlist with all its associated files. ");
         }
         else {
             float progress = playlist_exporter->progress();

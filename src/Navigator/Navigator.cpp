@@ -1142,6 +1142,7 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
         const FrameBuffer *output = bundle->frame();
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
         PannelHeader("Resolution", Settings::application.pannel_source, 3);
+        ImGui::PopStyleColor(1);
         if (Settings::application.pannel_source[3]) {
             if (output) {
                 // optimal height of bundle frame: one pixel of bundle for one pixel of
@@ -1156,24 +1157,24 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
 
                 // show static info of resolution
                 static char dummy_str[512];
+                ImGuiToolkit::PushDisabled(true);
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 snprintf(dummy_str, 512, "%d", output->width());
                 ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 snprintf(dummy_str, 512, "%d", output->height());
                 ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
-                ImGui::PopStyleColor(1);
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                 snprintf(dummy_str, 512, "%.2f", density);
                 ImGui::InputText("##Density", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                ImGuiToolkit::PopDisabled(true);
                 if (ImGui::IsItemHovered())
                     ImGuiToolkit::ToolTip("How many pixels are rendered per pixel of the parent session.\n"
                                           "1.0 is optimal; lower values reduce quality and save resources, "
                                           "higher values compute pixels that are not visible.");
                 ImGui::SameLine(0, IMGUI_SAME_LINE);
                 // reset to optimal density (keep aspect ratio, limited to the maximum resolution)
-                if (ImGuiToolkit::TextButton("Density", "Reset to optimal density (1.0)") && optimal_height > 0.f) {
+                if (ImGuiToolkit::TextButton("Density", "Change resolution\nfor optimal density (1.0)") && optimal_height > 0.f) {
                     glm::vec3 res( optimal_height * output->aspectRatio(), optimal_height, 0.f );
                     const glm::vec3 maxres = FrameBuffer::maxResolution();
                     res *= MIN( 1.f, MIN( maxres.x / res.x, maxres.y / res.y ) );
@@ -1213,7 +1214,6 @@ void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
             ImGui::Text("( %d x %d )", output->width(), output->height());
             ImGui::SetCursorPos( pos_tmp );
         }
-        ImGui::PopStyleColor(1);
 
         ImGui::End();
     }

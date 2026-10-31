@@ -35,6 +35,7 @@
 
 #include <glad/glad.h>
 
+#include "defines.h"
 #include "Resource.h"
 #include "GstToolkit.h"
 #include "BaseToolkit.h"
@@ -1688,7 +1689,7 @@ bool ImGuiToolkit::InputTime(const char *label, guint64 *time, guint64 max_time,
     ImGui::PushStyleColor(ImGuiCol_Text,
                           flag & ImGuiInputTextFlags_ReadOnly
                               ? g.Style.Colors[ImGuiCol_TextDisabled]
-                              : ImVec4(1.0f, *valid ? 1.0f : 0.2f, *valid ? 1.0f : 0.2f, 1.f));
+                              : *valid ? ImVec4(1.f, 1.f, 1.f, 1.f) : ImVec4(IMGUI_COLOR_RED, 1.f));
     ImGui::PushStyleColor(ImGuiCol_FrameBg,
                           flag & ImGuiInputTextFlags_ReadOnly ? g.Style.Colors[ImGuiCol_WindowBg]
                                                               : g.Style.Colors[ImGuiCol_FrameBg]);

@@ -435,11 +435,11 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             // Indication
             ImGui::SameLine();
             ImGuiToolkit::HelpToolTip("Create a source displaying a sequence of images;\n"
-                                     ICON_FA_CARET_RIGHT " files numbered consecutively\n"
-                                     ICON_FA_CARET_RIGHT " create a video from many images\n\n"
+                                     ICON_FA_CARET_RIGHT " Files numbered consecutively\n"
+                                     ICON_FA_CARET_RIGHT " Create a video from many images\n\n"
                                      "Create a source playing a sequence of videos;\n"
-                                     ICON_FA_CARET_RIGHT " videos played one after the other\n"
-                                     ICON_FA_CARET_RIGHT " convert videos to a sequence");
+                                     ICON_FA_CARET_RIGHT " Videos played one after the other\n"
+                                     ICON_FA_CARET_RIGHT " Convert videos to a sequence");
 
             // return from thread for folder openning
             bool new_selection = false;
@@ -569,8 +569,11 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
 
             // Indication
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Create a source with patterns or graphics generated algorithmically. "
-                                      "Displaying text, a custom gstreamer pipeline or a custom shader is also possible.");
+            ImGuiToolkit::HelpToolTip("Create a source with graphics generated algorithmically.\n"
+                                        ICON_FA_CARET_RIGHT " Static or animated patterns\n"
+                                        ICON_FA_CARET_RIGHT " Text or subtitles\n"
+                                        ICON_FA_CARET_RIGHT " Custom GLSL shader\n"
+                                        ICON_FA_CARET_RIGHT " Custom gstreamer pipeline");
 
             ImGui::Spacing();
             if (generated_type == 0) {
@@ -632,12 +635,12 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                     static char dummy_str[1024];
                     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
                     snprintf(dummy_str, 1024, "%s", _contents.c_str());
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
+                    ImGuiToolkit::PushDisabled(true);
                     ImGui::InputText("##Filesubtitle",
                                      dummy_str,
                                      IM_ARRAYSIZE(dummy_str),
                                      ImGuiInputTextFlags_ReadOnly);
-                    ImGui::PopStyleColor(1);
+                    ImGuiToolkit::PopDisabled(true);
 
                     if (ImGui::Button(ICON_FA_TIMES " Close subtitle", ImVec2(IMGUI_RIGHT_ALIGN, 0))){
                         _contents = _examples[0].second;
@@ -825,12 +828,11 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
             ImGui::SameLine();
             ImVec2 pos = ImGui::GetCursorPos();
             ImGuiToolkit::HelpToolTip("Create a source capturing video streams from connected devices or machines;\n"
-                                      ICON_FA_CARET_RIGHT " vimix display loopback\n"
-                                      ICON_FA_CARET_RIGHT " screen capture\n"
-                                      ICON_FA_CARET_RIGHT " network SRT broadcast.\n"
-                                      "For connected devices;\n"
-                                      ICON_FA_CARET_RIGHT " webcams or frame grabbers\n"
-                                      ICON_FA_CARET_RIGHT " vimix Peer-to-peer in local network.");
+                                      ICON_FA_CARET_RIGHT " Vimix display loopback\n"
+                                      ICON_FA_CARET_RIGHT " Screen capture\n"
+                                      ICON_FA_CARET_RIGHT " Network SRT broadcast.\n"
+                                      ICON_FA_CARET_RIGHT " Webcams or frame grabbers\n"
+                                      ICON_FA_CARET_RIGHT " Peer-to-peer in local network");
             ImGui::SameLine();
             if (ImGuiToolkit::IconButton(ICON_VI_RELOAD, "Reload list")) {
                 Device::manager().reload();
@@ -849,24 +851,30 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
 
                 // Entry field for IP
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGuiToolkit::InputText("IP", &ip_, ImGuiInputTextFlags_CharsDecimal);
+                ImGuiToolkit::InputText("##LabelIP", &ip_, ImGuiInputTextFlags_CharsDecimal);
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton("IP"))
+                    ip_ = Settings::application.recentSRT.default_host.first;
                 valid_ = std::regex_match(ip_, ipv4);
 
                 // Entry field for port
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGuiToolkit::InputText("Port", &port_, ImGuiInputTextFlags_CharsDecimal);
+                ImGuiToolkit::InputText("##LabelPort", &port_, ImGuiInputTextFlags_CharsDecimal);
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                if (ImGuiToolkit::TextButton("Port"))
+                    port_ = Settings::application.recentSRT.default_host.second;
                 valid_ &= std::regex_match(port_, numport);
 
                 // URL generated from protorol, IP and port
                 url_ = Settings::application.recentSRT.protocol + ip_ + ":" + port_;
 
-                // push style for disabled text entry
                 ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.8f));
 
-                // display default IP & port
+                // display default IP & port (disabled text entry)
                 if (Settings::application.recentSRT.hosts.empty()) {
+                    ImGuiToolkit::PushDisabled(true);
                     ImGuiToolkit::InputText("##url", &url_, ImGuiInputTextFlags_ReadOnly);
+                    ImGuiToolkit::PopDisabled(true);
                 }
                 // display most recent host & offer list of known hosts
                 else {
@@ -893,9 +901,6 @@ void NewSourcePanel::Render(Navigator *navigator, const ImVec2 &iconsize)
                     ImGui::SetCursorPos(pos_top);
 
                 }
-
-                // pop disabled style
-                ImGui::PopStyleColor(1);
 
                 // push a RED color style if host is not valid
                 ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.0f, valid_ ? 0.0f : 0.6f, 0.4f));
@@ -1171,15 +1176,15 @@ void NewSourcePanel::RenderImageSequence(bool new_selection)
 
     // show info sequence
     ImGuiTextBuffer info;
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
     info.appendf("%d %s (%d x %d)",
         (int) sourceImageFiles.size(),
         _numbered_sequence.codec.c_str(),
         sequence_width,
         sequence_height);
     ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+    ImGuiToolkit::PushDisabled(true);
     ImGui::InputText("##SequenceSelection", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
-    ImGui::PopStyleColor(1);
+    ImGuiToolkit::PopDisabled(true);
     ImGui::SameLine(0, IMGUI_SAME_LINE);
     if (ImGuiToolkit::TextButton("Selection")) {
         sourceImageFiles.clear();
@@ -1453,15 +1458,15 @@ void NewSourcePanel::RenderVideoSequence(bool new_selection)
 
         // show info sequence
         ImGuiTextBuffer info;
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.14f, 0.9f));
         if (_video_info.split.valid)
             info.appendf("%d videos, %s", (int) sourceVideoFiles.size(),
                          GstToolkit::time_to_string(_video_info.split.end, GstToolkit::TIME_STRING_READABLE).c_str());
         else
             info.appendf("%d mixed videos", (int) sourceVideoFiles.size());
         ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        ImGuiToolkit::PushDisabled(true);
         ImGui::InputText("##VideoSelection", (char *)info.c_str(), info.size(), ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopStyleColor(1);
+        ImGuiToolkit::PopDisabled(true);
         // cause of incompatibility of videos
         if (!_video_info.split.valid && !_video_info.split.log.empty() && ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip(_video_info.split.log.c_str());
