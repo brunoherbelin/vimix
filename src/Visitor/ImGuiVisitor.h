@@ -34,12 +34,12 @@ public:
     void visit (MediaSource& s) override;
     void visit (SessionFileSource& s) override;
     void visit (SessionGroupSource& s) override;
+    void visit (DraftSource& s) override;
     void visit (RenderSource& s) override;
     void visit (PatternSource& s) override;
     void visit (DeviceSource& s) override;
     void visit (ScreenCaptureSource& s) override;
     void visit (NetworkSource& s) override;
-    void visit (MultiFileSource& s) override;
     void visit (GenericStreamSource& s) override;
     void visit (SrtReceiverSource& s) override;
     void visit (TextSource& s) override;

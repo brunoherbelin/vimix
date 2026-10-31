@@ -19,7 +19,6 @@
 
 #include "IconsFontAwesome5.h"
 #include "Source/MediaSource.h"
-#include "Source/SessionSource.h"
 #include "Source/SourceList.h"
 #include <string>
 #include <algorithm>
@@ -47,7 +46,7 @@
 #include "ControlManager.h"
 #include "Toolkit/GstToolkit.h"
 #include "Metronome.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 
 #include "InputMappingWindow.h"
 

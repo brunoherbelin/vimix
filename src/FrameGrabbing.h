@@ -4,6 +4,7 @@
 #include <glm/fwd.hpp>
 #include <list>
 #include <map>
+#include <mutex>
 #include <string>
 
 #include <gst/gst.h>
@@ -26,7 +27,9 @@ class FrameBuffer;
  * @note This is a singleton class - use FrameGrabbing::manager() to access
  * @note Session calls grabFrame() after each render cycle
  *
- * Thread Safety: Not thread-safe - should be accessed from render thread only
+ * Thread Safety: add() can be called from any thread (grabbers are queued and
+ * inserted by the render thread in grabFrame()); all other methods should be
+ * accessed from render thread only
  */
 class FrameGrabbing
 {
@@ -71,11 +74,12 @@ public:
      * @brief Add a new frame grabber to the active list
      * @param rec Pointer to the FrameGrabber to add (takes ownership)
      * @param duration Optional duration in seconds (0 = unlimited)
+     * @param replace If true, stop the active grabbers of the same type when inserting
      *
-     * The grabber will start receiving frames on the next render cycle.
+     * Thread-safe: the grabber is queued and inserted on the next render cycle.
      * When duration expires or grabber finishes, it will be automatically removed.
      */
-    void add(FrameGrabber *rec, uint64_t duration = 0);
+    void add(FrameGrabber *rec, uint64_t duration = 0, bool replace = false);
 
     /**
      * @brief Chain a new grabber to start after the current is interrupted
@@ -135,6 +139,16 @@ private:
     std::list<FrameGrabber *> grabbers_;
     std::map<FrameGrabber *, FrameGrabber *> grabbers_chain_;
     std::map<FrameGrabber *, uint64_t> grabbers_duration_;
+
+    // grabbers added (possibly from other threads), waiting to be inserted by grabFrame
+    struct PendingGrabber {
+        FrameGrabber *rec;
+        uint64_t duration;
+        bool replace;
+    };
+    std::list<PendingGrabber> pending_;
+    mutable std::mutex pending_lock_;
+    void insertPending();
     guint pbo_[2];
     guint pbo_index_;
     guint pbo_next_index_;

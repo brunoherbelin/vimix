@@ -111,7 +111,7 @@ std::string BaseToolkit::transliterate(const std::string &input)
 
     status = U_ZERO_ERROR;
     icu::Transliterator *secondTrans = icu::Transliterator::createInstance(
-                "any-NFKD ; [:Nonspacing Mark:] Remove; [@!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
+                "any-NFKD ; [:Nonspacing Mark:] Remove; [!#$*%~] Remove; NFKC", UTRANS_FORWARD, status);
     if (secondTrans != nullptr && U_SUCCESS(status)) {
         secondTrans->transliterate(ucs);
         delete secondTrans;
@@ -217,6 +217,24 @@ bool BaseToolkit::is_a_number(const std::string& str, int *val)
 
     try {
         *val = std::stoi(str);
+        isanumber = true;
+    }
+    catch (const std::invalid_argument&) {
+        // avoids crash
+    }
+    catch (const std::out_of_range&) {
+        // avoids crash
+    }
+
+    return isanumber;
+}
+
+bool BaseToolkit::is_a_number(const std::string& str, uint64_t *val)
+{
+    bool isanumber = false;
+
+    try {
+        *val = std::stoull(str);
         isanumber = true;
     }
     catch (const std::invalid_argument&) {

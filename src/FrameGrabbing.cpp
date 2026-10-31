@@ -30,7 +30,6 @@
 #include <gst/video/video.h>
 
 #include "FrameBuffer.h"
-#include "Streamer.h"
 #include "FrameGrabbing.h"
 
 
@@ -54,11 +53,32 @@ FrameGrabbing::~FrameGrabbing()
 //        glDeleteBuffers(2, pbo_);
 }
 
-void FrameGrabbing::add(FrameGrabber *rec, uint64_t duration)
+void FrameGrabbing::add(FrameGrabber *rec, uint64_t duration, bool replace)
 {
     if (rec != nullptr) {
-        grabbers_.push_back(rec);
-        grabbers_duration_[rec] = duration;
+        // queue for insertion in grabbers_ by the render thread
+        std::lock_guard<std::mutex> lock(pending_lock_);
+        pending_.push_back({rec, duration, replace});
+    }
+}
+
+void FrameGrabbing::insertPending()
+{
+    std::list<PendingGrabber> pending;
+    {
+        std::lock_guard<std::mutex> lock(pending_lock_);
+        pending.swap(pending_);
+    }
+
+    for (const PendingGrabber &p : pending) {
+        // stop active grabbers of same type
+        if (p.replace) {
+            for (FrameGrabber *rec : grabbers_)
+                if (rec->type() == p.rec->type())
+                    rec->stop();
+        }
+        grabbers_.push_back(p.rec);
+        grabbers_duration_[p.rec] = p.duration;
     }
 }
 
@@ -75,7 +95,8 @@ void FrameGrabbing::chain(FrameGrabber *rec, FrameGrabber *next_rec)
 
 bool FrameGrabbing::busy() const
 {
-    return !grabbers_.empty();
+    std::lock_guard<std::mutex> lock(pending_lock_);
+    return !grabbers_.empty() || !pending_.empty();
 }
 
 struct fgId
@@ -132,6 +153,8 @@ void FrameGrabbing::stopAll()
 
 void FrameGrabbing::clearAll()
 {
+    insertPending();
+
     std::list<FrameGrabber *>::iterator iter;
     for (iter=grabbers_.begin(); iter != grabbers_.end(); )
     {
@@ -139,8 +162,6 @@ void FrameGrabbing::clearAll()
         rec->stop();
         if (rec->finished()) {
             iter = grabbers_.erase(iter);
-            if (rec->type() == FrameGrabber::GRABBER_P2P)
-                Streaming::manager().removeStream(dynamic_cast<VideoStreamer*>(rec));
             delete rec;
         }
         else
@@ -156,6 +177,9 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
     // invalid frame buffer
     if (frame_buffer == nullptr)
         return;
+
+    // insert grabbers added since last frame
+    insertPending();
 
     // determine input size from frame buffer and crop, ensuring divisible by 2
     glm::vec2 size = frame_buffer->projectionSize();
@@ -289,8 +313,6 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
                     grabbers_duration_.erase(rec);
                     // remove from local list and iterate
                     iter = cpu_grabbers_.erase(iter);
-                    if (rec->type() == FrameGrabber::GRABBER_P2P)
-                        Streaming::manager().removeStream(dynamic_cast<VideoStreamer*>(rec));
                     delete rec;
                 }
                 else
@@ -325,8 +347,6 @@ void FrameGrabbing::grabFrame(FrameBuffer *frame_buffer, guint64 dt_millisec)
                 grabbers_duration_.erase(rec);
                 // remove from local list and iterate
                 iter = gpu_grabbers_.erase(iter);
-                if (rec->type() == FrameGrabber::GRABBER_P2P)
-                    Streaming::manager().removeStream(dynamic_cast<VideoStreamer*>(rec));
                 delete rec;
             }
             else
@@ -373,8 +393,9 @@ void Outputs::start(FrameGrabber *ptr,
             std::this_thread::sleep_for(delay);
             // interrupted during delayed start
             if (Outputs::manager().delayed[ptr->type()] != false) {
-                Outputs::manager().stop( ptr->type() );
-                FrameGrabbing::manager().add(ptr, timeout);
+                Outputs::manager().delayed[ptr->type()] = false;
+                // not in render thread: stop previous grabber when inserted
+                FrameGrabbing::manager().add(ptr, timeout, true);
             }
         }).detach();
         return;

@@ -34,6 +34,7 @@
 #include "Visitor/SessionVisitor.h"
 #include "ActionManager.h"
 #include "Source/RenderSource.h"
+#include "Source/SessionSource.h"
 #include "MixingGroup.h"
 #include "ControlManager.h"
 #include "Source/SourceCallback.h"
@@ -48,7 +49,7 @@ SessionNote::SessionNote(const std::string &t, bool l, int s): label(std::to_str
 }
 
 Session::Session(uint64_t id) : id_(id), active_(true), activation_threshold_(MIXING_MIN_THRESHOLD),
-    filename_(""), thumbnail_(nullptr), ready_(false), input_callbacks_(this)
+    viewspaces_((1 << MAX_VIEWSPACE) - 1), filename_(""), thumbnail_(nullptr), ready_(false), input_callbacks_(this)
 {
     // create unique id
     if (id_ == 0)
@@ -153,6 +154,20 @@ bool Session::attached (Source *s) const
     return ( s != nullptr && s->group(View::RENDERING)->refcount_ > 0 );
 }
 
+bool Session::started () const
+{
+    if ( !ready_ )
+        return false;
+
+    // sources inside a bundle become ready only when their bundle updates its session
+    for (auto it = sources_.begin(); it != sources_.end(); ++it) {
+        SessionSource *ss = dynamic_cast<SessionSource *>(*it);
+        if ( ss && ss->session() && ss->active() && ss->playing() && !ss->session()->started() )
+            return false;
+    }
+    return true;
+}
+
 // update all sources
 void Session::update(float dt)
 {
@@ -181,8 +196,14 @@ void Session::update(float dt)
                     // 3. Case of variant as Current source of the Mixer front session only.
                     // Ignored in any other session (bundle, session file)
                     if (std::holds_alternative<Current>(k->second.target_)) {
-                        Source *s = ( this == Mixer::manager().session() )
-                                    ? Mixer::manager().currentSource() : nullptr;
+                        // (the source with the same id as the current source of the Mixer)
+                        Source *s = nullptr;
+                        Source *c = Mixer::manager().currentSource();
+                        if ( this == Mixer::manager().liveSession() && c != nullptr ) {
+                            SourceList::iterator cs = find( c->id() );
+                            if ( cs != sources_.end() )
+                                s = *cs;
+                        }
                         if ( s != nullptr ) {
                             // generate a new callback from the model
                             SourceCallback *forward = k->second.model_->clone();
@@ -665,12 +686,26 @@ bool Session::hasLink (SourceList sources)
     return _haslink;
 }
 
+void Session::setViewSpaceShown(uint v, bool on)
+{
+    if (v < MAX_VIEWSPACE) {
+        if (on)
+            viewspaces_ |= (1 << v);
+        else
+            viewspaces_ &= ~(1 << v);
+    }
+}
+
 void Session::link(SourceList sources, Group *parent)
 {
     // we need at least 2 sources to make a group
     if (sources.size() > 1) {
 
         unlink(sources);
+
+        // linked sources share the same ViewSpace
+        for (auto it = sources.begin(); it != sources.end(); ++it)
+            (*it)->setViewSpace( sources.front()->viewSpace() );
 
         // create and add a new mixing group
         MixingGroup *g = new MixingGroup(sources);
@@ -865,6 +900,10 @@ void Session::applySnapshot(uint64_t key)
     if (snapshot_node_) {
 
         SourceIdList session_sources = getIdList();
+
+        // input callbacks are re-created by loading (if saved)
+        if (snapshot_node_->FirstChildElement("InputCallbacks"))
+            input_callbacks_.clear();
 
         SessionLoader loader( this );
         loader.load( snapshot_node_ );

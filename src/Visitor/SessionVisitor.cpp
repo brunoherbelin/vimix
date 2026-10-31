@@ -18,6 +18,7 @@
 **/
 
 #include <iostream>
+#include <sstream>
 
 #include <tinyxml2.h>
 using namespace tinyxml2;
@@ -33,6 +34,7 @@ using namespace tinyxml2;
 #include "Filter/ImageFilter.h"
 #include "Source/RenderSource.h"
 #include "Source/MediaSource.h"
+#include "Source/SplitMediaSource.h"
 #include "Session.h"
 #include "Source/SessionSource.h"
 #include "Source/PatternSource.h"
@@ -44,7 +46,7 @@ using namespace tinyxml2;
 #include "Source/TextSource.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "MixingGroup.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Source/ShaderSource.h"
@@ -82,6 +84,7 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
     // save session attributes
     sessionNode->SetAttribute("id", session->id());
     sessionNode->SetAttribute("activationThreshold", session->activationThreshold());
+    sessionNode->SetAttribute("viewspaces", session->viewSpaces());
 
     // save input callbacks
     XMLElement *inputsNode = SessionVisitor::saveInputCallbacks(&xmlDoc, session);
@@ -162,6 +165,7 @@ void SessionVisitor::saveSnapshots(tinyxml2::XMLDocument *doc, Session *session)
     {
         // create element
         XMLElement *snapshots = doc->NewElement("Snapshots");
+        snapshots->SetAttribute("duration", session->snapshots()->duration_);
 
         // access to session snapshot
         session->snapshots()->access_.lock();
@@ -627,8 +631,10 @@ void SessionVisitor::visit (Source& s)
     sourceNode->SetAttribute("id", s.id());
     sourceNode->SetAttribute("name", s.name().c_str() );
     sourceNode->SetAttribute("locked", s.locked() );
+    sourceNode->SetAttribute("viewspace", s.viewSpace() );
     sourceNode->SetAttribute("play", s.playing() );
     sourceNode->SetAttribute("replay_on_deactivate", s.replayOnDeactivate());
+    sourceNode->SetAttribute("type", std::string(s.type()).c_str() );
 
     // insert into hierarchy
     xmlCurrent_->InsertEndChild(sourceNode);
@@ -693,23 +699,36 @@ void SessionVisitor::visit (Source& s)
 
 void SessionVisitor::visit (MediaSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "MediaSource");
+    // a sequence of images is described by its own node (see visit (MultiFileSource&))
+    if ( dynamic_cast<MultiFileSource *>(&s) == nullptr ) {
+        XMLElement *uri = xmlDoc_->NewElement("uri");
+        xmlCurrent_->InsertEndChild(uri);
+        XMLText *text = xmlDoc_->NewText( s.path().c_str() );
+        uri->InsertEndChild( text );
 
-    XMLElement *uri = xmlDoc_->NewElement("uri");
-    xmlCurrent_->InsertEndChild(uri);
-    XMLText *text = xmlDoc_->NewText( s.path().c_str() );
-    uri->InsertEndChild( text );
-
-    if (!sessionFilePath_.empty())
-        uri->SetAttribute("relative", SystemToolkit::path_relative_to_path(s.path(), sessionFilePath_).c_str());
+        if (!sessionFilePath_.empty())
+            uri->SetAttribute("relative", SystemToolkit::path_relative_to_path(s.path(), sessionFilePath_).c_str());
+    }
 
     if (!s.failed())
         s.mediaplayer()->accept(*this);
 }
 
+void SessionVisitor::visit (SplitMediaSource& s)
+{
+    XMLElement *list = xmlDoc_->NewElement("SplitFiles");
+    xmlCurrent_->InsertEndChild(list);
+    for (const std::string &f : s.files()) {
+        XMLElement *file = xmlDoc_->NewElement("file");
+        file->InsertEndChild( xmlDoc_->NewText( f.c_str() ) );
+        if (!sessionFilePath_.empty())
+            file->SetAttribute("relative", SystemToolkit::path_relative_to_path(f, sessionFilePath_).c_str());
+        list->InsertEndChild(file);
+    }
+}
+
 void SessionVisitor::visit (SessionFileSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "SessionSource");
     if (s.session() != nullptr)
         xmlCurrent_->SetAttribute("fading", s.session()->fading());
 
@@ -724,7 +743,6 @@ void SessionVisitor::visit (SessionFileSource& s)
 
 void SessionVisitor::visit (SessionGroupSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "GroupSource");
     xmlCurrent_->SetAttribute("height", (float) s.frame()->height() / s.scale().y );
 
     XMLElement *center = xmlDoc_->NewElement("center");
@@ -754,7 +772,6 @@ void SessionVisitor::visit (SessionGroupSource& s)
 
 void SessionVisitor::visit (RenderSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "RenderSource");
     xmlCurrent_->SetAttribute("provenance", (int) s.renderingProvenance());
     xmlCurrent_->SetAttribute("canvas", (int) s.canvasProvenance());
 }
@@ -877,8 +894,6 @@ void SessionVisitor::visit (ImageFilter& f)
 void SessionVisitor::visit (CloneSource& s)
 {
     XMLElement *cloneNode = xmlCurrent_;
-    cloneNode->SetAttribute("type", "CloneSource");
-
     // origin of clone
     XMLElement *origin = xmlDoc_->NewElement( "origin" );
     XMLText *text = xmlDoc_->NewText( s.origin_name().c_str() );
@@ -903,8 +918,6 @@ void SessionVisitor::visit (StreamSource& s)
 
 void SessionVisitor::visit (PatternSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "PatternSource");
-
     if (s.pattern()) {
         xmlCurrent_->SetAttribute("pattern", s.pattern()->type() );
 
@@ -916,8 +929,6 @@ void SessionVisitor::visit (PatternSource& s)
 
 void SessionVisitor::visit (TextSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "TextSource");
-
     if (s.contents()) {
         XMLElement *contents = xmlDoc_->NewElement("contents");
         // simple text node to store filename of subtitle
@@ -953,8 +964,6 @@ void SessionVisitor::visit (TextSource& s)
 void SessionVisitor::visit (ShaderSource& s)
 {
     XMLElement *_node = xmlCurrent_;
-    _node->SetAttribute("type", "ShaderSource");
-
     XMLElement *resolution = xmlDoc_->NewElement("resolution");
     resolution->InsertEndChild( XMLElementFromGLM(xmlDoc_, s.filter()->resolution()) );
     _node->InsertEndChild(resolution);
@@ -969,13 +978,11 @@ void SessionVisitor::visit (ShaderSource& s)
 
 void SessionVisitor::visit (DeviceSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "DeviceSource");
     xmlCurrent_->SetAttribute("device", s.device().c_str() );
 }
 
 void SessionVisitor::visit (ScreenCaptureSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "ScreenCaptureSource");
     xmlCurrent_->SetAttribute("window", s.window().c_str() );
     // Wayland: token to restore the screen cast without asking the user
     if (!s.restoreToken().empty())
@@ -984,7 +991,6 @@ void SessionVisitor::visit (ScreenCaptureSource& s)
 
 void SessionVisitor::visit (NetworkSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "NetworkSource");
     xmlCurrent_->SetAttribute("connection", s.connection().c_str() );
 }
 
@@ -1001,14 +1007,9 @@ void SessionVisitor::visit (MixingGroup& g)
 
 void SessionVisitor::visit (MultiFileSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "MultiFileSource");
-
     XMLElement *sequence = xmlDoc_->NewElement("Sequence");
-    // play properties
+    // play properties (timeline and loop are saved with the media player)
     sequence->SetAttribute("fps", s.framerate());
-    sequence->SetAttribute("begin", s.begin());
-    sequence->SetAttribute("end", s.end());
-    sequence->SetAttribute("loop", s.loop());
     // file sequence description
     sequence->SetAttribute("min", s.sequence().min);
     sequence->SetAttribute("max", s.sequence().max);
@@ -1028,8 +1029,6 @@ void SessionVisitor::visit (MultiFileSource& s)
 
 void SessionVisitor::visit (GenericStreamSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "GenericStreamSource");
-
     XMLElement *desc = xmlDoc_->NewElement("Description");
 
     XMLText *text = xmlDoc_->NewText( s.description().c_str() );
@@ -1041,8 +1040,6 @@ void SessionVisitor::visit (GenericStreamSource& s)
 
 void SessionVisitor::visit (SrtReceiverSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "SrtReceiverSource");
-
     XMLElement *ip = xmlDoc_->NewElement("ip");
     XMLText *iptext = xmlDoc_->NewText( s.ip().c_str() );
     ip->InsertEndChild( iptext );
@@ -1057,7 +1054,6 @@ void SessionVisitor::visit (SrtReceiverSource& s)
 
 void SessionVisitor::visit (CanvasSource& s)
 {
-    xmlCurrent_->SetAttribute("type", "CanvasSource");
     xmlCurrent_->SetAttribute("canvas", (uint64_t) s.canvas());
 }
 

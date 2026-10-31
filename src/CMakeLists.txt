@@ -25,9 +25,9 @@ set(VMIX_SRCS
     FrameGrabber.cpp
     FrameGrabbing.cpp
     Interpolator.cpp
+    Draft.cpp
     Loopback.cpp
     MainWindow.cpp
-    MediaPlayer.cpp
     Metronome.cpp
     Mixer.cpp
     MixingGroup.cpp
@@ -57,6 +57,7 @@ set(VMIX_SRCS
     Transcoder.cpp
     Upscaler.cpp
     UserInterfaceManager.cpp
+    Annotations.cpp
     VideoBroadcast.cpp
     MultiFileRifeEncoder.cpp
     
@@ -73,16 +74,26 @@ set(VMIX_SRCS
     Scene/Scene.cpp
     Scene/UpdateCallback.cpp
     
+    # Player/ folder
+    Player/MediaPlayer.cpp
+    Player/SplitMediaPlayer.cpp
+    Player/MultiFilePlayer.cpp
+    Player/AudioPlayer.cpp
+
     # Source/ folder
     Source/CloneSource.cpp
+    Source/DraftSource.cpp
     Source/DeviceSource.cpp
     Source/MediaSource.cpp
+    Source/SplitMediaSource.cpp
+    Source/AudioSource.cpp
     Source/MultiFileSource.cpp
     Source/NetworkSource.cpp
     Source/PatternSource.cpp
     Source/RenderSource.cpp
     Source/ScreenCaptureSource.cpp
     Source/SessionSource.cpp
+    Source/SessionThumbnailSource.cpp
     Source/ShaderSource.cpp
     Source/Source.cpp
     Source/SourceCallback.cpp
@@ -113,6 +124,9 @@ set(VMIX_SRCS
     View/RenderView.cpp
     View/TextureView.cpp
     View/TransitionView.cpp
+    View/StripView.cpp
+    View/PresentationView.cpp
+    View/SnapshotsView.cpp
     View/View.cpp
     
     # Visitor/ folder
@@ -215,7 +229,14 @@ IF(APPLE)
         add_custom_command(TARGET ${VMIX_BINARY} POST_BUILD
             # codesign refuses files with extended attributes (Finder information...)
             COMMAND xattr -cr "$<TARGET_BUNDLE_DIR:${VMIX_BINARY}>"
-            COMMAND codesign --force --sign "${APPLE_CODESIGN_IDENTITY}" "$<TARGET_BUNDLE_DIR:${VMIX_BINARY}>"
+            # Signing with a Developer ID identity requests a secure timestamp
+            # from Apple's server, which fails without internet access. The
+            # script detects that and falls back to signing without timestamp,
+            # so that offline builds still produce a signed bundle.
+            COMMAND ${CMAKE_COMMAND}
+                    "-DBUNDLE=$<TARGET_BUNDLE_DIR:${VMIX_BINARY}>"
+                    "-DIDENTITY=${APPLE_CODESIGN_IDENTITY}"
+                    -P "${CMAKE_SOURCE_DIR}/cmake/modules/CodeSignBundle.cmake"
             COMMENT "Signing ${VMIX_BINARY}.app with ${APPLE_CODESIGN_IDENTITY}"
             VERBATIM
         )

@@ -26,6 +26,7 @@
 #define ICON_VI_SOURCE_DEVICE_SCREEN 0, 2
 #define ICON_VI_SOURCE_DEVICE        2, 14
 #define ICON_VI_SOURCE_SEQUENCE      3, 9
+#define ICON_VI_SOURCE_VIDEOSPLIT    2,  9
 #define ICON_VI_SOURCE_NETWORK       18, 11
 #define ICON_VI_SOURCE_PATTERN       5, 3
 #define ICON_VI_SOURCE_SESSION       19, 6
@@ -36,15 +37,15 @@
 #define ICON_VI_SOURCE_SRT           14, 5
 #define ICON_VI_SOURCE_TEXT          0, 13
 #define ICON_VI_SOURCE_SHADER        16, 14
+#define ICON_VI_SOURCE_AUDIO         1, 2
 #define ICON_VI_SOURCE               14, 11
 
 // views icons
 #define ICON_VI_DISPLAYS          10, 7
 #define ICON_VI_DISPLAYS_DISABLED 10, 8
 #define ICON_VI_LAYERS            13, 16
-#define ICON_VI_LAYERS_BACKGROUND 10, 16
 #define ICON_VI_LAYERS_CENTRAL    11, 16
-#define ICON_VI_LAYERS_FOREGROUND 12, 16
+#define ICON_VI_DISTRIBUTE         4, 6
 
 // filters icons
 #define ICON_VI_FILTER_NONE          7, 11
@@ -66,17 +67,22 @@
 #define ICON_VI_ZOOM_RESET        8, 7
 #define ICON_VI_GRID_SQUARE       19, 2
 #define ICON_VI_GRID_ASPECT_RATIO 18, 2
-#define ICON_VI_HIDDEN_SOURCES    12, 0
+#define ICON_VI_HIDDEN_SOURCES    3, 14
+#define ICON_VI_CROSS             3,  2
+
 
 // new source pannel
 #define ICON_VI_OPEN_FILE            2, 5
+#define ICON_VI_OPEN_MULTIPLE        7, 5
 #define ICON_VI_NEW_SOURCE_CONNECTED 10, 9
+#define ICON_VI_NEW_SOURCE_GENERATED 3,  3
 #define ICON_VI_SELECT_ADD           1, 5
 #define ICON_VI_SELECT_REMOVE        14, 1
 #define ICON_VI_SELECT_ALL           13, 1
 #define ICON_VI_SELECT_VISIBLE       8, 1
 #define ICON_VI_RELOAD               5, 15
 #define ICON_VI_CLEAR_LIST           12, 14
+#define ICON_VI_IMAGES_VIDEOS        3, 16
 
 // files, folders, playlists and sessions
 #define ICON_VI_SHOW_IN_FINDER      3, 5
@@ -85,7 +91,7 @@
 #define ICON_VI_FOLDER_CLOSE        4, 5
 #define ICON_VI_PLAYLIST            12, 3
 #define ICON_VI_PLAYLIST_NEW        13, 3
-#define ICON_VI_PLAYLIST_CREATE     16, 3
+#define ICON_VI_PLAYLIST_FILE       16, 3
 #define ICON_VI_FAVORITES           16, 4
 #define ICON_VI_FAVORITE_REMOVE     15, 4
 #define ICON_VI_ADD                 18, 4
@@ -104,6 +110,7 @@
 #define ICON_VI_MENU_FLAGS      3, 0
 #define ICON_VI_WARNING         7, 14
 #define ICON_VI_STREAM          19, 11
+#define ICON_VI_BROOM           1,  6
 
 // bundles
 #define ICON_VI_BUNDLE_CREATE  11, 2
@@ -164,6 +171,7 @@
 #define ICON_VI_GAP_CLEAN_CURVE 3, 7
 #define ICON_VI_SMOOTH_FILTER   2, 7
 #define ICON_VI_CLEAR_TEXT      11, 13
+#define ICON_VI_FADING_CURVE    9,  1
 
 // input mapping, metronome and timer
 #define ICON_VI_KEY_PRESS         2, 13
@@ -186,14 +194,14 @@
 // displays, texture view and settings
 #define ICON_VI_BRIGHTNESS      4, 1
 #define ICON_VI_BRIGHTNESS_LOW  3, 1
-#define ICON_VI_CONTRAST        5, 16   
+#define ICON_VI_CONTRAST        5, 16
 #define ICON_VI_CONTRAST_LOW    6, 16
 #define ICON_VI_TEST_PATTERN    11, 1
 #define ICON_VI_TABLET_PRESSURE 13, 0
 #define ICON_VI_BRUSH_SMALL     15, 1
 #define ICON_VI_BRUSH_LARGE     16, 1
 #define ICON_VI_BLUR_SHARP      8, 16
-#define ICON_VI_BUFFER          4, 6
+#define ICON_VI_BUFFER          0, 3
 #define ICON_VI_GPU             13, 2
 #define ICON_VI_GPU_OFF         14, 2
 
@@ -278,11 +286,21 @@
 #define ICON_VI_CURVE_LINEAR      18, 3
 #define ICON_VI_CURVE_PROGRESSIVE 19, 3
 
+// Viewspace icons
+#define ICON_VI_VIEWSPACE_ON      4, 17
+#define ICON_VI_VIEWSPACE_OFF     5, 17
+#define ICON_VI_VIEWSPACE_1       6, 17
+#define ICON_VI_VIEWSPACE_2       7, 17
+#define ICON_VI_VIEWSPACE_3       8, 17
+#define ICON_VI_VIEWSPACE_4       9, 17
+#define ICON_VI_VIEWSPACE_ALL    10, 17
+
 //
 // UNUSED ICONS
 //
 //
 // #define ICON_VI_UNDEFINED_1    4,  0
+// #define ICON_VI_UNDEFINED     12,  0
 // #define ICON_VI_UNDEFINED_2   14,  0
 // #define ICON_VI_UNDEFINED_3   15,  0
 // #define ICON_VI_UNDEFINED_4   16,  0
@@ -292,25 +310,20 @@
 //
 // #define ICON_VI_UNDEFINED_8    0,  1
 // #define ICON_VI_UNDEFINED_9    1,  1
-// #define ICON_VI_UNDEFINED_10   9,  1
 // #define ICON_VI_UNDEFINED_11  10,  1
 // #define ICON_VI_UNDEFINED_12  12,  1
 // #define ICON_VI_UNDEFINED_13  17,  1
 // #define ICON_VI_UNDEFINED_14  18,  1
 //
-// #define ICON_VI_UNDEFINED_15   1,  2
 // #define ICON_VI_UNDEFINED_16   2,  2
-// #define ICON_VI_UNDEFINED_17   3,  2
 // #define ICON_VI_UNDEFINED_18   8,  2
 // #define ICON_VI_UNDEFINED_19  12,  2
 // #define ICON_VI_UNDEFINED_20  15,  2
 // #define ICON_VI_UNDEFINED_21  16,  2
 // #define ICON_VI_UNDEFINED_22  17,  2
 //
-// #define ICON_VI_UNDEFINED_23   0,  3
 // #define ICON_VI_UNDEFINED_24   1,  3
 // #define ICON_VI_UNDEFINED_25   2,  3
-// #define ICON_VI_UNDEFINED_26   3,  3
 // #define ICON_VI_UNDEFINED_27   4,  3
 // #define ICON_VI_UNDEFINED_28   6,  3
 // #define ICON_VI_UNDEFINED_29  14,  3
@@ -325,7 +338,6 @@
 // #define ICON_VI_UNDEFINED_37  14,  4
 // #define ICON_VI_UNDEFINED_38  17,  4
 //
-// #define ICON_VI_UNDEFINED_39   7,  5
 // #define ICON_VI_UNDEFINED_40   8,  5
 // #define ICON_VI_UNDEFINED_41   9,  5
 // #define ICON_VI_UNDEFINED_42  10,  5
@@ -364,7 +376,6 @@
 // #define ICON_VI_UNDEFINED_73  19,  8
 //
 // #define ICON_VI_UNDEFINED_74   1,  9
-// #define ICON_VI_UNDEFINED_75   2,  9
 // #define ICON_VI_UNDEFINED_76   5,  9
 // #define ICON_VI_UNDEFINED_77   9,  9
 // #define ICON_VI_UNDEFINED_78  17,  9
@@ -409,7 +420,6 @@
 // #define ICON_VI_UNDEFINED_113 17, 13
 // #define ICON_VI_UNDEFINED_114 19, 13
 //
-// #define ICON_VI_UNDEFINED_115  3, 14
 // #define ICON_VI_UNDEFINED_116  4, 14
 // #define ICON_VI_UNDEFINED_117  5, 14
 // #define ICON_VI_UNDEFINED_118  6, 14
@@ -428,7 +438,6 @@
 // #define ICON_VI_UNDEFINED_130 13, 15
 //
 // #define ICON_VI_UNDEFINED_131  0, 16
-// #define ICON_VI_UNDEFINED_132  3, 16
 // #define ICON_VI_UNDEFINED_133  7, 16
 //
 

@@ -53,7 +53,7 @@ public:
      * @param texture_id OpenGL texture ID from vimix's FrameBuffer
      */
     void addFrame(guint texture_id, GstCaps *read_caps, GstCaps *write_caps) override;
-    void addFrame(GstBuffer *buffer, GstCaps *read_caps, GstCaps *write_caps) override {}
+    void addFrame(GstBuffer *, GstCaps *, GstCaps *) override {}
 
     /**
      * Stop recording and finalize file

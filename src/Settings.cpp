@@ -147,6 +147,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("scale", application.scale);
     applicationNode->SetAttribute("accent_color", application.accent_color);
     applicationNode->SetAttribute("smooth_transition", application.smooth_transition);
+    applicationNode->SetAttribute("draft_duration", application.draft_duration);
     applicationNode->SetAttribute("save_snapshot", application.save_version_snapshot);
     applicationNode->SetAttribute("action_history_follow_view", application.action_history_follow_view);
     applicationNode->SetAttribute("show_tooptips", application.show_tooptips);
@@ -156,6 +157,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("pannel_source_0", application.pannel_source[0]);
     applicationNode->SetAttribute("pannel_source_1", application.pannel_source[1]);
     applicationNode->SetAttribute("pannel_source_2", application.pannel_source[2]);
+    applicationNode->SetAttribute("pannel_source_3", application.pannel_source[3]);
     applicationNode->SetAttribute("pannel_session_0", application.pannel_session[0]);
     applicationNode->SetAttribute("pannel_session_1", application.pannel_session[1]);
     applicationNode->SetAttribute("pannel_session_2", application.pannel_session[2]);
@@ -167,6 +169,8 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("pannel_settings_4", application.pannel_settings[4]);
     applicationNode->SetAttribute("pannel_settings_5", application.pannel_settings[5]);
     applicationNode->SetAttribute("pannel_always_visible", application.pannel_always_visible);
+    applicationNode->SetAttribute("exclusive_header", application.exclusive_header);
+    applicationNode->SetAttribute("pannel_list_all_viewspaces", application.pannel_list_all_viewspaces);
     applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
     applicationNode->SetAttribute("broadcast_port", application.broadcast_port);
     applicationNode->SetAttribute("loopback_camera", application.loopback_camera);
@@ -203,6 +207,9 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     widgetsNode->SetAttribute("timeline_editmode", application.widget.media_player_timeline_editmode);
     widgetsNode->SetAttribute("timeline_flag", application.widget.media_player_timeline_flag);
     widgetsNode->SetAttribute("media_player_slider", application.widget.media_player_slider);
+    widgetsNode->SetAttribute("draft_slider", application.widget.draft_slider);
+    widgetsNode->SetAttribute("draft", application.widget.draft);
+    widgetsNode->SetAttribute("draft_corner", application.widget.draft_corner);
     widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
     widgetsNode->SetAttribute("shader_editor_view", application.widget.shader_editor_view);
     widgetsNode->SetAttribute("stats", application.widget.stats);
@@ -261,6 +268,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     SourceConfNode->SetAttribute("ratio", application.source.ratio);
     SourceConfNode->SetAttribute("res", application.source.res);
     SourceConfNode->SetAttribute("capture_naming", application.source.capture_naming);
+    SourceConfNode->SetAttribute("capture_format", application.source.capture_format);
     SourceConfNode->SetAttribute("capture_path", application.source.capture_path.c_str());
     SourceConfNode->SetAttribute("inspector_zoom", application.source.inspector_zoom);
     pRoot->InsertEndChild(SourceConfNode);
@@ -285,10 +293,9 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     // bloc views
     {
         XMLElement *viewsNode = xmlDoc.NewElement( "Views" );
-        // do not save Transition view as current
-        int v = application.current_view == 5 ? 1 : application.current_view;
+        // do not save Transition or Presentation view as current
+        int v = (application.current_view == 5 || application.current_view == 7) ? 1 : application.current_view;
         viewsNode->SetAttribute("current", v);
-        viewsNode->SetAttribute("workspace", application.current_workspace);
 
         std::map<int, Settings::ViewConfig>::iterator iter;
         for (iter=application.views.begin(); iter != application.views.end(); ++iter)
@@ -518,16 +525,20 @@ void Settings::init(const std::string &filename)
             applicationNode->QueryFloatAttribute("scale", &application.scale);
             applicationNode->QueryIntAttribute("accent_color", &application.accent_color);
             applicationNode->QueryBoolAttribute("smooth_transition", &application.smooth_transition);
+            applicationNode->QueryFloatAttribute("draft_duration", &application.draft_duration);
             applicationNode->QueryBoolAttribute("save_snapshot", &application.save_version_snapshot);
             applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
             applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
             applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
             applicationNode->QueryBoolAttribute("pannel_always_visible", &application.pannel_always_visible);
+            applicationNode->QueryBoolAttribute("exclusive_header", &application.exclusive_header);
+            applicationNode->QueryBoolAttribute("pannel_list_all_viewspaces", &application.pannel_list_all_viewspaces);
             applicationNode->QueryIntAttribute("pannel_main_mode", &application.pannel_main_mode);
             applicationNode->QueryIntAttribute("pannel_playlist_mode", &application.pannel_playlist_mode);
             applicationNode->QueryBoolAttribute("pannel_source_0", &application.pannel_source[0]);
             applicationNode->QueryBoolAttribute("pannel_source_1", &application.pannel_source[1]);
             applicationNode->QueryBoolAttribute("pannel_source_2", &application.pannel_source[2]);
+            applicationNode->QueryBoolAttribute("pannel_source_3", &application.pannel_source[3]);
             applicationNode->QueryBoolAttribute("pannel_session_0", &application.pannel_session[0]);
             applicationNode->QueryBoolAttribute("pannel_session_1", &application.pannel_session[1]);
             applicationNode->QueryBoolAttribute("pannel_session_2", &application.pannel_session[2]);
@@ -582,6 +593,9 @@ void Settings::init(const std::string &filename)
             widgetsNode->QueryIntAttribute("timeline_editmode", &application.widget.media_player_timeline_editmode);
             widgetsNode->QueryIntAttribute("timeline_flag", &application.widget.media_player_timeline_flag);
             widgetsNode->QueryFloatAttribute("media_player_slider", &application.widget.media_player_slider);
+            widgetsNode->QueryFloatAttribute("draft_slider", &application.widget.draft_slider);
+            widgetsNode->QueryBoolAttribute("draft", &application.widget.draft);
+            widgetsNode->QueryIntAttribute("draft_corner", &application.widget.draft_corner);
             widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
             widgetsNode->QueryIntAttribute("shader_editor_view", &application.widget.shader_editor_view);
             widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);
@@ -655,6 +669,7 @@ void Settings::init(const std::string &filename)
             sourceconfnode->QueryIntAttribute("res", &application.source.res);
 
             sourceconfnode->QueryIntAttribute("capture_naming", &application.source.capture_naming);
+            sourceconfnode->QueryIntAttribute("capture_format", &application.source.capture_format);
             const char *path_ = sourceconfnode->Attribute("capture_path");
             if (path_)
                 application.source.capture_path = std::string(path_);
@@ -755,7 +770,6 @@ void Settings::init(const std::string &filename)
             {
                 application.views.clear(); // trash existing list
                 pElement->QueryIntAttribute("current", &application.current_view);
-                pElement->QueryIntAttribute("workspace", &application.current_workspace);
 
                 XMLElement* viewNode = pElement->FirstChildElement("View");
                 for( ; viewNode ; viewNode=viewNode->NextSiblingElement())

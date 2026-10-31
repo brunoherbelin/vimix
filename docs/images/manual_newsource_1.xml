@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vimix>
+    <Annotations width="1920" height="1080">
+        <Annotation type="Arrow" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="580" y="132"/>
+            <vec2 x="820" y="360"/>
+            <vec2 x="676" y="238"/>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="40" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="650" y="119"/>
+            <text>4    Move inside Mixing circle
+      to make it visible in the Mix</text>
+        </Annotation>
+        <Annotation type="Circle" thickness="4" size="40" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="658" y="142"/>
+            <vec2 x="681" y="137"/>
+        </Annotation>
+        <Annotation type="Frame" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="4" y="130"/>
+            <vec2 x="86" y="208"/>
+        </Annotation>
+        <Annotation type="Frame" thickness="3" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="73" y="360"/>
+            <vec2 x="499" y="557"/>
+        </Annotation>
+        <Annotation type="Text" thickness="3" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="510" y="465"/>
+            <text>General 
+information
+on source </text>
+        </Annotation>
+        <Annotation type="Text" thickness="6" size="48" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="538" y="84"/>
+            <text></text>
+        </Annotation>
+    </Annotations>
+</vimix>
+
+<!--Originally saved as /home/bh/Claude/VimixDev/vimix/docs/images/manual_newsource_1.xml by bh-->

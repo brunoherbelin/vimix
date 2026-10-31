@@ -8,8 +8,10 @@
 #define XML_VERSION_MINOR 5
 #define MAX_RECENT_HISTORY 20
 #define MAX_SESSION_LEVEL 3
+#define MAX_BUNDLE_LEVEL 4
 #define MAX_OUTPUT_WINDOW 3
 #define MAX_OUTPUT_CANVAS 12
+#define MAX_VIEWSPACE 4
 
 #define VIMIX_GL_VERSION "opengl3"
 #define VIMIX_GLSL_VERSION "#version 150"
@@ -26,12 +28,24 @@
     { \
         "*.lix" \
     }
+
+#define VIMIX_ALL_FILES_TYPE "vimix files (sessions, playlists)"
+#define VIMIX_ALL_FILES_PATTERN \
+    { \
+        "*.mix", "*.lix" \
+    }
+
 #define MEDIA_FILES_TYPE "Supported formats (videos, images, sessions)"
 #define MEDIA_FILES_PATTERN \
     { \
         "*.mix", "*.mp4", "*.mpg", "*.mpeg", "*.m2v", "*.m4v", "*.avi", "*.mov", "*.mkv", \
         "*.webm", "*.mod", "*.wmv", "*.mxf", "*.ogg", "*.flv", "*.hevc", "*.asf", "*.jpg", "*.jpeg", \
         "*.png", "*.gif", "*.tif", "*.tiff", "*.webp", "*.bmp", "*.ppm", "*.svg" \
+    }
+#define AUDIO_FILES_TYPE "Audio (WAV, MP3, FLAC, AAC, OPUS, AIFF, etc.)"
+#define AUDIO_FILES_PATTERN \
+    { \
+        "*.wav", "*.mp3", "*.flac", "*.aac", "*.m4a", "*.oga", "*.opus", "*.aif", "*.aiff", "*.wma" \
     }
 #define IMAGES_FILES_TYPE "Image (JPG, PNG, WEBP, BMP, PPM, GIF)"
 #define IMAGES_FILES_PATTERN \
@@ -91,8 +105,7 @@
 #define LAYER_MIN_SCALE 0.25f
 #define LAYER_MAX_SCALE 1.7f
 #define LAYER_PERSPECTIVE 2.0f
-#define LAYER_BACKGROUND 2.f
-#define LAYER_FOREGROUND 10.f
+#define LAYER_DEFAULT_DEPTH 2.f
 #define LAYER_STEP 0.25f
 #define APPEARANCE_DEFAULT_SCALE 2.f
 #define APPEARANCE_MIN_SCALE 0.4f
@@ -114,6 +127,27 @@
 #define SESSION_THUMBNAIL_HEIGHT 120.f
 #define RECORD_MAX_TIMEOUT 1200000
 
+#define SOURCE_TYPE_MEDIA "MediaSource"
+#define SOURCE_TYPE_SPLIT_MEDIA "SplitMediaSource"
+#define SOURCE_TYPE_AUDIO "AudioSource"
+#define SOURCE_TYPE_SESSION "SessionSource"
+#define SOURCE_TYPE_GROUP "GroupSource"
+#define SOURCE_TYPE_RENDER "RenderSource"
+#define SOURCE_TYPE_CLONE "CloneSource"
+#define SOURCE_TYPE_PATTERN "PatternSource"
+#define SOURCE_TYPE_TEXT "TextSource"
+#define SOURCE_TYPE_SHADER "ShaderSource"
+#define SOURCE_TYPE_DEVICE "DeviceSource"
+#define SOURCE_TYPE_SCREEN_CAPTURE "ScreenCaptureSource"
+#define SOURCE_TYPE_NETWORK "NetworkSource"
+#define SOURCE_TYPE_MULTI_FILE "MultiFileSource"
+#define SOURCE_TYPE_GENERIC_STREAM "GenericStreamSource"
+#define SOURCE_TYPE_SRT_RECEIVER "SrtReceiverSource"
+#define SOURCE_TYPE_CANVAS "CanvasSource"
+#define SOURCE_TYPE_CANVAS_SURFACE "CanvasSurface"
+#define SOURCE_TYPE_DRAFT "DraftSource"
+#define SOURCE_TYPE_THUMBNAIL "SessionThumbnailSource"
+
 #define IMGUI_TITLE_LOGS ICON_FA_LIST_UL "  Logs"
 #define IMGUI_LABEL_RECENT_FILES " Recent files"
 #define IMGUI_LABEL_RECENT_RECORDS " Recent recordings"
@@ -129,6 +163,8 @@
 #define IMGUI_NOTIFICATION_DURATION 2.5f
 #define IMGUI_TOOLTIP_TIMEOUT 80
 #define IMGUI_COLOR_FAILED 1.0, 0.4, 0.3
+#define IMGUI_COLOR_RED 1.0, 0.2, 0.2
+#define IMGUI_COLOR_GREEN 0.2, 1.0, 0.2
 #define PLOT_CIRCLE_SEGMENTS 64
 
 #define COLOR_BGROUND 0.2f, 0.2f, 0.2f
@@ -154,6 +190,7 @@
 #define COLOR_WINDOW 0.2f, 0.85f, 0.85f
 #define COLOR_MENU_HOVERED 0.3f, 0.3f, 0.3f
 #define COLOR_AUTOMATON 0.95f, 0.3f, 0.3f
+#define COLOR_PRESENTATION_BGROUND 0.1f, 0.1f, 0.1f
 
 #define OSC_PORT_RECV_DEFAULT 7000
 #define OSC_PORT_SEND_DEFAULT 7001
@@ -187,8 +224,8 @@
 #define SHORTCUT_SAVE_FILE    CTRL_MOD "S"
 #define MENU_SAVEAS_FILE      ICON_FA_FILE_DOWNLOAD "  Save as"
 #define MENU_DELETE_FILE      ICON_FA_TRASH_ALT "  Delete"
-#define MENU_SAVE_ON_EXIT     ICON_FA_LEVEL_DOWN_ALT "  Save on exit"
-#define MENU_OPEN_ON_START    ICON_FA_LEVEL_UP_ALT "  Restore on start"
+#define MENU_SAVE_ON_EXIT     ICON_FA_SIGN_OUT_ALT " Save on exit"
+#define MENU_OPEN_ON_START    ICON_FA_SIGN_IN_ALT " Restore on start"
 #define SHORTCUT_SAVEAS_FILE  CTRL_MOD "Shift+S"
 #define MENU_EXPORT_SETTINGS  ICON_FA_FILE_EXCEL "  Export settings"
 #define MENU_QUIT             ICON_FA_POWER_OFF "  Quit"
@@ -266,6 +303,12 @@
 #define SHORTCUT_PLAY_PAUSE   "Space"
 #define MENU_PLAY_BEGIN       ICON_FA_FAST_BACKWARD "  Go to Beginning"
 #define SHORTCUT_BUNDLE       CTRL_MOD "B"
+#define MENU_DRAFT            ICON_FA_PENCIL_RULER "  Draft"
+#define SHORTCUT_DRAFT        CTRL_MOD "D"
+#define MENU_DRAFT_START      "Start draft"
+#define MENU_DRAFT_APPLY      "Apply draft"
+#define MENU_DRAFT_CANCEL     ICON_FA_TIMES "  Cancel draft"
+#define SHORTCUT_DRAFT_CANCEL CTRL_MOD "Shift+D"
 
 #define LABEL_PLAYER_SELECTION ICON_FA_USER_CIRCLE "  User selection"
 #define LABEL_PLAYER_BATCH    ICON_FA_CHECK_CIRCLE "  Batch #"
@@ -274,8 +317,10 @@
 #define LABEL_EDIT_FADING     ICON_FA_RANDOM "  Edit timeline fading"
 #define LABEL_EDIT_GAPS       ICON_FA_CUT "  Cut timeline"
 #define LABEL_VIDEO_SEQUENCE  ICON_FA_FILM "  Encode an image sequence"
-#define DIALOG_TIMELINE_DURATION    ICON_FA_HOURGLASS_HALF " Set timeline duration"
-#define DIALOG_GST_EFFECT     "Gstreamer Video effect"
+#define LABEL_VIDEO_CONVERT   ICON_FA_FILM "  Convert videos"
+#define DIALOG_TIMELINE_DURATION    ICON_FA_CLOCK "  Set timeline duration"
+#define DIALOG_GST_EFFECT     " Gstreamer Video effect"
+#define DIALOG_EXPORT_SECTIONS ICON_FA_FILE_EXPORT ICON_FA_FILE_VIDEO "  Export timeline to video"
 #define LABEL_SHADER_EMBEDDED ICON_FA_FILE_ALT "  Embedded code"
 #define LABEL_SHADER_SAVE     ICON_FA_FILE_DOWNLOAD "  Save as"
 #define LABEL_SHADER_ADD      ICON_FA_FILE_MEDICAL  "  Load"

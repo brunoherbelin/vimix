@@ -1,11 +1,15 @@
 #ifndef MIXER_H
 #define MIXER_H
 
+#include <vector>
+
 #include "View/GeometryView.h"
 #include "View/MixingView.h"
 #include "View/LayerView.h"
 #include "View/TextureView.h"
 #include "View/TransitionView.h"
+#include "View/PresentationView.h"
+#include "View/SnapshotsView.h"
 #include "View/DisplaysView.h"
 #include "Session.h"
 #include "Selection.h"
@@ -15,9 +19,13 @@ class XMLElement;
 }
 
 class SessionSource;
+class SessionGroupSource;
 
 class Mixer
 {
+    friend class PresentationView;
+    friend class Action;
+
     // Private Constructor
     Mixer();
     Mixer(Mixer const& copy) = delete;
@@ -50,6 +58,7 @@ public:
     // creation of sources
     Source * createSourceFile   (const std::string &path, bool disable_hw_decoding = false);
     Source * createSourceMultifile(const std::list<std::string> &list_files, uint fps);
+    Source * createSourceSplitMedia(const std::list<std::string> &list_files);
     class CloneSource *createSourceClone(const std::string &namesource = "", bool copy_attributes = true);
     Source * createSourceRender (int provenance = 0);
     Source * createSourceStream (const std::string &gstreamerpipeline);
@@ -60,6 +69,7 @@ public:
     Source * createSourceSrt    (const std::string &ip, const std::string &port);
     Source * createSourceText   (const std::string &contents, glm::ivec2 res);
     Source * createSourceShader (glm::ivec2 res);
+    Source * createSourceShaderFile (const std::string &path, glm::ivec2 res);
     Source * createSourceGroup  ();
     bool recreateSource(Source *s);
 
@@ -110,8 +120,33 @@ public:
     void uncover  (Source *s);
     bool concealed(Source *s);
 
+    // ViewSpaces: sources are shown in views only if their ViewSpace is shown
+    bool viewSpaceShown (uint v) const;
+    void showViewSpace (uint v, bool on, bool exclusive = false);
+    void showAllViewSpaces ();
+    bool viewSpaceOnlyShown (uint v) const;
+    uint firstShownViewSpace ();
+    void setViewSpace (Source *s, uint v);
+    void setViewSpace (SourceList selection, uint v);
+
     // manipulate, load and save sessions
     inline Session * session () const { return session_; }
+
+    // DRAFT mode: the session edited is the draft session,
+    // while the live session renders the output
+    inline Session * liveSession () const { return live_ ? live_ : session_; }
+    inline bool editingDraft () const { return live_ != nullptr && bundles_.empty(); }
+    void setEditedSession (Session *draft);
+    void restoreEditedSession ();
+
+    // BUNDLE mode: the session edited is the session inside a bundle,
+    // while the live session renders the output
+    void enterBundle (SessionGroupSource *bundle);
+    void exitBundle ();
+    void exitAllBundles ();
+    void fitBundle ();
+    inline bool editingBundle () const { return !bundles_.empty(); }
+    inline const std::vector<SessionGroupSource *> &editedBundles () const { return bundles_; }
     void terminate();
     void save   (bool with_version = false);
     void saveas (const std::string& filename, bool with_version = false, bool with_thumbail = false);
@@ -133,12 +168,20 @@ public:
     void paste  (const std::string& clipboard);
 
     // version and undo management
-    void restore(tinyxml2::XMLElement *sessionNode);
+    // restore the session described in xml; sources not in xml are deleted,
+    // or kept and appended to the removed list if given
+    void restore(tinyxml2::XMLElement *sessionNode, SourceList *removed = nullptr);
 
 protected:
 
     Session *session_;
     Session *back_session_;
+    Session *live_;
+    std::vector<SessionGroupSource *> bundles_;
+    bool bundlesUpdateSession () const;
+    void attachToViews   (Source *s);
+    void detachFromViews (Source *s);
+    void switchViews     (Session *from, Session *to);
     std::list<Session *> garbage_;
     bool sessionSwapRequested_;
     void swap();
@@ -165,6 +208,8 @@ protected:
     TextureView appearance_;
     TransitionView transition_;
     DisplaysView displays_;
+    PresentationView presentation_;
+    SnapshotsView snapshots_;
 
     bool busy_;
     float dt_;

@@ -16,6 +16,8 @@ TextEditor _editor;
 #include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Mixer.h"
+#include "Draft.h"
+#include "Log.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Source/CloneSource.h"
 #include "Source/ShaderSource.h"
@@ -70,7 +72,7 @@ void saveEditorText(const std::string &filename)
 /// SHADER EDITOR
 ///
 ///
-ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), _cs_id(0), current_(nullptr), show_shader_inputs_(false), compilation_(nullptr)
+ShaderEditWindow::ShaderEditWindow() : WorkspaceWindow("Shader"), _cs_id(0), current_(nullptr), compilation_(nullptr), show_shader_inputs_(false)
 {
     auto lang = TextEditor::LanguageDefinition::GLSL();
 
@@ -155,6 +157,12 @@ bool ShaderEditWindow::Visible() const
 
 void ShaderEditWindow::BuildShader()
 {
+    // shader code cannot be changed in DRAFT mode
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+
     // if the UI has a current clone, and ref to code for current clone is valid
     if (current_ != nullptr &&  filters_.find(current_) != filters_.end()) {
 
@@ -182,6 +190,10 @@ void ShaderEditWindow::BuildShader()
 
 void ShaderEditWindow::BuildAll()
 {
+    // shader code cannot be changed in DRAFT mode
+    if (Draft::manager().active())
+        return;
+
     // Loop over all sources
     for (auto s = Mixer::manager().session()->begin(); s != Mixer::manager().session()->end(); ++s) {
         // if image filter can be extracted from source
@@ -267,11 +279,13 @@ void ShaderEditWindow::Render()
                 UserInterface::manager().showPannel(  Mixer::manager().numSource() );                 
             }
             if (ImGui::MenuItem(ICON_FA_SHARE_SQUARE "  Clone source & add shader",
-                                nullptr, nullptr, cs != nullptr)) {
+                                nullptr, nullptr, cs != nullptr && cs->hasImage())) {
                 CloneSource *filteredclone = Mixer::manager().createSourceClone();
-                filteredclone->setFilter(FrameBufferFilter::FILTER_IMAGE);
-                Mixer::manager().addSource ( filteredclone );
-                UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+                if (filteredclone) {
+                    filteredclone->setFilter(FrameBufferFilter::FILTER_IMAGE);
+                    Mixer::manager().addSource ( filteredclone );
+                    UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+                }
             }
 
             // Menu entry to rebuild all
@@ -637,12 +651,12 @@ void ShaderEditWindow::Render()
             ImGui::SetNextItemWidth(200);
             ImGui::SliderFloat("##iMouse.x",
                                &FilteringProgram::iMouse.x, 0.f,
-                               Mixer::manager().session()->frame()->width(), "iMouse.x %.f");
+                               Mixer::manager().liveSession()->frame()->width(), "iMouse.x %.f");
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::SetNextItemWidth(200);
             ImGui::SliderFloat("##iMouse.y",
                                &FilteringProgram::iMouse.y, 0.f,
-                               Mixer::manager().session()->frame()->height(), "iMouse.y %.f");
+                               Mixer::manager().liveSession()->frame()->height(), "iMouse.y %.f");
             ImGui::SameLine(0, IMGUI_SAME_LINE);
             ImGui::SetNextItemWidth(200);
             ImGui::SliderFloat("##iMouse.z",

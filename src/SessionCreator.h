@@ -1,6 +1,7 @@
 #ifndef SESSIONCREATOR_H
 #define SESSIONCREATOR_H
 
+#include <string>
 #include <list>
 #include <map>
 #include <chrono>
@@ -64,7 +65,6 @@ public:
     void visit (DeviceSource& s) override;
     void visit (ScreenCaptureSource& s) override;
     void visit (NetworkSource& s) override;
-    void visit (MultiFileSource& s) override;
     void visit (GenericStreamSource& s) override;
     void visit (SrtReceiverSource& s) override;
     void visit (TextSource& s) override;
@@ -116,6 +116,29 @@ protected:
     std::list< SourceIdList > groups_sources_id_;
 
     void loadInputCallbacks(tinyxml2::XMLElement *inputsNode);
+
+    // create a new source of the given type
+    virtual Source *newSource(const std::string &type, uint64_t id);
+};
+
+/**
+ * @brief The DraftSessionLoader creates the draft session from the live session (DRAFT mode)
+ *
+ * Sources of the draft session have the same id as in the live session.
+ * Sources producing content are DraftSources (proxies of sources of the live session),
+ * and Clone, Shader and Render sources are created as in the live session.
+ */
+class DraftSessionLoader : public SessionLoader {
+
+    Session *live_;
+
+public:
+    DraftSessionLoader(Session *draft, Session *live);
+
+    static Session *createDraft(Session *live);
+
+protected:
+    Source *newSource(const std::string &type, uint64_t id) override;
 };
 
 struct SessionInformation {

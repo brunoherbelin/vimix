@@ -41,7 +41,22 @@
 #include "Source/Source.h"
 #include "Source/TextSource.h"
 #include "Source/MediaSource.h"
-#include "MediaPlayer.h"
+#include "Source/SplitMediaSource.h"
+#include "Source/AudioSource.h"
+#include "Source/StreamSource.h"
+#include "Source/DeviceSource.h"
+#include "Source/ScreenCaptureSource.h"
+#include "Source/NetworkSource.h"
+#include "Source/SrtReceiverSource.h"
+#include "Source/MultiFileSource.h"
+#include "Source/PatternSource.h"
+#include "Source/SessionSource.h"
+#include "Source/RenderSource.h"
+#include "Source/CloneSource.h"
+#include "Source/DraftSource.h"
+#include "Source/ShaderSource.h"
+#include "Source/CanvasSource.h"
+#include "Player/MediaPlayer.h"
 #include "Source/SourceCallback.h"
 #include "ImageProcessingShader.h"
 #include "ActionManager.h"
@@ -141,7 +156,7 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
             else if ( target.compare(OSC_ALL) == 0 )
             {
                 // Loop over selected sources
-                for (SourceList::iterator it = Mixer::manager().session()->begin(); it != Mixer::manager().session()->end(); ++it) {
+                for (SourceList::iterator it = Mixer::manager().liveSession()->begin(); it != Mixer::manager().liveSession()->end(); ++it) {
                     // apply attributes
                     if ( Control::manager().receiveSourceAttribute( *it, attribute, m.ArgumentStream()) && Mixer::manager().currentSource() == *it)
                         // and send back feedback if needed
@@ -214,32 +229,37 @@ void Control::RequestListener::ProcessMessage( const osc::ReceivedMessage& m,
                     }
                 }
             }
-            // #ID sources target
+            // #ID sources target: index ('/#n' or '/n') or unique id ('/n') of source
             else if ( std::regex_match(target, osc_sourceid_reg_exp) )
             {
-                int i = 0;
                 std::string num = target.substr( target.find("#") == std::string::npos ? 1 : 2 );
-                if ( BaseToolkit::is_a_number(num, &i)){
-                    // special case of creating an alias for given source target
-                    if (attribute.compare(OSC_SOURCE_ALIAS) == 0) {
-                        const char *label = nullptr;
-                        m.ArgumentStream() >> label >> osc::EndMessage;
-                        Control::manager().aliases_[std::string("/").append(label)] = target;
-                        Log::Info(CONTROL_OSC_MSG "New alias /%s for target %s.", label, target.c_str());
+                // special case of creating an alias for given source target
+                if (attribute.compare(OSC_SOURCE_ALIAS) == 0) {
+                    const char *label = nullptr;
+                    m.ArgumentStream() >> label >> osc::EndMessage;
+                    Control::manager().aliases_[std::string("/").append(label)] = target;
+                    Log::Info(CONTROL_OSC_MSG "New alias /%s for target %s.", label, target.c_str());
 
+                }
+                // usual case, addressing the source by index or by id
+                else {
+                    Source *s = nullptr;
+                    int i = 0;
+                    uint64_t id = 0;
+                    // try to interpret number as index of source
+                    if ( BaseToolkit::is_a_number(num, &i) )
+                        s = Mixer::manager().sourceAtIndex(i);
+                    // otherwise try to interpret number as unique id of source
+                    if ( !s && BaseToolkit::is_a_number(num, &id) )
+                        s = Mixer::manager().findSource(id);
+                    if (s) {
+                        // apply attributes to source
+                        if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
+                            // and send back feedback if needed
+                            Control::manager().sendSourceAttibutes(remoteEndpoint, m.ArgumentStream(), target, s);
                     }
-                    // usual case, addressing the source by '#n'
-                    else {
-                        Source *s = Mixer::manager().sourceAtIndex(i);
-                        if (s) {
-                            // apply attributes to source
-                            if ( Control::manager().receiveSourceAttribute(s, attribute, m.ArgumentStream()) )
-                                // and send back feedback if needed
-                                Control::manager().sendSourceAttibutes(remoteEndpoint, m.ArgumentStream(), target, s);
-                        }
-                        else
-                            Log::Info(CONTROL_OSC_MSG "No source at ID %s targetted by %s.", num.c_str(), sender);
-                    }
+                    else
+                        Log::Info(CONTROL_OSC_MSG "No source with index or id %s targetted by %s.", num.c_str(), sender);
                 }
             }
             // General case: try to identify the target by name
@@ -718,7 +738,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             // if a second argument is given, it is a duration
             else
                 arguments >> d >> osc::EndMessage;
-            Mixer::manager().session()->setFadingTarget(f, d);
+            Mixer::manager().liveSession()->setFadingTarget(f, d);
         }
         /// e.g. '/vimix/output/fadein' or '/vimix/output/fadein f 300.f'
         else if ( attribute.compare(OSC_OUTPUT_FADE_IN) == 0) {
@@ -726,7 +746,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             // if argument is given, it is a duration
             if (!arguments.Eos())
                 arguments >> f >> osc::EndMessage;
-            Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() - f * 0.01);
+            Mixer::manager().liveSession()->setFadingTarget( Mixer::manager().liveSession()->fading() - f * 0.01);
             need_feedback = true;
         }
         else if ( attribute.compare(OSC_OUTPUT_FADE_OUT) == 0) {
@@ -734,7 +754,7 @@ bool Control::receiveOutputAttribute(const std::string &attribute,
             // if argument is given, it is a duration
             if (!arguments.Eos())
                 arguments >> f >> osc::EndMessage;
-            Mixer::manager().session()->setFadingTarget( Mixer::manager().session()->fading() + f * 0.01);
+            Mixer::manager().liveSession()->setFadingTarget( Mixer::manager().liveSession()->fading() + f * 0.01);
             need_feedback = true;
         }
         else if ( attribute.compare(OSC_OUTPUT_SRT_START) == 0) {
@@ -950,7 +970,7 @@ bool Control::receiveSourceAttribute(Source *target, const std::string &attribut
             else
                 arguments >> t >> osc::EndMessage;
             target->call( new Resize( x, y, t) );
-        }        
+        }
         /// e.g. '/vimix/current/size ff 1.0 2.2'
         else if ( attribute.compare(OSC_SOURCE_SIZE) == 0) {
             Group transform;
@@ -1284,10 +1304,10 @@ bool Control::receiveBatchAttribute(int i, const std::string &attribute,
 {
     bool send_feedback = false;
 
-    if ( i < (int) Mixer::manager().session()->numBatch() ) {
+    if ( i < (int) Mixer::manager().liveSession()->numBatch() ) {
         // Batch sources target: apply attribute to all sources in the Batch
         // loop over batch list of sources
-        SourceList _selection = Mixer::manager().session()->getBatch(i);
+        SourceList _selection = Mixer::manager().liveSession()->getBatch(i);
         for (SourceList::iterator it = _selection.begin(); it != _selection.end(); ++it) {
             // apply attributes
             send_feedback |= Control::manager().receiveSourceAttribute( *it, attribute, arguments) ;
@@ -1483,7 +1503,52 @@ void Control::receiveStreamAttribute(const std::string &attribute,
 
 }
 
-void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint, 
+// Numeric identifier of the class of a source, sent with '/vimix/xxx/type'.
+// These codes are part of the public OSC API: do not renumber.
+// Tens digit gives the family: 1 media, 2 stream, 3 session, 4 render/clone, 5 shader, 6 canvas.
+// Most derived classes must be tested before their parent class.
+static int sourceType(Source *s)
+{
+    if (dynamic_cast<SplitMediaSource *>(s))
+        return 11;
+    if (dynamic_cast<MultiFileSource *>(s))
+        return 25;
+    if (dynamic_cast<AudioSource *>(s))
+        return 13;
+    if (MediaSource *ms = dynamic_cast<MediaSource *>(s))
+        return ms->mediaplayer()->isImage() ? 12 : 10;
+    if (dynamic_cast<DeviceSource *>(s))
+        return 21;
+    if (dynamic_cast<ScreenCaptureSource *>(s))
+        return 22;
+    if (dynamic_cast<NetworkSource *>(s))
+        return 23;
+    if (dynamic_cast<SrtReceiverSource *>(s))
+        return 24;
+    if (dynamic_cast<PatternSource *>(s))
+        return 26;
+    if (dynamic_cast<TextSource *>(s))
+        return 27;
+    if (dynamic_cast<GenericStreamSource *>(s))
+        return 20;
+    if (dynamic_cast<SessionFileSource *>(s))
+        return 30;
+    if (dynamic_cast<SessionGroupSource *>(s))
+        return 31;
+    if (dynamic_cast<RenderSource *>(s))
+        return 40;
+    if (dynamic_cast<DraftSource *>(s))
+        return 42;
+    if (dynamic_cast<CloneSource *>(s))
+        return 41;
+    if (dynamic_cast<ShaderSource *>(s))
+        return 50;
+    if (dynamic_cast<CanvasSource *>(s))
+        return 60;
+    return 0;
+}
+
+void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
                                     osc::ReceivedMessageArgumentStream arguments,
                                     std::string target, Source *s)
 {
@@ -1492,15 +1557,15 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
     if ( target.compare(OSC_CURRENT) == 0 )
         _s = Mixer::manager().currentSource();
 
-    // ignore if no source 
-    if (!_s) 
+    // ignore if no source
+    if (!_s)
         return;
 
     // MediaSource cast, needed for playback-only attributes (seek, speed)
     MediaSource *_ms = dynamic_cast<MediaSource *>(_s);
 
     // read arguments list of string
-    std::vector<std::string> attributes;    
+    std::vector<std::string> attributes;
     while ( !arguments.Eos()) {
         try {
             // try to get a string
@@ -1513,7 +1578,7 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
         }
     }
 
-    // if no attribute is given, send default list of attributes 
+    // if no attribute is given, send default list of attributes
     if (attributes.size() == 0) {
         attributes.push_back("name");
         attributes.push_back("lock");
@@ -1534,7 +1599,7 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
 
     for (const std::string &attr : attributes) {
 
-        // message always starts with '/vimix/' + target 
+        // message always starts with '/vimix/' + target
         std::string address = std::string(OSC_PREFIX) + target;
 
         if (attr.compare("name") == 0) {
@@ -1543,9 +1608,9 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
         }
         else if (attr.compare("index") == 0) {
             address += "/index";
-            SourceList::iterator it = Mixer::manager().session()->find(_s);
-            if (it != Mixer::manager().session()->end()) {
-                int sourceIndex = Mixer::manager().session()->index(it);
+            SourceList::iterator it = Mixer::manager().liveSession()->find(_s);
+            if (it != Mixer::manager().liveSession()->end()) {
+                int sourceIndex = Mixer::manager().liveSession()->index(it);
                 p << osc::BeginMessage( address.c_str() ) << sourceIndex << osc::EndMessage;
             }
         }
@@ -1678,6 +1743,15 @@ void Control::sendSourceAttibutes(const IpEndpointName &remoteEndpoint,
             address += OSC_SOURCE_BLENDING;
             p << osc::BeginMessage( address.c_str() ) << (osc::int32)_s->blendingShader()->blending << osc::EndMessage;
         }
+        else if (attr.compare("type") == 0) {
+            address += OSC_SOURCE_TYPE;
+            p << osc::BeginMessage( address.c_str() ) << (osc::int32) sourceType(_s) << osc::EndMessage;
+        }
+        else if (attr.compare("id") == 0) {
+            address += OSC_SOURCE_ID;
+            // unique ids are below 10^18 (BaseToolkit::uniqueId), safe as signed int64
+            p << osc::BeginMessage( address.c_str() ) << (osc::int64) _s->id() << osc::EndMessage;
+        }
     }
 
     // send bundle
@@ -1734,6 +1808,10 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
         // send name
         snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
         p << osc::BeginMessage( oscaddr ) <<  Mixer::manager().sourceAtIndex(i)->name().c_str() << osc::EndMessage;
+
+        // send id
+        snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_ID, i);
+        p << osc::BeginMessage( oscaddr ) <<  (osc::int64) Mixer::manager().sourceAtIndex(i)->id() << osc::EndMessage;
     }
     // zeros for non listed sources
     for (; i < (int) N ; ++i) {
@@ -1745,9 +1823,13 @@ void Control::sendSourcesStatus(const IpEndpointName &remoteEndpoint, osc::Recei
         snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_ALPHA, i);
         p << osc::BeginMessage( oscaddr ) <<  0.f << osc::EndMessage;
 
-        /// name
+        // no name
         snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_NAME, i);
         p << osc::BeginMessage( oscaddr ) <<  "" << osc::EndMessage;
+
+        // no id
+        snprintf(oscaddr, 128, OSC_PREFIX "/%d" OSC_SOURCE_ID, i);
+        p << osc::BeginMessage( oscaddr ) << (osc::int64) 0 << osc::EndMessage;
     }
 
     p << osc::EndBundle;
@@ -1763,8 +1845,8 @@ void Control::sendBatchStatus(const IpEndpointName &remoteEndpoint)
     UdpTransmitSocket socket( IpEndpointName( remoteEndpoint.address, Settings::application.control.osc_port_send ) );
 
     // data structures to browse batch
-    std::vector<SourceIdList> pl = Mixer::manager().session()->getAllBatch();
-    Session *_session = Mixer::manager().session();
+    std::vector<SourceIdList> pl = Mixer::manager().liveSession()->getAllBatch();
+    Session *_session = Mixer::manager().liveSession();
 
     // Calculate required buffer size dynamically
     // For each batch, we send 2 messages:
@@ -1845,7 +1927,7 @@ void Control::sendOutputStatus(const IpEndpointName &remoteEndpoint)
     p << (Settings::application.render.disabled ? 0.f : 1.f);
     p << osc::EndMessage;
     p << osc::BeginMessage( OSC_PREFIX OSC_OUTPUT OSC_OUTPUT_FADING );
-    p << Mixer::manager().session()->fading();
+    p << Mixer::manager().liveSession()->fading();
     p << osc::EndMessage;
 
     p << osc::EndBundle;
@@ -1870,7 +1952,7 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
                 Control::manager().input_values[INPUT_NUMPAD_FIRST + _key - GLFW_KEY_KP_0] = action > GLFW_RELEASE ? 1.f : 0.f;
             }
             Control::manager().input_access_.unlock();
-            
+
         }
 
         // keys in non-main window

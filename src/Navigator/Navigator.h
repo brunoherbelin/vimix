@@ -2,12 +2,10 @@
 #define __NAVIGATOR_H_
 
 #include <string>
-#include <list>
-#include <vector>
-#include <utility>
+
+#include "defines.h"
 
 #include "Source/Source.h"
-#include "NavigatorWidgets.h"
 #include "NewSourcePanel.h"
 #include "PlaylistPanel.h"
 #include "SourcePanel.h"
@@ -29,23 +27,28 @@ class Navigator
     int  pannel_main_mode_;
     float pannel_alpha_;
     bool view_pannel_visible;
-    bool selected_button[68];  // NAV_COUNT
+    bool selected_button[69];  // NAV_COUNT
     int  selected_index;
+    Source *hidden_source_;  // source of a hidden ViewSpace shown in pannel
+    uint64_t viewspace_current_[MAX_VIEWSPACE];  // id of last current source per ViewSpace
     void clearButtonSelection();
     void applyButtonSelection(int index);
+    int  rootButton() const;
 
     // side pannels
     void RenderMainPannel(const ImVec2 &iconsize);
     void RenderTransitionPannel(const ImVec2 &iconsize);
+    void RenderBundlePannel(const ImVec2 &iconsize);
     void RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2 &size);
     bool RenderMousePointerSelector(const ImVec2 &size);
+    int  RenderViewspaceSelector(const ImVec2 &size);
 
 public:
 
     // the pannel creating new sources owns these types
     typedef NewSourcePanel::NewSourceType NewSourceType;
     static constexpr NewSourceType SOURCE_FILE      = NewSourcePanel::SOURCE_FILE;
-    static constexpr NewSourceType SOURCE_SEQUENCE  = NewSourcePanel::SOURCE_SEQUENCE;
+    static constexpr NewSourceType SOURCE_SEQUENCE  = NewSourcePanel::SOURCE_MULTIFILE;
     static constexpr NewSourceType SOURCE_CONNECTED = NewSourcePanel::SOURCE_CONNECTED;
     static constexpr NewSourceType SOURCE_GENERATED = NewSourcePanel::SOURCE_GENERATED;
     static constexpr NewSourceType SOURCE_BUNDLE    = NewSourcePanel::SOURCE_BUNDLE;
@@ -57,9 +60,13 @@ public:
     void discardPannel();
     void showPannelSource(int index);
     int  selectedPannelSource();
+    Source *pannelSource() const;
     void togglePannelMenu();
     void togglePannelNew();
     void showConfig();
+    void showPlaylist();
+    void startPresentation();
+    void startVersions();
     void togglePannelAutoHide();
 
     typedef NewSourcePanel::MediaCreateMode MediaCreateMode;
@@ -72,6 +79,7 @@ public:
     inline void setSourceToReplace(Source *s) { source_to_replace = s; }
     inline Source *&sourceToReplace() { return source_to_replace; }
 
+    float width() const { return width_; }
 
 private:
     // side pannels of the main pannel

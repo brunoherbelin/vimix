@@ -38,6 +38,7 @@ std::string joinned(std::list<std::string> strlist, char separator = ' ');
 
 // returns true if the string contains an integer
 bool is_a_number(const std::string& str, int *val);
+bool is_a_number(const std::string& str, uint64_t *val);
 
 // returns true if the string contains a float value
 bool is_a_value(const std::string& str, float *val);

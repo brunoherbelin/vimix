@@ -27,6 +27,9 @@ struct WidgetsConfig
     int  media_player_timeline_editmode;
     int  media_player_timeline_flag;
     float media_player_slider;
+    float draft_slider;
+    bool draft;
+    int  draft_corner;
     bool timer;
     int  timer_view;
     bool inputs;
@@ -52,6 +55,9 @@ struct WidgetsConfig
         media_player_timeline_editmode = 0;
         media_player_timeline_flag = 1;
         media_player_slider = 0.f;
+        draft_slider = 0.5f;
+        draft = false;
+        draft_corner = 1;
         toolbox = false;
         help = false;
         timer = false;
@@ -218,6 +224,7 @@ struct SourceConfig
     int res;
     std::string capture_path;
     int capture_naming;
+    int capture_format;
     float inspector_zoom;
 
     SourceConfig() {
@@ -225,6 +232,7 @@ struct SourceConfig
         ratio = 3;
         res = 6;
         capture_naming = 0;
+        capture_format = 0; // GstToolkit::IMAGE_PNG
         inspector_zoom = 8.f;
     }
 };
@@ -290,6 +298,7 @@ struct Application
     int  accent_color;
     bool save_version_snapshot;
     bool smooth_transition;
+    float draft_duration;
     bool proportional_grid;
     int  mouse_pointer;
     bool mouse_pointer_lock;
@@ -301,8 +310,10 @@ struct Application
     int  pannel_playlist_mode;
     bool pannel_session[4];
     bool pannel_always_visible;
+    bool pannel_list_all_viewspaces;
+    bool exclusive_header;
     bool pannel_settings[6];
-    bool pannel_source[3];
+    bool pannel_source[4];
 
     // connection settings
     bool accept_connections;
@@ -321,7 +332,6 @@ struct Application
 
     // Settings of Views
     int current_view;
-    int current_workspace;
     std::map<int, ViewConfig> views;
 
     // settings brush texture paint
@@ -388,6 +398,7 @@ struct Application
         scale = 1.f;
         accent_color = 0;
         smooth_transition = true;
+        draft_duration = 1000.f;
         save_version_snapshot = false;
         proportional_grid = true;
         mouse_pointer = 1;
@@ -404,12 +415,14 @@ struct Application
         shm_method = 0;
         shm_socket_path = "";
         pannel_main_mode = 0;
+        pannel_list_all_viewspaces = true;
         pannel_playlist_mode = 0;
         pannel_session[0] = true;
         pannel_session[1] = false;
         pannel_session[2] = false;
         pannel_session[3] = false;
-        pannel_settings[0] = false;
+        exclusive_header = true;
+        pannel_settings[0] = true;
         pannel_settings[1] = false;
         pannel_settings[2] = false;
         pannel_settings[3] = false;
@@ -418,6 +431,7 @@ struct Application
         pannel_source[0] = true;
         pannel_source[1] = true;
         pannel_source[2] = true;
+        pannel_source[3] = true;
         transcode_options[0] = 1;  // force_keyframes
         transcode_options[1] = 0;  // GstToolkit::H264_RT
         transcode_options[2] = 0;  // force_no_audio
@@ -427,10 +441,9 @@ struct Application
         export_options[1] = false;
         export_options[2] = false;
         current_view = 1;
-        current_workspace= 3;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
         brush_pressure_mode = 0;
-        accept_audio = false;
+        accept_audio = true;
         dialogPosition = glm::ivec2(-1, -1);
         image_sequence.framerate_mode = 15;
         gamepad_1_id = 0;

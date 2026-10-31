@@ -23,13 +23,13 @@
 
 #include "IconsFontAwesome5.h"
 #include "defines.h"
-#include "IconsVimixImage.h"
 #include "Settings.h"
 #include "Log.h"
 #include "Mixer.h"
 #include "ActionManager.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "Transcoder.h"
+#include "Player/SplitMediaPlayer.h"
 #include "Upscaler.h"
 #include "Source/MediaSource.h"
 #include "Source/MultiFileSource.h"
@@ -39,6 +39,7 @@
 #include "Toolkit/ImGuiToolkit.h"
 #include "Visitor/ImGuiVisitor.h"
 #include "UserInterfaceManager.h"
+#include "Draft.h"
 
 #include "Navigator.h"
 #include "NavigatorCodec.h"
@@ -141,6 +142,7 @@ static void renderTranscodingPanelImage(int source_width, int source_height, boo
 
 static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
 {
+    const float _width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
     static Transcoder *transcoder = nullptr;
     static guint64 transcode_id = 0;
     bool ret = false;
@@ -148,22 +150,27 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
     if (mp == nullptr)
         return ret;
 
-    if (id != transcode_id && transcoder != nullptr) {
+    if (Draft::manager().active() || (id != transcode_id && transcoder != nullptr)) {
         // if source changed while transcoding;
         //    show a disabled transcoding panel
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));    
+        ImGui::BeginChild("header_Transcoding_disabled", ImVec2(_width, ImGui::GetFrameHeightWithSpacing()),
+                        false, ImGuiWindowFlags_NoDecoration);
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.f,0.f,0.f,0.f));
         ImGui::CollapsingHeader("Transcoding", ImGuiTreeNodeFlags_Bullet);
         ImGui::PopStyleColor(3);
+        ImGui::EndChild();
         return ret;
     }
 
     // Transcoding panel
+    ImGui::BeginChild("header_Transcoding_enabled", ImVec2(_width, ImGui::GetFrameHeightWithSpacing()),
+                    false, ImGuiWindowFlags_NoDecoration);
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
-    Settings::application.pannel_source[2] = ImGui::CollapsingHeader("Transcoding",
-                                                                      Settings::application.pannel_source[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Transcoding", Settings::application.pannel_source, 2);
     ImGui::PopStyleColor();
+    ImGui::EndChild();
 
     if (Settings::application.pannel_source[2]) {
 
@@ -179,7 +186,12 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
         if (transcoder == nullptr) {
             if (ImGui::Button(ICON_FA_FILE_EXPORT ICON_FA_FILE_IMPORT " Transcode", ImVec2(IMGUI_RIGHT_ALIGN,0))) {
                 transcode_id = id;
-                transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
+                // a split media is transcoded into a single video
+                SplitMediaPlayer *smp = dynamic_cast<SplitMediaPlayer *>(mp);
+                if (smp)
+                    transcoder = new Transcoder(smp->files());
+                else
+                    transcoder = new Transcoder(gst_uri_get_location(mp->uri().c_str()));
                 if (!transcoder->start(transcode_options)) {
                     Log::Warning("Failed to start transcoding: %s", transcoder->error().c_str());
                     delete transcoder;
@@ -189,16 +201,16 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
             }
             ImGui::SameLine();
             if (mp->isImage())
-                ImGuiToolkit::HelpToolTip("Re-encode the source image file in the specified format and options.\n\n "
-                        ICON_FA_FILE_IMAGE "  The new image will be used by the source once transcoding is successful. "
-                        "Current file is left unchanged, new file is created in the same folder.\n\n "
+                ImGuiToolkit::HelpToolTip("Save the image file in the specified format.\n\n "
+                        ICON_FA_FILE_IMAGE "  The new image file will replace the current one in the source. "
+                        "Current file is not affected. New file is saved in the same folder.\n\n "
                         ICON_FA_MAGIC "  Upscale will enlarge the image with a neural "
                         "network model. Models are downloaded on first run. "
                         "Largest and slowest ones give the best result.");
             else
-                ImGuiToolkit::HelpToolTip("Re-encode the source video file using the specified codec and options.\n\n "
-                        ICON_FA_FILE_VIDEO "  The new video will be used by the source once transcoding is successful. "
-                        "Current file is left unchanged, new file is created in the same folder.\n\n "
+                ImGuiToolkit::HelpToolTip("Re-encode and save the video file using the specified codec and options.\n\n "
+                        ICON_FA_FILE_VIDEO "  The new video file will replace the current one in the source. "
+                        "Current file is not affected. New file is saved in the same folder.\n\n "
                         ICON_FA_MAGIC "  Upscale will enlarge every frame with a neural "
                         "network model. Models are downloaded on first run. "
                         "Process can be very slow for high resolution. Audio track is not kept.");
@@ -268,6 +280,7 @@ static bool renderTranscodingPanel(guint64 id, MediaPlayer *mp)
 
 static bool renderTranscodingPanelMultifile(guint64 id, MultiFileSource *mfs)
 {
+    const float _width = ImGui::GetContentRegionAvail().x IMGUI_RIGHT_ALIGN;
     static SequenceTranscoder *transcoder = nullptr;
     static guint64 transcode_id = 0;
     bool ret = false;
@@ -276,22 +289,27 @@ static bool renderTranscodingPanelMultifile(guint64 id, MultiFileSource *mfs)
     if (!sequence.valid())
         return ret;
 
-    if (id != transcode_id && transcoder != nullptr) {
+    if (Draft::manager().active() || (id != transcode_id && transcoder != nullptr)) {
         // if source changed while transcoding;
         //    show a disabled transcoding panel
+        ImGui::BeginChild("header_Transcodingmf_disabled", ImVec2(_width, ImGui::GetFrameHeightWithSpacing()),
+                        false, ImGuiWindowFlags_NoDecoration);
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.f,0.f,0.f,0.f));
         ImGui::CollapsingHeader("Transcoding", ImGuiTreeNodeFlags_Bullet);
         ImGui::PopStyleColor(3);
+        ImGui::EndChild();
         return ret;
     }
 
     // Transcoding panel
+    ImGui::BeginChild("header_Transcodingmf_enabled", ImVec2(_width, ImGui::GetFrameHeightWithSpacing()),
+                    false, ImGuiWindowFlags_NoDecoration);
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
-    Settings::application.pannel_source[2] = ImGui::CollapsingHeader("Transcoding",
-                                                                      Settings::application.pannel_source[2] ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+    PannelHeader("Transcoding", Settings::application.pannel_source, 2);
     ImGui::PopStyleColor();
+    ImGui::EndChild();
 
     if (Settings::application.pannel_source[2]) {
 
@@ -319,9 +337,9 @@ static bool renderTranscodingPanelMultifile(guint64 id, MultiFileSource *mfs)
                 }
             }
             ImGui::SameLine();
-            ImGuiToolkit::HelpToolTip("Re-encode the images of the sequence in the specified format and options.\n\n "
-                    ICON_FA_FOLDER "  The new images will be used by the source once transcoding is successful. "
-                    "Current files are left unchanged, new files are created in a new folder next to them.\n\n "
+            ImGuiToolkit::HelpToolTip("Re-encode the images of the sequence in the specified format.\n\n "
+                    ICON_FA_FOLDER "  The new images will be used by the source as a sequence. "
+                    "Current files are not affected. New files are created in a new folder next to them.\n\n "
                     ICON_FA_MAGIC "  Upscale will enlarge every image with a neural "
                     "network model. Models are downloaded on first run. "
                     "Largest and slowest ones give the best result.");
@@ -337,9 +355,10 @@ static bool renderTranscodingPanelMultifile(guint64 id, MultiFileSource *mfs)
                         Source *s = Mixer::manager().createSourceMultifile(transcoder->outputFiles(), src->framerate());
                         MultiFileSource *newmfs = dynamic_cast<MultiFileSource *>(s);
                         if (newmfs != nullptr) {
-                            // same numbering: keep the range and loop of the source
-                            newmfs->setLoop(src->loop());
-                            newmfs->setRange(src->begin(), src->end());
+                            // same numbering: keep the timeline and loop of the source
+                            // (NB: framerate is the same, so timing is the same)
+                            newmfs->mediaplayer()->setLoop(src->mediaplayer()->loop());
+                            newmfs->mediaplayer()->setTimeline(*src->mediaplayer()->timeline());
                             Mixer::manager().replaceSource(src, newmfs);
                         }
                         else
@@ -390,7 +409,7 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
 {
     // index of this source in the Navigator, given at every frame
     const int selected_index = navigator->selectedPannelSource();
-    if (s == nullptr || Settings::application.current_view == View::TRANSITION)
+    if (s == nullptr || View::isSwitchingView(Settings::application.current_view))
         return;
 
     // Next window is a side pannel
@@ -407,9 +426,11 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
         // index indicator
         ImGui::SetCursorPos(ImVec2(pannel_width_ - 2.8f * ImGui::GetTextLineHeightWithSpacing(), IMGUI_TOP_ALIGN));
 
-        if (Mixer::manager().indexCurrentSource() < 0)
+        // NB: a source of a hidden ViewSpace is shown in pannel without being current
+        if (Mixer::manager().indexCurrentSource() < 0
+            && Mixer::manager().viewSpaceShown(s->viewSpace()))
             Mixer::manager().setCurrentIndex(selected_index);
-        ImGui::TextDisabled("#%d", Mixer::manager().indexCurrentSource());
+        ImGui::TextDisabled("#%d", selected_index);
 
         ImGui::PopFont();
 
@@ -430,20 +451,19 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
         s->accept(v);
 
         ///
-        /// Transcoding panel for media player and MultiFileSource 
+        /// Transcoding panel for media player and MultiFileSource
+        /// (no transcoding of audio files)
         ///
         if (!s->failed()) {
+            MultiFileSource* mfs = dynamic_cast<MultiFileSource*>(s);
             MediaSource* ms = dynamic_cast<MediaSource*>(s);
-            if (ms != nullptr) {
-                if (renderTranscodingPanel(ms->id(), ms->mediaplayer())) 
+            if (mfs != nullptr) {
+                if (renderTranscodingPanelMultifile(mfs->id(), mfs))
                     v.reset();
-            } 
-            else {
-                MultiFileSource* mfs = dynamic_cast<MultiFileSource*>(s);
-                if (mfs != nullptr) {
-                    if (renderTranscodingPanelMultifile(mfs->id(), mfs))
-                        v.reset();
-                }
+            }
+            else if (ms != nullptr && ms->hasImage()) {
+                if (renderTranscodingPanel(ms->id(), ms->mediaplayer()))
+                    v.reset();
             }
         }
 
@@ -455,26 +475,29 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
 
             ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, 0);
 
-            // clone button
-            if ( s->failed() )
-                ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", size);
-            else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", size) ) {
-                Mixer::manager().addSource ( (Source *) Mixer::manager().createSourceClone() );
-                UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+            ImGuiToolkit::PushDisabled(Draft::manager().active());
+
+            // clone button (not for sources without image)
+            if ( s->hasImage() ) {
+                if ( s->failed() )
+                    ImGuiToolkit::ButtonDisabled( ICON_FA_SHARE_SQUARE " Clone & Filter", size);
+                else if ( ImGui::Button( ICON_FA_SHARE_SQUARE " Clone & Filter", size) ) {
+                    Mixer::manager().addSource ( (Source *) Mixer::manager().createSourceClone() );
+                    UserInterface::manager().showPannel(  Mixer::manager().numSource() );
+                }
             }
 
             // replace button
             if ( ImGui::Button( ICON_FA_PLUS_SQUARE " Replace", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {
 
                 // prepare panel for new source of same type
-                glm::ivec2 i = s->icon();
-                if ( i == glm::ivec2(ICON_VI_SOURCE_VIDEO) || i == glm::ivec2(ICON_VI_SOURCE_IMAGE)
-                     || i == glm::ivec2(ICON_VI_SOURCE_CLONE) )
+                std::string_view t = s->type();
+                if ( t == SOURCE_TYPE_MEDIA || t == SOURCE_TYPE_AUDIO || t == SOURCE_TYPE_CLONE )
                     Settings::application.source.new_type = Navigator::SOURCE_FILE;
-                else if ( i == glm::ivec2(ICON_VI_SOURCE_SEQUENCE) )
+                else if ( t == SOURCE_TYPE_MULTI_FILE || t == SOURCE_TYPE_SPLIT_MEDIA )
                     Settings::application.source.new_type = Navigator::SOURCE_SEQUENCE;
-                else if ( i == glm::ivec2(ICON_VI_SOURCE_PATTERN) || i == glm::ivec2(ICON_VI_SOURCE_TEXT)
-                          || i == glm::ivec2(ICON_VI_SOURCE_GSTREAMER) || i == glm::ivec2(ICON_VI_SOURCE_SHADER)  )
+                else if ( t == SOURCE_TYPE_PATTERN || t == SOURCE_TYPE_TEXT
+                          || t == SOURCE_TYPE_GENERIC_STREAM || t == SOURCE_TYPE_SHADER )
                     Settings::application.source.new_type = Navigator::SOURCE_GENERATED;
                 else
                     Settings::application.source.new_type = Navigator::SOURCE_CONNECTED;
@@ -491,8 +514,11 @@ void SourcePanel::Render(Navigator *navigator, Source *s, const ImVec2 &iconsize
                 Mixer::manager().deleteSource(s);
                 Action::manager().store(sname + std::string(": Deleted"));
             }
+
+            ImGuiToolkit::PopDisabled(Draft::manager().active());
+
             // delete all button
-            if ( Mixer::manager().session()->failedSources().size() > 1 && 
+            if ( Mixer::manager().session()->failedSources().size() > 1 &&
                 Mixer::manager().session()->find(s) != Mixer::manager().session()->end() && s->failed()) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_FAILED, 1.));
                 if ( ImGui::Button( ICON_FA_REDO_ALT " Retry all", ImVec2((size.x - IMGUI_SAME_LINE)/2.f, 0)) ) {

@@ -2,8 +2,8 @@
 #define SOURCE_H
 
 #include <string>
+#include <string_view>
 #include <map>
-#include <atomic>
 #include <mutex>
 #include <list>
 
@@ -71,6 +71,7 @@ class Source : public SourceCore
 {
     friend class SourceLink;
     friend class CloneSource;
+    friend class DraftSource;
     friend class View;
     friend class MixingView;
     friend class MixingGroup;
@@ -78,6 +79,7 @@ class Source : public SourceCore
     friend class LayerView;
     friend class TextureView;
     friend class TransitionView;
+    friend class PresentationView;
     friend class DisplaysView;
     friend class Canvas;
 
@@ -148,6 +150,11 @@ public:
     void call(SourceCallback *callback, bool override = false);
     void finish(SourceCallback *callback);
 
+    // numerical attributes beyond SourceCore (e.g. filter parameters)
+    typedef std::map<std::string, float> Parameters;
+    virtual Parameters parameters () const { return Parameters(); }
+    virtual void setParameters (const Parameters &) {}
+
     // update mode
     inline  bool active () const { return active_; }
     virtual void setActive (bool on);
@@ -159,14 +166,13 @@ public:
     inline  bool locked () const { return locked_; }
     virtual void setLocked (bool on);
 
-    // Workspace
-    typedef enum {
-        WORKSPACE_BACKGROUND = 0,
-        WORKSPACE_CENTRAL    = 1,
-        WORKSPACE_FOREGROUND = 2,
-        WORKSPACE_ANY        = 3
-    } Workspace;
-    inline Workspace workspace () const { return workspace_; }
+    // ViewSpace : sources are shown in Views only if their ViewSpace is shown
+    // (NB: a new source has no ViewSpace assigned until inserted in Mixer)
+    inline uint viewSpace () const { return viewspace_ < 0 ? 0 : (uint) viewspace_; }
+    inline bool viewSpaceAssigned () const { return viewspace_ > -1; }
+    void setViewSpace (uint v);
+    inline bool viewSpaceShown () const { return viewspace_shown_; }
+    void setViewSpaceShown (bool on);
 
     // a Source shall define a way to play
     virtual bool playable () const  = 0;
@@ -187,6 +193,9 @@ public:
 
     // a Source shall define a way to get a texture
     virtual uint texture () const = 0;
+    // false for sources that do not contribute an image to the mix
+    // (e.g. audio files: shown only in Mixing view and Player)
+    virtual bool hasImage () const { return true; }
     void setTextureMirrored (bool on);
     bool textureMirrored ();
 
@@ -296,6 +305,8 @@ public:
 
     // class-dependent icon
     virtual glm::ivec2 icon () const { return glm::ivec2(ICON_VI_SOURCE); }
+    // class-dependent type name (SOURCE_TYPE_* in defines.h)
+    virtual std::string_view type () const = 0;
 
     // class-dependent notification
     virtual std::string info () const { return "Undefined"; }
@@ -360,7 +371,8 @@ protected:
     bool  locked_;
     UpdateFlags   need_update_;
     float dt_;
-    Workspace  workspace_;
+    int  viewspace_;
+    bool viewspace_shown_;
     bool replay_on_disable_;
 
     // callbacks

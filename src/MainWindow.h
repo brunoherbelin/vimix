@@ -32,6 +32,8 @@ protected:
     bool request_change_fullscreen_;
     void changeFullscreen_ ();
     void setFullscreen_(GLFWmonitor *mo);
+    glm::ivec2 request_change_size_;
+    void changeSize_ ();
 
 public:
     MainWindow();
@@ -52,6 +54,9 @@ public:
     void exitFullscreen ();
     void setFullscreen (std::string monitorname);
     void toggleFullscreen ();
+
+    // set size of rendering area in pixels (exits fullscreen and maximized)
+    inline void setSize(int w, int h) { request_change_size_ = glm::ivec2(w, h); }
 
     // set title (deferred to avoid context issues)
     inline void setTitle(const std::string t) { main_new_title_ = t; }

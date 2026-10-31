@@ -1,7 +1,6 @@
 ﻿#ifndef VISITOR_H
 #define VISITOR_H
 
-#include <string>
 
 // Declares the interface for the visitors
 class Visitor {
@@ -37,6 +36,8 @@ public:
     virtual void visit (class MixingGroup&) {}
     virtual void visit (class Source&) {}
     virtual void visit (class MediaSource&) {}
+    virtual void visit (class SplitMediaSource&) {}
+    virtual void visit (class AudioSource&) {}
     virtual void visit (class StreamSource&) {}
     virtual void visit (class NetworkSource&) {}
     virtual void visit (class SrtReceiverSource&) {}
@@ -46,6 +47,7 @@ public:
     virtual void visit (class PatternSource&) {}
     virtual void visit (class SessionFileSource&) {}
     virtual void visit (class SessionGroupSource&) {}
+    virtual void visit (class DraftSource&) {}
     virtual void visit (class RenderSource&) {}
     virtual void visit (class CloneSource&) {}
     virtual void visit (class MultiFileSource&) {}

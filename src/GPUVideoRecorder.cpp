@@ -28,7 +28,7 @@
 #include "GPUVideoRecorder.h"
 #include "RenderingManager.h"
 #include "Settings.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Audio.h"
@@ -268,7 +268,7 @@ std::string GPUVideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     return "";
 }
 
-void GPUVideoRecorder::perform_texture_transfer(GstGLContext *context, gpointer data)
+void GPUVideoRecorder::perform_texture_transfer(GstGLContext *, gpointer data)
 {
     TextureTransferData *transfer_data = static_cast<TextureTransferData *>(data);
     GPUVideoRecorder *grabber = transfer_data->grabber;

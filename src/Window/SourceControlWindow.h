@@ -30,6 +30,7 @@ class SourceControlWindow : public WorkspaceWindow
 
     // re-usable ui parts
     void DrawButtonBar(ImVec2 bottom, float width);
+    void DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize);
     int SourceButton(Source *s, ImVec2 framesize);
 
     // Render the sources dynamically selected
@@ -50,6 +51,7 @@ class SourceControlWindow : public WorkspaceWindow
     MediaPlayer *mediaplayer_active_;
     bool mediaplayer_edit_fading_;
     int  mediaplayer_set_duration_;
+    bool mediaplayer_export_sections_;
     bool mediaplayer_edit_pipeline_;
     bool mediaplayer_mode_;
     bool mediaplayer_slider_pressed_;
@@ -67,7 +69,7 @@ class SourceControlWindow : public WorkspaceWindow
 
     // dialog to select frame capture location
     DialogToolkit::OpenFolderDialog *captureFolderDialog;
-    Screenshot capture;
+    std::list< std::pair<std::string, Screenshot *> > captures_;
 
 public:
     SourceControlWindow();

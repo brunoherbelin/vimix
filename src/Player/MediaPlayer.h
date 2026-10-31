@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <list>
 #include <mutex>
 #include <future>
 #include <memory>
@@ -23,7 +24,7 @@ class Visitor;
 #define MIN_PLAY_SPEED 0.1
 #define N_VFRAME 10
 #define DISCOVER_TIMOUT 15
-#define EVALUATE_TIMEOUT 5
+#define EVALUATE_TIMEOUT 15
 #define MAX_KEYFRAME_STORED 10000
 
 struct MediaInfo {
@@ -43,6 +44,7 @@ struct MediaInfo {
     GstClockTime end;
     std::string log;
     bool hasaudio;
+    std::vector<GstClockTime> segments; // start time of each file of a split media (empty otherwise)
 
     MediaInfo() {
         width = par_width = 1;
@@ -112,13 +114,13 @@ public:
     /**
      * Destructor.
      */
-    ~MediaPlayer();
+    virtual ~MediaPlayer();
     /**
      * Get unique id
      */
     inline uint64_t id() const { return id_; }
-    /** 
-     * Open a media using gstreamer URI 
+    /**
+     * Open a media using gstreamer URI
      * */
     void open ( const std::string &filename, const std::string &uri = "");
     void reopen ();
@@ -129,11 +131,11 @@ public:
     /**
      * Get name of the file
      * */
-    std::string filename() const;
+    virtual std::string filename() const;
     /**
-     * Get name of Codec of the media
+     * Get all info on the media
      * */
-    MediaInfo media() const;
+    const MediaInfo &media() const;
     /**
      * True if a media was oppenned
      * */
@@ -164,7 +166,7 @@ public:
     /**
      * True if its an image
      * */
-    bool isImage() const;   
+    bool isImage() const;
     /**
      * True if it has only one frame
      * */
@@ -319,8 +321,8 @@ public:
      * (i.e. without hadrware decoding)
      * NB: this reopens the video and reset decoder name
      * */
-    void setSoftwareDecodingForced(bool on);
-    bool softwareDecodingForced();
+    virtual void setSoftwareDecodingForced(bool on);
+    virtual bool softwareDecodingForced();
     /**
      * Option to synchronize with metronome
      * */
@@ -337,7 +339,7 @@ public:
      * audio implementation
      * */
     inline bool audioAvailable() const { return media_.hasaudio; }
-    void setAudioEnabled(bool on);
+    virtual void setAudioEnabled(bool on);
     void setAudioVolume(gdouble v);
     gdouble audioVolume() const;
 
@@ -365,7 +367,33 @@ public:
     MediaEvaluation evaluation() const;
 
 
-private:
+protected:
+
+    // GstPlayFlags flags from playbin. It is the policy of GStreamer to
+    // not publicly expose element-specific enums. That's why this
+    // GstPlayFlags enum has been copied here.
+    // https://gstreamer.freedesktop.org/documentation/playback/playsink.html?gi-language=c#GstPlayFlags
+    typedef enum {
+        GST_PLAY_FLAG_VIDEO         = 0x00000001,
+        GST_PLAY_FLAG_AUDIO         = 0x00000002,
+        GST_PLAY_FLAG_TEXT          = 0x00000004,
+        GST_PLAY_FLAG_VIS           = 0x00000008,
+        GST_PLAY_FLAG_SOFT_VOLUME   = 0x00000010,
+        GST_PLAY_FLAG_NATIVE_AUDIO  = 0x00000020,
+        GST_PLAY_FLAG_NATIVE_VIDEO  = 0x00000040,
+        GST_PLAY_FLAG_DOWNLOAD      = 0x00000080,
+        GST_PLAY_FLAG_BUFFERING     = 0x00000100,
+        GST_PLAY_FLAG_DEINTERLACE   = 0x00000200,
+        GST_PLAY_FLAG_SW_COLOR      = 0x00000400,
+        GST_PLAY_FLAG_FORCE_FILTER  = 0x00000800,
+        GST_PLAY_FLAG_SW_DECODER    = 0x00001000
+    } GstPlayFlags;
+
+    // hooks for sub-classes
+    // start async discovery (and evaluation) of uri_, called by open()
+    virtual void startDiscovery();
+    // configure the gstreamer pipeline_ just created, called by execute_open()
+    virtual void setupPipeline() {}
 
     // video player description
     uint64_t id_;

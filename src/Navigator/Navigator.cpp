@@ -29,17 +29,21 @@
 #include "Settings.h"
 #include "Toolkit/ImGuiToolkit.h"
 #include "View/View.h"
-#include "View/RenderView.h"
 #include "Resource.h"
 #include "Mixer.h"
-#include "MediaPlayer.h"
-#include "Source/PatternSource.h"
+#include "ActionManager.h"
+#include "Draft.h"
 #include "Source/SourceCallback.h"
+#include "Source/SessionSource.h"
+#include "Visitor/ImGuiVisitor.h"
+#include "Toolkit/BaseToolkit.h"
 #include "RenderingManager.h"
 #include "ControlManager.h"
 #include "MousePointer.h"
 #include "SessionCreator.h"
+#include "Log.h"
 #include "Window/WorkspaceWindow.h"
+#include "View/SnapshotsView.h"
 #include "UserInterfaceManager.h"
 #include "FrameGrabbing.h"
 
@@ -48,6 +52,7 @@
 #include "SourcePanel.h"
 #include "SessionPanel.h"
 #include "SettingsPanel.h"
+#include "imgui.h"
 #include "Navigator.h"
 
 
@@ -66,6 +71,8 @@ Navigator::Navigator()
     pannel_alpha_ = 0.85f;
     view_pannel_visible = false;
     clearButtonSelection();
+    for (uint v = 0; v < MAX_VIEWSPACE; ++v)
+        viewspace_current_[v] = 0;
 
     // restore media mode as saved
     if (Settings::application.recentImportFolders.path.empty() ||
@@ -93,6 +100,12 @@ void Navigator::applyButtonSelection(int index)
     pannel_main_mode_ = Settings::application.pannel_main_mode;
 }
 
+int Navigator::rootButton() const
+{
+    // the root of the navigator is the edited bundle instead of the session menu
+    return Mixer::manager().editingBundle() ? NAV_BUNDLE : NAV_MENU;
+}
+
 void Navigator::clearButtonSelection()
 {
     // clear all buttons
@@ -103,6 +116,7 @@ void Navigator::clearButtonSelection()
     new_source_panel_.clearNewPannel();
     source_to_replace = nullptr;
     selected_index = -1;
+    hidden_source_ = nullptr;
 }
 
 void Navigator::showPannelSource(int index)
@@ -122,20 +136,65 @@ int Navigator::selectedPannelSource()
     return selected_index;
 }
 
+Source *Navigator::pannelSource() const
+{
+    // source of a hidden ViewSpace shown in pannel (if still in session)
+    if ( hidden_source_ != nullptr ) {
+        Session *se = Mixer::manager().session();
+        if ( se->find(hidden_source_) != se->end() )
+            return hidden_source_;
+    }
+    // otherwise the pannel shows the current source
+    return Mixer::manager().currentSource();
+}
+
 void Navigator::showConfig()
 {
+    // settings are in the session menu
+    Mixer::manager().exitAllBundles();
+
     selected_button[NAV_MENU] = true;
     applyButtonSelection(NAV_MENU);
     pannel_main_mode_ = 2;
 }
 
+void Navigator::showPlaylist()
+{
+    // playlists are in the session menu
+    Mixer::manager().exitAllBundles();
+
+    selected_button[NAV_MENU] = true;
+    applyButtonSelection(NAV_MENU);
+    Settings::application.pannel_main_mode = pannel_main_mode_ = 1;
+}
+
+void Navigator::startPresentation()
+{
+    showPlaylist();
+    playlist_panel_.startPresentation();
+}
+
+void Navigator::startVersions()
+{
+    if (Action::manager().snapshots().empty()) {
+        Log::Notify("No version of the session to present.");
+        return;
+    }
+
+    SnapshotsView *sv = static_cast<SnapshotsView *>(Mixer::manager().view(View::SNAPSHOTS));
+    sv->setSnapshots();
+    UserInterface::manager().setView(View::SNAPSHOTS);
+    WorkspaceWindow::clearWorkspace();
+}
+
 void Navigator::togglePannelMenu()
 {
-    selected_button[NAV_MENU] = !selected_button[NAV_MENU];
-    applyButtonSelection(NAV_MENU);
+    const int root = rootButton();
+    selected_button[root] = !selected_button[root];
+    applyButtonSelection(root);
 
     if (Settings::application.pannel_always_visible)
-        showPannelSource(NAV_MENU);
+        showPannelSource(root);
 }
 
 void Navigator::togglePannelNew()
@@ -158,8 +217,8 @@ void Navigator::togglePannelAutoHide()
     if (Settings::application.pannel_always_visible) {
         int current = Mixer::manager().indexCurrentSource();
         if ( current < 0 ) {
-            if (!selected_button[NAV_MENU] && !selected_button[NAV_TRANS] && !selected_button[NAV_NEW] )
-                showPannelSource(NAV_MENU);
+            if (!selected_button[NAV_MENU] && !selected_button[NAV_BUNDLE] && !selected_button[NAV_TRANS] && !selected_button[NAV_NEW] )
+                showPannelSource(rootButton());
         }
         else
             showPannelSource( current );
@@ -191,8 +250,8 @@ void Navigator::discardPannel()
             // allows to hide pannel
             clearButtonSelection();
         }
-        // if panel shows a source (i.e. not NEW, TRANS nor MENU selected)
-        else if ( !selected_button[NAV_MENU] )
+        // if panel shows a source (i.e. not NEW, TRANS, MENU nor BUNDLE selected)
+        else if ( !selected_button[NAV_MENU] && !selected_button[NAV_BUNDLE] )
         {
             // revert to menu panel
             togglePannelMenu();
@@ -248,12 +307,47 @@ void Navigator::Render()
     height_ = ImGui::GetIO().DisplaySize.y;                          // cover vertically
     const float icon_width = width_ - 2.f * style.WindowPadding.x;         // icons keep padding
     const ImVec2 iconsize(icon_width, icon_width);
-    const float sourcelist_height = height_ - 6.5f * icon_width - 6.f * style.WindowPadding.y; // space for 4 icons of view
+    // number of sources listed (only those in shown ViewSpaces if not listing all)
+    float num_sources = 0.f;
+    for (auto it = Mixer::manager().session()->begin(); it != Mixer::manager().session()->end(); ++it)
+        num_sources += ( Settings::application.pannel_list_all_viewspaces || (*it)->viewSpaceShown() ) ? 1.f : 0.f;
 
-    // hack to show more sources if not enough space; make source icons smaller...
+    // height of the bottom window (rows of view icons + fullscreen row)
+    auto views_height = [&](int rows, float h) {
+        return (float) rows * h + 0.5f * icon_width + (float) rows * style.WindowPadding.y;
+    };
+    // height needed by the top window (menu & new icons + one per source)
+    auto sources_height = [&](float h) {
+        return 2.f * (icon_width + style.ItemSpacing.y) + num_sources * (h + style.ItemSpacing.y)
+               + 2.f * style.WindowPadding.y;
+    };
+
+    // rows of icons in the bottom window: workspaces, pointer, 4 views, displays
+    // (or workspaces, pointer, 1 grid of 4 views, displays)
+    constexpr int ROWS_VIEWS_FULL = 7;
+    constexpr int ROWS_VIEWS_COMPACT = 4;
+
+    // if not enough space, merge the 4 view icons in a grid first, then reduce height of source icons
+    const ImVec2 viewiconsize(icon_width, icon_width);
     ImVec2 sourceiconsize(icon_width, icon_width);
-    if (sourcelist_height - 2.f * icon_width < Mixer::manager().session()->size() * icon_width )
-        sourceiconsize.y *= 0.75f;
+    bool compact_views = false;
+    if (views_height(ROWS_VIEWS_FULL, viewiconsize.y) + sources_height(sourceiconsize.y) > height_) {
+        compact_views = true;
+        if (views_height(ROWS_VIEWS_COMPACT, viewiconsize.y) + sources_height(sourceiconsize.y) > height_)
+            sourceiconsize.y *= 0.8f;
+    }
+    const float sourcelist_height = height_ - views_height(compact_views ? ROWS_VIEWS_COMPACT : ROWS_VIEWS_FULL,
+                                                           viewiconsize.y);
+
+    // the root button (menu or bundle) follows entering and leaving bundles
+    const int root = rootButton();
+    const int other_root = root == NAV_MENU ? NAV_BUNDLE : NAV_MENU;
+    if (selected_button[other_root]) {
+        selected_button[other_root] = false;
+        selected_button[root] = true;
+        if (selected_index == other_root)
+            selected_index = root;
+    }
 
     // Left bar top
     ImGui::SetNextWindowPos( ImVec2(0, 0), ImGuiCond_Always );
@@ -263,23 +357,49 @@ void Navigator::Render()
     {
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-        if (Settings::application.current_view != View::TRANSITION) {
+        if (!View::isSwitchingView(Settings::application.current_view)) {
 
-            // the vimix icon for menu
-            if (ImGuiToolkit::SelectableIcon(ICON_VI_VIMIX_LOGO, "", selected_button[NAV_MENU], iconsize)) {
-                selected_button[NAV_MENU] = true;
-                applyButtonSelection(NAV_MENU);
+            // the edited bundle replaces the vimix icon for menu
+            SessionGroupSource *bundle = Mixer::manager().editingBundle() ? Mixer::manager().editedBundles().back() : nullptr;
+            float bracket_top = 0.f;
+            if (bundle) {
+                bracket_top = ImGui::GetCursorScreenPos().y;
+                ImGui::PushID("##bundle");
+                ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_HeaderActive));
+                if (ImGuiToolkit::SelectableIcon(ICON_VI_SOURCE_GROUP, "", selected_button[NAV_BUNDLE], iconsize)) {
+                    selected_button[NAV_BUNDLE] = true;
+                    applyButtonSelection(NAV_BUNDLE);
+                }
+                ImGui::PopStyleColor();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+                    std::string label = bundle->name().size() < 16 ? bundle->name()
+                                                                   : bundle->name().substr(0, 15) + "..";
+                    tooltip = { label, SHORTCUT_MAIN, selected_button[NAV_BUNDLE] ? nullptr : bundle };
+                }
+                ImGui::PopID();
             }
-            if (ImGui::IsItemHovered())
-                tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN, nullptr};
+            // the vimix icon for menu
+            else {
+                if (ImGuiToolkit::SelectableIcon(ICON_VI_VIMIX_LOGO, "", selected_button[NAV_MENU], iconsize)) {
+                    selected_button[NAV_MENU] = true;
+                    applyButtonSelection(NAV_MENU);
+                }
+                if (ImGui::IsItemHovered())
+                    tooltip = {TOOLTIP_MAIN, SHORTCUT_MAIN, nullptr};
+            }
 
             // the "+" icon for action of creating new source
-            if (ImGui::Selectable( source_to_replace != nullptr ? ICON_FA_PLUS_SQUARE : ICON_FA_PLUS,
-                                   &selected_button[NAV_NEW], 0, iconsize)) {
-                applyButtonSelection(NAV_NEW);
+            if (!Draft::manager().active()) {
+                if (ImGui::Selectable( source_to_replace != nullptr ? ICON_FA_PLUS_SQUARE : ICON_FA_PLUS,
+                                    &selected_button[NAV_NEW], 0, iconsize)) {
+                    applyButtonSelection(NAV_NEW);
+                }
+                if (ImGui::IsItemHovered())
+                    tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE, nullptr};
             }
-            if (ImGui::IsItemHovered())
-                tooltip = {TOOLTIP_NEW_SOURCE, SHORTCUT_NEW_SOURCE, nullptr};
+            else {
+                ImGui::Selectable(ICON_FA_PLUS, false, ImGuiSelectableFlags_Disabled, iconsize);
+            }
             //
             // the list of INITIALS for sources
             //
@@ -288,6 +408,10 @@ void Navigator::Render()
             for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter, ++index)
             {
                 Source *s = (*iter);
+
+                // skip sources of hidden ViewSpaces if not listing all
+                if ( !Settings::application.pannel_list_all_viewspaces && !s->viewSpaceShown() )
+                    continue;
 
                 // Show failed sources in RED
                 bool pushed = false;
@@ -298,6 +422,10 @@ void Navigator::Render()
                     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetColorU32(ImGuiCol_ButtonActive));
                     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetColorU32(ImGuiCol_ButtonHovered));
                 }
+                // Show sources of hidden workspaces dimmed
+                const bool dimmed = !pushed && !s->viewSpaceShown();
+                if (dimmed)
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_TextDisabled));
 
                 // draw an indicator for selected sources (a dot) and for the current source (a line)
                 if (s->mode() > Source::VISIBLE) {
@@ -313,8 +441,16 @@ void Navigator::Render()
                 if (ImGui::Selectable(s->initials(), &selected_button[index], 0, sourceiconsize))
                 {
                     applyButtonSelection(index);
-                    if (selected_button[index])
-                        Mixer::manager().setCurrentIndex(index);
+                    if (selected_button[index]) {
+                        if ( Mixer::manager().viewSpaceShown(s->viewSpace()) )
+                            Mixer::manager().setCurrentIndex(index);
+                        // a source of a hidden ViewSpace cannot be current:
+                        // only show its pannel
+                        else {
+                            Mixer::manager().unsetCurrentSource();
+                            Mixer::selection().clear();
+                        }
+                    }
                 }
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
                     std::string label = s->name().size() < 16 ? s->name()
@@ -351,18 +487,36 @@ void Navigator::Render()
 
                 if (pushed)
                     ImGui::PopStyleColor(4);
+                if (dimmed)
+                    ImGui::PopStyleColor(1);
 
                 ImGui::PopID();
             }
 
+            if (bundle) {
+                // bracket along the sources inside the edited bundle
+                const float x = ImGui::GetWindowPos().x + width_ - 0.8f * style.WindowPadding.x;
+                const float y = ImGui::GetCursorScreenPos().y - 0.8f * style.ItemSpacing.y;
+                const ImU32 color = ImGui::GetColorU32(ImGuiCol_HeaderActive);
+                draw_list->AddLine(ImVec2(x, bracket_top), ImVec2(x, y), color, 3.f);
+            }
         }
-        else {
+        else if (Settings::application.smooth_transition &&
+            (Settings::application.current_view == View::TRANSITION ||
+            Settings::application.current_view == View::PRESENTATION) ) {
             // the ">" icon for transition menu
             if (ImGui::Selectable( ICON_FA_ARROW_CIRCLE_RIGHT, &selected_button[NAV_TRANS], 0, iconsize))
             {
                 Mixer::manager().unsetCurrentSource();
                 applyButtonSelection(NAV_TRANS);
             }
+        }
+        else {
+            // the "x" icon to end presentation
+            if (ImGui::Selectable( ICON_FA_TIMES_CIRCLE, false, 0, iconsize))
+                UserInterface::manager().setView(View::MIXING);
+            if (ImGui::IsItemHovered())
+                tooltip = {"End presentation", "Esc", nullptr};
         }
         ImGui::End();
     }
@@ -374,8 +528,16 @@ void Navigator::Render()
     if (ImGui::Begin("##navigatorViews", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollWithMouse))
     {
+
+        // Workspaces (ViewSpaces) selector
+        int ws = RenderViewspaceSelector(viewiconsize);
+        if (ws > -1)
+            tooltip = { Mixer::manager().viewSpaceOnlyShown(ws) ? std::string("Show all workspaces")
+                                                                 : "Show only workspace " + std::to_string(ws + 1),
+                        "", nullptr };
+
         // Mouse pointer selector
-        if ( RenderMousePointerSelector(iconsize) )
+        if ( RenderMousePointerSelector(viewiconsize) )
             tooltip = {TOOLTIP_SNAP_CURSOR, ALT_MOD, nullptr};
 
         // List of icons for View selection
@@ -386,73 +548,53 @@ void Navigator::Render()
         selected_view[ Settings::application.current_view ] = true;
         int previous_view = Settings::application.current_view;
 
-        if (ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[View::MIXING], 0, iconsize))
-        {
-            UserInterface::manager().setView(View::MIXING);
-            if (previous_view == Settings::application.current_view) {
-                ImGui::OpenPopup( "PopupViewOptions" );
-                view_options_pos = ImGui::GetCursorScreenPos();
+        // a button to select a view; clicking on the current view opens its options (zoom)
+        bool view_options_opened = false;
+        auto view_button = [&](bool pressed, View::Mode mode, const char *shortcut) {
+            if (pressed) {
+                UserInterface::manager().setView(mode);
+                if (previous_view == Settings::application.current_view) {
+                    ImGui::OpenPopup( "PopupViewOptions" );
+                    view_options_pos = ImGui::GetCursorScreenPos();
+                    view_options_opened = true;
+                }
             }
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::MIXING].name, "F1", nullptr};
-            view_options_timeout = 0;
-        }
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+                tooltip = {Settings::application.views[mode].name, shortcut, nullptr};
+                view_options_timeout = 0;
+            }
+        };
 
-        if (ImGui::Selectable( ICON_FA_OBJECT_UNGROUP , &selected_view[View::GEOMETRY], 0, iconsize))
-        {
-            UserInterface::manager().setView(View::GEOMETRY);
-            if (previous_view == Settings::application.current_view) {
-                ImGui::OpenPopup( "PopupViewOptions" );
-                view_options_pos = ImGui::GetCursorScreenPos();
-            }
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::GEOMETRY].name, "F2", nullptr};
-            view_options_timeout = 0;
-        }
+        // the 4 first views: full size rows, or small icons in a 2x2 grid of the size of one row
+        const ImVec2 viewcellsize = compact_views ? ImVec2((viewiconsize.x - style.ItemSpacing.x) * 0.5f,
+                                                           (viewiconsize.y - style.ItemSpacing.y) * 0.5f)
+                                                  : viewiconsize;
+        if (compact_views)
+            ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
 
-        if (ImGuiToolkit::SelectableIcon(ICON_VI_LAYERS, "", selected_view[View::LAYER], iconsize))
-        {
-            Settings::application.current_view = View::LAYER;
-            UserInterface::manager().setView(View::LAYER);
-            if (previous_view == Settings::application.current_view) {
-                ImGui::OpenPopup( "PopupViewOptions" );
-                view_options_pos = ImGui::GetCursorScreenPos();
-            }
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::LAYER].name, "F3", nullptr};
-            view_options_timeout = 0;
-        }
+        view_button(ImGui::Selectable( ICON_FA_BULLSEYE, &selected_view[View::MIXING], 0, viewcellsize),
+                    View::MIXING, "F1");
+        if (compact_views)
+            ImGui::SameLine();
+        view_button(ImGui::Selectable( ICON_FA_OBJECT_UNGROUP, &selected_view[View::GEOMETRY], 0, viewcellsize),
+                    View::GEOMETRY, "F2");
+        view_button(ImGuiToolkit::SelectableIcon(ICON_VI_LAYERS, "", selected_view[View::LAYER], viewcellsize),
+                    View::LAYER, "F3");
+        if (compact_views)
+            ImGui::SameLine();
+        view_button(ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[View::TEXTURE], 0, viewcellsize),
+                    View::TEXTURE, "F4");
 
-        if (ImGui::Selectable( ICON_FA_CHESS_BOARD, &selected_view[View::TEXTURE], 0, iconsize))
-        {
-            UserInterface::manager().setView(View::TEXTURE);
-            if (previous_view == Settings::application.current_view) {
-                ImGui::OpenPopup( "PopupViewOptions" );
+        if (compact_views) {
+            ImGui::PopFont();
+            // popup aligned with the grid, whichever cell was clicked
+            if (view_options_opened)
                 view_options_pos = ImGui::GetCursorScreenPos();
-            }
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::TEXTURE].name, "F4", nullptr};
-            view_options_timeout = 0;
         }
 
         std::pair<int, int> icon_index = Settings::application.render.disabled ? std::make_pair(ICON_VI_DISPLAYS_DISABLED) : std::make_pair(ICON_VI_DISPLAYS);
-        if (ImGuiToolkit::SelectableIcon(icon_index.first, icon_index.second, "", selected_view[View::DISPLAYS], iconsize))
-        {
-            UserInterface::manager().setView(View::DISPLAYS);
-            Settings::application.current_view = View::DISPLAYS;
-            if (previous_view == Settings::application.current_view) {
-                ImGui::OpenPopup( "PopupViewOptions" );
-                view_options_pos = ImGui::GetCursorScreenPos();
-            }
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
-            tooltip = {Settings::application.views[View::DISPLAYS].name, "F5", nullptr};
-            view_options_timeout = 0;
-        }
+        view_button(ImGuiToolkit::SelectableIcon(icon_index.first, icon_index.second, "", selected_view[View::DISPLAYS], viewiconsize),
+                    View::DISPLAYS, "F5");
 
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SetCursorPos(pos + ImVec2(0.f, style.WindowPadding.y));
@@ -473,7 +615,7 @@ void Navigator::Render()
         ImGui::PopFont();
 
         // render the "PopupViewOptions"
-        RenderViewOptions(&view_options_timeout, view_options_pos, iconsize);
+        RenderViewOptions(&view_options_timeout, view_options_pos, viewiconsize);
 
         ImGui::End();
     }
@@ -547,6 +689,12 @@ void Navigator::Render()
             RenderMainPannel(iconsize);
             reset_visitor = true;
         }
+        // pannel of the edited bundle
+        else if (selected_button[NAV_BUNDLE])
+        {
+            RenderBundlePannel(iconsize);
+            reset_visitor = true;
+        }
         // pannel to manage transition
         else if (selected_button[NAV_TRANS])
         {
@@ -554,7 +702,7 @@ void Navigator::Render()
             reset_visitor = true;
         }
         // pannel to create a source
-        else if (selected_button[NAV_NEW])
+        else if (selected_button[NAV_NEW] && !Draft::manager().active())
         {
             new_source_panel_.Render(this, iconsize);
             reset_visitor = true;
@@ -563,14 +711,31 @@ void Navigator::Render()
         else
         {
             if ( selected_index < 0 ) {
-                showPannelSource(NAV_MENU);
+                showPannelSource(rootButton());
             }
             else {
-                // rarely its not the current source that is selected
-                if ( selected_index != Mixer::manager().indexCurrentSource())
-                    showPannelSource( Mixer::manager().indexCurrentSource() );
-                // render current sources
-                source_panel_.Render(this, Mixer::manager().currentSource(), iconsize, reset_visitor);
+                Source *s = selected_index < NAV_MAX ? Mixer::manager().sourceAtIndex(selected_index) : nullptr;
+                const bool no_current = Mixer::manager().currentSource() == nullptr;
+                // the source in pannel is not current because its ViewSpace is hidden:
+                // keep showing its pannel (dimmed in the list of sources)
+                if ( s != nullptr && no_current && !Mixer::manager().viewSpaceShown(s->viewSpace()) )
+                    hidden_source_ = s;
+                // the ViewSpace of the source in pannel is shown again: make it current
+                else if ( s != nullptr && no_current && s == hidden_source_ ) {
+                    Mixer::manager().setCurrentIndex(selected_index);
+                    hidden_source_ = nullptr;
+                }
+                else
+                    hidden_source_ = nullptr;
+
+                if ( hidden_source_ == nullptr ) {
+                    // rarely its not the current source that is selected
+                    if ( selected_index != Mixer::manager().indexCurrentSource())
+                        showPannelSource( Mixer::manager().indexCurrentSource() );
+                    s = Mixer::manager().currentSource();
+                }
+                // render source pannel
+                source_panel_.Render(this, s, iconsize, reset_visitor);
                 reset_visitor = false;
             }
         }
@@ -616,11 +781,101 @@ void Navigator::RenderViewOptions(uint *timeout, const ImVec2 &pos, const ImVec2
 }
 
 
+int Navigator::RenderViewspaceSelector(const ImVec2 &size)
+{
+    ImGuiContext& g = *GImGui;
+    const ImVec2 top = ImGui::GetCursorPos();
+    const ImVec4* colors = ImGui::GetStyle().Colors;
+    const bool enabled = !View::isSwitchingView(Settings::application.current_view);
+    int ret = -1;
+
+    // remember the current source of its ViewSpace
+    Source *cs = Mixer::manager().currentSource();
+    if ( cs != nullptr )
+        viewspace_current_[cs->viewSpace()] = cs->id();
+
+    // small icons (FONT_DEFAULT) centered in each cell of a 2x2 grid
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+    const float icon_width = ImGui::GetTextLineHeightWithSpacing();
+
+    // active area inside a 10% margin, divided in 2x2 cells
+    // (vertical margin reduced to keep space for 2 rows of icons)
+    ImVec2 padding = size * 0.1f;
+    padding.x = padding.y ;
+    const ImVec2 cell = (size - padding * 2.f) * 0.5f;
+    const ImVec2 margin = ImMax( (cell - ImVec2(icon_width, icon_width)) * 0.5f, ImVec2(0.f, 0.f) );
+
+    for (uint c = 0; c < MAX_VIEWSPACE; ++c) {
+        // clockwise from top-left: column 0,1,1,0 and row 0,0,1,1
+        const uint col = ((c + 1) / 2) % 2;
+        const uint row = c / 2;
+        const ImVec2 pos = top + padding + ImVec2( (float) col * cell.x, (float) row * cell.y );
+        ImGui::PushID( (int) c );
+
+        // toggle action : operate on the whole cell
+        ImGui::SetCursorPos( pos );
+        if ( ImGui::InvisibleButton("##WorkspaceToggle", cell) && enabled ) {
+            // clic on the only workspace shown: show all
+            if ( Mixer::manager().viewSpaceOnlyShown(c) )
+                Mixer::manager().showAllViewSpaces();
+            // otherwise show only this workspace
+            else {
+                Mixer::manager().showViewSpace(c, true, true);
+                // no source in pannel, or not in this workspace
+                Source *ps = pannelSource();
+                if ( ps == nullptr || ps->viewSpace() != c ) {
+                    hidden_source_ = nullptr;
+                    // restore the source previously current in this workspace
+                    Session *se = Mixer::manager().session();
+                    SourceList::iterator it = se->find( viewspace_current_[c] );
+                    if ( it != se->end() && (*it)->viewSpace() != c )
+                        it = se->end();
+                    // otherwise, replace the source in pannel by the first source listed in this workspace
+                    if ( it == se->end() && ps != nullptr )
+                        for (it = se->begin(); it != se->end() && (*it)->viewSpace() != c; ++it);
+                    // make it current and show its pannel
+                    if ( it != se->end() ) {
+                        Mixer::manager().setCurrentSource( *it );
+                        showPannelSource( se->index(it) );
+                    }
+                    // no source in this workspace to replace the source in pannel: clear current
+                    else if ( ps != nullptr ) {
+                        Mixer::manager().unsetCurrentSource();
+                        if ( selected_index > -1 && selected_index < NAV_MAX )
+                            showPannelSource(-1);
+                    }
+                }
+            }
+        }
+        const bool hovered = ImGui::IsItemHovered();
+        if (hovered)
+            ret = (int) c;
+
+        // draw with disabled or hovered color
+        ImGui::PushStyleColor( ImGuiCol_Text, !enabled ? colors[ImGuiCol_TextDisabled]
+                                              : hovered ? colors[ImGuiCol_NavHighlight] : colors[ImGuiCol_Text] );
+        ImGui::SetCursorPos( pos + margin );
+        if ( Mixer::manager().viewSpaceShown(c) )
+            ImGuiToolkit::Icon(ICON_VI_VIEWSPACE_ON);
+        else
+            ImGuiToolkit::Icon(ICON_VI_VIEWSPACE_OFF);
+        ImGui::PopStyleColor();
+
+        ImGui::PopID();
+    }
+    ImGui::PopFont();
+
+    // continue below the grid
+    ImGui::SetCursorPos( top + ImVec2(0.f, size.y + g.Style.ItemSpacing.y) );
+
+    return ret;
+}
+
 bool Navigator::RenderMousePointerSelector(const ImVec2 &size)
 {
     ImGuiContext& g = *GImGui;
     ImVec2 top = ImGui::GetCursorPos();
-    bool enabled = Settings::application.current_view != View::TRANSITION;
+    bool enabled = !View::isSwitchingView(Settings::application.current_view);
     bool ret = false;
     ///
     /// interactive button of the given size: show menu if clic or mouse over
@@ -640,11 +895,11 @@ bool Navigator::RenderMousePointerSelector(const ImVec2 &size)
 
     // Change color of icons depending on context menu status
     const ImVec4* colors = ImGui::GetStyle().Colors;
-    if (!enabled) 
+    if (!enabled)
         ImGui::PushStyleColor( ImGuiCol_Text, colors[ImGuiCol_TextDisabled] );
     else if (ret || ImGui::IsPopupOpen("MenuMousePointer") )
         ImGui::PushStyleColor( ImGuiCol_Text, colors[ImGuiCol_DragDropTarget]);
-    else        
+    else
         ImGui::PushStyleColor( ImGuiCol_Text, colors[ImGuiCol_Text] );
 
     // Draw centered icon of Mouse pointer
@@ -752,7 +1007,8 @@ bool Navigator::RenderMousePointerSelector(const ImVec2 &size)
 
 void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
 {
-    if (Settings::application.current_view != View::TRANSITION) {
+    if (Settings::application.current_view != View::TRANSITION &&
+        Settings::application.current_view != View::PRESENTATION) {
         discardPannel();
         return;
     }
@@ -771,7 +1027,6 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
 
         // Transition options
         ImGuiToolkit::Spacing();
-        ImGui::Text("Parameters");
 
         static std::vector< std::tuple<int, int, std::string> > profile_fading = {
             {ICON_VI_TRANSITION_CROSS_FADE, "Cross fading"},
@@ -807,28 +1062,167 @@ void Navigator::RenderTransitionPannel(const ImVec2 &iconsize)
         if (ImGuiToolkit::TextButton("Duration "))
             Settings::application.transition.duration = 1.f;
 
-        // transition actions
-        ImGuiToolkit::Spacing();
-        ImGui::Text("Actions");
-        if ( ImGui::Button( ICON_FA_PLAY "  Play & Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->play(true);
-        }
-        if ( ImGui::Button( ICON_FA_FAST_FORWARD "  Fast Open", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->open();
-        }
-        if ( ImGui::Button( ICON_FA_TIMES "  Cancel ", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ){
-            TransitionView *tv = static_cast<TransitionView *>(Mixer::manager().view(View::TRANSITION));
-            if (tv) tv->cancel();
-        }
-
         // Exit transition
         ImGui::Text(" ");
-        if ( ImGui::Button( ICON_FA_DOOR_OPEN " Exit", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
+        if ( ImGui::Button( ICON_FA_TIMES_CIRCLE " Exit", ImVec2(ImGui::GetContentRegionAvail().x, 0)) )
             UserInterface::manager().setView(View::MIXING);
 
         ImGui::End();
+    }
+}
+
+void Navigator::RenderBundlePannel(const ImVec2 &iconsize)
+{
+    const ImGuiStyle& style = ImGui::GetStyle();
+
+    const std::vector<SessionGroupSource *> &bundles = Mixer::manager().editedBundles();
+    if (bundles.empty() || View::isSwitchingView(Settings::application.current_view))
+        return;
+    SessionGroupSource *bundle = bundles.back();
+
+    // level of bundle to go back to (-1 if none)
+    int leave_level = -1;
+
+    // Next window is a side pannel
+    ImGui::SetNextWindowPos( ImVec2(width_, 0), ImGuiCond_Always );
+    ImGui::SetNextWindowSize( ImVec2(pannel_width_, height_), ImGuiCond_Always );
+    ImGui::SetNextWindowBgAlpha( pannel_alpha_ ); // Transparent background
+    if (ImGui::Begin("##navigatorBundle", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration |  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
+    {
+        // Temporary fix for preventing horizontal scrolling (https://github.com/ocornut/imgui/issues/2915)
+        ImGui::SetScrollX(0);
+
+        // TITLE
+        ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+        ImGui::SetCursorPosY(0.5f * (iconsize.y - ImGui::GetTextLineHeight()));
+        ImGui::Text("Bundle");
+
+        // icons to leave the bundles, on the right of the title;
+        // from right to left: leave the current bundle, then each parent bundle
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
+        for (int level = (int) bundles.size() - 1; level > -1; --level) {
+            const float x = pannel_width_ - style.WindowPadding.x
+                            - (float) (bundles.size() - level) * iconsize.x;
+            ImGui::SetCursorPos( ImVec2(x, style.WindowPadding.y) );
+            ImGui::PushID(level);
+            if (ImGui::Selectable(ICON_FA_LEVEL_UP_ALT, false, 0, iconsize))
+                leave_level = level;
+            ImGui::PopID();
+            if (ImGui::IsItemHovered()) {
+                const std::string label = std::string("Leave bundle ") + bundles[level]->initials();
+                ImGuiToolkit::ToolTip(label.c_str(), level + 1 == (int) bundles.size() ? "Esc" : nullptr);
+            }
+        }
+        ImGui::PopStyleVar();
+        ImGui::PopFont();
+
+        // name
+        std::string sname = bundle->name();
+        ImGui::SetCursorPosY(width_ - style.WindowPadding.x);
+        ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+        if (ImGuiToolkit::InputText("Name", &sname) && !sname.empty()) {
+            // name must be unique in the session containing the bundle
+            Session *parent = bundles.size() > 1 ? bundles[bundles.size() - 2]->session()
+                                                 : Mixer::manager().liveSession();
+            bundle->setName( BaseToolkit::uniqueName(sname, parent->getNameList(bundle->id())) );
+        }
+
+        // properties of the bundle source
+        static ImGuiVisitor v;
+        static SessionGroupSource *visited = nullptr;
+        if (visited != bundle) {
+            v.reset();
+            visited = bundle;
+        }
+        bundle->accept(v);
+
+        //
+        // RESOLUTION
+        //
+        const FrameBuffer *output = bundle->frame();
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.f,0.f,0.f,0.f));
+        PannelHeader("Resolution", Settings::application.pannel_source, 3);
+        ImGui::PopStyleColor(1);
+        if (Settings::application.pannel_source[3]) {
+            if (output) {
+                // optimal height of bundle frame: one pixel of bundle for one pixel of
+                // the frame of the parent session, given the scale and crop of the bundle
+                Session *parent = bundles.size() > 1 ? bundles[bundles.size() - 2]->session()
+                                                     : Mixer::manager().liveSession();
+                const Group *g = bundle->group(View::GEOMETRY);
+                const glm::vec2 h( (g->crop_[1] - g->crop_[0]) * 0.5f, (g->crop_[2] - g->crop_[3]) * 0.5f );
+                const float optimal_height = parent->frame()->resolution().y
+                                             * MAX( ABS(g->scale_.x) / h.x, ABS(g->scale_.y) / h.y );
+                const float density = optimal_height > 0.f ? (float) output->height() / optimal_height : 1.f;
+
+                // show static info of resolution
+                static char dummy_str[512];
+                ImGuiToolkit::PushDisabled(true);
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                snprintf(dummy_str, 512, "%d", output->width());
+                ImGui::InputText("Width", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                snprintf(dummy_str, 512, "%d", output->height());
+                ImGui::InputText("Height", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                ImGui::SetNextItemWidth(IMGUI_RIGHT_ALIGN);
+                snprintf(dummy_str, 512, "%.2f", density);
+                ImGui::InputText("##Density", dummy_str, IM_ARRAYSIZE(dummy_str), ImGuiInputTextFlags_ReadOnly);
+                ImGuiToolkit::PopDisabled(true);
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("How many pixels are rendered per pixel of the parent session.\n"
+                                          "1.0 is optimal; lower values reduce quality and save resources, "
+                                          "higher values compute pixels that are not visible.");
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                // reset to optimal density (keep aspect ratio, limited to the maximum resolution)
+                if (ImGuiToolkit::TextButton("Density", "Change resolution\nfor optimal density (1.0)") && optimal_height > 0.f) {
+                    glm::vec3 res( optimal_height * output->aspectRatio(), optimal_height, 0.f );
+                    const glm::vec3 maxres = FrameBuffer::maxResolution();
+                    res *= MIN( 1.f, MIN( maxres.x / res.x, maxres.y / res.y ) );
+                    res = glm::round(res);
+                    if ( res != output->resolution()
+                         && FrameBuffer::isValidResolution(res, bundle->session()->frame()->flags()) ) {
+                        bundle->setResolution( res );
+                        Action::manager().store(bundle->name() + std::string(": Optimal resolution"));
+                    }
+                }
+            }
+
+            // resize the bundle to cover its visible sources
+            if ( ImGui::Button( ICON_FA_EXPAND_ARROWS_ALT "  Resize to fit content", ImVec2(IMGUI_RIGHT_ALIGN, 0)) )
+                Mixer::manager().fitBundle();
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Resize bundle to cover all its visible sources");
+
+            // reduce the resolution of the bundle by half (same geometry, less pixels)
+            if (output && output->width() / 2 >= FRAMEBUFFER_MIN_SIZE && output->height() / 2 >= FRAMEBUFFER_MIN_SIZE) {
+                if ( ImGui::Button( UNICODE_HALF "  Half resolution", ImVec2(IMGUI_RIGHT_ALIGN, 0)) ) {
+                    bundle->setResolution( glm::vec3(output->width() / 2, output->height() / 2, 0.f) );
+                    Action::manager().store(bundle->name() + std::string(": Reduced resolution"));
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Halve the width and height of the bundle frame");
+            }
+        }
+        else if (output) {
+            // show resolution next to the collapsed header
+            const float space = style.ItemSpacing.y;
+            ImVec2 pos_tmp = ImGui::GetCursorPos();
+            ImVec2 space_size = ImGui::CalcTextSize(" Resolution ", NULL);
+            space_size.x += ImGui::GetTextLineHeightWithSpacing() * 2.f;
+            space_size.y = -ImGui::GetTextLineHeightWithSpacing() - space;
+            ImGui::SetCursorPos( pos_tmp + space_size );
+            ImGui::Text("( %d x %d )", output->width(), output->height());
+            ImGui::SetCursorPos( pos_tmp );
+        }
+
+        ImGui::End();
+    }
+
+    // leave bundle(s) back to the level requested; the bundle becomes current source
+    if (leave_level > -1) {
+        while ((int) Mixer::manager().editedBundles().size() > leave_level)
+            Mixer::manager().exitBundle();
+        showPannelSource( Mixer::manager().indexCurrentSource() );
     }
 }
 
@@ -836,7 +1230,7 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
 {
     const ImGuiStyle& style = ImGui::GetStyle();
 
-    if (Settings::application.current_view == View::TRANSITION)
+    if (View::isSwitchingView(Settings::application.current_view))
         return;
 
     // Next window is a side pannel
@@ -872,17 +1266,17 @@ void Navigator::RenderMainPannel(const ImVec2 &iconsize)
         // Panel Menu
         //
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN) );
-        if (ImGui::BeginMenu("File")) {
+        if (ImGui::BeginMenu("File  ")) {
             UserInterface::manager().showMenuFile();
             ImGui::EndMenu();
         }
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + ImGui::GetTextLineHeightWithSpacing()) );
-        if (ImGui::BeginMenu("Edit")) {
+        if (ImGui::BeginMenu("Edit  ")) {
             UserInterface::manager().showMenuEdit();
             ImGui::EndMenu();
         }
         ImGui::SetCursorPos( ImVec2( pannel_width_ IMGUI_RIGHT_ALIGN, IMGUI_TOP_ALIGN + 2.f * ImGui::GetTextLineHeightWithSpacing()) );
-        if (ImGui::BeginMenu("Tools")) {
+        if (ImGui::BeginMenu("Tools  ")) {
             UserInterface::manager().showMenuWindows();
             ImGui::EndMenu();
         }

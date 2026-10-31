@@ -1,11 +1,14 @@
 #ifndef __UI_MANAGER_H_
 #define __UI_MANAGER_H_
 
-#define NAV_COUNT 68
+#define NAV_COUNT 69
 #define NAV_MAX   64
 #define NAV_NEW   65
 #define NAV_MENU  66
 #define NAV_TRANS 67
+#define NAV_BUNDLE 68
+
+#define CHECKER_RESOLUTION 5000
 
 #include <string>
 
@@ -21,6 +24,7 @@
 
 
 struct ImVec2;
+class Stream;
 void DrawInspector(uint texture, ImVec2 texturesize, ImVec2 cropsize, ImVec2 origin);
 
 class ToolBox
@@ -41,6 +45,7 @@ class UserInterface
     friend class Navigator;
     friend class SessionPanel;
     friend class PlaylistPanel;
+    friend class StripView;
     friend class SettingsPanel;
     friend class OutputPreviewWindow;
     friend class SourceControlWindow;
@@ -86,6 +91,9 @@ public:
 
     void StartScreenshot();
 
+    // open a session (.mix) or a playlist (.lix) file
+    void openFile(const std::string &path);
+
     // Favorites and playlists (used by the Navigator panels)
     Playlist favorites;
     std::string playlists_path;
@@ -112,6 +120,10 @@ protected:
     typedef enum { PREVIEW_NONE = 0, PREVIEW_OUTPUT, PREVIEW_SOURCE } PreviewMode;
     PreviewMode show_preview;
 
+    // checkerboard background texture
+    Stream *checker_background_;
+    uint checkerboard() const;
+
     // Dialogs
     DialogToolkit::OpenFileDialog *sessionopendialog;
     DialogToolkit::OpenFileDialog *sessionimportdialog;
@@ -134,12 +146,14 @@ protected:
     void showMenuEdit();
     void showMenuWindows();
     void showMenuBundle();
+    void RenderDraftIndicator();
     void showMenuConfig();
     bool saveOrSaveAs(bool force_versioning = false);
     void selectSaveFilename();
     void selectOpenFilename();
 
-    void RenderMetrics (bool* p_open, int* p_corner, int *p_mode);
+    void RenderMetrics (bool* p_open, int *p_mode);
+    void RenderDraft (bool* p_open, int* p_corner);
     void RenderSourceToolbar(bool *p_open, int* p_border, int *p_mode);
     int  RenderViewNavigator(int* shift);
     void RenderPreview();

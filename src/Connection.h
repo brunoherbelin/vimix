@@ -34,7 +34,9 @@ struct ConnectionInfo {
         alive = ALIVE;
     }
 
-    inline ConnectionInfo& operator = (const ConnectionInfo& o)
+    ConnectionInfo (const ConnectionInfo& o) = default;
+
+    inline ConnectionInfo& operator =(const ConnectionInfo& o)
     {
         if (this != &o) {
             this->address = o.address;

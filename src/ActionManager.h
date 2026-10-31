@@ -4,8 +4,12 @@
 #include <list>
 #include <string>
 #include <mutex>
+#include <chrono>
+#include <future>
 
 #include <tinyxml2.h>
+
+#include "Source/SourceList.h"
 
 #define MAX_COUNT_HISTORY 1000
 
@@ -29,6 +33,8 @@ public:
         return _instance;
     }
     void init (const std::string &label);
+    // capture again the initial step once the session is ready
+    void refreshInit ();
 
     // Undo History
     void store (const std::string &label, bool threaded = true);
@@ -54,22 +60,48 @@ public:
     void replace (uint64_t snapshotid = 0);
     void restore (uint64_t snapshotid = 0);
     void remove  (uint64_t snapshotid = 0);
+
+    // Search in a thread the snapshots identical to an older one (all content except
+    // label, date, view, thumbnail, generated ids of nodes, shaders and players,
+    // and name and play state of sources), and remove them when found (see update).
+    void removeIdentical ();
+    bool searching () const { return search_.valid(); }
+    // compare two XML elements (names, attributes and, recursively, all children)
+    static bool identical (const tinyxml2::XMLElement *a, const tinyxml2::XMLElement *b);
     void saveas  (const std::string& filename, uint64_t snapshotid = 0);
 
     std::string label (uint64_t snapshotid) const;
-    std::string date  (uint64_t snapshotid) const;
+    // date of snapshot (default time_point, i.e. epoch, if unknown)
+    std::chrono::system_clock::time_point date (uint64_t snapshotid) const;
     std::list<std::string> labels () const;
-    void setLabel (uint64_t snapshotid, const std::string &label);
+    // change the label of a version; returns false (and does not change it)
+    // if another version already has this label
+    bool setLabel (uint64_t snapshotid, const std::string &label);
     FrameBufferImage *thumbnail (uint64_t snapshotid) const;
 
-    float interpolation ();
-    void interpolate (float val, uint64_t snapshotid = 0);
+    // last snapshot restored (instantly or with animation)
+    uint64_t restoredSnapshot () const { return restored_id_; }
+
+    // restore with an animation of given duration (ms) from current state to the snapshot
+    // (sources created by the snapshot fade in, sources removed fade out)
+    void restore (uint64_t snapshotid, float duration);
+    // animation of restore is ongoing
+    inline bool animating () const { return animating_; }
+    // progress of animation [0 1]
+    float progress () const;
+    // finish animation immediately (and store the result in history)
+    void finish (bool store_history = true);
+    // to be called at each frame (dt in ms)
+    void update (float dt);
+    // a source is deleted
+    void forget (Source *s);
 
 private:
     tinyxml2::XMLDocument history_doc_;
     uint history_step_;
     uint history_max_step_;
     uint history_min_step_;
+    bool history_init_pending_;
     std::mutex history_access_;
     static void storeSession(Session *se, std::string label, bool thumbnail);
     void restore(uint target);
@@ -77,8 +109,17 @@ private:
     uint64_t snapshot_id_;
     tinyxml2::XMLElement *snapshot_node_;
 
+    uint64_t restored_id_;
+
+    // search of identical snapshots
+    std::future< std::list<uint64_t> > search_;
+
+    // animation of restore
     Interpolator *interpolator_;
-    tinyxml2::XMLElement *interpolator_node_;
+    SourceList removed_;
+    bool animating_;
+    float duration_;
+    float progress_;
 
 };
 

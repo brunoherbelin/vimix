@@ -24,6 +24,7 @@
 #include <gst/gst.h>
 
 // vmix
+#include "defines.h"
 #include "Log.h"
 #include "Canvas.h"
 #include "Settings.h"
@@ -253,8 +254,8 @@ int main(int argc, char *argv[])
     Rendering::manager().draw();
     Rendering::manager().show(!headlessRequested);
 
-    // try to load file given in argument
-    Mixer::manager().load(_openfile);
+    // try to open file given in argument
+    UserInterface::manager().openFile(_openfile);
 
     // Initialize Canvas (reads config)
     Canvas::manager().init();

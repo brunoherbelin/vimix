@@ -679,6 +679,20 @@ void ImageFilter::setProgramParameters(const std::map< std::string, float > &par
     updateParameters();
 }
 
+void ImageFilter::updateProgramParameters(const std::map< std::string, float > &parameters)
+{
+    bool changed = false;
+    for (const auto &p : parameters) {
+        if ( program_.hasParameter(p.first) && program_.parameters()[p.first] != p.second ) {
+            program_.setParameter(p.first, p.second);
+            changed = true;
+        }
+    }
+
+    if (changed)
+        updateParameters();
+}
+
 void ImageFilter::setProgramParameter(const std::string &p, float value)
 {
     if (value == NAN || p.empty())

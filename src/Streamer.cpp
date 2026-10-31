@@ -143,9 +143,6 @@ Streaming::~Streaming()
 
 bool Streaming::busy()
 {
-    if (streamers_.empty())
-        return false;
-
     streamers_lock_.lock();
     bool b = false;
     std::vector<VideoStreamer *>::const_iterator sit = streamers_.begin();
@@ -367,6 +364,12 @@ void Streaming::_addStream(const std::string &sender, int reply_to,
     FrameGrabbing::manager().add(streamer);
 }
 
+
+VideoStreamer::~VideoStreamer()
+{
+    // ensure Streaming never keeps a pointer to a deleted streamer
+    Streaming::manager().removeStream(this);
+}
 
 VideoStreamer::VideoStreamer(const NetworkToolkit::StreamConfig &conf): FrameGrabber(), config_(conf), stopped_(false)
 {

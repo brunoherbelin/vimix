@@ -22,6 +22,7 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "defines.h"
 #include "Log.h"
 #include "Scene/Decorations.h"
 #include "Visitor/Visitor.h"
@@ -202,7 +203,25 @@ glm::ivec2 ShaderSource::icon() const
     return glm::ivec2(ICON_VI_SOURCE_SHADER);
 }
 
+std::string_view ShaderSource::type() const
+{
+    return SOURCE_TYPE_SHADER;
+}
+
 std::string ShaderSource::info() const
 {
     return "Shader";
+}
+
+Source::Parameters ShaderSource::parameters () const
+{
+    if (filter_)
+        return filter_->program().parameters();
+    return Parameters();
+}
+
+void ShaderSource::setParameters (const Parameters &p)
+{
+    if (filter_)
+        filter_->updateProgramParameters(p);
 }

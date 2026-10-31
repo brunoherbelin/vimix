@@ -40,6 +40,7 @@
 #include "Toolkit/SystemToolkit.h"
 #include "Settings.h"
 #include "Mixer.h"
+#include "Draft.h"
 #include "Recorder.h"
 #include "Connection.h"
 #include "Streamer.h"
@@ -103,21 +104,21 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
     if (Outputs::manager().enabled( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU  ) ) {
         if (save_and_continue) {
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-            if ( Settings::application.render.gst_glmemory_context && 
-                 Settings::application.render.gpu_decoding && 
+            if ( Settings::application.render.gst_glmemory_context &&
+                 Settings::application.render.gpu_decoding &&
                  GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
                 Outputs::manager().chain(
-                    new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
+                    new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename()))
                 );
             } else
 #endif
             {
                 Outputs::manager().chain(
-                    new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename()))
+                    new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename()))
                 );
             }
-        } 
-        else  
+        }
+        else
             Outputs::manager().stop( FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU  );
     }
     else {
@@ -126,18 +127,18 @@ void OutputPreviewWindow::ToggleRecord(bool save_and_continue)
             timeout = 0;
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-        if ( Settings::application.render.gst_glmemory_context && 
-             Settings::application.render.gpu_decoding && 
+        if ( Settings::application.render.gst_glmemory_context &&
+             Settings::application.render.gpu_decoding &&
              GPUVideoRecorder::hasProfile(Settings::application.record.profile) ) {
             Outputs::manager().start(
-                new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
+                new GPUVideoRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename())),
                 std::chrono::seconds(Settings::application.record.delay), timeout
             );
-        } else 
+        } else
 #endif
         {
             Outputs::manager().start(
-                new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())),
+                new VideoRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename())),
                 std::chrono::seconds(Settings::application.record.delay), timeout
             );
         }
@@ -185,7 +186,7 @@ void OutputPreviewWindow::ToggleSharedMemory()
 bool OutputPreviewWindow::ToggleLoopbackCamera()
 {
     bool need_initialization = false;
-    if (Outputs::manager().enabled( FrameGrabber::GRABBER_LOOPBACK )) 
+    if (Outputs::manager().enabled( FrameGrabber::GRABBER_LOOPBACK ))
         Outputs::manager().stop( FrameGrabber::GRABBER_LOOPBACK );
     else {
         if (Settings::application.loopback_camera < 1)
@@ -210,7 +211,7 @@ void OutputPreviewWindow::Render()
     bool openInitializeSystemLoopback = false;
 
     // default to show mixer output
-    FrameBuffer *output = Mixer::manager().session()->frame();
+    FrameBuffer *output = Mixer::manager().liveSession()->frame();
     ImVec2 _cropsize(1.f,1.f);
 
     // tries to show canvas output if selected
@@ -220,8 +221,8 @@ void OutputPreviewWindow::Render()
         // get dimensions of canvas
         const glm::vec2 _crop = output->projectionSize();
         _cropsize = ImVec2(_crop.x, _crop.y);
-    } 
-    
+    }
+
     // ensure valid output
     if (output)
     {
@@ -260,13 +261,13 @@ void OutputPreviewWindow::Render()
                 // select what to show in window & for recording
                 ImGui::Separator();
 
-                bool busy = Outputs::manager().enabled( 
-                    FrameGrabber::GRABBER_VIDEO, 
-                    FrameGrabber::GRABBER_GPU, 
+                bool busy = Outputs::manager().enabled(
+                    FrameGrabber::GRABBER_VIDEO,
+                    FrameGrabber::GRABBER_GPU,
                     FrameGrabber::GRABBER_P2P,
                     FrameGrabber::GRABBER_BROADCAST,
                     FrameGrabber::GRABBER_SHM,
-                    FrameGrabber::GRABBER_LOOPBACK 
+                    FrameGrabber::GRABBER_LOOPBACK
                 );
 
                 if (ImGui::MenuItem(ICON_FA_EXPAND "   Full Mix Output", nullptr, Settings::application.widget.preview_output == -1, !busy))
@@ -296,7 +297,7 @@ void OutputPreviewWindow::Render()
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
                 if ( ImGui::MenuItem( MENU_CAPTUREFRAME, SHORTCUT_CAPTURE_DISPLAY) ) {
-                    Outputs::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().session()->filename())));
+                    Outputs::manager().start(new PNGRecorder(SystemToolkit::base_filename( Mixer::manager().liveSession()->filename())));
                 }
                 ImGui::PopStyleColor(1);
 
@@ -310,7 +311,7 @@ void OutputPreviewWindow::Render()
                 }
                 // Stop recording menu (recorder already exists)
                 else if (Outputs::manager().enabled(FrameGrabber::GRABBER_VIDEO, FrameGrabber::GRABBER_GPU)) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));                    
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RECORD, 0.8f));
                     if ( ImGui::MenuItem( ICON_FA_SQUARE "  Stop Record", SHORTCUT_RECORD) ) {
                         // prepare for next time user open new source panel to show the recording
                         if (Settings::application.recentRecordings.load_at_start)
@@ -359,7 +360,9 @@ void OutputPreviewWindow::Render()
                     // offer to open config panel from here for more options
                     ImGui::SameLine(combo_width, IMGUI_SAME_LINE);
                     if (ImGuiToolkit::IconButton(ICON_VI_PANNEL_SETTINGS, "Settings")) {
-                        Settings::application.pannel_settings[0] = true;
+                        ImGuiToolkit::OpenHeader(Settings::application.pannel_settings, 0,
+                                                 IM_ARRAYSIZE(Settings::application.pannel_settings),
+                                                 Settings::application.exclusive_header);
                         UserInterface::manager().navigator.showConfig();
                     }
 
@@ -381,7 +384,7 @@ void OutputPreviewWindow::Render()
                         if (selected_path > 2)
                             recordFolderDialog->open();
                         else if (selected_path > 1)
-                            Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+                            Settings::application.record.path = SystemToolkit::path_filename( Mixer::manager().liveSession()->filename() );
                         else if (selected_path > 0)
                             Settings::application.record.path = SystemToolkit::home_path();
                     }
@@ -533,7 +536,7 @@ void OutputPreviewWindow::Render()
             imagesize.y = MIN( imagesize.x  * _cropsize.y / _cropsize.x, imagesize.y);
             // image respects original aspect ratio
             imagesize.x = imagesize.y * ar * _cropsize.x / _cropsize.y;
-        } 
+        }
         else {
             imagesize.x = MIN( imagesize.y  * ar * _cropsize.x / _cropsize.y, imagesize.x);
             // image respects original aspect ratio
@@ -544,10 +547,76 @@ void OutputPreviewWindow::Render()
         ImVec2 imagepos = draw_pos + (areasize - imagesize) * 0.5f;
         ImGui::SetCursorScreenPos(imagepos);
 
+        // draft frame to compare with output
+        FrameBuffer *draft = nullptr;
+        if (Draft::manager().active() && Settings::application.widget.preview_output < 0)
+            draft = Mixer::manager().session()->frame();
+        float split = CLAMP(Settings::application.widget.draft_slider, 0.f, 1.f);
+
         // 100% opacity for the image (ensures true colors)
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
-        ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
+        if (draft) {
+            // LEFT of split : live output
+            if (split > 0.f)
+                ImGui::Image((void*)(intptr_t)output->texture(), ImVec2(imagesize.x * split, imagesize.y),
+                             ImVec2(0.f, 0.f), ImVec2(split, 1.f));
+            // RIGHT of split : draft
+            if (split < 1.f) {
+                ImGui::SetCursorScreenPos(imagepos + ImVec2(imagesize.x * split, 0.f));
+                ImGui::Image((void*)(intptr_t)draft->texture(), ImVec2(imagesize.x * (1.f - split), imagesize.y),
+                             ImVec2(split, 0.f), ImVec2(1.f, 1.f));
+            }
+        }
+        else
+            ImGui::Image((void*)(intptr_t)output->texture(), imagesize);
         ImGui::PopStyleVar();
+
+        ///
+        /// DRAFT mode comparison (before image interaction)
+        ///
+        if (Draft::manager().busy())
+        {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            const ImU32 draft_color = ImGui::GetColorU32(ImGuiCol_PlotHistogram, 0.5f);
+
+            // frame around image
+            draw_list->AddRect(imagepos, imagepos + imagesize, draft_color, 0.f, 0, 1.f);
+
+            if (draft) {
+                // pre-calculate slider coordinates in rendering area
+                const ImVec2 slider = imagesize * ImVec2(split, 1.f);
+                ImU32 slider_color = ImGui::GetColorU32(ImGuiCol_PlotHistogram, 0.8f);
+                if (!magnifying_glass)
+                {
+                    // user input : move slider horizontally
+                    ImGui::SetCursorScreenPos(imagepos + ImVec2(- 20.f, 0.5f * imagesize.y - 20.0f));
+                    ImGuiToolkit::InvisibleSliderFloat("#draft_slider", &Settings::application.widget.draft_slider, 0.f, 1.f, ImVec2(imagesize.x + 40.f, 40.0f) );
+                    // affordance: cursor change to horizontal arrows
+                    if (ImGui::IsItemHovered() || ImGui::IsItemFocused()) {
+                        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+                        slider_color = ImGui::GetColorU32(ImGuiCol_PlotHistogram);
+                    }
+                    // graphical indication of slider
+                    draw_list->AddCircleFilled(imagepos + slider * ImVec2(1.f, 0.5f), 20.f, slider_color, 26);
+                }
+                // graphical indication of separator (vertical line)
+                draw_list->AddLine(imagepos + slider * ImVec2(1.f, 0.0f), imagepos + slider, slider_color, 1);
+
+                // labels on each side of the separator
+                const float xs = imagepos.x + slider.x;
+                const char *label_live = "Live " ICON_FA_CARET_LEFT;
+                const ImVec2 size_live = ImGui::CalcTextSize(label_live);
+                if (xs - size_live.x - 6.f > imagepos.x) {
+                    ImGui::SetCursorScreenPos(ImVec2(xs - size_live.x - 6.f, imagepos.y + 4.f));
+                    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram), "%s", label_live);
+                }
+                const char *label_draft = ICON_FA_CARET_RIGHT " Draft";
+                if (xs + ImGui::CalcTextSize(label_draft).x + 6.f < imagepos.x + imagesize.x) {
+                    ImGui::SetCursorScreenPos(ImVec2(xs + 6.f, imagepos.y + 4.f));
+                    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram), "%s", label_draft);
+                }
+            }
+        }
 
         // disable magnifying glass if window is deactivated
         if (g.NavWindow != g.CurrentWindow)
@@ -568,8 +637,13 @@ void OutputPreviewWindow::Render()
             ImGui::SetHoveredID(0);
         }
         // show magnifying glass if active and mouse hovering
-        else if (hovered && magnifying_glass)
-            DrawInspector(output->texture(), areasize, imagesize, imagepos);
+        else if (hovered && magnifying_glass) {
+            // in DRAFT mode, inspect the draft on the right of the slider
+            if (draft && !ImGui::IsMouseHoveringRect(imagepos, imagepos + imagesize * ImVec2(split, 1.f)))
+                DrawInspector(draft->texture(), areasize, imagesize, imagepos);
+            else
+                DrawInspector(output->texture(), areasize, imagesize, imagepos);
+        }
 
         ///
         /// Icons overlays
@@ -675,7 +749,7 @@ void OutputPreviewWindow::Render()
             h += (Settings::application.accept_connections ? 1.f : 0.f);
             draw_list->AddRectFilled(draw_pos,  ImVec2(draw_pos.x + areasize.x, draw_pos.y + h * r), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(draw_pos);
-            ImGui::Text(" " ICON_FA_DESKTOP "  %.0f x %.0f px, %.d fps", 
+            ImGui::Text(" " ICON_FA_DESKTOP "  %.0f x %.0f px, %.d fps",
                     float(output->width()) * _cropsize.x, float(output->height()) * _cropsize.y, int(Mixer::manager().fps()) );
             if (Settings::application.accept_connections)
                 ImGui::Text( "  " ICON_FA_SHARE_ALT_SQUARE "   Available as %s (%ld peer connected)",
@@ -736,5 +810,3 @@ void OutputPreviewWindow::Render()
         ImGui::EndPopup();
     }
 }
-
-

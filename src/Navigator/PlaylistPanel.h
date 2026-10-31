@@ -28,7 +28,14 @@
 class PlaylistPanel : public NavigatorPanel
 {
 public:
+    PlaylistPanel() : start_presentation_(false) {}
     void Render();
+
+    // request to start presentation of the current list at next Render
+    inline void startPresentation() { start_presentation_ = true; }
+
+private:
+    bool start_presentation_;
 };
 
 #endif /* PLAYLISTPANEL_H */

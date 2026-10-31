@@ -2,7 +2,6 @@
 #define DECORATIONS_H
 
 
-#include <string>
 #include <glm/glm.hpp>
 
 #include "Primitives.h"
@@ -85,6 +84,8 @@ public:
         IMAGE,
         SEQUENCE,
         VIDEO,
+        MUSIC,
+        VIDEOSPLIT,
         SESSION,
         CLONE,
         RENDER,

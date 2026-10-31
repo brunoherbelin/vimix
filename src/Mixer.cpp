@@ -49,6 +49,8 @@
 #include "Source/DeviceSource.h"
 #include "Source/ScreenCaptureSource.h"
 #include "Source/MultiFileSource.h"
+#include "Source/SplitMediaSource.h"
+#include "Source/AudioSource.h"
 #include "Source/StreamSource.h"
 #include "Source/NetworkSource.h"
 #include "Source/ShaderSource.h"
@@ -58,12 +60,13 @@
 
 #include "Canvas.h"
 #include "SessionCreator.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "ActionManager.h"
 #include "MixingGroup.h"
 #include "FrameGrabbing.h"
 #include "Visitor/BoundingBoxVisitor.h"
 
+#include "Draft.h"
 #include "Mixer.h"
 
 #define THREADED_LOADING
@@ -74,7 +77,7 @@ std::vector< SessionSource * > sessionSourceToImport_;
 const std::chrono::milliseconds timeout_ = std::chrono::milliseconds(4);
 
 
-Mixer::Mixer() : session_(new Session), back_session_(nullptr), sessionSwapRequested_(false),
+Mixer::Mixer() : session_(new Session), back_session_(nullptr), live_(nullptr), sessionSwapRequested_(false),
     current_view_(nullptr), busy_(false), dt_(16.f), dt__(16.f)
 {
     // unsused initial empty session
@@ -145,7 +148,7 @@ void Mixer::update()
             // all ok
             else {
                 // set session filename
-                session_->setFilename(filename);
+                liveSession()->setFilename(filename);
                 // cosmetics saved ok
                 Rendering::manager().mainWindow().setTitle(SystemToolkit::filename(filename));
                 Settings::application.recentSessions.push(filename);
@@ -155,8 +158,8 @@ void Mixer::update()
         }
     }
 
-    // if there is a session source to import
-    if (!sessionSourceToImport_.empty()) {
+    // if there is a session source to import (not in DRAFT mode)
+    if (!sessionSourceToImport_.empty() && !Draft::manager().active()) {
         // get the session source to be imported
         SessionSource *source = sessionSourceToImport_.back();
         // merge (&delete) the session inside this session source
@@ -183,8 +186,8 @@ void Mixer::update()
         }
     }
 
-    // if there is a source candidate for this session
-    if (candidate_sources_.size() > 0) {
+    // if there is a source candidate for this session (not in DRAFT mode)
+    if (candidate_sources_.size() > 0 && !Draft::manager().active()) {
         // the first element of the pair is the source to insert
         // NB: only make the last candidate the current source in Mixing view
         insertSource(candidate_sources_.front().first, candidate_sources_.size() > 1 ? View::INVALID : View::MIXING);
@@ -212,19 +215,48 @@ void Mixer::update()
     // compute stabilized dt__
     dt__ = 0.05f * dt_ + 0.95f * dt__;
 
+    // animate draft and restore of snapshot
+    Draft::manager().update(dt_);
+    Action::manager().update(dt_);
+
+    // sources of a ready session execute their initial callbacks (e.g. play) in update
+    bool session_was_started = liveSession()->started();
+
+    // update live session (DRAFT and BUNDLE modes)
+    if (live_)
+        live_->update(dt_);
+
     // update session and associated sources
-    session_->update(dt_);
+    // (unless already updated by the bundles in BUNDLE mode)
+    if ( !bundlesUpdateSession() )
+        session_->update(dt_);
+
+    // history start can be captured after the initial callbacks
+    if (session_was_started)
+        Action::manager().refreshInit();
+
+    // show in views only the sources of shown ViewSpaces
+    for (auto it = session_->begin(); it != session_->end(); ++it) {
+        const bool shown = viewSpaceShown( (*it)->viewSpace() );
+        (*it)->setViewSpaceShown( shown );
+        // hidden sources cannot be selected
+        if ( !shown && selection().contains(*it) ) {
+            if ( it == current_source_ )
+                unsetCurrentSource();
+            selection().remove(*it);
+        }
+    }
 
     // update canvases
     Canvas::manager().update(dt_);
 
     // grab frames to recorders & streamers
-    FrameBuffer *output = session_->frame();
+    FrameBuffer *output = liveSession()->frame();
     // tries to show canvas output if selected
     if (Settings::application.widget.preview_output > -1) {
         Settings::application.widget.preview_output = MIN( Canvas::manager().size()-1, Settings::application.widget.preview_output );
         output = Canvas::manager().at(Settings::application.widget.preview_output)->frame();
-    } 
+    }
     FrameGrabbing::manager().grabFrame(output, static_cast<guint64>(dt__));
 
     // manage sources which failed update
@@ -232,6 +264,13 @@ void Mixer::update()
         // go through all failed sources
         SourceListUnique _failedsources = session_->failedSources();
         for(auto it = _failedsources.begin(); it != _failedsources.end(); ++it)  {
+
+            // in BUNDLE mode, leave a bundle which would become empty
+            // (then managed as a failed source of the parent session)
+            if ( editingBundle() && session_->size() < 2 ) {
+                exitAllBundles();
+                break;
+            }
 
             // intervention depends on the severity of the failure
             Source::Failure fail = (*it)->failed();
@@ -282,6 +321,8 @@ void Mixer::update()
         appearance_.update(dt_);
         transition_.update(dt_);
         displays_.update(dt_);
+        presentation_.update(dt_);
+        snapshots_.update(dt_);
 
         // deep update was performed
         --View::need_deep_update_;
@@ -296,6 +337,18 @@ void Mixer::draw()
     // draw the current view in the window
     current_view_->draw();
 
+}
+
+// test if the file has the extension of an audio file
+static bool is_audio_file(const std::string &path)
+{
+    static const std::vector<std::string> patterns = AUDIO_FILES_PATTERN;
+    for (const std::string &p : patterns) {
+        // pattern is '*.ext'
+        if ( SystemToolkit::has_extension(path, p.substr(2)) )
+            return true;
+    }
+    return false;
 }
 
 // manangement of sources
@@ -314,6 +367,18 @@ Source * Mixer::createSourceFile(const std::string &path, bool disable_hw_decodi
             SessionFileSource *ss = new SessionFileSource;
             ss->load(path);
             s = ss;
+        }
+        else if ( is_audio_file(path) ) {
+            // audio files can be used only if audio is enabled
+            if ( !Settings::application.accept_audio ) {
+                Log::Notify("Enable audio in Settings to use audio files.");
+                return nullptr;
+            }
+            // create an audio source
+            AudioSource *as = new AudioSource;
+            as->setPath(path);
+            as->play(true);
+            s = as;
         }
         else {
             // (try to) create media source by default
@@ -352,6 +417,7 @@ Source * Mixer::createSourceMultifile(const std::list<std::string> &list_files, 
             // try to create a sequence
             MultiFileSource *mfs = new MultiFileSource;
             mfs->setSequence(sequence, fps);
+            mfs->play(true);
             s = mfs;
 
             // propose a new name
@@ -365,11 +431,32 @@ Source * Mixer::createSourceMultifile(const std::list<std::string> &list_files, 
     return s;
 }
 
+Source * Mixer::createSourceSplitMedia(const std::list<std::string> &list_files)
+{
+    // ready to create a source
+    Source *s = nullptr;
+
+    if ( list_files.size() > 1 ) {
+
+        // create a split media source
+        SplitMediaSource *sms = new SplitMediaSource;
+        sms->setFiles(list_files);
+        sms->play(true);
+        s = sms;
+
+        // propose a new name
+        std::string name = SystemToolkit::base_filename( BaseToolkit::common_prefix(list_files) );
+        s->setName( name.empty() ? SystemToolkit::base_filename(list_files.front()) : name );
+    }
+
+    return s;
+}
+
 Source * Mixer::createSourceRender(int provenance)
 {
     // ready to create a source
     RenderSource *s = new RenderSource;
-    s->setRenderingProvenance( (RenderSource::RenderSourceProvenance)provenance );  
+    s->setRenderingProvenance( (RenderSource::RenderSourceProvenance)provenance );
     s->setSession(session_);
 
     // propose a new name based on session name
@@ -497,6 +584,25 @@ Source *Mixer::createSourceShader(glm::ivec2 res)
     return s;
 }
 
+Source *Mixer::createSourceShaderFile(const std::string &path, glm::ivec2 res)
+{
+    if (SystemToolkit::get_text_content(path).empty()) {
+        Log::Notify("File '%s' not found or not a text file.", path.c_str());
+        return nullptr;
+    }
+
+    ShaderSource *s = new ShaderSource;
+    s->setResolution(glm::vec3(res.x, res.y, 0.f));
+
+    // the shader code is read from the file
+    s->setProgram( FilteringProgram(SystemToolkit::base_filename(path), "", "", { }, path) );
+
+    // propose a new name
+    s->setName( SystemToolkit::base_filename(path) );
+
+    return s;
+}
+
 Source * Mixer::createSourceGroup()
 {
     SessionGroupSource *s = new SessionGroupSource;
@@ -520,8 +626,8 @@ CloneSource * Mixer::createSourceClone(const std::string &namesource, bool copy_
     else if (current_source_ != session_->end())
         origin = current_source_;
 
-    // have an origin, can clone it
-    if (origin != session_->end()) {
+    // have an origin with an image, can clone it
+    if (origin != session_->end() && (*origin)->hasImage()) {
         // create a source
         s = (*origin)->clone();
 
@@ -577,6 +683,11 @@ void Mixer::insertSource(Source *s, View::Mode m)
 {
     if ( s != nullptr )
     {
+        // new sources appear in the first ViewSpace shown
+        // (clones and pasted sources already have a ViewSpace)
+        if ( !s->viewSpaceAssigned() )
+            s->setViewSpace( firstShownViewSpace() );
+
         // avoid duplicate name
         renameSource(s);
 
@@ -637,6 +748,7 @@ void Mixer::replaceSource(Source *previous, Source *s)
     loader.applyImageProcessing(*s, SessionVisitor::getClipboard(previous));
     s->setImageProcessingEnabled( previous->imageProcessingEnabled() );
     s->blendingShader()->blending = previous->blendingShader()->blending;
+    s->setViewSpace( previous->viewSpace() );
 
     // add source 's' and remove source 'previous'
     candidate_sources_.push_back( std::make_pair(s, previous) );
@@ -650,6 +762,10 @@ bool Mixer::recreateSource(Source *s)
 
     if (replacement == nullptr)
         return false;
+
+    // stop draft or snapshot animation of source
+    Draft::manager().forget(s);
+    Action::manager().forget(s);
 
     // remove source Nodes from all views
     detachSource(s);
@@ -668,10 +784,20 @@ bool Mixer::recreateSource(Source *s)
 
 void Mixer::deleteSource(Source *s)
 {
+    // a bundle cannot be empty
+    if ( s != nullptr && editingBundle() && session_->size() < 2 ) {
+        Log::Notify("Cannot delete the last source of a bundle.");
+        return;
+    }
+
     if ( s != nullptr )
     {
         // keep name for log
         std::string name = s->name();
+
+        // stop draft or snapshot animation of source
+        Draft::manager().forget(s);
+        Action::manager().forget(s);
 
         // remove source Nodes from all views
         detachSource(s);
@@ -696,6 +822,181 @@ void Mixer::deleteSource(Source *s)
 }
 
 
+void Mixer::attachToViews(Source *s)
+{
+    if ( s != nullptr ) {
+        // force update
+        s->touch();
+        // attach to views
+        // (sources without image are only in Mixing view)
+        mixing_.scene.ws()->attach( s->group(View::MIXING) );
+        if ( s->hasImage() ) {
+            geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
+            layer_.scene.ws()->attach( s->group(View::LAYER) );
+            appearance_.scene.ws()->attach( s->group(View::TEXTURE) );
+        }
+    }
+}
+
+void Mixer::detachFromViews(Source *s)
+{
+    if ( s != nullptr ) {
+        mixing_.scene.ws()->detach( s->group(View::MIXING) );
+        geometry_.scene.ws()->detach( s->group(View::GEOMETRY) );
+        layer_.scene.ws()->detach( s->group(View::LAYER) );
+        appearance_.scene.ws()->detach( s->group(View::TEXTURE) );
+        transition_.scene.ws()->detach( s->group(View::TRANSITION) );
+    }
+}
+
+void Mixer::switchViews(Session *from, Session *to)
+{
+    // remember current source and selection
+    uint64_t current = currentSource() ? currentSource()->id() : 0;
+    SourceIdList selected = ids( selection().getCopy() );
+    unsetCurrentSource();
+    selection().clear();
+
+    // detach sources and mixing groups of session 'from'
+    for (auto it = from->begin(); it != from->end(); ++it)
+        detachFromViews(*it);
+    for (auto g = from->beginMixingGroup(); g != from->endMixingGroup(); ++g)
+        (*g)->attachTo(nullptr);
+
+    // attach sources and mixing groups of session 'to'
+    for (auto it = to->begin(); it != to->end(); ++it)
+        attachToViews(*it);
+    for (auto g = to->beginMixingGroup(); g != to->endMixingGroup(); ++g)
+        (*g)->attachTo( mixing_.scene.fg() );
+
+    // session 'to' is edited
+    session_ = to;
+    current_source_ = session_->end();
+    current_source_index_ = -1;
+
+    // restore selection and current source (sources with same id)
+    for (auto id = selected.begin(); id != selected.end(); ++id) {
+        SourceList::iterator it = session_->find(*id);
+        if (it != session_->end())
+            selection().add(*it);
+    }
+    if (current > 0)
+        setCurrentSource(current);
+
+    // needs refresh
+    ++View::need_deep_update_;
+}
+
+void Mixer::setEditedSession(Session *draft)
+{
+    if (draft == nullptr || live_ != nullptr)
+        return;
+
+    // edit the draft session, keep the live session
+    live_ = session_;
+    switchViews(live_, draft);
+}
+
+void Mixer::restoreEditedSession()
+{
+    if (live_ == nullptr)
+        return;
+
+    // edit the live session again
+    Session *draft = session_;
+    switchViews(draft, live_);
+    live_ = nullptr;
+
+    // delete the draft session later
+    garbage_.push_back(draft);
+}
+
+void Mixer::enterBundle(SessionGroupSource *bundle)
+{
+    if (Draft::manager().active() || editingDraft()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+
+    // limit the number of imbricated bundles edited
+    if (bundles_.size() >= MAX_BUNDLE_LEVEL) {
+        Log::Notify("Cannot edit more than %d levels of bundles.", MAX_BUNDLE_LEVEL);
+        return;
+    }
+
+    // only a ready bundle of the edited session can be edited
+    if (bundle == nullptr || session_->find(bundle) == session_->end() || !bundle->ready()
+        || bundle->failed() || bundle->session() == nullptr || bundle->session()->frame() == nullptr)
+        return;
+
+    // no transition inside a bundle
+    if (current_view_ == &transition_)
+        setView(View::MIXING);
+
+    // edit the session of the bundle, keep the live session
+    if (live_ == nullptr)
+        live_ = session_;
+    bundles_.push_back(bundle);
+    switchViews(session_, bundle->session());
+
+    Log::Info("Editing bundle '%s'.", bundle->name().c_str());
+}
+
+void Mixer::exitBundle()
+{
+    if (bundles_.empty())
+        return;
+
+    // edit the parent session again (live session if last bundle)
+    SessionGroupSource *bundle = bundles_.back();
+    bundles_.pop_back();
+    switchViews(session_, bundles_.empty() ? live_ : bundles_.back()->session());
+    if (bundles_.empty())
+        live_ = nullptr;
+
+    // the bundle is the current source
+    setCurrentSource(bundle);
+}
+
+void Mixer::exitAllBundles()
+{
+    if (bundles_.empty())
+        return;
+
+    // edit the live session again
+    SessionGroupSource *bundle = bundles_.front();
+    bundles_.clear();
+    switchViews(session_, live_);
+    live_ = nullptr;
+
+    // the outer bundle is the current source
+    setCurrentSource(bundle);
+}
+
+void Mixer::fitBundle()
+{
+    if (bundles_.empty())
+        return;
+
+    // resize the edited bundle to cover its visible sources
+    SessionGroupSource *bundle = bundles_.back();
+    if ( bundle->fitToContent() ) {
+        ++View::need_deep_update_;
+        Action::manager().store(bundle->name() + std::string(": Resized to content"));
+    }
+}
+
+bool Mixer::bundlesUpdateSession() const
+{
+    // a bundle updates its session only when active and playing
+    // (see SessionSource::update)
+    for (auto b = bundles_.begin(); b != bundles_.end(); ++b) {
+        if ( !(*b)->active() || !(*b)->playing() )
+            return false;
+    }
+    return !bundles_.empty();
+}
+
 void Mixer::attachSource(Source *s)
 {
     if ( s != nullptr )
@@ -703,10 +1004,13 @@ void Mixer::attachSource(Source *s)
         // force update
         s->touch();
         // attach to views
+        // (sources without image are only in Mixing view)
         mixing_.scene.ws()->attach( s->group(View::MIXING) );
-        geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
-        layer_.scene.ws()->attach( s->group(View::LAYER) );
-        appearance_.scene.ws()->attach( s->group(View::TEXTURE) );
+        if ( s->hasImage() ) {
+            geometry_.scene.ws()->attach( s->group(View::GEOMETRY) );
+            layer_.scene.ws()->attach( s->group(View::LAYER) );
+            appearance_.scene.ws()->attach( s->group(View::TEXTURE) );
+        }
         // attach to session
         session_->attachSource(s);
     }
@@ -776,6 +1080,10 @@ void Mixer::uncover(Source *s)
 
 void Mixer::deleteSelection()
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     // operate on canvas source in Displays view
     if ( current_view_ == &displays_ ) {
         // cancel selection deletion in Displays view
@@ -786,6 +1094,11 @@ void Mixer::deleteSelection()
     // operate on session sources otherwise
     // number of sources in selection
     uint N = selection().size();
+    // a bundle cannot be empty
+    if ( editingBundle() && N >= session_->size() ) {
+        Log::Notify("Cannot delete all the sources of a bundle.");
+        return;
+    }
     // ignore if selection empty
     if (N > 0) {
 
@@ -818,6 +1131,10 @@ void Mixer::deleteSelection()
 
 void Mixer::groupSelection()
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     // obvious cancel
     if (selection().empty())
         return;
@@ -876,13 +1193,17 @@ bool Mixer::selectionCanBeGroupped () const
                 break;
             }
         }
-    }        
+    }
 
     return ret;
 }
 
 void Mixer::groupCurrent()
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     if ( current_source_ != session_->end() ) {
 
         SourceList L;
@@ -908,11 +1229,11 @@ void Mixer::group(SourceList sourcelist)
         if ( (*sit)->active() && (*sit)->visible() )
             visiblelist.push_back( *sit );
     }
-    GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(visiblelist, 
+    GlmToolkit::AxisAlignedBoundingBox selection_box = BoundingBoxVisitor::AABB(visiblelist,
                                                             geometry_.scene.ws(), View::GEOMETRY );
     sessionbundle->setDimensions( selection_box.scale(), selection_box.center(),
                                  session_->frame()->resolution().y );
-                    
+
     // prepare for new session bundle name
     std::string name;
     // prepare for depth to place the group source
@@ -955,11 +1276,14 @@ void Mixer::group(SourceList sourcelist)
         // set depth at given location
         sessionbundle->group(View::LAYER)->translation_.z = d;
 
+        // bundle in the ViewSpace of its first source
+        sessionbundle->setViewSpace( sourcelist.front()->viewSpace() );
+
         // set alpha to full opacity
         sessionbundle->group(View::MIXING)->translation_.x = 0.f;
         sessionbundle->group(View::MIXING)->translation_.y = 0.f;
 
-        // set geometry        
+        // set geometry
         sessionbundle->group(View::GEOMETRY)->translation_ = sessionbundle->center();
         sessionbundle->group(View::GEOMETRY)->scale_ = sessionbundle->scale();
         // correct for aspect ratio done by SessionGroupSource resolution
@@ -984,7 +1308,7 @@ void Mixer::group(SourceList sourcelist)
 
         // avoid display issues
         current_view_->update(0.f);
-            
+
         // store in action manager
         std::ostringstream info;
         info << sessionbundle->name() << ": inserted (" << sessionbundle->session()->size() << " sources group)";
@@ -1005,6 +1329,10 @@ void Mixer::group(SourceList sourcelist)
 
 void Mixer::groupAll(bool only_active)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     // obvious cancel
     if (session_->empty())
         return;
@@ -1015,15 +1343,15 @@ void Mixer::groupAll(bool only_active)
     // loop over sources from the current mixer session
     for(auto it = session_->begin(); it != session_->end(); ++it) {
         // if request for only active, take only active source
-        if ( !only_active || (*it)->active()  ) 
+        if ( !only_active || (*it)->active()  )
             // add to list
             sourcelist.push_back( *it );
     }
     // if a clone was left orphan in the mixer current session, take in in the bundle
     for(auto it = session_->begin(); it != session_->end(); ++it) {
         CloneSource *cs = dynamic_cast<CloneSource*>(*it);
-        if ( cs != nullptr && 
-            std::find(sourcelist.begin(), sourcelist.end(), cs->origin()) == sourcelist.end() ) 
+        if ( cs != nullptr &&
+            std::find(sourcelist.begin(), sourcelist.end(), cs->origin()) == sourcelist.end() )
             sourcelist.push_back( *it );
     }
 
@@ -1040,7 +1368,7 @@ void Mixer::groupAll(bool only_active)
                                                     visiblelist, geometry_.scene.ws(), View::GEOMETRY);
     sessionbundle->setDimensions( bounding_box.scale(), bounding_box.center(),
                                 session_->frame()->resolution().y );
-                        
+
     // remember groups before emptying the session
     std::list<SourceList> allgroups = session_->getMixingGroups();
     std::list<SourceList> bundlegroups;
@@ -1072,19 +1400,19 @@ void Mixer::groupAll(bool only_active)
         for (auto git = bundlegroups.begin(); git != bundlegroups.end(); ++git)
             sessionbundle->session()->link( *git );
 
-        // set default depth in workspace for the session-group source
-        sessionbundle->group(View::LAYER)->translation_.z = LAYER_BACKGROUND + LAYER_STEP;
+        // set default depth for the session-group source
+        sessionbundle->group(View::LAYER)->translation_.z = LAYER_DEFAULT_DEPTH + LAYER_STEP;
 
         // set alpha to full opacity so that rendering is identical after swap
         sessionbundle->group(View::MIXING)->translation_.x = 0.f;
         sessionbundle->group(View::MIXING)->translation_.y = 0.f;
 
-        // set geometry        
+        // set geometry
         sessionbundle->group(View::GEOMETRY)->translation_ = sessionbundle->center();
         sessionbundle->group(View::GEOMETRY)->scale_ = sessionbundle->scale();
         // correct for aspect ratio done by SessionGroupSource resolution
         sessionbundle->group(View::GEOMETRY)->scale_.x = sessionbundle->group(View::GEOMETRY)->scale_.y;
-        
+
         // set rendering preemptively from update() of sessionbundle
         sessionbundle->group(View::RENDERING)->translation_ = sessionbundle->group(View::GEOMETRY)->translation_;
         sessionbundle->group(View::RENDERING)->translation_.z = sessionbundle->group(View::LAYER)->translation_.z;
@@ -1106,6 +1434,10 @@ void Mixer::groupAll(bool only_active)
 
 void Mixer::ungroupAll()
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     for (auto source_iter = session_->begin(); source_iter != session_->end(); source_iter++)
     {
         SessionGroupSource *ss = dynamic_cast< SessionGroupSource * >(*source_iter);
@@ -1144,7 +1476,9 @@ void Mixer::setCurrentSource(SourceList::iterator it)
     unsetCurrentSource();
 
     // change current if 'it' is valid
-    if ( it != session_->end() /*&& (*it)->mode() > Source::UNINITIALIZED */) {
+    // (a source of a hidden ViewSpace cannot be current)
+    if ( it != session_->end() && viewSpaceShown( (*it)->viewSpace() ) ) {
+
         current_source_ = it;
         current_source_index_ = session_->index(current_source_);
 
@@ -1264,32 +1598,110 @@ void Mixer::moveIndex (int current_index, int target_index)
 
 void Mixer::setCurrentNext()
 {
-    if (session_->size() > 0) {
+    SourceList::iterator it = current_source_;
 
-        SourceList::iterator it = current_source_;
-        ++it;
+    // next source in a shown ViewSpace (loop once at most)
+    for (size_t n = 0; n < session_->size(); ++n) {
 
-        if (it == session_->end())  {
+        if (it == session_->end() || ++it == session_->end())
             it = session_->begin();
-        }
 
-        setCurrentSource( it );
+        if ( viewSpaceShown( (*it)->viewSpace() ) ) {
+            setCurrentSource( it );
+            break;
+        }
     }
 }
 
 void Mixer::setCurrentPrevious()
 {
-    if (session_->size() > 0) {
+    SourceList::iterator it = current_source_;
 
-        SourceList::iterator it = current_source_;
+    // previous source in a shown ViewSpace (loop once at most)
+    for (size_t n = 0; n < session_->size(); ++n) {
 
-        if (it == session_->begin())  {
+        if (it == session_->begin())
             it = session_->end();
-        }
-
         --it;
-        setCurrentSource( it );
+
+        if ( viewSpaceShown( (*it)->viewSpace() ) ) {
+            setCurrentSource( it );
+            break;
+        }
     }
+}
+
+bool Mixer::viewSpaceShown(uint v) const
+{
+    // ViewSpaces shown are those of the session saved
+    return liveSession()->viewSpaceShown(v);
+}
+
+void Mixer::showViewSpace(uint v, bool on, bool exclusive)
+{
+    // exclusive: all other ViewSpaces are hidden
+    if (exclusive)
+        liveSession()->setViewSpaces(0);
+
+    // NB: sources of a hidden ViewSpace are hidden and unselected in update()
+    liveSession()->setViewSpaceShown(v, on);
+}
+
+void Mixer::showAllViewSpaces()
+{
+    liveSession()->setViewSpaces( (1u << MAX_VIEWSPACE) - 1 );
+}
+
+bool Mixer::viewSpaceOnlyShown(uint v) const
+{
+    return v < MAX_VIEWSPACE && liveSession()->viewSpaces() == (1u << v);
+}
+
+uint Mixer::firstShownViewSpace()
+{
+    for (uint v = 0; v < MAX_VIEWSPACE; ++v) {
+        if ( viewSpaceShown(v) )
+            return v;
+    }
+
+    // none shown: show the first one
+    showViewSpace(0, true);
+    return 0;
+}
+
+void Mixer::setViewSpace(Source *s, uint v)
+{
+    if (s == nullptr)
+        return;
+
+    // linked sources share the same ViewSpace
+    SourceList sources;
+    if (s->mixingGroup() != nullptr)
+        sources = s->mixingGroup()->getCopy();
+    else
+        sources.push_back(s);
+
+    for (auto it = sources.begin(); it != sources.end(); ++it) {
+        (*it)->setViewSpace(v);
+        // in DRAFT mode, apply to the live source too
+        if ( editingDraft() ) {
+            SourceList::iterator live = live_->find( (*it)->id() );
+            if ( live != live_->end() )
+                (*live)->setViewSpace(v);
+        }
+    }
+
+}
+
+void Mixer::setViewSpace(SourceList selection, uint v)
+{
+    if (selection.empty())
+        return;
+
+    for (auto it = selection.begin(); it != selection.end(); ++it)
+        setViewSpace(*it, v);
+
+    Action::manager().store(std::string("Assign selection to Workspace ") + std::to_string(v + 1));
 }
 
 void Mixer::unsetCurrentSource()
@@ -1361,12 +1773,30 @@ void Mixer::setView(View::Mode m)
             Log::Info("Transition interrupted.");
     }
 
+    // special case when leaving presentation view
+    if ( current_view_ == &presentation_ && m != View::PRESENTATION )
+        presentation_.leave();
+
+    // special case when leaving snapshots view
+    if ( current_view_ == &snapshots_ && m != View::SNAPSHOTS )
+        snapshots_.leave();
+
+    // no transition inside a bundle
+    if ( View::isSwitchingView(m) )
+        exitAllBundles();
+
     switch (m) {
     case View::DISPLAYS:
         current_view_ = &displays_;
         break;
     case View::TRANSITION:
         current_view_ = &transition_;
+        break;
+    case View::PRESENTATION:
+        current_view_ = &presentation_;
+        break;
+    case View::SNAPSHOTS:
+        current_view_ = &snapshots_;
         break;
     case View::GEOMETRY:
         current_view_ = &geometry_;
@@ -1409,6 +1839,10 @@ View *Mixer::view(View::Mode m)
         return &displays_;
     case View::TRANSITION:
         return &transition_;
+    case View::PRESENTATION:
+        return &presentation_;
+    case View::SNAPSHOTS:
+        return &snapshots_;
     case View::GEOMETRY:
         return &geometry_;
     case View::LAYER:
@@ -1424,12 +1858,24 @@ View *Mixer::view(View::Mode m)
 
 void Mixer::save(bool with_version)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // leave BUNDLE mode
+    exitAllBundles();
     if (!session_->filename().empty())
         saveas(session_->filename(), with_version, true);
 }
 
 void Mixer::saveas(const std::string& filename, bool with_version, bool with_thumbail)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // leave BUNDLE mode
+    exitAllBundles();
     if (!with_thumbail)
         session_->resetThumbnail();
     // optional copy of views config
@@ -1445,7 +1891,7 @@ void Mixer::saveas(const std::string& filename, bool with_version, bool with_thu
         // prepare argument for saving a version (if requested)
         std::string versionname;
         if (with_version)
-            versionname = SystemToolkit::date_time_string();
+            versionname = SystemToolkit::base_filename(filename);
         // launch a thread to save the session
         // Will be captured in the future in update()
         sessionSavers_.emplace_back( std::async(std::launch::async, Session::save, filename, session_, versionname) );
@@ -1454,6 +1900,12 @@ void Mixer::saveas(const std::string& filename, bool with_version, bool with_thu
 
 void Mixer::load(const std::string& filename)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // leave BUNDLE mode
+    exitAllBundles();
     std::string sessionfile = filename;
 
     // given an empty filename, try to revert to recent file according to user settings
@@ -1461,7 +1913,9 @@ void Mixer::load(const std::string& filename)
         && Settings::application.recentSessions.front_is_valid
         && Settings::application.recentSessions.filenames.size() > 0) {
         sessionfile = Settings::application.recentSessions.filenames.front();
-        setView((View::Mode) Settings::application.current_view);
+        // do not restore views switching between sessions
+        const View::Mode v = (View::Mode) Settings::application.current_view;
+        setView( View::isSwitchingView(v) ? View::MIXING : v );
     }
 
     // ignore invalid file name
@@ -1486,6 +1940,12 @@ void Mixer::load(const std::string& filename)
 
 void Mixer::open(const std::string& filename, bool smooth)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // leave BUNDLE mode
+    exitAllBundles();
     if (smooth)
     {
         // create special SessionSource to be used for the smooth transition
@@ -1513,6 +1973,12 @@ void Mixer::open(const std::string& filename, bool smooth)
 
 void Mixer::import(const std::string& filename)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // leave BUNDLE mode
+    exitAllBundles();
 #ifdef THREADED_LOADING
     // import only one at a time
     if (sessionImporters_.empty()) {
@@ -1527,6 +1993,10 @@ void Mixer::import(const std::string& filename)
 
 void Mixer::import(SessionSource *source)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     sessionSourceToImport_.push_back( source );
 }
 
@@ -1537,6 +2007,8 @@ void Mixer::merge(Session *session)
         Log::Warning("Failed to import Session.");
         return;
     }
+    // leave BUNDLE mode
+    exitAllBundles();
 
     // remember groups before emptying the session
     std::list<SourceList> allgroups = session->getMixingGroups();
@@ -1556,6 +2028,9 @@ void Mixer::merge(Session *session)
 
         // Attach source to Mixer
         attachSource(s);
+
+        // show the ViewSpace of imported source
+        showViewSpace(s->viewSpace(), true);
     }
 
     // the imported session is now empty: delete it (this frees its frame buffers)
@@ -1662,6 +2137,9 @@ void Mixer::merge(SessionSource *source)
             // Attach source to Mixer
             attachSource(s);
 
+            // show the ViewSpace of imported source
+            showViewSpace(s->viewSpace(), true);
+
             // Select the imported source
             Mixer::selection().add(s);
         }
@@ -1700,6 +2178,12 @@ void Mixer::swap()
     if (!back_session_)
         return;
 
+    // leave DRAFT mode and finish snapshot animation on the current session
+    Draft::manager().terminate();
+    Action::manager().finish(false);
+    // leave BUNDLE mode
+    exitAllBundles();
+
     if (session_) {
         // clear selection
         selection().clear();
@@ -1732,7 +2216,7 @@ void Mixer::swap()
 
     // set resolution
     session_->setResolution( session_->config(View::RENDERING)->scale_ );
-    
+
     // adjust canvas to rewly updated framebuffer
     Canvas::manager().setInputFrameBuffer(session_->frame());
 
@@ -1761,12 +2245,18 @@ void Mixer::swap()
         Log::Notify("Session '%s' loaded with %s.", session_->filename().c_str(), numsource.c_str());
     }
 
-    // needs refresh 
+    // needs refresh
     ++View::need_deep_update_;
 }
 
 void Mixer::close(bool smooth)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
+    // leave BUNDLE mode
+    exitAllBundles();
     if (smooth)
     {
         // create empty SessionSource to be used for the smooth transition
@@ -1781,7 +2271,7 @@ void Mixer::close(bool smooth)
     else {
         set( new Session );
 
-        // switch Mixing view 
+        // switch Mixing view
         setView(View::MIXING);
     }
 
@@ -1791,12 +2281,24 @@ void Mixer::close(bool smooth)
 
 void Mixer::terminate()
 {
+    // leave DRAFT mode and finish snapshot animation
+    Draft::manager().terminate();
+    Action::manager().finish(false);
+    // leave BUNDLE mode
+    exitAllBundles();
+
     // wait finish saving / loading
     while (busy())
         update();
 
     // cancel transition
     transition_.detach();
+
+    // leave presentation (NB: user interface is already terminated)
+    if ( current_view_ == &presentation_ )
+        presentation_.leave(false);
+    if ( current_view_ == &snapshots_ )
+        snapshots_.leave(false);
 
     // set for an empty session
     set(new Session);
@@ -1847,13 +2349,17 @@ void Mixer::set(Session *s)
 
 void Mixer::setResolution(glm::vec3 res)
 {
+    // leave BUNDLE mode
+    exitAllBundles();
     if (session_) {
 
-        // set session resolution
+        // set session resolution (and of the live session in DRAFT mode)
         session_->setResolution(res);
+        if (live_)
+            live_->setResolution(res);
 
         // adjust canvas to rewly updated framebuffer
-        Canvas::manager().setInputFrameBuffer(session_->frame());
+        Canvas::manager().setInputFrameBuffer(liveSession()->frame());
 
         ++View::need_deep_update_;
         std::ostringstream info;
@@ -1864,6 +2370,10 @@ void Mixer::setResolution(glm::vec3 res)
 
 void Mixer::paste(const std::string& clipboard)
 {
+    if (Draft::manager().active()) {
+        Log::Notify("Not available in Draft mode.");
+        return;
+    }
     tinyxml2::XMLDocument xmlDoc;
     tinyxml2::XMLElement* sourceNode = SessionLoader::firstSourceElement(clipboard, xmlDoc);
     if (sourceNode) {
@@ -1888,8 +2398,14 @@ void Mixer::paste(const std::string& clipboard)
 }
 
 
-void Mixer::restore(tinyxml2::XMLElement *sessionNode)
+void Mixer::restore(tinyxml2::XMLElement *sessionNode, SourceList *removed)
 {
+    // restore the live session, and edit the same bundles after
+    SourceIdList edited_bundles;
+    for (auto b = bundles_.begin(); b != bundles_.end(); ++b)
+        edited_bundles.push_back( (*b)->id() );
+    exitAllBundles();
+
     //
     // source lists
     //
@@ -1897,6 +2413,10 @@ void Mixer::restore(tinyxml2::XMLElement *sessionNode)
     SourceIdList session_sources = session_->getIdList();
 //    for( auto it = sessionsources.begin(); it != sessionsources.end(); it++)
 //        Log::Info("sessionsources  id %s", std::to_string(*it).c_str());
+
+    // input callbacks are re-created by loading (if saved)
+    if (sessionNode->FirstChildElement("InputCallbacks"))
+        session_->inputCallbacks()->clear();
 
     // load history status:
     // - if a source exists, its attributes are updated, and that's all
@@ -1918,10 +2438,12 @@ void Mixer::restore(tinyxml2::XMLElement *sessionNode)
             lsit++;
     }
 
-    // remaining ids in list sessionsources : to remove
+    // remaining ids in list sessionsources : to remove (or to keep in removed list)
     while ( !session_sources.empty() ){
         Source *s = Mixer::manager().findSource( session_sources.front() );
-        if (s!=nullptr) {
+        if (s!=nullptr && removed != nullptr)
+            removed->push_back( s );
+        else if (s!=nullptr) {
 #ifdef ACTION_DEBUG
             Log::Info("Delete   id %s\n", std::to_string(session_sources.front() ).c_str());
 #endif
@@ -1960,7 +2482,15 @@ void Mixer::restore(tinyxml2::XMLElement *sessionNode)
     for (auto group_loader_it = loadergroups.begin(); group_loader_it != loadergroups.end(); group_loader_it++)
         session_->link( *group_loader_it, view(View::MIXING)->scene.fg() );
 
+    // edit again the bundles, if they still exist
+    for (auto id = edited_bundles.begin(); id != edited_bundles.end(); ++id) {
+        SessionGroupSource *bundle = dynamic_cast<SessionGroupSource *>( findSource(*id) );
+        if (bundle == nullptr)
+            break;
+        enterBundle(bundle);
+        if (bundles_.empty() || bundles_.back() != bundle)
+            break;
+    }
 
     ++View::need_deep_update_;
 }
-

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vimix>
+    <Annotations width="1920" height="1080">
+        <Annotation type="Arrow" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="804" y="79"/>
+            <vec2 x="1206" y="69"/>
+            <vec2 x="969" y="52"/>
+        </Annotation>
+        <Annotation type="Arrow" thickness="6" size="30" font="2" shadow="false">
+            <vec4 x="0.55000001" y="1" z="0.25" w="1"/>
+            <vec2 x="801" y="112"/>
+            <vec2 x="1324" y="575"/>
+            <vec2 x="976" y="515"/>
+        </Annotation>
+    </Annotations>
+</vimix>
+
+<!--Originally saved as /home/bh/Claude/VimixDev/vimix/docs/images/manual_general_0.xml by bh-->

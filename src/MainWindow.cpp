@@ -38,11 +38,13 @@
 #include "UserInterfaceManager.h"
 #include "ControlManager.h"
 #include "RenderingManager.h"
+#include "Toolkit/SystemToolkit.h"
+#include "Toolkit/GlmToolkit.h"
 
 #include "MainWindow.h"
 
 
-MainWindow::MainWindow() : window_(NULL), dpi_scale_(1.f), request_change_fullscreen_(false)
+MainWindow::MainWindow() : window_(NULL), dpi_scale_(1.f), request_change_fullscreen_(false), request_change_size_(0)
 {
 
 }
@@ -158,6 +160,32 @@ void MainWindow::changeFullscreen_()
             // enter fullscreen
             setFullscreen_(monitor());
         }
+    }
+}
+
+void MainWindow::changeSize_()
+{
+    // change upon request
+    if (request_change_size_.x > 0 && request_change_size_.y > 0) {
+
+        // exit fullscreen and maximized modes
+        if (isFullscreen ())
+            setFullscreen_(nullptr);
+        glfwRestoreWindow(window_);
+
+        // window size is in screen coordinates: apply framebuffer scale
+        // to get the requested size in pixels
+        int ww = 0, wh = 0, fw = 0, fh = 0;
+        glfwGetWindowSize(window_, &ww, &wh);
+        glfwGetFramebufferSize(window_, &fw, &fh);
+        float sx = (ww > 0 && fw > 0) ? float(fw) / float(ww) : 1.f;
+        float sy = (wh > 0 && fh > 0) ? float(fh) / float(wh) : 1.f;
+        glfwSetWindowSize(window_,
+                          int( float(request_change_size_.x) / sx + 0.5f),
+                          int( float(request_change_size_.y) / sy + 0.5f) );
+
+        // done request
+        request_change_size_ = glm::ivec2(0);
     }
 }
 
@@ -365,7 +393,7 @@ void MainWindow::WindowResizeCallback( GLFWwindow *w, int width, int height)
 
 }
 
-void MainWindow::WindowMoveCallback( GLFWwindow *w, int x, int y)
+void MainWindow::WindowMoveCallback( GLFWwindow *, int x, int y)
 {
     if (!Settings::application.mainwindow.fullscreen) {
         Settings::application.mainwindow.x = x;
@@ -375,15 +403,69 @@ void MainWindow::WindowMoveCallback( GLFWwindow *w, int x, int y)
 
 void MainWindow::FileDropped(GLFWwindow *, int path_count, const char* paths[])
 {
-    int i = 0;
-    for (; i < path_count; ++i) {
+    // classify dropped files
+    std::list<std::string> images, videos, others, shaders;
+    for (int i = 0; i < path_count; ++i) {
         std::string filename(paths[i]);
         if (filename.empty())
             break;
-        // try to create a source
-        Mixer::manager().addSource ( Mixer::manager().createSourceFile( filename ) );
+        if (SystemToolkit::is_image_file(filename))
+            images.push_back(filename);
+        else if (SystemToolkit::is_shader_file(filename))
+            shaders.push_back(filename);
+        else if (SystemToolkit::has_extension(filename, VIMIX_FILE_EXT))
+            others.push_back(filename);
+        else
+            videos.push_back(filename); // NB: audio and other media are handled by createSourceFile
     }
-    if (i>0) {
+
+    size_t count = 0;
+
+    // numbered images: one MultiFileSource per sequence
+    for (const auto &run : SystemToolkit::group_numbered_files(images)) {
+        Source *s = nullptr;
+        if (run.size() > 1)
+            s = Mixer::manager().createSourceMultifile(run, Settings::application.image_sequence.framerate_mode);
+        if (s != nullptr) {
+            Mixer::manager().addSource(s);
+            ++count;
+        }
+        else {
+            // not a sequence: individual sources
+            for (const auto &f : run) {
+                Mixer::manager().addSource( Mixer::manager().createSourceFile(f) );
+                ++count;
+            }
+        }
+    }
+
+    // numbered videos: one SplitMediaSource per run (compatibility is checked by the source itself)
+    for (const auto &run : SystemToolkit::group_numbered_files(videos)) {
+        if (run.size() > 1) {
+            Mixer::manager().addSource( Mixer::manager().createSourceSplitMedia(run) );
+            ++count;
+        }
+        else {
+            Mixer::manager().addSource( Mixer::manager().createSourceFile(run.front()) );
+            ++count;
+        }
+    }
+
+    // GLSL code: one ShaderSource per file
+    for (const auto &f : shaders) {
+        glm::ivec2 res = GlmToolkit::resolutionFromDescription(Settings::application.source.ratio,
+                                                               Settings::application.source.res);
+        Mixer::manager().addSource( Mixer::manager().createSourceShaderFile(f, res) );
+        ++count;
+    }
+
+    // anything else: one source per file
+    for (const auto &f : others) {
+        Mixer::manager().addSource( Mixer::manager().createSourceFile(f) );
+        ++count;
+    }
+
+    if (count > 0) {
         // show mixer pannel if at least one file added
         UserInterface::manager().showPannel(  Mixer::manager().numSource() );
         // bring window front

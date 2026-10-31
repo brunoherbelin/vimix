@@ -33,7 +33,7 @@
 #include "Settings.h"
 #include "Toolkit/GstToolkit.h"
 #include "Toolkit/SystemToolkit.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "Log.h"
 #include "Audio.h"
 #include "gst/gstcaps.h"

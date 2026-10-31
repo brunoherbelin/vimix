@@ -27,6 +27,7 @@ public:
     void accept (Visitor& v) override;
     void render() override;
     glm::ivec2 icon() const override;
+    std::string_view type() const override;
     std::string info() const override;
     bool texturePostProcessed() const override { return true; }
 
@@ -36,6 +37,10 @@ public:
 
     // access shader
     inline ImageFilter *filter() { return filter_; }
+
+    // parameters of the shader program
+    Parameters parameters () const override;
+    void setParameters (const Parameters &p) override;
 
 protected:
 

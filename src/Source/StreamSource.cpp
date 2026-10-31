@@ -20,6 +20,7 @@
 #include <string>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "defines.h"
 #include "Resource.h"
 #include "Scene/Decorations.h"
 #include "Stream.h"
@@ -80,6 +81,11 @@ void GenericStreamSource::accept(Visitor& v)
 glm::ivec2 GenericStreamSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE_GSTREAMER);
+}
+
+std::string_view GenericStreamSource::type() const
+{
+    return SOURCE_TYPE_GENERIC_STREAM;
 }
 
 std::string GenericStreamSource::info() const

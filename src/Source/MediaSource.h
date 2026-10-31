@@ -36,9 +36,13 @@ public:
     MediaPlayer *mediaplayer() const;
 
     glm::ivec2 icon() const override;
+    std::string_view type() const override;
     std::string info() const override;
 
 protected:
+
+    // sub-classes can provide their own media player (deleted by MediaSource)
+    MediaSource(uint64_t id, MediaPlayer *mp);
 
     void init() override;
     void setPath(const std::string &p);

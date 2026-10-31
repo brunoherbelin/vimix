@@ -185,7 +185,7 @@ MediaSource::render()
 
 ### MediaPlayer Class
 
-**Location**: `/vimix/src/MediaPlayer.h` (Lines 59-434)
+**Location**: `/vimix/src/Player/MediaPlayer.h` (Lines 59-434)
 
 Key components:
 ```cpp
@@ -214,7 +214,7 @@ class MediaPlayer {
 
 ### Pipeline Structure
 
-**File**: `/vimix/src/MediaPlayer.cpp`
+**File**: `/vimix/src/Player/MediaPlayer.cpp`
 
 ```
 GStreamer Pipeline:

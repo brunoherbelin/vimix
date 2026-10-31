@@ -40,6 +40,9 @@ CloneSource::CloneSource(Source *origin, uint64_t id) : Source(id), origin_(orig
     // initial name copies the origin name: diplucates are namanged in session
     name_ = origin_name_ = origin->name();
 
+    // clone appears in the same ViewSpace as its origin
+    viewspace_ = origin->viewspace_;
+
     // set symbol
     symbol_ = new Symbol(Symbol::CLONE, glm::vec3(0.75f, 0.75f, 0.01f));
     symbol_->scale_.y = 1.5f;
@@ -146,6 +149,21 @@ void CloneSource::update(float dt)
     }
 }
 
+Source::Parameters CloneSource::parameters () const
+{
+    ImageFilter *f = dynamic_cast<ImageFilter *>(filter_);
+    if (f)
+        return f->program().parameters();
+    return Parameters();
+}
+
+void CloneSource::setParameters (const Parameters &p)
+{
+    ImageFilter *f = dynamic_cast<ImageFilter *>(filter_);
+    if (f)
+        f->updateProgramParameters(p);
+}
+
 void CloneSource::setFilter(FrameBufferFilter::Type T)
 {
     if (filter_)
@@ -248,6 +266,11 @@ void CloneSource::accept(Visitor& v)
 glm::ivec2 CloneSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE_CLONE);
+}
+
+std::string_view CloneSource::type() const
+{
+    return SOURCE_TYPE_CLONE;
 }
 
 std::string CloneSource::info() const

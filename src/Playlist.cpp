@@ -23,6 +23,7 @@
 #include <tinyxml2.h>
 #include "Toolkit/tinyxml2Toolkit.h"
 #include "Toolkit/SystemToolkit.h"
+#include "defines.h"
 using namespace tinyxml2;
 
 #include "Playlist.h"
@@ -38,6 +39,7 @@ Playlist& Playlist::operator = (const Playlist& b)
         path_.clear();
         for(auto it = b.path_.cbegin(); it != b.path_.cend(); ++it)
             path_.push_back(*it);
+        filename_ = b.filename_;
     }
     return *this;
 }
@@ -45,6 +47,8 @@ Playlist& Playlist::operator = (const Playlist& b)
 void Playlist::clear()
 {
     path_.clear();
+    // a cleared playlist is no longer associated to its file
+    filename_.clear();
 }
 
 void Playlist::load(const std::string &filename)
@@ -71,11 +75,23 @@ void Playlist::load(const std::string &filename)
     path_.clear();
 
     // Then it should contain a list of path
+    const std::string playlistPath = SystemToolkit::path_filename(filename);
     XMLElement* pathNode = pRoot->FirstChildElement("path");
     for( ; pathNode ; pathNode = pathNode->NextSiblingElement()) {
         const char *p = pathNode->GetText();
-        if (p)
-            add( std::string(p) );
+        if (p) {
+            std::string path(p);
+            // fallback to relative path if absolute path does not exist (e.g. moved folder)
+            if (!SystemToolkit::file_exists(path)) {
+                const char *relative = nullptr;
+                if (pathNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS && relative) {
+                    const std::string rel = SystemToolkit::path_absolute_from_path(relative, playlistPath);
+                    if (SystemToolkit::file_exists(rel))
+                        path = rel;
+                }
+            }
+            add( path );
+        }
     }
 }
 
@@ -97,10 +113,12 @@ void Playlist::saveAs(const std::string &filename)
     XMLElement *pRoot = xmlDoc.NewElement("vimixplaylist");
     xmlDoc.InsertEndChild(pRoot);
 
+    const std::string playlistPath = SystemToolkit::path_filename(filename);
     for(auto it = path_.cbegin(); it != path_.cend(); ++it) {
         XMLElement *pathNode = xmlDoc.NewElement("path");
         XMLText *text = xmlDoc.NewText( it->c_str() );
         pathNode->InsertEndChild( text );
+        pathNode->SetAttribute("relative", SystemToolkit::path_relative_to_path(*it, playlistPath).c_str());
         pRoot->InsertEndChild(pathNode);
     }
 
@@ -181,7 +199,24 @@ static void scanSessionNode(XMLElement *sessionNode,
         if (!pType) continue;
         const std::string type(pType);
 
-        if (type == "MediaSource") {
+        if (type == SOURCE_TYPE_SPLIT_MEDIA) {
+            XMLElement *listNode = sourceNode->FirstChildElement("SplitFiles");
+            for (XMLElement *fileNode = listNode ? listNode->FirstChildElement("file") : nullptr;
+                 fileNode != nullptr; fileNode = fileNode->NextSiblingElement("file")) {
+                const char *text = fileNode->GetText();
+                if (!text) continue;
+                std::string path(text);
+                if (!SystemToolkit::file_exists(path)) {
+                    const char *relative = nullptr;
+                    if (fileNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS && relative)
+                        path = SystemToolkit::path_absolute_from_path(relative, sessionFilePath);
+                }
+                if (SystemToolkit::file_exists(path) &&
+                    std::find(list.begin(), list.end(), path) == list.end())
+                    list.push_back(path);
+            }
+        }
+        else if (type == SOURCE_TYPE_MEDIA || type == SOURCE_TYPE_AUDIO) {
             XMLElement *uriNode = sourceNode->FirstChildElement("uri");
             if (uriNode) {
                 const char *text = uriNode->GetText();
@@ -198,7 +233,7 @@ static void scanSessionNode(XMLElement *sessionNode,
                 }
             }
         }
-        else if (type == "SessionSource") {
+        else if (type == SOURCE_TYPE_SESSION) {
             XMLElement *pathNode = sourceNode->FirstChildElement("path");
             if (pathNode) {
                 const char *text = pathNode->GetText();
@@ -217,12 +252,12 @@ static void scanSessionNode(XMLElement *sessionNode,
                 }
             }
         }
-        else if (type == "GroupSource") {
+        else if (type == SOURCE_TYPE_GROUP) {
             XMLElement *innerSession = sourceNode->FirstChildElement("Session");
             if (innerSession)
                 scanSessionNode(innerSession, sessionFilePath, list, visited);
         }
-        else if (type == "MultiFileSource") {
+        else if (type == SOURCE_TYPE_MULTI_FILE) {
             XMLElement *seqNode = sourceNode->FirstChildElement("Sequence");
             if (seqNode) {
                 const char *text = seqNode->GetText();
@@ -242,7 +277,7 @@ static void scanSessionNode(XMLElement *sessionNode,
                 }
             }
         }
-        else if (type == "CloneSource" || type == "ShaderSource") {
+        else if (type == SOURCE_TYPE_CLONE || type == SOURCE_TYPE_SHADER) {
             // Both source types embed a FilteringProgram whose external shader file
             // is stored as the 'filename' attribute of the <Filter> child element.
             XMLElement *filterNode = sourceNode->FirstChildElement("Filter");

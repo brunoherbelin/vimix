@@ -23,6 +23,7 @@
 #include <glm/gtc/matrix_access.hpp>
 
 #include "Toolkit/ImGuiToolkit.h"
+#include "Toolkit/SystemToolkit.h"
 
 #include <string>
 #include <sstream>
@@ -55,6 +56,13 @@ TransitionView::TransitionView() : View(TRANSITION), transition_source_(nullptr)
     else
         restoreSettings();
     Settings::application.views[mode_].name = "Transition";
+
+    // dark background covering the view, behind all
+    Surface *background = new Surface( new Shader );
+    background->scale_ = glm::vec3(20.f, 20.f, 1.f);
+    background->translation_.z = -0.5f;
+    background->shader()->color = glm::vec4( COLOR_PRESENTATION_BGROUND, 0.7f );
+    scene.root()->attach(background);
 
     // Geometry Scene background
     gradient_ = new Switch;
@@ -105,7 +113,7 @@ void TransitionView::update(float dt)
     if  (View::need_deep_update_ > 0) {
 
         // update rendering of render frame
-        FrameBuffer *output = Mixer::manager().session()->frame();
+        FrameBuffer *output = Mixer::manager().liveSession()->frame();
         if (output){
             float aspect_ratio = output->aspectRatio();
             for (NodeSet::iterator node = scene.bg()->begin(); node != scene.bg()->end(); ++node) {
@@ -125,42 +133,7 @@ void TransitionView::update(float dt)
         else {
             // apply transition
             float d = transition_source_->group(View::TRANSITION)->translation_.x;
-
-            // Transfer this movement to changes in mixing
-            // cross fading
-            if ( transition_cross_fade )
-            {
-                float f = 0.f;
-                // change alpha of session:
-                if (!Settings::application.transition.profile)
-                    // linear => identical coordinates in Mixing View
-                    f = d;
-                else
-                    // quadratic => square coordinates in Mixing View
-                    f = (d+1.f)*(d+1.f) -1.f;
-                transition_source_->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
-                transition_source_->group(View::MIXING)->translation_.y = 0.f;
-
-                // no fading when cross fading
-                Mixer::manager().session()->setFadingTarget( 0.f );
-            }
-            // fade to black
-            else
-            {
-                // change alpha of session ; hidden before -0.5, visible after
-                transition_source_->group(View::MIXING)->translation_.x = d < -0.5f ? -1.f : 0.f;
-                transition_source_->group(View::MIXING)->translation_.y = 0.f;
-
-                // fade to black at 50% : fade-out [-1.0 -0.5], fade-in [-0.5 0.0]
-                float f = 0.f;
-                if (!Settings::application.transition.profile)
-                    f = ABS(2.f * d + 1.f);  // linear
-                else {
-                    f = ( 2.f * d + 1.f);  // quadratic
-                    f *= f;
-                }
-                Mixer::manager().session()->setFadingTarget( 1.f - f );
-            }
+            TransitionView::apply(transition_source_, d, transition_cross_fade);
 
             // request update
             transition_source_->touch();
@@ -204,6 +177,20 @@ void TransitionView::draw()
         const Group *tg = transition_source_->group(View::TRANSITION);
         if (tg) {
 
+            // display filename on top of transition source
+            // (centered, one line of text above the top of the source)
+            const glm::vec3 coord = tg->translation_ + glm::vec3(0.f, 1.1f * tg->scale_.y, 0.f);
+            const glm::vec2 pos = Rendering::manager().project(coord, scene.root()->transform_, false);
+            const std::string label = SystemToolkit::filename( transition_source_->path() );
+            const ImVec2 label_size = ImGui::CalcTextSize(label.c_str());
+            // same color as the frame of the source: highlighted if current
+            const ImVec4 color = transition_source_->mode() == Source::CURRENT
+                                     ? ImVec4(COLOR_TRANSITION_SOURCE, 1.f)
+                                     : ImVec4(COLOR_DEFAULT_SOURCE, 1.f);
+            ImGui::GetBackgroundDrawList()->AddText(ImVec2(pos.x - 0.5f * label_size.x,
+                                                           pos.y - ImGui::GetTextLineHeightWithSpacing()),
+                                                    ImGui::GetColorU32(color), label.c_str());
+
             // display interface below timeline
             glm::vec2 pos_window = Rendering::manager().project(glm::vec3(-1.2f, -0.10f, 0.f), scene.root()->transform_, false);
             ImGui::SetNextWindowPos(ImVec2(pos_window.x, pos_window.y), ImGuiCond_Always);
@@ -216,13 +203,11 @@ void TransitionView::draw()
                 const glm::vec2 pos_play = Rendering::manager().project(glm::vec3(0.f, -0.15f, 0.f), scene.root()->transform_, false);
 
                 // style grey
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 0.5f));
-                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.16f, 0.16f, 0.16f, 0.99f));
-                ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.27f, 0.27f, 0.27f, 0.7f));
-                ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.10f, 0.10f, 0.10f, 1.00f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.215f, 0.215f, 0.215f, 0.5f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.216f, 0.216f, 0.216f, 0.99f));
+                ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.327f, 0.327f, 0.327f, 0.7f));
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.55f)); // 7 colors
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.27f, 0.27f, 0.27f, 0.55f)); // 5 colors
                 ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
 
                 // "Cancel" button at the begining of the timeline, only if transition not started
@@ -253,7 +238,7 @@ void TransitionView::draw()
                                    TRANSITION_MIN_DURATION, TRANSITION_MAX_DURATION, "%.1f s");
 
                 ImGui::PopFont();
-                ImGui::PopStyleColor(7);  // 7 colors
+                ImGui::PopStyleColor(5);  //  colors
                 ImGui::End();
             }
 
@@ -277,29 +262,77 @@ void TransitionView::attach(SessionFileSource *ts)
         tg->visible_ = true;
         scene.ws()->attach(tg);
 
-        transition_cross_fade = Settings::application.transition.cross_fade;
+        // start transition from current fading value
+        transition_source_->group(View::TRANSITION)->translation_.x = TransitionView::initialProgress(transition_cross_fade);
+    }
+}
 
-        // automatically change fading mode to 'fade to black' if
-        // the session is already faded to black
-        if (Mixer::manager().session()->fading() > 0.01
-            && Settings::application.transition.cross_fade) {
-            transition_cross_fade = false;
+void TransitionView::apply(SessionFileSource *ts, float d, bool cross_fade)
+{
+    if (ts == nullptr)
+        return;
+
+    // Transfer this movement to changes in mixing
+    // cross fading
+    if ( cross_fade )
+    {
+        float f = 0.f;
+        // change alpha of session:
+        if (!Settings::application.transition.profile)
+            // linear => identical coordinates in Mixing View
+            f = d;
+        else
+            // quadratic => square coordinates in Mixing View
+            f = (d+1.f)*(d+1.f) -1.f;
+        ts->group(View::MIXING)->translation_.x = CLAMP(f, -1.f, 0.f);
+        ts->group(View::MIXING)->translation_.y = 0.f;
+
+        // no fading when cross fading
+        Mixer::manager().session()->setFadingTarget( 0.f );
+    }
+    // fade to black
+    else
+    {
+        // change alpha of session ; hidden before -0.5, visible after
+        ts->group(View::MIXING)->translation_.x = d < -0.5f ? -1.f : 0.f;
+        ts->group(View::MIXING)->translation_.y = 0.f;
+
+        // fade to black at 50% : fade-out [-1.0 -0.5], fade-in [-0.5 0.0]
+        float f = 0.f;
+        if (!Settings::application.transition.profile)
+            f = ABS(2.f * d + 1.f);  // linear
+        else {
+            f = ( 2.f * d + 1.f);  // quadratic
+            f *= f;
         }
+        Mixer::manager().session()->setFadingTarget( 1.f - f );
+    }
+}
 
-        // in fade to black transition, start transition from current fading value
-        if ( !transition_cross_fade) {
+float TransitionView::initialProgress(bool &cross_fade)
+{
+    cross_fade = Settings::application.transition.cross_fade;
 
-            // reverse calculate x position to match actual fading of session
-            float d = 0.f;
-            if (!Settings::application.transition.profile)
-                d = -1.f + 0.5f * Mixer::manager().session()->fading();  // linear
-            else {
-                d = -1.f - 0.5f * ( sqrt(1.f - Mixer::manager().session()->fading()) - 1.f);  // quadratic
-            }
+    // automatically change fading mode to 'fade to black' if
+    // the session is already faded to black
+    if (Mixer::manager().session()->fading() > 0.01
+        && Settings::application.transition.cross_fade) {
+        cross_fade = false;
+    }
 
-            transition_source_->group(View::TRANSITION)->translation_.x = d;
+    // in fade to black transition, start transition from current fading value
+    float d = -1.f;
+    if ( !cross_fade ) {
+
+        // reverse calculate x position to match actual fading of session
+        if (!Settings::application.transition.profile)
+            d = -1.f + 0.5f * Mixer::manager().session()->fading();  // linear
+        else {
+            d = -1.f - 0.5f * ( sqrt(1.f - Mixer::manager().session()->fading()) - 1.f);  // quadratic
         }
     }
+
+    return d;
 }
 
 Session *TransitionView::detach()
@@ -444,6 +477,19 @@ View::Cursor TransitionView::grab (Source *s, glm::vec2 from, glm::vec2 to, std:
     }
 
     return Cursor(Cursor_ResizeEW, info.str() );
+}
+
+void TransitionView::quit()
+{
+    // transition not started: cancel (same as Cancel button)
+    if (transition_source_ != nullptr &&
+        transition_source_->group(View::TRANSITION)->translation_.x < -1.f + EPSILON)
+        cancel();
+    // otherwise interrupt transition (same as double clic)
+    else {
+        Mixer::manager().setView(View::MIXING);
+        WorkspaceWindow::restoreWorkspace();
+    }
 }
 
 bool TransitionView::doubleclic (glm::vec2 )

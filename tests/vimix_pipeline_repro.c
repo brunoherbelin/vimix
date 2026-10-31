@@ -1,6 +1,6 @@
 /*
  * Standalone reproduction of vimix's actual MediaPlayer playback pipeline
- * (see MediaPlayer::execute_open(), src/MediaPlayer.cpp, USE_GST_PLAYBIN
+ * (see MediaPlayer::execute_open(), src/Player/MediaPlayer.cpp, USE_GST_PLAYBIN
  * branch): a "playbin" with an appsink installed as its "video-sink"
  * property (optionally wrapped in "glsinkbin" for the GL-memory zero-copy
  * path, which is vimix's default), driven by pulling samples from the

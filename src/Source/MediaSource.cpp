@@ -20,9 +20,10 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "defines.h"
 #include "Resource.h"
 #include "Scene/Decorations.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "Visitor/Visitor.h"
 #include "Log.h"
 
@@ -33,6 +34,10 @@ MediaSource::MediaSource(uint64_t id) : Source(id), path_("")
 {
     // create media player
     mediaplayer_ = new MediaPlayer;
+}
+
+MediaSource::MediaSource(uint64_t id, MediaPlayer *mp) : Source(id), path_(""), mediaplayer_(mp)
+{
 }
 
 MediaSource::~MediaSource()
@@ -78,6 +83,11 @@ glm::ivec2 MediaSource::icon() const
         return glm::ivec2(ICON_VI_SOURCE_VIDEO);
 }
 
+std::string_view MediaSource::type() const
+{
+    return SOURCE_TYPE_MEDIA;
+}
+
 std::string MediaSource::info() const
 {
     if (mediaplayer_->isImage())
@@ -113,12 +123,14 @@ void MediaSource::init()
             float height = float(mediaplayer_->width()) / mediaplayer_->aspectRatio();
             FrameBuffer *renderbuffer = new FrameBuffer(mediaplayer_->width(), (uint)height, FrameBuffer::FrameBuffer_alpha);
 
-            // icon in mixing view
-            if (mediaplayer_->isImage())
-                symbol_ = new Symbol(Symbol::IMAGE, glm::vec3(0.75f, 0.75f, 0.01f));
-            else
-                symbol_ = new Symbol(Symbol::VIDEO, glm::vec3(0.75f, 0.75f, 0.01f));
-            symbol_->scale_.y = 1.5f;
+            // icon in mixing view (unless sub-class created its own)
+            if (symbol_ == nullptr) {
+                if (mediaplayer_->isImage())
+                    symbol_ = new Symbol(Symbol::IMAGE, glm::vec3(0.75f, 0.75f, 0.01f));
+                else
+                    symbol_ = new Symbol(Symbol::VIDEO, glm::vec3(0.75f, 0.75f, 0.01f));
+                symbol_->scale_.y = 1.5f;
+            }
 
             // set the renderbuffer of the source and attach rendering nodes
             attach(renderbuffer);
@@ -150,7 +162,7 @@ void MediaSource::setActive (bool on)
     // change status of media player only if status changed
     if ( active_ != was_active ) {
         // option to automatically rewind each time the source is disabled
-        if (!on && replay_on_disable_) 
+        if (!on && replay_on_disable_)
             mediaplayer_->rewind(true);
 
         mediaplayer_->enable(active_);
@@ -265,4 +277,3 @@ bool MediaSource::texturePostProcessed() const
     return !mediaplayer_->timeline()->fadingIsClear() ||
            mediaplayer_->loopStatus() == MediaPlayer::LOOP_STATUS_BLACKOUT;
 }
-

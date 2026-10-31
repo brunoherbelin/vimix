@@ -28,7 +28,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
 
-#include "IconsFontAwesome5.h"
+#include "IconsFontAwesome5.h" // IWYU pragma: export
 
 void _drawIcon(ImVec2 screenpos, int i, int j, bool enabled = true, struct ImGuiWindow* window = nullptr );
     
@@ -53,11 +53,21 @@ namespace ImGuiToolkit
     bool SelectableIcon(int i, int j, const char* label, bool selected, const ImVec2& size_arg = ImVec2(0,0), ImGuiDir dir = ImGuiDir_None);
     bool ComboIcon (const char* label, int* current_item, std::vector<std::tuple<int, int, std::string> > items, std::vector<std::string> tooltips = {});
 
+    // collapsing header with open state stored in group[index] (of count headers);
+    // if exclusive, opening it closes the other headers of the group
+    // (an id can be given if the label is not constant)
+    bool CollapsingHeader (const char* label, bool* group, int index, int count, bool exclusive, const char* id = nullptr);
+    // open a header of the group from outside (also closes the others if exclusive)
+    void OpenHeader (bool* group, int index, int count, bool exclusive);
+
     // buttons
     bool ButtonToggle  (const char* label, bool* toggle, const char *tooltip = nullptr);
     bool ButtonSwitch  (const char* label, bool* toggle, const char *tooltip = nullptr, bool enabled = true);
     void ButtonOpenUrl (const char* label, const char* url, const ImVec2& size_arg = ImVec2(0,0));
     void ButtonDisabled(const char* label, const ImVec2& size_arg = ImVec2(0,0));
+    // disable following items if on (to be matched with PopDisabled with same argument)
+    void PushDisabled(bool on);
+    void PopDisabled(bool on);
     bool TextButton    (const char* text, const char *tooltip = nullptr, const char *shortcut = nullptr);
 
     // tooltip and mouse over help

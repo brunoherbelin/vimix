@@ -30,7 +30,7 @@
 
 #define OSC_ALL                "/all"
 #define OSC_SELECTION          "/selection"
-#define OSC_SOURCEID           "(\\/#?)[[:digit:]]+$"
+#define OSC_SOURCEID           "(\\/#?)[[:digit:]]+$" // index or unique id
 #define OSC_BATCH              "(\\/batch#)[[:digit:]]+$"
 #define OSC_CURRENT            "/current"
 #define OSC_NEXT               "/next"
@@ -81,6 +81,8 @@
 #define OSC_SOURCE_CODE        "/code"
 #define OSC_SOURCE_BLENDING    "/blending"
 #define OSC_SOURCE_FLAG        "/flag"
+#define OSC_SOURCE_TYPE        "/type"
+#define OSC_SOURCE_ID          "/id"
 
 #define OSC_SESSION            "/session"
 #define OSC_SESSION_VERSION    "/version"
@@ -127,7 +129,7 @@
 class Session;
 class Source;
 class SourceCallback;
-class GLFWwindow;
+struct GLFWwindow;
 
 class Control
 {

@@ -37,6 +37,47 @@
 #include "CloneSource.h"
 #include "Source.h"
 
+// Transform of texture coordinates from the APPEARANCE node
+static glm::mat4 textureTransform(const Group *texture, float aspectRatio)
+{
+    // UV to node coordinates
+    static glm::mat4 UVtoScene = GlmToolkit::transform(glm::vec3(1.f, -1.f, 0.f),
+                                                       glm::vec3(0.f, 0.f, 0.f),
+                                                       glm::vec3(-2.f, 2.f, 1.f));
+    static glm::mat4 ScenetoUV = glm::inverse(UVtoScene);
+    // Aspect Ratio correction transform : coordinates of Appearance Frame are scaled by render buffer width
+    glm::mat4 Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(aspectRatio, 1.f, 1.f) );
+    // Translation : same as Appearance Frame (modified by Ar)
+    glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), texture->translation_);
+    // Scaling : inverse scaling (larger UV when smaller Appearance Frame)
+    glm::vec2 scale =  glm::vec2(texture->scale_.x,texture->scale_.y);
+    scale = glm::sign(scale) * glm::max( glm::vec2(glm::epsilon<float>()), glm::abs(scale));
+    glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale, 1.f));
+    // Rotation : same angle than Appearance Frame, inverted axis
+    glm::mat4 Rot = glm::rotate(glm::identity<glm::mat4>(), texture->rotation_.z, glm::vec3(0.f, 0.f, -1.f) );
+    // Combine transformations (non transitive) in this order:
+    // 1. switch to Scene coordinate system
+    // 2. Apply the aspect ratio correction
+    // 3. Apply the translation
+    // 4. Apply the rotation (centered after translation)
+    // 5. Revert aspect ration correction
+    // 6. Apply the Scaling (independent of aspect ratio)
+    // 7. switch back to UV coordinate system
+    return ScenetoUV * glm::inverse(Sca) * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
+}
+
+// Distortion nodes of the GEOMETRY node, within valid range
+static glm::mat4 clampNodes(const glm::mat4 &n)
+{
+    glm::mat4 c;
+    c[0] = glm::clamp(n[0], glm::vec4(0.f), glm::vec4(1.f));
+    c[1] = glm::clamp(n[1], glm::vec4(0.f, -1.f, 0.f, 0.f), glm::vec4(1.f, 0.f, 1.f, 1.f));
+    c[2] = glm::clamp(n[2], glm::vec4(-1.f, 0.f, 0.f, 0.f), glm::vec4(0.f, 1.f, 1.f, 1.f));
+    c[3] = glm::clamp(n[3], glm::vec4(-1.f, -1.f, 0.f, 0.f), glm::vec4(0.f, 0.f, 1.f, 1.f));
+    return c;
+}
+
+
 SourceCore::SourceCore()
 {
     // default nodes
@@ -52,6 +93,8 @@ SourceCore::SourceCore()
     groups_[View::TEXTURE]->visible_ = false;
     groups_[View::TRANSITION] = new Group;
     groups_[View::TRANSITION]->visible_ = false;
+    groups_[View::PRESENTATION] = new Group;
+    groups_[View::PRESENTATION]->visible_ = false;
     // temp node
     stored_status_  = new Group;
 
@@ -77,6 +120,7 @@ SourceCore::~SourceCore()
     delete groups_[View::LAYER];
     delete groups_[View::TEXTURE];
     delete groups_[View::TRANSITION];
+    delete groups_[View::PRESENTATION];
     delete stored_status_;
 
     // don't forget that the processing shader
@@ -118,7 +162,7 @@ SourceCore& SourceCore::operator= (SourceCore const& other)
 
 Source::Source(uint64_t id) : SourceCore(), id_(id), ready_(false), symbol_(nullptr),
     active_(true), locked_(false), need_update_(SourceUpdate_None), dt_(16.f), 
-    workspace_(WORKSPACE_CENTRAL), replay_on_disable_(false)
+    viewspace_(-1), viewspace_shown_(true), replay_on_disable_(false)
 {
     // create unique id
     if (id_ == 0)
@@ -478,6 +522,10 @@ void Source::setMode(Source::Mode m)
     if ( mode_ == Source::UNINITIALIZED ) {
         for (auto g = groups_.begin(); g != groups_.end(); ++g)
             (*g).second->visible_ = true;
+        // except in views if its ViewSpace is hidden
+        groups_[View::MIXING]->visible_   = viewspace_shown_;
+        groups_[View::GEOMETRY]->visible_ = viewspace_shown_;
+        groups_[View::LAYER]->visible_    = viewspace_shown_;
     }
 
     // Switch frame between visible, selected and current modes
@@ -503,9 +551,30 @@ void Source::setMode(Source::Mode m)
     overlay_mixinggroup_->setActive(current);
 
     // show in texturing view if selected or current
-    groups_[View::TEXTURE]->visible_ = m > Source::VISIBLE;
+    groups_[View::TEXTURE]->visible_ = m > Source::VISIBLE && viewspace_shown_;
 
     mode_ = m;
+}
+
+void Source::setViewSpace(uint v)
+{
+    viewspace_ = (int) MIN(v, MAX_VIEWSPACE - 1);
+}
+
+void Source::setViewSpaceShown(bool on)
+{
+    if (viewspace_shown_ == on)
+        return;
+
+    viewspace_shown_ = on;
+
+    // show or hide in views (never in RENDERING)
+    if ( mode_ > Source::UNINITIALIZED ) {
+        groups_[View::MIXING]->visible_   = on;
+        groups_[View::GEOMETRY]->visible_ = on;
+        groups_[View::LAYER]->visible_    = on;
+        groups_[View::TEXTURE]->visible_  = on && mode_ > Source::VISIBLE;
+    }
 }
 
 
@@ -586,7 +655,10 @@ void Source::attach(FrameBuffer *renderbuffer)
     if ( rendersurface_ == nullptr) {
         // create the surfaces to draw the frame buffer in the views
         rendersurface_ = new FrameBufferMeshSurface(renderbuffer_, blendingshader_);
-        groups_[View::RENDERING]->attach(rendersurface_);
+        // sources without image never render in the session
+        // (NB: the RENDERING group is still attached to the session, see Session::attached)
+        if (hasImage())
+            groups_[View::RENDERING]->attach(rendersurface_);
         groups_[View::GEOMETRY]->attach(rendersurface_);
     }
     else
@@ -774,9 +846,9 @@ void Source::call(SourceCallback *callback, bool override)
 
         // if operation should override previous callbacks of same type
         if (override) {
-            // finish all callbacks of the same type
+            // finish all callbacks overridden by the given one
             for (auto iter=update_callbacks_.begin(); iter != update_callbacks_.end(); ++iter) {
-                if ( callback->type() == (*iter)->type() )
+                if ( callback->overrides(**iter) )
                     (*iter)->finish();
             }
         }
@@ -877,7 +949,7 @@ void Source::update(float dt)
             glm::vec2 dist = glm::vec2(groups_[View::MIXING]->translation_);
             // use the sinusoidal transfer function to compute alpha
             float __a = SourceCore::alphaFromCordinates(dist.x, dist.y);
-            // audio update in case if depends on alpha
+            // audio update in case if depends on alpha (the one of output)
             setAudioVolumeFactor(Source::VOLUME_ALPHA, __a);
             // apply alpha
             blendingshader_->color = glm::vec4(1.f, 1.f, 1.f, __a);
@@ -911,10 +983,7 @@ void Source::update(float dt)
             mixingsurface_->update(dt_);
 
             // update nodes distortion
-            groups_[View::GEOMETRY]->data_[0] = glm::clamp(groups_[View::GEOMETRY]->data_[0], glm::vec4(0.f), glm::vec4(1.f));
-            groups_[View::GEOMETRY]->data_[1] = glm::clamp(groups_[View::GEOMETRY]->data_[1], glm::vec4(0.f, -1.f, 0.f, 0.f), glm::vec4(1.f, 0.f, 1.f, 1.f));
-            groups_[View::GEOMETRY]->data_[2] = glm::clamp(groups_[View::GEOMETRY]->data_[2], glm::vec4(-1.f, 0.f, 0.f, 0.f), glm::vec4(0.f, 1.f, 1.f, 1.f));
-            groups_[View::GEOMETRY]->data_[3] = glm::clamp(groups_[View::GEOMETRY]->data_[3], glm::vec4(-1.f, -1.f, 0.f, 0.f), glm::vec4(0.f, 0.f, 1.f, 1.f));
+            groups_[View::GEOMETRY]->data_ = clampNodes(groups_[View::GEOMETRY]->data_);
             blendingshader_->iNodes = groups_[View::GEOMETRY]->data_;
 
             handles_[View::GEOMETRY][Handles::NODE_LOWER_LEFT]->translation_.x = groups_[View::GEOMETRY]->data_[0].x;
@@ -938,49 +1007,13 @@ void Source::update(float dt)
             blendmode_->setActive((int) blendingshader_->blending);
             static_cast<Symbol *>(blendmode_->activeChild())->color.w = mode_ >= Source::CURRENT ? 1.0 : 0.6;
 
-            // Update workspace based on depth, and
-            // adjust vertical position of icon depending on workspace
-            if (groups_[View::LAYER]->translation_.x < -LAYER_FOREGROUND) {
-                groups_[View::LAYER]->translation_.y -= 0.3f;
-                workspace_ = Source::WORKSPACE_FOREGROUND;
-            }
-            else if (groups_[View::LAYER]->translation_.x < -LAYER_BACKGROUND) {
-                groups_[View::LAYER]->translation_.y -= 0.15f;
-                workspace_ = Source::WORKSPACE_CENTRAL;
-            }
-            else
-                workspace_ = Source::WORKSPACE_BACKGROUND;
-
             // MODIFY depth based on LAYER node
             groups_[View::MIXING]->translation_.z = groups_[View::LAYER]->translation_.z;
             groups_[View::GEOMETRY]->translation_.z = groups_[View::LAYER]->translation_.z;
             groups_[View::RENDERING]->translation_.z = groups_[View::LAYER]->translation_.z;
 
             // MODIFY texture projection based on APPEARANCE node
-            // UV to node coordinates
-            static glm::mat4 UVtoScene = GlmToolkit::transform(glm::vec3(1.f, -1.f, 0.f),
-                                                               glm::vec3(0.f, 0.f, 0.f),
-                                                               glm::vec3(-2.f, 2.f, 1.f));
-            static glm::mat4 ScenetoUV = glm::inverse(UVtoScene);
-            // Aspect Ratio correction transform : coordinates of Appearance Frame are scaled by render buffer width
-            glm::mat4 Ar = glm::scale(glm::identity<glm::mat4>(), glm::vec3(renderbuffer_->aspectRatio(), 1.f, 1.f) );
-            // Translation : same as Appearance Frame (modified by Ar)
-            glm::mat4 Tra = glm::translate(glm::identity<glm::mat4>(), groups_[View::TEXTURE]->translation_);
-            // Scaling : inverse scaling (larger UV when smaller Appearance Frame)
-            glm::vec2 scale =  glm::vec2(groups_[View::TEXTURE]->scale_.x,groups_[View::TEXTURE]->scale_.y);
-            scale = glm::sign(scale) * glm::max( glm::vec2(glm::epsilon<float>()), glm::abs(scale));
-            glm::mat4 Sca = glm::scale(glm::identity<glm::mat4>(), glm::vec3(scale, 1.f));
-            // Rotation : same angle than Appearance Frame, inverted axis
-            glm::mat4 Rot = glm::rotate(glm::identity<glm::mat4>(), groups_[View::TEXTURE]->rotation_.z, glm::vec3(0.f, 0.f, -1.f) );
-            // Combine transformations (non transitive) in this order:
-            // 1. switch to Scene coordinate system
-            // 2. Apply the aspect ratio correction
-            // 3. Apply the translation
-            // 4. Apply the rotation (centered after translation)
-            // 5. Revert aspect ration correction
-            // 6. Apply the Scaling (independent of aspect ratio)
-            // 7. switch back to UV coordinate system
-            texturesurface_->shader()->iTransform = ScenetoUV * glm::inverse(Sca) * glm::inverse(Ar) * Rot * Tra * Ar * UVtoScene;
+            texturesurface_->shader()->iTransform = textureTransform(groups_[View::TEXTURE], renderbuffer_->aspectRatio());
 
             // inform mixing group
             if (mixinggroup_)

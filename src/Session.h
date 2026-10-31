@@ -4,10 +4,10 @@
 #include <mutex>
 #include <string>
 
+#include "defines.h"
 #include "Source/SourceList.h"
 #include "View/GeometryView.h"
 #include "View/RenderView.h"
-#include "Metronome.h"
 #include "InputCallbacks.h"
 
 namespace tinyxml2 {
@@ -37,6 +37,8 @@ struct SessionSnapshots {
     tinyxml2::XMLDocument *xmlDoc_;
     std::list<uint64_t> keys_;
     std::mutex access_;
+    // duration of transition between snapshots (ms)
+    float duration_ = 1000.f;
 };
 
 class Session
@@ -91,7 +93,7 @@ public:
 
     // manage sources by #id (ordered index)
     SourceList::iterator at (int index);
-    int index (SourceList::iterator it) const;    
+    int index (SourceList::iterator it) const;
     void move (int current_index, int target_index);
 
     // get total number of sources (recursively)
@@ -102,6 +104,8 @@ public:
 
     // update all sources and mark sources which failed
     inline bool ready () const  { return ready_; }
+    // ready, and so are the sessions inside its active and playing bundles
+    bool started () const;
     void update (float dt);
     uint64_t runtime() const;
 
@@ -138,6 +142,12 @@ public:
     inline void setActivationThreshold(float t) { activation_threshold_ = t; }
     inline float activationThreshold() const { return activation_threshold_;}
 
+    // ViewSpaces shown in views (bitmask, all shown by default)
+    inline uint viewSpaces () const { return viewspaces_; }
+    inline void setViewSpaces (uint mask) { viewspaces_ = mask & ((1 << MAX_VIEWSPACE) - 1); }
+    inline bool viewSpaceShown (uint v) const { return viewspaces_ & (1 << v); }
+    void setViewSpaceShown (uint v, bool on);
+
     // configuration for group nodes of views
     inline Group *config (View::Mode m) const { return config_.at(m); }
 
@@ -146,7 +156,7 @@ public:
     std::string filename () const { return filename_; }
 
     // get the list of notes
-    void addNote(SessionNote note = SessionNote());
+    void addNote(SessionNote note);
     std::list<SessionNote>::iterator beginNotes ();
     std::list<SessionNote>::iterator endNotes ();
     std::list<SessionNote>::iterator deleteNote (std::list<SessionNote>::iterator n);
@@ -186,6 +196,7 @@ protected:
     uint64_t id_;
     bool active_;
     float activation_threshold_;
+    uint viewspaces_;
     RenderView render_;
     std::string filename_;
     SourceListUnique failed_;

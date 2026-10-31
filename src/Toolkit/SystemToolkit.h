@@ -9,11 +9,24 @@
 
 #include <string>
 #include <list>
+#include <vector>
+#include <chrono>
 
 namespace SystemToolkit
 {
-    // get fixed length string (17 chars) YYYYMMDDHHmmssiii
+    // get fixed length string (17 chars) YYYYMMDDHHmmssiii of the current time
     std::string date_time_string();
+
+    // same for a given time (local time)
+    std::string date_time_string(std::chrono::system_clock::time_point time);
+
+    // get the time from a string YYYYMMDDHHmm[ss[iii]] (local time)
+    // returns false if the string is not a valid date
+    bool date_time_parse(const std::string &date, std::chrono::system_clock::time_point &time);
+
+    // get a string to display, 'DD/MM/YYYY @ HH:mm', from a time (local time)
+    // returns an empty string for the default time_point (epoch), i.e. an unknown date
+    std::string readable_date_time_string(std::chrono::system_clock::time_point time);
 
     // get the OS dependent username
     std::string username();
@@ -45,6 +58,18 @@ namespace SystemToolkit
     // extract the extension of a filename
     std::string extension_filename(const std::string& filename);
     bool has_extension(const std::string& filename, const std::string& extension);
+
+    // true if the extension of the file is a known image format (jpg, png, etc.)
+    bool is_image_file(const std::string& filename);
+
+    // true if the extension of the file is a GLSL shader code (glsl)
+    bool is_shader_file(const std::string& filename);
+
+    // groups files into runs of consecutively numbered files (e.g. img_01.png, img_02.png, img_03.png).
+    // Files are grouped when they share directory, name (but for the last number), number of digits
+    // and extension. Each run is sorted in numeric order; unnumbered files or isolated numbers
+    // are returned as one-element lists. This is only a candidate generator: callers still validate.
+    std::vector< std::list<std::string> > group_numbered_files(const std::list<std::string>& files);
 
     // tests if dir is a directory and return its path, empty string otherwise
     std::string path_directory(const std::string& path);

@@ -1,10 +1,7 @@
 #ifndef TIMELINE_H
 #define TIMELINE_H
 
-#include <string>
-#include <sstream>
 #include <set>
-#include <list>
 
 #include <gst/pbutils/pbutils.h>
 

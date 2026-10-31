@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include "defines.h"
 #include "Log.h"
 #include "Scene/Decorations.h"
 #include "Visitor/Visitor.h"
@@ -85,6 +86,11 @@ void SrtReceiverSource::accept(Visitor& v)
 glm::ivec2 SrtReceiverSource::icon() const
 {
     return glm::ivec2(ICON_VI_SOURCE_SRT);
+}
+
+std::string_view SrtReceiverSource::type() const
+{
+    return SOURCE_TYPE_SRT_RECEIVER;
 }
 
 std::string SrtReceiverSource::info() const

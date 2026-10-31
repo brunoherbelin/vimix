@@ -21,6 +21,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+#include "Shader.h"
 #include "defines.h"
 #include "Visitor/Visitor.h"
 #include "Resource.h"
@@ -59,6 +60,12 @@ void ImageShader::use()
     program_->setUniform("stipple", stipple);
     program_->setUniform("premultiply", premultiply);
     program_->setUniform("iNodes", iNodes);
+
+    // additive blending modes: alpha follows color (black is transparent)
+    // (not when blending is disabled, i.e. BLEND_NONE, as alpha would be written raw)
+    bool additive = !force_blending_opacity && blending < BLEND_NONE
+                    && !(blending == BLEND_OPACITY || blending == BLEND_MULTIPLY);
+    program_->setUniform("alphafromcolor", additive ? 1.f : 0.f);
 
     // default mask
     if (secondary_texture == 0)
@@ -159,5 +166,3 @@ void MaskShader::accept(Visitor& v) {
     Shader::accept(v);
     v.visit(*this);
 }
-
-

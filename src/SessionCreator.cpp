@@ -26,6 +26,7 @@
 
 #include "Log.h"
 #include "defines.h"
+#include "Toolkit/SystemToolkit.h"
 #include "Source/Source.h"
 #include "Source/SourceCallback.h"
 #include "Source/CloneSource.h"
@@ -33,6 +34,8 @@
 #include "Filter/DelayFilter.h"
 #include "Filter/ImageFilter.h"
 #include "Source/MediaSource.h"
+#include "Source/SplitMediaSource.h"
+#include "Source/AudioSource.h"
 #include "Source/SessionSource.h"
 #include "Source/StreamSource.h"
 #include "Source/PatternSource.h"
@@ -46,7 +49,7 @@
 #include "Session.h"
 #include "ImageShader.h"
 #include "ImageProcessingShader.h"
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Visitor/SessionVisitor.h"
 #include "Source/ShaderSource.h"
@@ -55,6 +58,7 @@
 #include "Toolkit/tinyxml2Toolkit.h"
 using namespace tinyxml2;
 
+#include "Source/DraftSource.h"
 #include "SessionCreator.h"
 
 SessionInformation SessionCreator::info(const std::string& filename, bool with_thumbnail)
@@ -88,17 +92,9 @@ SessionInformation SessionCreator::info(const std::string& filename, bool with_t
                 }
                 att_string = header->Attribute("date");
                 if (att_string) {
-                    std::string date( att_string );
-                    ret.description += date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4) + " @ ";
-                    ret.description += date.substr(8,2) + ":" + date.substr(10,2);
                     // convert date string YYYYMMDDHHMMSS (local time) to time_point
-                    std::tm tm = {};
-                    std::istringstream ss(date);
-                    ss >> std::get_time(&tm, "%Y%m%d%H%M%S");
-                    if (!ss.fail()) {
-                        tm.tm_isdst = -1;
-                        ret.date = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-                    }
+                    if (SystemToolkit::date_time_parse(std::string(att_string), ret.date))
+                        ret.description += SystemToolkit::readable_date_time_string(ret.date);
                 }
             }
             if (with_thumbnail) {
@@ -227,6 +223,8 @@ void SessionCreator::loadConfig(XMLElement *viewsNode)
 void SessionCreator::loadSnapshots(XMLElement *snapshotsNode)
 {
     if (snapshotsNode != nullptr && session_ != nullptr) {
+
+        snapshotsNode->QueryFloatAttribute("duration", &session_->snapshots()->duration_);
 
         const XMLElement* N = snapshotsNode->FirstChildElement();
         for( ; N ; N = N->NextSiblingElement()) {
@@ -400,6 +398,46 @@ std::list< SourceList > SessionLoader::getMixingGroups() const
     return groups_new_sources_id;
 }
 
+Source *SessionLoader::newSource(const std::string &type, uint64_t id)
+{
+    Source *load_source = nullptr;
+
+    if ( type == SOURCE_TYPE_MEDIA)
+        load_source = new MediaSource(id);
+    else if ( type == SOURCE_TYPE_SPLIT_MEDIA)
+        load_source = new SplitMediaSource(id);
+    else if ( type == SOURCE_TYPE_AUDIO)
+        load_source = new AudioSource(id);
+    else if ( type == SOURCE_TYPE_SESSION)
+        load_source = new SessionFileSource(id);
+    else if ( type == SOURCE_TYPE_GROUP)
+        load_source = new SessionGroupSource(id);
+    else if ( type == SOURCE_TYPE_RENDER)
+        load_source = new RenderSource(id);
+    else if ( type == SOURCE_TYPE_PATTERN)
+        load_source = new PatternSource(id);
+    else if ( type == SOURCE_TYPE_DEVICE)
+        load_source = new DeviceSource(id);
+    else if ( type == SOURCE_TYPE_SCREEN_CAPTURE)
+        load_source = new ScreenCaptureSource(id);
+    else if ( type == SOURCE_TYPE_NETWORK)
+        load_source = new NetworkSource(id);
+    else if ( type == SOURCE_TYPE_MULTI_FILE)
+        load_source = new MultiFileSource(id);
+    else if ( type == SOURCE_TYPE_GENERIC_STREAM)
+        load_source = new GenericStreamSource(id);
+    else if ( type == SOURCE_TYPE_SRT_RECEIVER)
+        load_source = new SrtReceiverSource(id);
+    else if ( type == SOURCE_TYPE_TEXT)
+        load_source = new TextSource(id);
+    else if ( type == SOURCE_TYPE_SHADER)
+        load_source = new ShaderSource(id);
+    else
+        Log::Info("Unknown source type '%s' ignored.", type.c_str());
+
+    return load_source;
+}
+
 void SessionLoader::load(XMLElement *sessionNode)
 {
     sources_id_.clear();
@@ -413,6 +451,10 @@ void SessionLoader::load(XMLElement *sessionNode)
         float t = MIXING_MIN_THRESHOLD;
         sessionNode->QueryFloatAttribute("activationThreshold", &t);
         session_->setActivationThreshold(t);
+        // read and set ViewSpaces shown (keep current if not given)
+        uint vs = session_->viewSpaces();
+        sessionNode->QueryUnsignedAttribute("viewspaces", &vs);
+        session_->setViewSpaces(vs);
 
         std::list<XMLElement*> cloneNodesToAdd;
         std::map<int, uint64_t> loaded_xml_ids;
@@ -441,53 +483,14 @@ void SessionLoader::load(XMLElement *sessionNode)
                 const char *pType = xmlCurrent_->Attribute("type");
                 if (!pType)
                     continue;
-                if ( std::string(pType) == "MediaSource") {
-                    load_source = new MediaSource(id_xml_);
-                }
-                else if ( std::string(pType) == "SessionSource") {
-                    load_source = new SessionFileSource(id_xml_);
-                }
-                else if ( std::string(pType) == "GroupSource") {
-                    load_source = new SessionGroupSource(id_xml_);
-                }
-                else if ( std::string(pType) == "RenderSource") {
-                    load_source = new RenderSource(id_xml_);
-                }
-                else if ( std::string(pType) == "PatternSource") {
-                    load_source = new PatternSource(id_xml_);
-                }
-                else if ( std::string(pType) == "DeviceSource") {
-                    load_source = new DeviceSource(id_xml_);
-                }
-                else if ( std::string(pType) == "ScreenCaptureSource") {
-                    load_source = new ScreenCaptureSource(id_xml_);
-                }
-                else if ( std::string(pType) == "NetworkSource") {
-                    load_source = new NetworkSource(id_xml_);
-                }
-                else if ( std::string(pType) == "MultiFileSource") {
-                    load_source = new MultiFileSource(id_xml_);
-                }
-                else if ( std::string(pType) == "GenericStreamSource") {
-                    load_source = new GenericStreamSource(id_xml_);
-                }
-                else if ( std::string(pType) == "SrtReceiverSource") {
-                    load_source = new SrtReceiverSource(id_xml_);
-                }
-                else if ( std::string(pType) == "TextSource") {
-                    load_source = new TextSource(id_xml_);
-                }
-                else if ( std::string(pType) == "ShaderSource") {
-                    load_source = new ShaderSource(id_xml_);
-                }
-                else if ( std::string(pType) == "CloneSource") {
+                // clones are created after all other sources
+                if ( std::string(pType) == SOURCE_TYPE_CLONE) {
                     cloneNodesToAdd.push_front(xmlCurrent_);
                     continue;
                 }
-                else {
-                    Log::Info("Unknown source type '%s' ignored.", pType);
+                load_source = newSource(pType, id_xml_);
+                if (load_source == nullptr)
                     continue;
-                }
 
                 // and store id as loaded
                 loaded_xml_ids[i++] = id_xml_;
@@ -542,7 +545,7 @@ void SessionLoader::load(XMLElement *sessionNode)
                     }
 
                     // found the orign source!
-                    if (origin != session_->end()) {
+                    if (origin != session_->end() && (*origin)->hasImage()) {
                         // create a new source of type Clone
                         CloneSource *clone_source = (*origin)->clone(id_xml_);
 
@@ -592,6 +595,51 @@ void SessionLoader::load(XMLElement *sessionNode)
 }
 
 
+DraftSessionLoader::DraftSessionLoader(Session *draft, Session *live) : SessionLoader(draft), live_(live)
+{
+
+}
+
+Source *DraftSessionLoader::newSource(const std::string &type, uint64_t id)
+{
+    // sources computing their content are created
+    if ( type == SOURCE_TYPE_SHADER || type == SOURCE_TYPE_RENDER)
+        return SessionLoader::newSource(type, id);
+
+    // other sources are proxies of the sources of the live session
+    SourceList::iterator it = live_->find(id);
+    if ( it != live_->end() )
+        return new DraftSource(*it, id);
+
+    return nullptr;
+}
+
+Session *DraftSessionLoader::createDraft(Session *live)
+{
+    if (live == nullptr || live->frame() == nullptr)
+        return nullptr;
+
+    // new session with same output as live
+    Session *draft = new Session;
+    draft->setResolution( live->frame()->resolution(), live->frame()->flags() & FrameBuffer::FrameBuffer_alpha );
+    draft->setFilename( live->filename() );
+
+    // describe the sources of the live session in xml
+    tinyxml2::XMLDocument xmlDoc;
+    XMLElement *sessionNode = xmlDoc.NewElement("Session");
+    xmlDoc.InsertEndChild(sessionNode);
+    sessionNode->SetAttribute("activationThreshold", live->activationThreshold());
+    SessionVisitor sv(&xmlDoc, sessionNode);
+    for (auto iter = live->begin(); iter != live->end(); ++iter, sv.setRoot(sessionNode) )
+        (*iter)->accept(sv);
+
+    // load the draft session from this description
+    DraftSessionLoader loader(draft, live);
+    loader.load(sessionNode);
+
+    return draft;
+}
+
 Source *SessionLoader::recreateSource(Source *s)
 {
     if ( s == nullptr || session_ == nullptr )
@@ -626,8 +674,14 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
 
     // for CLONE, find the source with the given id in the session
     SourceList::iterator sit = session_->end();
-    if (mode == CLONE)
+    if (mode == CLONE) {
         sit = session_->find(id__);
+        // sources without image cannot be cloned: create a new one instead
+        if ( sit != session_->end() && !(*sit)->hasImage() ) {
+            sit = session_->end();
+            id__ = 0;
+        }
+    }
 
     // no source with this id exists or Mode DUPLICATE
     if ( sit == session_->end() ) {
@@ -638,46 +692,52 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
         // create a new source depending on type
         const char *pType = xmlCurrent_->Attribute("type");
         if (pType) {
-            if ( std::string(pType) == "MediaSource") {
+            if ( std::string(pType) == SOURCE_TYPE_MEDIA) {
                 load_source = new MediaSource(id__);
             }
-            else if ( std::string(pType) == "SessionSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_SPLIT_MEDIA) {
+                load_source = new SplitMediaSource(id__);
+            }
+            else if ( std::string(pType) == SOURCE_TYPE_AUDIO) {
+                load_source = new AudioSource(id__);
+            }
+            else if ( std::string(pType) == SOURCE_TYPE_SESSION) {
                 load_source = new SessionFileSource(id__);
             }
-            else if ( std::string(pType) == "GroupSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_GROUP) {
                 load_source = new SessionGroupSource(id__);
             }
-            else if ( std::string(pType) == "RenderSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_RENDER) {
                 load_source = new RenderSource(id__);
             }
-            else if ( std::string(pType) == "PatternSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_PATTERN) {
                 load_source = new PatternSource(id__);
             }
-            else if ( std::string(pType) == "DeviceSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_DEVICE) {
                 load_source = new DeviceSource(id__);
             }
-            else if ( std::string(pType) == "ScreenCaptureSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_SCREEN_CAPTURE) {
                 load_source = new ScreenCaptureSource(id__);
             }
-            else if ( std::string(pType) == "NetworkSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_NETWORK) {
                 load_source = new NetworkSource(id__);
             }
-            else if ( std::string(pType) == "MultiFileSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_MULTI_FILE) {
                 load_source = new MultiFileSource(id__);
             }
-            else if ( std::string(pType) == "GenericStreamSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_GENERIC_STREAM) {
                 load_source = new GenericStreamSource(id__);
             }
-            else if ( std::string(pType) == "SrtReceiverSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_SRT_RECEIVER) {
                 load_source = new SrtReceiverSource(id__);
             }
-            else if ( std::string(pType) == "TextSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_TEXT) {
                 load_source = new TextSource(id__);
             }
-            else if ( std::string(pType) == "ShaderSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_SHADER) {
                 load_source = new ShaderSource(id__);
             }
-            else if ( std::string(pType) == "CloneSource") {
+            else if ( std::string(pType) == SOURCE_TYPE_CLONE) {
                 // clone from given origin
                 XMLElement* originNode = xmlCurrent_->FirstChildElement("origin");
                 if (originNode) {
@@ -689,7 +749,7 @@ Source *SessionLoader::createSource(tinyxml2::XMLElement *sourceNode, Mode mode)
                     else
                         origin = session_->find( std::string ( originNode->GetText() ) );
                     // found the orign source
-                    if (origin != session_->end())
+                    if (origin != session_->end() && (*origin)->hasImage())
                         load_source = (*origin)->clone(id__);
                 }
             }
@@ -1097,6 +1157,10 @@ void SessionLoader::visit (Source& s)
     bool replay = false;
     sourceNode->QueryBoolAttribute("replay_on_deactivate", &replay);
     s.setReplayOnDeactivate(replay);
+    // ViewSpace of the source (first one by default)
+    uint vs = 0;
+    sourceNode->QueryUnsignedAttribute("viewspace", &vs);
+    s.setViewSpace(vs);
 
     xmlCurrent_ = sourceNode->FirstChildElement("Mixing");
     if (xmlCurrent_) s.groupNode(View::MIXING)->accept(*this);
@@ -1174,8 +1238,86 @@ void SessionLoader::visit (Source& s)
 void SessionLoader::visit (MediaSource& s)
 {
     bool freshload = false;
+    // set list of files of a split media
+    SplitMediaSource *sms = dynamic_cast<SplitMediaSource *>(&s);
+    if (sms) {
+        std::list<std::string> files;
+        XMLElement* listNode = xmlCurrent_->FirstChildElement("SplitFiles");
+        if (listNode) {
+            for (XMLElement* fileNode = listNode->FirstChildElement("file"); fileNode;
+                 fileNode = fileNode->NextSiblingElement("file")) {
+                const char * text = fileNode->GetText();
+                if (!text)
+                    continue;
+                std::string path(text);
+                if ( !SystemToolkit::file_exists(path)){
+                    const char * relative;
+                    if ( fileNode->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
+                        std::string rel = SystemToolkit::path_absolute_from_path(std::string( relative ), sessionFilePath_);
+                        Log::Info("File %s not found; Trying %s instead.", path.c_str(), rel.c_str());
+                        path = rel;
+                    }
+                }
+                files.push_back(path);
+            }
+        }
+        // load only new list of files
+        if ( files.empty() || files != sms->files() ) {
+            sms->setFiles(files);
+            freshload = true;
+        }
+    }
+    // set sequence of images
+    MultiFileSource *mfs = dynamic_cast<MultiFileSource *>(&s);
+    bool legacy_loop = true;
+    if (mfs) {
+        XMLElement* seq = xmlCurrent_->FirstChildElement("Sequence");
+        const char *text = seq ? seq->GetText() : nullptr;
+        if (text) {
+
+            MultiFileSequence sequence;
+            sequence.location = std::string (text);
+
+            // fix path if absolute path is not found
+            std::string folder = SystemToolkit::path_filename(sequence.location);
+            std::string dir = SystemToolkit::path_directory(folder);
+            if ( dir.empty() ){
+                const char * relative;
+                if ( seq->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
+                    std::string rel = SystemToolkit::path_absolute_from_path(std::string(relative), sessionFilePath_);
+                    Log::Info("Folder %s not found; Trying %s instead.", folder.c_str(), rel.c_str());
+                    sequence.location = rel;
+                }
+            }
+
+            // set sequence parameters
+            seq->QueryIntAttribute("min", &sequence.min);
+            seq->QueryIntAttribute("max", &sequence.max);
+            seq->QueryUnsignedAttribute("width", &sequence.width);
+            seq->QueryUnsignedAttribute("height", &sequence.height);
+            const char *codec = seq->Attribute("codec");
+            if (codec)
+                sequence.codec = std::string(codec);
+
+            uint fps = 0;
+            seq->QueryUnsignedAttribute("fps", &fps);
+
+            // different sequence
+            if ( sequence != mfs->sequence() ) {
+                mfs->setSequence( sequence, fps);
+                freshload = true;
+            }
+            // same sequence, different framerate
+            else if ( fps != mfs->framerate() )
+                mfs->setFramerate( fps );
+
+            // backward compatibility: loop was a property of the sequence
+            // (begin and end are replaced by gaps of the timeline)
+            seq->QueryBoolAttribute("loop", &legacy_loop);
+        }
+    }
     // set uri
-    XMLElement* pathNode = xmlCurrent_->FirstChildElement("uri"); // TODO change to "path" but keep backward compatibility
+    XMLElement* pathNode = (sms || mfs) ? nullptr : xmlCurrent_->FirstChildElement("uri"); // TODO change to "path" but keep backward compatibility
     if (pathNode) {
         const char * text = pathNode->GetText();
         if (text) {
@@ -1209,6 +1351,10 @@ void SessionLoader::visit (MediaSource& s)
 
     // set config media player
     s.mediaplayer()->accept(*this);
+
+    // backward compatibility: sequence that does not loop
+    if (mfs && !legacy_loop && !mediaplayerNode)
+        s.mediaplayer()->setLoop(MediaPlayer::LOOP_NONE);
 
     // read source play speed from media player SessionLoader::visit
     double r = s.mediaplayer()->playSpeed();
@@ -1283,11 +1429,35 @@ void SessionLoader::visit (SessionGroupSource& s)
     // get the inside session
     XMLElement* sessionGroupNode = xmlCurrent_->FirstChildElement("Session");
     if (sessionGroupNode) {
-        // only parse if newly created
-        if (s.session()->empty()) {
-            // load session inside group
-            SessionLoader grouploader( s.session(), level_ + 1 );
-            grouploader.load( sessionGroupNode );
+        Session *se = s.session();
+
+        // ids of all sources inside group before loading
+        SourceIdList previous_sources = se->getIdList();
+
+        // when restoring an existing group (undo, snapshot), mixing groups
+        // and input callbacks are re-created by loading the inside session
+        if (!previous_sources.empty()) {
+            auto group_iter = se->beginMixingGroup();
+            while ( group_iter != se->endMixingGroup() )
+                group_iter = se->deleteMixingGroup(group_iter);
+            if (sessionGroupNode->FirstChildElement("InputCallbacks"))
+                se->inputCallbacks()->clear();
+        }
+
+        // load session inside group:
+        // - existing sources (same id) are updated
+        // - missing sources are created
+        SessionLoader grouploader( se, level_ + 1 );
+        grouploader.load( sessionGroupNode );
+
+        // delete sources inside group that are not in the xml
+        std::map< uint64_t, Source* > loaded_sources = grouploader.getSources();
+        for (auto id = previous_sources.begin(); id != previous_sources.end(); ++id) {
+            if ( loaded_sources.find(*id) == loaded_sources.end() ) {
+                SourceList::iterator its = se->find(*id);
+                if (its != se->end())
+                    se->deleteSource( *its );
+            }
         }
     }
 }
@@ -1306,7 +1476,7 @@ void SessionLoader::visit (RenderSource& s)
     s.setSession( session_ );
 }
 
-void SessionLoader::visit(Stream &n)
+void SessionLoader::visit(Stream &)
 {
 
 }
@@ -1453,67 +1623,6 @@ void SessionLoader::visit (NetworkSource& s)
         s.setConnection(connect);
 }
 
-
-void SessionLoader::visit (MultiFileSource& s)
-{
-    XMLElement* seq = xmlCurrent_->FirstChildElement("Sequence");
-
-    if (seq) {
-
-        MultiFileSequence sequence;
-
-        const char *text = seq->GetText();
-        if (text) {
-            sequence.location = std::string (text);
-
-            // fix path if absolute path is not found
-            std::string folder = SystemToolkit::path_filename(sequence.location);
-            std::string dir = SystemToolkit::path_directory(folder);
-            if ( dir.empty() ){
-                const char * relative;
-                if ( seq->QueryStringAttribute("relative", &relative) == XML_SUCCESS) {
-                    std::string rel = SystemToolkit::path_absolute_from_path(std::string(relative), sessionFilePath_);
-                    Log::Info("Folder %s not found; Trying %s instead.", folder.c_str(), rel.c_str());
-                    sequence.location = rel;
-                }
-            }
-
-            // set sequence parameters
-            seq->QueryIntAttribute("min", &sequence.min);
-            seq->QueryIntAttribute("max", &sequence.max);
-            seq->QueryUnsignedAttribute("width", &sequence.width);
-            seq->QueryUnsignedAttribute("height", &sequence.height);
-            const char *codec = seq->Attribute("codec");
-            if (codec)
-                sequence.codec = std::string(codec);
-
-            uint fps = 0;
-            seq->QueryUnsignedAttribute("fps", &fps);
-
-            // different sequence
-            if ( sequence != s.sequence() ) {
-                s.setSequence( sequence, fps);
-            }
-            // same sequence, different framerate
-            else if ( fps != s.framerate() )  {
-                s.setFramerate( fps );
-            }
-
-            int begin = -1;
-            seq->QueryIntAttribute("begin", &begin);
-            int end = INT_MAX;
-            seq->QueryIntAttribute("end", &end);
-            if ( begin != s.begin() || end != s.end() )
-                s.setRange(begin, end);
-
-            bool loop = true;
-            seq->QueryBoolAttribute("loop", &loop);
-            if ( loop != s.loop() )
-                s.setLoop(loop);
-        }
-    }
-
-}
 
 void SessionLoader::visit (GenericStreamSource& s)
 {
@@ -1702,8 +1811,10 @@ void SessionLoader::visit(ShaderSource &s)
 
 void SessionLoader::visit (CloneSource& s)
 {
+    XMLElement* sourceNode = xmlCurrent_;
+
     // configuration of filter in clone
-    xmlCurrent_ = xmlCurrent_->FirstChildElement("Filter");
+    xmlCurrent_ = sourceNode->FirstChildElement("Filter");
     if (xmlCurrent_) {
         // get type of filter and create
         int t = 0;
@@ -1713,6 +1824,9 @@ void SessionLoader::visit (CloneSource& s)
         // set config filter
         s.filter()->accept(*this);
     }
+
+    // restore current
+    xmlCurrent_ = sourceNode;
 }
 
 void SessionLoader::visit (CanvasSource &c)

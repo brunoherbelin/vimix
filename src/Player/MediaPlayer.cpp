@@ -33,7 +33,7 @@
 #include "Metronome.h"
 #include "Settings.h"
 
-#include "MediaPlayer.h"
+#include "Player/MediaPlayer.h"
 
 #ifndef NDEBUG
 #define MEDIA_PLAYER_DEBUG
@@ -332,7 +332,7 @@ MediaInfo MediaPlayer::UriDiscoverer(const std::string &uri)
 }
 
 // Convert a raw buffer PTS to stream time using the active segment, undoing
-// the shift a container's edit list applies to compensate for encoder B-frame reorder delay 
+// the shift a container's edit list applies to compensate for encoder B-frame reorder delay
 // Positions before segment.start are still treated as invalid: those are the
 // buffered priming frames the edit list exists to trim from playback.
 static GstClockTime segment_stream_time(const GstSegment *segment, GstClockTime pts)
@@ -476,7 +476,7 @@ MediaEvaluation MediaPlayer::UriEvaluator(const std::string &uri, std::shared_pt
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
     bool cancelled_flag = false;
-    GstClockTime elapsed = 0; 
+    GstClockTime elapsed = 0;
     const GstClockTime chunk = 200 * GST_MSECOND;
     const GstClockTime timeout_ns = (GstClockTime)EVALUATE_TIMEOUT * GST_SECOND;
 
@@ -552,7 +552,7 @@ void MediaPlayer::open (const std::string & filename, const std::string &uri)
         return;
 
     // set path
-    filename_ = BaseToolkit::transliterate( filename );
+    filename_ = filename;
 
     // set uri to open
     if (uri.empty())
@@ -564,12 +564,7 @@ void MediaPlayer::open (const std::string & filename, const std::string &uri)
         failed_ = true;
 
     // start URI discovering thread:
-    discoverer_ = std::async( MediaPlayer::UriDiscoverer, uri_);
-    // wait for discoverer to finish in the future (test in update)
-
-    // start async evaluation for video files
-    evaluator_cancel_ = std::make_shared<std::atomic<bool>>(false);
-    evaluator_ = std::async(MediaPlayer::UriEvaluator, uri_, evaluator_cancel_);
+    startDiscovery();
 
 //    // debug without thread
 //    media_ = MediaPlayer::UriDiscoverer(uri_);
@@ -581,6 +576,17 @@ void MediaPlayer::open (const std::string & filename, const std::string &uri)
 
 }
 
+
+void MediaPlayer::startDiscovery()
+{
+    // start URI discovering thread:
+    discoverer_ = std::async( MediaPlayer::UriDiscoverer, uri_);
+    // wait for discoverer to finish in the future (test in update)
+
+    // start async evaluation for video files
+    evaluator_cancel_ = std::make_shared<std::atomic<bool>>(false);
+    evaluator_ = std::async(MediaPlayer::UriEvaluator, uri_, evaluator_cancel_);
+}
 
 void MediaPlayer::reopen()
 {
@@ -606,11 +612,11 @@ GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer 
         g_error_free(error);
 
         // register failure in source
-        reinterpret_cast<MediaPlayer *>(ptr)->close();  
+        reinterpret_cast<MediaPlayer *>(ptr)->close();
         reinterpret_cast<MediaPlayer *>(ptr)->failed_ = true;
     }
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-    // setup OpenGL contexts for GStreamer elements from global Rendering opengl 
+    // setup OpenGL contexts for GStreamer elements from global Rendering opengl
     else if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_NEED_CONTEXT) {
         const gchar* contextType;
         gst_message_parse_context_type(msg, &contextType);
@@ -637,26 +643,6 @@ GstBusSyncReply MediaPlayer::signal_handler(GstBus *, GstMessage *msg, gpointer 
 }
 
 #ifdef USE_GST_PLAYBIN
-
-// GstPlayFlags flags from playbin. It is the policy of GStreamer to
-// not publicly expose element-specific enums. That's why this
-// GstPlayFlags enum has been copied here.
-// https://gstreamer.freedesktop.org/documentation/playback/playsink.html?gi-language=c#GstPlayFlags
-typedef enum {
-    GST_PLAY_FLAG_VIDEO         = 0x00000001,
-    GST_PLAY_FLAG_AUDIO         = 0x00000002,
-    GST_PLAY_FLAG_TEXT          = 0x00000004,
-    GST_PLAY_FLAG_VIS           = 0x00000008,
-    GST_PLAY_FLAG_SOFT_VOLUME   = 0x00000010,
-    GST_PLAY_FLAG_NATIVE_AUDIO  = 0x00000020,
-    GST_PLAY_FLAG_NATIVE_VIDEO  = 0x00000040,
-    GST_PLAY_FLAG_DOWNLOAD      = 0x00000080,
-    GST_PLAY_FLAG_BUFFERING     = 0x00000100,
-    GST_PLAY_FLAG_DEINTERLACE   = 0x00000200,
-    GST_PLAY_FLAG_SW_COLOR      = 0x00000400,
-    GST_PLAY_FLAG_FORCE_FILTER  = 0x00000800,
-    GST_PLAY_FLAG_SW_DECODER    = 0x00001000
-} GstPlayFlags;
 
 //
 // Setup a media player using gstreamer playbin
@@ -686,6 +672,9 @@ void MediaPlayer::execute_open()
         flags |= GST_PLAY_FLAG_SW_DECODER;
     }
     g_object_set( G_OBJECT (pipeline_), "flags", flags, NULL);
+
+    // sub-class specific setup (can modify the flags)
+    setupPipeline();
 
     // hack to compensate for lack of PTS in gif animations
     if (media_.codec_name.compare("image/gst-libav-gif") == 0) {
@@ -739,7 +728,7 @@ void MediaPlayer::execute_open()
     if (use_gl_memory_) {
         glsinkbin = gst_element_factory_make("glsinkbin", "glsink");
         if (!glsinkbin) {
-            // if glsinkbin is not available, fallback to system memory 
+            // if glsinkbin is not available, fallback to system memory
             use_gl_memory_ = false;
             Log::Info("MediaPlayer %s failed to get glsinkbin for %s decoder.", std::to_string(id_).c_str(), decoderName().c_str());
         }
@@ -861,7 +850,7 @@ void MediaPlayer::execute_open()
 
     // all good
     Log::Info("MediaPlayer %s Opened '%s' (%s %d x %d, %d kbps)", std::to_string(id_).c_str(),
-              SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(), 
+              SystemToolkit::filename(uri_).c_str(), media_.codec_name.c_str(),
               media_.width, media_.height, media_.bitrate / 1000);
 
     if (!singleFrame())
@@ -958,6 +947,9 @@ void MediaPlayer::execute_open()
     Log::Info("MediaPlayer %s Pipeline [%s]", std::to_string(id_).c_str(), description.c_str());
 #endif
     gst_object_ref(pipeline_);
+
+    // sub-class specific setup
+    setupPipeline();
 
     // setup pipeline
     g_object_set(G_OBJECT(pipeline_), "name", std::to_string(id_).c_str(), NULL);
@@ -1096,7 +1088,7 @@ void MediaPlayer::pipeline_terminate( GstElement *p, GstBus *b )
     if (ret == GST_STATE_CHANGE_ASYNC)
         gst_element_get_state(p, NULL, NULL, 1000000);
 
-    // empty pipeline bus 
+    // empty pipeline bus
     GstMessage *msg = NULL;
     do {
         if (msg)
@@ -1312,7 +1304,7 @@ void MediaPlayer::execute_play_command(bool on)
 
 void MediaPlayer::play(bool on)
 {
-    // ignore if disabled, and cannot play a single frame
+    // cannot play a single frame
     if (singleFrame())
         return;
 
@@ -1449,7 +1441,7 @@ bool MediaPlayer::go_to(GstClockTime pos)
         if (ABS_DIFF (position_, jumpPts) > 2 * timeline_.step() ) {
             ret = true;
             seek( jumpPts );
-            
+
             // Revert loop status to default
             loop_status_ = LoopStatus::LOOP_STATUS_DEFAULT;
         }
@@ -1550,7 +1542,7 @@ void MediaPlayer::init_texture(guint index)
         if (use_gl_memory_)
             Log::Info("MediaPlayer %s Uses %s decoding and OpenGL GLMemory texturing (zero-copy).", std::to_string(id_).c_str(), decoderName().c_str());
         else
-#endif 
+#endif
         {
             // set pbo image size
             pbo_size_ = media_.height * media_.width * 4;
@@ -1727,12 +1719,12 @@ void MediaPlayer::update()
                           evaluation_.frame_count, evaluation_.keyframe_count,
                           evaluation_.gop_size_min, evaluation_.gop_size_max,
                           evaluation_.has_bframes ? 1 : 0);
-                    // adjust timeline to media frames range 
+                    // adjust timeline to media frames range
                     timeline_.setFirst(evaluation_.pts_first);
                     timeline_.setLast(evaluation_.pts_last);
                 }
-            } 
-             
+            }
+
         }
     }
 
@@ -1813,7 +1805,7 @@ void MediaPlayer::update()
         // manage timeline:
         TimeInterval gap;
         // ensure we remain within the first to last range
-        if (( timeline_.last()  != GST_CLOCK_TIME_NONE && position_ > timeline_.last()) || 
+        if (( timeline_.last()  != GST_CLOCK_TIME_NONE && position_ > timeline_.last()) ||
             ( timeline_.first() != GST_CLOCK_TIME_NONE && position_ < timeline_.first()) ) {
             need_loop = true;
         }
@@ -1836,9 +1828,9 @@ void MediaPlayer::update()
                     need_loop = true;
             }
         }
-        // detect flags if playing 
+        // detect flags if playing
         else if ( isPlaying() ) {
-            // check if position is flagged 
+            // check if position is flagged
             TimeInterval flag = timeline_.getFlagAt(position_);
             // if type of flag requires stop and not already current
             if ( flag.is_valid() && flag.type > 0 ) {
@@ -1850,8 +1842,8 @@ void MediaPlayer::update()
                 // effectively stop playing
                 play(false);
               }
-            } 
-            else 
+            }
+            else
                 current_flag_.reset();
         }
     }
@@ -1916,8 +1908,11 @@ void MediaPlayer::execute_seek_command(GstClockTime target, bool force)
     // create seek event depending on direction
     GstEvent *seek_event = nullptr;
     if (rate_ > 0) {
+        // NB: stop is 'none' (i.e. play until end) and not END-relative, which
+        // parsers of audio files (e.g. mp3) refuse; SET also resets the stop
+        // of a previous backward seek (NONE would keep it)
         seek_event = gst_event_new_seek (rate_, GST_FORMAT_TIME, (GstSeekFlags) seek_flags,
-            GST_SEEK_TYPE_SET, seek_pos, GST_SEEK_TYPE_END, 0);
+            GST_SEEK_TYPE_SET, seek_pos, GST_SEEK_TYPE_SET, GST_CLOCK_TIME_NONE);
     }
     else {
         seek_event = gst_event_new_seek (rate_, GST_FORMAT_TIME, (GstSeekFlags) seek_flags,
@@ -1974,7 +1969,11 @@ void MediaPlayer::setPlaySpeed(double s)
     //  are GST_CLOCK_TIME_NONE, the playback direction does not change
     //  and the seek is not flushing. (Since: 1.18)
     // if all conditions to use GST_SEEK_FLAG_INSTANT_RATE_CHANGE are met
-    if ( rate_change_ == RATE_CHANGE_INSTANT && !change_direction && !media_.isimage) {
+    // NB: a non-flushing seek can block forever on a paused pipeline (e.g. avidemux
+    // waiting for its streaming thread, itself blocked on full queues), so this
+    // is only possible when playing
+    if ( rate_change_ == RATE_CHANGE_INSTANT && !change_direction && !media_.isimage
+         && desired_state_ == GST_STATE_PLAYING ) {
 
         int seek_flags = GST_SEEK_FLAG_INSTANT_RATE_CHANGE;
         seek_flags |= GST_SEEK_FLAG_TRICKMODE;
@@ -2060,7 +2059,7 @@ bool MediaPlayer::go_to_flag(TimeInterval flag)
     return ret;
 }
 
-MediaInfo MediaPlayer::media() const
+const MediaInfo &MediaPlayer::media() const
 {
     return media_;
 }
@@ -2118,7 +2117,7 @@ bool MediaPlayer::fill_frame(GstBuffer *buf, FrameStatus status, const GstSegmen
         // Convert raw buffer PTS to stream time using the sample's segment;
         // fall back to the raw PTS if the buffer falls outside the segment
         GstClockTime pts = segment_stream_time(segment, GST_BUFFER_DTS_OR_PTS(buf));
-        if (!GST_CLOCK_TIME_IS_VALID(pts)) 
+        if (!GST_CLOCK_TIME_IS_VALID(pts))
             pts = buf->pts;
 
         // set presentation time stamp
@@ -2331,4 +2330,3 @@ void MediaPlayer::callback_element_setup (GstElement *pipeline, GstElement *elem
 #endif
     }
 }
-

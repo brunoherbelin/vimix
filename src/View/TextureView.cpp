@@ -37,6 +37,7 @@
 #include "defines.h"
 #include "IconsVimixImage.h"
 #include "Mixer.h"
+#include "Draft.h"
 #include "Source/Source.h"
 #include "Settings.h"
 #include "Resource.h"
@@ -76,7 +77,7 @@ TextureView::TextureView() : View(TEXTURE), edit_source_(nullptr), need_edit_upd
     // global dark
     Surface *tmp = new Surface( new Shader);
     tmp->scale_ = glm::vec3(20.f, 20.f, 1.f);
-    tmp->shader()->color = glm::vec4( 0.1f, 0.1f, 0.1f, 0.6f );
+    tmp->shader()->color = glm::vec4( 0.1f, 0.1f, 0.1f, 0.5f );
     scene.bg()->attach(tmp);
     // frame showing the source original shape
     background_surface_= new Surface( new Shader);
@@ -325,7 +326,7 @@ void TextureView::select(glm::vec2 A, glm::vec2 B)
 
 bool TextureView::canSelect(Source *s) {
 
-    return ( s!=nullptr && ( s == Mixer::manager().currentSource() || s == edit_source_ ));
+    return ( s!=nullptr && s->hasImage() && ( s == Mixer::manager().currentSource() || s == edit_source_ ));
 }
 
 View::Cursor TextureView::over (glm::vec2 pos)
@@ -460,7 +461,8 @@ std::pair<Node *, glm::vec2> TextureView::pick(glm::vec2 P)
         if (current != nullptr) {
 
             // special case for drawing in the mask
-            if ( current->maskShader()->mode == MaskShader::PAINT && mask_cursor_paint_ > 0) {
+            if ( current->maskShader()->mode == MaskShader::PAINT && mask_cursor_paint_ > 0
+                 && !Draft::manager().active() ) {
                 pick = { mask_cursor_circle_, P };
                 // adapt grid to prepare grab action
                 adaptGridToSource(current);
@@ -469,7 +471,8 @@ std::pair<Node *, glm::vec2> TextureView::pick(glm::vec2 P)
                 return pick;
             }
             // special case for cropping the mask shape
-            else if ( current->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0) {
+            else if ( current->maskShader()->mode == MaskShader::SHAPE && mask_cursor_shape_ > 0
+                      && !Draft::manager().active() ) {
                 pick = { mask_cursor_crop_, P };
                 // adapt grid to prepare grab action
                 adaptGridToSource(current);
@@ -617,17 +620,23 @@ Source *TextureView::getEditOrCurrentSource()
         // then get the source previously active
         // _source = UserInterface::manager().sourceInPanel();
         _source = Mixer::manager().previousCurrentSource();
+        // cannot edit the texture of a source without image
+        if (_source != nullptr && !_source->hasImage())
+            _source = nullptr;
         // nothing yet?
         if (_source == nullptr && edit_source_ != nullptr) {
             // then keep the current edit source ( if still available )
-            _source = Mixer::manager().findSource( edit_source_->id() );
+            // NB: edit_source_ could have been deleted, test pointer only
+            SourceList::iterator it = Mixer::manager().session()->find( edit_source_ );
+            if ( it != Mixer::manager().session()->end() )
+                _source = *it;
         }
         // ensures the source is selected
         Mixer::selection().set(_source);
     }
 
-    // do not work on a failed source
-    if (_source != nullptr && _source->failed() ) {
+    // do not work on a failed source, or on a source without image
+    if (_source != nullptr && (_source->failed() || !_source->hasImage()) ) {
         _source = nullptr;
     }
 
@@ -682,6 +691,10 @@ void TextureView::draw()
             ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0.95f, 0.95f, 0.95f, 1.00f));
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.22f, 0.22f, 0.99f));
+
+            // mask cannot be edited in DRAFT mode
+            const bool draft = Draft::manager().active();
+            ImGuiToolkit::PushDisabled(draft);
 
             int maskmode = edit_source_->maskShader()->mode;
             ImGui::SetNextItemWidth( ImGui::GetTextLineHeightWithSpacing() * 2.6);
@@ -752,6 +765,9 @@ void TextureView::draw()
                     SourceList::iterator iter;
                     for (iter = Mixer::manager().session()->begin(); iter != Mixer::manager().session()->end(); ++iter)
                     {
+                        // only sources with image can be used as mask
+                        if ( !(*iter)->hasImage() )
+                            continue;
                         label = std::string("Source ") + (*iter)->initials() + " - " + (*iter)->name();
                         if (ImGui::Selectable( label.c_str(), *iter == ref_source )) {
                             edit_source_->maskSource()->connect( *iter );
@@ -844,7 +860,7 @@ void TextureView::draw()
                             ImGuiToolkit::ButtonIconToggle(ICON_VI_TABLET_PRESSURE, &enable_tablet_input, "Tablet pressure sensitive");
                             if (enable_tablet_input)
                                 Settings::application.brush_pressure_mode |= TabletInput_brush_size;
-                            else 
+                            else
                                 Settings::application.brush_pressure_mode &= ~TabletInput_brush_size;
                         }
                         // max brush size
@@ -881,7 +897,7 @@ void TextureView::draw()
                             ImGuiToolkit::ButtonIconToggle(ICON_VI_TABLET_PRESSURE, &enable_tablet_input, "Tablet pressure sensitive");
                             if (enable_tablet_input)
                                 Settings::application.brush_pressure_mode |= TabletInput_brush_pressure;
-                            else 
+                            else
                                 Settings::application.brush_pressure_mode &= ~TabletInput_brush_pressure;
                         }
                         // max brush pressure
@@ -1063,6 +1079,8 @@ void TextureView::draw()
                 ImGui::TextDisabled( "No mask" );
             }
 
+            ImGuiToolkit::PopDisabled(draft);
+
             ImGui::PopStyleColor(8);  // colors
             ImGui::End();
         }
@@ -1146,7 +1164,7 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
             scene_brush_pos = scene_to;
 
             // no previous brush position : restart at same coordinates
-            if ( glm::length( previous_scene_brush_pos ) < EPSILON) 
+            if ( glm::length( previous_scene_brush_pos ) < EPSILON)
                 previous_scene_brush_pos = scene_brush_pos;
 
             if ( pick.first == mask_cursor_circle_ ) {
@@ -1159,7 +1177,7 @@ View::Cursor TextureView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::pa
                 // Apply tablet pressure to brush if available
                 if (TabletInput::instance().hasPressure() && TabletInput::instance().isPressed()) {
                     float tablet_pressure = TabletInput::instance().getPressure();
-                    // apply pressure depending on mode    
+                    // apply pressure depending on mode
                     // scale size of brush
                     if (Settings::application.brush_pressure_mode & TabletInput_brush_size)
                         edit_source_->maskShader()->brush.x = CLAMP( Settings::application.brush.x * tablet_pressure, BRUSH_MIN_SIZE, BRUSH_MAX_SIZE);

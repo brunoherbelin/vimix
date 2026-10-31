@@ -2,7 +2,6 @@
 #define __RSC_MANAGER_H_
 
 #include <string>
-#include <map>
 #include <sys/types.h>
 
 namespace Resource

@@ -20,7 +20,6 @@
 #include <glib.h>
 #include <iostream>
 #include <iomanip>
-#include <thread>
 #include <algorithm>
 
 #include <gst/gst.h>
@@ -45,22 +44,24 @@
 #include "Log.h"
 #include "Settings.h"
 #include "Toolkit/SystemToolkit.h"
+#include "Toolkit/BaseToolkit.h"
 #include "Toolkit/DialogToolkit.h"
 #include "Toolkit/GstToolkit.h"
-#include "Resource.h"
 
-#include "Mixer.h"
-#include "Source/MediaSource.h"
+#include "Navigator/NavigatorCodec.h"
 #include "Source/StreamSource.h"
-#include "MediaPlayer.h"
-#include "ActionManager.h"
+#include "Source/MediaSource.h"
 #include "Source/SourceCallback.h"
+#include "Player/MediaPlayer.h"
+#include "Player/SplitMediaPlayer.h"
+#include "Player/AudioPlayer.h"
+#include "Player/MultiFilePlayer.h"
+#include "ActionManager.h"
 #include "UserInterfaceManager.h"
+#include "Transcoder.h"
+#include "Mixer.h"
 
 #include "SourceControlWindow.h"
-
-#define CHECKER_RESOLUTION 5000
-class Stream *checker_background_ = new Stream;
 
 typedef struct payload
 {
@@ -71,7 +72,7 @@ typedef struct payload
         FADE_OUT_IN,
         CUT,
         CUT_MERGE,
-        CUT_ERASE, 
+        CUT_ERASE,
         FLAG_ADD,
         FLAG_REMOVE
     };
@@ -109,24 +110,13 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     play_toggle_request_(false), replay_request_(false), pending_(false),
     active_label_(LABEL_PLAYER_SELECTION), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
-    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0),
+    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0), mediaplayer_export_sections_(false),
     mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f),
     mediaplayer_edit_panel_(false), magnifying_glass(false)
 {
     info_.setExtendedStringMode();
 
     captureFolderDialog = new DialogToolkit::OpenFolderDialog("Capture frame Location");
-
-    // initialize checkerboard background texture
-    checker_background_->open("videotestsrc name=bgchecker pattern=checkers-8 ! "
-                              "videobalance saturation=0 contrast=1",
-                              CHECKER_RESOLUTION, CHECKER_RESOLUTION);
-    checker_background_->play(false);
-    while (checker_background_->texture() == Resource::getTextureBlack()){
-        std::this_thread::sleep_for (std::chrono::milliseconds(30));
-        checker_background_->update();
-    }
-    checker_background_->close();
 }
 
 
@@ -223,29 +213,45 @@ void SourceControlWindow::Update()
         Settings::application.source.capture_path = captureFolderDialog->path();
 
     //
-    // Capture frame on current selection
+    // Capture frame on all sources of current selection
     //
-    Source *s = nullptr;
-    if ( selection_.size() == 1 )
-        s = selection_.front();
-    if ( s != nullptr) {
-        // back from capture of FBO: can save file
-        if ( capture.isFull() ){
-            std::string filename;
-            // if sequencial naming of file is selected
-            if (Settings::application.source.capture_naming == 0 )
-                filename = SystemToolkit::filename_sequential(Settings::application.source.capture_path, s->name(), "png");
-            else
-                filename = SystemToolkit::filename_dateprefix(Settings::application.source.capture_path, s->name(), "png");
-            // save capture and inform user
-            capture.save( filename );
+    // back from capture of FBOs: can save files
+    if ( !captures_.empty() ) {
+        // image format of capture (PNG if its encoder is not available)
+        GstToolkit::Image format = (GstToolkit::Image) Settings::application.source.capture_format;
+        if ( GstToolkit::getImageEncodingPipeline(format).empty() )
+            format = GstToolkit::IMAGE_PNG;
+        const char *ext = GstToolkit::imageFileExtension(format);
+        std::string filename;
+        int n = 0;
+        for (auto c = captures_.begin(); c != captures_.end(); c = captures_.erase(c)) {
+            if ( c->second->isFull() ){
+                // if sequencial naming of file is selected
+                if (Settings::application.source.capture_naming == 0 )
+                    filename = SystemToolkit::filename_sequential(Settings::application.source.capture_path, c->first, ext);
+                else
+                    filename = SystemToolkit::filename_dateprefix(Settings::application.source.capture_path, c->first, ext);
+                // save capture
+                if ( c->second->save( filename, format ) )
+                    ++n;
+            }
+            delete c->second;
+        }
+        // inform user
+        if ( n == 1 )
             Log::Notify("Frame saved in %s", filename.c_str() );
+        else if ( n > 1 )
+            Log::Notify("%d frames saved in %s", n, Settings::application.source.capture_path.c_str() );
+    }
+    // request capture : initiate capture of FBO of each source
+    if ( capture_request_ ) {
+        SourceList tocapture = Mixer::manager().validate(selection_);
+        for (auto s = tocapture.begin(); s != tocapture.end(); ++s) {
+            Screenshot *shot = new Screenshot;
+            shot->captureFramebuffer( (*s)->frame() );
+            captures_.emplace_back( (*s)->name(), shot );
         }
-        // request capture : initiate capture of FBO
-        if ( capture_request_ ) {
-            capture.captureFramebuffer( s->frame() );
-            capture_request_ = false;
-        }
+        capture_request_ = false;
     }
 
     // reset on session change
@@ -395,10 +401,13 @@ void SourceControlWindow::Render()
         //
         // Menu for capture frame
         //
-        if ( ImGui::BeginMenu(ICON_FA_ARROW_ALT_CIRCLE_DOWN "  Capture", selection_.size() == 1 ) )
+        if ( ImGui::BeginMenu(ICON_FA_ARROW_ALT_CIRCLE_DOWN "  Capture", !selection_.empty() ) )
         {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_CAPTURE, 0.8f));
-            if (ImGui::MenuItem( MENU_CAPTUREFRAME, "F10" ))
+            std::string label = MENU_CAPTUREFRAME;
+            if (selection_.size() > 1)
+                label = std::string(ICON_FA_CAMERA_RETRO "  Capture ") + std::to_string(selection_.size()) + " frames";
+            if (ImGui::MenuItem( label.c_str(), "F10" ))
                 capture_request_ = true;
             ImGui::PopStyleColor(1);
 
@@ -430,7 +439,7 @@ void SourceControlWindow::Render()
                     Settings::application.source.capture_path = SystemToolkit::path_filename( mediaplayer_active_->filename() );
                 // else file location of session
                 else
-                    Settings::application.source.capture_path = SystemToolkit::path_filename( Mixer::manager().session()->filename() );
+                    Settings::application.source.capture_path = SystemToolkit::path_filename( Mixer::manager().liveSession()->filename() );
             }
             else if (selected_path > 0)
                 Settings::application.source.capture_path = SystemToolkit::home_path();
@@ -453,6 +462,21 @@ void SourceControlWindow::Render()
             if (ImGuiToolkit::TextButton("Filename"))
                 Settings::application.source.capture_naming = 0;
 
+            // Image format selection (disable formats that cannot hold the largest source)
+            int max_width = 0, max_height = 0;
+            for (auto s = selection_.begin(); s != selection_.end(); ++s) {
+                FrameBuffer *fb = (*s)->frame();
+                if (fb) {
+                    max_width = MAX(max_width, (int) (fb->width() * fb->projectionSize().x));
+                    max_height = MAX(max_height, (int) (fb->height() * fb->projectionSize().y));
+                }
+            }
+            ImGui::SetNextItemWidth(combo_width);
+            ComboImageFormat("##Format", &Settings::application.source.capture_format, max_width, max_height);
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            if (ImGuiToolkit::TextButton("Format"))
+                Settings::application.source.capture_format = GstToolkit::IMAGE_PNG;
+
             ImGui::EndMenu();
         }
 
@@ -461,21 +485,6 @@ void SourceControlWindow::Render()
         //
         if (ImGui::BeginMenu(ICON_FA_FILM " Timeline", mediaplayer_active_) )
         {
-            if ( mediaplayer_active_->isImage()) {
-                if ( ImGuiToolkit::MenuItemIcon(ICON_VI_TIMELINE_REMOVE, "Remove")){
-                    // set empty timeline
-                    Timeline tl;
-                    mediaplayer_active_->setTimeline(tl);
-                    mediaplayer_active_->play(false);
-                    // re-open the image with NO timeline
-                    mediaplayer_active_->reopen();
-                }
-
-                if ( ImGui::MenuItem(ICON_FA_HOURGLASS_HALF "  Duration")){
-                    mediaplayer_set_duration_ = 1;
-                }
-            }
-
             if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE "  Reset")){
                 mediaplayer_timeline_zoom_ = 1.f;
                 mediaplayer_active_->timeline()->clearFading();
@@ -484,19 +493,31 @@ void SourceControlWindow::Render()
                 if (!mediaplayer_active_->videoEffect().empty() && mediaplayer_active_->videoEffectAvailable())
                     mediaplayer_active_->setVideoEffect("");
                 std::ostringstream oss;
-                oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
+                oss << BaseToolkit::transliterate( SystemToolkit::base_filename( mediaplayer_active_->filename() ) );
                 oss << ": Reset timeline";
                 Action::manager().store(oss.str());
             }
 
-            bool _alpha_fading = mediaplayer_active_->timelineFadingMode()
-                                 == MediaPlayer::FADING_ALPHA;
-            if (ImGui::MenuItem(ICON_FA_FONT "  Alpha fading", NULL, &_alpha_fading)) {
-                mediaplayer_active_->setTimelineFadingMode(
-                    _alpha_fading ? MediaPlayer::FADING_ALPHA : MediaPlayer::FADING_COLOR);
+            // export the sections between gaps as a sequence of videos
+            const bool can_export = !mediaplayer_active_->isImage() &&
+                                    dynamic_cast<MultiFilePlayer *>(mediaplayer_active_) == nullptr &&
+                                    dynamic_cast<SplitMediaPlayer *>(mediaplayer_active_) == nullptr &&
+                                    dynamic_cast<AudioPlayer *>(mediaplayer_active_) == nullptr;
+            if (ImGui::MenuItem(ICON_FA_FILE_VIDEO "   Export sections", NULL, false, can_export))
+                mediaplayer_export_sections_ = true;
+
+            if (ImGuiToolkit::BeginMenuIcon(ICON_VI_FADING_CURVE, " Fading curve"))
+            {
+                bool active = mediaplayer_active_->timelineFadingMode() == MediaPlayer::FADING_COLOR;
+                if (ImGui::MenuItem(" Color ", NULL, active))
+                    mediaplayer_active_->setTimelineFadingMode(MediaPlayer::FADING_COLOR);
+                active = mediaplayer_active_->timelineFadingMode() == MediaPlayer::FADING_ALPHA;
+                if (ImGui::MenuItem(" Alpha ", NULL, active))
+                    mediaplayer_active_->setTimelineFadingMode(MediaPlayer::FADING_ALPHA);
+                ImGui::EndMenu();
             }
 
-            if (ImGuiToolkit::BeginMenuIcon(ICON_VI_METRONOME, "Metronome"))
+            if (ImGuiToolkit::BeginMenuIcon(ICON_VI_METRONOME, " Metronome"))
             {
                 Metronome::Synchronicity sync = mediaplayer_active_->syncToMetronome();
                 bool active = sync == Metronome::SYNC_NONE;
@@ -511,12 +532,19 @@ void SourceControlWindow::Render()
                 ImGui::EndMenu();
             }
 
-            if ( !mediaplayer_active_->isImage()) {
+            if ( mediaplayer_active_->isImage()) {
                 ImGui::Separator();
-                if (ImGuiToolkit::MenuItemIcon(ICON_VI_SOURCE_GSTREAMER, "Gstreamer effect", nullptr,
-                                            !mediaplayer_active_->videoEffect().empty(),
-                                            mediaplayer_active_->videoEffectAvailable()) )
-                    mediaplayer_edit_pipeline_ = true;
+                if ( ImGuiToolkit::MenuItemIcon(ICON_VI_TIMELINE_REMOVE, " Remove")){
+                    // set empty timeline
+                    Timeline tl;
+                    mediaplayer_active_->setTimeline(tl);
+                    mediaplayer_active_->play(false);
+                    // re-open the image with NO timeline
+                    mediaplayer_active_->reopen();
+                }
+                if ( ImGui::MenuItem(ICON_FA_CLOCK "  Duration")){
+                    mediaplayer_set_duration_ = 1;
+                }
             }
 
             ImGui::EndMenu();
@@ -532,8 +560,8 @@ void SourceControlWindow::Render()
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
             ImGui::SetCursorScreenPos(p);
             ImGuiToolkit::ButtonToggle( ICON_FA_SEARCH, &magnifying_glass);
-            // FORCE DISABLE IF NOT ENABLED 
-            if (!enabled) 
+            // FORCE DISABLE IF NOT ENABLED
+            if (!enabled)
                 magnifying_glass = false;
             ImGui::PopStyleColor(2);
         }
@@ -695,18 +723,18 @@ bool EditTimeline(const char *label,
             }
             else if (edit_mode == 2) {
                 if (!active) {
-                    // remove flag on mouse press   
+                    // remove flag on mouse press
                     if ( tl->isFlagged(time) ) {
-                        removed_flag_time = time; 
+                        removed_flag_time = time;
                         removed_flag_type = tl->flagTypeAt(time);
                         tl->removeFlagAt(time);
                     }
-                    // add flag on mouse release   
+                    // add flag on mouse release
                     else
-                        active = true;  
+                        active = true;
                 }
                 else if ( !tl->isFlagged(time) ) {
-                    cursor_flag = tl->flagTypeAt(time);; 
+                    cursor_flag = tl->flagTypeAt(time);;
                 }
             }
 
@@ -715,7 +743,7 @@ bool EditTimeline(const char *label,
         }
         // release active widget on mouse release
         else {
-            // add flag on mouse release   
+            // add flag on mouse release
             if (edit_mode == 2 && active) {
                 // exception: if flag was removed at same time, do not add it back
                 if ( removed_flag_time != time ) {
@@ -727,7 +755,7 @@ bool EditTimeline(const char *label,
                 removed_flag_time = 0;
                 removed_flag_type = -1;
             }
-            
+
             active = false;
             ImGui::ClearActiveID();
             previous_index = UINT32_MAX;
@@ -811,7 +839,7 @@ bool EditTimeline(const char *label,
     }
     else {
         if ( edit_mode == 2 && tl->isFlagged(time) ) {
-            cursor_flag = tl->flagTypeAt(time);; 
+            cursor_flag = tl->flagTypeAt(time);;
         }
     }
 
@@ -841,7 +869,7 @@ bool EditTimeline(const char *label,
     // plot flags (transparent background)
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_TabActive]); // cursor color
-    snprintf(buf, 128, "##Flags%s", label);    
+    snprintf(buf, 128, "##Flags%s", label);
     ImGui::PlotHistogram(buf, flags_array, MAX_TIMELINE_ARRAY, 0, NULL, values_min, values_max, size);
     ImGui::PopStyleColor(2);
 
@@ -867,7 +895,7 @@ bool EditTimeline(const char *label,
             cursor_pos = cursor_pos + ImVec2(mouse_pos_in_canvas.x, 12.f);
             window->DrawList->AddLine( cursor_pos, cursor_pos + ImVec2(0.f, size.y - 8.f), cur_color);
             _drawIcon(cursor_pos - ImVec2(2.f, 1.f), 11 + cursor_flag, 6, true, window);
-        } 
+        }
         else {
             cursor_pos = cursor_pos + ImVec2(mouse_pos_in_canvas.x, 4.f);
             window->DrawList->AddLine( cursor_pos, cursor_pos + ImVec2(0.f, size.y - 8.f), cur_color);
@@ -887,7 +915,8 @@ bool EditTimeline(const char *label,
     return array_changed;
 }
 
-bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timeline *tl, const float width)
+bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timeline *tl,
+                     const std::vector<GstClockTime> &segments, const float width)
 {
     // get window
     ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -927,7 +956,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
     float time_ = static_cast<float> ( static_cast<double>(*time) / static_cast<double>(tl->duration()) );
 
     //
-    // GET INPUT 
+    // GET INPUT
     //
 
     // read user input from system
@@ -959,7 +988,19 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
     ImGuiToolkit::RenderTimeline(timeline_bbox.Min, timeline_bbox.Max, tl->begin(), tl->end(), tl->step());
 
     //
-    // FLAGS 
+    // SEGMENTS (of split media) : vertical line at the beginning of each segment
+    //
+    const ImU32 segment_col = IM_COL32(255, 255, 255, 110);
+    for (const GstClockTime &segment_time : segments) {
+        if (segment_time <= tl->begin() || segment_time >= tl->end())
+            continue;
+        float segment_pos_ = static_cast<float> ( static_cast<double>(segment_time - tl->begin()) / static_cast<double>(tl->duration()) );
+        float x = ImLerp(timeline_bbox.Min.x, timeline_bbox.Max.x, segment_pos_);
+        window->DrawList->AddLine(ImVec2(x, timeline_bbox.Min.y), ImVec2(x, timeline_bbox.Max.y), segment_col, 3.f);
+    }
+
+    //
+    // FLAGS
     //
     int index = 0;
     bool flag_pressed = false;
@@ -970,7 +1011,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
         GstClockTime flag_time = flag_Interval.midpoint();
         float flag_pos_ = static_cast<float> ( static_cast<double>(flag_time - tl->begin()) / static_cast<double>(tl->duration()) );
         ImVec2 draw_pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), flag_pos_);
-        draw_pos -= ImVec2(2.f, -3.f); 
+        draw_pos -= ImVec2(2.f, -3.f);
 
         // simulate Button behavior : if mouse hovering flag and mouse pressed
         ImRect bb(draw_pos, draw_pos + ImVec2(ImGui::GetTextLineHeightWithSpacing(), ImGui::GetTextLineHeightWithSpacing()));
@@ -987,20 +1028,20 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
         ImGui::PopStyleColor();
 
         // show time when hovering
-        if (hovered) 
+        if (hovered)
             ImGui::SetTooltip(ICON_FA_FLAG " %d (%s)", index, GstToolkit::time_to_string(flag_time).c_str());
 
         ++index;
-    }   
+    }
 
     //
-    // CURSOR 
+    // CURSOR
     //
     bool cursor_pressed = false;
     ImRect grab_slider_bb;
     ImU32 grab_slider_color = ImGui::GetColorU32(ImGuiCol_SliderGrab);
 
-    if (!flag_pressed) 
+    if (!flag_pressed)
     {
         float time_slider = time_ * 10.f; // x 10 precision on grab
         float time_zero = 0.f;
@@ -1017,7 +1058,7 @@ bool TimelineSlider (const char* label, guint64 *time, TimeInterval *flag, Timel
 
             ImGui::MarkItemEdited(id);
         }
-        
+
     }
 
     // draw slider grab handle
@@ -1104,16 +1145,14 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
         // adjust bbox of section and render a timeline
         ImRect section_bbox(section_bbox_min, section_bbox_max);
         // render the timeline
-        ImGuiToolkit::RenderTimeline(section_bbox_min, section_bbox_max, 
-            section->begin, section->end, timeline->step());        
+        ImGuiToolkit::RenderTimeline(section_bbox_min, section_bbox_max,
+            section->begin, section->end, timeline->step());
 
         //
-        // FLAGS 
+        // FLAGS
         //
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.f, 0.f));
         ImGui::PushStyleColor( ImGuiCol_Text, ImGui::GetColorU32(ImGuiCol_Button) );
-        int index = 0;
-        bool flag_pressed = false;
         const TimeIntervalSet flags = timeline->flags();
         for (const auto &flag_Interval : flags) {
 
@@ -1121,13 +1160,11 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
             GstClockTime flag_time = flag_Interval.midpoint();
             float flag_pos_ = static_cast<float> ( static_cast<double>(flag_time - timeline->begin()) / static_cast<double>(timeline->duration()) );
             ImVec2 draw_pos = ImLerp(timeline_bbox.GetTL(), timeline_bbox.GetTR(), flag_pos_);
-            draw_pos -= ImVec2(2.f, -3.f); 
+            draw_pos -= ImVec2(2.f, -3.f);
 
             // icon depends on flag type & color on hovered
             _drawIcon(draw_pos, 11 + flag_Interval.type, 6, true, window);
-
-            ++index;
-        }   
+        }
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(1);
 
@@ -1147,8 +1184,8 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
         size_t i = timeline->fadingIndexAt(section->begin);
         // number of values is the index after end time of section (+1), minus the start index
         size_t values_count = 1 + timeline->fadingIndexAt(section->end) - i;
-        ImGui::PlotLines("##linessection", lines_array + i, values_count, 
-            0, NULL, 0.f, 1.f, 
+        ImGui::PlotLines("##linessection", lines_array + i, values_count,
+            0, NULL, 0.f, 1.f,
             ImVec2(section_bbox.GetWidth(), plot_bbox.GetHeight()));
         ImGui::PopStyleColor(1);
 
@@ -1158,8 +1195,8 @@ std::list< std::pair<float, guint64> > DrawTimeline(const char* label, Timeline 
         // plot flags (transparent background)
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0,0,0,0));
         ImGui::PushStyleColor(ImGuiCol_PlotHistogram, style.Colors[ImGuiCol_TabActive]); // cursor color
-        ImGui::PlotHistogram("##flagssection", flags_array, MAX_TIMELINE_ARRAY, 
-            0, NULL, 0.f, 1.f, 
+        ImGui::PlotHistogram("##flagssection", flags_array, MAX_TIMELINE_ARRAY,
+            0, NULL, 0.f, 1.f,
             ImVec2(section_bbox.GetWidth(), plot_bbox.GetHeight()));
         ImGui::PopStyleColor(2);
 
@@ -1382,7 +1419,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                                 if ( ImGuiToolkit::ButtonIcon(ICON_VI_TIMELINE_CUT, text_buf) ) {
                                     if ( mp->timeline()->cut(cutposition, false, true) ) {
                                         std::ostringstream info;
-                                        info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline " <<text_buf;
+                                        info << BaseToolkit::transliterate( SystemToolkit::base_filename( mp->filename() ) ) << ": Timeline " <<text_buf;
                                         Action::manager().store(info.str());
                                     }
                                 }
@@ -1403,7 +1440,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                             if ( ImGuiToolkit::ButtonIcon(ICON_VI_GAP_REMOVE_END, "Remove end gap" )){
                                 if ( mp->timeline()->removeGaptAt(mp->timeline()->end()) ) {
                                     std::ostringstream info;
-                                    info << SystemToolkit::base_filename( mp->filename() ) << ": Timeline Remove end gap";
+                                    info << BaseToolkit::transliterate( SystemToolkit::base_filename( mp->filename() ) ) << ": Timeline Remove end gap";
                                     Action::manager().store(info.str());
                                 }
                             }
@@ -1434,7 +1471,7 @@ void SourceControlWindow::RenderSelection(size_t i)
                 const ImVec2 framesize(1.5f * timeline_height_ * (*source)->frame()->aspectRatio(), 1.5f * timeline_height_);
                 int action = SourceButton(*source, framesize);
                 if (action > 1) {
-                    (*source)->play( ! (*source)->playing() );                    
+                    (*source)->play( ! (*source)->playing() );
                     Action::manager().store((*source)->playing() ? "Source Play" : "Source Pause" );
                 }
                 else if (action > 0)
@@ -1529,7 +1566,7 @@ void SourceControlWindow::RenderSelectionContextMenu()
     if (ImGui::BeginPopup("source_controller_selection_context_menu"))
     {
         std::ostringstream info;
-        info << SystemToolkit::base_filename( selection_mediaplayer_->filename() );
+        info << BaseToolkit::transliterate( SystemToolkit::base_filename( selection_mediaplayer_->filename() ) );
 
         if ( ImGuiToolkit::MenuItemIcon(ICON_VI_SPEED_ACCELERATE,  ICON_FA_CARET_LEFT " Accelerate", NULL, false, fabs(selection_target_faster_) > 0 )){
             selection_mediaplayer_->setPlaySpeed( selection_target_faster_ );
@@ -1603,7 +1640,7 @@ void SourceControlWindow::DrawSource(Source *s, ImVec2 framesize, ImVec2 top_ima
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.f);
 
     // pre-draw background with checkerboard pattern
-    ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
+    ImGui::Image((void*)(uintptr_t) UserInterface::manager().checkerboard(), framesize,
                  ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
     // get back to top image corner after draw
     ImGui::SetCursorScreenPos(top_image);
@@ -1730,9 +1767,9 @@ ImRect SourceControlWindow::DrawSourceWithSlider(Source *s, ImVec2 top, ImVec2 r
     const ImVec2 top_image = top + corner;
     ImGui::SetCursorScreenPos(top_image);
 
-    // pre-draw background with checkerboard pattern
-    ImGui::Image((void*)(uintptr_t) checker_background_->texture(), framesize,
-                 ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
+    // // pre-draw background with checkerboard pattern
+    // ImGui::Image((void*)(uintptr_t) UserInterface::manager().checkerboard(), framesize,
+    //              ImVec2(0,0), ImVec2(framesize.x/CHECKER_RESOLUTION, framesize.y/CHECKER_RESOLUTION));
 
     // draw source
     if (s->ready()) {
@@ -1877,7 +1914,7 @@ void SourceControlWindow::RenderSelectedSources()
                 ImVec2 framesize(widthcolumn, widthcolumn / (*source)->frame()->aspectRatio());
                 int action = SourceButton(*source, framesize);
                 if (action > 1) {
-                    (*source)->play( ! (*source)->playing() );                    
+                    (*source)->play( ! (*source)->playing() );
                     Action::manager().store((*source)->playing() ? "Source Play" : "Source Pause" );
                 }
                 else if (action > 0)
@@ -2084,7 +2121,7 @@ void SourceControlWindow::RenderSingleSource(Source *s)
                     s->reload();
                 // NB: ss is playable (tested above), and thus ss->stream() is not null
                 bool option = s->replayOnDeactivate();
-                if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on reactivation", NULL, &option ))
+                if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option ))
                     s->setReplayOnDeactivate(option);
                 if (ImGui::IsWindowHovered())
                     counter_menu_timeout=0;
@@ -2117,14 +2154,14 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 {
     static bool show_overlay_info = false;
     static std::vector< std::pair<int,int> > editmode_icon = { {ICON_VI_TOOL_CUT}, {ICON_VI_TOOL_FADE}, {ICON_VI_FLAG_STOP} };
-    editmode_icon[2] = { Settings::application.widget.media_player_timeline_flag + 11, 6 };  
+    editmode_icon[2] = { Settings::application.widget.media_player_timeline_flag + 11, 6 };
     static std::vector< std::string > editmode_tooltip = { "Cutting tool", "Fading tool", "Flag tool" };
 
     mediaplayer_active_ = ms->mediaplayer();
 
     // for action manager
     std::ostringstream oss;
-    oss << SystemToolkit::base_filename( mediaplayer_active_->filename() );
+    oss << BaseToolkit::transliterate( SystemToolkit::base_filename( mediaplayer_active_->filename() ) );
 
     // for draw
     const float slider_zoom_width = timeline_height_ / 2.f;
@@ -2172,7 +2209,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         show_overlay_info = ImGui::IsItemHovered();
         if (show_overlay_info){
             // information visitor
-            mediaplayer_active_->accept(info_);
+            ms->accept(info_);
             float tooltip_height = 3.f * ImGui::GetTextLineHeightWithSpacing();
             draw_list->AddRectFilled(imgarea.GetTL(), imgarea.GetTL() + ImVec2(imgarea.GetWidth(), tooltip_height), IMGUI_COLOR_OVERLAY);
             ImGui::SetCursorScreenPos(imgarea.GetTL() + ImVec2(h_space_, v_space_));
@@ -2292,7 +2329,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 }
                 // custom timeline slider
                 // TODO  : if (mediaplayer_active_->syncToMetronome() > Metronome::SYNC_NONE)
-                mediaplayer_slider_pressed_ = TimelineSlider("##timeline", &seek_t, &seek_flag, tl, size.x);
+                mediaplayer_slider_pressed_ = TimelineSlider("##timeline", &seek_t, &seek_flag, tl, mediaplayer_active_->media().segments, size.x);
             }
         }
         ImGui::EndChild();
@@ -2346,7 +2383,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::SameLine(0, h_space_);
 
             ImGui::PushButtonRepeat(true);
-            if (ImGui::Button( mediaplayer_active_->playSpeed() < 0 ? ICON_FA_BACKWARD :ICON_FA_FORWARD, 
+            if (ImGui::Button( mediaplayer_active_->playSpeed() < 0 ? ICON_FA_BACKWARD :ICON_FA_FORWARD,
                     ImVec2(ImGui::GetFrameHeightWithSpacing(), 0)) )
                 mediaplayer_active_->jump ();
             ImGui::PopButtonRepeat();
@@ -2376,7 +2413,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 if( mediaplayer_active_->playSpeed() < 0 ) {
                     // Go to previous flag when playing backward
                     TimeInterval target_flag = mediaplayer_active_->timeline()->getPreviousFlag( _paused_time );
-                    bool has_prev = target_flag.is_valid() && 
+                    bool has_prev = target_flag.is_valid() &&
                       !( mediaplayer_active_->currentFlag().is_valid() && mediaplayer_active_->timeline()->numFlags() == 1) &&
                       ( mediaplayer_active_->loop() == MediaPlayer::LOOP_REWIND || (target_flag.end < _paused_time) );
                     if( ImGuiToolkit::ButtonIcon(ICON_VI_FLAG_PREVIOUS, "Go to previous flag", has_prev) )
@@ -2385,7 +2422,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 else {
                     // go to next flag when playing forward
                     TimeInterval target_flag = mediaplayer_active_->timeline()->getNextFlag( _paused_time );
-                    bool has_next = target_flag.is_valid() && 
+                    bool has_next = target_flag.is_valid() &&
                       !( mediaplayer_active_->currentFlag().is_valid() && mediaplayer_active_->timeline()->numFlags() == 1) &&
                       ( mediaplayer_active_->loop() == MediaPlayer::LOOP_REWIND || (target_flag.begin > _paused_time) );
                     if( ImGuiToolkit::ButtonIcon(ICON_VI_FLAG_NEXT, "Go to next flag", has_next) )
@@ -2404,6 +2441,39 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             else {
                 ImGui::SameLine(0, h_space_);
                 ImGuiToolkit::ButtonIcon(mediaplayer_active_->playSpeed() < 0 ? 6 : 5, 0, nullptr, false);
+            }
+        }
+
+        // segment buttons for split media
+        SplitMediaPlayer *smp = dynamic_cast<SplitMediaPlayer *>(mediaplayer_active_);
+        if (smp && rendersize.x > buttons_height_ * 11.f) {
+            char tooltip[64];
+
+            ImGui::SameLine(0, h_space_);
+            if (ImGui::Button(ICON_FA_ANGLE_DOUBLE_LEFT) && smp->previousSegment()) {
+                oss << ": Previous segment";
+                Action::manager().store(oss.str());
+            }
+            if (ImGui::IsItemHovered()) {
+                GstClockTime t = smp->previousSegmentTime();
+                if (GST_CLOCK_TIME_IS_VALID(t))
+                    snprintf(tooltip, 64, "Previous segment ( %s )", GstToolkit::time_to_string(t).c_str());
+                else
+                    snprintf(tooltip, 64, "Previous segment");
+                ImGuiToolkit::ToolTip(tooltip);
+            }
+            ImGui::SameLine(0, h_space_);
+            if (ImGui::Button(ICON_FA_ANGLE_DOUBLE_RIGHT) && smp->nextSegment()) {
+                oss << ": Next segment";
+                Action::manager().store(oss.str());
+            }
+            if (ImGui::IsItemHovered()) {
+                GstClockTime t = smp->nextSegmentTime();
+                if (GST_CLOCK_TIME_IS_VALID(t))
+                    snprintf(tooltip, 64, "Next segment ( %s )", GstToolkit::time_to_string(t).c_str());
+                else
+                    snprintf(tooltip, 64, "Next segment");
+                ImGuiToolkit::ToolTip(tooltip);
             }
         }
 
@@ -2429,7 +2499,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::SameLine(0, h_space_);
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - buttons_height_ - h_space_);
             float s = fabs(static_cast<float>(current_play_speed));
-            if (ImGui::DragFloat( "##Speed", &s, 0.01f, 0.1f, 10.f, UNICODE_MULTIPLY " %.2f"))
+            if (ImGui::DragFloat( "##Speed", &s, 0.01f, 0.1f, 10.f, current_play_speed < 0 ? ICON_FA_ANGLE_LEFT " %.2f" : ICON_FA_ANGLE_RIGHT " %.2f" ))
                 mediaplayer_active_->setPlaySpeed( SIGN(current_play_speed) * static_cast<double>(s) );
             // store action on mouse release
             if (ImGui::IsItemDeactivatedAfterEdit()){
@@ -2513,7 +2583,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 oss << ": Play backward";
                 Action::manager().store(oss.str());
             }
-        } 
+        }
         else {
             ImGuiToolkit::MenuItemIcon(ICON_VI_PLAY_BACKWARD, "Play backward", nullptr, false, false);
         }
@@ -2522,14 +2592,22 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             oss << ": Speed x 1.0";
             Action::manager().store(oss.str());
         }
-        ImGui::Separator();
 
+        bool option = ms->replayOnDeactivate();
+        if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on deactivation", NULL, &option )) {
+            ms->setReplayOnDeactivate(option);
+        }
+
+        ImGui::Separator();
         if (ImGui::MenuItem( ICON_FA_REDO_ALT "  Reload" ))
             mediaplayer_active_->reopen();
 
-        bool option = ms->replayOnDeactivate();
-        if (ImGui::MenuItem(ICON_FA_SNOWFLAKE "  Restart on reactivation", NULL, &option )) {
-            ms->setReplayOnDeactivate(option);
+        // (no video effect on audio files)
+        if ( !mediaplayer_active_->isImage() && ms->hasImage() ) {
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_SOURCE_GSTREAMER, "Gstreamer effect", nullptr,
+                                        !mediaplayer_active_->videoEffect().empty(),
+                                        mediaplayer_active_->videoEffectAvailable()) )
+                mediaplayer_edit_pipeline_ = true;
         }
 
         if (ImGui::IsWindowHovered())
@@ -2539,15 +2617,15 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         ImGui::EndPopup();
     }
-    
+
     if (ImGui::BeginPopup( "MenuMediaPlayerFlags" ))
     {
         int num_flags = static_cast<int>(icons_flags.size());
         TimeInterval copy_flag = mediaplayer_active_->currentFlag();
         for (int i = 0; i < num_flags; ++i) {
-            if (ImGuiToolkit::MenuItemIcon(icons_flags[i].first,icons_flags[i].second, 
+            if (ImGuiToolkit::MenuItemIcon(icons_flags[i].first,icons_flags[i].second,
                 tooltips_flags[i].c_str(), nullptr, copy_flag.type == i )) {
-                copy_flag.type = i;    
+                copy_flag.type = i;
                 mediaplayer_active_->timeline()->replaceFlag( copy_flag );
                 mediaplayer_active_->setCurrentFlag( copy_flag );
                 oss << ": Flag changed";
@@ -2779,7 +2857,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             /// DURATION SLIDER
             ///
             float seconds = (float) d / 1000.f;
-            float maxi = (float) GST_TIME_AS_MSECONDS(tl->duration()) / 1000.f;
+            float maxi = (float) ((double) tl->duration() / GST_SECOND);
             float w = gap_dialog_size.x - 4.f * ImGui::GetTextLineHeightWithSpacing();
 
             ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -2876,7 +2954,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             ImGui::Text("|");
             ImGui::SameLine(0, 0);
 
-            ImGuiToolkit::IconMultistate(icons_flags, 
+            ImGuiToolkit::IconMultistate(icons_flags,
                 &Settings::application.widget.media_player_timeline_flag, tooltips_flags);
 
             /// Enter time value for Flag
@@ -2907,7 +2985,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 tl->refresh();
                 oss << ": Timeline flag add";
                 Action::manager().store(oss.str());
-            }              
+            }
 
             /// CLEAR
             ImGui::SameLine(0, IMGUI_SAME_LINE);
@@ -2915,7 +2993,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
                 tl->clearFlags();
                 oss << ": Timeline flag clear";
                 Action::manager().store(oss.str());
-            }                                                                                                                                                                                                                           
+            }
 
             ImGui::PopStyleColor();
 
@@ -2927,7 +3005,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::PopStyleColor();
     }
 
-    
+
     ///
     /// Dialog to edit timeline fade in and out
     ///
@@ -3032,7 +3110,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         const ImVec2 area = ImGui::GetContentRegionAvail();
         static uint _status = 0;  // 0:unknown, 1:ok, 2:error
         static std::string _status_message = "";
-        static std::vector< std::pair< std::string, std::string> > _examples = { 
+        static std::vector< std::pair< std::string, std::string> > _examples = {
                                                                                  {"Thermal", "coloreffects preset=heat"},
                                                                                  {"Afterimage", "streaktv"},
                                                                                  {"Primary color", "frei0r-filter-primaries" },
@@ -3124,13 +3202,13 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         // display message line
         if (_status > 1) {
             // On Error
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.2, 0.2, 0.95f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_RED, 0.95f));
             ImGui::TextWrapped("Error - %s", _status_message.c_str());
             ImGui::PopStyleColor(1);
         }
         else if (_status > 0) {
             // All ok
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.2, 1.0, 0.2, 0.85f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(IMGUI_COLOR_GREEN, 0.85f));
             ImGui::Text("Ok %s", _status_message.c_str());
             ImGui::PopStyleColor(1);
         }
@@ -3170,7 +3248,7 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     if (mediaplayer_set_duration_) {
         // get current duration of mediaplayer
         GstClockTime end = mediaplayer_active_->timeline()->end();
-        timeline_duration_ = (double) (GST_TIME_AS_MSECONDS(end)) / 1000.f;
+        timeline_duration_ = (double) end / GST_SECOND;
         // remember previous duration for Cancel
         // NB: trick with var 'mediaplayer_set_duration_' set to 2 when first time created
         timeline_duration_previous = mediaplayer_set_duration_ > 1 ? 0.0 : timeline_duration_;
@@ -3226,6 +3304,199 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             else
                 mediaplayer_active_->timeline()->setEnd( GST_MSECOND * (GstClockTime) ( timeline_duration_ * 1000.f ) );
             // close popup window
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    ////
+    ///  Dialog to export sections of timeline
+    ///
+    DrawExportSectionsDialog(top, rendersize);
+}
+
+#define LABEL_EXPORT_COPY "Copy (fast, cut at keyframes)"
+
+void SourceControlWindow::DrawExportSectionsDialog(ImVec2 top, ImVec2 rendersize)
+{
+    static std::unique_ptr<SequenceTranscoder> _exporter;
+    static DialogToolkit::OpenFolderDialog _folder_dialog("Export Location");
+    static std::string _folder;
+    static std::string _media;
+    static std::list< std::pair<GstClockTime, GstClockTime> > _ranges;
+    static int _profile = GstToolkit::H264_RT;
+
+    if (mediaplayer_export_sections_) {
+        // forget previous export (unless still ongoing)
+        if (_exporter && _exporter->finished())
+            _exporter.reset();
+        // sections of the timeline of the media
+        _media = mediaplayer_active_->filename();
+        _ranges.clear();
+        TimeIntervalSet sections = mediaplayer_active_->timeline()->sections();
+        for (const auto &s : sections)
+            _ranges.push_back( {s.begin, s.end} );
+        // default folder is the one of the media
+        if (_folder.empty() || !SystemToolkit::file_exists(_folder))
+            _folder = SystemToolkit::path_filename(_media);
+        // open dialog (only once)
+        ImGui::OpenPopup(DIALOG_EXPORT_SECTIONS);
+        mediaplayer_export_sections_ = false;
+    }
+
+    // back from the folder dialog
+    if (_folder_dialog.closed()) {
+        if (!_folder_dialog.path().empty())
+            _folder = _folder_dialog.path();
+        // the 'Busy' modal shown during the file dialog (UserInterface::NewFrame)
+        // replaced this popup: re-open it to resume the export settings
+        if (!ImGui::IsPopupOpen(DIALOG_EXPORT_SECTIONS))
+            ImGui::OpenPopup(DIALOG_EXPORT_SECTIONS);
+    }
+
+    const ImVec2 dialog_size(buttons_width_ * 3.f, buttons_height_ * 5.f);
+    ImGui::SetNextWindowSize(dialog_size, ImGuiCond_Always);
+    ImGui::SetNextWindowPos(top + rendersize * 0.5f - dialog_size * 0.5f, ImGuiCond_Always);
+    if (ImGui::BeginPopupModal(DIALOG_EXPORT_SECTIONS, NULL, ImGuiWindowFlags_NoResize))
+    {
+        const ImVec2 pos = ImGui::GetCursorPos();
+        const ImVec2 area = ImGui::GetContentRegionAvail();
+        bool close = false;
+        ImGui::Spacing();
+
+        // export ongoing
+        if (_exporter) {
+            ImGui::Spacing();
+            if (!_exporter->finished()) {
+                ImGui::Text("Exporting timeline of %s", SystemToolkit::filename(_media).c_str());
+                ImGui::Text("%s", _exporter->status().c_str());
+                ImGui::Spacing();
+                ImGui::ProgressBar(_exporter->progress());
+                ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
+                if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(area.x * 0.3f, 0)))
+                    _exporter->stop();
+            }
+            else if (_exporter->success()) {
+                const std::list<std::string> files = _exporter->outputFiles();
+                ImGui::TextWrapped("%d video%s exported to %s", (int) files.size(), files.size() > 1 ? "s" : "",
+                                   _exporter->outputFolder().c_str());
+                if (_profile < 0)
+                    ImGui::TextDisabled(ICON_FA_CARET_RIGHT " Original codec in MKV container\n"
+                        ICON_FA_CARET_RIGHT " Cut at closest keyframe");
+                else
+                    ImGui::TextDisabled(ICON_FA_CARET_RIGHT  " Re-encoded with frame accurate timing\n"
+                        ICON_FA_CARET_RIGHT " Applied color fading curve");
+                ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
+                if (ImGui::Button(ICON_FA_TIMES "  Close", ImVec2(area.x * 0.3f, 0)))
+                    close = true;
+                ImGui::SetCursorPos(pos + ImVec2(area.x * 0.55f, area.y - buttons_height_));
+                ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+                if (ImGui::Button(ICON_FA_PLUS "  Create source", ImVec2(area.x * 0.45f, 0))
+                    || ImGui::IsKeyPressedMap(ImGuiKey_Enter)  || ImGui::IsKeyPressedMap(ImGuiKey_KeyPadEnter) ) {
+                    // a sequence of videos, or a single video
+                    if (files.size() > 1)
+                        Mixer::manager().addSource( Mixer::manager().createSourceSplitMedia(files) );
+                    else if (!files.empty())
+                        Mixer::manager().addSource( Mixer::manager().createSourceFile(files.front()) );
+                    close = true;
+                }
+                ImGui::PopStyleColor(1);
+            }
+            else {
+                // failed (error already logged by the transcoder): close
+                close = true;
+            }
+        }
+        // settings of export
+        else {
+            const int width = mediaplayer_active_->width() & ~1;
+            const int height = mediaplayer_active_->height() & ~1;
+            const bool has_fading = !mediaplayer_active_->timeline()->fadingIsClear();
+            const bool has_segments = mediaplayer_active_->timeline()->numGaps() > 0;
+
+            ImGui::Spacing();
+            if (_ranges.size() > 1)
+                ImGui::TextWrapped("Export the %d sections between gaps as %d video files.",
+                                   (int) _ranges.size(), (int) _ranges.size());
+            else
+                ImGui::TextWrapped("Export the section of the timeline as a video file.");
+            ImGui::Spacing();
+
+            // codec selection: copy of streams, or encoding with a profile (but multiple JPEG)
+            if (_profile >= GstToolkit::JPEG_MULTI)
+                _profile = GstToolkit::H264_RT;
+            if (_profile >= 0)
+                ValidateCodecResolution(&_profile, width, height);
+            ImGui::SetNextItemWidth(area.x * 0.7f);
+            if (ImGui::BeginCombo("Codec", _profile < 0 ? LABEL_EXPORT_COPY : GstToolkit::profile_name[_profile])) {
+                ImGuiToolkit::PushDisabled(has_fading);
+                if (ImGui::Selectable(LABEL_EXPORT_COPY, _profile < 0))
+                    _profile = -1;
+                ImGuiToolkit::PopDisabled(has_fading);
+                for (int i = GstToolkit::H264_RT; i < GstToolkit::JPEG_MULTI; ++i) {
+                    const bool supported = GstToolkit::supportsResolution((GstToolkit::Profile) i, width, height,
+                                                                         Settings::application.render.gpu_decoding);
+                    if (ImGui::Selectable( GstToolkit::profile_name[i], _profile == i,
+                                           supported ? ImGuiSelectableFlags_None : ImGuiSelectableFlags_Disabled ))
+                        _profile = i;
+                    if (!supported && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                        ImGuiToolkit::ToolTip( GstToolkit::unsupportedResolution((GstToolkit::Profile) i, width, height,
+                                               Settings::application.render.gpu_decoding).c_str() );
+                }
+                ImGui::EndCombo();
+            }
+            else if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Copy (fast):\n"
+                                      ICON_FA_CARET_RIGHT " fast, without loss of quality\n"
+                                      ICON_FA_CARET_RIGHT " cut at the closest keyframe\n"
+                                      ICON_FA_CARET_RIGHT " disabled if color fading is used\n\n"
+                                      "Other codecs (slow):\n"
+                                      ICON_FA_CARET_RIGHT " cut with frame accurate timing\n"
+                                      ICON_FA_CARET_RIGHT " applies the color fading curve");
+
+            ImGui::SetNextItemWidth(area.x * 0.7f);
+            std::string folder = BaseToolkit::truncated(_folder, 40);
+            if (ImGui::Button( (std::string(ICON_FA_FOLDER_OPEN " ") + folder).c_str(), ImVec2(area.x * 0.7f, 0)))
+                _folder_dialog.open();
+            ImGui::SameLine();
+            ImGui::Text("Folder");
+
+            ImGui::SetCursorPos(pos + ImVec2(0.f, area.y - buttons_height_));
+            if (ImGui::Button(ICON_FA_TIMES "  Cancel", ImVec2(area.x * 0.3f, 0)))
+                close = true;
+            ImGui::SetCursorPos(pos + ImVec2(area.x * 0.7f, area.y - buttons_height_));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Tab));
+            if (ImGui::Button(ICON_FA_CHECK "  Export", ImVec2(area.x * 0.3f, 0))
+                || ImGui::IsKeyPressedMap(ImGuiKey_Enter)  || ImGui::IsKeyPressedMap(ImGuiKey_KeyPadEnter) ) {
+                // new folder for the videos, named after the media
+                const std::string base = SystemToolkit::full_filename(_folder, SystemToolkit::base_filename(_media) + "_export");
+                std::string output = base;
+                for (int counter = 1; SystemToolkit::file_exists(output); ++counter)
+                    output = base + "_" + std::to_string(counter);
+                // start export of all sections
+                TranscoderOptions options( _profile < 0 ? GstToolkit::H264_RT : (GstToolkit::Profile) _profile, true);
+                options.stream_copy = _profile < 0;
+                // force the framerate of the media (as played, i.e. 30 fps if variable)
+                options.framerate_n = mediaplayer_active_->media().framerate_n;
+                options.framerate_d = mediaplayer_active_->media().framerate_d;
+                // when encoding, apply the color fading of the timeline to the frames
+                if ( !options.stream_copy && has_fading )
+                    options.fading = [tl = *mediaplayer_active_->timeline()](GstClockTime t) { return tl.fadingAt(t); };
+                _exporter = std::make_unique<SequenceTranscoder>(_media, _ranges);
+                if (!_exporter->start(options, output)) {
+                    Log::Warning("Cannot export timeline (%s).", _exporter->error().c_str());
+                    _exporter.reset();
+                    close = true;
+                }
+            }
+            if (!has_fading && !has_segments && ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip("Timeline is not affecting the video; better use Transcoding functions in source panel.");
+
+            ImGui::PopStyleColor(1);
+        }
+
+        if (close) {
+            _exporter.reset();
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

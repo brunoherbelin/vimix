@@ -1,6 +1,8 @@
 #ifndef DISPLAYSVIEW_H
 #define DISPLAYSVIEW_H
 
+#include <map>
+
 #include "View/View.h"
 #include "Selection.h"
 #include "Source/SourceList.h"

@@ -30,6 +30,7 @@ public:
     void reconnect();
 
     glm::ivec2 icon() const override;
+    std::string_view type() const override;
     inline std::string info() const override;
 
 protected:

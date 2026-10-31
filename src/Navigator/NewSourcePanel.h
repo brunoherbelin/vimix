@@ -40,7 +40,7 @@ public:
 
     typedef enum {
         SOURCE_FILE = 0,
-        SOURCE_SEQUENCE,
+        SOURCE_MULTIFILE,
         SOURCE_CONNECTED,
         SOURCE_GENERATED,
         SOURCE_BUNDLE
@@ -61,8 +61,13 @@ public:
     inline void mediaModeChanged() { new_media_mode_changed = true; }
 
 private:
+    // create a source from a sequence of images, or of videos
+    void RenderImageSequence(bool new_selection);
+    void RenderVideoSequence(bool new_selection);
+
     SourcePreview new_source_preview_;
-    std::list<std::string> sourceSequenceFiles;
+    std::list<std::string> sourceImageFiles;
+    std::list<std::string> sourceVideoFiles;
     std::list<std::string> sourceMediaFiles;
     std::string sourceMediaFileCurrent;
     MediaCreateMode new_media_mode;

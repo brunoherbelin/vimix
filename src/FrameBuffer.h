@@ -1,7 +1,7 @@
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
 
-#include "RenderingManager.h"
+#include "RenderingManager.h" // IWYU pragma: keep
 
 #ifndef NDEBUG
 #define FRAMEBUFFER_DEBUG
