@@ -12,6 +12,8 @@ The output can also be live streamed (SRT, shared memory) or recorded.
 Check the [User Manual](https://github.com/brunoherbelin/vimix/wiki/User-manual) or [demo videos](https://vimeo.com/vimix) to discover vimix.
 Watch this selection of [videos by Jean Detheux](https://vimeo.com/showcase/7871359) or [video tutorials](https://github.com/brunoherbelin/vimix/wiki/Video-tutorials) to see what vimix can do.
 
+Browse the [community documentation](https://brunoherbelin.github.io/vimix-docs/) for step-by-step feature guides, or [contribute a page](https://github.com/brunoherbelin/vimix-docs/blob/main/CONTRIBUTING.md).
+
 ## Install vimix
 
 [Quick installation guide](https://github.com/brunoherbelin/vimix/wiki/Quick-Installation-Guide)
