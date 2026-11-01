@@ -1,0 +1,105 @@
+---
+---
+// Shared with brunoherbelin/vimix-docs and brunoherbelin/vimix (docs/): keep the copies identical.
+@import "{{ site.theme }}";
+
+// Fluid layout: the theme fixes the page at 860 px with a 500 px content column.
+@media screen and (min-width: 961px) {
+  .wrapper {
+    width: auto;
+    max-width: 1400px;
+  }
+
+  section {
+    width: calc(100% - 330px);
+  }
+}
+
+// Page title and metadata shown in the left column
+header .page-info {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e5e5;
+
+  h2 {
+    margin: 0 0 10px;
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  p {
+    margin-bottom: 10px;
+  }
+}
+
+// Dark theme (screen only, printing keeps the theme's light colors).
+$bg: #232323;
+$text: #fff;
+$muted: #d0d0d0;
+$line: #6b6b6b;
+$blue: #7cc4ec;       // titles and links (5:1 contrast on $bg)
+$blue-hover: #a8dbf5;
+
+@media screen {
+  body {
+    background-color: $bg;
+    color: $text;
+  }
+
+  h1, h2, h3, h4, h5, h6,
+  header h1 a {
+    color: $blue;
+  }
+
+  strong, dt, th {
+    color: $text;
+  }
+
+  a {
+    color: $blue;
+  }
+
+  a:hover, a:focus {
+    color: $blue-hover;
+  }
+
+  small, a small, a:hover small {
+    color: $muted;
+  }
+
+  blockquote {
+    border-left-color: $line;
+  }
+
+  code, pre {
+    color: #f0f0f0;
+  }
+
+  pre {
+    background: #383838;
+    border-color: $line;
+  }
+
+  th, td, hr {
+    border-color: $line;
+  }
+
+  hr {
+    background: $line;
+  }
+
+  kbd {
+    background-color: #383838;
+    border-color: $line;
+    border-bottom-color: #8a8a8a;
+    color: $text;
+  }
+
+  header .page-info {
+    border-top-color: $line;
+  }
+
+  section {
+    border-color: $line;
+  }
+}
