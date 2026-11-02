@@ -682,16 +682,20 @@ string SystemToolkit::path_relative_to_path( const string& absolutePath, const s
     if (lastCommonRoot == SIZE_MAX || absoluteDirectories.size() < 1)
         return absolutePath;
 
+    // Relative paths are saved in session files: always separate them with '/',
+    // which all systems read (Windows accepts both '/' and '\')
+    const char sep = '/';
+
     // Add the '..'
     for (index = lastCommonRoot + 1; index < relativeToDirectories.size(); ++index) {
         if (relativeToDirectories[index].size() > 0)
-            relativePath += string("..") + PATH_SEP;
+            relativePath += string("..") + sep;
     }
 
     // Add the relative folders
     for (index = lastCommonRoot + 1; index < absoluteDirectories.size() - 1; ++index) {
         relativePath += absoluteDirectories[index];
-        relativePath += PATH_SEP;
+        relativePath += sep;
     }
 
     relativePath += absoluteDirectories[absoluteDirectories.size() - 1];
@@ -701,6 +705,15 @@ string SystemToolkit::path_relative_to_path( const string& absolutePath, const s
 
 string SystemToolkit::path_absolute_from_path(const string& relativePath, const string& relativeTo)
 {
+    // path_relative_to_path() gives the absolute path when the paths have
+    // no common root (e.g. on another drive): it is not relative to anything
+#ifdef WIN32
+    if (relativePath.size() > 1 && (relativePath[1] == ':' || relativePath.compare(0, 2, "\\\\") == 0))
+#else
+    if (!relativePath.empty() && relativePath[0] == PATH_SEP)
+#endif
+        return relativePath;
+
 #ifdef WIN32
     // absolute paths start with the drive (e.g. 'C:'), the first directory
     string absolutePath;
