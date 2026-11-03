@@ -16,6 +16,10 @@ The output can also be live streamed (SRT, shared memory) or recorded.
 
 vimix is the successor for GLMixer - https://sourceforge.net/projects/glmixer/
 
+# Documentation
+
+See [Vimix community documentation](https://brunoherbelin.github.io/vimix-docs/)
+
 # License
 
 GPL-3.0-or-later
