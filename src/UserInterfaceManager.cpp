@@ -973,6 +973,8 @@ void UserInterface::NewFrame()
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
+    // Horizontal wheel / trackpad scrolling is not supported by the UI: discard it
+    ImGui::GetIO().MouseWheelH = 0.f;
     ImGui::NewFrame();
 
     // deal with keyboard and mouse events
