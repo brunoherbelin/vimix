@@ -111,7 +111,7 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     active_label_(LABEL_PLAYER_SELECTION), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
     mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0), mediaplayer_export_sections_(false),
-    mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f),
+    mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f), mediaplayer_timeline_zoom_changed_(false),
     mediaplayer_edit_panel_(false), magnifying_glass(false)
 {
     info_.setExtendedStringMode();
@@ -2320,6 +2320,16 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
             Timeline *tl = mediaplayer_active_->timeline();
             if (tl->is_valid())
             {
+                // after a change of zoom, scroll to show the cursor (rough estimate from time ratio)
+                if (mediaplayer_timeline_zoom_changed_) {
+                    mediaplayer_timeline_zoom_changed_ = false;
+                    if (tl->duration() > 0) {
+                        float ratio = float(double(seek_t) - double(tl->begin())) / float(tl->duration());
+                        ratio = CLAMP(ratio, 0.f, 1.f);
+                        ImGui::SetScrollX( MAX(0.f, ratio * size.x - 0.5f * ImGui::GetWindowWidth()) );
+                    }
+                }
+
                 bool released = false;
                 if ( EditTimeline("##TimelineArray", tl,
                                        Settings::application.widget.media_player_timeline_editmode,
@@ -2359,7 +2369,8 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         // zoom slider
         ImGui::SetCursorScreenPos(bottom + ImVec2(0.f, timeline_height_));
-        ImGui::VSliderFloat("##TimelineZoom", ImVec2(slider_zoom_width, timeline_height_), &mediaplayer_timeline_zoom_, 1.0, 5.f, "");
+        if (ImGui::VSliderFloat("##TimelineZoom", ImVec2(slider_zoom_width, timeline_height_), &mediaplayer_timeline_zoom_, 1.0, 5.f, ""))
+            mediaplayer_timeline_zoom_changed_ = true;
 
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor(1);
