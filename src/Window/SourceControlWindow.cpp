@@ -2307,8 +2307,13 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, ImVec4(0.f, 0.f, 0.f, 0.0f));
 
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.f));
-        ImGui::BeginChild("##scrolling", scrollwindow,  false, ImGuiWindowFlags_HorizontalScrollbar);
+        ImGui::BeginChild("##scrolling", scrollwindow,  false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         {
+            // mouse wheel (or vertical trackpad scroll) scrolls the timeline horizontally
+            // (horizontal wheel input is discarded globally, see UserInterface::NewFrame)
+            if (ImGui::IsWindowHovered() && ImGui::GetIO().MouseWheel != 0.f)
+                ImGui::SetScrollX( ImGui::GetScrollX() - ImGui::GetIO().MouseWheel * 5.f * ImGui::GetFontSize() );
+
             ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), timeline_height_ -1);
             size.x *= mediaplayer_timeline_zoom_;
 
