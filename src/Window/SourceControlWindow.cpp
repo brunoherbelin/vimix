@@ -188,8 +188,10 @@ void SourceControlWindow::Update()
     if ( play_toggle_request_ ) {
 
         for (auto source = selectedsources.begin(); source != selectedsources.end(); ++source)
-            (*source)->play( n_play < n_source );
-        Action::manager().store( n_play < n_source ? "Sources Play" : "Sources Pause" );
+            (*source)->play( n_play == 0 );
+        Action::manager().store( std::string(n_play == 0 ?  "Play " : "Pause ") +
+                                 std::to_string(n_play == 0 ?  selectedsources.size() : n_play) +
+                                " sources");
 
         play_toggle_request_ = false;
     }
