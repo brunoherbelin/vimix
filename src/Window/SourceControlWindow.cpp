@@ -185,7 +185,7 @@ void SourceControlWindow::Update()
     //
     // Play button or keyboard [Space] was pressed
     //
-    if ( play_toggle_request_ ) {
+    if ( play_toggle_request_ && !selectedsources.empty()) {
 
         for (auto source = selectedsources.begin(); source != selectedsources.end(); ++source)
             (*source)->play( n_play == 0 );
@@ -339,12 +339,12 @@ void SourceControlWindow::Render()
                 Mixer::selection().clear();
                 selection_ = valid_only(Mixer::manager().session()->getDepthSortedList());
             }
-            if (ImGui::MenuItem( ICON_FA_MINUS "  Clear")) {
-                selection_.clear();
-                resetActiveSelection();
-                Mixer::manager().unsetCurrentSource();
-                Mixer::selection().clear();
-            }
+            // if (ImGui::MenuItem( ICON_FA_MINUS "  Clear")) {
+            //     selection_.clear();
+            //     resetActiveSelection();
+            //     Mixer::manager().unsetCurrentSource();
+            //     Mixer::selection().clear();
+            // }
             //
             // Menu section for window management
             //
@@ -1856,8 +1856,12 @@ void SourceControlWindow::RenderSelectedSources()
     ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
 
     // get new selection or validate previous list if selection was not updated
-    if (Mixer::selection().empty())
-        selection_ = valid_only(Mixer::manager().validate(selection_));
+    if (Mixer::selection().empty()) {
+        if (selection_.empty())
+            selection_ = valid_only(Mixer::manager().session()->getDepthSortedList());
+        else
+            selection_ = valid_only(Mixer::manager().validate(selection_));
+    }
     else
         selection_ = valid_only(Mixer::selection().getCopy());
     int numsources = selection_.size();
