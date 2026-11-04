@@ -51,7 +51,7 @@
 
 StripView::StripView(Mode m, const std::string &item_name) : View(m), current_(-1), center_(-1), start_from_end_(false), leave_target_(-1),
     item_name_(item_name), strip_animate_(false), strip_scroll_(0.f), strip_target_(glm::vec3(1e6f)),
-    item_height_(1.f), arrow_latched_(false), start_time_(0)
+    item_height_(1.f), start_time_(0)
 {
     // dark background covering the view, behind all
     Surface *background = new Surface( new Shader );
@@ -461,24 +461,4 @@ View::Cursor StripView::over(glm::vec2 P)
     }
 
     return Cursor();
-}
-
-void StripView::arrow (glm::vec2 movement)
-{
-    // react once to left / right key press
-    if (!arrow_latched_ && movement.x != 0.f) {
-        arrow_latched_ = true;
-        if (movement.x > 0.f)
-            next();
-        else
-            previous();
-    }
-}
-
-void StripView::terminate (bool force)
-{
-    View::terminate(force);
-
-    // release arrow key
-    arrow_latched_ = false;
 }

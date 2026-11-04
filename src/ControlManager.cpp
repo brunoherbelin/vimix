@@ -1955,6 +1955,16 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
 
         }
 
+        // keys with actions in any window
+        if (action == GLFW_PRESS && !mods) {
+            if (key == GLFW_KEY_SPACE)
+                UserInterface::manager().togglePlay();
+            else if (key == GLFW_KEY_RIGHT)
+                UserInterface::manager().stripNavigate(true);
+            else if (key == GLFW_KEY_LEFT)
+                UserInterface::manager().stripNavigate(false);
+        }
+
         // keys in non-main window
         if ( w != Rendering::manager().mainWindow().window() )
         {

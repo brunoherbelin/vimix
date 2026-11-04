@@ -256,6 +256,41 @@ void UserInterface::setView(View::Mode mode)
         navigator.discardPannel();
 }
 
+void UserInterface::togglePlay()
+{
+    if (sourcecontrol.Visible() &&
+        Mixer::manager().view()->mode() != View::PRESENTATION &&
+        Mixer::manager().view()->mode() != View::SNAPSHOTS ){
+        sourcecontrol.Play();
+    }
+    else {
+        SourceList validsources;
+        size_t n_play = 0;
+        for (auto source = Mixer::manager().session()->begin();
+                source != Mixer::manager().session()->end(); ++source){
+            if ( !(*source)->failed()) {
+                validsources.push_back(*source);
+                if ((*source)->active() && (*source)->playing() )
+                    n_play++;
+            }
+        }
+        for (auto source = validsources.begin(); source != validsources.end(); ++source){
+            (*source)->play( n_play==0 );
+        }
+    }
+}
+
+void UserInterface::stripNavigate(bool forward)
+{
+    if (Mixer::manager().view()->mode() == View::PRESENTATION ||
+           Mixer::manager().view()->mode() == View::SNAPSHOTS ) {
+        if (forward)
+            static_cast<StripView *>(Mixer::manager().view())->next();
+        else
+            static_cast<StripView *>(Mixer::manager().view())->previous();
+    }
+}
+
 void UserInterface::handleKeyboard()
 {
     static bool esc_repeat_ = false;
@@ -492,16 +527,6 @@ void UserInterface::handleKeyboard()
             // restore cleared workspace when releasing ESC after maintain
             WorkspaceWindow::restoreWorkspace();
             esc_repeat_ = false;
-        }
-        // Space bar
-        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false )) {
-            // space bar presentation to switch to next
-            if (Mixer::manager().view()->mode() == View::PRESENTATION ||
-                Mixer::manager().view()->mode() == View::SNAPSHOTS)
-                static_cast<StripView *>(Mixer::manager().view())->next();
-            else
-                // Space bar to toggle play / pause
-                sourcecontrol.Play();
         }
         // Backspace to delete source
         else if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))

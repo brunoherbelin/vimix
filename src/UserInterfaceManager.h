@@ -83,6 +83,10 @@ public:
     inline bool altModifier() const  { return alt_modifier_active; }
     inline bool shiftModifier() const  { return shift_modifier_active; }
 
+    // keyboard actions callable from any window
+    void togglePlay();
+    void stripNavigate(bool forward);
+
     void showPannel(int id = -1);
     void setSourceInPanel(int index);
     void setSourceInPanel(Source *s);
@@ -168,4 +172,3 @@ protected:
 };
 
 #endif /* #define __UI_MANAGER_H_ */
-

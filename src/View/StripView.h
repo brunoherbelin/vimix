@@ -29,10 +29,8 @@ public:
 
     std::pair<Node *, glm::vec2> pick(glm::vec2 P) override;
     bool doubleclic (glm::vec2) override;
-    void arrow (glm::vec2) override;
     Cursor over (glm::vec2) override;
     Cursor drag (glm::vec2, glm::vec2) override { return Cursor(); }
-    void terminate (bool force = false) override;
 
     // open next, previous or i-th item of the list
     void next();
@@ -93,7 +91,6 @@ private:
     Surface *output_surface_;
     Frame *output_frame_;
 
-    bool arrow_latched_;
     int64_t start_time_;
 };
 
