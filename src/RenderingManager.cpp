@@ -99,8 +99,9 @@ bool Rendering::init()
     const char* desktop = getenv("XDG_CURRENT_DESKTOP");
     if (desktop) {
         // Forcing X11 on Gnome makes the server use xWayland which has proper Server Side Decorations as opposed to Wayland.
-        if (strstr(desktop, "GNOME") != nullptr || 
-            strstr(desktop, "Unity") != nullptr ){
+        if (strstr(desktop, "GNOME") != nullptr ||
+            strstr(desktop, "Unity") != nullptr  ||
+            strstr(desktop, "XFCE") != nullptr ){
             g_printerr("Forcing X11 / xWayland on %s desktop\n", desktop);
             glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
         }
@@ -281,7 +282,7 @@ bool Rendering::init()
               (int) maxres.x, (int) maxres.y, FrameBuffer::memoryBudget() / 1000000);
 
 
-#ifdef USE_GST_OPENGL_SYNC_HANDLER    
+#ifdef USE_GST_OPENGL_SYNC_HANDLER
     global_display = NULL;
     global_gl_context = NULL;
 #if GST_GL_HAVE_PLATFORM_WGL
@@ -412,7 +413,7 @@ void Rendering::draw()
 
 // Wait for the next frame of a regular 60 FPS schedule.
 // Implemented with a coarse sleep, short of the deadline by a fifth of the wait, and then
-// short sleeps to reach it. 
+// short sleeps to reach it.
 void Rendering::limitFramerate()
 {
     using clock = std::chrono::steady_clock;
@@ -627,7 +628,7 @@ bool Rendering::shouldHaveEnoughMemory(glm::vec3 resolution, int flags, int num_
     return ( static_cast<unsigned long>(RAM.x) * 1024UL > needed );
 }
 
-glm::vec3 Rendering::monitorsResolution() 
+glm::vec3 Rendering::monitorsResolution()
 {
     std::lock_guard<std::mutex> lock(monitors_mutex_);
 
@@ -641,7 +642,7 @@ glm::vec3 Rendering::monitorsResolution()
         resolution.x += ABS(position.x);
         resolution.y += ABS(position.y);
     }
-    resolution.z = 0; 
+    resolution.z = 0;
     return resolution;
 }
 
