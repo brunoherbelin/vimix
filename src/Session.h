@@ -81,6 +81,10 @@ public:
     bool empty() const;
     uint size() const;
     SourceList getDepthSortedList () const;
+    // copy of the list of all sources, in session order
+    SourceList getOrderedList () const;
+    // given sources, sorted in session order; sources not in session are dropped
+    SourceList getOrderedList (const SourceList &subset) const;
     SourceIdList getIdList() const;
     std::list<std::string> getNameList(uint64_t exceptid=0) const;
     SourceList::iterator begin ();

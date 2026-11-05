@@ -148,7 +148,7 @@ void SourceControlWindow::setVisible(bool on)
 
     // if no selection in the player and in the source selection, show all sources
     if (on && selection_.empty() && Mixer::selection().empty() )
-        selection_ = valid_only( Mixer::manager().session()->getDepthSortedList() );
+        selection_ = valid_only( Mixer::manager().session()->getOrderedList() );
 
     Settings::application.widget.media_player = on;
 }
@@ -172,7 +172,7 @@ void SourceControlWindow::Update()
     // get new selection or validate previous list if selection was not updated
     selectedsources = Mixer::manager().validate(selection_);
     if (selectedsources.empty() && !Mixer::selection().empty())
-        selectedsources = valid_only(Mixer::selection().getCopy());
+        selectedsources = valid_only(Mixer::manager().session()->getOrderedList(Mixer::selection().getCopy()));
 
     // compute number of source selected and playable
     size_t n_source = selectedsources.size();
@@ -337,7 +337,7 @@ void SourceControlWindow::Render()
                 resetActiveSelection();
                 Mixer::manager().unsetCurrentSource();
                 Mixer::selection().clear();
-                selection_ = valid_only(Mixer::manager().session()->getDepthSortedList());
+                selection_ = valid_only(Mixer::manager().session()->getOrderedList());
             }
             // if (ImGui::MenuItem( ICON_FA_MINUS "  Clear")) {
             //     selection_.clear();
@@ -1228,7 +1228,7 @@ void SourceControlWindow::RenderSelection(size_t i)
     ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, buttons_height_ + scrollbar_ + v_space_);
     ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
 
-    selection_ = Mixer::manager().session()->getBatch(i);
+    selection_ = Mixer::manager().session()->getOrderedList(Mixer::manager().session()->getBatch(i));
     int numsources = selection_.size();
 
     // no source selected
@@ -1858,12 +1858,12 @@ void SourceControlWindow::RenderSelectedSources()
     // get new selection or validate previous list if selection was not updated
     if (Mixer::selection().empty()) {
         if (selection_.empty())
-            selection_ = valid_only(Mixer::manager().session()->getDepthSortedList());
+            selection_ = valid_only(Mixer::manager().session()->getOrderedList());
         else
             selection_ = valid_only(Mixer::manager().validate(selection_));
     }
     else
-        selection_ = valid_only(Mixer::selection().getCopy());
+        selection_ = valid_only(Mixer::manager().session()->getOrderedList(Mixer::selection().getCopy()));
     int numsources = selection_.size();
 
     // no source selected
@@ -2058,6 +2058,20 @@ void SourceControlWindow::RenderSingleSource(Source *s)
         ImGui::SameLine();
         ImGui::Text("%s", s->playable() ? GstToolkit::time_to_string(s->playtime()).c_str() : " " );
         ImGui::PopFont();
+
+        ///
+        /// Next / Previous buttons
+        ///
+        ImGui::SetCursorScreenPos(bottom +
+            ImVec2(rendersize.x -2.f * ImGui::GetTextLineHeightWithSpacing() - h_space_,
+                -1.f * (ImGui::GetTextLineHeightWithSpacing() + h_space_) ));
+        if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") ){
+            
+        }
+        ImGui::SameLine(0, 0);
+        if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") ){
+            
+        }
 
         ///
         /// Play button bar
@@ -2262,13 +2276,27 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         else
             show = true;
         if (show) {
-            S.x = rendersize.x + S.y;
-            ImGui::SetCursorScreenPos(bottom + S);
+            ImGui::SameLine();
             ImGuiToolkit::Icon( sync > Metronome::SYNC_BEAT ? 7 : 6, 13);
         }
     }
 
     ImGui::PopFont();
+
+
+    ///
+    /// Next / Previous buttons
+    ///
+
+    S.x = rendersize.x -2.f * ImGui::GetTextLineHeightWithSpacing() - h_space_;
+    ImGui::SetCursorScreenPos(bottom + S);
+    if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") ){
+        
+    }
+    ImGui::SameLine(0, 0);
+    if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") ){
+        
+    }
 
     ///
     /// media player timelines
