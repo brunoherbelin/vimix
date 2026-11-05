@@ -181,15 +181,15 @@ Target InputMappingWindow::ComboSelectTarget(const Target &current)
 
 uint InputMappingWindow::ComboSelectCallback(uint current, bool imageprocessing, bool ismediaplayer)
 {
-    if (!ismediaplayer && current > SourceCallback::CALLBACK_PLAY && current <= SourceCallback::CALLBACK_FLAG) 
+    if (!ismediaplayer && current > SourceCallback::CALLBACK_PLAY && current <= SourceCallback::CALLBACK_FLAG)
         return SourceCallback::CALLBACK_INVALID;
 
-    if (!imageprocessing && current >= SourceCallback::CALLBACK_GAMMA) 
+    if (!imageprocessing && current >= SourceCallback::CALLBACK_GAMMA)
         return SourceCallback::CALLBACK_INVALID;
 
     uint selected = 0;
     if (ImGui::BeginCombo("##ComboSelectCallback", callbackName(current)) ) {
-        for (uint i = SourceCallback::CALLBACK_ALPHA; 
+        for (uint i = SourceCallback::CALLBACK_ALPHA;
             i <= (ismediaplayer ? SourceCallback::CALLBACK_FLAG : SourceCallback::CALLBACK_PLAY) ; ++i){
             if ( ImGui::Selectable( callback_names[i]) ) {
                 selected = i;
@@ -216,12 +216,12 @@ struct ClosestIndex
     void operator()(float v) { if (v < val) ++index; }
 };
 
-void testButton(SourceCallback *callback, const Target &target, 
+void testButton(SourceCallback *callback, const Target &target,
     const std::string& tooltip, int i, int j)
 {
     if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", tooltip.c_str());
-        
+
     // Define the triplet type
     using SourceCallbackTriplet = std::tuple<Source*, SourceCallback*, SourceCallback*>;
 
@@ -521,7 +521,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         bool bd = edited->bidirectional();
         if ( ImGuiToolkit::IconToggle(ICON_VI_KEY_PRESS, ICON_VI_KEY_DOWN, &bd, press_tooltip ) )
             edited->setBidirectional(bd);
-        
+
         // Text input field for MM:SS:MS seek target time
         ImGui::SetNextItemWidth(right_align);
         ImGui::SameLine(0, IMGUI_SAME_LINE / 2);
@@ -529,7 +529,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         guint64 duration = GST_SECOND * 1000;
         if (Source * const* v = std::get_if<Source *>(&target)) {
             MediaSource *ms = dynamic_cast<MediaSource*>(*v);
-            if (ms) 
+            if (ms)
                 duration = ms->mediaplayer()->timeline()->duration();
         }
 
@@ -555,7 +555,7 @@ void InputMappingWindow::SliderParametersCallback(SourceCallback *callback, cons
         int max = -1;
         if (Source * const* v = std::get_if<Source *>(&target)) {
             MediaSource *ms = dynamic_cast<MediaSource*>(*v);
-            if (ms) 
+            if (ms)
                 max = ms->mediaplayer()->timeline()->numFlags() - 1;
         }
         int val = MIN( (int) edited->value(), max);
@@ -919,7 +919,7 @@ std::list< std::pair<int, int> > callbackIcons(SourceCallback *callback)
         icons.push_back( {ICON_VI_SPEED_SLOWEST} );
     else if (d > 120.f)
         icons.push_back( {ICON_VI_SPEED_SLOW} );
-    else if (d > 60.f)    
+    else if (d > 60.f)
         icons.push_back( {ICON_VI_SPEED_SMOOTH} );
     else if (d > 0.f)
         icons.push_back( {ICON_VI_SPEED_FAST} );
@@ -945,7 +945,7 @@ void InputMappingWindow::Render()
     ImGui::SetNextWindowSizeConstraints(ImVec2(900, fixed_height), ImVec2(FLT_MAX, fixed_height));
 
     if ( !ImGui::Begin(name_, &Settings::application.widget.inputs,
-                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
+                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoNavInputs ))
     {
         ImGui::End();
         return;
@@ -1587,7 +1587,7 @@ void InputMappingWindow::Render()
     ImGui::SetCursorScreenPos(frame_top + g.Style.FramePadding + ImVec2(inputarea_width,0.f));
     {
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2.f, g.Style.ItemSpacing.y * 2.f) );
-        ImGui::BeginChild("InputsMappingInterfacePanel", ImVec2(0, 0), false);
+        ImGui::BeginChild("InputsMappingInterfacePanel", ImVec2(0, 0), false, ImGuiWindowFlags_NoNavInputs);
         float w = ImGui::GetWindowWidth() *0.25f;
 
         // adding actions is possible only if there are sources in the session
@@ -1606,7 +1606,7 @@ void InputMappingWindow::Render()
             std::list<InputCallbacks::Nested> nested = S->inputCallbacks()->nested(current_input_);
             if (!nested.empty()) {
                 // this input is mapped inside one or more bundles: show it disabled,
-                // the test button being the only active element 
+                // the test button being the only active element
                 for (auto nit = nested.cbegin(); nit != nested.cend(); ++nit) {
 
                     ImGui::PushID( (void*) nit->callback );
@@ -1643,21 +1643,21 @@ void InputMappingWindow::Render()
 
                     // Test button: apply this callback to its target
                     ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f);
-                    if (std::holds_alternative<Current>(nit->target)) {   
+                    if (std::holds_alternative<Current>(nit->target)) {
                         ImGuiToolkit::Indication("Unavailable in this context",ICON_FA_BAN);
                     }
                     else {
-                        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Set %s of  '%s'  to %s", 
-                                                                                        callbackName( nit->callback->type() ), 
-                                                                                        label.c_str(), 
+                        ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Set %s of  '%s'  to %s",
+                                                                                        callbackName( nit->callback->type() ),
+                                                                                        label.c_str(),
                                                                                         value.c_str());
                         testButton( nit->callback, nit->target, text_buf, ICON_VI_EXECUTE );
                     }
                     ImGui::PopID();
                 }
             }
- 
-            // 2. Callbacks directly assigned to the current input in this session            
+
+            // 2. Callbacks directly assigned to the current input in this session
             if (S->inputCallbacks()->assigned(current_input_)) {
 
                 auto result = S->inputCallbacks()->at(current_input_);
@@ -1706,10 +1706,10 @@ void InputMappingWindow::Render()
                     uint type = ComboSelectCallback( callback->type(), withimageprocessing, ismediaplayer );
                     if (type == SourceCallback::CALLBACK_INVALID) {
                         // remove previous callback
-                        S->inputCallbacks()->remove(callback);   
-                        // offer to create a new one instead       
+                        S->inputCallbacks()->remove(callback);
+                        // offer to create a new one instead
                         temp_new_input = true;
-                        temp_new_target = target;                        
+                        temp_new_target = target;
                         // reload
                         ImGui::PopID();
                         break;
@@ -1816,5 +1816,3 @@ void InputMappingWindow::Render()
 
     ImGui::End();
 }
-
-

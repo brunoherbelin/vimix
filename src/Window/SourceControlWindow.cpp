@@ -293,7 +293,7 @@ void SourceControlWindow::Render()
 
     // Window named "SourceController" at instanciation
     if ( !ImGui::Begin(name_, &Settings::application.widget.media_player,
-                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
+                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoNavInputs ))
     {
         ImGui::End();
         return;

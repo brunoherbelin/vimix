@@ -97,7 +97,7 @@ struct AppLog
             }
         }
 
-        if ( !ImGui::Begin(window_title, p_open))
+        if ( !ImGui::Begin(window_title, p_open, ImGuiWindowFlags_NoNavInputs))
         {
             LogInTitle = true;
             ImGui::End();

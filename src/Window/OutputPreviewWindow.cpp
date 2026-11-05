@@ -234,7 +234,7 @@ void OutputPreviewWindow::Render()
 
         // Window named "OutputPreview" at instanciation
         if ( !ImGui::Begin(name_, &Settings::application.widget.preview,
-                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse ) )
+                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoNavInputs ) )
         {
             ImGui::End();
             return;
