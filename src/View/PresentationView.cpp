@@ -235,7 +235,13 @@ void PresentationView::drawInformation(bool is_busy)
         else if ( Mixer::manager().liveSession()->filename() == items_[current_]->path() )
             se = Mixer::manager().liveSession();
 
-        // Notes from sticky notes
+        // Notes from sticky notes, in a scrolling area filling the space
+        // available above the buttons (the rest of the window does not scroll)
+        const float buttons_h = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y;
+        const float notes_h = MAX(ImGui::GetContentRegionAvail().y - buttons_h,
+                                  2.f * ImGui::GetTextLineHeightWithSpacing());
+        ImGui::BeginChild("##PresentationNotes", ImVec2(0.f, notes_h), false,
+                          ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNav);
         ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
         bool has_notes = false;
         if (se != nullptr) {
@@ -251,6 +257,7 @@ void PresentationView::drawInformation(bool is_busy)
         if (!has_notes)
             ImGui::TextDisabled("No note");
         ImGui::PopFont();
+        ImGui::EndChild();
 
     }
     else {
