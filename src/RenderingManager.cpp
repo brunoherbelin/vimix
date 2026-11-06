@@ -661,6 +661,16 @@ void Rendering::deactivateOutput(const GLFWmonitor* monitor)
     }
 }
 
+void Rendering::focusOutputs()
+{
+    std::lock_guard<std::mutex> lock(monitors_mutex_);
+
+    for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
+        if (it->output.isActive() && it->output.isInitialized())
+            glfwFocusWindow(it->output.window());
+    }
+}
+
 GLFWmonitor *Rendering::monitorNamed(const std::string &name)
 {
     std::lock_guard<std::mutex> lock(monitors_mutex_);

@@ -420,6 +420,12 @@ bool StripView::doubleclic (glm::vec2 P)
 {
     std::pair<Node *, glm::vec2> pick = View::pick(P);
 
+    // double clic on the output surface: bring focus to the output window(s)
+    if (pick.first != nullptr && (pick.first == output_surface_ || pick.first == output_frame_)) {
+        Rendering::manager().focusOutputs();
+        return true;
+    }
+
     // double clic on an item
     if (pick.first != nullptr) {
         for (size_t i = 0; i < items_.size(); ++i) {
