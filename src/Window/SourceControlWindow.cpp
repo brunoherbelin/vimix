@@ -110,8 +110,8 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     play_toggle_request_(false), replay_request_(false), pending_(false),
     active_label_(LABEL_PLAYER_SELECTION), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
-    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0), mediaplayer_export_sections_(false),
-    mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f),
+    over_navigation_(false), over_navigation_next_(false), mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0), mediaplayer_export_sections_(false),
+    mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f), mediaplayer_timeline_zoom_changed_(false),
     mediaplayer_edit_panel_(false), magnifying_glass(false)
 {
     info_.setExtendedStringMode();
@@ -148,7 +148,7 @@ void SourceControlWindow::setVisible(bool on)
 
     // if no selection in the player and in the source selection, show all sources
     if (on && selection_.empty() && Mixer::selection().empty() )
-        selection_ = valid_only( Mixer::manager().session()->getDepthSortedList() );
+        selection_ = valid_only( Mixer::manager().session()->getOrderedList() );
 
     Settings::application.widget.media_player = on;
 }
@@ -172,7 +172,7 @@ void SourceControlWindow::Update()
     // get new selection or validate previous list if selection was not updated
     selectedsources = Mixer::manager().validate(selection_);
     if (selectedsources.empty() && !Mixer::selection().empty())
-        selectedsources = valid_only(Mixer::selection().getCopy());
+        selectedsources = valid_only(Mixer::manager().session()->getOrderedList(Mixer::selection().getCopy()));
 
     // compute number of source selected and playable
     size_t n_source = selectedsources.size();
@@ -185,11 +185,13 @@ void SourceControlWindow::Update()
     //
     // Play button or keyboard [Space] was pressed
     //
-    if ( play_toggle_request_ ) {
+    if ( play_toggle_request_ && !selectedsources.empty()) {
 
         for (auto source = selectedsources.begin(); source != selectedsources.end(); ++source)
-            (*source)->play( n_play < n_source );
-        Action::manager().store( n_play < n_source ? "Sources Play" : "Sources Pause" );
+            (*source)->play( n_play == 0 );
+        Action::manager().store( std::string(n_play == 0 ?  "Play " : "Pause ") +
+                                 std::to_string(n_play == 0 ?  selectedsources.size() : n_play) +
+                                " sources");
 
         play_toggle_request_ = false;
     }
@@ -272,6 +274,10 @@ FrameBuffer *SourceControlWindow::renderedFramebuffer() const
 
 void SourceControlWindow::Render()
 {
+    // the area of Previous / Next buttons is set again if the buttons are drawn in this frame
+    over_navigation_ = over_navigation_next_;
+    over_navigation_next_ = false;
+
     // estimate window size
     const ImGuiContext& g = *GImGui;
     h_space_ = g.Style.ItemInnerSpacing.x;
@@ -291,7 +297,7 @@ void SourceControlWindow::Render()
 
     // Window named "SourceController" at instanciation
     if ( !ImGui::Begin(name_, &Settings::application.widget.media_player,
-                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
+                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoNavInputs ))
     {
         ImGui::End();
         return;
@@ -335,14 +341,14 @@ void SourceControlWindow::Render()
                 resetActiveSelection();
                 Mixer::manager().unsetCurrentSource();
                 Mixer::selection().clear();
-                selection_ = valid_only(Mixer::manager().session()->getDepthSortedList());
+                selection_ = valid_only(Mixer::manager().session()->getOrderedList());
             }
-            if (ImGui::MenuItem( ICON_FA_MINUS "  Clear")) {
-                selection_.clear();
-                resetActiveSelection();
-                Mixer::manager().unsetCurrentSource();
-                Mixer::selection().clear();
-            }
+            // if (ImGui::MenuItem( ICON_FA_MINUS "  Clear")) {
+            //     selection_.clear();
+            //     resetActiveSelection();
+            //     Mixer::manager().unsetCurrentSource();
+            //     Mixer::selection().clear();
+            // }
             //
             // Menu section for window management
             //
@@ -1226,7 +1232,7 @@ void SourceControlWindow::RenderSelection(size_t i)
     ImVec2 rendersize = ImGui::GetContentRegionAvail() - ImVec2(0, buttons_height_ + scrollbar_ + v_space_);
     ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
 
-    selection_ = Mixer::manager().session()->getBatch(i);
+    selection_ = Mixer::manager().session()->getOrderedList(Mixer::manager().session()->getBatch(i));
     int numsources = selection_.size();
 
     // no source selected
@@ -1715,8 +1721,10 @@ void SourceControlWindow::DrawSource(Source *s, ImVec2 framesize, ImVec2 top_ima
     //
     const ImRect bb(top_image, top_image + framesize);
     const ImGuiID id = ImGui::GetCurrentWindow()->GetID("##source-texture");
-    bool hovered, held;
-    bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, ImGuiButtonFlags_PressedOnClick);
+    bool hovered = false, held = false, pressed = false;
+    // the image ignores the mouse over the Previous / Next buttons drawn on top of it
+    if (!over_navigation_)
+        pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, ImGuiButtonFlags_PressedOnClick);
     // toggle preview on double clic
     if (pressed) {
         // trigger to show preview (will be ignored if not double clic)
@@ -1854,10 +1862,14 @@ void SourceControlWindow::RenderSelectedSources()
     ImVec2 bottom = ImVec2(top.x, top.y + rendersize.y + v_space_);
 
     // get new selection or validate previous list if selection was not updated
-    if (Mixer::selection().empty())
-        selection_ = valid_only(Mixer::manager().validate(selection_));
+    if (Mixer::selection().empty()) {
+        if (selection_.empty())
+            selection_ = valid_only(Mixer::manager().session()->getOrderedList());
+        else
+            selection_ = valid_only(Mixer::manager().validate(selection_));
+    }
     else
-        selection_ = valid_only(Mixer::selection().getCopy());
+        selection_ = valid_only(Mixer::manager().session()->getOrderedList(Mixer::selection().getCopy()));
     int numsources = selection_.size();
 
     // no source selected
@@ -2052,6 +2064,23 @@ void SourceControlWindow::RenderSingleSource(Source *s)
         ImGui::SameLine();
         ImGui::Text("%s", s->playable() ? GstToolkit::time_to_string(s->playtime()).c_str() : " " );
         ImGui::PopFont();
+
+        ///
+        /// Next / Previous buttons
+        ///
+        // only if there is somewhere to navigate
+        if (Mixer::manager().session()->size() > 1) {
+            ImGui::SetCursorScreenPos(bottom +
+                ImVec2(rendersize.x -2.f * ImGui::GetTextLineHeightWithSpacing() - h_space_,
+                    -1.f * (ImGui::GetTextLineHeightWithSpacing() + h_space_) ));
+            const ImVec2 nav_min = ImGui::GetCursorScreenPos();
+            if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") )
+                Mixer::manager().setCurrentPrevious();
+            ImGui::SameLine(0, 0);
+            if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") )
+                Mixer::manager().setCurrentNext();
+            over_navigation_next_ = ImGui::IsMouseHoveringRect(nav_min, ImGui::GetItemRectMax(), false);
+        }
 
         ///
         /// Play button bar
@@ -2256,13 +2285,30 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         else
             show = true;
         if (show) {
-            S.x = rendersize.x + S.y;
-            ImGui::SetCursorScreenPos(bottom + S);
+            ImGui::SameLine();
             ImGuiToolkit::Icon( sync > Metronome::SYNC_BEAT ? 7 : 6, 13);
         }
     }
 
     ImGui::PopFont();
+
+
+    ///
+    /// Next / Previous buttons
+    ///
+
+    // only if there is somewhere to navigate
+    if (Mixer::manager().session()->size() > 1) {
+        S.x = rendersize.x -2.f * ImGui::GetTextLineHeightWithSpacing() - h_space_;
+        ImGui::SetCursorScreenPos(bottom + S);
+        const ImVec2 nav_min = ImGui::GetCursorScreenPos();
+        if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") )
+            Mixer::manager().setCurrentPrevious();
+        ImGui::SameLine(0, 0);
+        if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") )
+            Mixer::manager().setCurrentNext();
+        over_navigation_next_ = ImGui::IsMouseHoveringRect(nav_min, ImGui::GetItemRectMax(), false);
+    }
 
     ///
     /// media player timelines
@@ -2301,14 +2347,29 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
         ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, ImVec4(0.f, 0.f, 0.f, 0.0f));
 
         ImGui::SetCursorScreenPos(bottom + ImVec2(1.f, 0.f));
-        ImGui::BeginChild("##scrolling", scrollwindow,  false, ImGuiWindowFlags_HorizontalScrollbar);
+        ImGui::BeginChild("##scrolling", scrollwindow,  false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         {
+            // mouse wheel (or vertical trackpad scroll) scrolls the timeline horizontally
+            // (horizontal wheel input is discarded globally, see UserInterface::NewFrame)
+            if (ImGui::IsWindowHovered() && ImGui::GetIO().MouseWheel != 0.f)
+                ImGui::SetScrollX( ImGui::GetScrollX() - ImGui::GetIO().MouseWheel * 5.f * ImGui::GetFontSize() );
+
             ImVec2 size = ImGui::CalcItemSize(ImVec2(-FLT_MIN, 0.0f), ImGui::CalcItemWidth(), timeline_height_ -1);
             size.x *= mediaplayer_timeline_zoom_;
 
             Timeline *tl = mediaplayer_active_->timeline();
             if (tl->is_valid())
             {
+                // after a change of zoom, scroll to show the cursor (rough estimate from time ratio)
+                if (mediaplayer_timeline_zoom_changed_) {
+                    mediaplayer_timeline_zoom_changed_ = false;
+                    if (tl->duration() > 0) {
+                        float ratio = float(double(seek_t) - double(tl->begin())) / float(tl->duration());
+                        ratio = CLAMP(ratio, 0.f, 1.f);
+                        ImGui::SetScrollX( MAX(0.f, ratio * size.x - 0.5f * ImGui::GetWindowWidth()) );
+                    }
+                }
+
                 bool released = false;
                 if ( EditTimeline("##TimelineArray", tl,
                                        Settings::application.widget.media_player_timeline_editmode,
@@ -2348,7 +2409,8 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
         // zoom slider
         ImGui::SetCursorScreenPos(bottom + ImVec2(0.f, timeline_height_));
-        ImGui::VSliderFloat("##TimelineZoom", ImVec2(slider_zoom_width, timeline_height_), &mediaplayer_timeline_zoom_, 1.0, 5.f, "");
+        if (ImGui::VSliderFloat("##TimelineZoom", ImVec2(slider_zoom_width, timeline_height_), &mediaplayer_timeline_zoom_, 1.0, 5.f, ""))
+            mediaplayer_timeline_zoom_changed_ = true;
 
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor(1);

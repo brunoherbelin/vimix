@@ -256,6 +256,50 @@ void UserInterface::setView(View::Mode mode)
         navigator.discardPannel();
 }
 
+void UserInterface::togglePlay()
+{
+    if (sourcecontrol.Visible() &&
+        Mixer::manager().view()->mode() != View::PRESENTATION &&
+        Mixer::manager().view()->mode() != View::SNAPSHOTS ){
+        sourcecontrol.Play();
+    }
+    else {
+        SourceList validsources;
+        size_t n_play = 0;
+        for (auto source = Mixer::manager().session()->begin();
+                source != Mixer::manager().session()->end(); ++source){
+            if ( !(*source)->failed()) {
+                validsources.push_back(*source);
+                if ((*source)->active() && (*source)->playing() )
+                    n_play++;
+            }
+        }
+        for (auto source = validsources.begin(); source != validsources.end(); ++source){
+            (*source)->play( n_play==0 );
+        }
+    }
+}
+
+void UserInterface::sessionNavigate(NavigationTarget target)
+{
+    if (Mixer::manager().view()->mode() == View::PRESENTATION ||
+           Mixer::manager().view()->mode() == View::SNAPSHOTS ) {
+        switch (target) {
+        case NAV_NEXT:
+            static_cast<StripView *>(Mixer::manager().view())->next();
+            break;
+        case NAV_PREVIOUS:
+            static_cast<StripView *>(Mixer::manager().view())->previous();
+            break;
+        case NAV_RELOAD:
+            // same as SHIFT + CTRL + O : reopen current session
+            if (!Mixer::manager().liveSession()->filename().empty())
+                Mixer::manager().load( Mixer::manager().liveSession()->filename() );
+            break;
+        }
+    }
+}
+
 void UserInterface::handleKeyboard()
 {
     static bool esc_repeat_ = false;
@@ -492,16 +536,6 @@ void UserInterface::handleKeyboard()
             // restore cleared workspace when releasing ESC after maintain
             WorkspaceWindow::restoreWorkspace();
             esc_repeat_ = false;
-        }
-        // Space bar
-        else if (ImGui::IsKeyPressed( GLFW_KEY_SPACE, false )) {
-            // space bar presentation to switch to next
-            if (Mixer::manager().view()->mode() == View::PRESENTATION ||
-                Mixer::manager().view()->mode() == View::SNAPSHOTS)
-                static_cast<StripView *>(Mixer::manager().view())->next();
-            else
-                // Space bar to toggle play / pause
-                sourcecontrol.Play();
         }
         // Backspace to delete source
         else if (ImGui::IsKeyPressed( GLFW_KEY_BACKSPACE ) || ImGui::IsKeyPressed( GLFW_KEY_DELETE ))
@@ -948,6 +982,8 @@ void UserInterface::NewFrame()
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
+    // Horizontal wheel / trackpad scrolling is not supported by the UI: discard it
+    ImGui::GetIO().MouseWheelH = 0.f;
     ImGui::NewFrame();
 
     // deal with keyboard and mouse events

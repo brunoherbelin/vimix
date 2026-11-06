@@ -83,6 +83,11 @@ public:
     inline bool altModifier() const  { return alt_modifier_active; }
     inline bool shiftModifier() const  { return shift_modifier_active; }
 
+    // keyboard actions callable from any window
+    void togglePlay();
+    typedef enum { NAV_PREVIOUS = 0, NAV_NEXT, NAV_RELOAD } NavigationTarget;
+    void sessionNavigate(NavigationTarget target);
+
     void showPannel(int id = -1);
     void setSourceInPanel(int index);
     void setSourceInPanel(Source *s);
@@ -168,4 +173,3 @@ protected:
 };
 
 #endif /* #define __UI_MANAGER_H_ */
-

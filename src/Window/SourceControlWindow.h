@@ -26,6 +26,8 @@ class SourceControlWindow : public WorkspaceWindow
     std::string active_label_;
     int active_selection_;
     InfoVisitor info_;
+    // screen area of the Previous / Next buttons drawn over the image (set at previous frame)
+    bool over_navigation_, over_navigation_next_;
     SourceList selection_;
 
     // re-usable ui parts
@@ -56,6 +58,7 @@ class SourceControlWindow : public WorkspaceWindow
     bool mediaplayer_mode_;
     bool mediaplayer_slider_pressed_;
     float mediaplayer_timeline_zoom_;
+    bool mediaplayer_timeline_zoom_changed_;
 
     bool mediaplayer_edit_panel_;
     void RenderMediaPlayer(MediaSource *ms);

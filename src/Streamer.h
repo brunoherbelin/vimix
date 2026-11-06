@@ -2,6 +2,7 @@
 #define STREAMER_H
 
 #include <mutex>
+#include <thread>
 #include <list>
 
 #include "osc/OscReceivedElements.h"
@@ -59,6 +60,7 @@ private:
     bool enabled_;
     RequestListener listener_;
     UdpListeningReceiveSocket *receiver_;
+    std::thread receiver_thread_;
 
     std::vector<VideoStreamer *> streamers_;    
     std::mutex streamers_lock_;

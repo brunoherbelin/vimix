@@ -91,6 +91,8 @@ public:
     GLFWmonitor *monitorAt(int x, int y);
     // deactivate output on this monitor
     void deactivateOutput(const GLFWmonitor* monitor);
+    // bring focus to all active output windows
+    void focusOutputs();
     // get resolution of all monitors combined
     glm::vec3 monitorsResolution() ;
 

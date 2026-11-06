@@ -568,6 +568,21 @@ SourceList Session::getDepthSortedList() const
     return depth_sorted(sources_);
 }
 
+SourceList Session::getOrderedList() const
+{
+    return sources_;
+}
+
+SourceList Session::getOrderedList(const SourceList &subset) const
+{
+    SourceList ordered;
+    for (auto it = sources_.cbegin(); it != sources_.cend(); ++it) {
+        if (std::find(subset.cbegin(), subset.cend(), *it) != subset.cend())
+            ordered.push_back(*it);
+    }
+    return ordered;
+}
+
 uint Session::size() const
 {
     return sources_.size();

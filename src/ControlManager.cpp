@@ -1955,6 +1955,18 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
 
         }
 
+        // keys with actions in any window
+        if (action == GLFW_PRESS && !mods) {
+            if (key == GLFW_KEY_SPACE)
+                UserInterface::manager().togglePlay();
+            else if (key == GLFW_KEY_RIGHT)
+                UserInterface::manager().sessionNavigate(UserInterface::NAV_NEXT);
+            else if (key == GLFW_KEY_LEFT)
+                UserInterface::manager().sessionNavigate(UserInterface::NAV_PREVIOUS);
+            else if (key == GLFW_KEY_UP)
+                UserInterface::manager().sessionNavigate(UserInterface::NAV_RELOAD);
+        }
+
         // keys in non-main window
         if ( w != Rendering::manager().mainWindow().window() )
         {
@@ -1970,6 +1982,10 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
                     // close rendering manager = quit
                     Rendering::manager().close();
                 }
+            }
+            else if  ( key == GLFW_KEY_F12 && action == GLFW_PRESS && !mods) {
+                // toggle output disabled (as F12 in main window, handled by UserInterface there)
+                Settings::application.render.disabled = !Settings::application.render.disabled;
             }
             else if  ( key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
                 // close current window on ESC

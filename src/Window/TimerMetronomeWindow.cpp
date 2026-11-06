@@ -75,7 +75,7 @@ void TimerMetronomeWindow::Render()
     ImGui::SetNextWindowSize(timer_window_size_min, ImGuiCond_FirstUseEver);
 
     if ( !ImGui::Begin(name_, &Settings::application.widget.timer,
-                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse ))
+                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar |  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoNavInputs ))
     {
         ImGui::End();
         return;
