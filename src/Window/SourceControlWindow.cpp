@@ -2068,16 +2068,19 @@ void SourceControlWindow::RenderSingleSource(Source *s)
         ///
         /// Next / Previous buttons
         ///
-        ImGui::SetCursorScreenPos(bottom +
-            ImVec2(rendersize.x -2.f * ImGui::GetTextLineHeightWithSpacing() - h_space_,
-                -1.f * (ImGui::GetTextLineHeightWithSpacing() + h_space_) ));
-        const ImVec2 nav_min = ImGui::GetCursorScreenPos();
-        if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") )
-            Mixer::manager().setCurrentPrevious();
-        ImGui::SameLine(0, 0);
-        if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") )
-            Mixer::manager().setCurrentNext();
-        over_navigation_next_ = ImGui::IsMouseHoveringRect(nav_min, ImGui::GetItemRectMax(), false);
+        // only if there is somewhere to navigate
+        if (Mixer::manager().session()->size() > 1) {
+            ImGui::SetCursorScreenPos(bottom +
+                ImVec2(rendersize.x -2.f * ImGui::GetTextLineHeightWithSpacing() - h_space_,
+                    -1.f * (ImGui::GetTextLineHeightWithSpacing() + h_space_) ));
+            const ImVec2 nav_min = ImGui::GetCursorScreenPos();
+            if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") )
+                Mixer::manager().setCurrentPrevious();
+            ImGui::SameLine(0, 0);
+            if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") )
+                Mixer::manager().setCurrentNext();
+            over_navigation_next_ = ImGui::IsMouseHoveringRect(nav_min, ImGui::GetItemRectMax(), false);
+        }
 
         ///
         /// Play button bar
@@ -2294,15 +2297,18 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
     /// Next / Previous buttons
     ///
 
-    S.x = rendersize.x -2.f * ImGui::GetTextLineHeightWithSpacing() - h_space_;
-    ImGui::SetCursorScreenPos(bottom + S);
-    const ImVec2 nav_min = ImGui::GetCursorScreenPos();
-    if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") )
-        Mixer::manager().setCurrentPrevious();
-    ImGui::SameLine(0, 0);
-    if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") )
-        Mixer::manager().setCurrentNext();
-    over_navigation_next_ = ImGui::IsMouseHoveringRect(nav_min, ImGui::GetItemRectMax(), false);
+    // only if there is somewhere to navigate
+    if (Mixer::manager().session()->size() > 1) {
+        S.x = rendersize.x -2.f * ImGui::GetTextLineHeightWithSpacing() - h_space_;
+        ImGui::SetCursorScreenPos(bottom + S);
+        const ImVec2 nav_min = ImGui::GetCursorScreenPos();
+        if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") )
+            Mixer::manager().setCurrentPrevious();
+        ImGui::SameLine(0, 0);
+        if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") )
+            Mixer::manager().setCurrentNext();
+        over_navigation_next_ = ImGui::IsMouseHoveringRect(nav_min, ImGui::GetItemRectMax(), false);
+    }
 
     ///
     /// media player timelines
