@@ -1960,9 +1960,11 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
             if (key == GLFW_KEY_SPACE)
                 UserInterface::manager().togglePlay();
             else if (key == GLFW_KEY_RIGHT)
-                UserInterface::manager().stripNavigate(true);
+                UserInterface::manager().sessionNavigate(UserInterface::NAV_NEXT);
             else if (key == GLFW_KEY_LEFT)
-                UserInterface::manager().stripNavigate(false);
+                UserInterface::manager().sessionNavigate(UserInterface::NAV_PREVIOUS);
+            else if (key == GLFW_KEY_UP)
+                UserInterface::manager().sessionNavigate(UserInterface::NAV_RELOAD);
         }
 
         // keys in non-main window

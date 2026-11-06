@@ -85,7 +85,8 @@ public:
 
     // keyboard actions callable from any window
     void togglePlay();
-    void stripNavigate(bool forward);
+    typedef enum { NAV_PREVIOUS = 0, NAV_NEXT, NAV_RELOAD } NavigationTarget;
+    void sessionNavigate(NavigationTarget target);
 
     void showPannel(int id = -1);
     void setSourceInPanel(int index);

@@ -280,14 +280,23 @@ void UserInterface::togglePlay()
     }
 }
 
-void UserInterface::stripNavigate(bool forward)
+void UserInterface::sessionNavigate(NavigationTarget target)
 {
     if (Mixer::manager().view()->mode() == View::PRESENTATION ||
            Mixer::manager().view()->mode() == View::SNAPSHOTS ) {
-        if (forward)
+        switch (target) {
+        case NAV_NEXT:
             static_cast<StripView *>(Mixer::manager().view())->next();
-        else
+            break;
+        case NAV_PREVIOUS:
             static_cast<StripView *>(Mixer::manager().view())->previous();
+            break;
+        case NAV_RELOAD:
+            // same as SHIFT + CTRL + O : reopen current session
+            if (!Mixer::manager().liveSession()->filename().empty())
+                Mixer::manager().load( Mixer::manager().liveSession()->filename() );
+            break;
+        }
     }
 }
 
