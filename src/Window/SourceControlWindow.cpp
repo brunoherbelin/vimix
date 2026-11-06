@@ -110,7 +110,7 @@ SourceControlWindow::SourceControlWindow() : WorkspaceWindow("SourceController")
     play_toggle_request_(false), replay_request_(false), pending_(false),
     active_label_(LABEL_PLAYER_SELECTION), active_selection_(-1),
     selection_context_menu_(false), selection_mediaplayer_(nullptr), selection_target_slower_(0), selection_target_faster_(0),
-    mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0), mediaplayer_export_sections_(false),
+    over_navigation_(false), over_navigation_next_(false), mediaplayer_active_(nullptr), mediaplayer_edit_fading_(false), mediaplayer_set_duration_(0), mediaplayer_export_sections_(false),
     mediaplayer_edit_pipeline_(false), mediaplayer_mode_(false), mediaplayer_slider_pressed_(false), mediaplayer_timeline_zoom_(1.f), mediaplayer_timeline_zoom_changed_(false),
     mediaplayer_edit_panel_(false), magnifying_glass(false)
 {
@@ -274,6 +274,10 @@ FrameBuffer *SourceControlWindow::renderedFramebuffer() const
 
 void SourceControlWindow::Render()
 {
+    // the area of Previous / Next buttons is set again if the buttons are drawn in this frame
+    over_navigation_ = over_navigation_next_;
+    over_navigation_next_ = false;
+
     // estimate window size
     const ImGuiContext& g = *GImGui;
     h_space_ = g.Style.ItemInnerSpacing.x;
@@ -1717,8 +1721,10 @@ void SourceControlWindow::DrawSource(Source *s, ImVec2 framesize, ImVec2 top_ima
     //
     const ImRect bb(top_image, top_image + framesize);
     const ImGuiID id = ImGui::GetCurrentWindow()->GetID("##source-texture");
-    bool hovered, held;
-    bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, ImGuiButtonFlags_PressedOnClick);
+    bool hovered = false, held = false, pressed = false;
+    // the image ignores the mouse over the Previous / Next buttons drawn on top of it
+    if (!over_navigation_)
+        pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, ImGuiButtonFlags_PressedOnClick);
     // toggle preview on double clic
     if (pressed) {
         // trigger to show preview (will be ignored if not double clic)
@@ -2065,13 +2071,13 @@ void SourceControlWindow::RenderSingleSource(Source *s)
         ImGui::SetCursorScreenPos(bottom +
             ImVec2(rendersize.x -2.f * ImGui::GetTextLineHeightWithSpacing() - h_space_,
                 -1.f * (ImGui::GetTextLineHeightWithSpacing() + h_space_) ));
-        if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") ){
-            
-        }
+        const ImVec2 nav_min = ImGui::GetCursorScreenPos();
+        if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") )
+            Mixer::manager().setCurrentPrevious();
         ImGui::SameLine(0, 0);
-        if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") ){
-            
-        }
+        if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") )
+            Mixer::manager().setCurrentNext();
+        over_navigation_next_ = ImGui::IsMouseHoveringRect(nav_min, ImGui::GetItemRectMax(), false);
 
         ///
         /// Play button bar
@@ -2290,13 +2296,13 @@ void SourceControlWindow::RenderMediaPlayer(MediaSource *ms)
 
     S.x = rendersize.x -2.f * ImGui::GetTextLineHeightWithSpacing() - h_space_;
     ImGui::SetCursorScreenPos(bottom + S);
-    if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") ){
-        
-    }
+    const ImVec2 nav_min = ImGui::GetCursorScreenPos();
+    if ( ImGuiToolkit::IconButton( 9, 0 , "Previous", "Shift+Tab") )
+        Mixer::manager().setCurrentPrevious();
     ImGui::SameLine(0, 0);
-    if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") ){
-        
-    }
+    if ( ImGuiToolkit::IconButton( 8, 0 , "Next", "Tab") )
+        Mixer::manager().setCurrentNext();
+    over_navigation_next_ = ImGui::IsMouseHoveringRect(nav_min, ImGui::GetItemRectMax(), false);
 
     ///
     /// media player timelines

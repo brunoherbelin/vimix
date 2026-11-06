@@ -26,6 +26,8 @@ class SourceControlWindow : public WorkspaceWindow
     std::string active_label_;
     int active_selection_;
     InfoVisitor info_;
+    // screen area of the Previous / Next buttons drawn over the image (set at previous frame)
+    bool over_navigation_, over_navigation_next_;
     SourceList selection_;
 
     // re-usable ui parts
