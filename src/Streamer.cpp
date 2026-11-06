@@ -130,14 +130,19 @@ Streaming::Streaming() : enabled_(false)
     int port = Connection::manager().info().port_stream_request;
     receiver_ = new UdpListeningReceiveSocket(IpEndpointName( IpEndpointName::ANY_ADDRESS, port ), &listener_ );
 
-    std::thread(wait_for_request_, receiver_).detach();
+    receiver_thread_ = std::thread(wait_for_request_, receiver_);
 }
 
 Streaming::~Streaming()
 {
     if (receiver_!=nullptr) {
-        receiver_->Break();
+        // wake up select() in the receiver thread (writes to the break pipe)
+        receiver_->AsynchronousBreak();
+        // wait for the thread to finish BEFORE deleting the socket it uses
+        if (receiver_thread_.joinable())
+            receiver_thread_.join();
         delete receiver_;
+        receiver_ = nullptr;
     }
 }
 
