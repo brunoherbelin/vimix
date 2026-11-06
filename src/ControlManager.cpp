@@ -1983,6 +1983,10 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
                     Rendering::manager().close();
                 }
             }
+            else if  ( key == GLFW_KEY_F12 && action == GLFW_PRESS && !mods) {
+                // toggle output disabled (as F12 in main window, handled by UserInterface there)
+                Settings::application.render.disabled = !Settings::application.render.disabled;
+            }
             else if  ( key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
                 // close current window on ESC
                 Rendering::manager().deactivateOutput(glfwGetWindowMonitor(w));
