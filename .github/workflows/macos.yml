@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout (with submodules)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -58,7 +58,7 @@ jobs:
           done | sort -V | tail -n 15
 
       - name: Upload dmg
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vimix-macos-${{ env.MACOS_MIN_VERSION }}-arm64
           path: build/*.dmg
