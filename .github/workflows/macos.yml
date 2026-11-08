@@ -1,5 +1,11 @@
-# Manual macOS build of vimix (Apple Silicon, minimum macOS 15, unsigned)
-# Run it from the "Actions" tab > "macOS build" > "Run workflow" (pick the branch there).
+# Manual macOS build of vimix (Apple Silicon, minimum macOS 15), signed and notarized.
+# Run it from the "Actions" tab > "macOS build" > "Run workflow" (branch: master).
+# The job uses the "release_osx" environment: it needs approval of a required reviewer
+# and gets its secrets:
+#   MACOS_CERT_P12_BASE64  Developer ID Application certificate + private key (.p12, base64)
+#   MACOS_CERT_PASSWORD    password chosen when exporting the .p12
+#   APPLE_ID               Apple account email (notarization)
+#   APPLE_APP_PASSWORD     app-specific password for the Apple account (notarization)
 name: macOS build
 
 on:
@@ -10,11 +16,15 @@ permissions:
 
 env:
   MACOS_MIN_VERSION: "15.0"
+  CODESIGN_IDENTITY: "Developer ID Application: Bruno Herbelin (X892QL9XL8)"
+  CODESIGN_TEAM: "X892QL9XL8"
 
 jobs:
   build:
     # macos-15 is an arm64 runner: Homebrew bottles installed here target macOS 15
     runs-on: macos-15
+    environment: release_osx
+    timeout-minutes: 120
 
     steps:
       - name: Checkout (with submodules)
@@ -28,34 +38,72 @@ jobs:
           # minimum + recommended + optional (see docs/README.md), plus ninja
           brew install ninja cmake pkgconf libpng glfw gstreamer icu4c frei0r onnxruntime glm tinyxml2
 
+      - name: Import signing certificate into a temporary keychain
+        env:
+          P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+
+          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+          # allow codesign / notarytool to use the key without a prompt
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          # make the keychain visible to codesign (keep the existing ones)
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+
+          echo "Available signing identities:"
+          security find-identity -v -p codesigning "$KEYCHAIN"
+
+      - name: Store notarization credentials
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          # profile name "vimix" is the one used by the 'notarize' target
+          xcrun notarytool store-credentials "vimix" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$CODESIGN_TEAM" \
+            --password "$APPLE_APP_PASSWORD" \
+            --keychain "$KEYCHAIN"
+
       - name: Configure
         run: |
-          # Empty APPLE_CODESIGN_IDENTITY disables signing in BundleInstall.cmake
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOS_MIN_VERSION} \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
-            -DAPPLE_CODESIGN_IDENTITY=
+            -DAPPLE_CODESIGN_IDENTITY="${CODESIGN_IDENTITY}" \
+            -DAPPLE_CODESIGN_TEAM="${CODESIGN_TEAM}"
 
       - name: Build
         run: cmake --build build -j
 
-      - name: Package (dmg)
+      - name: Package (signed dmg)
         working-directory: build
         run: cpack
 
-      - name: Check minimum macOS version of bundled binaries
+      - name: Check signature and minimum macOS version of bundled binaries
         # diagnostic only: must not prevent the dmg from being uploaded
         continue-on-error: true
         run: |
-          # List the minos of every Mach-O in the app bundle, read from the CPack
-          # staging directory (no need to mount the dmg)
           APP=$(find build/_CPack_Packages -type d -name "vimix.app" | head -n 1)
           echo "Bundle: $APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          # minos of every Mach-O in the bundle (highest values last)
           find "$APP" -type f | while read -r f; do
             minos=$(otool -l "$f" 2>/dev/null | awk '/LC_BUILD_VERSION/{b=1} b&&/minos/{print $2; exit}' || true)
             if [ -n "$minos" ]; then echo "$minos $f"; fi
           done | sort -V | tail -n 15
+
+      - name: Sign, notarize and staple the dmg
+        run: cmake --build build --target notarize
 
       - name: Upload dmg
         uses: actions/upload-artifact@v7
@@ -63,3 +111,8 @@ jobs:
           name: vimix-macos-${{ env.MACOS_MIN_VERSION }}-arm64
           path: build/*.dmg
           if-no-files-found: error
+
+      - name: Remove temporary keychain
+        if: always()
+        run: |
+          if [ -n "$KEYCHAIN" ] && [ -f "$KEYCHAIN" ]; then security delete-keychain "$KEYCHAIN"; fi
