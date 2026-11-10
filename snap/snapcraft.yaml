@@ -20,7 +20,6 @@ grade: stable # must be 'stable' to release into candidate/stable channels
 confinement: strict # use 'strict' once you have the right plugs and slots
 platforms:
   amd64:
-  armhf:
   arm64:
 
 layout:
@@ -83,7 +82,6 @@ parts:
     -  ableton-link-dev
     -  libtinyxml2-dev
     -  libglm-dev
-    -  execstack
     -  libavahi-client-dev
     stage-packages:
     -  libglu1-mesa
@@ -111,14 +109,6 @@ parts:
     -  libtinyxml2-10
     -  pciutils
     -  libavahi-client3
-    override-prime: |
-       craftctl default
-       # try remove execstack on armhf
-       for f in usr/lib/arm-linux-gnueabihf/libde265.so.0.1.8 usr/lib/arm-linux-gnueabihf/libmpeg2.so.0.1.0 usr/lib/arm-linux-gnueabihf/libdirect-1.7.so.7.0.0; do
-         if [ -f $f ]; then
-           execstack -c $f
-         fi
-       done
 
   gpu-2404:
     after: [vimix-binary]

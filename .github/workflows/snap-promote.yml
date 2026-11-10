@@ -1,0 +1,46 @@
+# Promote the vimix snap between Store channels (e.g. edge -> stable), for all architectures.
+# Run it from the "Actions" tab > "Snap promote" > "Run workflow".
+# Uses the "release_snap" environment (required reviewer) and its SNAPCRAFT_STORE_CREDENTIALS secret.
+name: Snap promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_channel:
+        description: "Channel to promote from"
+        required: true
+        default: "edge"
+        type: choice
+        options: [edge, beta, candidate]
+      to_channel:
+        description: "Channel to promote to"
+        required: true
+        default: "stable"
+        type: choice
+        options: [beta, candidate, stable]
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    environment: release_snap
+    env:
+      SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+    steps:
+      - name: Install snapcraft
+        run: sudo snap install snapcraft --classic
+
+      - name: Status before
+        run: snapcraft status vimix
+
+      - name: Promote ${{ inputs.from_channel }} -> ${{ inputs.to_channel }}
+        run: |
+          snapcraft promote vimix \
+            --from-channel "latest/${{ inputs.from_channel }}" \
+            --to-channel "latest/${{ inputs.to_channel }}" \
+            --yes
+
+      - name: Status after
+        run: snapcraft status vimix

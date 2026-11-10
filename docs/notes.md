@@ -160,3 +160,14 @@ To check for memory leaks:
 ```bash
 G_SLICE=always-malloc valgrind --leak-check=full --log-file=vimix_mem.txt ./vimix
 ```
+
+## Github actions
+
+Release checklist (workflows in `.github/workflows/`, run from the GitHub *Actions* tab):
+
+1.  Update `share/metainfo/io.github.brunoherbelin.Vimix.metainfo.xml` (new `<release>`) and `snap/snapcraft.yaml` (change version), commit, then push the tag (e.g. `0.9.4`).
+2.  **Flathub update** (`flathub.yml`) runs automatically on the tag: it opens a PR on [flathub/io.github.brunoherbelin.Vimix](https://github.com/flathub/io.github.brunoherbelin.Vimix) with the new tag and commit. Merge it once the Flathub test build passes.
+3.  **macOS build** (`macos.yml`): *Run workflow* with `release_tag` = the tag, approve the `release_osx` environment. The signed dmg is attached to the GitHub release (draft).
+4.  **Snap build** (`snap.yml`): *Run workflow* with channel `edge` (and `release_tag` to attach the .snap files), approve the `release_snap` environment. Test with `snap refresh vimix --edge`.
+5.  **Snap promote** (`snap-promote.yml`): `edge` → `stable`, approve `release_snap`.
+6.  Publish the draft GitHub release.

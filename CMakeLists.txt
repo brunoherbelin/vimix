@@ -355,6 +355,8 @@ endif()
 
 if (TINYXML2_FOUND)
     macro_log_feature(TINYXML2_FOUND "TinyXML2" "TinyXML2 library" "https://github.com/leethomason/tinyxml2.git" FALSE)
+    # the library directory is needed to link with -ltinyxml2 (e.g. /opt/homebrew/Cellar/... on macOS)
+    link_directories(${TINYXML2_LIBRARY_DIRS})
 else ()
     set(TINYXML2_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/tinyxml2)
     set(TINYXML2_LIBRARIES TINYXML2)

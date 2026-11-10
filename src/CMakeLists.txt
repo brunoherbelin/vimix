@@ -408,7 +408,7 @@ IF(APPLE)
         message(\"       - Adding \${SIZE} plugins to bundle...\")
         include(BundleUtilities)
         set(BU_CHMOD_BUNDLE_ITEMS TRUE)
-        fixup_bundle(\"${APPS}\" \"\${ALLPLUGINS}\" \"/opt/homebrew/lib;${ICU_LIBRARY_DIRS}\" IGNORE_ITEM \"Python\")
+        fixup_bundle(\"${APPS}\" \"\${ALLPLUGINS}\" \"/opt/homebrew/lib;/usr/local/lib;${ICU_LIBRARY_DIRS}\" IGNORE_ITEM \"Python\")
         file(REMOVE_RECURSE \"${APPS}/Contents/Frameworks/Python.framework\")
         "
         COMPONENT Runtime

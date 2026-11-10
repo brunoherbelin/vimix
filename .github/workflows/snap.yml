@@ -1,0 +1,99 @@
+# Manual build of the vimix snap (amd64 + arm64) and upload to the Snap Store.
+# Run it from the "Actions" tab > "Snap build" > "Run workflow" (branch: master).
+# The publish job uses the "release_snap" environment (required reviewer) and its secret:
+#   SNAPCRAFT_STORE_CREDENTIALS  output of:
+#     snapcraft export-login --snaps=vimix \
+#       --acls package_access,package_push,package_update,package_release -
+# To move a published revision to 'stable', use the "Snap promote" workflow.
+name: Snap build
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Store channel to release the new revisions to"
+        required: true
+        default: "edge"
+        type: choice
+        options: [edge, beta, candidate]
+      release_tag:
+        description: "Existing tag (e.g. v0.9.3) to attach the .snap files to as release assets. Leave empty to skip."
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write   # needed to upload release assets
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build snap
+        id: build
+        uses: snapcore/action-build@v1
+
+      - name: Upload snap
+        uses: actions/upload-artifact@v4
+        with:
+          name: vimix-snap-${{ matrix.arch }}
+          path: ${{ steps.build.outputs.snap }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: release_snap
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+
+    steps:
+      - name: Download snap
+        uses: actions/download-artifact@v4
+        with:
+          name: vimix-snap-${{ matrix.arch }}
+          path: snap-${{ matrix.arch }}
+
+      - name: Locate snap file
+        id: snapfile
+        run: echo "path=$(ls snap-${{ matrix.arch }}/*.snap | head -n 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to the Snap Store (${{ inputs.channel }})
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: ${{ steps.snapfile.outputs.path }}
+          release: ${{ inputs.channel }}
+
+      - name: Attach snap to the release of the tag
+        if: ${{ inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          SNAP="${{ steps.snapfile.outputs.path }}"
+          echo "Attaching $SNAP to release $TAG"
+          # create the release as a draft if it does not exist yet (the tag must already exist)
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --draft --verify-tag --title "$TAG" --notes "" || true
+          fi
+          gh release upload "$TAG" "$SNAP" --clobber
