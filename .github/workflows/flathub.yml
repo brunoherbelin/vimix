@@ -1,0 +1,106 @@
+# On a new version tag (e.g. 0.9.4 or 0.9.4a), open a pull request on the Flathub repo
+# https://github.com/flathub/io.github.brunoherbelin.Vimix updating the vimix source
+# ("tag" and "commit") in io.github.brunoherbelin.Vimix.json.
+# Merging that PR on Flathub (after its test build passes) publishes the new version.
+# Can also be run manually from the "Actions" tab > "Flathub update" > "Run workflow".
+# Requires the repository secret:
+#   FLATHUB_TOKEN  GitHub token with write access to flathub/io.github.brunoherbelin.Vimix
+#                  (fine-grained: Contents + Pull requests read/write on that repo,
+#                   or classic: 'public_repo' scope)
+name: Flathub update
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+[a-z]'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing vimix tag to publish on Flathub (e.g. 0.9.4)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FLATHUB_REPO: flathub/io.github.brunoherbelin.Vimix
+  MANIFEST: io.github.brunoherbelin.Vimix.json
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout vimix (to resolve the tag)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: vimix
+
+      - name: Resolve tag and commit
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          TAG="${INPUT_TAG:-$GITHUB_REF_NAME}"
+          # commit the tag points to (not the annotated tag object)
+          COMMIT=$(git -C vimix rev-parse "refs/tags/${TAG}^{commit}")
+          echo "Tag: $TAG  Commit: $COMMIT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Flathub repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.FLATHUB_REPO }}
+          token: ${{ secrets.FLATHUB_TOKEN }}
+          path: flathub
+
+      - name: Update tag and commit in the manifest
+        working-directory: flathub
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          COMMIT: ${{ steps.tag.outputs.commit }}
+        run: |
+          # Edit only the "tag" and "commit" lines of the vimix git source,
+          # keeping the rest of the file formatting untouched.
+          python3 - <<'EOF'
+          import os, re, sys
+          path = os.environ["MANIFEST"]
+          text = open(path).read()
+          pattern = re.compile(
+              r'("tag":\s*")[^"]*(",\s*"commit":\s*")[0-9a-f]*'
+              r'(",\s*"url":\s*"https://github\.com/brunoherbelin/vimix\.git")')
+          new, n = pattern.subn(
+              lambda m: m.group(1) + os.environ["TAG"] + m.group(2) + os.environ["COMMIT"] + m.group(3),
+              text)
+          if n != 1:
+              sys.exit(f"Expected exactly one vimix git source (tag, commit, url in that order), found {n}")
+          open(path, "w").write(new)
+          EOF
+          git diff
+
+      - name: Open pull request on Flathub
+        working-directory: flathub
+        env:
+          GH_TOKEN: ${{ secrets.FLATHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if git diff --quiet; then
+            echo "Manifest already at $TAG, nothing to do."
+            exit 0
+          fi
+          BRANCH="update-vimix-$TAG"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git commit -am "Update vimix to $TAG"
+          git push --force origin "$BRANCH"
+          if gh pr view "$BRANCH" --repo "$FLATHUB_REPO" >/dev/null 2>&1; then
+            echo "PR for $BRANCH already exists (branch updated)."
+          else
+            gh pr create --repo "$FLATHUB_REPO" --head "$BRANCH" --base master \
+              --title "Update vimix to $TAG" \
+              --body "Automated update of vimix to tag \`$TAG\` from https://github.com/${GITHUB_REPOSITORY}/releases/tag/$TAG"
+          fi
