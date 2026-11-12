@@ -92,7 +92,7 @@ void SnapshotsView::build()
 
     // name to display
     const std::string filename = session_->filename();
-    title_ = filename.empty() ? "Untitled session" : SystemToolkit::base_filename(filename);
+    title_ = filename.empty() ? "Untitled session" : SystemToolkit::filename(filename);
 
     // current item is the version restored last, if in the list
     setCurrent( indexOf(Action::manager().restoredSnapshot()), false );
@@ -210,4 +210,7 @@ void SnapshotsView::drawButtons()
                          ICON_FA_STOPWATCH " %.0f ms");
     }
     ImGui::PopStyleColor(2);
+
+    // navigation keys
+    drawKeyboardHelp("Previous", "Next", "Next snapshot", "Previous snapshot");
 }

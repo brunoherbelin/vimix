@@ -27,6 +27,7 @@
 #include "Mixer.h"
 #include "Draft.h"
 #include "Settings.h"
+#include "ActionManager.h"
 #include "Source/SessionSource.h"
 #include "Source/SessionThumbnailSource.h"
 #include "Toolkit/SystemToolkit.h"
@@ -37,7 +38,7 @@
 #include "PresentationView.h"
 
 PresentationView::PresentationView() : StripView(PRESENTATION, "session"), transition_source_(nullptr),
-    transition_d_(0.f), transition_cross_fade_(true)
+    transition_d_(0.f), transition_cross_fade_(true), restored_id_(0)
 {
     // fixed layout: no settings to restore
     Settings::application.views[mode_].name = "Presentation";
@@ -50,6 +51,52 @@ int PresentationView::indexOf(const std::string &path) const
             return static_cast<int>(i);
     }
     return -1;
+}
+
+uint64_t PresentationView::siblingSnapshot(int step) const
+{
+    // versions of the live session, in chronological order
+    const std::list<uint64_t> snapshots = Action::manager().snapshots();
+    const std::vector<uint64_t> ids(snapshots.begin(), snapshots.end());
+    const int n = static_cast<int>(ids.size());
+
+    // position of the version restored last
+    // (none restored: start from the end, i.e. previous is the latest version)
+    int i = n;
+    for (int k = 0; k < n; ++k) {
+        if (ids[k] == Action::manager().restoredSnapshot()) {
+            i = k;
+            break;
+        }
+    }
+
+    // no wrap-around
+    const int j = i + (step > 0 ? 1 : -1);
+    return (j > -1 && j < n) ? ids[j] : 0;
+}
+
+void PresentationView::up()
+{
+    if (busy() || Action::manager().animating())
+        return;
+
+    Session *se = Mixer::manager().liveSession();
+    const uint64_t id = siblingSnapshot(+1);
+    if (id > 0)
+        Action::manager().restore(id, se->snapshots()->duration_);
+    // no next version: reopen current session (as SHIFT + CTRL + O)
+    else if (!se->filename().empty())
+        Mixer::manager().load( se->filename() );
+}
+
+void PresentationView::down()
+{
+    if (busy() || Action::manager().animating())
+        return;
+
+    const uint64_t id = siblingSnapshot(-1);
+    if (id > 0)
+        Action::manager().restore(id, Mixer::manager().liveSession()->snapshots()->duration_);
 }
 
 bool PresentationView::busy() const
@@ -87,6 +134,9 @@ void PresentationView::setPlaylist(const Playlist &playlist, const std::string &
     // current item is the live session, if in the list
     live_filename_ = Mixer::manager().liveSession()->filename();
     setCurrent( indexOf(live_filename_), false );
+
+    // new items have no version shown: set it in sync
+    restored_id_ = 0;
 
     restart();
 }
@@ -158,6 +208,7 @@ void PresentationView::leave(bool restore_workspace)
     playlist_.clear();
     playlist_name_.clear();
     live_filename_.clear();
+    restored_id_ = 0;
 
     // presentation started with a clear workspace
     if (restore_workspace)
@@ -173,6 +224,16 @@ void PresentationView::sync()
         const int i = indexOf(live_filename_);
         if (transition_source_ == nullptr && i > -1 && i != current_)
             setCurrent(i, true);
+    }
+
+    // follow version of live session restored (arrow keys, session panel, OSC...)
+    // NB: reset to none when a session is loaded (history init)
+    const uint64_t restored = Action::manager().restoredSnapshot();
+    if (restored != restored_id_) {
+        restored_id_ = restored;
+        const std::string snap = restored > 0 ? Action::manager().label(restored) : "";
+        for (auto it = items_.begin(); it != items_.end(); ++it)
+            (*it)->setSnapshot( (*it)->path() == live ? snap : "" );
     }
 }
 
@@ -217,9 +278,13 @@ void PresentationView::drawInformation(bool is_busy)
         // right aligned filename
         ImGuiToolkit::PushDisabled(is_busy);
         ImGui::SameLine();
+        // followed by the version shown, if known
+        std::string name = SystemToolkit::filename( items_[current_]->path() );
+        const std::string snap = items_[current_]->snapshot();
+        if (!snap.empty())
+            name += "  (" + snap + ")";
         char label[256];
-        snprintf(label, sizeof(label), "%s  %s", is_busy ? ICON_FA_HOURGLASS_HALF : " ",
-                SystemToolkit::filename( items_[current_]->path() ).c_str());
+        snprintf(label, sizeof(label), "%s  %s", is_busy ? ICON_FA_HOURGLASS_HALF : " ", name.c_str());
         const ImVec2 label_size = ImGui::CalcTextSize(label, NULL);
         ImGui::SetCursorPosX(ImGui::GetWindowContentRegionWidth() - label_size.x);
         ImGui::Text("%s", label);
@@ -272,4 +337,7 @@ void PresentationView::drawButtons()
     ImGuiToolkit::ButtonToggle(ICON_FA_EYE_SLASH, &Settings::application.render.disabled);
     if (ImGui::IsItemHovered())
         ImGuiToolkit::ToolTip(MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE);
+
+    // navigation keys
+    drawKeyboardHelp("Previous session", "Next session", "Next snapshot (or reload)", "Previous snapshot");
 }

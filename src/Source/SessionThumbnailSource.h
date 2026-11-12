@@ -31,6 +31,9 @@ public:
     // SessionThumbnail Source specific interface
     inline std::string path() const { return path_; }
     inline bool missing() const { return missing_; }
+    // label of the version of the session currently shown (empty if unknown)
+    inline std::string snapshot() const { return snapshot_; }
+    inline void setSnapshot(const std::string &label) { snapshot_ = label; }
 
 protected:
 
@@ -38,6 +41,7 @@ protected:
 
     std::string path_;
     bool missing_;
+    std::string snapshot_;
     uint texture_;
     bool rendered_;
     std::future<SessionInformation> infoLoader_;

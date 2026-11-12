@@ -15,6 +15,10 @@ public:
     void setPlaylist(const Playlist &playlist, const std::string &name = "");
     // open i-th session of the list
     void open(int i) override;
+    // restore next (newer) version of the live session, or reload it if none
+    void up() override;
+    // restore previous (older) version of the live session
+    void down() override;
     // finish any transition, free the list and restore workspace
     void leave(bool restore_workspace = true) override;
 
@@ -33,10 +37,14 @@ protected:
 private:
     int  indexOf(const std::string &path) const;
     bool validTransition();
+    // id of the version after (step > 0) or before (step < 0) the last restored one, 0 if none
+    uint64_t siblingSnapshot(int step) const;
 
     Playlist playlist_;
     std::string playlist_name_;
     std::string live_filename_;
+    // version of the live session restored last (followed in sync)
+    uint64_t restored_id_;
 
     SessionFileSource *transition_source_;
     float transition_d_;

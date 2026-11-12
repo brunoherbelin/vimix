@@ -172,6 +172,81 @@ void StripView::previous()
         open( previousIndex() );
 }
 
+// tooltip showing the arrow keys around their action
+//            up
+//           [ ^ ]
+//   left [ < ] [ v ] [ > ] right
+//           down
+static void drawKeyboardTooltip(const char *label_left, const char *label_right,
+                                const char *label_up, const char *label_down)
+{
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_DEFAULT);
+    ImGui::BeginTooltip();
+
+    // size of a key (large font)
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    const ImVec2 key = ImGui::CalcTextSize(ICON_FA_CARET_SQUARE_UP);
+    ImGui::PopFont();
+    const float sp = ImGui::GetStyle().ItemSpacing.x;
+    const float line_h = ImGui::GetTextLineHeight();
+
+    // horizontal positions of the left and middle keys
+    // (centered labels above and below may be wider than the left label)
+    const float w_left = ImGui::CalcTextSize(label_left).x;
+    const float half_w = 0.5f * MAX(ImGui::CalcTextSize(label_up).x, ImGui::CalcTextSize(label_down).x);
+    const float x0 = ImGui::GetCursorPosX();
+    const float x_left = x0 + MAX(w_left + sp, half_w - 1.5f * key.x - sp);
+    const float x_mid = x_left + key.x + sp;
+    const float x_center = x_mid + 0.5f * key.x;
+
+    auto centered = [&](const char *text) {
+        ImGui::SetCursorPosX( x_center - 0.5f * ImGui::CalcTextSize(text).x );
+        ImGui::TextDisabled("%s", text);
+    };
+
+    // up key and its label above
+    centered(label_up);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    ImGui::SetCursorPosX(x_mid);
+    ImGui::Text(ICON_FA_CARET_SQUARE_UP);
+    ImGui::PopFont();
+
+    // left label, left down right keys, and right label (labels centered vertically on keys)
+    const float y = ImGui::GetCursorPosY();
+    const float dy = 0.5f * (key.y - line_h);
+    ImGui::SetCursorPos(ImVec2(x_left - sp - w_left, y + dy));
+    ImGui::TextDisabled("%s", label_left);
+    ImGuiToolkit::PushFont(ImGuiToolkit::FONT_LARGE);
+    ImGui::SetCursorPos(ImVec2(x_left, y));
+    ImGui::Text(ICON_FA_CARET_SQUARE_LEFT);
+    ImGui::SameLine(0, sp);
+    ImGui::Text(ICON_FA_CARET_SQUARE_DOWN);
+    ImGui::SameLine(0, sp);
+    ImGui::Text(ICON_FA_CARET_SQUARE_RIGHT);
+    ImGui::PopFont();
+    ImGui::SameLine(0, sp);
+    ImGui::SetCursorPosY(y + dy);
+    ImGui::TextDisabled("%s", label_right);
+
+    // label below down key
+    ImGui::SetCursorPosY(y + key.y + ImGui::GetStyle().ItemSpacing.y);
+    centered(label_down);
+
+    ImGui::EndTooltip();
+    ImGui::PopFont();
+}
+
+void StripView::drawKeyboardHelp(const char *left, const char *right, const char *up, const char *down)
+{
+    // right aligned keyboard icon, showing the navigation keys on mouse over
+    ImGui::SameLine();
+    ImGui::AlignTextToFramePadding();
+    ImGui::SetCursorPosX(ImGui::GetWindowContentRegionWidth() - ImGui::CalcTextSize(ICON_FA_KEYBOARD).x);
+    ImGui::TextDisabled(ICON_FA_KEYBOARD);
+    if (ImGui::IsItemHovered())
+        drawKeyboardTooltip(left, right, up, down);
+}
+
 void StripView::layout()
 {
     // visible area is x in [-S, S] and y in [-S/ar, S/ar]

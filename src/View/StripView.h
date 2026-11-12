@@ -35,6 +35,9 @@ public:
     // open next, previous or i-th item of the list
     void next();
     void previous();
+    // navigation in the second dimension (default: same as next / previous)
+    virtual void up()   { next(); }
+    virtual void down() { previous(); }
     virtual void open(int i) = 0;
     // finish any transition, free the list and restore workspace
     virtual void leave(bool restore_workspace = true) = 0;
@@ -58,6 +61,8 @@ protected:
     virtual void drawInformation(bool is_busy) = 0;
     // line of buttons at the bottom of information window
     virtual void drawButtons() = 0;
+    // keyboard icon (right aligned on the line) showing the action of arrow keys on mouse over
+    void drawKeyboardHelp(const char *left, const char *right, const char *up, const char *down);
 
     void clearItems();
     void addItem(SessionThumbnailSource *item);

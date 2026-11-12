@@ -284,17 +284,19 @@ void UserInterface::sessionNavigate(NavigationTarget target)
 {
     if (Mixer::manager().view()->mode() == View::PRESENTATION ||
            Mixer::manager().view()->mode() == View::SNAPSHOTS ) {
+        StripView *v = static_cast<StripView *>(Mixer::manager().view());
         switch (target) {
         case NAV_NEXT:
-            static_cast<StripView *>(Mixer::manager().view())->next();
+            v->next();
             break;
         case NAV_PREVIOUS:
-            static_cast<StripView *>(Mixer::manager().view())->previous();
+            v->previous();
             break;
-        case NAV_RELOAD:
-            // same as SHIFT + CTRL + O : reopen current session
-            if (!Mixer::manager().liveSession()->filename().empty())
-                Mixer::manager().load( Mixer::manager().liveSession()->filename() );
+        case NAV_UP:
+            v->up();
+            break;
+        case NAV_DOWN:
+            v->down();
             break;
         }
     }
@@ -3458,8 +3460,12 @@ void UserInterface::RenderHelp()
         ImGui::Text(MENU_CAPTUREFRAME " Player"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_PLAY_PAUSE); ImGui::NextColumn();
         ImGui::Text(MENU_PLAY_PAUSE " selected videos"); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_UP " " ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_ARROW_LEFT " " ICON_FA_ARROW_UP " " ICON_FA_ARROW_DOWN " " ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
         ImGui::Text("Move the selection in the canvas"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_ARROW_LEFT " " ICON_FA_ARROW_RIGHT ); ImGui::NextColumn();
+        ImGui::Text("Previous / next session (Presentation) or version (Versions)"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_ARROW_UP " " ICON_FA_ARROW_DOWN ); ImGui::NextColumn();
+        ImGui::Text("Next / previous version (Presentation, Versions)"); ImGui::NextColumn();
         ImGui::Separator();
         ImGui::Text(SHORTCUT_CAPTURE_GUI); ImGui::NextColumn();
         ImGui::Text(MENU_CAPTUREGUI); ImGui::NextColumn();
