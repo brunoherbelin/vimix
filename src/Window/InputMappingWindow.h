@@ -15,10 +15,12 @@ class InputMappingWindow : public WorkspaceWindow
     std::array< std::string, 6 > input_mode;
     std::array< uint, 6 > current_input_for_mode;
     uint current_input_;
+    bool show_all_inputs_;
 
     Target ComboSelectTarget(const Target &current);
     uint ComboSelectCallback(uint current, bool imageprocessing, bool mediaplayer);
     void SliderParametersCallback(SourceCallback *callback, const Target &target);
+    void RenderAllInputs(Session *S);
 
 public:
     InputMappingWindow();

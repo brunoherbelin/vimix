@@ -61,6 +61,7 @@ InputMappingWindow::InputMappingWindow() : WorkspaceWindow("InputMappingInterfac
     current_input_for_mode = { INPUT_KEYBOARD_FIRST, INPUT_NUMPAD_FIRST, INPUT_MULTITOUCH_FIRST,
                                INPUT_GAMEPAD_1_FIRST, INPUT_TIMER_FIRST, INPUT_GAMEPAD_2_FIRST };
     current_input_ = current_input_for_mode[Settings::application.mapping.mode];
+    show_all_inputs_ = false;
 }
 
 void InputMappingWindow::setVisible(bool on)
@@ -929,6 +930,63 @@ std::list< std::pair<int, int> > callbackIcons(SourceCallback *callback)
     return icons;
 }
 
+#define MENU_ALL_INPUTS "All active inputs"
+
+///
+/// True if at least one input is mapped in the session, or in a session nested in it
+///
+static bool anyInputAssigned(Session *S)
+{
+    if (!S->inputCallbacks()->empty())
+        return true;
+    for (uint i = INPUT_KEYBOARD_FIRST; i <= INPUT_GAMEPAD_2_LAST; ++i) {
+        if (S->inputCallbacks()->assignedNested(i))
+            return true;
+    }
+    return false;
+}
+
+///
+/// Mode of the input mapping interface showing an input (index in input_mode)
+///
+static uint64_t inputMode(uint id)
+{
+    if (id >= INPUT_NUMPAD_FIRST && id <= INPUT_NUMPAD_LAST)
+        return 1;
+    if (id >= INPUT_MULTITOUCH_FIRST && id <= INPUT_MULTITOUCH_LAST)
+        return 2;
+    if (id >= INPUT_GAMEPAD_1_FIRST && id <= INPUT_GAMEPAD_1_LAST)
+        return 3;
+    if (id >= INPUT_TIMER_FIRST && id <= INPUT_TIMER_LAST)
+        return 4;
+    if (id >= INPUT_GAMEPAD_2_FIRST && id <= INPUT_GAMEPAD_2_LAST)
+        return 5;
+    return 0;
+}
+
+///
+/// Label of an input with the icon of its device, e.g. keyboard icon + 'Key A'
+///
+static std::string inputDisplayLabel(uint id)
+{
+    std::string label = Control::inputLabel(id);
+
+    if (id >= INPUT_KEYBOARD_FIRST && id <= INPUT_KEYBOARD_LAST)
+        label = ICON_FA_KEYBOARD "  Key " + label;
+    else if (id >= INPUT_NUMPAD_FIRST && id <= INPUT_NUMPAD_LAST)
+        label = ICON_FA_CALCULATOR "  Key " + label;
+    else if (id >= INPUT_GAMEPAD_1_FIRST && id <= INPUT_GAMEPAD_1_LAST)
+        label = ICON_FA_GAMEPAD " 1  " + label;
+    else if (id >= INPUT_GAMEPAD_2_FIRST && id <= INPUT_GAMEPAD_2_LAST)
+        label = ICON_FA_GAMEPAD " 2  " + label;
+    else if (id >= INPUT_MULTITOUCH_FIRST && id <= INPUT_MULTITOUCH_LAST)
+        label = ICON_FA_TABLET_ALT "  " + label;
+    else if (id >= INPUT_TIMER_FIRST && id <= INPUT_TIMER_LAST)
+        label = ICON_FA_CLOCK "  " + label;
+
+    return label;
+}
+
 void InputMappingWindow::Render()
 {
     const ImGuiContext& g = *GImGui;
@@ -953,6 +1011,11 @@ void InputMappingWindow::Render()
 
     // short variable to refer to session
     Session *S = Mixer::manager().session();
+
+    // list of all inputs is possible only if some inputs are mapped
+    const bool any_input_assigned = anyInputAssigned(S);
+    if (!any_input_assigned)
+        show_all_inputs_ = false;
 
     // menu (no title bar)
     if (ImGui::BeginMenuBar())
@@ -986,16 +1049,27 @@ void InputMappingWindow::Render()
         }
 
         // Selection of the keyboard mode
-        if (ImGui::BeginMenu( input_mode[Settings::application.mapping.mode].c_str() ))
+        const char *mode_label = show_all_inputs_ ? MENU_ALL_INPUTS
+                                                  : input_mode[Settings::application.mapping.mode].c_str();
+        if (ImGui::BeginMenu( mode_label ))
         {
             // list modes with Gamepad 2 (mode 5) after Gamepad 1 (mode 3)
             static const std::array< size_t, 6 > menu_order = { 0, 1, 2, 3, 5, 4 };
             for (size_t i : menu_order) {
                 if (ImGui::MenuItem(input_mode[i].c_str())) {
-                    current_input_for_mode[Settings::application.mapping.mode] = current_input_;
+                    if (!show_all_inputs_)
+                        current_input_for_mode[Settings::application.mapping.mode] = current_input_;
                     Settings::application.mapping.mode = i;
                     current_input_ = current_input_for_mode[i];
+                    show_all_inputs_ = false;
                 }
+            }
+            // list all inputs mapped in the session
+            ImGui::Separator();
+            if (ImGui::MenuItem(MENU_ALL_INPUTS, nullptr, show_all_inputs_, any_input_assigned)) {
+                if (!show_all_inputs_)
+                    current_input_for_mode[Settings::application.mapping.mode] = current_input_;
+                show_all_inputs_ = true;
             }
             ImGui::EndMenu();
         }
@@ -1003,7 +1077,7 @@ void InputMappingWindow::Render()
         // Options for current key
         const std::string key = (current_input_ < INPUT_NUMPAD_LAST) ? "  Key " : "  ";
         const std::string keymenu = ICON_FA_ARROW_RIGHT + key + Control::manager().inputLabel(current_input_);
-        if (ImGui::BeginMenu(keymenu.c_str()) )
+        if (!show_all_inputs_ && ImGui::BeginMenu(keymenu.c_str()) )
         {
             if ( ImGui::MenuItem(ICON_FA_TIMES "  Reset", NULL, false, S->inputCallbacks()->assigned(current_input_) ) )
                 // remove all source callback of this input
@@ -1053,6 +1127,13 @@ void InputMappingWindow::Render()
     const ImGuiWindow* window = ImGui::GetCurrentWindow();
     ImDrawList* draw_list = window->DrawList;
     ImVec2 frame_top = ImGui::GetCursorScreenPos();
+
+    // list of all inputs replaces the mode-specific interface
+    if (show_all_inputs_) {
+        RenderAllInputs(S);
+        ImGui::End();
+        return;
+    }
 
     // change mode if a key is pressed
     for (uint k = INPUT_KEYBOARD_FIRST; k < INPUT_TIMER_FIRST; ++k) {
@@ -1815,4 +1896,198 @@ void InputMappingWindow::Render()
 
 
     ImGui::End();
+}
+
+void InputMappingWindow::RenderAllInputs(Session *S)
+{
+    const ImGuiContext& g = *GImGui;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2.f, g.Style.ItemSpacing.y * 2.f) );
+    ImGui::BeginChild("InputsMappingAllPanel", ImVec2(0, 0), false, ImGuiWindowFlags_NoNavInputs);
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    const float w_in = ImGui::GetWindowWidth() * 0.16f;
+    const float w = ImGui::GetWindowWidth() * 0.2f;
+    char text_buf[1024];
+
+    // list of the mapping changed: stop listing for this frame
+    bool modified = false;
+    bool listed = false;
+
+    for (uint input = INPUT_KEYBOARD_FIRST; input <= INPUT_GAMEPAD_2_LAST && !modified; ++input) {
+
+        if (!S->inputCallbacks()->assignedAnywhere(input))
+            continue;
+        listed = true;
+
+        ImGui::PushID( (int) input );
+
+        // first row of an input shows its label; following rows leave the column empty
+        bool first_row = true;
+        const float sync_icon_size = ImGui::GetTextLineHeightWithSpacing();
+        auto inputColumn = [&]() {
+            if (first_row) {
+                // metronome synchronization of this input
+                Metronome::Synchronicity sync = S->inputCallbacks()->synchrony(input);
+                if ( sync > Metronome::SYNC_NONE)
+                    ImGuiToolkit::Icon( sync > Metronome::SYNC_BEAT ? 7 : 6, 13);
+                else
+                    ImGui::Dummy( ImVec2(sync_icon_size, sync_icon_size) );
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+
+                const std::string label = inputDisplayLabel(input);
+                if ( Control::manager().inputActive(input) ) {
+                    const ImVec2 pos = ImGui::GetCursorScreenPos();
+                    draw_list->AddRectFilled(pos, pos + ImVec2(w_in, ImGui::GetFrameHeight()),
+                                             ImGui::GetColorU32(ImGuiCol_Border), 6.f);
+                }
+                const ImVec2 pos = ImGui::GetCursorScreenPos();
+                const ImVec2 size = ImVec2(w_in, ImGui::GetFrameHeight());
+
+                // same appearance as the keys in the modes
+                ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Header];
+                color.w /= Settings::application.mapping.disabled ? 2.f : 0.9f;
+                ImGui::PushStyleColor(ImGuiCol_Header, color);
+                color = ImGui::GetStyle().Colors[ImGuiCol_Text];
+                color.w /= Settings::application.mapping.disabled ? 2.f : 1.0f;
+                ImGui::PushStyleColor(ImGuiCol_Text, color);
+                ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetColorU32(ImGuiCol_Header, 0.f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetColorU32(ImGuiCol_HeaderHovered, 0.1f));
+                ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
+
+                // clic on input label: show this input in its mode
+                if (ImGui::Selectable( label.c_str(), true, 0, size )) {
+                    Settings::application.mapping.mode = inputMode(input);
+                    current_input_ = input;
+                    show_all_inputs_ = false;
+                }
+
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor(4);
+
+                // draw frame
+                draw_list->AddRect(pos, pos + size, ImGui::GetColorU32(ImGuiCol_Text), 6.f, ImDrawCornerFlags_All, 1.0f);
+
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Show %s", input_mode[inputMode(input)].c_str());
+                first_row = false;
+            }
+            else
+                ImGui::Dummy( ImVec2(sync_icon_size + IMGUI_SAME_LINE + w_in, ImGui::GetFrameHeight()) );
+            ImGui::SameLine(0, IMGUI_SAME_LINE + sync_icon_size);
+        };
+
+        // 1. Callbacks inside Session Sources (e.g., Bundles): locked
+        std::list<InputCallbacks::Nested> nested = S->inputCallbacks()->nested(input);
+        for (auto nit = nested.cbegin(); nit != nested.cend(); ++nit) {
+
+            ImGui::PushID( (void*) nit->callback );
+            inputColumn();
+
+            ImGuiToolkit::Indication("This action is mapped inside a bundle and cannot be modified here",ICON_FA_LOCK);
+
+            const std::string label = targetLabel( nit->target );
+            const std::string value = callbackValueString( nit->callback );
+
+            // where it is, and on what
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s%s", nit->path.c_str(), label.c_str());
+            ImGuiToolkit::ButtonDisabled ( text_buf, ImVec2(w, 0) );
+
+            // what it does
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "%s", callbackName( nit->callback->type() ));
+            ImGuiToolkit::ButtonDisabled ( text_buf, ImVec2(w, 0) );
+
+            // action description icons
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            std::list< std::pair<int, int> > icons = callbackIcons( nit->callback );
+            for (auto ics = icons.cbegin(); ics != icons.cend(); ++ics) {
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGuiToolkit::Icon( ics->first, ics->second, false );
+            }
+
+            // target value
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight(), 0.0f);
+            ImGuiToolkit::ButtonDisabled ( value.c_str(), size );
+
+            // Test button: apply this callback to its target
+            ImGui::SameLine(0, IMGUI_SAME_LINE / 2.f);
+            if (std::holds_alternative<Current>(nit->target)) {
+                ImGuiToolkit::Indication("Unavailable in this context",ICON_FA_BAN);
+            }
+            else {
+                ImFormatString(text_buf, IM_ARRAYSIZE(text_buf), "Set %s of  '%s'  to %s",
+                               callbackName( nit->callback->type() ), label.c_str(), value.c_str());
+                testButton( nit->callback, nit->target, text_buf, ICON_VI_EXECUTE );
+            }
+            ImGui::PopID();
+        }
+
+        // 2. Callbacks directly assigned to the input in this session: editable, not removable
+        auto result = S->inputCallbacks()->at(input);
+        for (auto kit = result.cbegin(); kit != result.cend() && !modified; ++kit) {
+
+            Target target = kit->first;
+            SourceCallback *callback = kit->second;
+
+            ImGui::PushID( (void*) callback);
+            inputColumn();
+
+            // Select Target
+            ImGui::SetNextItemWidth(w);
+            Target selected_target = ComboSelectTarget(target);
+            if (selected_target.index() > 0) {
+                // reassign the callback to newly selected source
+                S->inputCallbacks()->assign(input, selected_target, callback);
+                modified = true;
+                ImGui::PopID();
+                break;
+            }
+
+            // check if target is a Source with image processing enabled
+            bool ismediaplayer = false;
+            bool withimageprocessing = false;
+            if (Source * const* v = std::get_if<Source *>(&target)) {
+                withimageprocessing = (*v)->imageProcessingEnabled();
+                ismediaplayer = dynamic_cast<MediaSource*>(*v) != nullptr;
+            }
+
+            // Select Reaction
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            ImGui::SetNextItemWidth(w);
+            uint type = ComboSelectCallback( callback->type(), withimageprocessing, ismediaplayer );
+            if (type == SourceCallback::CALLBACK_INVALID) {
+                // reaction not supported by target: show it, but cannot remove it here
+                ImGuiToolkit::ButtonDisabled( callbackName( callback->type() ), ImVec2(w, 0) );
+                ImGui::SameLine(0, IMGUI_SAME_LINE);
+                ImGuiToolkit::Indication("This action is not available for this target", ICON_FA_EXCLAMATION_TRIANGLE);
+                ImGui::PopID();
+                continue;
+            }
+            if (type > 0) {
+                // replace callback by one of the new type
+                S->inputCallbacks()->remove(callback);
+                S->inputCallbacks()->assign(input, target, SourceCallback::create((SourceCallback::CallbackType)type) );
+                modified = true;
+                ImGui::PopID();
+                break;
+            }
+
+            // Adjust parameters
+            ImGui::SameLine(0, IMGUI_SAME_LINE);
+            SliderParametersCallback( callback, target );
+
+            ImGui::PopID();
+        }
+
+        ImGui::PopID();
+    }
+
+    if (!listed && !modified)
+        ImGui::Text("No input mapped in this session.");
+
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
 }
