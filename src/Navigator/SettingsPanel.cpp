@@ -545,11 +545,11 @@ void SettingsPanel::Render()
 
     if (Settings::application.pannel_settings[4]){
         static bool need_restart = false;
-        static bool vsync = (Settings::application.render.vsync > 0);
         static bool multi = (Settings::application.render.multisampling > 0);
         static bool gpu = Settings::application.render.gpu_decoding;
         static bool glmemory = Settings::application.render.gst_glmemory_context;
         static bool audio = Settings::application.accept_audio;
+        static bool x11 = Settings::application.render.x11;
         bool change = false;
         // hardware support deserves more explanation
         std::pair<int, int> icon_index = gpu ? std::make_pair(ICON_VI_GPU) : std::make_pair(ICON_VI_GPU_OFF);
@@ -567,30 +567,40 @@ void SettingsPanel::Render()
         ImGui::SameLine(0);
         change |= ImGuiToolkit::ButtonSwitch( "Audio (experimental)", &audio);
 
+#ifdef LINUX
+        // choice of X11 (XWayland) instead of native Wayland, only in a Wayland session
+        if (getenv("WAYLAND_DISPLAY") != nullptr) {
+            ImGuiToolkit::Indication("Run with X11 (XWayland) instead of running natively with Wayland "
+                                     "(e.g. for tablet pressure or exact window placement).",
+                                     ICON_FA_DESKTOP);
+            ImGui::SameLine(0);
+            change |= ImGuiToolkit::ButtonSwitch( "Force X11 compatibility", &x11);
+        }
+#endif
+
 #ifndef NDEBUG
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
         change |= ImGuiToolkit::ButtonSwitch( "Gst GLMemory context", &glmemory);
 #endif
-        change |= ImGuiToolkit::ButtonSwitch( "Vertical synchronization", &vsync);
         change |= ImGuiToolkit::ButtonSwitch( "Multisample antialiasing", &multi);
 #endif
         if (change) {
-            need_restart = ( vsync != (Settings::application.render.vsync > 0) ||
-                    multi != (Settings::application.render.multisampling > 0) ||
+            need_restart = ( multi != (Settings::application.render.multisampling > 0) ||
                     gpu != Settings::application.render.gpu_decoding ||
                     glmemory != Settings::application.render.gst_glmemory_context ||
-                    audio != Settings::application.accept_audio );
+                    audio != Settings::application.accept_audio ||
+                    x11 != Settings::application.render.x11 );
         }
 
         if (need_restart) {
             ImGuiToolkit::Spacing();
             if (ImGui::Button( ICON_FA_POWER_OFF "  Quit & restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
-                Settings::application.render.vsync = vsync ? 1 : 0;
                 Settings::application.render.multisampling = multi ? 3 : 0;
                 Settings::application.render.gst_glmemory_context = glmemory;
                 Settings::application.render.gpu_decoding = gpu;
                 Settings::application.accept_audio = audio;
+                Settings::application.render.x11 = x11;
                 if (UserInterface::manager().TryClose())
                     Rendering::manager().close();
             }

@@ -37,6 +37,7 @@
 #define PORTAL_SCREENCAST "org.freedesktop.portal.ScreenCast"
 #define PORTAL_REQUEST    "org.freedesktop.portal.Request"
 #define PORTAL_SESSION    "org.freedesktop.portal.Session"
+#define PORTAL_SETTINGS   "org.freedesktop.portal.Settings"
 
 namespace FreedesktopToolkit
 {
@@ -460,6 +461,64 @@ void setScreencastClosedCallback(std::function<void(const std::string &)> callba
 {
     std::lock_guard<std::mutex> lock(portal_.closed_access);
     portal_.closed_callback = callback;
+}
+
+// read a value from the settings portal (caller unrefs; nullptr if not available)
+static GVariant *read_setting(const std::string &ns, const std::string &key)
+{
+    GDBusConnection *bus = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, nullptr);
+    if (bus == nullptr)
+        return nullptr;
+
+    GVariant *value = nullptr;
+    // ReadOne (portal version 2) returns the value; deprecated Read returns it
+    // wrapped in another variant
+    for (const char *method : { "ReadOne", "Read" }) {
+        GVariant *ret = g_dbus_connection_call_sync(bus, PORTAL_BUS_NAME, PORTAL_PATH,
+                                                    PORTAL_SETTINGS, method,
+                                                    g_variant_new("(ss)", ns.c_str(), key.c_str()),
+                                                    G_VARIANT_TYPE("(v)"), G_DBUS_CALL_FLAGS_NONE,
+                                                    500, nullptr, nullptr);
+        if (ret != nullptr) {
+            g_variant_get(ret, "(v)", &value);
+            g_variant_unref(ret);
+            while (value != nullptr && g_variant_is_of_type(value, G_VARIANT_TYPE_VARIANT)) {
+                GVariant *inner = g_variant_get_variant(value);
+                g_variant_unref(value);
+                value = inner;
+            }
+            break;
+        }
+    }
+
+    g_object_unref(bus);
+    return value;
+}
+
+std::string settingString(const std::string &ns, const std::string &key)
+{
+    std::string result;
+    GVariant *value = read_setting(ns, key);
+    if (value != nullptr) {
+        if (g_variant_is_of_type(value, G_VARIANT_TYPE_STRING))
+            result = g_variant_get_string(value, nullptr);
+        g_variant_unref(value);
+    }
+    return result;
+}
+
+int settingInt(const std::string &ns, const std::string &key, int default_value)
+{
+    int result = default_value;
+    GVariant *value = read_setting(ns, key);
+    if (value != nullptr) {
+        if (g_variant_is_of_type(value, G_VARIANT_TYPE_INT32))
+            result = g_variant_get_int32(value);
+        else if (g_variant_is_of_type(value, G_VARIANT_TYPE_UINT32))
+            result = (int) g_variant_get_uint32(value);
+        g_variant_unref(value);
+    }
+    return result;
 }
 
 }

@@ -1991,7 +1991,7 @@ void Control::keyboardCalback(GLFWwindow* w, int key, int, int action, int mods)
             }
             else if  ( key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
                 // close current window on ESC
-                Rendering::manager().deactivateOutput(glfwGetWindowMonitor(w));
+                Rendering::manager().deactivateOutput(w);
             }
         }
     }

@@ -15,11 +15,7 @@ if [[ $gpu == *' nvidia '* ]]; then
         exit $?
     fi
     # with nvidia, request render offload (no effect if NVIDIA is the primary GPU)
-    if [ -z "$WAYLAND_DISPLAY" ]; then
-        printf 'Launching vimix with NVIDIA offload support under X11\n'
-    else
-        printf 'Launching vimix with NVIDIA offload support under Wayland\n'
-    fi
+    printf 'Launching vimix with NVIDIA offload support\n'
     __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia vimix "$@"
 else
     # otherwise, nothing special

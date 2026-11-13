@@ -2134,7 +2134,7 @@ void UserInterface::RenderMetrics(bool *p_open, int *p_mode)
     //
     // keep array of 180 values, i.e. approx 3 seconds of recording
     static MetricsPlot plot_fps, plot_update, plot_framebuffers, plot_ram, plot_gpu;
-    static float refresh_rate = -1.f;
+    static bool  plot_init = true;
     static int   values_index = 0;
 
     // read Memory info every 1/2 second
@@ -2158,14 +2158,9 @@ void UserInterface::RenderMetrics(bool *p_open, int *p_mode)
     const float framebuffers = static_cast<float>( static_cast<double>(FrameBuffer::memory_usage()) / 1000000.0 );
 
     // init
-    if (refresh_rate < 0.f) {
-        const GLFWvidmode* mode = glfwGetVideoMode(Rendering::manager().mainWindow().monitor());
-        refresh_rate = float(mode->refreshRate);
-        if (Settings::application.render.vsync > 0)
-            refresh_rate /= Settings::application.render.vsync;
-        else
-            refresh_rate = 0.f;
-        plot_fps.reset(refresh_rate);
+    if (plot_init) {
+        plot_init = false;
+        plot_fps.reset(float(Rendering::framerate));
         plot_update.reset(16.f);
         plot_framebuffers.reset(framebuffers);
         plot_ram.reset(ram);
@@ -2243,8 +2238,8 @@ void UserInterface::RenderMetrics(bool *p_open, int *p_mode)
     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 
     if (*p_mode & Metrics_framerate) {
-        // vsync : plot around refresh rate; otherwise, around past values
-        const float center = refresh_rate > 1.f ? refresh_rate : plot_fps.average();
+        // plot around the frame rate of the rendering loop
+        const float center = float(Rendering::framerate);
         snprintf(overlay, 128, "Rendering %.1f FPS", plot_fps.average());
         ImGui::PlotLines("##LinesRender", plot_fps.values, PLOT_ARRAY_SIZE, values_index, overlay,
                          center - 15.f, center + 10.f, plot_size);

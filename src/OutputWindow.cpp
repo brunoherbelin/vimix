@@ -43,6 +43,13 @@
 
 #include "OutputWindow.h"
 
+#ifdef LINUX
+// X11 native access, included last (Xlib defines generic macros)
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
+#include <X11/Xatom.h>
+#endif
+
 
 // custom surface with a new VAO for output window
 class OutputWindowSurface : public MeshSurface
@@ -59,8 +66,8 @@ public:
 };
 
 
-OutputWindow::OutputWindow() : window_(nullptr), active_(false), initialized_(false), 
-surface_(nullptr), shader_(nullptr), show_pattern_(false), pattern_(nullptr) 
+OutputWindow::OutputWindow() : window_(nullptr), active_(false), initialized_(false),
+surface_(nullptr), shader_(nullptr), show_pattern_(false), pattern_(nullptr), pending_fullscreen_(nullptr)
 {
 
 }
@@ -97,17 +104,37 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share, glm::ivec4 geom
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
 
+#if defined(LINUX) && GLFW_VERSION_MAJOR > 2 && GLFW_VERSION_MINOR > 3
+    // same as main window: on Wayland, the native context API of GLFW is EGL, but glfwGetEGLContext()
+    // only accepts contexts explicitly created with the EGL API
+    glfwWindowHint(GLFW_CONTEXT_CREATION_API, Rendering::manager().wayland() ? GLFW_EGL_CONTEXT_API
+                                                                            : GLFW_NATIVE_CONTEXT_API);
+    // application id for the desktop (i.e. the name of its .desktop file, to show the
+    // application icon); flatpak renames the desktop file after the application id
+    const char *flatpak_id = getenv("FLATPAK_ID");
+    const char *app_id = flatpak_id ? flatpak_id : APP_NAME;
+    glfwWindowHintString(GLFW_WAYLAND_APP_ID, app_id);
+    glfwWindowHintString(GLFW_X11_CLASS_NAME, app_id);
+    glfwWindowHintString(GLFW_X11_INSTANCE_NAME, APP_NAME);
+#endif
+
     // get monitor video mode
     const GLFWvidmode *mode = glfwGetVideoMode(monitor);
 
-#if __APPLE__
+#if defined(__APPLE__) || defined(WIN32)
+#ifdef __APPLE__
     // special Apple
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint(GLFW_COCOA_MENUBAR, GLFW_TRUE);    
-
+    glfwWindowHint(GLFW_COCOA_MENUBAR, GLFW_TRUE);
+    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
+#else
+    // Windows: a borderless window remains composited by the desktop window manager,
+    // which avoids tearing without vertical synchronization (unlike fullscreen),
+    // and it stays on top of the taskbar like a fullscreen window
+    glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
+#endif
     // create borderless window with same dimensions as monitor (without larger framebuffer)
     glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);  
     window_ = glfwCreateWindow(mode->width, mode->height, "vimix Output", NULL, share);
     if (window_ == NULL) {
         g_printerr("Failed to create GLFW Output Window on monitor %s\n", glfwGetMonitorName(monitor));
@@ -118,21 +145,41 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share, glm::ivec4 geom
     glfwGetMonitorPos(monitor, &x, &y);
     glfwSetWindowPos(window_, x, y);
 #else
-    // create fullscreenwindow on this monitor
-    window_ = glfwCreateWindow(mode->width, mode->height, "vimix Output", monitor, share);
+    // create fullscreen window on this monitor
+    // (Wayland: create a normal window, set fullscreen after its first frame, see draw())
+    GLFWmonitor *fullscreen_monitor = Rendering::manager().wayland() ? NULL : monitor;
+    window_ = glfwCreateWindow(mode->width, mode->height, "vimix Output", fullscreen_monitor, share);
     if (window_ == NULL) {
         g_printerr("Failed to create GLFW Output Window on monitor %s\n", glfwGetMonitorName(monitor));
         return false;
     }
+#ifdef LINUX
+    // GLFW asks the X11 compositor to bypass fullscreen windows (_NET_WM_BYPASS_COMPOSITOR = 1),
+    // which then tear without vertical synchronization; value 2 requests to keep compositing
+    if (!Rendering::manager().wayland()) {
+        Display *display = glfwGetX11Display();
+        Window handle = glfwGetX11Window(window_);
+        if (display && handle) {
+            const unsigned long value = 2;
+            XChangeProperty(display, handle, XInternAtom(display, "_NET_WM_BYPASS_COMPOSITOR", False),
+                            XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &value, 1);
+            XFlush(display);
+        }
+    }
+    // With libdecor, GLFW commits the new window before requesting fullscreen,
+    // and the compositor then ignores the requested monitor: set fullscreen later
+    else
+        pending_fullscreen_ = monitor;
+#endif
 #endif
 
-    // keep geometry  
+    // keep geometry
     geometry_ = geom;
 
     // set rendering area
     window_attributes_.viewport.x = mode->width;
     window_attributes_.viewport.y = mode->height;
- 
+
     // clear to black
     window_attributes_.clear_color = glm::vec4(0.f, 0.f, 0.f, 1.f);
 
@@ -147,8 +194,8 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share, glm::ivec4 geom
     ///
     glfwMakeContextCurrent(window_);
 
-    // vsync on output windows if this is the first active output window
-    glfwSwapInterval(OutputWindow::num_active_outputs > 1 ? 0 : Settings::application.render.vsync);
+    // no vertical synchronization
+    glfwSwapInterval(0);
 
     // hide cursor
     glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
@@ -160,7 +207,7 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share, glm::ivec4 geom
     pattern_ = new Stream;
     if (GstToolkit::has_feature("frei0r-src-test-pat-b") )
         pattern_->open("frei0r-src-test-pat-b type=0.7", mode->width, mode->height);
-    else 
+    else
         pattern_->open("videotestsrc pattern=smpte", mode->width, mode->height);
 
     // done !
@@ -172,9 +219,9 @@ bool OutputWindow::init(GLFWmonitor *monitor, GLFWwindow *share, glm::ivec4 geom
     return true;
 }
 
-void OutputWindow::setShowPattern(bool on) 
-{ 
-    show_pattern_ = on; 
+void OutputWindow::setShowPattern(bool on)
+{
+    show_pattern_ = on;
     pattern_->play(show_pattern_);
 }
 
@@ -195,6 +242,7 @@ void OutputWindow::terminate()
 
     // invalidate
     window_ = nullptr;
+    pending_fullscreen_ = nullptr;
     monitor_name_.clear();
     initialized_ = false;
     active_ = false;
@@ -207,10 +255,10 @@ void OutputWindow::terminate()
 
     // detect end
     if ( OutputWindow::num_active_outputs == 0 ) {
-        if (glfwGetWindowAttrib(Rendering::manager().mainWindow().window(), GLFW_VISIBLE) == GL_FALSE) {    
+        if (glfwGetWindowAttrib(Rendering::manager().mainWindow().window(), GLFW_VISIBLE) == GL_FALSE) {
             // all monitors disconnected and main window hidden : quit application
             Rendering::manager().close();
-        }   
+        }
     }
 }
 
@@ -248,7 +296,7 @@ bool OutputWindow::draw(FrameBuffer *fb)
 
     if (!Settings::application.render.disabled) {
 
-        // create surface if needed 
+        // create surface if needed
         // (NB: special OutputWindowSurface because VAO are not shared between contexts)
         if (surface_ == nullptr) {
             shader_ = new ImageFilteringShader;
@@ -309,6 +357,13 @@ bool OutputWindow::draw(FrameBuffer *fb)
 
     // swap buffers
     glfwSwapBuffers(window_);
+
+    // the window is shown, set it fullscreen on its monitor (see init())
+    if (pending_fullscreen_) {
+        const GLFWvidmode *mode = glfwGetVideoMode(pending_fullscreen_);
+        glfwSetWindowMonitor(window_, pending_fullscreen_, 0, 0, mode->width, mode->height, mode->refreshRate);
+        pending_fullscreen_ = nullptr;
+    }
 
     return true;
 }

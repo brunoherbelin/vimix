@@ -156,6 +156,7 @@ int main(int argc, char *argv[])
             fprintf(stderr, "%s: test OK\n", argv[0]);
             ret = 0;
         }
+        Rendering::manager().terminate();
     }
 
     if (cleanRequested) {

@@ -259,10 +259,10 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
 
     // Render
     XMLElement *RenderNode = xmlDoc.NewElement( "Render" );
-    RenderNode->SetAttribute("vsync", application.render.vsync);
     RenderNode->SetAttribute("multisampling", application.render.multisampling);
     RenderNode->SetAttribute("gpu_decoding", application.render.gpu_decoding);
     RenderNode->SetAttribute("gst_glmemory_context", application.render.gst_glmemory_context);
+    RenderNode->SetAttribute("x11", application.render.x11);
     RenderNode->SetAttribute("ratio", application.render.ratio);
     RenderNode->SetAttribute("res", application.render.res);
     RenderNode->SetAttribute("custom_width", application.render.custom_width);
@@ -704,10 +704,10 @@ void Settings::init(const std::string &filename)
         // Render
         XMLElement * rendernode = pRoot->FirstChildElement("Render");
         if (rendernode != nullptr) {
-            rendernode->QueryIntAttribute("vsync", &application.render.vsync);
             rendernode->QueryIntAttribute("multisampling", &application.render.multisampling);
             rendernode->QueryBoolAttribute("gpu_decoding", &application.render.gpu_decoding);
             rendernode->QueryBoolAttribute("gst_glmemory_context", &application.render.gst_glmemory_context);
+            rendernode->QueryBoolAttribute("x11", &application.render.x11);
 #ifndef USE_GST_OPENGL_SYNC_HANDLER
             application.render.gst_glmemory_context = false;
 #endif

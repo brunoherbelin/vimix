@@ -56,6 +56,19 @@ void screencastClose(const std::string &session);
 // by the desktop (e.g. user clicked on 'stop sharing')
 void setScreencastClosedCallback(std::function<void(const std::string &session)> callback);
 
+//
+// Settings portal (org.freedesktop.portal.Settings), which gives read access
+// to the desktop settings (e.g. 'org.gnome.desktop.interface' 'cursor-theme'),
+// also from inside a Flatpak sandbox. Synchronous calls (short timeout),
+// meant to be used once at startup.
+//
+
+// read a string setting (empty if not available)
+std::string settingString(const std::string &ns, const std::string &key);
+
+// read an integer setting (default_value if not available)
+int settingInt(const std::string &ns, const std::string &key, int default_value = 0);
+
 }
 
 #endif // FREEDESKTOPTOOLKIT_H

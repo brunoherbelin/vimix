@@ -73,13 +73,18 @@ void MainWindow::setIcon(const std::string &resource)
 
 GLFWmonitor *MainWindow::monitor() const
 {
+    // wayland does not give the window position to clients:
+    // use the monitor where the main window was last in fullscreen (primary if none)
+    if (Rendering::manager().wayland_) {
+        GLFWmonitor *mo = window_ ? glfwGetWindowMonitor(window_) : nullptr;
+        return mo ? mo : Rendering::manager().monitorNamed(Settings::application.mainwindow.monitor);
+    }
+
     // get monitor at the center of the window
     int x = 0, y = 0, w = 2, h = 2;
     if (window_) {
         glfwGetWindowSize(window_, &w, &h);
-
-        if (!Rendering::manager().wayland_)
-           glfwGetWindowPos(window_, &x, &y);
+        glfwGetWindowPos(window_, &x, &y);
     }
 
     return Rendering::manager().monitorAt(x + w/2, y + h/2);
@@ -299,6 +304,20 @@ bool MainWindow::init()
     glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
+
+#if defined(LINUX) && GLFW_VERSION_MAJOR > 2 && GLFW_VERSION_MINOR > 3
+    // On Wayland, the native context API of GLFW is EGL, but glfwGetEGLContext()
+    // only accepts contexts explicitly created with the EGL API
+    glfwWindowHint(GLFW_CONTEXT_CREATION_API, Rendering::manager().wayland() ? GLFW_EGL_CONTEXT_API
+                                                                            : GLFW_NATIVE_CONTEXT_API);
+    // application id for the desktop (i.e. the name of its .desktop file, to show the
+    // application icon); flatpak renames the desktop file after the application id
+    const char *flatpak_id = getenv("FLATPAK_ID");
+    const char *app_id = flatpak_id ? flatpak_id : APP_NAME;
+    glfwWindowHintString(GLFW_WAYLAND_APP_ID, app_id);
+    glfwWindowHintString(GLFW_X11_CLASS_NAME, app_id);
+    glfwWindowHintString(GLFW_X11_INSTANCE_NAME, APP_NAME);
+#endif
 
     // create the window
     window_ = glfwCreateWindow(winset.w, winset.h, winset.name.c_str(), NULL, nullptr);

@@ -175,6 +175,18 @@ if(UNIX)
         # Linux: GIO for the screen cast portal (screen capture under Wayland)
         pkg_check_modules(GIO_UNIX REQUIRED gio-unix-2.0)
 
+        # Linux: share the OpenGL (EGL) context with GStreamer on native Wayland (optional)
+        if(PKG_CONFIG_FOUND)
+            pkg_check_modules(EGL egl)
+            if(EGL_FOUND)
+                include_directories(${EGL_INCLUDE_DIRS})
+                add_definitions(-DHAVE_EGL)
+            else()
+                message(STATUS "EGL not found - no OpenGL sharing with GStreamer under Wayland")
+            endif()
+            macro_log_feature(EGL_FOUND "EGL" "OpenGL sharing with GStreamer on Wayland" "https://www.khronos.org/egl" FALSE)
+        endif()
+
         # Linux: native Avahi client for mDNS peer discovery
         # (NOT avahi-compat-libdnssd — it has no .pc file and missing symbols)
         if(PKG_CONFIG_FOUND)

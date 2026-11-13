@@ -67,6 +67,9 @@ private:
     bool show_pattern_;
     Stream *pattern_;
 
+    // monitor on which to set the window fullscreen after its first frame (Wayland)
+    GLFWmonitor *pending_fullscreen_;
+
 
 };
 

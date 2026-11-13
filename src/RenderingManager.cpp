@@ -41,8 +41,10 @@
 #else
 #define GLFW_EXPOSE_NATIVE_X11
 #define GLFW_EXPOSE_NATIVE_GLX
+#ifdef HAVE_EGL
+#define GLFW_EXPOSE_NATIVE_EGL
 #endif
-//#include <GLFW/glfw3native.h>
+#endif
 
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale
 #include <glm/ext/matrix_clip_space.hpp> // glm::perspective
@@ -53,6 +55,11 @@
 
 #ifdef GLFW_EXPOSE_NATIVE_GLX
 #include <gst/gl/x11/gstgldisplay_x11.h>
+#endif
+#if defined(GLFW_EXPOSE_NATIVE_EGL) && GST_GL_HAVE_PLATFORM_EGL
+#include <gst/gl/egl/gstgldisplay_egl.h>
+#endif
+#ifdef LINUX
 #include <gio/gio.h>
 #endif
 
@@ -78,6 +85,9 @@
 #include "Scene/Primitives.h"
 #include "TabletInput.h"
 #include "FrameBuffer.h"
+#ifdef LINUX
+#include "Toolkit/FreedesktopToolkit.h"
+#endif
 
 #include "RenderingManager.h"
 
@@ -102,19 +112,34 @@ Rendering::Rendering()
 bool Rendering::init()
 {
 #if GLFW_VERSION_MAJOR > 2 && GLFW_VERSION_MINOR > 3
-    const char* desktop = getenv("XDG_CURRENT_DESKTOP");
-    if (desktop) {
-        // Forcing X11 on Gnome makes the server use xWayland which has proper Server Side Decorations as opposed to Wayland.
-        if (strstr(desktop, "GNOME") != nullptr ||
-            strstr(desktop, "Unity") != nullptr  ||
-            strstr(desktop, "XFCE") != nullptr ){
-            g_printerr("Forcing X11 / xWayland on %s desktop\n", desktop);
-            glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+    // Native Wayland when available (GLFW prefers it when WAYLAND_DISPLAY is set),
+    // unless X11 (XWayland) is requested by user settings or environment VIMIX_X11=1
+    const char *force_x11 = getenv("VIMIX_X11");
+    if ( (Settings::application.render.x11 || (force_x11 && force_x11[0] == '1'))
+         && getenv("DISPLAY") != nullptr ) {
+        g_printerr("Forcing X11 platform\n");
+        glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+    }
+    else {
+        glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
+#ifdef LINUX
+        // On Wayland, clients draw their own cursor and GLFW loads the cursor theme
+        // given by the XCURSOR_THEME and XCURSOR_SIZE environment variables (default
+        // theme at 24 pixels otherwise). GNOME does not set them: read them from the
+        // desktop settings so that the cursor in vimix is the same as on the desktop.
+        if (getenv("WAYLAND_DISPLAY") != nullptr) {
+            if (getenv("XCURSOR_THEME") == nullptr) {
+                const std::string theme = FreedesktopToolkit::settingString("org.gnome.desktop.interface", "cursor-theme");
+                if (!theme.empty())
+                    g_setenv("XCURSOR_THEME", theme.c_str(), TRUE);
+            }
+            if (getenv("XCURSOR_SIZE") == nullptr) {
+                const int size = FreedesktopToolkit::settingInt("org.gnome.desktop.interface", "cursor-size");
+                if (size > 0)
+                    g_setenv("XCURSOR_SIZE", std::to_string(size).c_str(), TRUE);
+            }
         }
-        else {
-            g_printerr("Detected %s desktop\n", desktop);
-            glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
-        }
+#endif
     }
 #endif
     //
@@ -128,6 +153,12 @@ bool Rendering::init()
 
 #if GLFW_VERSION_MAJOR > 2 && GLFW_VERSION_MINOR > 3
     wayland_ = glfwGetPlatform() == GLFW_PLATFORM_WAYLAND;
+#if defined(LINUX)
+    Log::Info("Windowing platform %s", wayland_ ? "Wayland" : "X11");
+    if (wayland_)
+        Log::Info("Cursor theme %s, size %s", getenv("XCURSOR_THEME") ? getenv("XCURSOR_THEME") : "default",
+                  getenv("XCURSOR_SIZE") ? getenv("XCURSOR_SIZE") : "default");
+#endif
 #endif
 
     //
@@ -278,7 +309,8 @@ bool Rendering::init()
     else
         Settings::application.render.multisampling = 0;
 
-    //  no vsync on main opengl context (blocs rendering if main window is in background on some systems)
+    //  no vsync (blocs rendering if main window is in background on some systems);
+    //  the rendering loop is paced by limitFramerate()
     glfwSwapInterval(0);
 
     // query and cache GPU limits now that the OpenGL context is current
@@ -341,21 +373,57 @@ bool Rendering::init()
         Log::Warning("Failed to wrap GStreamer CGL context.");
         global_display = NULL;
     }
-#elif GST_GL_HAVE_PLATFORM_GLX
-    global_display = (GstGLDisplay*) gst_gl_display_x11_new_with_display( glfwGetX11Display() );
-    if (global_display == NULL) {
-        g_printerr("Failed to create GStreamer X11 display \n");
-        Log::Warning("Failed to create GStreamer X11 display.");
+#elif GST_GL_HAVE_PLATFORM_GLX || GST_GL_HAVE_PLATFORM_EGL
+    if (wayland_) {
+#if defined(GLFW_EXPOSE_NATIVE_EGL) && GST_GL_HAVE_PLATFORM_EGL
+        // Linux native Wayland: GLFW creates EGL contexts; wrap the EGL context
+        // of the main window (an OpenGL 3.3 core profile context, current here)
+        // on the EGL display of GLFW, for GStreamer to share with it.
+        global_display = (GstGLDisplay*) gst_gl_display_egl_new_with_egl_display( glfwGetEGLDisplay() );
+        if (global_display == NULL) {
+            g_printerr("Failed to create GStreamer EGL display \n");
+            Log::Warning("Failed to create GStreamer EGL display.");
+        }
+        else
+            global_gl_context = gst_gl_context_new_wrapped (global_display,
+                                                       (guintptr) glfwGetEGLContext(main_.window()),
+                                                       GST_GL_PLATFORM_EGL, GST_GL_API_OPENGL3);
+        if (global_gl_context == NULL) {
+            g_printerr("Failed to wrap GStreamer EGL context\n");
+            Log::Warning("Failed to wrap GStreamer EGL context.");
+            if (global_display)
+                gst_object_unref(global_display);
+            global_display = NULL;
+        }
+        else {
+            // the wrapped context is current in this thread: let GStreamer read its config
+            gst_gl_context_activate(global_gl_context, TRUE);
+            gst_gl_context_fill_info(global_gl_context, NULL);
+            gst_gl_context_activate(global_gl_context, FALSE);
+            Log::Info("OpenGL context shared with GStreamer (EGL, Wayland).");
+        }
+#else
+        Log::Warning("No OpenGL sharing with GStreamer under Wayland (not supported by this build).");
+#endif
     }
-    else
-        global_gl_context = gst_gl_context_new_wrapped (global_display,
-                                                   (guintptr) glfwGetGLXContext(main_.window()),
-                                                   GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL);
-    if (global_gl_context == NULL) {
-        g_printerr("Failed to wrap GStreamer GLX context\n");
-        Log::Warning("Failed to wrap GStreamer GLX context.");
-        global_display = NULL;
+#if GST_GL_HAVE_PLATFORM_GLX
+    else {
+        global_display = (GstGLDisplay*) gst_gl_display_x11_new_with_display( glfwGetX11Display() );
+        if (global_display == NULL) {
+            g_printerr("Failed to create GStreamer X11 display \n");
+            Log::Warning("Failed to create GStreamer X11 display.");
+        }
+        else
+            global_gl_context = gst_gl_context_new_wrapped (global_display,
+                                                       (guintptr) glfwGetGLXContext(main_.window()),
+                                                       GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL);
+        if (global_gl_context == NULL) {
+            g_printerr("Failed to wrap GStreamer GLX context\n");
+            Log::Warning("Failed to wrap GStreamer GLX context.");
+            global_display = NULL;
+        }
     }
+#endif
 #endif
 #endif
 
@@ -449,15 +517,16 @@ void Rendering::draw()
 
     // software framerate limiter at 60 FPS
     limitFramerate();
+
 }
 
-// Wait for the next frame of a regular 60 FPS schedule.
+// Wait for the next frame of a regular schedule at Rendering::framerate.
 // Implemented with a coarse sleep, short of the deadline by a fifth of the wait, and then
 // short sleeps to reach it.
 void Rendering::limitFramerate()
 {
     using clock = std::chrono::steady_clock;
-    static const clock::duration period = std::chrono::nanoseconds(1000000000 / 60);
+    static const clock::duration period = std::chrono::nanoseconds(1000000000 / Rendering::framerate);
     static clock::time_point deadline = clock::now() + period;
 
     clock::duration remaining = deadline - clock::now();
@@ -686,15 +755,15 @@ glm::vec3 Rendering::monitorsResolution()
     return resolution;
 }
 
-void Rendering::deactivateOutput(const GLFWmonitor* monitor)
+void Rendering::deactivateOutput(const GLFWwindow* window)
 {
-    if (monitor == nullptr)
+    if (window == nullptr)
         return;
 
     std::lock_guard<std::mutex> lock(monitors_mutex_);
 
     for (auto it = monitors_.begin(); it != monitors_.end(); ++it) {
-        if (it->monitor == monitor) {
+        if (it->output.window() == window) {
             it->output.setActive(false);
             break;
         }
@@ -835,48 +904,41 @@ void Rendering::MonitorConnect(GLFWmonitor* monitor, int event)
 }
 
 // GDBus for screensaver inhibition (works on both X11 and Wayland)
-#ifdef GLFW_EXPOSE_NATIVE_GLX
-guint screensaver_inhibit_cookie_ = 0;
+#ifdef LINUX
 GDBusConnection *session_dbus_ = NULL;
+std::string screensaver_inhibit_handle_;
 
 void Rendering::inhibitScreensaver (bool on)
 {
     /*
      * Inhibit or un-inhibit the desktop screensaver via the
-     * XDG Desktop Portal org.freedesktop.portal.Inhibit API.
+     * XDG Desktop Portal org.freedesktop.portal.Inhibit API
+     * (works on X11 and Wayland, and in Flatpak or Snap sandboxes).
      *
-     * When 'on' is true:
-     *  - Obtain a connection to the session bus (cached in session_dbus_).
-     *  - Call the Inhibit method with: window identifier (empty string for whole app),
-     *    flags (8 = inhibit idle/screensaver), and options (reason string).
-     *  - The call returns an object path handle which identifies the inhibit request.
+     * When 'on' is true, call the Inhibit method with: window identifier (empty
+     * string for whole app), flags (8 = inhibit idle/screensaver), and options
+     * (reason string). It returns the object path of a request, which holds the
+     * inhibition until it is closed (or until the application exits).
      *
-     * When 'on' is false:
-     *  - The inhibition is automatically released when the handle is removed or app exits.
-     *  - We explicitly close the session bus connection to clean up.
+     * When 'on' is false, close that request (org.freedesktop.portal.Request.Close).
+     * NB: dropping the session bus connection would not release the inhibition,
+     * because the connection is shared (e.g. with the screencast portal).
      *
-     * Notes:
-     *  - This uses the XDG Desktop Portal which works in Flatpak sandboxes.
-     *  - Requires --talk-name=org.freedesktop.portal.Desktop permission.
-     *  - This function uses synchronous D-Bus calls. They may block briefly.
-     *  - Errors from g_dbus_connection_call_sync are reported to the log and freed.
-     *  - Works on both X11 and Wayland.
+     * These synchronous D-Bus calls may block briefly.
      */
-    if (on ) {
-        GError *error = NULL;
-        /* Lazily open a connection to the session bus and cache it. */
+    if (on) {
+        /* Lazily get the session bus (shared connection), kept for later calls */
         if (session_dbus_ == NULL)
-            session_dbus_ = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+            session_dbus_ = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, NULL);
 
-        /* Only inhibit once: do nothing if we already have a cookie. */
-        if (session_dbus_ != NULL && screensaver_inhibit_cookie_ == 0) {
-            /* Build options dictionary with reason */
+        /* Only inhibit once */
+        if (session_dbus_ != NULL && screensaver_inhibit_handle_.empty()) {
             GVariantBuilder builder;
             g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
             g_variant_builder_add(&builder, "{sv}", "reason",
-                                g_variant_new_string("Video mixing in progress"));
+                                  g_variant_new_string("Video mixing in progress"));
 
-            /* Call org.freedesktop.portal.Inhibit.Inhibit(window, flags, options) */
+            GError *error = NULL;
             GVariant *result = g_dbus_connection_call_sync(
                 session_dbus_,
                 "org.freedesktop.portal.Desktop",
@@ -887,42 +949,51 @@ void Rendering::inhibitScreensaver (bool on)
                               "",    // window identifier (empty for whole app)
                               8,     // flags: 8 = inhibit idle/screensaver
                               g_variant_builder_end(&builder)),
-                G_VARIANT_TYPE("(o)"),  // returns object path handle
+                G_VARIANT_TYPE("(o)"),  // returns the object path of the request
                 G_DBUS_CALL_FLAGS_NONE,
                 -1,
                 NULL,
-                &error
-            );
+                &error);
 
             if (result != NULL) {
-                /* The returned variant contains an object path handle.
-                 * We store a dummy cookie value to indicate inhibition is active. */
-                screensaver_inhibit_cookie_ = 1;
+                const gchar *handle = NULL;
+                g_variant_get(result, "(&o)", &handle);
+                screensaver_inhibit_handle_ = handle;
                 g_variant_unref(result);
                 Log::Info("Screensaver inhibited for vimix via XDG Desktop Portal");
-            } else {
-                /* If the call failed, log the error and ensure cookie is zero. */
-                if (error != NULL) {
-                    Log::Info("Could not inhibit screensaver: %s", error->message);
-                    g_error_free(error);
-                    screensaver_inhibit_cookie_ = 0;
-                }
+            }
+            else if (error != NULL) {
+                Log::Info("Could not inhibit screensaver: %s", error->message);
+                g_error_free(error);
             }
         }
     }
-    else {
-        /* Un-inhibit: the portal automatically releases when we close the session */
-        if (screensaver_inhibit_cookie_ != 0) {
-            if (session_dbus_ != NULL) {
-                /* Close and drop our cached session bus connection. */
-                /* The portal will automatically release the inhibition. */
-                g_object_unref(session_dbus_);
-                session_dbus_ = NULL;
+    else if (!screensaver_inhibit_handle_.empty()) {
+        if (session_dbus_ != NULL) {
+            GError *error = NULL;
+            GVariant *result = g_dbus_connection_call_sync(
+                session_dbus_,
+                "org.freedesktop.portal.Desktop",
+                screensaver_inhibit_handle_.c_str(),
+                "org.freedesktop.portal.Request",
+                "Close",
+                NULL,
+                NULL,
+                G_DBUS_CALL_FLAGS_NONE,
+                -1,
+                NULL,
+                &error);
+            if (result != NULL) {
+                g_variant_unref(result);
                 Log::Info("Screensaver inhibition disabled");
             }
-            /* Reset cookie so subsequent calls can re-inhibit if needed. */
-            screensaver_inhibit_cookie_ = 0;
+            else if (error != NULL) {
+                Log::Info("Could not release screensaver inhibition: %s", error->message);
+                g_error_free(error);
+            }
         }
+        /* Reset so subsequent calls can re-inhibit if needed */
+        screensaver_inhibit_handle_.clear();
     }
 }
 #elif defined(WIN32)

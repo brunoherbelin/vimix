@@ -222,7 +222,6 @@ struct TransitionConfig
 struct RenderConfig
 {
     bool disabled;
-    int vsync;
     int multisampling;
     int ratio;
     int res;
@@ -231,10 +230,10 @@ struct RenderConfig
     bool gpu_decoding;
     bool gpu_decoding_available;
     bool gst_glmemory_context;
+    bool x11;   // Linux: force X11 (XWayland) instead of native Wayland
 
     RenderConfig() {
         disabled = false;
-        vsync = 1;
         multisampling = 3;
         ratio = 3;
         res = 1;
@@ -244,6 +243,7 @@ struct RenderConfig
         gpu_decoding = true;
         gpu_decoding_available = false;
         gst_glmemory_context = true;
+        x11 = false;
     }
 };
 

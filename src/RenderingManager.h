@@ -31,6 +31,9 @@ public:
     // true if GLFW runs on a native wayland display (linux)
     inline bool wayland() const { return wayland_; }
 
+    // frame rate of the rendering loop (see limitFramerate)
+    static constexpr int framerate = 60;
+
     struct Monitor
     {
         GLFWmonitor* monitor;
@@ -92,8 +95,8 @@ public:
     GLFWmonitor *monitorNamed(const std::string &name);
     // get which monitor contains this point, main monitor if not found
     GLFWmonitor *monitorAt(int x, int y);
-    // deactivate output on this monitor
-    void deactivateOutput(const GLFWmonitor* monitor);
+    // deactivate the output displayed in this window
+    void deactivateOutput(const GLFWwindow* window);
     // bring focus to all active output windows
     void focusOutputs();
     // get resolution of all monitors combined
