@@ -1652,6 +1652,11 @@ void UserInterface::saveLayout(int slot)
     // store configuration of widgets and main window
     layout.widget = Settings::application.widget;
     layout.mainwindow = Settings::application.mainwindow;
+    // position is updated only when window is moved: read actual position
+    // (not on wayland, where the window position is not available to clients)
+    if (!layout.mainwindow.fullscreen && !Rendering::manager().wayland()
+        && Rendering::manager().mainWindow().window())
+        glfwGetWindowPos(Rendering::manager().mainWindow().window(), &layout.mainwindow.x, &layout.mainwindow.y);
 
     // store geometry of ImGui windows (those known in this session or in imgui.ini)
     layout.windows.clear();

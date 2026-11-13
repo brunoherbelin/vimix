@@ -28,6 +28,9 @@ class Rendering
 
 public:
 
+    // true if GLFW runs on a native wayland display (linux)
+    inline bool wayland() const { return wayland_; }
+
     struct Monitor
     {
         GLFWmonitor* monitor;

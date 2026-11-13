@@ -91,28 +91,28 @@ void MainWindow::setFullscreen_(GLFWmonitor *mo)
     if (!window_)
         return;
 
-    // disable fullscreen 
+    // disable fullscreen
     if (mo == nullptr) {
         // store fullscreen windowed mode
         Settings::application.mainwindow.fullscreen = false;
 
         // set to window mode
         // NB: this allows restoring window position and size
-        glfwSetWindowMonitor(window_, NULL, 
-            Settings::application.mainwindow.x, 
+        glfwSetWindowMonitor(window_, NULL,
+            Settings::application.mainwindow.x,
             Settings::application.mainwindow.y,
             Settings::application.mainwindow.w,
-            Settings::application.mainwindow.h, 
-        0 );  
-                                                
+            Settings::application.mainwindow.h,
+        0 );
+
     }
-    // set fullscreen 
+    // set fullscreen
     else {
         // store fullscreen mode
         Settings::application.mainwindow.fullscreen = true;
         Settings::application.mainwindow.monitor = glfwGetMonitorName(mo);
 
-        // set to fullscreen 
+        // set to fullscreen
         const GLFWvidmode * mode = glfwGetVideoMode(mo);
         glfwSetWindowMonitor( window_, mo, 0, 0, mode->width, mode->height, mode->refreshRate);
     }
@@ -323,7 +323,7 @@ bool MainWindow::init()
     glfwGetFramebufferSize(window_, &(window_attributes_.viewport.x), &(window_attributes_.viewport.y));
     // DPI scaling (retina)
     dpi_scale_ = float(window_attributes_.viewport.y) / float(winset.h);
-    
+
     // clear to grey
     window_attributes_.clear_color = glm::vec4(COLOR_BGROUND, 1.f);
 
@@ -333,7 +333,7 @@ bool MainWindow::init()
 
     // keyboard callback
     glfwSetKeyCallback( window_, Control::keyboardCalback);
-    
+
     // window move and close callbacks
     glfwSetWindowCloseCallback( window_, WindowCloseCallback );
     glfwSetWindowSizeCallback( window_, WindowResizeCallback );
@@ -402,14 +402,7 @@ void MainWindow::WindowResizeCallback( GLFWwindow *w, int width, int height)
     if (!Settings::application.mainwindow.fullscreen) {
         Settings::application.mainwindow.w = width;
         Settings::application.mainwindow.h = height;
-
-        // hack to refresh decorations after return from fullscreen
-        glfwSetWindowAttrib( w, GLFW_DECORATED, GLFW_TRUE );
     }
-    else {
-        glfwSetWindowAttrib( w, GLFW_DECORATED, GLFW_FALSE );
-    }
-
 
     // UI manager tries to keep windows in the workspace
     WorkspaceWindow::notifyWorkspaceSizeChanged(Rendering::manager().mainWindow().previous_size.x, Rendering::manager().mainWindow().previous_size.y, width, height);

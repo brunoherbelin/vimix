@@ -82,7 +82,7 @@ struct WindowConfig
     bool fullscreen;
     std::string monitor;
 
-    WindowConfig() : name(APP_TITLE), w(1600), h(900),
+    WindowConfig() : name(APP_TITLE), x(0), y(0), w(1600), h(900),
         fullscreen(false), monitor("")
     { }
 
