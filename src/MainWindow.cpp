@@ -44,7 +44,7 @@
 #include "MainWindow.h"
 
 
-MainWindow::MainWindow() : window_(NULL), dpi_scale_(1.f), request_change_fullscreen_(false), request_change_size_(0)
+MainWindow::MainWindow() : window_(NULL), dpi_scale_(1.f), request_change_fullscreen_(false), request_change_size_(0), request_change_geometry_(false)
 {
 
 }
@@ -186,6 +186,31 @@ void MainWindow::changeSize_()
 
         // done request
         request_change_size_ = glm::ivec2(0);
+    }
+}
+
+void MainWindow::changeGeometry_()
+{
+    // change upon request
+    if (request_change_geometry_) {
+
+        // done request
+        request_change_geometry_ = false;
+
+        if (Settings::application.mainwindow.fullscreen) {
+            // fullscreen on the monitor (primary monitor if not found)
+            setFullscreen_( Rendering::manager().monitorNamed(Settings::application.mainwindow.monitor) );
+        }
+        else {
+            // exit maximized mode; keep the requested geometry that
+            // could be changed by window callbacks
+            Settings::WindowConfig requested = Settings::application.mainwindow;
+            if (!isFullscreen())
+                glfwRestoreWindow(window_);
+            Settings::application.mainwindow.setGeometry(requested);
+            // set to window mode with position and size
+            setFullscreen_(nullptr);
+        }
     }
 }
 

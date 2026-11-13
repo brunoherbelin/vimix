@@ -34,6 +34,8 @@ protected:
     void setFullscreen_(GLFWmonitor *mo);
     glm::ivec2 request_change_size_;
     void changeSize_ ();
+    bool request_change_geometry_;
+    void changeGeometry_ ();
 
 public:
     MainWindow();
@@ -57,6 +59,9 @@ public:
 
     // set size of rendering area in pixels (exits fullscreen and maximized)
     inline void setSize(int w, int h) { request_change_size_ = glm::ivec2(w, h); }
+
+    // apply position, size and fullscreen mode of Settings::application.mainwindow (deferred)
+    inline void requestGeometry() { request_change_geometry_ = true; }
 
     // set title (deferred to avoid context issues)
     inline void setTitle(const std::string t) { main_new_title_ = t; }

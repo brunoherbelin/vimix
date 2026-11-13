@@ -41,6 +41,7 @@ struct WidgetsConfig
     bool source_toolbar;
     int  source_toolbar_border;
     int  source_toolbar_mode;
+    bool pannel_always_visible;
 
     WidgetsConfig() {
         stats = false;
@@ -69,6 +70,7 @@ struct WidgetsConfig
         source_toolbar = false;
         source_toolbar_mode = 0;
         source_toolbar_border = -1;
+        pannel_always_visible = false;
     }
 };
 
@@ -84,6 +86,34 @@ struct WindowConfig
         fullscreen(false), monitor("")
     { }
 
+    // copy position, size and fullscreen mode (not the name)
+    void setGeometry(const WindowConfig &c) {
+        x = c.x; y = c.y; w = c.w; h = c.h;
+        fullscreen = c.fullscreen;
+        monitor = c.monitor;
+    }
+
+};
+
+#define MAX_WINDOWS_LAYOUT 4
+
+// A windows layout is a snapshot of the configuration of the user interface:
+// the configuration of widgets (which windows and toolbars are open, and their options),
+// the geometry of the main window and the geometry of the ImGui windows.
+// It is saved from, and restored to, the current configuration (application.widget,
+// application.mainwindow and ImGui windows)
+struct WindowsLayout
+{
+    // false if the layout was never saved by the user (empty slot)
+    bool saved;
+    // configuration of widgets
+    WidgetsConfig widget;
+    // position, size and fullscreen mode of the main window
+    WindowConfig mainwindow;
+    // geometry (x, y, width, height) of ImGui windows, indexed by window identifier
+    std::map<std::string, glm::vec4> windows;
+
+    WindowsLayout() : saved(false) { }
 };
 
 struct MonitorConfig
@@ -309,7 +339,6 @@ struct Application
     int  pannel_main_mode;
     int  pannel_playlist_mode;
     bool pannel_session[4];
-    bool pannel_always_visible;
     bool pannel_list_all_viewspaces;
     bool exclusive_header;
     bool pannel_settings[6];
@@ -329,6 +358,10 @@ struct Application
 
     // Settings of widgets
     WidgetsConfig widget;
+
+    // Windows layouts, and index of layout to load at start (-1 for previous state)
+    WindowsLayout layouts[MAX_WINDOWS_LAYOUT];
+    int layout_at_start;
 
     // Settings of Views
     int current_view;
@@ -441,6 +474,7 @@ struct Application
         export_options[1] = false;
         export_options[2] = false;
         current_view = 1;
+        layout_at_start = -1;
         brush = glm::vec3(0.5f, 0.1f, 0.f);
         brush_pressure_mode = 0;
         accept_audio = true;

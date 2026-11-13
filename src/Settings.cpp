@@ -67,6 +67,49 @@ XMLElement *save_knownhost(Settings::KnownHosts &h, const char *nodename, XMLDoc
 
 
 
+XMLElement *save_window(const Settings::WindowConfig &w, XMLDocument &xmlDoc)
+{
+    XMLElement *node = xmlDoc.NewElement( "MainWindow" );
+    node->SetAttribute("x", w.x);
+    node->SetAttribute("y", w.y);
+    node->SetAttribute("w", w.w);
+    node->SetAttribute("h", w.h);
+    node->SetAttribute("f", w.fullscreen);
+    node->SetAttribute("m", w.monitor.c_str());
+    return node;
+}
+
+XMLElement *save_widgets(const Settings::WidgetsConfig &w, XMLDocument &xmlDoc)
+{
+    XMLElement *node = xmlDoc.NewElement( "Widgets" );
+    node->SetAttribute("preview", w.preview);
+    node->SetAttribute("preview_view", w.preview_view);
+    node->SetAttribute("inputs", w.inputs);
+    node->SetAttribute("inputs_view", w.inputs_view);
+    node->SetAttribute("timer", w.timer);
+    node->SetAttribute("timer_view", w.timer_view);
+    node->SetAttribute("media_player", w.media_player);
+    node->SetAttribute("media_player_view", w.media_player_view);
+    node->SetAttribute("timeline_editmode", w.media_player_timeline_editmode);
+    node->SetAttribute("timeline_flag", w.media_player_timeline_flag);
+    node->SetAttribute("media_player_slider", w.media_player_slider);
+    node->SetAttribute("draft_slider", w.draft_slider);
+    node->SetAttribute("draft", w.draft);
+    node->SetAttribute("draft_corner", w.draft_corner);
+    node->SetAttribute("shader_editor", w.shader_editor);
+    node->SetAttribute("shader_editor_view", w.shader_editor_view);
+    node->SetAttribute("stats", w.stats);
+    node->SetAttribute("stats_mode", w.stats_mode);
+    node->SetAttribute("stats_corner", w.stats_corner);
+    node->SetAttribute("logs", w.logs);
+    node->SetAttribute("toolbox", w.toolbox);
+    node->SetAttribute("source_toolbar", w.source_toolbar);
+    node->SetAttribute("source_toolbar_mode", w.source_toolbar_mode);
+    node->SetAttribute("source_toolbar_border", w.source_toolbar_border);
+    node->SetAttribute("pannel_always_visible", w.pannel_always_visible);
+    return node;
+}
+
 void Settings::terminate(uint64_t runtime, const std::string &filename)
 {
     // RESET FACTORY DEFAULT BY REMOVING SETTINGS FILE
@@ -110,14 +153,8 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     pRoot->InsertEndChild(pComment);
 
     // main window
-    XMLElement *window = xmlDoc.NewElement( "MainWindow" );
+    XMLElement *window = save_window(application.mainwindow, xmlDoc);
     window->SetAttribute("name", application.mainwindow.name.c_str());
-    window->SetAttribute("x", application.mainwindow.x);
-    window->SetAttribute("y", application.mainwindow.y);
-    window->SetAttribute("w", application.mainwindow.w);
-    window->SetAttribute("h", application.mainwindow.h);
-    window->SetAttribute("f", application.mainwindow.fullscreen);
-    window->SetAttribute("m", application.mainwindow.monitor.c_str());
     pRoot->InsertEndChild(window);
 
     // save application.monitors MonitorConfig
@@ -168,7 +205,6 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("pannel_settings_3", application.pannel_settings[3]);
     applicationNode->SetAttribute("pannel_settings_4", application.pannel_settings[4]);
     applicationNode->SetAttribute("pannel_settings_5", application.pannel_settings[5]);
-    applicationNode->SetAttribute("pannel_always_visible", application.pannel_always_visible);
     applicationNode->SetAttribute("exclusive_header", application.exclusive_header);
     applicationNode->SetAttribute("pannel_list_all_viewspaces", application.pannel_list_all_viewspaces);
     applicationNode->SetAttribute("stream_protocol", application.stream_protocol);
@@ -195,32 +231,31 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     pRoot->InsertEndChild(applicationNode);
 
     // Widgets
-    XMLElement *widgetsNode = xmlDoc.NewElement( "Widgets" );
-    widgetsNode->SetAttribute("preview", application.widget.preview);
-    widgetsNode->SetAttribute("preview_view", application.widget.preview_view);
-    widgetsNode->SetAttribute("inputs", application.widget.inputs);
-    widgetsNode->SetAttribute("inputs_view", application.widget.inputs_view);
-    widgetsNode->SetAttribute("timer", application.widget.timer);
-    widgetsNode->SetAttribute("timer_view", application.widget.timer_view);
-    widgetsNode->SetAttribute("media_player", application.widget.media_player);
-    widgetsNode->SetAttribute("media_player_view", application.widget.media_player_view);
-    widgetsNode->SetAttribute("timeline_editmode", application.widget.media_player_timeline_editmode);
-    widgetsNode->SetAttribute("timeline_flag", application.widget.media_player_timeline_flag);
-    widgetsNode->SetAttribute("media_player_slider", application.widget.media_player_slider);
-    widgetsNode->SetAttribute("draft_slider", application.widget.draft_slider);
-    widgetsNode->SetAttribute("draft", application.widget.draft);
-    widgetsNode->SetAttribute("draft_corner", application.widget.draft_corner);
-    widgetsNode->SetAttribute("shader_editor", application.widget.shader_editor);
-    widgetsNode->SetAttribute("shader_editor_view", application.widget.shader_editor_view);
-    widgetsNode->SetAttribute("stats", application.widget.stats);
-    widgetsNode->SetAttribute("stats_mode", application.widget.stats_mode);
-    widgetsNode->SetAttribute("stats_corner", application.widget.stats_corner);
-    widgetsNode->SetAttribute("logs", application.widget.logs);
-    widgetsNode->SetAttribute("toolbox", application.widget.toolbox);
-    widgetsNode->SetAttribute("source_toolbar", application.widget.source_toolbar);
-    widgetsNode->SetAttribute("source_toolbar_mode", application.widget.source_toolbar_mode);
-    widgetsNode->SetAttribute("source_toolbar_border", application.widget.source_toolbar_border);
-    pRoot->InsertEndChild(widgetsNode);
+    pRoot->InsertEndChild( save_widgets(application.widget, xmlDoc) );
+
+    // Windows layouts (only those saved by the user)
+    XMLElement *layoutsNode = xmlDoc.NewElement( "Layouts" );
+    layoutsNode->SetAttribute("start", application.layout_at_start);
+    for (int i = 0; i < MAX_WINDOWS_LAYOUT; ++i) {
+        const Settings::WindowsLayout &layout = application.layouts[i];
+        if (!layout.saved)
+            continue;
+        XMLElement *layoutNode = xmlDoc.NewElement( "Layout" );
+        layoutNode->SetAttribute("index", i);
+        layoutNode->InsertEndChild( save_window(layout.mainwindow, xmlDoc) );
+        layoutNode->InsertEndChild( save_widgets(layout.widget, xmlDoc) );
+        for (auto it = layout.windows.cbegin(); it != layout.windows.cend(); ++it) {
+            XMLElement *windowNode = xmlDoc.NewElement( "Window" );
+            windowNode->SetAttribute("id", it->first.c_str());
+            windowNode->SetAttribute("x", it->second.x);
+            windowNode->SetAttribute("y", it->second.y);
+            windowNode->SetAttribute("w", it->second.z);
+            windowNode->SetAttribute("h", it->second.w);
+            layoutNode->InsertEndChild(windowNode);
+        }
+        layoutsNode->InsertEndChild(layoutNode);
+    }
+    pRoot->InsertEndChild(layoutsNode);
 
     // Render
     XMLElement *RenderNode = xmlDoc.NewElement( "Render" );
@@ -473,6 +508,89 @@ void load_knownhost(Settings::KnownHosts &h, const char *nodename, XMLElement *r
     }
 }
 
+void load_window(XMLElement *node, Settings::WindowConfig &w)
+{
+    if (node == nullptr)
+        return;
+    node->QueryIntAttribute("x", &w.x);
+    node->QueryIntAttribute("y", &w.y);
+    node->QueryIntAttribute("w", &w.w);
+    node->QueryIntAttribute("h", &w.h);
+    node->QueryBoolAttribute("f", &w.fullscreen);
+    const char *text = node->Attribute("m");
+    if (text)
+        w.monitor = std::string(text);
+}
+
+void load_widgets(XMLElement *node, Settings::WidgetsConfig &w)
+{
+    if (node == nullptr)
+        return;
+    node->QueryBoolAttribute("preview", &w.preview);
+    node->QueryIntAttribute("preview_view", &w.preview_view);
+    node->QueryBoolAttribute("timer", &w.timer);
+    node->QueryIntAttribute("timer_view", &w.timer_view);
+    node->QueryBoolAttribute("inputs", &w.inputs);
+    node->QueryIntAttribute("inputs_view", &w.inputs_view);
+    node->QueryBoolAttribute("media_player", &w.media_player);
+    node->QueryIntAttribute("media_player_view", &w.media_player_view);
+    node->QueryIntAttribute("timeline_editmode", &w.media_player_timeline_editmode);
+    node->QueryIntAttribute("timeline_flag", &w.media_player_timeline_flag);
+    node->QueryFloatAttribute("media_player_slider", &w.media_player_slider);
+    node->QueryFloatAttribute("draft_slider", &w.draft_slider);
+    node->QueryBoolAttribute("draft", &w.draft);
+    node->QueryIntAttribute("draft_corner", &w.draft_corner);
+    node->QueryBoolAttribute("shader_editor", &w.shader_editor);
+    node->QueryIntAttribute("shader_editor_view", &w.shader_editor_view);
+    node->QueryBoolAttribute("stats", &w.stats);
+    node->QueryIntAttribute("stats_mode", &w.stats_mode);
+    node->QueryIntAttribute("stats_corner", &w.stats_corner);
+    node->QueryBoolAttribute("logs", &w.logs);
+    node->QueryBoolAttribute("toolbox", &w.toolbox);
+    node->QueryBoolAttribute("source_toolbar", &w.source_toolbar);
+    node->QueryIntAttribute("source_toolbar_mode", &w.source_toolbar_mode);
+    node->QueryIntAttribute("source_toolbar_border", &w.source_toolbar_border);
+    node->QueryBoolAttribute("pannel_always_visible", &w.pannel_always_visible);
+}
+
+void load_layouts(XMLElement *node)
+{
+    if (node == nullptr)
+        return;
+
+    XMLElement *layoutNode = node->FirstChildElement("Layout");
+    for( ; layoutNode ; layoutNode = layoutNode->NextSiblingElement("Layout")) {
+        int i = -1;
+        layoutNode->QueryIntAttribute("index", &i);
+        if (i < 0 || i >= MAX_WINDOWS_LAYOUT)
+            continue;
+        Settings::WindowsLayout layout;
+        load_window(layoutNode->FirstChildElement("MainWindow"), layout.mainwindow);
+        load_widgets(layoutNode->FirstChildElement("Widgets"), layout.widget);
+        XMLElement *windowNode = layoutNode->FirstChildElement("Window");
+        for( ; windowNode ; windowNode = windowNode->NextSiblingElement("Window")) {
+            const char *id = windowNode->Attribute("id");
+            if (id == nullptr)
+                continue;
+            glm::vec4 g(0.f);
+            windowNode->QueryFloatAttribute("x", &g.x);
+            windowNode->QueryFloatAttribute("y", &g.y);
+            windowNode->QueryFloatAttribute("w", &g.z);
+            windowNode->QueryFloatAttribute("h", &g.w);
+            layout.windows[std::string(id)] = g;
+        }
+        layout.saved = true;
+        Settings::application.layouts[i] = layout;
+    }
+
+    // layout at start is valid only if it was saved
+    node->QueryIntAttribute("start", &Settings::application.layout_at_start);
+    if (Settings::application.layout_at_start < 0
+        || Settings::application.layout_at_start >= MAX_WINDOWS_LAYOUT
+        || !Settings::application.layouts[Settings::application.layout_at_start].saved )
+        Settings::application.layout_at_start = -1;
+}
+
 void Settings::init(const std::string &filename)
 {
     // impose C locale for all app
@@ -530,7 +648,8 @@ void Settings::init(const std::string &filename)
             applicationNode->QueryBoolAttribute("action_history_follow_view", &application.action_history_follow_view);
             applicationNode->QueryBoolAttribute("show_tooptips", &application.show_tooptips);
             applicationNode->QueryBoolAttribute("accept_connections", &application.accept_connections);
-            applicationNode->QueryBoolAttribute("pannel_always_visible", &application.pannel_always_visible);
+            // (compatibility with settings before pannel_always_visible moved to Widgets)
+            applicationNode->QueryBoolAttribute("pannel_always_visible", &application.widget.pannel_always_visible);
             applicationNode->QueryBoolAttribute("exclusive_header", &application.exclusive_header);
             applicationNode->QueryBoolAttribute("pannel_list_all_viewspaces", &application.pannel_list_all_viewspaces);
             applicationNode->QueryIntAttribute("pannel_main_mode", &application.pannel_main_mode);
@@ -580,33 +699,7 @@ void Settings::init(const std::string &filename)
         }
 
         // Widgets
-        XMLElement * widgetsNode = pRoot->FirstChildElement("Widgets");
-        if (widgetsNode != nullptr) {
-            widgetsNode->QueryBoolAttribute("preview", &application.widget.preview);
-            widgetsNode->QueryIntAttribute("preview_view", &application.widget.preview_view);
-            widgetsNode->QueryBoolAttribute("timer", &application.widget.timer);
-            widgetsNode->QueryIntAttribute("timer_view", &application.widget.timer_view);
-            widgetsNode->QueryBoolAttribute("inputs", &application.widget.inputs);
-            widgetsNode->QueryIntAttribute("inputs_view", &application.widget.inputs_view);
-            widgetsNode->QueryBoolAttribute("media_player", &application.widget.media_player);
-            widgetsNode->QueryIntAttribute("media_player_view", &application.widget.media_player_view);
-            widgetsNode->QueryIntAttribute("timeline_editmode", &application.widget.media_player_timeline_editmode);
-            widgetsNode->QueryIntAttribute("timeline_flag", &application.widget.media_player_timeline_flag);
-            widgetsNode->QueryFloatAttribute("media_player_slider", &application.widget.media_player_slider);
-            widgetsNode->QueryFloatAttribute("draft_slider", &application.widget.draft_slider);
-            widgetsNode->QueryBoolAttribute("draft", &application.widget.draft);
-            widgetsNode->QueryIntAttribute("draft_corner", &application.widget.draft_corner);
-            widgetsNode->QueryBoolAttribute("shader_editor", &application.widget.shader_editor);
-            widgetsNode->QueryIntAttribute("shader_editor_view", &application.widget.shader_editor_view);
-            widgetsNode->QueryBoolAttribute("stats", &application.widget.stats);
-            widgetsNode->QueryIntAttribute("stats_mode", &application.widget.stats_mode);
-            widgetsNode->QueryIntAttribute("stats_corner", &application.widget.stats_corner);
-            widgetsNode->QueryBoolAttribute("logs", &application.widget.logs);
-            widgetsNode->QueryBoolAttribute("toolbox", &application.widget.toolbox);
-            widgetsNode->QueryBoolAttribute("source_toolbar", &application.widget.source_toolbar);
-            widgetsNode->QueryIntAttribute("source_toolbar_mode", &application.widget.source_toolbar_mode);
-            widgetsNode->QueryIntAttribute("source_toolbar_border", &application.widget.source_toolbar_border);
-        }
+        load_widgets(pRoot->FirstChildElement("Widgets"), application.widget);
 
         // Render
         XMLElement * rendernode = pRoot->FirstChildElement("Render");
@@ -687,17 +780,7 @@ void Settings::init(const std::string &filename)
         }
 
         // Main Window
-        XMLElement * windowNode = pRoot->FirstChildElement("MainWindow");
-        if (windowNode) {
-            windowNode->QueryIntAttribute("x", &application.mainwindow.x);
-            windowNode->QueryIntAttribute("y", &application.mainwindow.y);
-            windowNode->QueryIntAttribute("w", &application.mainwindow.w);
-            windowNode->QueryIntAttribute("h", &application.mainwindow.h);
-            windowNode->QueryBoolAttribute("f", &application.mainwindow.fullscreen);
-            const char *text = windowNode->Attribute("m");
-            if (text)
-                application.mainwindow.monitor = std::string(text);
-        } 
+        load_window(pRoot->FirstChildElement("MainWindow"), application.mainwindow);
 
         // read application.monitors MonitorConfig
         XMLElement *monitorsNode = pRoot->FirstChildElement("Monitors");
@@ -881,6 +964,16 @@ void Settings::init(const std::string &filename)
             // recent SRT hosts
             load_knownhost(application.recentSRT, "SRT", pElement);
         }
+    }
+
+    // Windows layouts (kept across versions)
+    load_layouts(pRoot->FirstChildElement("Layouts"));
+
+    // start with a windows layout instead of previous state
+    if (application.layout_at_start >= 0) {
+        const WindowsLayout &layout = application.layouts[application.layout_at_start];
+        application.widget = layout.widget;
+        application.mainwindow.setGeometry(layout.mainwindow);
     }
 
     // bloc Controller

@@ -193,7 +193,7 @@ void Navigator::togglePannelMenu()
     selected_button[root] = !selected_button[root];
     applyButtonSelection(root);
 
-    if (Settings::application.pannel_always_visible)
+    if (Settings::application.widget.pannel_always_visible)
         showPannelSource(root);
 }
 
@@ -203,7 +203,7 @@ void Navigator::togglePannelNew()
     applyButtonSelection(NAV_NEW);
     new_source_panel_.mediaModeChanged();
 
-    if (Settings::application.pannel_always_visible)
+    if (Settings::application.widget.pannel_always_visible)
         showPannelSource( NAV_NEW );
 
 }
@@ -211,10 +211,10 @@ void Navigator::togglePannelNew()
 void Navigator::togglePannelAutoHide()
 {
     // toggle variable
-    Settings::application.pannel_always_visible = !Settings::application.pannel_always_visible;
+    Settings::application.widget.pannel_always_visible = !Settings::application.widget.pannel_always_visible;
 
     // initiate change
-    if (Settings::application.pannel_always_visible) {
+    if (Settings::application.widget.pannel_always_visible) {
         int current = Mixer::manager().indexCurrentSource();
         if ( current < 0 ) {
             if (!selected_button[NAV_MENU] && !selected_button[NAV_BUNDLE] && !selected_button[NAV_TRANS] && !selected_button[NAV_NEW] )
@@ -231,14 +231,14 @@ void Navigator::togglePannelAutoHide()
 
 bool Navigator::pannelVisible()
 {
-    return pannel_visible_ || Settings::application.pannel_always_visible;
+    return pannel_visible_ || Settings::application.widget.pannel_always_visible;
 }
 
 void Navigator::discardPannel()
 {
     // in the 'always visible mode',
     // discard the panel means cancel current action
-    if ( Settings::application.pannel_always_visible ) {
+    if ( Settings::application.widget.pannel_always_visible ) {
 
         // if panel is the 'Insert' new source
         if ( selected_button[NAV_NEW] ) {
@@ -607,10 +607,10 @@ void Navigator::Render()
 
         // icon for toggle always visible / auto hide pannel
         ImGui::SetCursorPos(pos + ImVec2(width_ * 0.5f, style.WindowPadding.y));
-        if ( ImGuiToolkit::IconButton( Settings::application.pannel_always_visible ? ICON_FA_TOGGLE_ON : ICON_FA_TOGGLE_OFF ) )
+        if ( ImGuiToolkit::IconButton( Settings::application.widget.pannel_always_visible ? ICON_FA_TOGGLE_ON : ICON_FA_TOGGLE_OFF ) )
             togglePannelAutoHide();
         if (ImGui::IsItemHovered())
-            tooltip = { Settings::application.pannel_always_visible ? TOOLTIP_PANEL_VISIBLE : TOOLTIP_PANEL_AUTO, SHORTCUT_PANEL_MODE, nullptr };
+            tooltip = { Settings::application.widget.pannel_always_visible ? TOOLTIP_PANEL_VISIBLE : TOOLTIP_PANEL_AUTO, SHORTCUT_PANEL_MODE, nullptr };
 
         ImGui::PopFont();
 
@@ -664,10 +664,10 @@ void Navigator::Render()
     ImGui::PopFont();
 
     // Rendering of the side pannel
-    if ( Settings::application.pannel_always_visible || pannel_visible_ ){
+    if ( Settings::application.widget.pannel_always_visible || pannel_visible_ ){
 
         // slight differences if temporari vixible or always visible panel
-        if (Settings::application.pannel_always_visible)
+        if (Settings::application.widget.pannel_always_visible)
             pannel_alpha_ = 0.95f;
         else {
             pannel_alpha_ = 0.85f;

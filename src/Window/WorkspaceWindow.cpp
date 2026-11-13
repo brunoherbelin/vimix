@@ -29,6 +29,8 @@
 #pragma clang diagnostic pop
 #endif
 
+#include <cstring>
+
 #include "defines.h"
 #include "WorkspaceWindow.h"
 
@@ -222,6 +224,74 @@ void WorkspaceWindow::notifyWorkspaceSizeChanged(int prev_width, int prev_height
             }
         }
     }
+}
+
+bool WorkspaceWindow::getGeometry(const char *name, glm::vec4 &geometry)
+{
+    ImVec2 pos, size;
+
+    // instanciated ImGui window
+    if (ImGuiWindow *w = ImGui::FindWindowByName(name)) {
+        pos = w->Pos;
+        size = w->SizeFull;
+        // WorkspaceWindow can be hidden or collapsed: use geometry of user
+        for(auto it = windows_.cbegin(); it != windows_.cend(); ++it) {
+            ImGuiProperties *impl = (*it)->impl_;
+            if ( impl && impl->ptr == w ) {
+                if (impl->hidden || impl->animation)
+                    pos = impl->user_pos;
+                if (impl->collapsed && impl->user_size.y > 0.f)
+                    size.y = impl->user_size.y;
+                break;
+            }
+        }
+    }
+    // ImGui window not instanciated in this session, but settings loaded from ini
+    else if (ImGuiWindowSettings *s = ImGui::FindWindowSettings(ImHashStr(name))) {
+        pos = ImVec2(s->Pos.x, s->Pos.y);
+        size = ImVec2(s->Size.x, s->Size.y);
+    }
+    // unknown window
+    else
+        return false;
+
+    geometry = glm::vec4(pos.x, pos.y, size.x, size.y);
+    return true;
+}
+
+void WorkspaceWindow::setGeometry(const char *name, const glm::vec4 &geometry)
+{
+    const ImVec2 pos(geometry.x, geometry.y);
+    const ImVec2 size(geometry.z, geometry.w);
+    const bool valid_size = size.x > 0.f && size.y > 0.f;
+
+    // instanciated ImGui window : apply immediately
+    if (ImGuiWindow *w = ImGui::FindWindowByName(name)) {
+        ImGui::SetWindowPos(w, pos);
+        if (valid_size)
+            ImGui::SetWindowSize(w, size);
+        // WorkspaceWindow : reset states to new user geometry
+        for(auto it = windows_.cbegin(); it != windows_.cend(); ++it) {
+            ImGuiProperties *impl = (*it)->impl_;
+            if ( impl && impl->ptr == w ) {
+                impl->animation = false;
+                impl->resizing_workspace = false;
+                impl->hidden = false;
+                impl->collapsed = false;
+                impl->user_pos = pos;
+                impl->user_size = w->SizeFull;
+                break;
+            }
+        }
+    }
+    // ImGui window not instanciated : set settings used when created
+    else if (ImGuiWindowSettings *s = ImGui::FindOrCreateWindowSettings(name)) {
+        s->Pos = ImVec2ih((short)pos.x, (short)pos.y);
+        if (valid_size)
+            s->Size = ImVec2ih((short)size.x, (short)size.y);
+    }
+
+    ImGui::MarkIniSettingsDirty();
 }
 
 void WorkspaceWindow::Update()

@@ -99,6 +99,10 @@ public:
     // open a session (.mix) or a playlist (.lix) file
     void openFile(const std::string &path);
 
+    // windows layouts: save current layout to slot, or load layout from slot
+    void saveLayout(int slot);
+    void loadLayout(int slot);
+
     // Favorites and playlists (used by the Navigator panels)
     Playlist favorites;
     std::string playlists_path;
@@ -124,6 +128,12 @@ protected:
     std::string pending_delete_file;
     typedef enum { PREVIEW_NONE = 0, PREVIEW_OUTPUT, PREVIEW_SOURCE } PreviewMode;
     PreviewMode show_preview;
+
+    // windows layout to apply once main window geometry is stable
+    int layout_pending_;
+    int layout_pending_frames_;
+    glm::vec2 layout_display_size_;
+    void applyPendingLayout();
 
     // checkerboard background texture
     Stream *checker_background_;

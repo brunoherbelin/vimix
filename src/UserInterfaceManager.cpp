@@ -111,6 +111,9 @@ UserInterface::UserInterface()
     target_view_navigator = 1;
     screenshot_step = 0;
     pending_save_on_exit = false;
+    layout_pending_ = -1;
+    layout_pending_frames_ = 0;
+    layout_display_size_ = glm::vec2(0.f);
     show_preview = UserInterface::PREVIEW_NONE;
 
     sessionopendialog = nullptr;
@@ -235,6 +238,15 @@ bool UserInterface::Init(int font_size)
     }
     checker_background_->close();
 
+    // start with a windows layout: widgets and main window size were restored by Settings,
+    // geometry of ImGui windows is applied once main window is ready
+    if (Settings::application.layout_at_start >= 0) {
+        layout_pending_ = Settings::application.layout_at_start;
+        // main window is created without position: apply it if not fullscreen
+        if (!Settings::application.mainwindow.fullscreen)
+            Rendering::manager().mainWindow().requestGeometry();
+    }
+
     return true;
 }
 
@@ -252,7 +264,7 @@ uint UserInterface::checkerboard() const
 void UserInterface::setView(View::Mode mode)
 {
     Mixer::manager().setView(mode);
-    if ( !Settings::application.pannel_always_visible )
+    if ( !Settings::application.widget.pannel_always_visible )
         navigator.discardPannel();
 }
 
@@ -1133,6 +1145,9 @@ void UserInterface::Render()
     if (Draft::manager().busy())
         RenderDraftIndicator();
 
+    // apply windows layout geometry if requested
+    applyPendingLayout();
+
     // navigator bar first
     navigator.Render();
 
@@ -1554,6 +1569,44 @@ void UserInterface::showMenuConfig()
         navigator.discardPannel();
     }
 
+    //  WINDOWS LAYOUT
+    ImGui::Separator();
+    ImGui::TextDisabled("Windows layout");
+    // SAVE current layout in a slot
+    if (ImGui::BeginMenu(ICON_FA_DOWNLOAD "   Save layout")) {
+        for (int i = 0; i < MAX_WINDOWS_LAYOUT; ++i) {
+            const std::string label = "Layout " + std::to_string(i + 1);
+            if (ImGui::MenuItem(label.c_str())) {
+                saveLayout(i);
+                navigator.discardPannel();
+            }
+        }
+        ImGui::EndMenu();
+    }
+    // LOAD a saved layout (empty slots are disabled)
+    if (ImGui::BeginMenu(ICON_FA_UPLOAD "   Load layout")) {
+        for (int i = 0; i < MAX_WINDOWS_LAYOUT; ++i) {
+            const std::string label = "Layout " + std::to_string(i + 1);
+            if (ImGui::MenuItem(label.c_str(), nullptr, false, Settings::application.layouts[i].saved)) {
+                loadLayout(i);
+                navigator.discardPannel();
+            }
+        }
+        ImGui::EndMenu();
+    }
+    // Layout to load at start
+    if (ImGui::BeginMenu(ICON_FA_SIGN_IN_ALT "   Layout at start")) {
+        if (ImGui::MenuItem("Previous state", nullptr, Settings::application.layout_at_start < 0))
+            Settings::application.layout_at_start = -1;
+        for (int i = 0; i < MAX_WINDOWS_LAYOUT; ++i) {
+            const std::string label = "Layout " + std::to_string(i + 1);
+            if (ImGui::MenuItem(label.c_str(), nullptr, Settings::application.layout_at_start == i,
+                                Settings::application.layouts[i].saved))
+                Settings::application.layout_at_start = i;
+        }
+        ImGui::EndMenu();
+    }
+
     //  SETTINGS
     ImGui::Separator();
     ImGui::TextDisabled("Vimix settings");
@@ -1572,6 +1625,107 @@ void UserInterface::showMenuConfig()
         resetconfirmdialog->open();
         navigator.discardPannel();
     }
+}
+
+// ImGui windows saved in a windows layout:
+// identifier in settings (stable), and name of ImGui window
+static const std::vector< std::pair<std::string, const char*> > layout_windows = {
+    { "preview",        "OutputPreview" },          // OutputPreviewWindow
+    { "media_player",   "SourceController" },       // SourceControlWindow
+    { "timer",          "Timer" },                  // TimerMetronomeWindow
+    { "inputs",         "InputMappingInterface" },  // InputMappingWindow
+    { "shader_editor",  "Shader" },                 // ShaderEditWindow
+    { "logs",           "###LOGVIMIX" },            // Log window
+    { "stats",          MENU_METRICS },             // Metrics
+    { "toolbox",        IMGUI_TITLE_TOOLBOX },      // Toolbox
+    { "source_toolbar", "SourceToolbar" },          // Source toolbar (free placement)
+    { "draft",          "##Draft" }                 // Draft toolbar (free placement)
+};
+
+void UserInterface::saveLayout(int slot)
+{
+    if (slot < 0 || slot >= MAX_WINDOWS_LAYOUT)
+        return;
+
+    Settings::WindowsLayout &layout = Settings::application.layouts[slot];
+
+    // store configuration of widgets and main window
+    layout.widget = Settings::application.widget;
+    layout.mainwindow = Settings::application.mainwindow;
+
+    // store geometry of ImGui windows (those known in this session or in imgui.ini)
+    layout.windows.clear();
+    for (auto it = layout_windows.cbegin(); it != layout_windows.cend(); ++it) {
+        glm::vec4 g;
+        if (WorkspaceWindow::getGeometry(it->second, g))
+            layout.windows[it->first] = g;
+    }
+
+    layout.saved = true;
+    Log::Notify("Windows layout %d saved.", slot + 1);
+}
+
+void UserInterface::loadLayout(int slot)
+{
+    if (slot < 0 || slot >= MAX_WINDOWS_LAYOUT || !Settings::application.layouts[slot].saved)
+        return;
+
+    const Settings::WindowsLayout &layout = Settings::application.layouts[slot];
+
+    // restore configuration of widgets
+    const bool pannel_always_visible = Settings::application.widget.pannel_always_visible;
+    Settings::application.widget = layout.widget;
+
+    // change of navigator panel mode is done by the navigator
+    if (Settings::application.widget.pannel_always_visible != pannel_always_visible) {
+        Settings::application.widget.pannel_always_visible = pannel_always_visible;
+        navigator.togglePannelAutoHide();
+    }
+
+    // restore main window geometry (deferred to next frame)
+    Settings::application.mainwindow.setGeometry(layout.mainwindow);
+    Rendering::manager().mainWindow().requestGeometry();
+
+    // geometry of ImGui windows is applied after main window geometry change
+    layout_pending_ = slot;
+    layout_pending_frames_ = 0;
+}
+
+void UserInterface::applyPendingLayout()
+{
+    if (layout_pending_ < 0 || layout_pending_ >= MAX_WINDOWS_LAYOUT) {
+        layout_pending_ = -1;
+        return;
+    }
+
+    const Settings::WindowsLayout &layout = Settings::application.layouts[layout_pending_];
+
+    // wait for main window size to be stable (changing size moves windows)
+    const ImVec2 display = ImGui::GetIO().DisplaySize;
+    if (display.x != layout_display_size_.x || display.y != layout_display_size_.y) {
+        layout_display_size_ = glm::vec2(display.x, display.y);
+        layout_pending_frames_ = 0;
+        return;
+    }
+    ++layout_pending_frames_;
+    // reached the size of layout window (or long enough)
+    const bool reached = !layout.mainwindow.fullscreen
+                         && (int) display.x == layout.mainwindow.w
+                         && (int) display.y == layout.mainwindow.h;
+    if ( (reached && layout_pending_frames_ < 2) || (!reached && layout_pending_frames_ < 30) )
+        return;
+
+    // restore workspace if cleared
+    WorkspaceWindow::restoreWorkspace(true);
+
+    // apply geometry of ImGui windows
+    for (auto it = layout_windows.cbegin(); it != layout_windows.cend(); ++it) {
+        auto g = layout.windows.find(it->first);
+        if (g != layout.windows.end())
+            WorkspaceWindow::setGeometry(it->second, g->second);
+    }
+
+    layout_pending_ = -1;
 }
 
 void UserInterface::StartScreenshot()
