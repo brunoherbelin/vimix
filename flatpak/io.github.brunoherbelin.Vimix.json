@@ -27,6 +27,7 @@
         "--filesystem=xdg-run/pipewire-0",
         "--persist=.config/vimix",
         "--talk-name=org.gtk.vfs.*",
+        "--own-name=org.mpris.MediaPlayer2.vimix",
         "--env=FREI0R_PATH=/app/lib/frei0r-1"
     ],
     "cleanup": [

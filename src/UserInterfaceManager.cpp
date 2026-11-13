@@ -86,6 +86,12 @@
 #include "Canvas.h"
 #include "Annotations.h"
 #include "Stream.h"
+#include "Source/MediaSource.h"
+#include "Player/MediaPlayer.h"
+#include "Player/SplitMediaPlayer.h"
+#ifdef LINUX
+#include "Toolkit/FreedesktopToolkit.h"
+#endif
 
 #include "UserInterfaceManager.h"
 
@@ -247,6 +253,13 @@ bool UserInterface::Init(int font_size)
             Rendering::manager().mainWindow().requestGeometry();
     }
 
+#ifdef LINUX
+    // remote control by the desktop (media keys, media controls); the desktop
+    // entry is the name of the desktop file, renamed after the application id by flatpak
+    const char *flatpak_id = getenv("FLATPAK_ID");
+    FreedesktopToolkit::mprisStart(APP_NAME, flatpak_id ? flatpak_id : APP_NAME);
+#endif
+
     return true;
 }
 
@@ -290,6 +303,101 @@ void UserInterface::togglePlay()
             (*source)->play( n_play==0 );
         }
     }
+}
+
+void UserInterface::handleMediaKeys()
+{
+#ifdef LINUX
+    // any source playing
+    bool playing = false;
+    for (auto source = Mixer::manager().session()->begin();
+         source != Mixer::manager().session()->end() && !playing; ++source)
+        playing = !(*source)->failed() && (*source)->active() && (*source)->playing();
+
+    // media player of the current source, if it has a timeline
+    MediaSource *ms = dynamic_cast<MediaSource *>(Mixer::manager().currentSource());
+    MediaPlayer *mp = ms ? ms->mediaplayer() : nullptr;
+    if (mp && (mp->isImage() || !GST_CLOCK_TIME_IS_VALID(mp->timeline()->duration())
+               || mp->timeline()->duration() == 0))
+        mp = nullptr;
+
+    // execute commands of the desktop, as with keyboard shortcuts
+    FreedesktopToolkit::MprisCommand command;
+    while (FreedesktopToolkit::mprisCommand(command)) {
+        switch (command.action) {
+        case FreedesktopToolkit::MPRIS_PLAY_PAUSE:
+            togglePlay();
+            break;
+        case FreedesktopToolkit::MPRIS_PLAY:
+            if (!playing)
+                togglePlay();
+            break;
+        case FreedesktopToolkit::MPRIS_PAUSE:
+            if (playing)
+                togglePlay();
+            break;
+        case FreedesktopToolkit::MPRIS_NEXT:
+        case FreedesktopToolkit::MPRIS_PREVIOUS:
+            // go to next / previous flag of the current media source if it has flags,
+            // or to next / previous segment of a split media source (as in Player window)
+            if (mp) {
+                const bool next = command.action == FreedesktopToolkit::MPRIS_NEXT;
+                Timeline *timeline = mp->timeline();
+                if (timeline->numFlags() > 0) {
+                    const GstClockTime t = mp->position();
+                    const TimeInterval flag = next ? timeline->getNextFlag(t) : timeline->getPreviousFlag(t);
+                    const bool valid = flag.is_valid()
+                        && !(mp->currentFlag().is_valid() && timeline->numFlags() == 1)
+                        && (mp->loop() == MediaPlayer::LOOP_REWIND || (next ? flag.begin > t : flag.end < t));
+                    if (valid && mp->go_to_flag(flag))
+                        FreedesktopToolkit::mprisSeeked(((gint64) flag.begin - (gint64) timeline->begin()) / 1000);
+                }
+                else if (SplitMediaPlayer *smp = dynamic_cast<SplitMediaPlayer *>(mp)) {
+                    const GstClockTime t = next ? smp->nextSegmentTime() : smp->previousSegmentTime();
+                    if ((next ? smp->nextSegment() : smp->previousSegment()) && GST_CLOCK_TIME_IS_VALID(t))
+                        FreedesktopToolkit::mprisSeeked(((gint64) t - (gint64) timeline->begin()) / 1000);
+                }
+            }
+            break;
+        case FreedesktopToolkit::MPRIS_SEEK:
+        case FreedesktopToolkit::MPRIS_SET_POSITION:
+            // move in the timeline of the current media source
+            if (mp) {
+                const gint64 begin = (gint64) mp->timeline()->begin();
+                const gint64 duration = (gint64) mp->timeline()->duration();
+                gint64 target = command.position * 1000;  // microseconds to nanoseconds
+                if (command.action == FreedesktopToolkit::MPRIS_SEEK && GST_CLOCK_TIME_IS_VALID(mp->position()))
+                    target += (gint64) mp->position() - begin;
+                target = CLAMP(target, 0, duration);
+                mp->go_to((GstClockTime) (begin + target));
+                FreedesktopToolkit::mprisSeeked(target / 1000);
+            }
+            break;
+        case FreedesktopToolkit::MPRIS_RAISE:
+            glfwFocusWindow(Rendering::manager().mainWindow().window());
+            break;
+        }
+    }
+
+    // inform the desktop of the state
+    FreedesktopToolkit::MprisState state;
+    state.playing = playing;
+    state.title = SystemToolkit::base_filename(Mixer::manager().liveSession()->filename());
+    if (state.title.empty())
+        state.title = "New session";
+    // artist field shows the media file of the current source (or its name)
+    if (mp)
+        state.artist = SystemToolkit::filename(mp->filename());
+    else if (Mixer::manager().currentSource())
+        state.artist = Mixer::manager().currentSource()->name();
+    if (mp) {
+        state.seekable = true;
+        if (GST_CLOCK_TIME_IS_VALID(mp->position()))
+            state.position = MAX((gint64) mp->position() - (gint64) mp->timeline()->begin(), 0) / 1000;
+        state.duration = (gint64) mp->timeline()->duration() / 1000;
+    }
+    FreedesktopToolkit::mprisSetState(state);
+#endif
 }
 
 void UserInterface::sessionNavigate(NavigationTarget target)
@@ -1249,6 +1357,9 @@ void UserInterface::Render()
 
     // handle keyboard input after all IMGUI widgets have potentially captured keyboard
     handleKeyboard();
+
+    // handle remote control by the desktop (media keys)
+    handleMediaKeys();
 
     // all IMGUI Rendering
     ImGui::Render();

@@ -55,6 +55,9 @@ apps:
       - shared-memory
       - joystick
       - screencast-legacy
+    # remote control by the desktop (media keys), as org.mpris.MediaPlayer2.vimix
+    slots:
+      - mpris
     environment:
        GST_PLUGIN_PATH: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gstreamer-1.0
        GST_PLUGIN_SYSTEM_PATH : $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gstreamer-1.0

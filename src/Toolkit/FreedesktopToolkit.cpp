@@ -17,11 +17,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 **/
 
+#include <atomic>
 #include <deque>
 #include <future>
 #include <map>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 #include <gio/gio.h>
 #include <gio/gunixfdlist.h>
@@ -38,6 +40,12 @@
 #define PORTAL_REQUEST    "org.freedesktop.portal.Request"
 #define PORTAL_SESSION    "org.freedesktop.portal.Session"
 #define PORTAL_SETTINGS   "org.freedesktop.portal.Settings"
+
+#define MPRIS_BUS_NAME    "org.mpris.MediaPlayer2."
+#define MPRIS_PATH        "/org/mpris/MediaPlayer2"
+#define MPRIS_ROOT        "org.mpris.MediaPlayer2"
+#define MPRIS_PLAYER      "org.mpris.MediaPlayer2.Player"
+#define MPRIS_TRACK       "/io/github/brunoherbelin/vimix/session"
 
 namespace FreedesktopToolkit
 {
@@ -519,6 +527,278 @@ int settingInt(const std::string &ns, const std::string &key, int default_value)
         g_variant_unref(value);
     }
     return result;
+}
+
+//
+// MPRIS (org.mpris.MediaPlayer2), served in the portal thread
+//
+
+static const char mpris_xml[] =
+    "<node>"
+    "  <interface name='" MPRIS_ROOT "'>"
+    "    <method name='Raise'/>"
+    "    <method name='Quit'/>"
+    "    <property name='CanQuit' type='b' access='read'/>"
+    "    <property name='CanRaise' type='b' access='read'/>"
+    "    <property name='HasTrackList' type='b' access='read'/>"
+    "    <property name='Identity' type='s' access='read'/>"
+    "    <property name='DesktopEntry' type='s' access='read'/>"
+    "    <property name='SupportedUriSchemes' type='as' access='read'/>"
+    "    <property name='SupportedMimeTypes' type='as' access='read'/>"
+    "  </interface>"
+    "  <interface name='" MPRIS_PLAYER "'>"
+    "    <method name='Next'/>"
+    "    <method name='Previous'/>"
+    "    <method name='Pause'/>"
+    "    <method name='PlayPause'/>"
+    "    <method name='Stop'/>"
+    "    <method name='Play'/>"
+    "    <method name='Seek'><arg direction='in' name='Offset' type='x'/></method>"
+    "    <method name='SetPosition'>"
+    "      <arg direction='in' name='TrackId' type='o'/>"
+    "      <arg direction='in' name='Position' type='x'/>"
+    "    </method>"
+    "    <method name='OpenUri'><arg direction='in' name='Uri' type='s'/></method>"
+    "    <signal name='Seeked'><arg name='Position' type='x'/></signal>"
+    "    <property name='PlaybackStatus' type='s' access='read'/>"
+    "    <property name='Rate' type='d' access='read'/>"
+    "    <property name='Metadata' type='a{sv}' access='read'/>"
+    "    <property name='Volume' type='d' access='read'/>"
+    "    <property name='Position' type='x' access='read'/>"
+    "    <property name='MinimumRate' type='d' access='read'/>"
+    "    <property name='MaximumRate' type='d' access='read'/>"
+    "    <property name='CanGoNext' type='b' access='read'/>"
+    "    <property name='CanGoPrevious' type='b' access='read'/>"
+    "    <property name='CanPlay' type='b' access='read'/>"
+    "    <property name='CanPause' type='b' access='read'/>"
+    "    <property name='CanSeek' type='b' access='read'/>"
+    "    <property name='CanControl' type='b' access='read'/>"
+    "  </interface>"
+    "</node>";
+
+// state of the MPRIS service; identity and desktop entry are set before start,
+// commands and state are accessed by both threads (under lock)
+struct Mpris
+{
+    std::string identity;
+    std::string desktop_entry;
+    std::atomic<bool> started{false};
+
+    std::mutex access;
+    std::deque<MprisCommand> commands;
+    MprisState state;
+};
+
+static Mpris mpris_;
+
+static void mpris_push(MprisAction action, int64_t position = 0)
+{
+    MprisCommand command;
+    command.action = action;
+    command.position = position;
+    std::lock_guard<std::mutex> lock(mpris_.access);
+    mpris_.commands.push_back(command);
+}
+
+static void mpris_method(GDBusConnection *, const gchar *, const gchar *, const gchar *,
+                         const gchar *method_name, GVariant *parameters,
+                         GDBusMethodInvocation *invocation, gpointer)
+{
+    const std::string method(method_name);
+    if (method == "Raise")
+        mpris_push(MPRIS_RAISE);
+    else if (method == "PlayPause")
+        mpris_push(MPRIS_PLAY_PAUSE);
+    else if (method == "Play")
+        mpris_push(MPRIS_PLAY);
+    else if (method == "Pause" || method == "Stop")
+        mpris_push(MPRIS_PAUSE);
+    else if (method == "Next")
+        mpris_push(MPRIS_NEXT);
+    else if (method == "Previous")
+        mpris_push(MPRIS_PREVIOUS);
+    else if (method == "Seek") {
+        gint64 offset = 0;
+        g_variant_get(parameters, "(x)", &offset);
+        mpris_push(MPRIS_SEEK, offset);
+    }
+    else if (method == "SetPosition") {
+        const gchar *track = nullptr;
+        gint64 position = 0;
+        g_variant_get(parameters, "(&ox)", &track, &position);
+        mpris_push(MPRIS_SET_POSITION, position);
+    }
+    else if (method == "OpenUri") {
+        g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
+                                              "Opening a URI is not supported");
+        return;
+    }
+    // 'Quit' is ignored (CanQuit is false)
+
+    g_dbus_method_invocation_return_value(invocation, nullptr);
+}
+
+// value of a property (floating reference), nullptr if unknown
+static GVariant *mpris_property(const std::string &interface, const std::string &name)
+{
+    if (interface == MPRIS_ROOT) {
+        if (name == "CanQuit" || name == "HasTrackList")
+            return g_variant_new_boolean(FALSE);
+        if (name == "CanRaise")
+            return g_variant_new_boolean(TRUE);
+        if (name == "Identity")
+            return g_variant_new_string(mpris_.identity.c_str());
+        if (name == "DesktopEntry")
+            return g_variant_new_string(mpris_.desktop_entry.c_str());
+        if (name == "SupportedUriSchemes" || name == "SupportedMimeTypes")
+            return g_variant_new_strv(nullptr, 0);
+        return nullptr;
+    }
+
+    if (name == "Rate" || name == "Volume" || name == "MinimumRate" || name == "MaximumRate")
+        return g_variant_new_double(1.0);
+    if (name == "CanGoNext" || name == "CanGoPrevious" || name == "CanPlay" ||
+        name == "CanPause" || name == "CanControl")
+        return g_variant_new_boolean(TRUE);
+
+    std::lock_guard<std::mutex> lock(mpris_.access);
+    if (name == "PlaybackStatus")
+        return g_variant_new_string(mpris_.state.playing ? "Playing" : "Paused");
+    if (name == "CanSeek")
+        return g_variant_new_boolean(mpris_.state.seekable);
+    if (name == "Position")
+        return g_variant_new_int64(mpris_.state.seekable ? mpris_.state.position : 0);
+    if (name == "Metadata") {
+        GVariantBuilder builder;
+        g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
+        g_variant_builder_add(&builder, "{sv}", "mpris:trackid", g_variant_new_object_path(MPRIS_TRACK));
+        g_variant_builder_add(&builder, "{sv}", "xesam:title", g_variant_new_string(mpris_.state.title.c_str()));
+        if (!mpris_.state.artist.empty()) {
+            const gchar *artists[] = { mpris_.state.artist.c_str(), nullptr };
+            g_variant_builder_add(&builder, "{sv}", "xesam:artist", g_variant_new_strv(artists, 1));
+        }
+        if (mpris_.state.seekable && mpris_.state.duration > 0)
+            g_variant_builder_add(&builder, "{sv}", "mpris:length", g_variant_new_int64(mpris_.state.duration));
+        return g_variant_builder_end(&builder);
+    }
+    return nullptr;
+}
+
+static GVariant *mpris_get_property(GDBusConnection *, const gchar *, const gchar *,
+                                    const gchar *interface_name, const gchar *property_name,
+                                    GError **error, gpointer)
+{
+    GVariant *value = mpris_property(interface_name, property_name);
+    if (value == nullptr)
+        g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_PROPERTY,
+                    "Unknown property %s", property_name);
+    return value;
+}
+
+static const GDBusInterfaceVTable mpris_vtable = { mpris_method, mpris_get_property, nullptr, {} };
+
+// notify the desktop that properties of the player changed
+static void mpris_emit_changed(const std::vector<std::string> &names)
+{
+    GVariantBuilder builder;
+    g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
+    for (const auto &name : names)
+        g_variant_builder_add(&builder, "{sv}", name.c_str(), mpris_property(MPRIS_PLAYER, name));
+    g_dbus_connection_emit_signal(portal_.bus, nullptr, MPRIS_PATH, "org.freedesktop.DBus.Properties",
+                                  "PropertiesChanged",
+                                  g_variant_new("(sa{sv}as)", MPRIS_PLAYER, &builder, nullptr),
+                                  nullptr);
+}
+
+void mprisStart(const std::string &identity, const std::string &desktop_entry)
+{
+    if (mpris_.started)
+        return;
+    init();
+    if (portal_.bus == nullptr)
+        return;
+
+    mpris_.identity = identity;
+    mpris_.desktop_entry = desktop_entry;
+    mpris_.started = true;
+
+    invoke([]() {
+        GError *error = nullptr;
+        GDBusNodeInfo *node = g_dbus_node_info_new_for_xml(mpris_xml, &error);
+        if (node == nullptr) {
+            g_printerr("MPRIS: %s\n", error->message);
+            g_error_free(error);
+            return;
+        }
+        for (int i = 0; node->interfaces[i] != nullptr; ++i) {
+            if (g_dbus_connection_register_object(portal_.bus, MPRIS_PATH, node->interfaces[i],
+                                                  &mpris_vtable, nullptr, nullptr, &error) == 0) {
+                g_printerr("MPRIS: %s\n", error->message);
+                g_clear_error(&error);
+            }
+        }
+        g_dbus_node_info_unref(node);
+
+        const std::string name = MPRIS_BUS_NAME + mpris_.identity;
+        g_bus_own_name_on_connection(portal_.bus, name.c_str(), G_BUS_NAME_OWNER_FLAGS_DO_NOT_QUEUE,
+            [](GDBusConnection *, const gchar *name, gpointer) {
+#ifdef FREEDESKTOPTOOLKIT_DEBUG
+                g_printerr("MPRIS: serving %s\n", name);
+#else
+                (void) name;
+#endif
+            },
+            [](GDBusConnection *, const gchar *name, gpointer) {
+                // e.g. owned by another instance of vimix, or not allowed in a sandbox
+                g_printerr("MPRIS: could not own %s; no remote control by the desktop\n", name);
+            },
+            nullptr, nullptr);
+    });
+}
+
+bool mprisCommand(MprisCommand &command)
+{
+    std::lock_guard<std::mutex> lock(mpris_.access);
+    if (mpris_.commands.empty())
+        return false;
+    command = mpris_.commands.front();
+    mpris_.commands.pop_front();
+    return true;
+}
+
+void mprisSetState(const MprisState &state)
+{
+    if (!mpris_.started)
+        return;
+
+    std::vector<std::string> changed;
+    {
+        std::lock_guard<std::mutex> lock(mpris_.access);
+        if (state.playing != mpris_.state.playing)
+            changed.push_back("PlaybackStatus");
+        if (state.seekable != mpris_.state.seekable)
+            changed.push_back("CanSeek");
+        if (state.title != mpris_.state.title || state.artist != mpris_.state.artist ||
+            state.seekable != mpris_.state.seekable ||
+            state.duration != mpris_.state.duration)
+            changed.push_back("Metadata");
+        mpris_.state = state;
+    }
+
+    // NB: changes of position are not notified (as specified by MPRIS)
+    if (!changed.empty())
+        invoke([changed]() { mpris_emit_changed(changed); });
+}
+
+void mprisSeeked(int64_t position)
+{
+    if (!mpris_.started)
+        return;
+
+    invoke([position]() {
+        g_dbus_connection_emit_signal(portal_.bus, nullptr, MPRIS_PATH, MPRIS_PLAYER, "Seeked",
+                                      g_variant_new("(x)", (gint64) position), nullptr);
+    });
 }
 
 }

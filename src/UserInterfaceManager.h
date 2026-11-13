@@ -178,6 +178,7 @@ protected:
 
     void setView(View::Mode mode);
     void handleKeyboard();
+    void handleMediaKeys();
     void handleMouse();
     void handleScreenshot();
 };
