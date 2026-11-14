@@ -355,6 +355,7 @@ struct Application
 
     // audio
     bool accept_audio;
+    bool media_keys;    // Linux: remote control by the desktop (MPRIS)
 
     // Settings of widgets
     WidgetsConfig widget;
@@ -478,6 +479,7 @@ struct Application
         brush = glm::vec3(0.5f, 0.1f, 0.f);
         brush_pressure_mode = 0;
         accept_audio = true;
+        media_keys = true;
         dialogPosition = glm::ivec2(-1, -1);
         image_sequence.framerate_mode = 15;
         gamepad_1_id = 0;

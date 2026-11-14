@@ -545,16 +545,15 @@ void SettingsPanel::Render()
 
     if (Settings::application.pannel_settings[4]){
         static bool need_restart = false;
-        static bool multi = (Settings::application.render.multisampling > 0);
         static bool gpu = Settings::application.render.gpu_decoding;
-        static bool glmemory = Settings::application.render.gst_glmemory_context;
         static bool audio = Settings::application.accept_audio;
         static bool x11 = Settings::application.render.x11;
+        static bool media_keys = Settings::application.media_keys;
         bool change = false;
         // hardware support deserves more explanation
         std::pair<int, int> icon_index = gpu ? std::make_pair(ICON_VI_GPU) : std::make_pair(ICON_VI_GPU_OFF);
-        ImGuiToolkit::Indication("If enabled, tries to find a platform adapted hardware-accelerated "
-                                 "driver to decode (read) or encode (record) videos.", icon_index.first, icon_index.second);
+        ImGuiToolkit::Indication("If enabled, will prefer platform specific hardware-accelerated "
+                                 "drivers to decode (read) or encode (record) videos.", icon_index.first, icon_index.second);
         ImGui::SameLine(0);
         if (Settings::application.render.gpu_decoding_available)
             change |= ImGuiToolkit::ButtonSwitch( "Hardware en/decoding", &gpu);
@@ -562,45 +561,42 @@ void SettingsPanel::Render()
             ImGui::TextDisabled("Hardware en/decoding unavailable");
 
         // audio support deserves more explanation
-        ImGuiToolkit::Indication("If enabled, tries to find audio in openned videos "
-                                 "and allows recording audio.", audio ? ICON_FA_VOLUME_UP : ICON_FA_VOLUME_MUTE);
+        ImGuiToolkit::Indication("If enabled, vimix supports audio channel of music and videos files "
+                                 "and can record videos with audio.", audio ? ICON_FA_VOLUME_UP : ICON_FA_VOLUME_MUTE);
         ImGui::SameLine(0);
-        change |= ImGuiToolkit::ButtonSwitch( "Audio (experimental)", &audio);
+        change |= ImGuiToolkit::ButtonSwitch( "Audio", &audio);
 
 #ifdef LINUX
+        // remote control by the desktop (MPRIS)
+        ImGuiToolkit::Indication("If enabled, the media keys and the media controls of the desktop "
+                                 "are linked to the playback of current media (e.g., play/pause key).",
+                                 ICON_VI_DESKTOP_MEDIA);
+        ImGui::SameLine(0);
+        change |= ImGuiToolkit::ButtonSwitch( "Desktop Media control", &media_keys);
+
         // choice of X11 (XWayland) instead of native Wayland, only in a Wayland session
         if (getenv("WAYLAND_DISPLAY") != nullptr) {
-            ImGuiToolkit::Indication("Run with X11 (XWayland) instead of running natively with Wayland "
-                                     "(e.g. for tablet pressure or exact window placement).",
-                                     ICON_FA_DESKTOP);
+            ImGuiToolkit::Indication("If enabled, run with X11 (XWayland) even when inside a linux Wayland desktop.",
+                                     ICON_VI_LINUX);
             ImGui::SameLine(0);
             change |= ImGuiToolkit::ButtonSwitch( "Force X11 compatibility", &x11);
         }
 #endif
 
-#ifndef NDEBUG
-
-#ifdef USE_GST_OPENGL_SYNC_HANDLER
-        change |= ImGuiToolkit::ButtonSwitch( "Gst GLMemory context", &glmemory);
-#endif
-        change |= ImGuiToolkit::ButtonSwitch( "Multisample antialiasing", &multi);
-#endif
         if (change) {
-            need_restart = ( multi != (Settings::application.render.multisampling > 0) ||
-                    gpu != Settings::application.render.gpu_decoding ||
-                    glmemory != Settings::application.render.gst_glmemory_context ||
+            need_restart = ( gpu != Settings::application.render.gpu_decoding ||
                     audio != Settings::application.accept_audio ||
-                    x11 != Settings::application.render.x11 );
+                    x11 != Settings::application.render.x11 ||
+                    media_keys != Settings::application.media_keys );
         }
 
         if (need_restart) {
             ImGuiToolkit::Spacing();
             if (ImGui::Button( ICON_FA_POWER_OFF "  Quit & restart to apply", ImVec2(ImGui::GetContentRegionAvail().x - 50, 0))) {
-                Settings::application.render.multisampling = multi ? 3 : 0;
-                Settings::application.render.gst_glmemory_context = glmemory;
                 Settings::application.render.gpu_decoding = gpu;
                 Settings::application.accept_audio = audio;
                 Settings::application.render.x11 = x11;
+                Settings::application.media_keys = media_keys;
                 if (UserInterface::manager().TryClose())
                     Rendering::manager().close();
             }

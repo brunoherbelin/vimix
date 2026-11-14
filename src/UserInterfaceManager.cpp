@@ -256,8 +256,10 @@ bool UserInterface::Init(int font_size)
 #ifdef LINUX
     // remote control by the desktop (media keys, media controls); the desktop
     // entry is the name of the desktop file, renamed after the application id by flatpak
-    const char *flatpak_id = getenv("FLATPAK_ID");
-    FreedesktopToolkit::mprisStart(APP_NAME, flatpak_id ? flatpak_id : APP_NAME);
+    if (Settings::application.media_keys) {
+        const char *flatpak_id = getenv("FLATPAK_ID");
+        FreedesktopToolkit::mprisStart(APP_NAME, flatpak_id ? flatpak_id : APP_NAME);
+    }
 #endif
 
     return true;

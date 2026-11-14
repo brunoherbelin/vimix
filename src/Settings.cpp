@@ -213,6 +213,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("shm_socket_path", application.shm_socket_path.c_str());
     applicationNode->SetAttribute("shm_method", application.shm_method);
     applicationNode->SetAttribute("accept_audio", application.accept_audio);
+    applicationNode->SetAttribute("media_keys", application.media_keys);
 
     XMLElement *transcodeNode = xmlDoc.NewElement( "Transcode" );
     transcodeNode->SetAttribute("option_0", application.transcode_options[0]);
@@ -672,6 +673,7 @@ void Settings::init(const std::string &filename)
             applicationNode->QueryIntAttribute("broadcast_port", &application.broadcast_port);
             applicationNode->QueryIntAttribute("loopback_camera", &application.loopback_camera);
             applicationNode->QueryBoolAttribute("accept_audio", &application.accept_audio);
+            applicationNode->QueryBoolAttribute("media_keys", &application.media_keys);
             applicationNode->QueryIntAttribute("shm_method", &application.shm_method);
 
             XMLElement * transcodeNode = applicationNode->FirstChildElement("Transcode");
