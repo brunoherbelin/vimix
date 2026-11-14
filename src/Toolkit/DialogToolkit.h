@@ -5,11 +5,17 @@
 #include <list>
 #include <vector>
 #include <future>
+#include <functional>
+#include <atomic>
+#include <tuple>
 
 namespace DialogToolkit
 {
 
 void ErrorDialog(const char* message);
+
+// process events of the dialogs; to be called in the main loop
+void processEvents();
 
 class yesCancelDialog
 {
@@ -118,7 +124,7 @@ protected:
     std::tuple<float, float, float> rgb_;
     std::atomic<bool> busy_;
 
-    // private function to open dialog
+    // private function to open dialog in a thread (not on Linux)
     static void openColorDialog( std::function<void(std::tuple<float, float, float>)> func);
 
     // Private Constructor

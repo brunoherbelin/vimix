@@ -81,6 +81,7 @@
 #include "Canvas.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Toolkit/GstToolkit.h"
+#include "Toolkit/DialogToolkit.h"
 #include "UserInterfaceManager.h"
 #include "Scene/Primitives.h"
 #include "TabletInput.h"
@@ -474,6 +475,9 @@ void Rendering::draw()
     // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     glfwPollEvents();
+
+    // Process events of system dialogs (GTK+ under Linux)
+    DialogToolkit::processEvents();
 
     // Poll tablet input for pressure support
 #ifndef WIN32
