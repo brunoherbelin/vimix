@@ -74,7 +74,8 @@ void DelayFilter::update (float dt)
         now_ += double(dt) * 0.001;
 
         // fill the queue until we reach the delay time
-        if (!elapsed_.empty() && now_ - elapsed_.front() < delay_){
+        // (an empty queue must be seeded with its first frame)
+        if (elapsed_.empty() || now_ - elapsed_.front() < delay_){
 
             if (Rendering::shouldHaveEnoughMemory(input_->resolution(), input_->flags()) )
             {
@@ -101,7 +102,8 @@ void DelayFilter::update (float dt)
                 elapsed_.pop();
 
                 // Loop with a margin to avoid popping and pushing too often
-            } while (now_ - elapsed_.front() > ( delay_ + double(dt) * 0.003 ) && !frames_.empty());
+                // (test for empty queue first, before reading its front element)
+            } while ( !frames_.empty() && now_ - elapsed_.front() > ( delay_ + double(dt) * 0.003 ) );
 
             // reinsert last popped element to queue (back) to avoid re-allocating it
             frames_.push( temp_ );
