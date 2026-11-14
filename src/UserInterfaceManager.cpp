@@ -1580,6 +1580,49 @@ void UserInterface::showMenuWindows()
     // Show Help
     ImGui::MenuItem( MENU_HELP, SHORTCUT_HELP, &Settings::application.widget.help );
 
+    //  WINDOWS LAYOUT
+    ImGui::Separator();
+
+    if (ImGui::BeginMenu(ICON_FA_WINDOW_RESTORE "   Windows layout")) {
+
+        // SAVE current layout in a slot
+        if (ImGui::BeginMenu(ICON_FA_DOWNLOAD "   Save")) {
+            for (int i = 0; i < MAX_WINDOWS_LAYOUT; ++i) {
+                const std::string label = "Layout " + std::to_string(i + 1);
+                if (ImGui::MenuItem(label.c_str())) {
+                    saveLayout(i);
+                    navigator.discardPannel();
+                }
+            }
+            ImGui::EndMenu();
+        }
+        // LOAD a saved layout (empty slots are disabled)
+        if (ImGui::BeginMenu(ICON_FA_UPLOAD "   Load")) {
+            for (int i = 0; i < MAX_WINDOWS_LAYOUT; ++i) {
+                const std::string label = "Layout " + std::to_string(i + 1);
+                if (ImGui::MenuItem(label.c_str(), nullptr, false, Settings::application.layouts[i].saved)) {
+                    loadLayout(i);
+                    navigator.discardPannel();
+                }
+            }
+            ImGui::EndMenu();
+        }
+        // Layout to load at start
+        if (ImGui::BeginMenu(ICON_FA_SIGN_IN_ALT "   Load at start")) {
+            if (ImGui::MenuItem("Previous state", nullptr, Settings::application.layout_at_start < 0))
+                Settings::application.layout_at_start = -1;
+            for (int i = 0; i < MAX_WINDOWS_LAYOUT; ++i) {
+                const std::string label = "Layout " + std::to_string(i + 1);
+                if (ImGui::MenuItem(label.c_str(), nullptr, Settings::application.layout_at_start == i,
+                                    Settings::application.layouts[i].saved))
+                    Settings::application.layout_at_start = i;
+            }
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenu();
+    }
+
     // Enter / exit Fullscreen
     if (Settings::application.mainwindow.fullscreen){
         if (ImGui::MenuItem( ICON_FA_COMPRESS_ALT "   Exit Fullscreen", SHORTCUT_FULLSCREEN ))
@@ -1680,44 +1723,6 @@ void UserInterface::showMenuConfig()
     if (ImGui::MenuItem(ICON_FA_REDO_ALT "   Reset config")) {
         Canvas::manager().reset(true, true);
         navigator.discardPannel();
-    }
-
-    //  WINDOWS LAYOUT
-    ImGui::Separator();
-    ImGui::TextDisabled("Windows layout");
-    // SAVE current layout in a slot
-    if (ImGui::BeginMenu(ICON_FA_DOWNLOAD "   Save layout")) {
-        for (int i = 0; i < MAX_WINDOWS_LAYOUT; ++i) {
-            const std::string label = "Layout " + std::to_string(i + 1);
-            if (ImGui::MenuItem(label.c_str())) {
-                saveLayout(i);
-                navigator.discardPannel();
-            }
-        }
-        ImGui::EndMenu();
-    }
-    // LOAD a saved layout (empty slots are disabled)
-    if (ImGui::BeginMenu(ICON_FA_UPLOAD "   Load layout")) {
-        for (int i = 0; i < MAX_WINDOWS_LAYOUT; ++i) {
-            const std::string label = "Layout " + std::to_string(i + 1);
-            if (ImGui::MenuItem(label.c_str(), nullptr, false, Settings::application.layouts[i].saved)) {
-                loadLayout(i);
-                navigator.discardPannel();
-            }
-        }
-        ImGui::EndMenu();
-    }
-    // Layout to load at start
-    if (ImGui::BeginMenu(ICON_FA_SIGN_IN_ALT "   Layout at start")) {
-        if (ImGui::MenuItem("Previous state", nullptr, Settings::application.layout_at_start < 0))
-            Settings::application.layout_at_start = -1;
-        for (int i = 0; i < MAX_WINDOWS_LAYOUT; ++i) {
-            const std::string label = "Layout " + std::to_string(i + 1);
-            if (ImGui::MenuItem(label.c_str(), nullptr, Settings::application.layout_at_start == i,
-                                Settings::application.layouts[i].saved))
-                Settings::application.layout_at_start = i;
-        }
-        ImGui::EndMenu();
     }
 
     //  SETTINGS
