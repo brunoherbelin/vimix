@@ -176,16 +176,20 @@ bool UserInterface::Init(int font_size)
     Log::Info("Font size %d", int(base_font_size) );
 
     // Style
+    // NB: paddings and spacings MUST be integers: ImGui (v1.76) clamps windows in
+    // the display with 'Pos = max(Pos + Size, min) - Size' then floors the result;
+    // a fractional window size gives a float rounding error (e.g. 452.99997) that
+    // ImFloor turns into 1 pixel shift at every frame (popups slowly moving).
     ImGuiStyle& style = ImGui::GetStyle();
-    style.WindowPadding.x = base_font_size / 2.5f;
-    style.WindowPadding.y = style.WindowPadding.x / 2.f;
-    style.FramePadding.x = base_font_size / 2.5f;
-    style.FramePadding.y = style.FramePadding.x / 2.f;
+    style.WindowPadding.x = std::round(base_font_size / 2.5f);
+    style.WindowPadding.y = std::round(style.WindowPadding.x / 2.f);
+    style.FramePadding.x = std::round(base_font_size / 2.5f);
+    style.FramePadding.y = std::round(style.FramePadding.x / 2.f);
     style.IndentSpacing = base_font_size;
-    style.ItemSpacing.x = base_font_size / 2.f;
-    style.ItemSpacing.y = style.ItemSpacing.x / 3.f;
-    style.ItemInnerSpacing.x = base_font_size / 2.5f;
-    style.ItemInnerSpacing.y = style.ItemInnerSpacing.x / 2.f;
+    style.ItemSpacing.x = std::round(base_font_size / 2.f);
+    style.ItemSpacing.y = std::round(style.ItemSpacing.x / 3.f);
+    style.ItemInnerSpacing.x = std::round(base_font_size / 2.5f);
+    style.ItemInnerSpacing.y = std::round(style.ItemInnerSpacing.x / 2.f);
     style.WindowRounding = base_font_size / 2.5f;
     style.ChildRounding = style.WindowRounding / 2.f;
     style.FrameRounding = style.WindowRounding / 2.f;
