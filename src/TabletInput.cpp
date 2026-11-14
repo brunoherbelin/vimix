@@ -25,17 +25,13 @@ TabletInput& TabletInput::instance()
     return instance;
 }
 
-void TabletInput::setCursor(int imgui_cursor)
-{
-#if defined(LINUX) && defined(HAVE_WAYLAND_TABLET)
-    if (wayland_)
-        setCursorWayland(imgui_cursor);
-#else
-    (void) imgui_cursor;
+#ifndef LINUX
+// the cursor of the stylus is only set by the application on Linux (Wayland)
+void TabletInput::setCursor(int) {}
 #endif
-}
 
 // Platform-specific implementations are in separate files:
-// - TabletInput_linux.cpp (Linux: XInput2 under X11, or TabletInput_wayland.cpp)
+// - linux/TabletInput_linux.cpp (Linux), using linux/TabletInput_x11.cpp (XInput2)
+//   under X11 or linux/TabletInput_wayland.cpp (tablet protocol) under Wayland
 // - osx/TabletInput_macos.mm (macOS with NSEvent)
-// - TabletInput_win32.cpp (Windows)
+// - windows/TabletInput_win32.cpp (Windows)

@@ -91,7 +91,7 @@
 #include "Player/SplitMediaPlayer.h"
 #include "TabletInput.h"
 #ifdef LINUX
-#include "Toolkit/FreedesktopToolkit.h"
+#include "FreedesktopToolkit.h"
 #endif
 
 #include "UserInterfaceManager.h"
@@ -1118,6 +1118,12 @@ void UserInterface::NewFrame()
         io.MousePos = ImVec2(pen.x, pen.y);
         for (int i = 0; i < 3; ++i)
             io.MouseDown[i] = pen.buttons[i] || pen.clicked[i];
+    }
+    // Tablet stylus on X11: its buttons may not be given as mouse buttons
+    else if (pen.clicks) {
+        ImGuiIO &io = ImGui::GetIO();
+        for (int i = 0; i < 3; ++i)
+            io.MouseDown[i] = io.MouseDown[i] || pen.buttons[i] || pen.clicked[i];
     }
     TabletInput::instance().setCursor(ImGui::GetMouseCursor());
     ImGui::NewFrame();

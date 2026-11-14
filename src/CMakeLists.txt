@@ -182,18 +182,22 @@ IF(APPLE)
 ELSEIF(WIN32)
 
     # Windows tablet input (no pressure support yet), and no freedesktop services
-    list(APPEND VMIX_SRCS TabletInput_win32.cpp)
+    list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/windows/TabletInput_win32.cpp)
     # resources: manifest with the UTF-8 code page
     list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/windows/vimix.rc)
 
 ELSE(APPLE)
 
 
-    # Add Linux tablet input (XInput2 under X11, see Wayland below)
-    list(APPEND VMIX_SRCS TabletInput_linux.cpp)
+    # Add Linux tablet input: selects at runtime XInput2 under X11 or the tablet
+    # protocol under Wayland (each optional, see below)
+    list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/linux/TabletInput_linux.cpp)
+    if(X11_Xi_FOUND)
+        list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/linux/TabletInput_x11.cpp)
+    endif()
 
-    # Add Linux freedesktop services (screen cast portal for screen capture under Wayland)
-    list(APPEND VMIX_SRCS Toolkit/FreedesktopToolkit.cpp)
+    # Add Linux freedesktop services (portals for screen capture and settings, media keys)
+    list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/linux/FreedesktopToolkit.cpp)
 
     # Add Wayland tablet input, with client code generated from the protocols
     if(WAYLAND_TABLET_FOUND)
@@ -219,7 +223,7 @@ ELSE(APPLE)
                 VERBATIM)
             list(APPEND VMIX_SRCS ${WAYLAND_GENERATED_DIR}/${name}-client-protocol.h ${WAYLAND_GENERATED_DIR}/${name}-protocol.c)
         endforeach()
-        list(APPEND VMIX_SRCS TabletInput_wayland.cpp)
+        list(APPEND VMIX_SRCS ${CMAKE_SOURCE_DIR}/linux/TabletInput_wayland.cpp)
     endif()
 
 ENDIF(APPLE)
@@ -357,6 +361,11 @@ target_link_libraries(${VMIX_BINARY} LINK_PRIVATE
 if(AVAHI_FOUND)
     target_include_directories(${VMIX_BINARY} PRIVATE ${AVAHI_INCLUDE_DIRS})
     target_link_libraries(${VMIX_BINARY} LINK_PRIVATE ${AVAHI_LIBRARIES})
+endif()
+
+# Linux specific code (linux/ folder: tablet input, freedesktop services)
+if(UNIX AND NOT APPLE)
+    target_include_directories(${VMIX_BINARY} PRIVATE ${CMAKE_SOURCE_DIR}/linux)
 endif()
 
 # GIO (D-Bus and unix fd passing) for the Linux screen cast portal

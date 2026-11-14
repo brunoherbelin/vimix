@@ -86,7 +86,7 @@
 #include "TabletInput.h"
 #include "FrameBuffer.h"
 #ifdef LINUX
-#include "Toolkit/FreedesktopToolkit.h"
+#include "FreedesktopToolkit.h"
 #endif
 
 #include "RenderingManager.h"

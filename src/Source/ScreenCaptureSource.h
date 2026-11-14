@@ -7,7 +7,9 @@
 #include <vector>
 
 #include "Toolkit/GstToolkit.h"
-#include "Toolkit/FreedesktopToolkit.h"
+#ifdef LINUX
+#include "FreedesktopToolkit.h"
+#endif
 #include "StreamSource.h"
 
 #define SCREEN_CAPTURE_NAME    "Screen Capture"
@@ -121,7 +123,9 @@ private:
     // Wayland: capture through the screen cast portal and pipewiresrc
     bool portal_;
     std::vector<std::string> closed_sessions_;
+#ifdef LINUX
     std::string add (const FreedesktopToolkit::ScreenCastResult &result, const std::string &windowname);
+#endif
     void release (const std::string &windowname);
     void update ();
 

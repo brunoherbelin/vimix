@@ -21,6 +21,9 @@
 #define TABLETINPUT_H
 
 #include <glm/glm.hpp>
+#ifdef LINUX
+#include <map>
+#endif
 
 // Platform-specific forward declarations
 #ifdef LINUX
@@ -54,6 +57,9 @@ public:
         // it gives its position and buttons when it is over the main window
         bool pointer;        // stylus is over the main window (x, y and buttons are valid)
         float x, y;          // position in main window coordinates
+        // X11 (XWayland): the stylus moves the mouse pointer, but its buttons may not
+        // be given as mouse buttons: they are given here
+        bool clicks;         // buttons are valid (but not x, y)
         bool buttons[3];     // tip, first and second stylus buttons are pressed
         bool clicked[3];     // were pressed since the previous poll (even if released)
     };
@@ -92,21 +98,31 @@ private:
     bool active_;
 
 #ifdef LINUX
-#if defined(HAVE_WAYLAND_TABLET)
-    // Wayland tablet protocol (used on native Wayland, see TabletInput_wayland.cpp)
+    // native Wayland or X11 (see linux/TabletInput_linux.cpp)
     bool wayland_;
+#if defined(HAVE_WAYLAND_TABLET)
+    // Wayland tablet protocol (see linux/TabletInput_wayland.cpp)
     bool initWayland();
     void pollWayland();
     void terminateWayland();
     void setCursorWayland(int imgui_cursor);
 #endif
 #if defined(HAVE_X11TABLETINPUT)
-    // X11/XInput2 members (used under X11)
+    // X11/XInput2 (see linux/TabletInput_x11.cpp)
+    bool initX11();
+    void pollX11();
+    void terminateX11();
     Display *display_;
     int xi_opcode_;
-    int pressure_valuator_;
-    int tilt_x_valuator_;
-    int tilt_y_valuator_;
+    struct X11Axis {
+        int number = -1;
+        double min = 0.0, max = 1.0;
+    };
+    struct X11Pen {
+        X11Axis pressure, tilt_x, tilt_y;
+    };
+    std::map<int, X11Pen> pens_;    // XInput2 devices with a pressure axis
+    void scanX11Devices();
 #endif
 #elif defined(APPLE)
     void* monitor_; // Event monitor handle
