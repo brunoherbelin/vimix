@@ -1,5 +1,5 @@
 name: vimix
-base: core24
+base: core26
 version: '0.9.3'
 summary: Video live mixer
 title: vimix
@@ -22,21 +22,10 @@ platforms:
   amd64:
   arm64:
 
-layout:
-  /usr/share/X11/XErrorDB:
-    symlink: $SNAP/gpu/X11/XErrorDB
-
-plugs:
-  gpu-2404:
-    interface: content
-    target: $SNAP/gpu-2404
-    default-provider: mesa-2404
-
 apps:
   vimix:
+    # on core26, the gnome extension also provides the GPU plug
     extensions: [gnome]
-    command-chain:
-      - bin/gpu-2404-wrapper
     command: usr/bin/launch_vimix.sh
     plugs:
       - desktop
@@ -58,10 +47,11 @@ apps:
     # remote control by the desktop (media keys), as org.mpris.MediaPlayer2.vimix
     slots:
       - mpris
+    # GStreamer plugins: desktop-launch of the gnome extension sets GST_PLUGIN_PATH to the plugins
+    # staged in this snap, and GST_PLUGIN_SYSTEM_PATH and GST_PLUGIN_SCANNER to those of the
+    # gnome-core26 platform
     environment:
-       GST_PLUGIN_PATH: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gstreamer-1.0
-       GST_PLUGIN_SYSTEM_PATH : $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gstreamer-1.0
-       GST_PLUGIN_SCANNER: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner
+       LIBDECOR_PLUGIN_DIR: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/libdecor/plugins-1
        FREI0R_PATH: $SNAP/usr/lib/frei0r-1
        LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/blas:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/lapack
 
@@ -86,19 +76,24 @@ parts:
     -  libtinyxml2-dev
     -  libglm-dev
     -  libavahi-client-dev
+    -  libxi-dev
+    -  libegl-dev
+    -  libwayland-dev
+    -  wayland-protocols
+    -  libvulkan-dev
     stage-packages:
     -  libglu1-mesa
     -  libblas3
     -  liblapack3
     -  libglfw3
+    -  libdecor-0-0
+    -  libdecor-0-plugin-1-gtk
     -  frei0r-plugins
     -  libgstreamer1.0-0
     -  libgstreamer-gl1.0-0
     -  libgstreamer-plugins-base1.0-0
-    -  libgstreamer-plugins-good1.0-0
     -  libgstreamer-plugins-bad1.0-0
     -  gstreamer1.0-libav
-    -  gstreamer1.0-vaapi
     -  gstreamer1.0-x
     -  gstreamer1.0-gl
     -  gstreamer1.0-pipewire
@@ -108,17 +103,7 @@ parts:
     -  gstreamer1.0-plugins-ugly
     -  libgpm2
     -  libslang2
-    -  libicu74
-    -  libtinyxml2-10
+    -  libicu78
+    -  libtinyxml2-11
     -  pciutils
     -  libavahi-client3
-
-  gpu-2404:
-    after: [vimix-binary]
-    source: https://github.com/canonical/gpu-snap.git
-    plugin: dump
-    override-prime: |
-      craftctl default
-      ${CRAFT_PART_SRC}/bin/gpu-2404-cleanup mesa-2404
-    prime:
-    - bin/gpu-2404-wrapper
