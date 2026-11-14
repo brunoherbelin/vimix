@@ -575,7 +575,8 @@ void SettingsPanel::Render()
         change |= ImGuiToolkit::ButtonSwitch( "Desktop Media control", &media_keys);
 
         // choice of X11 (XWayland) instead of native Wayland, only in a Wayland session
-        if (getenv("WAYLAND_DISPLAY") != nullptr) {
+        // where X11 is also available (e.g. not in a flatpak without X11 socket)
+        if (getenv("WAYLAND_DISPLAY") != nullptr && getenv("DISPLAY") != nullptr) {
             ImGuiToolkit::Indication("If enabled, run with X11 (XWayland) even when inside a linux Wayland desktop.",
                                      ICON_VI_LINUX);
             ImGui::SameLine(0);

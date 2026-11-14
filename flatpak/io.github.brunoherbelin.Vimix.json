@@ -7,8 +7,8 @@
     "rename-desktop-file": "vimix.desktop",
     "rename-icon": "vimix",
     "finish-args": [
-        "--socket=x11",
         "--socket=wayland",
+        "--socket=fallback-x11",
         "--socket=pulseaudio",
         "--system-talk-name=org.freedesktop.Avahi",
         "--share=ipc",
@@ -28,7 +28,8 @@
         "--persist=.config/vimix",
         "--talk-name=org.gtk.vfs.*",
         "--own-name=org.mpris.MediaPlayer2.vimix",
-        "--env=FREI0R_PATH=/app/lib/frei0r-1"
+        "--env=FREI0R_PATH=/app/lib/frei0r-1",
+        "--env=XCURSOR_PATH=/run/host/user-share/icons:/run/host/share/icons"
     ],
     "cleanup": [
         "/include",
@@ -118,9 +119,9 @@
             ],
             "sources": [
                 {
-                "type": "git",
-                "branch": "beta",
-                "url": "https://github.com/brunoherbelin/vimix.git"
+                    "type": "git",
+                    "branch": "beta",
+                    "url": "https://github.com/brunoherbelin/vimix.git"
                 },
                 {
                 "type": "git",

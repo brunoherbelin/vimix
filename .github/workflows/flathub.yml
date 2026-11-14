@@ -1,6 +1,10 @@
 # On a new version tag (e.g. 0.9.4 or 0.9.4a), open a pull request on the Flathub repo
-# https://github.com/flathub/io.github.brunoherbelin.Vimix updating the vimix source
-# ("tag" and "commit") in io.github.brunoherbelin.Vimix.json.
+# https://github.com/flathub/io.github.brunoherbelin.Vimix updating its manifest
+# io.github.brunoherbelin.Vimix.json from the local flatpak/io.github.brunoherbelin.Vimix.json
+# (as it is at that tag): every change tested in the local (beta) manifest, e.g. finish-args,
+# modules or runtime version, is carried to Flathub. The only difference is the vimix source;
+# the local manifest builds the "branch" (beta), the Flathub one builds the "tag" and its "commit".
+# The pull request shows the changes to the Flathub manifest for review.
 # Merging that PR on Flathub (after its test build passes) publishes the new version.
 # Can also be run manually from the "Actions" tab > "Flathub update" > "Run workflow".
 # Requires the repository secret:
@@ -27,6 +31,7 @@ permissions:
 env:
   FLATHUB_REPO: flathub/io.github.brunoherbelin.Vimix
   MANIFEST: io.github.brunoherbelin.Vimix.json
+  LOCAL_MANIFEST: flatpak/io.github.brunoherbelin.Vimix.json
 
 jobs:
   update:
@@ -57,29 +62,44 @@ jobs:
           token: ${{ secrets.FLATHUB_TOKEN }}
           path: flathub
 
-      - name: Update tag and commit in the manifest
-        working-directory: flathub
+      - name: Update the Flathub manifest from the local manifest
         env:
           TAG: ${{ steps.tag.outputs.tag }}
           COMMIT: ${{ steps.tag.outputs.commit }}
         run: |
-          # Edit only the "tag" and "commit" lines of the vimix git source,
-          # keeping the rest of the file formatting untouched.
-          python3 - <<'EOF'
-          import os, re, sys
-          path = os.environ["MANIFEST"]
-          text = open(path).read()
-          pattern = re.compile(
-              r'("tag":\s*")[^"]*(",\s*"commit":\s*")[0-9a-f]*'
-              r'(",\s*"url":\s*"https://github\.com/brunoherbelin/vimix\.git")')
-          new, n = pattern.subn(
-              lambda m: m.group(1) + os.environ["TAG"] + m.group(2) + os.environ["COMMIT"] + m.group(3),
-              text)
+          # The local manifest at the tag is the reference; only the vimix git source is
+          # changed to build the tag and its commit (instead of a branch), keeping the rest
+          # of the file formatting untouched.
+          git -C vimix show "refs/tags/${TAG}:${LOCAL_MANIFEST}" > local_manifest.json \
+            || { echo "::error::${LOCAL_MANIFEST} not found at tag ${TAG}"; exit 1; }
+          python3 - local_manifest.json "flathub/${MANIFEST}" <<'EOF'
+          import json, os, re, sys
+          src, dst = sys.argv[1], sys.argv[2]
+          tag, commit = os.environ["TAG"], os.environ["COMMIT"]
+          text = open(src).read()
+          url = r'"url":\s*"https://github\.com/brunoherbelin/vimix(?:\.git)?"'
+          # local manifest builds a branch: replace it by tag and commit (same indentation)
+          branch = re.compile(r'(?P<ind>[ \t]*)"branch":\s*"[^"]*",(?P<rest>\s*' + url + ')')
+          text, n = branch.subn(
+              lambda m: f'{m["ind"]}"tag": "{tag}",\n{m["ind"]}"commit": "{commit}",{m["rest"]}', text)
+          if n == 0:
+              # local manifest already builds a tag: update tag and commit
+              tagged = re.compile(r'("tag":\s*")[^"]*(",\s*"commit":\s*")[0-9a-f]*(",\s*' + url + ')')
+              text, n = tagged.subn(lambda m: m[1] + tag + m[2] + commit + m[3], text)
           if n != 1:
-              sys.exit(f"Expected exactly one vimix git source (tag, commit, url in that order), found {n}")
-          open(path, "w").write(new)
+              sys.exit(f"Expected exactly one vimix git source (branch or tag+commit, then url), found {n}")
+          # sanity check of the result
+          manifest = json.loads(text)
+          sources = [s for m in manifest["modules"] if isinstance(m, dict) and m.get("name") == "vimix"
+                     for s in m.get("sources", []) if "brunoherbelin/vimix" in s.get("url", "")]
+          if len(sources) != 1 or sources[0].get("tag") != tag or sources[0].get("commit") != commit \
+                  or "branch" in sources[0]:
+              sys.exit(f"Unexpected vimix source in the resulting manifest: {sources}")
+          if manifest.get("app-id") != os.path.basename(dst).removesuffix(".json"):
+              sys.exit(f"Unexpected app-id {manifest.get('app-id')}")
+          open(dst, "w").write(text)
           EOF
-          git diff
+          git -C flathub diff | tee manifest.diff
 
       - name: Open pull request on Flathub
         working-directory: flathub
@@ -88,7 +108,7 @@ jobs:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           if git diff --quiet; then
-            echo "Manifest already at $TAG, nothing to do."
+            echo "Manifest already up to date for $TAG, nothing to do."
             exit 0
           fi
           BRANCH="update-vimix-$TAG"
@@ -97,10 +117,19 @@ jobs:
           git checkout -b "$BRANCH"
           git commit -am "Update vimix to $TAG"
           git push --force origin "$BRANCH"
+          {
+            echo "Automated update of vimix to tag \`$TAG\` from https://github.com/${GITHUB_REPOSITORY}/releases/tag/$TAG"
+            echo
+            echo "The manifest is taken from [\`${LOCAL_MANIFEST}\`](https://github.com/${GITHUB_REPOSITORY}/blob/$TAG/${LOCAL_MANIFEST}) at that tag. Changes:"
+            echo
+            echo '```diff'
+            cat ../manifest.diff
+            echo '```'
+          } > ../pr_body.md
           if gh pr view "$BRANCH" --repo "$FLATHUB_REPO" >/dev/null 2>&1; then
-            echo "PR for $BRANCH already exists (branch updated)."
+            gh pr edit "$BRANCH" --repo "$FLATHUB_REPO" --body-file ../pr_body.md
+            echo "PR for $BRANCH already exists (branch and description updated)."
           else
             gh pr create --repo "$FLATHUB_REPO" --head "$BRANCH" --base master \
-              --title "Update vimix to $TAG" \
-              --body "Automated update of vimix to tag \`$TAG\` from https://github.com/${GITHUB_REPOSITORY}/releases/tag/$TAG"
+              --title "Update vimix to $TAG" --body-file ../pr_body.md
           fi

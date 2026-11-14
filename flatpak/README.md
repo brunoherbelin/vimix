@@ -92,4 +92,6 @@ With an NVIDIA GPU, the flatpak needs a GL extension matching *exactly* the vers
     cat /sys/module/nvidia/version
     flatpak list --runtime | grep GL.nvidia
 
-Do not replace the X11 socket by the Wayland socket (e.g. with Flatseal): vimix uses X11 / xWayland under GNOME and fails to open its window without it.
+vimix runs natively under Wayland; X11 is used only outside of a Wayland session (e.g. in a Xorg session). Therefore, the option 'Force X11 compatibility' of vimix settings is not available in the flatpak under Wayland. If you need it (e.g. to work around a Wayland issue), give vimix access to X11 (XWayland):
+
+    flatpak override --user --socket=x11 io.github.brunoherbelin.Vimix
