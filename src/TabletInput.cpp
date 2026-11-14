@@ -25,6 +25,17 @@ TabletInput& TabletInput::instance()
     return instance;
 }
 
+void TabletInput::setCursor(int imgui_cursor)
+{
+#if defined(LINUX) && defined(HAVE_WAYLAND_TABLET)
+    if (wayland_)
+        setCursorWayland(imgui_cursor);
+#else
+    (void) imgui_cursor;
+#endif
+}
+
 // Platform-specific implementations are in separate files:
-// - TabletInput_linux.cpp (Linux with libinput)
-// - TabletInput_macos.mm (macOS with NSEvent)
+// - TabletInput_linux.cpp (Linux: XInput2 under X11, or TabletInput_wayland.cpp)
+// - osx/TabletInput_macos.mm (macOS with NSEvent)
+// - TabletInput_win32.cpp (Windows)

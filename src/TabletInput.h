@@ -26,10 +26,6 @@
 #ifdef LINUX
 // X11 forward declarations (for XInput2)
 typedef struct _XDisplay Display;
-#if defined(HAVE_LIBINPUT)
-struct libinput;
-struct udev;
-#endif
 #elif defined(APPLE)
 #ifdef __OBJC__
 @class NSEvent;
@@ -42,7 +38,8 @@ class NSEvent;
  * @brief Cross-platform tablet/stylus input manager
  *
  * Provides normalized pressure values (0.0-1.0) from pen/stylus devices
- * across Linux (libinput) and macOS (NSEvent)
+ * across Linux (XInput2 under X11, tablet protocol under Wayland),
+ * macOS (NSEvent) and Windows
  */
 class TabletInput {
 public:
@@ -53,6 +50,12 @@ public:
         float tilt_y;        // -1.0 to 1.0 (optional)
         bool in_proximity;   // Is stylus near/touching surface
         bool tip_down;       // Is stylus tip pressed
+        // Wayland: the stylus does not move the mouse pointer of the application,
+        // it gives its position and buttons when it is over the main window
+        bool pointer;        // stylus is over the main window (x, y and buttons are valid)
+        float x, y;          // position in main window coordinates
+        bool buttons[3];     // tip, first and second stylus buttons are pressed
+        bool clicked[3];     // were pressed since the previous poll (even if released)
     };
 
     static TabletInput& instance();
@@ -65,6 +68,10 @@ public:
 
     // Clean up resources
     void terminate();
+
+    // Set the cursor shown for the stylus, as an ImGuiMouseCursor value
+    // (Wayland, where the application shows the cursor of the stylus)
+    void setCursor(int imgui_cursor);
 
     // Get current tablet data
     const TabletData& getData() const { return data_; }
@@ -85,19 +92,21 @@ private:
     bool active_;
 
 #ifdef LINUX
+#if defined(HAVE_WAYLAND_TABLET)
+    // Wayland tablet protocol (used on native Wayland, see TabletInput_wayland.cpp)
+    bool wayland_;
+    bool initWayland();
+    void pollWayland();
+    void terminateWayland();
+    void setCursorWayland(int imgui_cursor);
+#endif
 #if defined(HAVE_X11TABLETINPUT)
-    // X11/XInput2 members (used when libinput is not available or in Flatpak)
+    // X11/XInput2 members (used under X11)
     Display *display_;
     int xi_opcode_;
     int pressure_valuator_;
     int tilt_x_valuator_;
     int tilt_y_valuator_;
-#endif
-#if defined(HAVE_LIBINPUT)
-    // libinput members (used for native builds with libinput)
-    struct udev *udev_;
-    struct libinput *li_;
-    int fd_;
 #endif
 #elif defined(APPLE)
     void* monitor_; // Event monitor handle

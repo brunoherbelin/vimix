@@ -189,19 +189,38 @@ ELSEIF(WIN32)
 ELSE(APPLE)
 
 
-    # Add Linux tablet input implementation
-    if(X11_Xi_FOUND)
-        # Use X11/XInput2 version (works in Flatpak and everywhere)
-        list(APPEND VMIX_SRCS TabletInput_x11.cpp)
-    else()
-        if(LIBINPUT_FOUND AND LIBUDEV_FOUND)
-            # Use X11/XInput2 version (works in Flatpak and everywhere)
-            list(APPEND VMIX_SRCS TabletInput_linux_libinput.cpp)
-        endif()
-    endif()
+    # Add Linux tablet input (XInput2 under X11, see Wayland below)
+    list(APPEND VMIX_SRCS TabletInput_linux.cpp)
 
     # Add Linux freedesktop services (screen cast portal for screen capture under Wayland)
     list(APPEND VMIX_SRCS Toolkit/FreedesktopToolkit.cpp)
+
+    # Add Wayland tablet input, with client code generated from the protocols
+    if(WAYLAND_TABLET_FOUND)
+        set(WAYLAND_GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR}/wayland)
+        file(MAKE_DIRECTORY ${WAYLAND_GENERATED_DIR})
+        include_directories(${WAYLAND_GENERATED_DIR})
+        set(WAYLAND_PROTOCOLS_XML ${WAYLAND_TABLET_XML})
+        set(WAYLAND_PROTOCOLS_NAME tablet-v2)
+        if(EXISTS ${WAYLAND_CURSOR_SHAPE_XML})
+            list(APPEND WAYLAND_PROTOCOLS_XML ${WAYLAND_CURSOR_SHAPE_XML})
+            list(APPEND WAYLAND_PROTOCOLS_NAME cursor-shape-v1)
+        endif()
+        list(LENGTH WAYLAND_PROTOCOLS_XML num_protocols)
+        math(EXPR last_protocol "${num_protocols} - 1")
+        foreach(i RANGE ${last_protocol})
+            list(GET WAYLAND_PROTOCOLS_XML ${i} xml)
+            list(GET WAYLAND_PROTOCOLS_NAME ${i} name)
+            add_custom_command(
+                OUTPUT ${WAYLAND_GENERATED_DIR}/${name}-client-protocol.h ${WAYLAND_GENERATED_DIR}/${name}-protocol.c
+                COMMAND ${WAYLAND_SCANNER_BIN} client-header ${xml} ${WAYLAND_GENERATED_DIR}/${name}-client-protocol.h
+                COMMAND ${WAYLAND_SCANNER_BIN} private-code ${xml} ${WAYLAND_GENERATED_DIR}/${name}-protocol.c
+                DEPENDS ${xml}
+                VERBATIM)
+            list(APPEND VMIX_SRCS ${WAYLAND_GENERATED_DIR}/${name}-client-protocol.h ${WAYLAND_GENERATED_DIR}/${name}-protocol.c)
+        endforeach()
+        list(APPEND VMIX_SRCS TabletInput_wayland.cpp)
+    endif()
 
 ENDIF(APPLE)
 
@@ -296,10 +315,11 @@ ELSE(APPLE)
         list(APPEND PLATFORM_LIBS ${X11_Xi_LIB})
     endif()
 
-    # Add libinput and libudev for tablet support on Linux (if available)
-    if(LIBINPUT_FOUND AND LIBUDEV_FOUND)
-        list(APPEND PLATFORM_LIBS ${LIBINPUT_LIBRARIES} ${LIBUDEV_LIBRARIES})
+    # Add wayland client for tablet support on Wayland (if available)
+    if(WAYLAND_TABLET_FOUND)
+        list(APPEND PLATFORM_LIBS ${WAYLAND_CLIENT_LIBRARIES})
     endif()
+
 
 ENDIF(APPLE)
 

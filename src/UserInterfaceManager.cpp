@@ -89,6 +89,7 @@
 #include "Source/MediaSource.h"
 #include "Player/MediaPlayer.h"
 #include "Player/SplitMediaPlayer.h"
+#include "TabletInput.h"
 #ifdef LINUX
 #include "Toolkit/FreedesktopToolkit.h"
 #endif
@@ -1108,6 +1109,17 @@ void UserInterface::NewFrame()
     ImGui_ImplGlfw_NewFrame();
     // Horizontal wheel / trackpad scrolling is not supported by the UI: discard it
     ImGui::GetIO().MouseWheelH = 0.f;
+
+    // Tablet stylus over the main window (Wayland): it drives the mouse of the UI
+    // (tip as left button, stylus buttons as right and middle), and shows the cursor
+    const TabletInput::TabletData &pen = TabletInput::instance().getData();
+    if (pen.pointer) {
+        ImGuiIO &io = ImGui::GetIO();
+        io.MousePos = ImVec2(pen.x, pen.y);
+        for (int i = 0; i < 3; ++i)
+            io.MouseDown[i] = pen.buttons[i] || pen.clicked[i];
+    }
+    TabletInput::instance().setCursor(ImGui::GetMouseCursor());
     ImGui::NewFrame();
 
     // deal with keyboard and mouse events

@@ -22,6 +22,9 @@
 
 #include "TabletInput.h"
 #include "Log.h"
+#ifdef HAVE_WAYLAND_TABLET
+#include "RenderingManager.h"
+#endif
 
 #ifdef HAVE_X11TABLETINPUT
 #include <X11/Xlib.h>
@@ -31,6 +34,9 @@
 TabletInput::TabletInput()
     : data_({0.0f, false, 0.0f, 0.0f, false, false})
     , active_(false)
+#ifdef HAVE_WAYLAND_TABLET
+    , wayland_(false)
+#endif
 #ifdef HAVE_X11TABLETINPUT
     , display_(nullptr)
     , xi_opcode_(-1)
@@ -48,6 +54,13 @@ TabletInput::~TabletInput()
 
 bool TabletInput::init()
 {
+#ifdef HAVE_WAYLAND_TABLET
+    // native Wayland: XInput2 would only receive events of XWayland windows
+    if (Rendering::manager().wayland()) {
+        wayland_ = true;
+        return initWayland();
+    }
+#endif
 #ifdef HAVE_X11TABLETINPUT
     // Open X11 display connection
     display_ = XOpenDisplay(nullptr);
@@ -152,6 +165,12 @@ bool TabletInput::init()
 
 void TabletInput::pollEvents()
 {
+#ifdef HAVE_WAYLAND_TABLET
+    if (wayland_) {
+        pollWayland();
+        return;
+    }
+#endif
 #ifdef HAVE_X11TABLETINPUT
     if (!display_) return;
 
@@ -235,6 +254,13 @@ void TabletInput::pollEvents()
 
 void TabletInput::terminate()
 {
+#ifdef HAVE_WAYLAND_TABLET
+    if (wayland_) {
+        terminateWayland();
+        wayland_ = false;
+        return;
+    }
+#endif
 #ifdef HAVE_X11TABLETINPUT
     if (display_) {
         XCloseDisplay(display_);
