@@ -102,7 +102,7 @@ MediaPlayer::MediaPlayer()
 
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
     // try to use GLMemory for zero-copy GPU textures
-    use_gl_memory_ = Settings::application.render.gst_glmemory_context;
+    use_gl_memory_ = true;
 #endif
 
     // OpenGL texture
@@ -720,8 +720,7 @@ void MediaPlayer::execute_open()
     if (force_software_decoding_ || media_.isimage)
         use_gl_memory_ = false; // disable GLMemory for images to avoid issues with some plugins
     else
-        // follow user preference for GLMemory usage
-        use_gl_memory_ = Settings::application.render.gst_glmemory_context;
+        use_gl_memory_ = true;
 
     // Try to create glsinkbin to automatically handle GL upload and conversion
     GstElement *glsinkbin = nullptr;

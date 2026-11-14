@@ -230,8 +230,7 @@ StreamInfo StreamDiscoverer(const std::string &description, guint w, guint h)
 bool Stream::glMemoryAvailable()
 {
 #ifdef USE_GST_OPENGL_SYNC_HANDLER
-    return Settings::application.render.gst_glmemory_context &&
-           Rendering::manager().global_gl_context != nullptr &&
+    return Rendering::manager().global_gl_context != nullptr &&
            GstToolkit::has_feature("glupload") &&
            GstToolkit::has_feature("glcolorconvert");
 #else

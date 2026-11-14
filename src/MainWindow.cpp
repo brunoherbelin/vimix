@@ -297,8 +297,7 @@ bool MainWindow::init()
 #endif
 
     // multisampling in main window
-    // glfwWindowHint(GLFW_SAMPLES, master_ == NULL ? Settings::application.render.multisampling : 0);
-    glfwWindowHint(GLFW_SAMPLES, Settings::application.render.multisampling);
+    glfwWindowHint(GLFW_SAMPLES, VIMIX_GL_MULTISAMPLE);
 
     // do not show at creation
     glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);

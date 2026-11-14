@@ -21,6 +21,7 @@
 #include <cmath>
 #include <list>
 
+#include "defines.h"
 #include "FrameBuffer.h"
 #include "Resource.h"
 #include "Settings.h"
@@ -110,8 +111,8 @@ uint64_t FrameBuffer::memoryUsage(glm::vec3 resolution, FrameBufferFlags flags)
 
     // the multisample texture holds N samples per pixel
     // (same condition as in init(), which drops the flag if multisampling is disabled)
-    if ( (flags & FrameBuffer_multisampling) && Settings::application.render.multisampling > 0 )
-        bytes += static_cast<uint64_t>(Settings::application.render.multisampling) * w * h * bpp;
+    if ( (flags & FrameBuffer_multisampling) && VIMIX_GL_MULTISAMPLE > 0 )
+        bytes += static_cast<uint64_t>(VIMIX_GL_MULTISAMPLE) * w * h * bpp;
 
     return bytes;
 }
@@ -243,16 +244,17 @@ void FrameBuffer::init()
         g_printerr("Framebuffer %d created (%d x %d) - ", framebufferid_, attrib_.viewport.x, attrib_.viewport.y);
 #endif
 
-    // no multisampling if application multisampling is level 0 (tested at init)
-    if ( Settings::application.render.multisampling < 1 )
-        flags_ &= ~FrameBuffer_multisampling;
+    // no multisampling if disabled at compilation
+#if VIMIX_GL_MULTISAMPLE < 1
+    flags_ &= ~FrameBuffer_multisampling;
+#endif
 
     if (flags_ & FrameBuffer_multisampling){
 
         // create a multisample texture
         glGenTextures(1, &multisampling_textureid_);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, multisampling_textureid_);
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, Settings::application.render.multisampling,
+        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, VIMIX_GL_MULTISAMPLE,
                                 (flags_ & FrameBuffer_alpha) ? GL_RGBA8 : GL_RGB8, attrib_.viewport.x, attrib_.viewport.y, GL_TRUE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -280,7 +282,7 @@ void FrameBuffer::init()
         glBindFramebuffer(GL_FRAMEBUFFER, multisampling_framebufferid_);
 
 #ifdef FRAMEBUFFER_DEBUG
-        g_printerr("multi sampling (%d) - ", Settings::application.render.multisampling);
+        g_printerr("multi sampling (%d) - ", VIMIX_GL_MULTISAMPLE);
 #endif
     }
 

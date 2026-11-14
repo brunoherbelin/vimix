@@ -292,22 +292,14 @@ bool Rendering::init()
     // nice line smoothing
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
-    // Enable Antialiasing multisampling for main window
-    if ( Rendering::openGLExtensionAvailable( "GL_ARB_multisample" ) ||
-         Rendering::openGLExtensionAvailable( "GL_ARB_texture_multisample" )||
-         Rendering::openGLExtensionAvailable( "GL_EXT_multisample" )||
-         Rendering::openGLExtensionAvailable( "GL_EXT_framebuffer_multisample" )) {
-
-        if (Settings::application.render.multisampling > 0) {
-            glEnable(GL_MULTISAMPLE);
-            if ( Rendering::openGLExtensionAvailable( "GL_NV_multisample_filter_hint") )
-                glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
-        }
-        else
-            glDisable(GL_MULTISAMPLE);
-    }
-    else
-        Settings::application.render.multisampling = 0;
+    // Enable Antialiasing multisampling for main window (OpenGL 3.3 core)
+#if VIMIX_GL_MULTISAMPLE > 0
+    glEnable(GL_MULTISAMPLE);
+    if ( Rendering::openGLExtensionAvailable( "GL_NV_multisample_filter_hint") )
+        glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
+#else
+    glDisable(GL_MULTISAMPLE);
+#endif
 
     //  no vsync (blocs rendering if main window is in background on some systems);
     //  the rendering loop is paced by limitFramerate()

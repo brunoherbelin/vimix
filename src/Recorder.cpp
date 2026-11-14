@@ -202,7 +202,6 @@ std::string VideoRecorder::init(GstCaps *read_caps, GstCaps *write_caps)
     // Use glupload + glcolorconvert for hardware encoders, taking frames in OpenGL memory
     // (the encoder pipeline starts with the adapter from OpenGL memory, if needed)
     if (Settings::application.render.gpu_decoding &&
-        Settings::application.render.gst_glmemory_context &&
         GstToolkit::has_feature("glupload") &&
         GstToolkit::has_feature("glcolorconvert") &&
         GstToolkit::has_feature("gltransformation"))

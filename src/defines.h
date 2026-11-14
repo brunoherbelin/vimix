@@ -15,6 +15,7 @@
 
 #define VIMIX_GL_VERSION "opengl3"
 #define VIMIX_GLSL_VERSION "#version 150"
+#define VIMIX_GL_MULTISAMPLE 3
 
 #define VIMIX_FILE_TYPE "vimix session (MIX)"
 #define VIMIX_FILE_EXT "mix"
