@@ -83,7 +83,12 @@ Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(t
     if (id_ == 0)
         id_ = BaseToolkit::uniqueId();
 
+    // frame_ is attached in the foreground of views, which can transform it
+    // (e.g. Geometry view scales the nodes of its foreground to the aspect ratio
+    // of the output): root_ compensates for it (see animate)
+    frame_ = new Group;
     root_ = new Group;
+    frame_->attach(root_);
 
     // grips on top of everything
     grips_ = new Group;
@@ -97,20 +102,20 @@ Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(t
 Automaton::~Automaton ()
 {
     if (parent_)
-        parent_->detach(root_);
+        parent_->detach(frame_);
     // deletes all children nodes
-    delete root_;
+    delete frame_;
 }
 
 void Automaton::attachTo (Group *parent)
 {
     if (parent_ != nullptr)
-        parent_->detach(root_);
+        parent_->detach(frame_);
 
     parent_ = parent;
 
     if (parent_ != nullptr)
-        parent_->attach(root_);
+        parent_->attach(frame_);
 }
 
 void Automaton::setEnabled (bool on)
@@ -172,6 +177,11 @@ glm::vec2 Automaton::center () const
 void Automaton::animate (double beats, float uiscale)
 {
     uiscale_ = uiscale;
+    // cancel the transform of the frame by the view
+    root_->scale_ = glm::vec3( 1.f / std::max(std::abs(frame_->scale_.x), 1e-3f),
+                               1.f / std::max(std::abs(frame_->scale_.y), 1e-3f), 1.f );
+    root_->translation_ = glm::vec3( -frame_->translation_.x * root_->scale_.x,
+                                     -frame_->translation_.y * root_->scale_.y, 0.f );
     if (resuming_) {
         // first beat time from which the motion can continue where it stopped:
         // the delay is a whole number of beats (resume immediately if on the same beat)

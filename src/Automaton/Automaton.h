@@ -166,6 +166,7 @@ protected:
     float uiscale_;
 
     // scene
+    Group *frame_;
     Group *root_;
     Group *parent_;
     Group *grips_;
