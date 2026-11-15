@@ -1268,7 +1268,6 @@ XMLElement *SessionVisitor::saveAutomatons(tinyxml2::XMLDocument *doc, Session *
     AutomatonRig *rig = session->automatons();
     rig->lock();
 
-    automatonsNode->SetAttribute("paused", rig->paused());
     automatonsNode->SetAttribute("beats", rig->beats());
 
     // automatons
@@ -1300,6 +1299,11 @@ void SessionVisitor::visit (Automaton& a)
     node->SetAttribute("view", (int) a.mode());
     node->SetAttribute("name", a.name().c_str());
     node->SetAttribute("enabled", a.enabled());
+    if (a.paused() || a.resuming()) {
+        node->SetAttribute("paused", a.paused());
+        node->SetAttribute("resuming", a.resuming());
+        node->SetAttribute("time", a.time());
+    }
     node->SetAttribute("period", a.period());
     node->SetAttribute("offset", a.offset());
     node->SetAttribute("shape", a.shape());

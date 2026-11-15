@@ -18,8 +18,10 @@
 **/
 
 #include <algorithm>
+#include <cmath>
 
 #include "IconsFontAwesome5.h"
+
 #include "defines.h"
 #include "Scene/Scene.h"
 #include "Scene/Primitives.h"
@@ -74,7 +76,7 @@ bool Automaton::accepts (Type t, View::Mode m)
     return false;
 }
 
-Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(true),
+Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(true), paused_(false), resuming_(false), resume_at_(RESUME_UNSET), time_(0.0),
     period_(4.0), offset_(0.0), shape_(AutomatonMath::SHAPE_LINEAR), reverse_(false),
     progress_(0.0), uiscale_(1.f), parent_(nullptr), hover_(GRIP_NONE), highlight_(false)
 {
@@ -114,6 +116,20 @@ void Automaton::attachTo (Group *parent)
 void Automaton::setEnabled (bool on)
 {
     enabled_ = on;
+}
+
+void Automaton::setPaused (bool on)
+{
+    if (on) {
+        // pausing while waiting to resume: stay still
+        paused_ = true;
+        resuming_ = false;
+    }
+    else if (paused_) {
+        // resume at next possible beat (see animate)
+        paused_ = false;
+        setResuming(true);
+    }
 }
 
 void Automaton::setPeriod (double p)
@@ -156,7 +172,26 @@ glm::vec2 Automaton::center () const
 void Automaton::animate (double beats, float uiscale)
 {
     uiscale_ = uiscale;
-    progress_ = AutomatonMath::progress(beats, period_, offset_);
+    if (resuming_) {
+        // first beat time from which the motion can continue where it stopped:
+        // the delay is a whole number of beats (resume immediately if on the same beat)
+        if (resume_at_ == RESUME_UNSET)
+            resume_at_ = time_ + std::ceil(beats - time_ - 1e-6);
+        if (beats >= resume_at_) {
+            // shift the phase by the delay (modulo period to keep it small)
+            double o = offset_ + (resume_at_ - time_);
+            o -= period_ * std::floor(o / period_);
+            // keep a negative offset for display if it was
+            if (offset_ < 0.0 && o > 0.0)
+                o -= period_;
+            offset_ = o;
+            resuming_ = false;
+            resume_at_ = RESUME_UNSET;
+        }
+    }
+    if (!paused_ && !resuming_)
+        time_ = beats;
+    progress_ = AutomatonMath::progress(time_, period_, offset_);
     motion();
     updateGrips();
 }

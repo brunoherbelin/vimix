@@ -44,6 +44,12 @@
 // tolerance to detect a change made by someone else than the rig
 #define POSE_EPSILON 1e-6f
 
+// When a link of a path automaton stops acting (unlink, disable, delete), its
+// effect is transfered in the rest pose so that the source stays where it is,
+// and links start from where the source is when enabled again.
+// Set to 0 for sources to go back at their rest pose (previous behavior).
+#define AUTOMATON_BAKE_LINKS 1
+
 //
 // AutomatonPose
 //
@@ -178,7 +184,8 @@ static const std::vector<int> linkable_handles = {
 
 // apply the displacement 'offset' of the handle of the link, with the base pose as starting status
 // returns position of the handle in scene
-static glm::vec2 applyHandle (Source *s, const AutomatonPose &base, const AutomatonLink &l, glm::vec2 offset)
+static glm::vec2 applyHandle (Source *s, const AutomatonPose &base, const AutomatonLink &l, glm::vec2 offset,
+                              Group *target = nullptr)
 {
     FrameBuffer *fb = s->frame();
     if (fb == nullptr || l.handle < 0 || l.handle > 14)
@@ -205,7 +212,7 @@ static glm::vec2 applyHandle (Source *s, const AutomatonPose &base, const Automa
     std::ostringstream info;
     View::Cursor cursor;
     GeometryHandleManipulation::HandleGrabContext ctx = {
-        s->group(View::GEOMETRY),       // targetNode
+        target ? target : s->group(View::GEOMETRY), // targetNode
         &stored,                        // stored_status
         fb,                             // frame
         scene_from,                     // scene_from
@@ -252,7 +259,7 @@ static glm::vec2 applyHandle (Source *s, const AutomatonPose &base, const Automa
 // AutomatonRig
 //
 
-AutomatonRig::AutomatonRig (Session *session) : session_(session), selected_(0), paused_(false), beats_(0.0)
+AutomatonRig::AutomatonRig (Session *session) : session_(session), selected_(0), beats_(0.0)
 {
 }
 
@@ -307,8 +314,14 @@ void AutomatonRig::remove (Automaton *a)
             grab_ = Grab();
         if (selected_ == a->id())
             selected_ = 0;
+        // linked sources stay where they are
+        if (PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a)) {
+            if (pa->enabled())
+                for (auto &l : pa->links())
+                    bake(pa, l);
+        }
         automatons_.erase(it);
-        // NB: influenced sources are placed back at rest by next update
+        // NB: sources not influenced anymore are placed at rest by next update
         delete a;
     }
 }
@@ -337,12 +350,147 @@ Automaton *AutomatonRig::selected () const
 void AutomatonRig::unlink (PathAutomaton *a, const AutomatonLink &link)
 {
     std::lock_guard<std::mutex> lock(access_);
+    if (a->enabled()) {
+        for (auto &l : a->links())
+            if (l.sameElement(link))
+                bake(a, l);
+    }
     a->links().remove_if([&link](const AutomatonLink &l) { return l.sameElement(link); });
+}
+
+void AutomatonRig::setEnabled (Automaton *a, bool on)
+{
+    std::lock_guard<std::mutex> lock(access_);
+    if (a == nullptr || a->enabled() == on)
+        return;
+
+    if (PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a)) {
+        for (auto &l : pa->links()) {
+            // disabled: linked sources stay where they are
+            if (!on)
+                bake(pa, l);
+#if AUTOMATON_BAKE_LINKS
+            // enabled: linked sources start moving from where they are
+            else
+                l.anchor = pa->mover();
+#endif
+        }
+    }
+    // NB: field automatons do not bake: sources pushed are given back when disabled
+    a->setEnabled(on);
+}
+
+void AutomatonRig::updateTargets (Source *s, View::Mode m, bool handles)
+{
+    Node *node = s->group(m);
+
+    // position of the source body
+    glm::vec2 position(node->translation_);
+    if (m == View::LAYER)
+        position = glm::vec2(-node->translation_.z, -node->translation_.z / LAYER_PERSPECTIVE);
+
+    // position of the points of handles on the source, from its current pose
+    glm::mat4 source_to_scene(1.f);
+    FrameBuffer *fb = s->frame();
+    handles = handles && m == View::GEOMETRY && fb != nullptr;
+    if (handles) {
+        Group current;
+        AutomatonPose pose;
+        pose.capture(node);
+        pose.apply(&current);
+        current.update(0);
+        const glm::mat4 source_scale = glm::scale(glm::identity<glm::mat4>(),
+                                                  glm::vec3(1.f / fb->aspectRatio(), 1.f, 1.f));
+        source_to_scene = glm::inverse(source_scale * glm::inverse(current.transform_));
+    }
+
+    for (auto a : automatons_) {
+        if (a->mode() != m)
+            continue;
+        if (PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a)) {
+            for (auto &l : pa->links()) {
+                if (l.source != s->id())
+                    continue;
+                if (l.handle < 0)
+                    l.target = position;
+                else if (handles)
+                    l.target = glm::vec2( source_to_scene * glm::vec4(l.point, 0.f, 1.f) );
+            }
+        }
+    }
+}
+
+bool AutomatonRig::rebase (Source *s, View::Mode m)
+{
+    bool linked = false;
+    for (auto a : automatons_) {
+        PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a);
+        if (pa == nullptr || !pa->enabled() || pa->mode() != m)
+            continue;
+        for (auto &l : pa->links()) {
+            if (l.source == s->id()) {
+                l.anchor = pa->mover();
+                linked = true;
+            }
+        }
+    }
+    return linked;
+}
+
+void AutomatonRig::bake (PathAutomaton *a, const AutomatonLink &l)
+{
+#if !AUTOMATON_BAKE_LINKS
+    (void) a; (void) l;
+    return;
+#endif
+    auto it = poses_.find( PoseKey(l.source, (int) a->mode()) );
+    if (it == poses_.end())
+        return;
+    AutomatonPose &base = it->second.base;
+    const glm::vec2 displacement = a->mover() - l.anchor;
+
+    // body: displacement in the rest pose (as in compose)
+    if (l.handle < 0) {
+        if (a->mode() == View::LAYER)
+            base.translation.z = CLAMP(base.translation.z - displacement.x, MIN_DEPTH, MAX_DEPTH);
+        else {
+            base.translation.x += displacement.x;
+            base.translation.y += displacement.y;
+        }
+    }
+    // handle: rest pose becomes the pose given by the handle
+    else if (a->mode() == View::GEOMETRY) {
+        auto s = session_->find(l.source);
+        if (s == session_->end())
+            return;
+        Group pose;
+        base.apply(&pose);
+        applyHandle(*s, base, l, displacement, &pose);
+        base.capture(&pose);
+    }
 }
 
 void AutomatonRig::setPaused (bool on)
 {
-    paused_ = on;
+    std::lock_guard<std::mutex> lock(access_);
+    for (auto a : automatons_)
+        a->setPaused(on);
+}
+
+bool AutomatonRig::allPaused () const
+{
+    for (auto a : automatons_)
+        if (!a->paused())
+            return false;
+    return !automatons_.empty();
+}
+
+bool AutomatonRig::anyPaused () const
+{
+    for (auto a : automatons_)
+        if (a->paused() || a->resuming())
+            return true;
+    return false;
 }
 
 void AutomatonRig::setRestPose (uint64_t source, View::Mode m, const AutomatonPose &base)
@@ -385,8 +533,7 @@ void AutomatonRig::update ()
 {
     std::lock_guard<std::mutex> lock(access_);
 
-    if (!paused_)
-        beats_ = Metronome::manager().beats();
+    beats_ = Metronome::manager().beats();
 
     // automatons are shown in views only if the session is edited
     const bool edited = Mixer::manager().session() == session_;
@@ -446,13 +593,26 @@ void AutomatonRig::update ()
         Node *node = src->group(m);
 
         // let the user move the source
+        const bool was_frozen = p.frozen;
         p.frozen = edited && userGrabbing(src, m);
         if (p.frozen) {
+            // links follow the source moved by the user
+            updateTargets(src, m, true);
             ++it;
             continue;
         }
 
+#if AUTOMATON_BAKE_LINKS
+        // released by the user: links of path automatons start again from where
+        // the source was left, i.e. the rest pose is the pose of the source and
+        // the links are anchored to the current position of their automaton
+        if (was_frozen && rebase(src, m))
+            p.base.capture(node);
         // the source was moved since last pose written: move its rest pose
+        else
+#else
+        (void) was_frozen;
+#endif
         if (p.written_valid)
             transferChannels(m, node, p.written, p.base);
 
@@ -524,19 +684,8 @@ void AutomatonRig::compose (Source *s, View::Mode m, RestPose &p)
         }
     }
 
-    // position of the source for drawing links
-    glm::vec2 position(node->translation_);
-    if (m == View::LAYER)
-        position = glm::vec2(-node->translation_.z, -node->translation_.z / LAYER_PERSPECTIVE);
-    for (auto a : automatons_) {
-        if (a->mode() != m)
-            continue;
-        if (PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a)) {
-            for (auto &l : pa->links())
-                if (l.source == s->id() && l.handle < 0)
-                    l.target = position;
-        }
-    }
+    // position of the source for drawing links (handles were given by applyHandle)
+    updateTargets(s, m, false);
 
     // change of depth requires reordering of views
     if (m == View::LAYER && std::abs(previous_depth - node->translation_.z) > POSE_EPSILON)
@@ -646,6 +795,12 @@ void AutomatonRig::release (View *view, glm::vec2 screen)
                 bool added = false;
                 {
                     std::lock_guard<std::mutex> lock(access_);
+                    // unlinked source stays where it is
+                    if (pa->enabled()) {
+                        for (auto &e : pa->links())
+                            if (e.sameElement(l))
+                                bake(pa, e);
+                    }
                     added = pa->toggleLink(l);
                 }
                 label = pa->name() + ": " + (added ? "Link " : "Unlink ") + target;

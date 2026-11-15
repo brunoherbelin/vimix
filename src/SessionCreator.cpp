@@ -606,7 +606,6 @@ void SessionLoader::loadAutomatons(tinyxml2::XMLElement *automatonsNode)
 
     AutomatonRig *rig = session_->automatons();
     rig->clear();
-    rig->setPaused( automatonsNode->BoolAttribute("paused", false) );
 
     // id of a source in the xml to id of the source loaded
     auto sourceId = [this](uint64_t xmlid) -> uint64_t {
@@ -629,6 +628,11 @@ void SessionLoader::loadAutomatons(tinyxml2::XMLElement *automatonsNode)
         if (name)
             a->setName(name);
         a->setEnabled( node->BoolAttribute("enabled", true) );
+        a->setTime( node->DoubleAttribute("time", 0.0) );
+        if ( node->BoolAttribute("paused", false) )
+            a->setPaused(true);
+        else if ( node->BoolAttribute("resuming", false) )
+            a->setResuming(true);
         a->setPeriod( node->DoubleAttribute("period", a->period()) );
         a->setOffset( node->DoubleAttribute("offset", a->offset()) );
         a->setShape( node->IntAttribute("shape", a->shape()) );

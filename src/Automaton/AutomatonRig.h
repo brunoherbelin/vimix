@@ -65,16 +65,22 @@ public:
     void remove (Automaton *a);
     void clear ();
     Automaton *find (uint64_t id) const;
-    // remove a link of a path automaton
+    // remove a link of a path automaton (the source stays where it is)
     void unlink (PathAutomaton *a, const AutomatonLink &link);
+    // enable or disable an automaton: linked sources of path automatons stay
+    // where they are (their rest pose takes the effect of the link), while
+    // sources pushed by field automatons are given back
+    void setEnabled (Automaton *a, bool on);
 
     // automaton selected for edition
     Automaton *selected () const;
     inline void setSelected (Automaton *a) { selected_ = a ? a->id() : 0; }
 
     // timing
-    inline bool paused () const { return paused_; }
+    // pause or play all automatons (see Automaton::setPaused)
     void setPaused (bool on);
+    bool allPaused () const;
+    bool anyPaused () const;
     inline double beats () const { return beats_; }
 
     // per frame, called by Session::update
@@ -114,6 +120,14 @@ public:
 
 private:
     RestPose &acquire (Source *s, View::Mode m);
+    // transfer the current effect of a link in the rest pose of its source
+    void bake (PathAutomaton *a, const AutomatonLink &l);
+    // anchor the links of a source to the current position of their automatons
+    // (returns false if the source is not linked)
+    bool rebase (Source *s, View::Mode m);
+    // update the end points of the lines drawn for the links to a source
+    // (handles: compute points of handles from the current pose of the source)
+    void updateTargets (Source *s, View::Mode m, bool handles);
     void compose (Source *s, View::Mode m, RestPose &p);
     bool userGrabbing (Source *s, View::Mode m) const;
     bool pickTarget (View *view, glm::vec2 screen, AutomatonLink &link, std::string &label) const;
@@ -123,7 +137,6 @@ private:
     std::map<PoseKey, RestPose> poses_;
     std::mutex access_;
     uint64_t selected_;
-    bool paused_;
     double beats_;
 
     struct Grab {

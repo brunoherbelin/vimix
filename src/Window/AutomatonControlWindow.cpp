@@ -100,9 +100,14 @@ void AutomatonControlWindow::Render ()
 
         if (ImGui::BeginMenu(IMGUI_TITLE_AUTOMATONS))
         {
-            bool p = rig->paused();
-            if ( ImGui::MenuItem( ICON_FA_PAUSE "  Pause all", nullptr, &p) )
-                rig->setPaused(p);
+            if ( ImGui::MenuItem( ICON_FA_PLAY "  Play all", nullptr, false, rig->anyPaused()) ) {
+                rig->setPaused(false);
+                Action::manager().store("Automatons: Play all");
+            }
+            if ( ImGui::MenuItem( ICON_FA_PAUSE "  Pause all", nullptr, false, !rig->empty() && !rig->allPaused()) ) {
+                rig->setPaused(true);
+                Action::manager().store("Automatons: Pause all");
+            }
 
             ImGui::Separator();
             bool pinned = Settings::application.widget.automatons_view == Settings::application.current_view;
@@ -140,7 +145,7 @@ void AutomatonControlWindow::Render ()
         char info[64];
         const double q = std::max(1.0, Metronome::manager().quantum());
         const double b = rig->beats();
-        snprintf(info, 64, "%s%.1f BPM   %d / %d", rig->paused() ? ICON_FA_PAUSE "  " : "",
+        snprintf(info, 64, "%.1f BPM   %d / %d",
                  Metronome::manager().tempo(), (int) std::floor(b - q * std::floor(b / q)) + 1, (int) q);
         const float w = ImGui::CalcTextSize(info).x + ImGui::GetStyle().ItemSpacing.x;
         ImGui::SameLine(ImGui::GetWindowWidth() - w - ImGui::GetStyle().WindowPadding.x);
@@ -231,13 +236,14 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
         ImGui::SetCursorScreenPos(ImVec2(origin.x, y + 0.5f * (row_h - ImGui::GetFrameHeight())));
         bool on = a->enabled();
         if (ImGui::Checkbox("##enabled", &on)) {
-            a->setEnabled(on);
+            rig->setEnabled(a, on);
             Action::manager().store(a->name() + (on ? ": Enable" : ": Disable"));
         }
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip(on ? "Disable" : "Enable");
         ImGui::SameLine();
-        const std::string label = std::string(Automaton::Types[a->type()].first) + " " + a->name();
+        const std::string label = std::string(Automaton::Types[a->type()].first) + " " + a->name()
+                                  + (a->paused() ? "  " ICON_FA_PAUSE : (a->resuming() ? "  " ICON_FA_HOURGLASS_HALF : ""));
         if (ImGui::Selectable(label.c_str(), selected, 0, ImVec2(x0 - ImGui::GetCursorScreenPos().x - style.ItemSpacing.x, 0)))
             rig->setSelected(a);
         if (ImGui::IsItemHovered())
@@ -282,6 +288,27 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
                 dl->AddLine(ImVec2(x, y + 2.f), ImVec2(x, y + row_h - 2.f), col_mark, e == 0 ? 2.f : 1.f);
                 if (selected)
                     marks.push_back(x);
+            }
+        }
+
+        // paused: head of the automaton frozen at its progress, repeated on this page
+        if (a->paused() || a->resuming()) {
+            const double tp = a->time() - a->period() * std::floor((a->time() - page) / a->period());
+            const ImU32 col_head = ImGui::GetColorU32(AUTOMATON_IMGUI_COLOR(1.f));
+            for (double t = tp; t <= page + span + 1e-6; t += a->period()) {
+                const float x = X(t);
+                dl->AddLine(ImVec2(x, y + 2.f), ImVec2(x, y + row_h - 2.f), col_head, 2.f);
+                const float u = float(AutomatonMath::progress(t, a->period(), a->offset()));
+                dl->AddCircleFilled(ImVec2(x, low - (low - top) * a->curve(u)), 4.f, col_head);
+            }
+            // moment when the motion will resume
+            if (a->resuming() && a->resumeTime() != Automaton::RESUME_UNSET) {
+                const double tr = a->resumeTime();
+                if (tr >= page && tr <= page + span) {
+                    const float x = X(tr);
+                    dl->AddTriangleFilled(ImVec2(x - 5.f, y + 2.f), ImVec2(x + 5.f, y + 2.f),
+                                          ImVec2(x, y + 9.f), col_head);
+                }
             }
         }
     }
@@ -393,6 +420,17 @@ void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
             Action::manager().store(a->name() + ": Remove key");
         }
     }
+
+    // play / pause
+    if (ImGui::Button(a->paused() ? ICON_FA_PLAY "  Play " : ICON_FA_PAUSE "  Pause")) {
+        a->setPaused( !a->paused() );
+        Action::manager().store(a->name() + (a->paused() ? ": Pause" : ": Play"));
+    }
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(a->paused() ? "Continue motion from where it stopped, at the next beat"
+                                          : (a->resuming() ? "Waiting for the next beat to continue"
+                                                           : "Stop motion (still acting on sources)"));
+    ImGui::SameLine();
 
     // delete
     if (ImGui::Button(ICON_FA_TRASH "  Delete")) {

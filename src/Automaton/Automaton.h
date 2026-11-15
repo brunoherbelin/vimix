@@ -65,6 +65,16 @@ public:
     inline bool enabled () const { return enabled_; }
     void setEnabled (bool on);
 
+    // A paused automaton stays still but keeps acting on sources.
+    // When played again, it waits for the next beat where it can resume its motion
+    inline bool paused () const { return paused_; }
+    void setPaused (bool on);
+    // waiting for the next beat to resume after pause
+    inline bool resuming () const { return resuming_; }
+    inline void setResuming (bool on) { resuming_ = on; resume_at_ = RESUME_UNSET; }
+    // beat time when motion will resume (valid while resuming, after first animate)
+    inline double resumeTime () const { return resume_at_; }
+
     // timing (in beats)
     inline double period () const { return period_; }
     void setPeriod (double p);
@@ -85,6 +95,9 @@ public:
     // compute the state of the automaton at given beat time, and update graphics
     // uiscale is the inverse of the zoom of the view, to draw grips at constant size
     void animate (double beats, float uiscale);
+    // beat time of the current state (frozen while paused)
+    inline double time () const { return time_; }
+    inline void setTime (double t) { time_ = t; }
     // progress [0 1] in the current cycle
     inline double progress () const { return progress_; }
     // value [0 1] of the motion at given fraction of the cycle (to draw timelines)
@@ -109,6 +122,8 @@ public:
 
     // accept all kind of visitors
     virtual void accept (Visitor &v);
+
+    static constexpr double RESUME_UNSET = -1e300;
 
 protected:
     Automaton (View::Mode m, uint64_t id);
@@ -138,6 +153,10 @@ protected:
     std::string name_;
     View::Mode mode_;
     bool enabled_;
+    bool paused_;
+    bool resuming_;
+    double resume_at_;
+    double time_;
     double period_;
     double offset_;
     int shape_;
