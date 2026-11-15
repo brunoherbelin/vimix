@@ -17,6 +17,7 @@ class FrameGrabber;
 class MixingGroup;
 class SourceCallback;
 class CallbackGenerator;
+class AutomatonRig;
 
 struct SessionNote
 {
@@ -196,6 +197,9 @@ public:
     // actions associated to inputs
     inline InputCallbacks *inputCallbacks () { return &input_callbacks_; }
 
+    // automatons moving the sources
+    inline AutomatonRig *automatons () const { return automatons_; }
+
 protected:
     uint64_t id_;
     bool active_;
@@ -235,7 +239,7 @@ protected:
     Fading fading_;
 
     InputCallbacks input_callbacks_;
-
+    AutomatonRig *automatons_;
 };
 
 

@@ -147,6 +147,9 @@ void captureMixerSession(Session *se, std::string node,
         if (inputsNode)
             sessionNode->InsertEndChild(inputsNode);
 
+        // save automatons
+        sessionNode->InsertEndChild( SessionVisitor::saveAutomatons(_doc, se) );
+
         if (doc == nullptr)
             se->snapshots()->access_.unlock();
     }

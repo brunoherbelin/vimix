@@ -98,6 +98,8 @@ XMLElement *save_widgets(const Settings::WidgetsConfig &w, XMLDocument &xmlDoc)
     node->SetAttribute("draft_corner", w.draft_corner);
     node->SetAttribute("shader_editor", w.shader_editor);
     node->SetAttribute("shader_editor_view", w.shader_editor_view);
+    node->SetAttribute("automatons", w.automatons);
+    node->SetAttribute("automatons_view", w.automatons_view);
     node->SetAttribute("stats", w.stats);
     node->SetAttribute("stats_mode", w.stats_mode);
     node->SetAttribute("stats_corner", w.stats_corner);
@@ -529,6 +531,8 @@ void load_widgets(XMLElement *node, Settings::WidgetsConfig &w)
     node->QueryIntAttribute("preview_view", &w.preview_view);
     node->QueryBoolAttribute("timer", &w.timer);
     node->QueryIntAttribute("timer_view", &w.timer_view);
+    node->QueryBoolAttribute("automatons", &w.automatons);
+    node->QueryIntAttribute("automatons_view", &w.automatons_view);
     node->QueryBoolAttribute("inputs", &w.inputs);
     node->QueryIntAttribute("inputs_view", &w.inputs_view);
     node->QueryBoolAttribute("media_player", &w.media_player);

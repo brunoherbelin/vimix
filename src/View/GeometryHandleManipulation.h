@@ -71,6 +71,9 @@ struct HandleGrabContext {
     Symbol* overlay_rotation;
     Symbol* overlay_rotation_fix;
     Node* overlay_rotation_clock_hand;
+
+    // constrained manipulation (e.g. SHIFT key pressed by user)
+    bool constrained;
 };
 
 // Handle manipulation functions for different handle types

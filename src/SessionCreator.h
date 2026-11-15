@@ -116,6 +116,7 @@ protected:
     std::list< SourceIdList > groups_sources_id_;
 
     void loadInputCallbacks(tinyxml2::XMLElement *inputsNode);
+    void loadAutomatons(tinyxml2::XMLElement *automatonsNode);
 
     // create a new source of the given type
     virtual Source *newSource(const std::string &type, uint64_t id);

@@ -17,6 +17,7 @@
 #include "Window/SourceControlWindow.h"
 #include "Window/OutputPreviewWindow.h"
 #include "Window/TimerMetronomeWindow.h"
+#include "Window/AutomatonControlWindow.h"
 #include "Window/InputMappingWindow.h"
 #include "Window/ShaderEditWindow.h"
 #include "Playlist.h"
@@ -154,6 +155,7 @@ protected:
     SourceControlWindow sourcecontrol;
     OutputPreviewWindow outputcontrol;
     TimerMetronomeWindow timercontrol;
+    AutomatonControlWindow automatoncontrol;
     InputMappingWindow inputscontrol;
     ShaderEditWindow shadercontrol;
 

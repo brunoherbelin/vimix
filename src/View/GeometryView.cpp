@@ -1211,7 +1211,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
                 overlay_scaling_cross_,         // overlay_scaling_cross
                 overlay_rotation_,              // overlay_rotation
                 overlay_rotation_fix_,          // overlay_rotation_fix
-                overlay_rotation_clock_hand_    // overlay_rotation_clock_hand
+                overlay_rotation_clock_hand_,   // overlay_rotation_clock_hand
+            UserInterface::manager().shiftModifier() // constrained
             };
 
             if (pick.first == current_canvas_->handles_[mode_][Handles::CROP_H]) {
@@ -1412,7 +1413,8 @@ View::Cursor GeometryView::grab (Source *s, glm::vec2 from, glm::vec2 to, std::p
             overlay_scaling_cross_,         // overlay_scaling_cross
             overlay_rotation_,              // overlay_rotation
             overlay_rotation_fix_,          // overlay_rotation_fix
-            overlay_rotation_clock_hand_    // overlay_rotation_clock_hand
+            overlay_rotation_clock_hand_,   // overlay_rotation_clock_hand
+            UserInterface::manager().shiftModifier() // constrained
         };
 
         // picking on a Node

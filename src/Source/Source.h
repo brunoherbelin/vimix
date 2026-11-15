@@ -118,6 +118,12 @@ public:
     // tests if a given node is part of the source
     bool contains (Node *node) const;
 
+    // handle of given type (Handles::Type) in a view (nullptr if none)
+    inline Handles *handle (View::Mode m, int t) const {
+        auto h = handles_.find(m);
+        return (h != handles_.end() && t >= 0 && t < 15) ? h->second[t] : nullptr;
+    }
+
     // the image processing shader can be enabled or disabled
     // (NB: when disabled, a simple ImageShader is applied)
     void setImageProcessingEnabled (bool on);

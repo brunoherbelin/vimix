@@ -95,6 +95,7 @@
 #endif
 
 #include "UserInterfaceManager.h"
+#include "Automaton/AutomatonRig.h"
 
 
 // utility functions
@@ -751,6 +752,9 @@ void UserInterface::handleMouse()
 
     static bool mousedown = false;
     static View *view_drag = nullptr;
+    // automatons in the view are manipulated before anything else
+    static bool automaton_grab = false;
+    AutomatonRig *automatons = Mixer::manager().session()->automatons();
     static std::pair<Node *, glm::vec2> picked = {nullptr, glm::vec2(0.f)};
 
     // allow toggle ALT to enable / disable mouse pointer
@@ -775,6 +779,12 @@ void UserInterface::handleMouse()
     //
     {
         View::Cursor c = Mixer::manager().view()->over(mousepos);
+        // mouse over automatons
+        if (!io.WantCaptureMouse) {
+            View::Cursor ca = automatons->over(Mixer::manager().view(), mousepos);
+            if (ca.type > 0)
+                c = ca;
+        }
         if (c.type > 0)
             SetMouseCursor(io.MousePos, c);
     }
@@ -812,75 +822,81 @@ void UserInterface::handleMouse()
             {
                 mousedown = true;
 
-                // initiate Mouse pointer from position at mouse down event
-                if (alt_modifier_active || Settings::application.mouse_pointer_lock) {
-                    MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
-                    MousePointer::manager().active()->setStrength( Settings::application.mouse_pointer_strength[Settings::application.mouse_pointer] );
-                }
-                else
-                    MousePointer::manager().setActiveMode( Pointer::POINTER_DEFAULT );
-
-                // ask the view what was picked
-                picked = Mixer::manager().view()->pick(mousepos);
-
-                bool clear_selection = false;
-                // if nothing picked,
-                if ( picked.first == nullptr ) {
-                    clear_selection = true;
-                }
-                // something was picked
+                // grab a grip of an automaton: has priority on the view
+                // (the current source is kept, to allow linking to its handles)
+                if ( automatons->pick(Mixer::manager().view(), mousepos) )
+                    automaton_grab = true;
                 else {
-                    // initiate the pointer effect
-                    MousePointer::manager().active()->initiate(mousepos);
+                    // initiate Mouse pointer from position at mouse down event
+                    if (alt_modifier_active || Settings::application.mouse_pointer_lock) {
+                        MousePointer::manager().setActiveMode( (Pointer::Mode) Settings::application.mouse_pointer );
+                        MousePointer::manager().active()->setStrength( Settings::application.mouse_pointer_strength[Settings::application.mouse_pointer] );
+                    }
+                    else
+                        MousePointer::manager().setActiveMode( Pointer::POINTER_DEFAULT );
 
-                    // get if a source was picked
-                    Source *s = Mixer::manager().findSource(picked.first);
-                    if (s != nullptr)
-                    {
-                        // CTRL + clic = multiple selection
-                        if (ctrl_modifier_active) {
-                            if ( !Mixer::selection().contains(s) )
-                                Mixer::selection().add( s );
-                            else {
-                                Mixer::selection().remove( s );
-                                if ( Mixer::selection().size() > 1 )
-                                    s = Mixer::selection().front();
+                    // ask the view what was picked
+                    picked = Mixer::manager().view()->pick(mousepos);
+
+                    bool clear_selection = false;
+                    // if nothing picked,
+                    if ( picked.first == nullptr ) {
+                        clear_selection = true;
+                    }
+                    // something was picked
+                    else {
+                        // initiate the pointer effect
+                        MousePointer::manager().active()->initiate(mousepos);
+
+                        // get if a source was picked
+                        Source *s = Mixer::manager().findSource(picked.first);
+                        if (s != nullptr)
+                        {
+                            // CTRL + clic = multiple selection
+                            if (ctrl_modifier_active) {
+                                if ( !Mixer::selection().contains(s) )
+                                    Mixer::selection().add( s );
                                 else {
-                                    s = nullptr;
+                                    Mixer::selection().remove( s );
+                                    if ( Mixer::selection().size() > 1 )
+                                        s = Mixer::selection().front();
+                                    else {
+                                        s = nullptr;
+                                    }
                                 }
                             }
-                        }
-                        // making the picked source the current one
-                        bool sameSource = s == Mixer::manager().currentSource();
-                        if (s)
-                            Mixer::manager().setCurrentSource( s );
-                        else
-                            Mixer::manager().unsetCurrentSource();
-                        if (navigator.pannelVisible() &&
-                            (sameSource || navigator.selectedPannelSource() < NAV_MAX))
-                            navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
+                            // making the picked source the current one
+                            bool sameSource = s == Mixer::manager().currentSource();
+                            if (s)
+                                Mixer::manager().setCurrentSource( s );
+                            else
+                                Mixer::manager().unsetCurrentSource();
+                            if (navigator.pannelVisible() &&
+                                (sameSource || navigator.selectedPannelSource() < NAV_MAX))
+                                navigator.showPannelSource( Mixer::manager().indexCurrentSource() );
 
-                        // indicate to view that an action can be initiated (e.g. grab)
-                        Mixer::manager().view()->initiate();
+                            // indicate to view that an action can be initiated (e.g. grab)
+                            Mixer::manager().view()->initiate();
+                        }
+                        // no source is selected
+                        else {
+                            // unset current
+                            Mixer::manager().unsetCurrentSource();
+                            navigator.discardPannel();
+                        }
                     }
-                    // no source is selected
-                    else {
+                    if (clear_selection) {
                         // unset current
                         Mixer::manager().unsetCurrentSource();
                         navigator.discardPannel();
+                        // clear selection
+                        Mixer::selection().clear();
                     }
-                }
-                if (clear_selection) {
-                    // unset current
-                    Mixer::manager().unsetCurrentSource();
-                    navigator.discardPannel();
-                    // clear selection
-                    Mixer::selection().clear();
                 }
             }
         }
 
-        if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) )
+        if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !automaton_grab )
         {
             // if double clic event was not used in view
             if ( !Mixer::manager().view()->doubleclic(mousepos) ) {
@@ -913,7 +929,14 @@ void UserInterface::handleMouse()
         }
 
 //        if ( mousedown &&  glm::distance(mouseclic[ImGuiMouseButton_Left], mousepos) > 3.f )
-        if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 5.0f) )
+        if ( automaton_grab ) {
+            // manipulate automaton
+            if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 3.0f) ) {
+                View::Cursor c = automatons->drag(Mixer::manager().view(), mousepos);
+                SetMouseCursor(io.MousePos, c);
+            }
+        }
+        else if ( ImGui::IsMouseDragging(ImGuiMouseButton_Left, 5.0f) )
         {
             if(view_drag == nullptr) {
                 view_drag = Mixer::manager().view();
@@ -986,6 +1009,10 @@ void UserInterface::handleMouse()
         if (mousedown || view_drag)
             Mixer::manager().view()->terminate();
 
+        // cancel manipulation of automaton
+        if (automaton_grab)
+            automatons->cancel();
+        automaton_grab = false;
 
         view_drag = nullptr;
         mousedown = false;
@@ -994,6 +1021,11 @@ void UserInterface::handleMouse()
 
     if ( ImGui::IsMouseReleased(ImGuiMouseButton_Left) || ImGui::IsMouseReleased(ImGuiMouseButton_Right) )
     {
+        // end manipulation of automaton
+        if (automaton_grab)
+            automatons->release(Mixer::manager().view(), mousepos);
+        automaton_grab = false;
+
         // special case of one single source in area selection : make current after release
         if (view_drag && picked.first == nullptr && Mixer::selection().size() == 1) {
             Mixer::manager().setCurrentSource( Mixer::selection().front() );
@@ -1287,6 +1319,7 @@ void UserInterface::Render()
     outputcontrol.Update();
     sourcecontrol.Update();
     timercontrol.Update();
+    automatoncontrol.Update();
     inputscontrol.Update();
     shadercontrol.Update();
 
@@ -1308,6 +1341,10 @@ void UserInterface::Render()
         // Timer controller
         if (timercontrol.Visible())
             timercontrol.Render();
+
+        // Automatons controller
+        if (automatoncontrol.Visible())
+            automatoncontrol.Render();
 
         // Keyboards controller
         if (inputscontrol.Visible())
@@ -1580,6 +1617,9 @@ void UserInterface::showMenuWindows()
     if ( ImGui::MenuItem( MENU_TIMER, SHORTCUT_TIMER, &Settings::application.widget.timer) )
         UserInterface::manager().timercontrol.setVisible(Settings::application.widget.timer);
 
+    if ( ImGui::MenuItem( MENU_AUTOMATONS, nullptr, &Settings::application.widget.automatons) )
+        UserInterface::manager().automatoncontrol.setVisible(Settings::application.widget.automatons);
+
     if ( ImGui::MenuItem( MENU_INPUTS, SHORTCUT_INPUTS, &Settings::application.widget.inputs) )
         UserInterface::manager().inputscontrol.setVisible(Settings::application.widget.inputs);
 
@@ -1773,6 +1813,7 @@ static const std::vector< std::pair<std::string, const char*> > layout_windows =
     { "preview",        "OutputPreview" },          // OutputPreviewWindow
     { "media_player",   "SourceController" },       // SourceControlWindow
     { "timer",          "Timer" },                  // TimerMetronomeWindow
+    { "automatons",     "Automatons" },             // AutomatonControlWindow
     { "inputs",         "InputMappingInterface" },  // InputMappingWindow
     { "shader_editor",  "Shader" },                 // ShaderEditWindow
     { "logs",           "###LOGVIMIX" },            // Log window

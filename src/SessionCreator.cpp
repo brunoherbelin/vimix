@@ -56,6 +56,8 @@
 #include "Source/CanvasSource.h"
 
 #include "Toolkit/tinyxml2Toolkit.h"
+#include "Automaton/AutomatonRig.h"
+#include "Automaton/PathAutomaton.h"
 using namespace tinyxml2;
 
 #include "Source/DraftSource.h"
@@ -591,7 +593,101 @@ void SessionLoader::load(XMLElement *sessionNode)
         // load input callbacks
         loadInputCallbacks( sessionNode->FirstChildElement("InputCallbacks") );
 
+        // load automatons
+        loadAutomatons( sessionNode->FirstChildElement("Automatons") );
     }
+}
+
+void SessionLoader::loadAutomatons(tinyxml2::XMLElement *automatonsNode)
+{
+    // keep automatons if not described (e.g. older session files)
+    if (automatonsNode == nullptr || session_ == nullptr)
+        return;
+
+    AutomatonRig *rig = session_->automatons();
+    rig->clear();
+    rig->setPaused( automatonsNode->BoolAttribute("paused", false) );
+
+    // id of a source in the xml to id of the source loaded
+    auto sourceId = [this](uint64_t xmlid) -> uint64_t {
+        auto it = sources_id_.find(xmlid);
+        return it != sources_id_.end() ? it->second->id() : 0;
+    };
+
+    XMLElement* node = automatonsNode->FirstChildElement("Automaton");
+    for( ; node ; node = node->NextSiblingElement("Automaton"))
+    {
+        uint64_t id = 0;
+        node->QueryUnsigned64Attribute("id", &id);
+        const int type = node->IntAttribute("type", (int) Automaton::AUTOMATON_INVALID);
+        const int view = node->IntAttribute("view", (int) View::MIXING);
+        Automaton *a = Automaton::create( (Automaton::Type) type, (View::Mode) view, id );
+        if (a == nullptr)
+            continue;
+
+        const char *name = node->Attribute("name");
+        if (name)
+            a->setName(name);
+        a->setEnabled( node->BoolAttribute("enabled", true) );
+        a->setPeriod( node->DoubleAttribute("period", a->period()) );
+        a->setOffset( node->DoubleAttribute("offset", a->offset()) );
+        a->setShape( node->IntAttribute("shape", a->shape()) );
+        a->setReverse( node->BoolAttribute("reverse", false) );
+
+        XMLElement *controlsNode = node->FirstChildElement("controls");
+        if (controlsNode) {
+            std::vector<glm::vec2> controls;
+            for (XMLElement *v = controlsNode->FirstChildElement("vec2"); v; v = v->NextSiblingElement("vec2")) {
+                glm::vec2 c(0.f);
+                tinyxml2::XMLElementToGLM(v, c);
+                controls.push_back(c);
+            }
+            if (controls.size() >= a->controls().size() || (a->type() == Automaton::AUTOMATON_PATH && controls.size() > 1))
+                a->setControls(controls);
+        }
+
+        PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a);
+        if (pa) {
+            for (XMLElement *l = node->FirstChildElement("Link"); l; l = l->NextSiblingElement("Link")) {
+                AutomatonLink link;
+                uint64_t s = 0;
+                l->QueryUnsigned64Attribute("source", &s);
+                link.source = sourceId(s);
+                if (link.source == 0)
+                    continue;
+                link.handle = l->IntAttribute("handle", -1);
+                XMLElement *e = l->FirstChildElement("corner");
+                if (e) tinyxml2::XMLElementToGLM(e->FirstChildElement("vec2"), link.corner);
+                e = l->FirstChildElement("pick");
+                if (e) tinyxml2::XMLElementToGLM(e->FirstChildElement("vec2"), link.pick);
+                e = l->FirstChildElement("point");
+                if (e) tinyxml2::XMLElementToGLM(e->FirstChildElement("vec2"), link.point);
+                e = l->FirstChildElement("anchor");
+                if (e) tinyxml2::XMLElementToGLM(e->FirstChildElement("vec2"), link.anchor);
+                pa->links().push_back(link);
+            }
+        }
+
+        rig->add(a);
+    }
+
+    // rest poses of sources
+    XMLElement* pose = automatonsNode->FirstChildElement("Pose");
+    for( ; pose ; pose = pose->NextSiblingElement("Pose"))
+    {
+        uint64_t s = 0;
+        pose->QueryUnsigned64Attribute("source", &s);
+        s = sourceId(s);
+        if (s == 0)
+            continue;
+        Group g;
+        SessionLoader::XMLToNode(pose, g);
+        AutomatonPose base;
+        base.capture(&g);
+        rig->setRestPose(s, (View::Mode) pose->IntAttribute("view", (int) View::MIXING), base);
+    }
+
+    rig->setSelected(nullptr);
 }
 
 

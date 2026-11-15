@@ -36,6 +36,7 @@
 #include "Source/RenderSource.h"
 #include "Source/SessionSource.h"
 #include "MixingGroup.h"
+#include "Automaton/AutomatonRig.h"
 #include "ControlManager.h"
 #include "Source/SourceCallback.h"
 #include "Visitor/CountVisitor.h"
@@ -76,11 +77,16 @@ Session::Session(uint64_t id) : id_(id), active_(true), activation_threshold_(MI
 
     snapshots_.xmlDoc_ = new tinyxml2::XMLDocument;
     start_time_ = gst_util_get_timestamp ();
+
+    automatons_ = new AutomatonRig(this);
 }
 
 
 Session::~Session()
 {
+    // delete automatons (before sources)
+    delete automatons_;
+
     // TODO delete all mixing groups?
     auto group_iter = mixing_groups_.begin();
     while ( group_iter != mixing_groups_.end() ){
@@ -290,6 +296,9 @@ void Session::update(float dt)
         }
     }
 
+    // automatons move the sources before they are updated
+    automatons_->update();
+
     // pre-render all sources
     bool test_ready = true;
     for( SourceList::iterator it = sources_.begin(); it != sources_.end(); ++it){
@@ -324,6 +333,9 @@ void Session::update(float dt)
         // apply session fading to audio
         (*it)->setAudioVolumeFactor(Source::VOLUME_SESSION, 1.f - render_.fading());
     }
+
+    // automatons remember the pose of the sources after update
+    automatons_->commit();
 
     if (test_ready && !ready_) 
         ready_ = true;

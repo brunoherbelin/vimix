@@ -48,6 +48,8 @@ using namespace tinyxml2;
 #include "ImageProcessingShader.h"
 #include "Player/MediaPlayer.h"
 #include "MixingGroup.h"
+#include "Automaton/AutomatonRig.h"
+#include "Automaton/PathAutomaton.h"
 #include "Toolkit/SystemToolkit.h"
 #include "Source/ShaderSource.h"
 #include "Source/CanvasSource.h"
@@ -90,6 +92,9 @@ bool SessionVisitor::saveSession(const std::string& filename, Session *session)
     XMLElement *inputsNode = SessionVisitor::saveInputCallbacks(&xmlDoc, session);
     if (inputsNode)
         sessionNode->InsertEndChild(inputsNode);
+
+    // save automatons
+    sessionNode->InsertEndChild( SessionVisitor::saveAutomatons(&xmlDoc, session) );
 
     // save the thumbnail
     FrameBufferImage *thumbnail = session->thumbnail();
@@ -767,6 +772,9 @@ void SessionVisitor::visit (SessionGroupSource& s)
         XMLElement *inputsNode = SessionVisitor::saveInputCallbacks(xmlDoc_, se);
         if (inputsNode)
             sessionNode->InsertEndChild(inputsNode);
+
+        // save automatons
+        sessionNode->InsertEndChild( SessionVisitor::saveAutomatons(xmlDoc_, se) );
     }
 }
 
@@ -1247,3 +1255,84 @@ std::string SessionVisitor::getClipboard(ImageProcessingShader * const s)
 }
 
 
+
+
+XMLElement *SessionVisitor::saveAutomatons(tinyxml2::XMLDocument *doc, Session *session)
+{
+    // NB: the element is always created, even empty, so that loading
+    // a session (or undo) restores the absence of automatons
+    XMLElement *automatonsNode = doc->NewElement("Automatons");
+    if (session == nullptr)
+        return automatonsNode;
+
+    AutomatonRig *rig = session->automatons();
+    rig->lock();
+
+    automatonsNode->SetAttribute("paused", rig->paused());
+    automatonsNode->SetAttribute("beats", rig->beats());
+
+    // automatons
+    SessionVisitor sv(doc, automatonsNode);
+    for (auto it = rig->begin(); it != rig->end(); ++it, sv.setRoot(automatonsNode))
+        (*it)->accept(sv);
+
+    // rest poses of sources
+    for (auto p = rig->poses().begin(); p != rig->poses().end(); ++p) {
+        XMLElement *pose = doc->NewElement("Pose");
+        pose->SetAttribute("source", p->first.first);
+        pose->SetAttribute("view", p->first.second);
+        Group g;
+        p->second.base.apply(&g);
+        pose->InsertEndChild( SessionVisitor::NodeToXML(g, doc) );
+        automatonsNode->InsertEndChild(pose);
+    }
+
+    rig->unlock();
+
+    return automatonsNode;
+}
+
+void SessionVisitor::visit (Automaton& a)
+{
+    XMLElement *node = xmlDoc_->NewElement( "Automaton" );
+    node->SetAttribute("id", a.id());
+    node->SetAttribute("type", (int) a.type());
+    node->SetAttribute("view", (int) a.mode());
+    node->SetAttribute("name", a.name().c_str());
+    node->SetAttribute("enabled", a.enabled());
+    node->SetAttribute("period", a.period());
+    node->SetAttribute("offset", a.offset());
+    node->SetAttribute("shape", a.shape());
+    node->SetAttribute("reverse", a.reverse());
+    xmlCurrent_->InsertEndChild(node);
+
+    XMLElement *controls = xmlDoc_->NewElement( "controls" );
+    for (auto &c : a.controls())
+        controls->InsertEndChild( XMLElementFromGLM(xmlDoc_, c) );
+    node->InsertEndChild(controls);
+
+    // parent for next visits (subtypes of automaton)
+    xmlCurrent_ = node;
+}
+
+void SessionVisitor::visit (PathAutomaton& a)
+{
+    for (auto &l : a.links()) {
+        XMLElement *link = xmlDoc_->NewElement( "Link" );
+        link->SetAttribute("source", l.source);
+        link->SetAttribute("handle", l.handle);
+        XMLElement *e = xmlDoc_->NewElement( "corner" );
+        e->InsertEndChild( XMLElementFromGLM(xmlDoc_, l.corner) );
+        link->InsertEndChild(e);
+        e = xmlDoc_->NewElement( "pick" );
+        e->InsertEndChild( XMLElementFromGLM(xmlDoc_, l.pick) );
+        link->InsertEndChild(e);
+        e = xmlDoc_->NewElement( "point" );
+        e->InsertEndChild( XMLElementFromGLM(xmlDoc_, l.point) );
+        link->InsertEndChild(e);
+        e = xmlDoc_->NewElement( "anchor" );
+        e->InsertEndChild( XMLElementFromGLM(xmlDoc_, l.anchor) );
+        link->InsertEndChild(e);
+        xmlCurrent_->InsertEndChild(link);
+    }
+}

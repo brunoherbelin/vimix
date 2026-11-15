@@ -59,7 +59,7 @@ void handleNodeLowerLeft(HandleGrabContext& ctx)
     // Compute handle coordinates back in TARGET reference frame
     node_pos = ctx.scene_to_target_transform * glm::vec4(node_pos, 1.f);
     // Diagonal SCALING with SHIFT
-    if (UserInterface::manager().shiftModifier())
+    if (ctx.constrained)
         node_pos.y = node_pos.x;
     // apply to target Node and to handles
     ctx.targetNode->data_[0].x = CLAMP( node_pos.x, 0.f, 0.96f );
@@ -91,7 +91,7 @@ void handleNodeUpperLeft(HandleGrabContext& ctx)
     // Compute handle coordinates back in TARGET reference frame
     node_pos = ctx.scene_to_target_transform * glm::vec4(node_pos, 1.f);
     // Diagonal SCALING with SHIFT
-    if (UserInterface::manager().shiftModifier())
+    if (ctx.constrained)
         node_pos.y = -node_pos.x;
     // apply to target Node and to handles
     ctx.targetNode->data_[1].x = CLAMP( node_pos.x, 0.f, 0.96f );
@@ -123,7 +123,7 @@ void handleNodeLowerRight(HandleGrabContext& ctx)
     // Compute handle coordinates back in TARGET reference frame
     node_pos = ctx.scene_to_target_transform * glm::vec4(node_pos, 1.f);
     // Diagonal SCALING with SHIFT
-    if (UserInterface::manager().shiftModifier())
+    if (ctx.constrained)
         node_pos.y = -node_pos.x;
     // apply to target Node and to handles
     ctx.targetNode->data_[2].x = CLAMP( node_pos.x, -0.96f, 0.f );
@@ -156,7 +156,7 @@ void handleNodeUpperRight(HandleGrabContext& ctx)
     // Compute handle coordinates back in TARGET reference frame
     node_pos = ctx.scene_to_target_transform * glm::vec4(node_pos, 1.f);
     // Diagonal SCALING with SHIFT
-    if (UserInterface::manager().shiftModifier())
+    if (ctx.constrained)
         node_pos.y = node_pos.x;
     // apply to target Node and to handles
     ctx.targetNode->data_[3].x = CLAMP( node_pos.x, -0.96f, 0.f );
@@ -346,7 +346,7 @@ void handleResize(HandleGrabContext& ctx)
     glm::vec2 corner_scaling = glm::vec2(handle) / glm::vec2(ctx.corner * 2.f);
 
     // proportional SCALING with SHIFT
-    if (UserInterface::manager().shiftModifier()) {
+    if (ctx.constrained) {
         corner_scaling = glm::vec2(glm::compMax(corner_scaling));
     }
 
@@ -393,7 +393,7 @@ void handleResizeH(HandleGrabContext& ctx)
     ctx.targetNode->scale_ = ctx.stored_status->scale_ * glm::vec3(corner_scaling, 1.f);
 
     // SHIFT: restore previous aspect ratio
-    if (UserInterface::manager().shiftModifier()) {
+    if (ctx.constrained) {
         float ar = ctx.stored_status->scale_.y / ctx.stored_status->scale_.x;
         ctx.targetNode->scale_.y = ar * ctx.targetNode->scale_.x;
     }
@@ -436,7 +436,7 @@ void handleResizeV(HandleGrabContext& ctx)
     ctx.targetNode->scale_ = ctx.stored_status->scale_ * glm::vec3(corner_scaling, 1.f);
 
     // SHIFT: restore previous aspect ratio
-    if (UserInterface::manager().shiftModifier()) {
+    if (ctx.constrained) {
         float ar = ctx.stored_status->scale_.x / ctx.stored_status->scale_.y;
         ctx.targetNode->scale_.x = ar * ctx.targetNode->scale_.y;
     }
@@ -482,7 +482,7 @@ void handleScale(HandleGrabContext& ctx)
     glm::vec2 handle_scaling = glm::vec2(handle) / glm::round(ctx.pick.second);
 
     // proportional SCALING with SHIFT
-    if (UserInterface::manager().shiftModifier()) {
+    if (ctx.constrained) {
         handle_scaling = glm::vec2(glm::compMax(handle_scaling));
         ctx.overlay_scaling_cross->visible_ = true;
         ctx.overlay_scaling_cross->copyTransform(ctx.overlay_scaling);
@@ -543,7 +543,7 @@ void handleRotate(HandleGrabContext& ctx)
     }
 
     // Cancel scaling diagonal with SHIFT
-    if (UserInterface::manager().shiftModifier()) {
+    if (ctx.constrained) {
         handle_polar.x = diagonal;
         ctx.overlay_rotation_fix->visible_ = true;
     } else {

@@ -61,6 +61,12 @@ set(VMIX_SRCS
     VideoBroadcast.cpp
     MultiFileRifeEncoder.cpp
     
+    # Automaton/ folder
+    Automaton/AutomatonMath.cpp
+    Automaton/Automaton.cpp
+    Automaton/PathAutomaton.cpp
+    Automaton/FieldAutomaton.cpp
+    Automaton/AutomatonRig.cpp
     # Filter/ folder
     Filter/DelayFilter.cpp
     Filter/FrameBufferFilter.cpp
@@ -157,6 +163,7 @@ set(VMIX_SRCS
     Window/ShaderEditWindow.cpp
     Window/SourceControlWindow.cpp
     Window/TimerMetronomeWindow.cpp
+    Window/AutomatonControlWindow.cpp
     Window/WorkspaceWindow.cpp
 )
 

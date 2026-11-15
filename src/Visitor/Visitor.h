@@ -34,6 +34,8 @@ public:
     virtual void visit (class Stream&) {}
     virtual void visit (class MediaPlayer&) {}
     virtual void visit (class MixingGroup&) {}
+    virtual void visit (class Automaton&) {}
+    virtual void visit (class PathAutomaton&) {}
     virtual void visit (class Source&) {}
     virtual void visit (class MediaSource&) {}
     virtual void visit (class SplitMediaSource&) {}

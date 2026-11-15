@@ -29,6 +29,7 @@ public:
 
     static bool saveSession(const std::string& filename, Session *session);
     static tinyxml2::XMLElement *saveInputCallbacks(tinyxml2::XMLDocument *doc, Session *session);
+    static tinyxml2::XMLElement *saveAutomatons(tinyxml2::XMLDocument *doc, Session *session);
 
     static std::string getClipboard(const SourceList &list);
     static std::string getClipboard(Source * const s);
@@ -102,6 +103,10 @@ public:
     void visit (PlayFastForward&) override;
     void visit (Seek&) override;
     void visit (Flag&) override;
+
+    // Automatons
+    void visit (Automaton&) override;
+    void visit (PathAutomaton&) override;
 
     static tinyxml2::XMLElement *NodeToXML(const Node &n, tinyxml2::XMLDocument *doc);
     static tinyxml2::XMLElement *ImageToXML(const FrameBufferImage *img, tinyxml2::XMLDocument *doc);

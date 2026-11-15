@@ -36,6 +36,8 @@ struct WidgetsConfig
     int  inputs_view;
     bool shader_editor;
     int  shader_editor_view;
+    bool automatons;
+    int  automatons_view;
     bool toolbox;
     bool help;
     bool source_toolbar;
@@ -65,6 +67,8 @@ struct WidgetsConfig
         timer_view = -1;
         shader_editor = false;
         shader_editor_view = -1;
+        automatons = false;
+        automatons_view = -1;
         inputs = false;
         inputs_view = -1;
         source_toolbar = false;
