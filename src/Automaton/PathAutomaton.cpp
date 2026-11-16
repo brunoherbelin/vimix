@@ -44,25 +44,26 @@ bool AutomatonLink::sameElement (const AutomatonLink &other) const
 //
 
 PathAutomaton::PathAutomaton (View::Mode m, uint64_t id) : Automaton(m, id),
-    mover_(0.f), mover_angle_(0.f), path_node_(nullptr), linking_line_(nullptr)
+    mover_(0.f), path_node_(nullptr), linking_line_(nullptr)
 {
     links_node_ = new Group;
     links_node_->translation_.z = 0.01f;
     root_->attach(links_node_);
 
-    mover_node_ = new Symbol(Symbol::SQUARE_POINT);
+    // circle as mover
+    mover_node_ = new Symbol(Symbol::CIRCLE_POINT);
     mover_node_->translation_.z = 0.04f;
     root_->attach(mover_node_);
 
     linking_line_ = replaceLine(links_node_, nullptr, { glm::vec2(0.f), glm::vec2(0.1f, 0.f) },
-                                AUTOMATON_LINE_WIDTH, 1.f);
+                                AUTOMATON_LINE_WIDTH, AUTOMATON_ALPHA_LINKING);
     linking_line_->visible_ = false;
 }
 
 int PathAutomaton::pick (glm::vec2 p) const
 {
     // the moving part has priority
-    if (glm::distance(p, mover_) < AUTOMATON_GRIP_PICK * 1.3f * uiscale_)
+    if (glm::distance(p, mover_) < AUTOMATON_GRIP_PICK * AUTOMATON_MOVER_PICK_SCALE * uiscale_)
         return GRIP_MOVER;
     return Automaton::pick(p);
 }
@@ -71,13 +72,12 @@ void PathAutomaton::setMover (glm::vec2 p)
 {
     mover_ = p;
     const float s = AUTOMATON_MOVER_SIZE / AUTOMATON_MESH_POINT_SIZE * uiscale_
-                    * (hover_ == GRIP_MOVER ? 1.2f : 1.f);
+                    * (hover_ == GRIP_MOVER ? AUTOMATON_MOVER_HOVER_SCALE : 1.f);
     mover_node_->translation_ = glm::vec3(p, 0.04f);
-    mover_node_->rotation_.z = mover_angle_;
     mover_node_->scale_ = glm::vec3(s, s, 1.f);
-    mover_node_->color = color(1.f);
+    mover_node_->color = color(AUTOMATON_ALPHA_MOVER);
     if (path_node_)
-        path_node_->shader()->color = color(0.8f);
+        path_node_->shader()->color = color(AUTOMATON_ALPHA_PATH);
 
     // links follow the mover
     updateLinks();
@@ -85,7 +85,7 @@ void PathAutomaton::setMover (glm::vec2 p)
 
 void PathAutomaton::setPath (const std::vector<glm::vec2> &path, bool loop)
 {
-    path_node_ = replaceLine(root_, path_node_, path, AUTOMATON_LINE_WIDTH, 0.8f, loop);
+    path_node_ = replaceLine(root_, path_node_, path, AUTOMATON_LINE_WIDTH, AUTOMATON_ALPHA_PATH, loop);
     path_node_->translation_.z = 0.02f;
 }
 
@@ -111,17 +111,32 @@ void PathAutomaton::updateLinks ()
     // as many lines as links
     while (link_lines_.size() < links_.size())
         link_lines_.push_back( replaceLine(links_node_, nullptr, { mover_, mover_ + glm::vec2(0.1f, 0.f) },
-                                           AUTOMATON_LINE_WIDTH * 0.5f, 0.5f) );
+                                           AUTOMATON_LINE_WIDTH_LINK, AUTOMATON_ALPHA_LINK) );
     while (link_lines_.size() > links_.size()) {
         links_node_->detach(link_lines_.back());
         delete link_lines_.back();
         link_lines_.pop_back();
     }
+    // as many points at the end of lines
+    while (link_points_.size() < links_.size()) {
+        link_points_.push_back( new Symbol(Symbol::CIRCLE_POINT) );
+        links_node_->attach(link_points_.back());
+    }
+    while (link_points_.size() > links_.size()) {
+        links_node_->detach(link_points_.back());
+        delete link_points_.back();
+        link_points_.pop_back();
+    }
 
+    const float s = AUTOMATON_LINK_POINT_SIZE / AUTOMATON_MESH_POINT_SIZE * uiscale_;
     size_t i = 0;
     for (auto l = links_.begin(); l != links_.end(); ++l, ++i) {
         setLine(link_lines_[i], { mover_, l->target });
-        link_lines_[i]->shader()->color = color(0.5f);
+        link_lines_[i]->shader()->color = color(AUTOMATON_ALPHA_LINK);
+        // point on the element of the source linked
+        link_points_[i]->translation_ = glm::vec3(l->target, 0.01f);
+        link_points_[i]->scale_ = glm::vec3(s, s, 1.f);
+        link_points_[i]->color = color(AUTOMATON_ALPHA_LINK_POINT);
     }
 }
 
@@ -130,7 +145,7 @@ void PathAutomaton::showLinking (bool on, glm::vec2 to)
     linking_line_->visible_ = on;
     if (on) {
         setLine(linking_line_, { mover_, to });
-        linking_line_->shader()->color = glm::vec4(COLOR_AUTOMATON, 1.f);
+        linking_line_->shader()->color = glm::vec4(COLOR_AUTOMATON, AUTOMATON_ALPHA_LINKING);
     }
 }
 
@@ -169,9 +184,6 @@ void LinearAutomaton::rebuild ()
 void LinearAutomaton::motion ()
 {
     const float u = wave(float(progress_), shape_);
-    // align the square with the line
-    const glm::vec2 d = controls_[1] - controls_[0];
-    mover_angle_ = std::atan2(d.y, d.x);
     setMover( reverse_ ? glm::mix(controls_[1], controls_[0], u) : glm::mix(controls_[0], controls_[1], u) );
 }
 
@@ -193,7 +205,6 @@ std::vector<float> LinearAutomaton::events () const
 CircularAutomaton::CircularAutomaton (View::Mode m, uint64_t id) : PathAutomaton(m, id)
 {
     period_ = 4.0;
-    mover_angle_ = glm::quarter_pi<float>();
     reset(glm::vec2(0.f), 0.5f);
 }
 
@@ -267,14 +278,6 @@ FreePathAutomaton::FreePathAutomaton (View::Mode m, uint64_t id) : PathAutomaton
 {
     period_ = 4.0;
     shape_ = SHAPE_SMOOTH;
-    mover_node_->visible_ = false;
-    // circle as mover
-    root_->detach(mover_node_);
-    delete mover_node_;
-    mover_node_ = new Symbol(Symbol::CIRCLE_POINT);
-    mover_node_->translation_.z = 0.04f;
-    root_->attach(mover_node_);
-
     reset(glm::vec2(0.f), 0.5f);
 }
 

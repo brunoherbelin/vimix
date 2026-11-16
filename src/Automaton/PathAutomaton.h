@@ -68,15 +68,15 @@ protected:
     std::list<AutomatonLink> links_;
 
     Symbol *mover_node_;
-    float mover_angle_;
     LineStrip *path_node_;
     Group *links_node_;
     std::vector<LineStrip *> link_lines_;
+    std::vector<Symbol *> link_points_;
     LineStrip *linking_line_;
 };
 
 /**
- * @brief The LinearAutomaton moves a square back and forth on a line
+ * @brief The LinearAutomaton moves a circle back and forth on a line
  * controls: [ A, B ] the ends of the line
  */
 class LinearAutomaton : public PathAutomaton
@@ -96,7 +96,7 @@ protected:
 };
 
 /**
- * @brief The CircularAutomaton turns a diamond around an ellipse
+ * @brief The CircularAutomaton turns a circle around an ellipse
  * (clockwise by default, counter-clockwise if reverse)
  * controls: [ C, Rx, Ry ] the center and two points on the horizontal and vertical radius
  */

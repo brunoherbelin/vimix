@@ -20,6 +20,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include <glm/gtc/constants.hpp>
+
 #include "IconsFontAwesome5.h"
 
 #include "defines.h"
@@ -94,7 +96,7 @@ Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(t
     grips_ = new Group;
     grips_->translation_.z = 0.05f;
     root_->attach(grips_);
-    move_grip_ = new Symbol(Symbol::CROSS);
+    move_grip_ = new Symbol(Symbol::SQUARE);
     move_grip_->translation_.z = 0.005f;
     grips_->attach(move_grip_);
 }
@@ -160,8 +162,8 @@ void Automaton::setControls (const std::vector<glm::vec2> &c)
 glm::vec4 Automaton::color (float alpha) const
 {
     if (!enabled_)
-        return glm::vec4(COLOR_AUTOMATON, alpha * 0.4f);
-    return glm::vec4(COLOR_AUTOMATON, highlight_ ? std::min(1.f, alpha * 1.3f) : alpha);
+        return glm::vec4(COLOR_AUTOMATON, alpha * AUTOMATON_ALPHA_DISABLED);
+    return glm::vec4(COLOR_AUTOMATON, highlight_ ? std::min(1.f, alpha * AUTOMATON_ALPHA_HIGHLIGHT) : alpha);
 }
 
 glm::vec2 Automaton::center () const
@@ -210,7 +212,9 @@ void Automaton::updateGrips ()
 {
     // as many grips as controls
     while (grip_nodes_.size() < controls_.size()) {
-        Disk *d = new Disk;
+        // diamond: square turned by 45 degrees (like handles to change shape in Geometry view)
+        Symbol *d = new Symbol(Symbol::SQUARE_POINT);
+        d->rotation_.z = glm::quarter_pi<float>();
         grips_->attach(d);
         grip_nodes_.push_back(d);
     }
@@ -220,19 +224,19 @@ void Automaton::updateGrips ()
         grip_nodes_.pop_back();
     }
 
-    const float s = AUTOMATON_GRIP_SIZE * uiscale_;
+    const float s = AUTOMATON_GRIP_SIZE / AUTOMATON_MESH_POINT_SIZE * uiscale_;
     for (size_t i = 0; i < grip_nodes_.size(); ++i) {
-        Disk *d = grip_nodes_[i];
+        Symbol *d = grip_nodes_[i];
         d->visible_ = gripShown(i);
         d->translation_ = glm::vec3(controls_[i], 0.f);
-        d->scale_ = glm::vec3(s, s, 1.f) * (hover_ == int(i) ? 1.3f : 1.f);
-        d->color = color(hover_ == int(i) ? 1.f : 0.7f);
+        d->scale_ = glm::vec3(s, s, 1.f) * (hover_ == int(i) ? AUTOMATON_GRIP_HOVER_SCALE : 1.f);
+        d->color = color(hover_ == int(i) ? AUTOMATON_ALPHA_HOVER : AUTOMATON_ALPHA_GRIP);
     }
 
-    const float c = AUTOMATON_MOVER_SIZE / AUTOMATON_MESH_CROSS_SIZE * uiscale_ * (hover_ == GRIP_MOVE ? 1.3f : 1.f);
+    const float c = AUTOMATON_MOVER_SIZE / AUTOMATON_MESH_CROSS_SIZE * uiscale_ * (hover_ == GRIP_MOVE ? AUTOMATON_GRIP_HOVER_SCALE : 1.f);
     move_grip_->translation_ = glm::vec3(center(), 0.005f);
     move_grip_->scale_ = glm::vec3(c, c, 1.f);
-    move_grip_->color = color(hover_ == GRIP_MOVE ? 1.f : 0.6f);
+    move_grip_->color = color(hover_ == GRIP_MOVE ? AUTOMATON_ALPHA_HOVER : AUTOMATON_ALPHA_GRIP_MOVE);
 }
 
 int Automaton::pick (glm::vec2 p) const

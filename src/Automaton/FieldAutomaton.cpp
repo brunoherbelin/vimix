@@ -53,7 +53,7 @@ HeartAutomaton::HeartAutomaton (View::Mode m, uint64_t id) : FieldAutomaton(m, i
     disk_->translation_.z = 0.005f;
     root_->attach(disk_);
 
-    ring_ = replaceLine(root_, nullptr, circle(glm::vec2(0.f), 1.f), AUTOMATON_LINE_WIDTH * 1.5f, 1.f, true);
+    ring_ = replaceLine(root_, nullptr, circle(glm::vec2(0.f), 1.f), AUTOMATON_LINE_WIDTH_MOTION, AUTOMATON_ALPHA_MOTION, true);
     ring_->translation_.z = 0.03f;
 
     reset(glm::vec2(0.f), 0.5f);
@@ -83,7 +83,7 @@ void HeartAutomaton::rebuild ()
     const float r1 = glm::distance(controls_[0], controls_[2]);
     disk_->translation_ = glm::vec3(controls_[0], 0.005f);
     disk_->scale_ = glm::vec3(r0, r0, 1.f);
-    max_ring_ = replaceLine(root_, max_ring_, circle(controls_[0], r1), AUTOMATON_LINE_WIDTH * 0.5f, 0.3f, true);
+    max_ring_ = replaceLine(root_, max_ring_, circle(controls_[0], r1), AUTOMATON_LINE_WIDTH_GUIDE, AUTOMATON_ALPHA_GUIDE, true);
     max_ring_->translation_.z = 0.02f;
 }
 
@@ -93,9 +93,9 @@ void HeartAutomaton::motion ()
     const float r1 = glm::distance(controls_[0], controls_[2]);
     radius_ = r0 + (r1 - r0) * wave(float(progress_), shape_);
     setLine(ring_, circle(controls_[0], radius_));
-    ring_->shader()->color = color(0.9f);
-    max_ring_->shader()->color = color(0.3f);
-    disk_->shader()->color = color(0.25f);
+    ring_->shader()->color = color(AUTOMATON_ALPHA_MOTION);
+    max_ring_->shader()->color = color(AUTOMATON_ALPHA_GUIDE);
+    disk_->shader()->color = color(AUTOMATON_ALPHA_FILL);
 }
 
 glm::vec2 HeartAutomaton::push (glm::vec2 p) const
@@ -124,9 +124,9 @@ RiftAutomaton::RiftAutomaton (View::Mode m, uint64_t id) : FieldAutomaton(m, id)
     shape_ = SHAPE_SMOOTH;
 
     const std::vector<glm::vec2> p = { glm::vec2(0.f), glm::vec2(1.f, 0.f) };
-    line_a_ = replaceLine(root_, nullptr, p, AUTOMATON_LINE_WIDTH * 1.5f, 1.f);
+    line_a_ = replaceLine(root_, nullptr, p, AUTOMATON_LINE_WIDTH_MOTION, AUTOMATON_ALPHA_MOTION);
     line_a_->translation_.z = 0.03f;
-    line_b_ = replaceLine(root_, nullptr, p, AUTOMATON_LINE_WIDTH * 1.5f, 1.f);
+    line_b_ = replaceLine(root_, nullptr, p, AUTOMATON_LINE_WIDTH_MOTION, AUTOMATON_ALPHA_MOTION);
     line_b_->translation_.z = 0.03f;
 
     reset(glm::vec2(0.f), 0.5f);
@@ -161,7 +161,7 @@ void RiftAutomaton::constrain (int grip)
 void RiftAutomaton::rebuild ()
 {
     const glm::vec2 d = controls_[1] - controls_[0];
-    axis_ = replaceLine(root_, axis_, { controls_[0] - d, controls_[1] }, AUTOMATON_LINE_WIDTH * 0.5f, 0.3f);
+    axis_ = replaceLine(root_, axis_, { controls_[0] - d, controls_[1] }, AUTOMATON_LINE_WIDTH_GUIDE, AUTOMATON_ALPHA_GUIDE);
     axis_->translation_.z = 0.02f;
 }
 
@@ -173,9 +173,9 @@ void RiftAutomaton::motion ()
     const glm::vec2 n = glm::vec2(-u.y, u.x) * std::max(gap_, 1e-4f);
     setLine(line_a_, { controls_[0] - d + n, controls_[1] + n });
     setLine(line_b_, { controls_[0] - d - n, controls_[1] - n });
-    line_a_->shader()->color = color(0.9f);
-    line_b_->shader()->color = color(0.9f);
-    axis_->shader()->color = color(0.3f);
+    line_a_->shader()->color = color(AUTOMATON_ALPHA_MOTION);
+    line_b_->shader()->color = color(AUTOMATON_ALPHA_MOTION);
+    axis_->shader()->color = color(AUTOMATON_ALPHA_GUIDE);
 }
 
 glm::vec2 RiftAutomaton::push (glm::vec2 p) const
