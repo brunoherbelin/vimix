@@ -1308,6 +1308,7 @@ void SessionVisitor::visit (Automaton& a)
     node->SetAttribute("offset", a.offset());
     node->SetAttribute("shape", a.shape());
     node->SetAttribute("reverse", a.reverse());
+    node->SetAttribute("loop", a.loop());
     xmlCurrent_->InsertEndChild(node);
 
     XMLElement *controls = xmlDoc_->NewElement( "controls" );

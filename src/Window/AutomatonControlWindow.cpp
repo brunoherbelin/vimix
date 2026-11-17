@@ -395,6 +395,17 @@ void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
         Action::manager().store(a->name() + ": Motion " + Automaton::Shapes[shape]);
     }
 
+    // loop or play one cycle
+    bool loop = a->loop();
+    if (ImGui::Checkbox("Loop", &loop)) {
+        a->setLoop(loop);
+        Action::manager().store(a->name() + (loop ? ": Loop" : ": One cycle"));
+    }
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(loop ? "Repeat cycles indefinitely" : "Play one cycle and pause");
+    if (a->type() < Automaton::AUTOMATON_HEART)
+        ImGui::SameLine();
+
     // direction
     if (a->type() < Automaton::AUTOMATON_HEART) {
         bool r = a->reverse();
@@ -427,7 +438,8 @@ void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
         Action::manager().store(a->name() + (a->paused() ? ": Pause" : ": Play"));
     }
     if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip(a->paused() ? "Continue motion from where it stopped, at the next beat"
+        ImGuiToolkit::ToolTip(a->paused() ? (a->loop() ? "Continue motion from where it stopped, at the next beat"
+                                                       : "Play until the end of the cycle, from the next beat")
                                           : (a->resuming() ? "Waiting for the next beat to continue"
                                                            : "Stop motion (still acting on sources)"));
     ImGui::SameLine();

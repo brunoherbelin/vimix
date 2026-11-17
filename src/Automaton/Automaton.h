@@ -73,6 +73,10 @@ public:
     inline void setResuming (bool on) { resuming_ = on; resume_at_ = RESUME_UNSET; }
     // beat time when motion will resume (valid while resuming, after first animate)
     inline double resumeTime () const { return resume_at_; }
+    // A looping automaton repeats its cycle indefinitely. Otherwise, it plays
+    // until the end of its cycle and pauses (waiting to be played again)
+    inline bool loop () const { return loop_; }
+    void setLoop (bool on);
 
     // timing (in beats)
     inline double period () const { return period_; }
@@ -155,6 +159,8 @@ protected:
     bool paused_;
     bool resuming_;
     double resume_at_;
+    bool loop_;
+    double stop_at_;
     double time_;
     double period_;
     double offset_;

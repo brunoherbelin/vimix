@@ -78,7 +78,7 @@ bool Automaton::accepts (Type t, View::Mode m)
     return false;
 }
 
-Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(true), paused_(false), resuming_(false), resume_at_(RESUME_UNSET), time_(0.0),
+Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(true), paused_(false), resuming_(false), resume_at_(RESUME_UNSET), loop_(true), stop_at_(RESUME_UNSET), time_(0.0),
     period_(4.0), offset_(0.0), shape_(AutomatonMath::SHAPE_LINEAR), reverse_(false),
     progress_(0.0), uiscale_(1.f), parent_(nullptr), hover_(GRIP_NONE), highlight_(false)
 {
@@ -127,6 +127,7 @@ void Automaton::setEnabled (bool on)
 
 void Automaton::setPaused (bool on)
 {
+    stop_at_ = RESUME_UNSET;
     if (on) {
         // pausing while waiting to resume: stay still
         paused_ = true;
@@ -139,15 +140,23 @@ void Automaton::setPaused (bool on)
     }
 }
 
+void Automaton::setLoop (bool on)
+{
+    loop_ = on;
+    stop_at_ = RESUME_UNSET;
+}
+
 void Automaton::setPeriod (double p)
 {
     // a period is at least 1/16th of a beat
     period_ = std::max(p, 1.0 / 16.0);
+    stop_at_ = RESUME_UNSET;
 }
 
 void Automaton::setOffset (double o)
 {
     offset_ = o;
+    stop_at_ = RESUME_UNSET;
 }
 
 void Automaton::setControls (const std::vector<glm::vec2> &c)
@@ -201,8 +210,26 @@ void Automaton::animate (double beats, float uiscale)
             resume_at_ = RESUME_UNSET;
         }
     }
-    if (!paused_ && !resuming_)
+    if (!paused_ && !resuming_) {
+        // not looping: play until the end of the current cycle, then pause
+        if (!loop_) {
+            if (stop_at_ == RESUME_UNSET) {
+                // end of the current cycle (a full cycle if at its very end)
+                // NB: from beats and not time_, which is the time of pause when
+                // just resumed (and the offset was shifted to resume)
+                const double p = AutomatonMath::progress(beats, period_, offset_);
+                stop_at_ = beats + (1.0 - p) * period_;
+                if (stop_at_ - beats < 1e-3 * period_)
+                    stop_at_ += period_;
+            }
+            if (beats >= stop_at_) {
+                beats = stop_at_;
+                paused_ = true;
+                stop_at_ = RESUME_UNSET;
+            }
+        }
         time_ = beats;
+    }
     progress_ = AutomatonMath::progress(time_, period_, offset_);
     motion();
     updateGrips();

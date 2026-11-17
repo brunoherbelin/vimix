@@ -637,6 +637,7 @@ void SessionLoader::loadAutomatons(tinyxml2::XMLElement *automatonsNode)
         a->setOffset( node->DoubleAttribute("offset", a->offset()) );
         a->setShape( node->IntAttribute("shape", a->shape()) );
         a->setReverse( node->BoolAttribute("reverse", false) );
+        a->setLoop( node->BoolAttribute("loop", true) );
 
         XMLElement *controlsNode = node->FirstChildElement("controls");
         if (controlsNode) {
