@@ -295,7 +295,18 @@ Automaton *AutomatonRig::add (Automaton::Type t, View *view)
     a->setName( Automaton::Types[t].second + " " + std::to_string(n) );
 
     // in a ViewSpace shown
-    a->setViewSpace( Mixer::manager().firstShownViewSpace() );
+    // in the ViewSpace shown, or of the current source if several shown, or the first
+    uint vs = 0;
+    bool single = false;
+    for (uint v = 0; v < MAX_VIEWSPACE && !single; ++v) {
+        if (Mixer::manager().viewSpaceOnlyShown(v)) {
+            vs = v;
+            single = true;
+        }
+    }
+    if (!single && Mixer::manager().currentSource() != nullptr)
+        vs = Mixer::manager().currentSource()->viewSpace();
+    a->setViewSpace( vs );
 
     add(a);
     return a;
@@ -604,6 +615,8 @@ void AutomatonRig::update ()
             a->attachTo(fg);
         a->setHighlight(edited && a->id() == selected_);
         a->setVisible(edited && Mixer::manager().viewSpaceShown(a->viewSpace()));
+        // NB: during linking, only the ViewSpace of the automaton linking is shown
+        a->setInteractive(Mixer::manager().viewSpaceOnlyShown(a->viewSpace()));
         a->animate(beats_, 1.f / std::max(v->scene.root()->scale_.x, 0.01f));
     }
 
@@ -810,7 +823,7 @@ bool AutomatonRig::pick (View *view, glm::vec2 screen)
     }
 
     for (auto a : candidates) {
-        if (a->mode() != view->mode() || a->parent() == nullptr || !a->visible())
+        if (a->mode() != view->mode() || a->parent() == nullptr || !a->visible() || !a->interactive())
             continue;
         const int g = a->pick(p);
         if (g != Automaton::GRIP_NONE) {
@@ -935,7 +948,7 @@ View::Cursor AutomatonRig::over (View *view, glm::vec2 screen)
     for (auto it = automatons_.rbegin(); it != automatons_.rend(); ++it) {
         Automaton *a = *it;
         int g = Automaton::GRIP_NONE;
-        if (!found && a->mode() == view->mode() && a->parent() != nullptr && a->visible())
+        if (!found && a->mode() == view->mode() && a->parent() != nullptr && a->visible() && a->interactive())
             g = a->pick(p);
         a->hover(g);
         if (g != Automaton::GRIP_NONE) {

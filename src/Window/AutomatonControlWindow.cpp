@@ -249,18 +249,24 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
         const bool shown = Mixer::manager().viewSpaceShown(a->viewSpace());
         if (!shown)
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-        if (ImGui::Selectable(label.c_str(), selected, 0, ImVec2(x0 - ImGui::GetCursorScreenPos().x - style.ItemSpacing.x, 0)))
+        // select, and show only its workspace (to interact with it in the view)
+        auto select = [rig, a]() {
             rig->setSelected(a);
+            Mixer::manager().showViewSpace(a->viewSpace(), true, true);
+        };
+        if (ImGui::Selectable(label.c_str(), selected, 0, ImVec2(x0 - ImGui::GetCursorScreenPos().x - style.ItemSpacing.x, 0)))
+            select();
         if (!shown)
             ImGui::PopStyleColor();
         if (ImGui::IsItemHovered())
             ImGuiToolkit::ToolTip( (Settings::application.views[a->mode()].name + " view, workspace "
-                                    + std::to_string(a->viewSpace() + 1) + (shown ? "" : " (hidden)")).c_str() );
+                                    + std::to_string(a->viewSpace() + 1) + "\nClic to edit (show only workspace "
+                                    + std::to_string(a->viewSpace() + 1) + ")").c_str() );
 
         // clic in the timeline also selects
         ImGui::SetCursorScreenPos(ImVec2(x0, y));
         if (ImGui::InvisibleButton("##row", ImVec2(std::max(1.f, x1 - x0), row_h)))
-            rig->setSelected(a);
+            select();
 
         ImGui::PopID();
 

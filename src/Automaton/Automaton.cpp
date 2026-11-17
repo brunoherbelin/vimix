@@ -78,7 +78,7 @@ bool Automaton::accepts (Type t, View::Mode m)
     return false;
 }
 
-Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(true), viewspace_(0), paused_(false), resuming_(false), resume_at_(RESUME_UNSET), loop_(true), stop_at_(RESUME_UNSET), time_(0.0),
+Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(true), viewspace_(0), interactive_(true), paused_(false), resuming_(false), resume_at_(RESUME_UNSET), loop_(true), stop_at_(RESUME_UNSET), time_(0.0),
     period_(4.0), offset_(0.0), shape_(AutomatonMath::SHAPE_LINEAR), reverse_(false),
     progress_(0.0), uiscale_(1.f), parent_(nullptr), hover_(GRIP_NONE), highlight_(false)
 {
@@ -181,8 +181,12 @@ void Automaton::setControls (const std::vector<glm::vec2> &c)
 glm::vec4 Automaton::color (float alpha) const
 {
     if (!enabled_)
-        return glm::vec4(COLOR_AUTOMATON, alpha * AUTOMATON_ALPHA_DISABLED);
-    return glm::vec4(COLOR_AUTOMATON, highlight_ ? std::min(1.f, alpha * AUTOMATON_ALPHA_HIGHLIGHT) : alpha);
+        alpha *= AUTOMATON_ALPHA_DISABLED;
+    else if (highlight_)
+        alpha = std::min(1.f, alpha * AUTOMATON_ALPHA_HIGHLIGHT);
+    if (!interactive_)
+        alpha *= AUTOMATON_ALPHA_VIEWSPACE;
+    return glm::vec4(COLOR_AUTOMATON, alpha);
 }
 
 glm::vec2 Automaton::center () const

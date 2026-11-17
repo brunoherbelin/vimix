@@ -70,6 +70,10 @@ public:
     // drawn in its view (NB: hidden automatons cannot be picked)
     bool visible () const;
     void setVisible (bool on);
+    // the user can interact with the automaton in its view only if its ViewSpace
+    // is the only one shown (otherwise it is drawn semi-transparent)
+    inline bool interactive () const { return interactive_; }
+    inline void setInteractive (bool on) { interactive_ = on; }
 
     // A paused automaton stays still but keeps acting on sources.
     // When played again, it waits for the next beat where it can resume its motion
@@ -164,6 +168,7 @@ protected:
     View::Mode mode_;
     bool enabled_;
     uint viewspace_;
+    bool interactive_;
     bool paused_;
     bool resuming_;
     double resume_at_;
@@ -222,6 +227,7 @@ private:
 #define AUTOMATON_ALPHA_HOVER        1.0f   // grip under the cursor
 // Factors of opacity
 #define AUTOMATON_ALPHA_DISABLED     0.4f   // automaton disabled
+#define AUTOMATON_ALPHA_VIEWSPACE    0.5f   // other ViewSpaces shown (not interactive)
 #define AUTOMATON_ALPHA_HIGHLIGHT    1.3f   // automaton selected in the control window
 // Sampling of curves
 #define AUTOMATON_PATH_SAMPLES 96
