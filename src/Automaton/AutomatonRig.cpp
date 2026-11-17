@@ -19,12 +19,14 @@
 
 #include <algorithm>
 #include <sstream>
+#include <set>
 
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "IconsFontAwesome5.h"
 #include "defines.h"
 #include "Metronome.h"
+#include "Log.h"
 #include "Mixer.h"
 #include "MixingGroup.h"
 #include "Session.h"
@@ -292,6 +294,9 @@ Automaton *AutomatonRig::add (Automaton::Type t, View *view)
         n += b->type() == t ? 1 : 0;
     a->setName( Automaton::Types[t].second + " " + std::to_string(n) );
 
+    // in a ViewSpace shown
+    a->setViewSpace( Mixer::manager().firstShownViewSpace() );
+
     add(a);
     return a;
 }
@@ -310,8 +315,10 @@ void AutomatonRig::remove (Automaton *a)
     std::lock_guard<std::mutex> lock(access_);
     auto it = std::find(automatons_.begin(), automatons_.end(), a);
     if (it != automatons_.end()) {
-        if (grab_.bot == a)
+        if (grab_.bot == a) {
+            endLinking();
             grab_ = Grab();
+        }
         if (selected_ == a->id())
             selected_ = 0;
         // linked sources stay where they are
@@ -437,6 +444,50 @@ bool AutomatonRig::rebase (Source *s, View::Mode m)
     return linked;
 }
 
+void AutomatonRig::followViewSpaces ()
+{
+    std::lock_guard<std::mutex> lock(access_);
+
+    for (auto a : automatons_) {
+        PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a);
+        if (pa == nullptr || pa->links().empty())
+            continue;
+
+        // ViewSpaces of the sources linked (that exist)
+        std::set<uint> spaces;
+        for (uint64_t id : pa->linkedSources()) {
+            auto s = session_->find(id);
+            if (s != session_->end())
+                spaces.insert( (*s)->viewSpace() );
+        }
+        if (spaces.empty() || (spaces.size() == 1 && *spaces.begin() == pa->viewSpace()))
+            continue;
+
+        // all linked sources moved together: follow them
+        if (spaces.size() == 1) {
+            pa->setViewSpace( *spaces.begin() );
+            for (auto &l : pa->links())
+                l.active = true;
+            continue;
+        }
+
+        // some linked sources moved away: unlink them (they stay where they are)
+        for (auto l = pa->links().begin(); l != pa->links().end(); ) {
+            auto s = session_->find(l->source);
+            if (s != session_->end() && (*s)->viewSpace() != pa->viewSpace()) {
+                if (pa->enabled() && l->active)
+                    bake(pa, *l);
+                Log::Notify("%s unlinked from %s %s: source moved to workspace %d.",
+                             pa->name().c_str(), (*s)->name().c_str(), linkLabel(*l).c_str(),
+                             (*s)->viewSpace() + 1);
+                l = pa->links().erase(l);
+            }
+            else
+                ++l;
+        }
+    }
+}
+
 void AutomatonRig::bake (PathAutomaton *a, const AutomatonLink &l)
 {
 #if !AUTOMATON_BAKE_LINKS
@@ -552,7 +603,30 @@ void AutomatonRig::update ()
         if (a->parent() != fg)
             a->attachTo(fg);
         a->setHighlight(edited && a->id() == selected_);
+        a->setVisible(edited && Mixer::manager().viewSpaceShown(a->viewSpace()));
         a->animate(beats_, 1.f / std::max(v->scene.root()->scale_.x, 0.01f));
+    }
+
+    // links act only on sources in the ViewSpace of their automaton
+    for (auto a : automatons_) {
+        PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a);
+        if (pa == nullptr)
+            continue;
+        for (auto &l : pa->links()) {
+            auto s = sources.find(l.source);
+            const bool active = s != sources.end() && s->second->viewSpace() == a->viewSpace();
+            if (pa->enabled() && l.active != active) {
+                // leaving the ViewSpace: the source stays where it is
+                if (!active)
+                    bake(pa, l);
+#if AUTOMATON_BAKE_LINKS
+                // entering the ViewSpace: the source starts moving from where it is
+                else
+                    l.anchor = pa->mover();
+#endif
+            }
+            l.active = active;
+        }
     }
 
     // which sources are influenced by automatons
@@ -566,14 +640,15 @@ void AutomatonRig::update ()
         const View::Mode m = a->mode();
         if (a->field()) {
             for (auto &s : sources) {
-                if ( !s.second->locked() && (m == View::MIXING || s.second->hasImage()) )
+                if ( !s.second->locked() && s.second->viewSpace() == a->viewSpace()
+                     && (m == View::MIXING || s.second->hasImage()) )
                     acquire(s.second, m).influenced = true;
             }
         }
         else if (PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a)) {
             for (auto &l : pa->links()) {
                 auto s = sources.find(l.source);
-                if ( s != sources.end() && (m == View::MIXING || s->second->hasImage()) )
+                if ( l.active && s != sources.end() && (m == View::MIXING || s->second->hasImage()) )
                     acquire(s->second, m).influenced = true;
             }
         }
@@ -655,7 +730,7 @@ void AutomatonRig::compose (Source *s, View::Mode m, RestPose &p)
         if (pa == nullptr)
             continue;
         for (auto &l : pa->links()) {
-            if (l.source != s->id())
+            if (l.source != s->id() || !l.active)
                 continue;
             const glm::vec2 displacement = pa->mover() - l.anchor;
             if (l.handle < 0)
@@ -674,7 +749,7 @@ void AutomatonRig::compose (Source *s, View::Mode m, RestPose &p)
     // fields push sources away
     if (m != View::LAYER && !s->locked()) {
         for (auto a : automatons_) {
-            if (!a->enabled() || a->mode() != m)
+            if (!a->enabled() || a->mode() != m || a->viewSpace() != s->viewSpace())
                 continue;
             if (FieldAutomaton *fa = dynamic_cast<FieldAutomaton *>(a)) {
                 const glm::vec2 q = fa->push( glm::vec2(node->translation_) );
@@ -735,7 +810,7 @@ bool AutomatonRig::pick (View *view, glm::vec2 screen)
     }
 
     for (auto a : candidates) {
-        if (a->mode() != view->mode() || a->parent() == nullptr)
+        if (a->mode() != view->mode() || a->parent() == nullptr || !a->visible())
             continue;
         const int g = a->pick(p);
         if (g != Automaton::GRIP_NONE) {
@@ -763,10 +838,11 @@ View::Cursor AutomatonRig::drag (View *view, glm::vec2 screen)
         if (pa == nullptr)
             return View::Cursor();
         pa->showLinking(true, p);
+        beginLinking();
 
         AutomatonLink l;
         std::string label;
-        if (pickTarget(view, screen, l, label)) {
+        if (pickTarget(view, screen, pa->viewSpace(), l, label)) {
             const bool exists = std::any_of(pa->links().begin(), pa->links().end(),
                                             [&l](const AutomatonLink &k) { return k.sameElement(l); });
             return View::Cursor(View::Cursor_Hand, std::string(exists ? ICON_FA_UNLINK " Unlink " : ICON_FA_LINK " Link ") + label);
@@ -780,6 +856,24 @@ View::Cursor AutomatonRig::drag (View *view, glm::vec2 screen)
     return View::Cursor(View::Cursor_ResizeAll, std::string(ICON_FA_ROBOT " ") + grab_.bot->name());
 }
 
+void AutomatonRig::beginLinking ()
+{
+    if (grab_.linking || grab_.bot == nullptr)
+        return;
+    // show only the sources that can be linked (in the ViewSpace of the automaton)
+    grab_.linking = true;
+    grab_.viewspaces = session_->viewSpaces();
+    session_->setViewSpaces( 1u << grab_.bot->viewSpace() );
+}
+
+void AutomatonRig::endLinking ()
+{
+    // show the ViewSpaces as before
+    if (grab_.linking)
+        session_->setViewSpaces( grab_.viewspaces );
+    grab_.linking = false;
+}
+
 void AutomatonRig::release (View *view, glm::vec2 screen)
 {
     std::string label;
@@ -790,7 +884,7 @@ void AutomatonRig::release (View *view, glm::vec2 screen)
             pa->showLinking(false);
             AutomatonLink l;
             std::string target;
-            if (pickTarget(view, screen, l, target)) {
+            if (pickTarget(view, screen, pa->viewSpace(), l, target)) {
                 l.anchor = pa->mover();
                 bool added = false;
                 {
@@ -810,6 +904,7 @@ void AutomatonRig::release (View *view, glm::vec2 screen)
     else if (grab_.bot && grab_.moved)
         label = grab_.bot->name() + ": Edit";
 
+    endLinking();
     grab_ = Grab();
 
     // store in history (NB: not under lock; history saves the rig)
@@ -825,6 +920,7 @@ void AutomatonRig::cancel ()
     }
     else if (grab_.bot && grab_.moved)
         grab_.bot->setControls(grab_.stored);
+    endLinking();
     grab_ = Grab();
 }
 
@@ -839,7 +935,7 @@ View::Cursor AutomatonRig::over (View *view, glm::vec2 screen)
     for (auto it = automatons_.rbegin(); it != automatons_.rend(); ++it) {
         Automaton *a = *it;
         int g = Automaton::GRIP_NONE;
-        if (!found && a->mode() == view->mode() && a->parent() != nullptr)
+        if (!found && a->mode() == view->mode() && a->parent() != nullptr && a->visible())
             g = a->pick(p);
         a->hover(g);
         if (g != Automaton::GRIP_NONE) {
@@ -853,7 +949,7 @@ View::Cursor AutomatonRig::over (View *view, glm::vec2 screen)
     return ret;
 }
 
-bool AutomatonRig::pickTarget (View *view, glm::vec2 screen, AutomatonLink &link, std::string &label) const
+bool AutomatonRig::pickTarget (View *view, glm::vec2 screen, uint viewspace, AutomatonLink &link, std::string &label) const
 {
     const View::Mode m = view->mode();
 
@@ -863,7 +959,7 @@ bool AutomatonRig::pickTarget (View *view, glm::vec2 screen, AutomatonLink &link
 
     for (auto it = pv.rbegin(); it != pv.rend(); ++it) {
         Source *s = Mixer::manager().findSource(it->first);
-        if (s == nullptr || (m != View::MIXING && !s->hasImage()))
+        if (s == nullptr || (m != View::MIXING && !s->hasImage()) || s->viewSpace() != viewspace)
             continue;
 
         link = AutomatonLink();

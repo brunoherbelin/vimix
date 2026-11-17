@@ -20,6 +20,7 @@
 #include <cmath>
 #include <cstring>
 #include <vector>
+#include <set>
 
 // ImGui
 #include "Toolkit/ImGuiToolkit.h"
@@ -244,10 +245,17 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
         ImGui::SameLine();
         const std::string label = std::string(Automaton::Types[a->type()].first) + " " + a->name()
                                   + (a->paused() ? "  " ICON_FA_PAUSE : (a->resuming() ? "  " ICON_FA_HOURGLASS_HALF : ""));
+        // dimmed if its workspace is hidden
+        const bool shown = Mixer::manager().viewSpaceShown(a->viewSpace());
+        if (!shown)
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
         if (ImGui::Selectable(label.c_str(), selected, 0, ImVec2(x0 - ImGui::GetCursorScreenPos().x - style.ItemSpacing.x, 0)))
             rig->setSelected(a);
+        if (!shown)
+            ImGui::PopStyleColor();
         if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip( (Settings::application.views[a->mode()].name + " view").c_str() );
+            ImGuiToolkit::ToolTip( (Settings::application.views[a->mode()].name + " view, workspace "
+                                    + std::to_string(a->viewSpace() + 1) + (shown ? "" : " (hidden)")).c_str() );
 
         // clic in the timeline also selects
         ImGui::SetCursorScreenPos(ImVec2(x0, y));
@@ -349,6 +357,44 @@ void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
             a->setName(name_buffer_);
             Action::manager().store(a->name() + ": Rename");
         }
+    }
+    ImGui::SameLine();
+
+    // ViewSpace (same as for sources)
+    static std::vector< std::pair<int,int> > ws_icon = { {ICON_VI_VIEWSPACE_1},
+                                                        {ICON_VI_VIEWSPACE_2},
+                                                        {ICON_VI_VIEWSPACE_3},
+                                                        {ICON_VI_VIEWSPACE_4} };
+    static std::vector< std::string > ws_tooltip = { "Workspace 1\nActs on sources of workspace 1",
+                                                     "Workspace 2\nActs on sources of workspace 2",
+                                                     "Workspace 3\nActs on sources of workspace 3",
+                                                     "Workspace 4\nActs on sources of workspace 4" };
+    // linked sources and automaton share the same ViewSpace:
+    // with one source linked, both change; with several, the automaton follows its sources
+    std::set<uint64_t> linked;
+    if (PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a))
+        linked = pa->linkedSources();
+    int ws_index = (int) a->viewSpace();
+    const bool singleviewspace = Mixer::manager().viewSpaceOnlyShown((uint) ws_index);
+    if (linked.size() > 1) {
+        // cannot change
+        ImGuiToolkit::Icon(ws_icon[ws_index].first, ws_icon[ws_index].second, false);
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip( (std::string("Workspace ") + std::to_string(ws_index + 1) +
+                                    "\nSame as its linked sources").c_str() );
+    }
+    else if (ImGuiToolkit::IconMultistate(ws_icon, &ws_index, ws_tooltip)) {
+        rig->lock();
+        a->setViewSpace((uint) ws_index);
+        rig->unlock();
+        // the source linked goes too (and other automatons follow it)
+        Source *s = linked.empty() ? nullptr : Mixer::manager().findSource(*linked.begin());
+        if (s)
+            Mixer::manager().setViewSpace(s, (uint) ws_index);
+        Action::manager().store(a->name() + ": Workspace " + std::to_string(ws_index + 1));
+        // keep the automaton visible if its workspace was the only one shown
+        if ( singleviewspace )
+            Mixer::manager().showViewSpace((uint) ws_index, true, true);
     }
     ImGui::SameLine();
     ImGui::TextDisabled("%s in %s view", Automaton::Types[a->type()].second.c_str(),

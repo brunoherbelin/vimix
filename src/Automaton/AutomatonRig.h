@@ -71,6 +71,10 @@ public:
     // where they are (their rest pose takes the effect of the link), while
     // sources pushed by field automatons are given back
     void setEnabled (Automaton *a, bool on);
+    // after sources changed ViewSpace, path automatons follow their linked sources:
+    // - if all its linked sources are in another ViewSpace, the automaton goes there
+    // - otherwise, links to sources in another ViewSpace are removed (with a warning)
+    void followViewSpaces ();
 
     // automaton selected for edition
     Automaton *selected () const;
@@ -130,7 +134,7 @@ private:
     void updateTargets (Source *s, View::Mode m, bool handles);
     void compose (Source *s, View::Mode m, RestPose &p);
     bool userGrabbing (Source *s, View::Mode m) const;
-    bool pickTarget (View *view, glm::vec2 screen, AutomatonLink &link, std::string &label) const;
+    bool pickTarget (View *view, glm::vec2 screen, uint viewspace, AutomatonLink &link, std::string &label) const;
 
     Session *session_;
     std::list<Automaton *> automatons_;
@@ -145,7 +149,13 @@ private:
         glm::vec2 from = glm::vec2(0.f);
         std::vector<glm::vec2> stored;
         bool moved = false;
+        // ViewSpaces shown before linking (to restore after)
+        bool linking = false;
+        uint viewspaces = 0;
     };
+    // while dragging to link, only the ViewSpace of the automaton is shown
+    void beginLinking ();
+    void endLinking ();
     Grab grab_;
 };
 

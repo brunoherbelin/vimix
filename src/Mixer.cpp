@@ -62,6 +62,7 @@
 #include "SessionCreator.h"
 #include "Player/MediaPlayer.h"
 #include "ActionManager.h"
+#include "Automaton/AutomatonRig.h"
 #include "MixingGroup.h"
 #include "FrameGrabbing.h"
 #include "Visitor/BoundingBoxVisitor.h"
@@ -1671,6 +1672,14 @@ uint Mixer::firstShownViewSpace()
 
 void Mixer::setViewSpace(Source *s, uint v)
 {
+    applyViewSpace(s, v);
+
+    // automatons follow the ViewSpace of their sources
+    liveSession()->automatons()->followViewSpaces();
+}
+
+void Mixer::applyViewSpace(Source *s, uint v)
+{
     if (s == nullptr)
         return;
 
@@ -1699,7 +1708,11 @@ void Mixer::setViewSpace(SourceList selection, uint v)
         return;
 
     for (auto it = selection.begin(); it != selection.end(); ++it)
-        setViewSpace(*it, v);
+        applyViewSpace(*it, v);
+
+    // automatons follow the ViewSpace of their sources
+    // (after all sources moved: an automaton follows if all its sources moved)
+    liveSession()->automatons()->followViewSpaces();
 
     Action::manager().store(std::string("Assign selection to Workspace ") + std::to_string(v + 1));
 }

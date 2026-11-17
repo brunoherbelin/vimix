@@ -733,6 +733,7 @@ void Session::link(SourceList sources, Group *parent)
         // linked sources share the same ViewSpace
         for (auto it = sources.begin(); it != sources.end(); ++it)
             (*it)->setViewSpace( sources.front()->viewSpace() );
+        automatons()->followViewSpaces();
 
         // create and add a new mixing group
         MixingGroup *g = new MixingGroup(sources);

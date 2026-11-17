@@ -2,6 +2,7 @@
 #define PATHAUTOMATON_H
 
 #include <list>
+#include <set>
 
 #include "AutomatonMath.h"
 #include "Automaton.h"
@@ -30,6 +31,8 @@ struct AutomatonLink
 
     // runtime: position of the linked element in the scene (for drawing)
     glm::vec2 target = glm::vec2(0.f);
+    // runtime: the source is in the ViewSpace of the automaton (link acts)
+    bool active = true;
 
     bool sameElement (const AutomatonLink &other) const;
 };
@@ -46,6 +49,8 @@ public:
     // links to sources
     inline std::list<AutomatonLink> &links () { return links_; }
     // add the link, or remove it if the same element is already linked; returns true if added
+    // ids of the sources linked (a source can be linked by several elements)
+    std::set<uint64_t> linkedSources () const;
     bool toggleLink (const AutomatonLink &link);
     void removeLinks (uint64_t source);
     // update drawing of links (after targets were updated)

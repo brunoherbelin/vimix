@@ -628,6 +628,7 @@ void SessionLoader::loadAutomatons(tinyxml2::XMLElement *automatonsNode)
         if (name)
             a->setName(name);
         a->setEnabled( node->BoolAttribute("enabled", true) );
+        a->setViewSpace( node->UnsignedAttribute("viewspace", 0) );
         a->setTime( node->DoubleAttribute("time", 0.0) );
         if ( node->BoolAttribute("paused", false) )
             a->setPaused(true);

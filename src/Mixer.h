@@ -173,6 +173,7 @@ public:
     void restore(tinyxml2::XMLElement *sessionNode, SourceList *removed = nullptr);
 
 protected:
+    void applyViewSpace (Source *s, uint v);
 
     Session *session_;
     Session *back_session_;

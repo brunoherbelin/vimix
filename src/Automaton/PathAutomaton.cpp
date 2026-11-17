@@ -101,6 +101,14 @@ bool PathAutomaton::toggleLink (const AutomatonLink &link)
     return true;
 }
 
+std::set<uint64_t> PathAutomaton::linkedSources () const
+{
+    std::set<uint64_t> ids;
+    for (auto &l : links_)
+        ids.insert(l.source);
+    return ids;
+}
+
 void PathAutomaton::removeLinks (uint64_t source)
 {
     links_.remove_if([source](const AutomatonLink &l) { return l.source == source; });
@@ -131,6 +139,9 @@ void PathAutomaton::updateLinks ()
     const float s = AUTOMATON_LINK_POINT_SIZE / AUTOMATON_MESH_POINT_SIZE * uiscale_;
     size_t i = 0;
     for (auto l = links_.begin(); l != links_.end(); ++l, ++i) {
+        // links not acting are not drawn
+        link_lines_[i]->visible_ = l->active;
+        link_points_[i]->visible_ = l->active;
         setLine(link_lines_[i], { mover_, l->target });
         link_lines_[i]->shader()->color = color(AUTOMATON_ALPHA_LINK);
         // point on the element of the source linked

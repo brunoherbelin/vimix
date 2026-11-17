@@ -63,6 +63,13 @@ public:
     inline void setName (const std::string &n) { name_ = n; }
     inline bool enabled () const { return enabled_; }
     void setEnabled (bool on);
+    // ViewSpace : an automaton acts only on the sources of its ViewSpace,
+    // and is shown in views only if its ViewSpace is shown
+    inline uint viewSpace () const { return viewspace_; }
+    inline void setViewSpace (uint v) { viewspace_ = v < MAX_VIEWSPACE ? v : 0; }
+    // drawn in its view (NB: hidden automatons cannot be picked)
+    bool visible () const;
+    void setVisible (bool on);
 
     // A paused automaton stays still but keeps acting on sources.
     // When played again, it waits for the next beat where it can resume its motion
@@ -156,6 +163,7 @@ protected:
     std::string name_;
     View::Mode mode_;
     bool enabled_;
+    uint viewspace_;
     bool paused_;
     bool resuming_;
     double resume_at_;

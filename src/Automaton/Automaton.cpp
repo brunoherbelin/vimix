@@ -78,7 +78,7 @@ bool Automaton::accepts (Type t, View::Mode m)
     return false;
 }
 
-Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(true), paused_(false), resuming_(false), resume_at_(RESUME_UNSET), loop_(true), stop_at_(RESUME_UNSET), time_(0.0),
+Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(true), viewspace_(0), paused_(false), resuming_(false), resume_at_(RESUME_UNSET), loop_(true), stop_at_(RESUME_UNSET), time_(0.0),
     period_(4.0), offset_(0.0), shape_(AutomatonMath::SHAPE_LINEAR), reverse_(false),
     progress_(0.0), uiscale_(1.f), parent_(nullptr), hover_(GRIP_NONE), highlight_(false)
 {
@@ -118,6 +118,16 @@ void Automaton::attachTo (Group *parent)
 
     if (parent_ != nullptr)
         parent_->attach(frame_);
+}
+
+bool Automaton::visible () const
+{
+    return frame_->visible_;
+}
+
+void Automaton::setVisible (bool on)
+{
+    frame_->visible_ = on;
 }
 
 void Automaton::setEnabled (bool on)

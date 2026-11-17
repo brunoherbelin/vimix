@@ -1299,6 +1299,7 @@ void SessionVisitor::visit (Automaton& a)
     node->SetAttribute("view", (int) a.mode());
     node->SetAttribute("name", a.name().c_str());
     node->SetAttribute("enabled", a.enabled());
+    node->SetAttribute("viewspace", a.viewSpace());
     if (a.paused() || a.resuming()) {
         node->SetAttribute("paused", a.paused());
         node->SetAttribute("resuming", a.resuming());
