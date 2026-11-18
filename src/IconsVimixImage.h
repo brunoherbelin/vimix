@@ -80,7 +80,7 @@
 #define ICON_VI_SELECT_REMOVE        14, 1
 #define ICON_VI_SELECT_ALL           13, 1
 #define ICON_VI_SELECT_VISIBLE       8, 1
-#define ICON_VI_RELOAD               5, 15
+#define ICON_VI_RELOAD               15, 12
 #define ICON_VI_CLEAR_LIST           12, 14
 #define ICON_VI_IMAGES_VIDEOS        3, 16
 
@@ -97,7 +97,7 @@
 #define ICON_VI_ADD                 18, 4
 #define ICON_VI_MULTIPLE_REMOVE     0, 5
 #define ICON_VI_REMOVE              19, 4
-#define ICON_VI_DRAG_HANDLE         8, 15
+#define ICON_VI_DRAG_HANDLE         17, 14
 #define ICON_VI_THUMBNAIL_AUTOMATIC 2, 8
 #define ICON_VI_THUMBNAIL_CUSTOM    7, 8
 
@@ -298,6 +298,13 @@
 // Miscellaneous
 #define ICON_VI_LINUX           10, 14
 #define ICON_VI_DESKTOP_MEDIA   19, 13
+
+#define ICON_VI_CLOCKWISE         4, 15
+#define ICON_VI_COUNTERCLOCKWISE  5, 15
+#define ICON_VI_RIGHT_LEFT        7, 15
+#define ICON_VI_LEFT_RIGHT        8, 15
+
+
 //
 // UNUSED ICONS
 //
@@ -431,7 +438,7 @@
 // #define ICON_VI_UNDEFINED_124 15, 14
 // #define ICON_VI_UNDEFINED_125 17, 14
 //
-// #define ICON_VI_UNDEFINED_126  7, 15
+//
 // #define ICON_VI_UNDEFINED_127  9, 15
 // #define ICON_VI_UNDEFINED_128 11, 15
 // #define ICON_VI_UNDEFINED_129 12, 15

@@ -342,6 +342,96 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
     ImGui::Dummy(ImVec2(width, style.ItemSpacing.y));
 }
 
+void AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
+{
+    const ImGuiContext& g = *GImGui;
+    const float h_space = g.Style.ItemInnerSpacing.x;
+    const float v_space = g.Style.FramePadding.y;
+    const float bar_height = g.FontSize + v_space * 4.0f;
+    const float bar_width = ImGui::GetContentRegionAvail().x;
+
+    // draw box
+    const ImVec2 top = ImGui::GetCursorScreenPos();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    draw_list->AddRectFilled(top, top + ImVec2(bar_width, bar_height), ImGui::GetColorU32(ImGuiCol_FrameBg), h_space);
+
+    // buttons style
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.24f, 0.24f, 0.24f, 0.2f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.14f, 0.14f, 0.14f, 0.5f));
+
+    ImGui::SetCursorScreenPos(top + ImVec2(h_space, v_space));
+
+    // restart: back to start of cycle
+    if (ImGui::Button(ICON_FA_FAST_BACKWARD)) {
+        rig->lock();
+        a->restart( Metronome::manager().beats() );
+        rig->unlock();
+        Action::manager().store(a->name() + ": Restart");
+    }
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(a->paused() ? "Go to start of cycle"
+                                          : "Restart cycle at the next beat");
+
+    // play / pause toggle
+    ImGui::SameLine(0, h_space);
+    if (ImGui::Button(a->paused() ? ICON_FA_PLAY : ICON_FA_PAUSE,
+                      ImVec2(ImGui::GetFrameHeightWithSpacing(), 0))) {
+        rig->lock();
+        a->setPaused( !a->paused() );
+        rig->unlock();
+        Action::manager().store(a->name() + (a->paused() ? ": Pause" : ": Play"));
+    }
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip(a->paused() ? (a->loop() ? "Play\nContinue motion from where it stopped, at the next beat"
+                                                       : "Play\nPlay until the end of the cycle, from the next beat")
+                                          : (a->resuming() ? "Pause\nWaiting for the next beat to continue"
+                                                           : "Pause\nStop motion (still acting on sources)"));
+
+    // right aligned: loop mode
+    static std::vector< std::pair<int, int> > icons_loop = { {ICON_VI_LOOP_STOP}, {ICON_VI_LOOP_RESTART} };
+    static std::vector< std::string > tooltips_loop = { "One cycle\nPlay one cycle and pause",
+                                                        "Loop\nRepeat cycles indefinitely" };
+    ImGui::SameLine();
+    const bool directional = a->type() < Automaton::AUTOMATON_HEART;  // linear, circular and free path
+    ImGui::SetCursorScreenPos(ImVec2(top.x + bar_width - bar_height * (directional ? 2.f : 1.f),
+                                     ImGui::GetCursorScreenPos().y));
+
+    // direction (not reversed: clockwise, or starting from first point to second)
+    if (directional) {
+        static std::vector< std::pair<int, int> > icons_circular = { {ICON_VI_CLOCKWISE}, {ICON_VI_COUNTERCLOCKWISE} };
+        static std::vector< std::string > tooltips_circular = { "Clockwise", "Counter-clockwise" };
+        static std::vector< std::pair<int, int> > icons_linear = { {ICON_VI_RIGHT_LEFT}, {ICON_VI_LEFT_RIGHT} };
+        static std::vector< std::string > tooltips_linear = { "Forward\nStart from first point", "Reverse\nStart from second point" };
+        const bool circular = a->type() == Automaton::AUTOMATON_CIRCULAR;
+        int current_direction = a->reverse() ? 1 : 0;
+        if (ImGuiToolkit::IconMultistate(circular ? icons_circular : icons_linear, &current_direction,
+                                         circular ? tooltips_circular : tooltips_linear)) {
+            rig->lock();
+            a->setReverse(current_direction > 0);
+            rig->unlock();
+            Action::manager().store(a->name() + ": Direction");
+        }
+        ImGui::SameLine(0, h_space);
+    }
+
+    int current_loop = a->loop() ? 1 : 0;
+    if (ImGuiToolkit::IconMultistate(icons_loop, &current_loop, tooltips_loop)) {
+        rig->lock();
+        a->setLoop(current_loop > 0);
+        rig->unlock();
+        Action::manager().store(a->name() + (a->loop() ? ": Loop" : ": One cycle"));
+    }
+
+    ImGui::PopStyleColor(5);
+
+    // move cursor below the bar
+    ImGui::SetCursorScreenPos(top + ImVec2(0.f, bar_height + v_space));
+    ImGui::Dummy(ImVec2(0.f, 0.f));
+}
+
 void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
 {
     if (a == nullptr) {
@@ -447,25 +537,6 @@ void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
         Action::manager().store(a->name() + ": Motion " + Automaton::Shapes[shape]);
     }
 
-    // loop or play one cycle
-    bool loop = a->loop();
-    if (ImGui::Checkbox("Loop", &loop)) {
-        a->setLoop(loop);
-        Action::manager().store(a->name() + (loop ? ": Loop" : ": One cycle"));
-    }
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip(loop ? "Repeat cycles indefinitely" : "Play one cycle and pause");
-    if (a->type() < Automaton::AUTOMATON_HEART)
-        ImGui::SameLine();
-
-    // direction
-    if (a->type() < Automaton::AUTOMATON_HEART) {
-        bool r = a->reverse();
-        if (ImGui::Checkbox(a->type() == Automaton::AUTOMATON_CIRCULAR ? "Counter-clockwise" : "Reverse", &r)) {
-            a->setReverse(r);
-            Action::manager().store(a->name() + ": Direction");
-        }
-    }
     // key points
     if (FreePathAutomaton *fp = dynamic_cast<FreePathAutomaton *>(a)) {
         ImGui::SameLine();
@@ -484,17 +555,8 @@ void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
         }
     }
 
-    // play / pause
-    if (ImGui::Button(a->paused() ? ICON_FA_PLAY "  Play " : ICON_FA_PAUSE "  Pause")) {
-        a->setPaused( !a->paused() );
-        Action::manager().store(a->name() + (a->paused() ? ": Pause" : ": Play"));
-    }
-    if (ImGui::IsItemHovered())
-        ImGuiToolkit::ToolTip(a->paused() ? (a->loop() ? "Continue motion from where it stopped, at the next beat"
-                                                       : "Play until the end of the cycle, from the next beat")
-                                          : (a->resuming() ? "Waiting for the next beat to continue"
-                                                           : "Stop motion (still acting on sources)"));
-    ImGui::SameLine();
+    // control bar (like media player)
+    DrawControlBar(rig, a);
 
     // delete
     if (ImGui::Button(ICON_FA_TRASH "  Delete")) {

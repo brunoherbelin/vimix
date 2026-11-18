@@ -20,6 +20,7 @@ class AutomatonControlWindow : public WorkspaceWindow
     uint64_t name_id_;
 
     void RenderTimelines (AutomatonRig *rig);
+    void DrawControlBar (AutomatonRig *rig, Automaton *a);
     void RenderDetails (AutomatonRig *rig, Automaton *a);
 
 public:

@@ -84,6 +84,10 @@ public:
     inline void setResuming (bool on) { resuming_ = on; resume_at_ = RESUME_UNSET; }
     // beat time when motion will resume (valid while resuming, after first animate)
     inline double resumeTime () const { return resume_at_; }
+    // go back to the start of the cycle. If playing, the automaton holds at start
+    // until the next beat and starts its cycle from there; if paused, it stays at
+    // start, and its cycle will begin on a beat when played
+    void restart (double beats);
     // A looping automaton repeats its cycle indefinitely. Otherwise, it plays
     // until the end of its cycle and pauses (waiting to be played again)
     inline bool loop () const { return loop_; }
@@ -227,7 +231,7 @@ private:
 #define AUTOMATON_ALPHA_HOVER        1.0f   // grip under the cursor
 // Factors of opacity
 #define AUTOMATON_ALPHA_DISABLED     0.4f   // automaton disabled
-#define AUTOMATON_ALPHA_VIEWSPACE    0.5f   // other ViewSpaces shown (not interactive)
+#define AUTOMATON_ALPHA_VIEWSPACE    0.3f   // other ViewSpaces shown (not interactive)
 #define AUTOMATON_ALPHA_HIGHLIGHT    1.3f   // automaton selected in the control window
 // Sampling of curves
 #define AUTOMATON_PATH_SAMPLES 96

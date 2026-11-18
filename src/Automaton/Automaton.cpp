@@ -150,6 +150,21 @@ void Automaton::setPaused (bool on)
     }
 }
 
+void Automaton::restart (double beats)
+{
+    stop_at_ = RESUME_UNSET;
+    // beat time where the cycle starts: on the beat
+    double start = paused_ ? std::floor(time_) : std::ceil(beats - 1e-6);
+    // the state is the start of the cycle at that time
+    time_ = start;
+    offset_ = start - period_ * std::floor(start / period_);
+    if (!paused_) {
+        // hold at start until then (see animate)
+        resuming_ = true;
+        resume_at_ = start;
+    }
+}
+
 void Automaton::setLoop (bool on)
 {
     loop_ = on;
