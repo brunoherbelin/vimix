@@ -99,6 +99,8 @@ public:
     View::Cursor drag (View *view, glm::vec2 screen);
     void release (View *view, glm::vec2 screen);
     void cancel ();
+    // double clic on the automaton grabbed: toggle play / pause
+    void doubleclic ();
     inline bool grabbing () const { return grab_.bot != nullptr; }
     // mouse over (highlight grips)
     View::Cursor over (View *view, glm::vec2 screen);

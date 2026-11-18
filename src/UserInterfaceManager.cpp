@@ -896,6 +896,10 @@ void UserInterface::handleMouse()
             }
         }
 
+        // double clic on an automaton toggles play / pause
+        if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && automaton_grab )
+            automatons->doubleclic();
+
         if ( ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !automaton_grab )
         {
             // if double clic event was not used in view

@@ -925,6 +925,18 @@ void AutomatonRig::release (View *view, glm::vec2 screen)
         Action::manager().store(label);
 }
 
+void AutomatonRig::doubleclic ()
+{
+    if (grab_.bot == nullptr)
+        return;
+    Automaton *a = grab_.bot;
+    {
+        std::lock_guard<std::mutex> lock(access_);
+        a->setPaused( !a->paused() );
+    }
+    Action::manager().store(a->name() + (a->paused() ? ": Pause" : ": Play"));
+}
+
 void AutomatonRig::cancel ()
 {
     if (grab_.bot && grab_.grip == Automaton::GRIP_MOVER) {
@@ -951,12 +963,18 @@ View::Cursor AutomatonRig::over (View *view, glm::vec2 screen)
         if (!found && a->mode() == view->mode() && a->parent() != nullptr && a->visible() && a->interactive())
             g = a->pick(p);
         a->hover(g);
-        if (g != Automaton::GRIP_NONE) {
+        if (g == Automaton::GRIP_MOVER | g == Automaton::GRIP_MOVE) {
             found = true;
             ret.type = View::Cursor_Hand;
-            ret.info = std::string(ICON_FA_ROBOT " ") + a->name();
+            ret.info = std::string(ICON_FA_ROBOT " ");
             if (g == Automaton::GRIP_MOVER)
-                ret.info += "\n" ICON_FA_LINK " Drag to a source to link";
+                ret.info += "Drag to a source to link";
+            else {
+                ret.info += a->name();
+                ret.info += a->paused() ? "\n   (double clic to play)" : "\n   (double clic to pause)";
+            }
+            // else
+            //
         }
     }
     return ret;
