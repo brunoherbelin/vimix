@@ -9,7 +9,7 @@ description: |
    Its intuitive and hands-on user interface gives direct control on image opacity and
    shape for producing live graphics during concerts and VJ-ing sessions.
    The ouput image is typically projected full-screen on an external
-   monitor or a projector, but can be recorded and streamed live (no audio).
+   monitor or a projector, but can be recorded and streamed live (with audio).
 contact: https://brunoherbelin.github.io/vimix/
 website: https://github.com/brunoherbelin/vimix
 issues: https://github.com/brunoherbelin/vimix/issues
@@ -41,6 +41,7 @@ apps:
       - raw-usb
       - removable-media
       - audio-playback
+      - audio-record
       - shared-memory
       - joystick
       - screencast-legacy
@@ -75,6 +76,7 @@ parts:
     -  ableton-link-dev
     -  libtinyxml2-dev
     -  libglm-dev
+    -  libaubio-dev
     -  libavahi-client-dev
     -  libxi-dev
     -  libegl-dev
@@ -101,6 +103,7 @@ parts:
     -  gstreamer1.0-plugins-good
     -  gstreamer1.0-plugins-bad
     -  gstreamer1.0-plugins-ugly
+    -  libaubio5
     -  libgpm2
     -  libslang2
     -  libicu78

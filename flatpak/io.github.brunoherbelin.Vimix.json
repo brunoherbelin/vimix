@@ -68,6 +68,9 @@
                 "-DENABLE_APPS=OFF",
                 "-DENABLE_STDCXX_SYNC=ON"
             ],
+            "post-install": [
+                "rm -f ${FLATPAK_DEST}/bin/srt-ffplay"
+            ],
             "sources": [
             {
                 "type": "git",
@@ -109,6 +112,25 @@
                 "commit": "530f7e6388c6931f20aa2ca9e4ea33a60df7aca7",
                 "url": "https://github.com/dyne/frei0r.git"
             }
+            ]
+        },
+        {
+            "name": "aubio",
+            "buildsystem": "simple",
+            "build-commands": [
+                "sed -i \"s/'rU'/'r'/g\" waflib/ConfigSet.py waflib/Context.py",
+                "sed -i 's/import os,re,imp,sys/import os,re,sys,types/; s/imp\\.new_module(/types.ModuleType(/' waflib/Context.py",
+                "python3 ./waf configure --prefix=${FLATPAK_DEST} --libdir=${FLATPAK_DEST}/lib --disable-avcodec --disable-samplerate --disable-sndfile --disable-jack --disable-fftw3 --disable-fftw3f --disable-docs --disable-tests --disable-examples",
+                "python3 ./waf build -j${FLATPAK_BUILDER_N_JOBS} --disable-examples --disable-tests",
+                "python3 ./waf install --disable-examples --disable-tests"
+            ],
+            "sources": [
+                {
+                    "type": "archive",
+                    "url": "https://aubio.org/pub/aubio-0.4.9.tar.bz2",
+                    "disable-http-decompression": true,
+                    "sha256": "d48282ae4dab83b3dc94c16cf011bcb63835c1c02b515490e1883049c3d1f3da"
+                }
             ]
         },
         {
