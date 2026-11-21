@@ -42,6 +42,12 @@
 #include "AutomatonControlWindow.h"
 
 #define AUTOMATON_IMGUI_COLOR(a) ImVec4(COLOR_AUTOMATON, a)
+#define AUTOMATON_ALPHA_CURVE          1.0f   // timeline curve
+#define AUTOMATON_ALPHA_CURVE_PAUSED   0.4f   // timeline curve of a paused automaton
+#define AUTOMATON_ALPHA_CURVE_DISABLED 0.3f  // timeline curve of a disabled automaton
+#define AUTOMATON_ALPHA_MARK           0.8f   // timeline marks of events
+#define AUTOMATON_ALPHA_HEAD           1.0f   // timeline head of a paused automaton
+#define AUTOMATON_ALPHA_MARK_DISABLED  0.3f   // timeline marks of events of a disabled automaton
 
 AutomatonControlWindow::AutomatonControlWindow () : WorkspaceWindow("Automatons"), name_id_(0)
 {
@@ -271,11 +277,12 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
         ImGui::PopID();
 
         // row background
-        const ImU32 col_row = ImGui::GetColorU32(selected ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg);
+        const ImU32 col_row = ImGui::GetColorU32(ImGuiCol_FrameBgActive, selected ? 1.3f : a->enabled() ? 0.5f : 0.1f);
         dl->AddRectFilled(ImVec2(x0, y + 2.f), ImVec2(x1, y + row_h - 2.f), col_row, style.FrameRounding);
 
-        const ImU32 col_curve = ImGui::GetColorU32(AUTOMATON_IMGUI_COLOR(a->enabled() ? 1.f : 0.35f));
-        const ImU32 col_mark  = ImGui::GetColorU32(AUTOMATON_IMGUI_COLOR(a->enabled() ? 0.8f : 0.3f));
+        const ImU32 col_curve = ImGui::GetColorU32(AUTOMATON_IMGUI_COLOR(!a->enabled() ? AUTOMATON_ALPHA_CURVE_DISABLED : (a->paused() ? AUTOMATON_ALPHA_CURVE_PAUSED : AUTOMATON_ALPHA_CURVE)));
+        const ImU32 col_mark  = ImGui::GetColorU32(AUTOMATON_IMGUI_COLOR(a->enabled() ? AUTOMATON_ALPHA_MARK : AUTOMATON_ALPHA_MARK_DISABLED));
+        const float width_curve = selected ? 2.5f : 1.5f;
 
         // motion curve over the page of time
         const float top = y + 5.f, low = y + row_h - 5.f;
@@ -287,7 +294,7 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
             const float u = float(AutomatonMath::progress(t, a->period(), a->offset()));
             points.push_back( ImVec2(X(t), low - (low - top) * a->curve(u)) );
         }
-        dl->AddPolyline(points.data(), (int) points.size(), col_curve, false, 1.5f);
+        dl->AddPolyline(points.data(), (int) points.size(), col_curve, false, width_curve);
 
         // events: start of cycles and remarkable instants
         std::vector<float> events = a->events();
@@ -305,24 +312,27 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
             }
         }
 
-        // paused: head of the automaton frozen at its progress, repeated on this page
-        if (a->paused() || a->resuming()) {
-            const double tp = a->time() - a->period() * std::floor((a->time() - page) / a->period());
-            const ImU32 col_head = ImGui::GetColorU32(AUTOMATON_IMGUI_COLOR(1.f));
-            for (double t = tp; t <= page + span + 1e-6; t += a->period()) {
-                const float x = X(t);
+        // play head of the automaton: moving with beats when playing,
+        // otherwise frozen at the location of pause (first occurrence in this page)
+        const ImU32 col_head = ImGui::GetColorU32(ImGuiToolkit::HighlightColor());
+        const bool still = a->paused() || a->resuming();
+        double th = beats;
+        if (still)
+            th = a->time() - a->period() * std::floor((a->time() - page) / a->period());
+        if (th >= page - 1e-6 && th <= page + span + 1e-6) {
+            const float x = X(th);
+            if (!a->resuming())
                 dl->AddLine(ImVec2(x, y + 2.f), ImVec2(x, y + row_h - 2.f), col_head, 2.f);
-                const float u = float(AutomatonMath::progress(t, a->period(), a->offset()));
-                dl->AddCircleFilled(ImVec2(x, low - (low - top) * a->curve(u)), 4.f, col_head);
-            }
-            // moment when the motion will resume
-            if (a->resuming() && a->resumeTime() != Automaton::RESUME_UNSET) {
-                const double tr = a->resumeTime();
-                if (tr >= page && tr <= page + span) {
-                    const float x = X(tr);
-                    dl->AddTriangleFilled(ImVec2(x - 5.f, y + 2.f), ImVec2(x + 5.f, y + 2.f),
-                                          ImVec2(x, y + 9.f), col_head);
-                }
+            dl->AddCircleFilled(ImVec2(x, low - (low - top) * a->curve(float(a->progress()))), 4.f, col_head);
+        }
+        // moment when the motion will resume
+        if (a->resuming() && a->resumeTime() != Automaton::RESUME_UNSET) {
+            const double tr = a->resumeTime();
+            if (tr >= page && tr <= page + span) {
+                const float x = X(tr);
+                dl->AddLine(ImVec2(x, y + 2.f), ImVec2(x, y + row_h - 2.f), col_head, 2.f);
+                dl->AddTriangleFilled(ImVec2(x - 6.f, y + 2.f), ImVec2(x + 6.f, y + 2.f),
+                                      ImVec2(x, y + 11.f), col_head);
             }
         }
     }
@@ -331,11 +341,6 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
     const ImU32 col_faint = ImGui::GetColorU32(AUTOMATON_IMGUI_COLOR(0.25f));
     for (float x : marks)
         dl->AddLine(ImVec2(x, origin.y + header_h), ImVec2(x, bottom), col_faint);
-
-    // play head
-    const float xp = X(beats);
-    dl->AddLine(ImVec2(xp, origin.y + header_h * 0.5f), ImVec2(xp, bottom),
-                ImGui::GetColorU32(ImGuiToolkit::HighlightColor()), 2.f);
 
     // reserve space in window
     ImGui::SetCursorScreenPos(ImVec2(origin.x, bottom));
