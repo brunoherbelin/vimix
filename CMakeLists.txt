@@ -1156,6 +1156,18 @@ set(CPACK_STRIP_FILES TRUE)
 #####
 add_subdirectory(src)
 
+#####
+##### Plugins (external programs launched by vimix)
+#####
+
+# vimix-beat: detects the beat of an audio source and sets the Ableton Link tempo
+if(UNIX AND NOT APPLE)
+    option(USE_BEAT_DETECTOR "Build the vimix-beat plugin (beat detection to Ableton Link)" ON)
+    if(USE_BEAT_DETECTOR)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tools/vimix-beat)
+    endif()
+endif()
+
 
 #####
 ##### Clean the build
