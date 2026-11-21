@@ -417,6 +417,8 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     timerConfNode->SetAttribute("link_tempo", application.timer.link_tempo);
     timerConfNode->SetAttribute("link_quantum", application.timer.link_quantum);
     timerConfNode->SetAttribute("link_start_stop_sync", application.timer.link_start_stop_sync);
+    timerConfNode->SetAttribute("beat_detection", application.timer.beat_detection);
+    timerConfNode->SetAttribute("beat_device", application.timer.beat_device.c_str());
     timerConfNode->SetAttribute("stopwatch_duration", application.timer.stopwatch_duration);
     pRoot->InsertEndChild(timerConfNode);    
 
@@ -899,6 +901,10 @@ void Settings::init(const std::string &filename)
             timerconfnode->QueryDoubleAttribute("link_tempo", &application.timer.link_tempo);
             timerconfnode->QueryDoubleAttribute("link_quantum", &application.timer.link_quantum);
             timerconfnode->QueryBoolAttribute("link_start_stop_sync", &application.timer.link_start_stop_sync);
+            timerconfnode->QueryBoolAttribute("beat_detection", &application.timer.beat_detection);
+            const char *beat_dev_ = timerconfnode->Attribute("beat_device");
+            if (beat_dev_)
+                application.timer.beat_device = std::string(beat_dev_);
             timerconfnode->QueryUnsigned64Attribute("stopwatch_duration", &application.timer.stopwatch_duration);
         }
 

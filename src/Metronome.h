@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <functional>
+#include <string>
 
 class Metronome
 {
@@ -59,6 +60,21 @@ public:
 
     // get number of connected peers
     size_t peers () const;
+
+    // Beat detection: an external program (vimix-beat) listens to an audio source,
+    // detects the beat and sets the tempo and beat phase of the Link session.
+    // It is searched next to the vimix executable, then in ../tools/vimix-beat/, then in PATH.
+    // It requires audio to be accepted in the settings (and Audio to be initialized before init()),
+    // and Ableton Link to be enabled (disabling Link stops the beat detection).
+    bool beatDetectionAvailable ();
+    void setBeatDetection (bool on);
+    bool beatDetection ();                          // false if not started, or if the program has terminated
+    void setBeatDevice (const std::string &name);   // audio source (restarts the detector if running; empty: what is currently played)
+
+private:
+    int beat_pid_ = 0;
+    std::string beat_binary_;
+    bool beat_searched_ = false;
 
 };
 

@@ -26,6 +26,7 @@
 #include "Settings.h"
 #include "Toolkit/GstToolkit.h"
 #include "Metronome.h"
+#include "Audio.h"
 
 #include "TimerMetronomeWindow.h"
 
@@ -92,6 +93,28 @@ void TimerMetronomeWindow::Render()
             // Enable/Disable Ableton Link
             if ( ImGui::MenuItem( ICON_FA_USER_CLOCK " Ableton Link", nullptr, &Settings::application.timer.link_enabled) ) {
                 Metronome::manager().setEnabled(Settings::application.timer.link_enabled);
+            }
+
+            // Beat detection (external program that sets the tempo of Ableton Link):
+            // either disabled, or listening to one audio source
+            if ( Settings::application.accept_audio && Settings::application.timer.link_enabled
+                 && Metronome::manager().beatDetectionAvailable() ) {
+                const bool running = Metronome::manager().beatDetection();
+                if ( ImGui::BeginMenu( ICON_FA_MUSIC "  Beat detection") ) {
+                    if ( ImGui::MenuItem( "Disabled", nullptr, !running) )
+                        Metronome::manager().setBeatDetection(false);
+                    ImGui::Separator();
+                    for (int d = 0; d < Audio::manager().numDevices(); ++d) {
+                        std::string name = Audio::manager().name(d);
+                        bool selected = running && Settings::application.timer.beat_device == name;
+                        if ( ImGui::MenuItem( name.c_str(), nullptr, selected) && !selected ) {
+                            Metronome::manager().setBeatDevice(name);
+                            if (!Metronome::manager().beatDetection())
+                                Metronome::manager().setBeatDetection(true);
+                        }
+                    }
+                    ImGui::EndMenu();
+                }
             }
 
             // output manager menu

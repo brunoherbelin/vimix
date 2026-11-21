@@ -274,6 +274,8 @@ struct TimerConfig
     double link_tempo;
     double link_quantum;
     bool link_start_stop_sync;
+    bool beat_detection;
+    std::string beat_device;
     uint64_t stopwatch_duration;
 
     TimerConfig() {
@@ -282,6 +284,8 @@ struct TimerConfig
         link_tempo = 120.;
         link_quantum = 4.;
         link_start_stop_sync = true;
+        beat_detection = false;
+        beat_device = "";
         stopwatch_duration = 60;
     }
 };

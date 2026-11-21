@@ -18,6 +18,15 @@
 **/
 
 #include <thread>
+#include <string>
+
+#include <glib.h>
+#ifdef __linux__
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/prctl.h>
+#endif
 
 /// Ableton Link is a technology that synchronizes musical beat, tempo,
 /// and phase across multiple applications running on one or more devices.
@@ -34,6 +43,7 @@
 #include "Settings.h"
 #include "Metronome.h"
 #include "Log.h"
+#include "Audio.h"
 
 
 namespace ableton
@@ -160,12 +170,21 @@ bool Metronome::init()
     setQuantum(Settings::application.timer.link_quantum);
     setStartStopSync(Settings::application.timer.link_start_stop_sync);
 
+    // restart the beat detector if it was running (needs the audio devices: call after Audio init)
+    if (Settings::application.timer.beat_detection)
+        setBeatDetection(true);
+
     // no reason for failure?
     return true;
 }
 
 void Metronome::terminate()
 {
+    // stop the beat detector, but remember that it was running: the setting is saved after this
+    const bool beat_was_running = beatDetection();
+    setBeatDetection(false);
+    Settings::application.timer.beat_detection = beat_was_running;
+
     // save current tempo
     Settings::application.timer.link_tempo = tempo();
 
@@ -175,6 +194,10 @@ void Metronome::terminate()
 
 void Metronome::setEnabled (bool on)
 {
+    // the beat detection feeds the Link session: useless without it
+    if (!on)
+        setBeatDetection(false);
+
     link_->enable(on);
     Settings::application.timer.link_enabled = link_->isEnabled();
     Log::Info("Metronome Ableton Link %s", Settings::application.timer.link_enabled ? "Enabled" : "Disabled");
@@ -219,6 +242,163 @@ double Metronome::tempo() const
     return engine_.tempo();
 }
 
+
+//
+// Beat detection with the external program 'vimix-beat'
+//
+#define BEAT_DETECTOR_NAME "vimix-beat"
+
+// search the program, in this order:
+//  1. in the same directory as the vimix executable (installation, flatpak, snap)
+//  2. in ../tools/vimix-beat/ relative to it (build directory)
+//  3. in the PATH
+static std::string find_beat_detector()
+{
+    std::string found;
+
+#ifdef __linux__
+    char exe[4096];
+    ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+    if (len > 0) {
+        exe[len] = '\0';
+        gchar *dir = g_path_get_dirname(exe);
+        gchar *c1 = g_build_filename(dir, BEAT_DETECTOR_NAME, nullptr);
+        gchar *c2 = g_build_filename(dir, "..", "tools", BEAT_DETECTOR_NAME, BEAT_DETECTOR_NAME, nullptr);
+        if (g_file_test(c1, G_FILE_TEST_IS_EXECUTABLE) && !g_file_test(c1, G_FILE_TEST_IS_DIR))
+            found = c1;
+        else if (g_file_test(c2, G_FILE_TEST_IS_EXECUTABLE) && !g_file_test(c2, G_FILE_TEST_IS_DIR))
+            found = c2;
+        g_free(c1);
+        g_free(c2);
+        g_free(dir);
+    }
+    if (found.empty()) {
+        gchar *p = g_find_program_in_path(BEAT_DETECTOR_NAME);
+        if (p) {
+            found = p;
+            g_free(p);
+        }
+    }
+#endif
+
+    return found;
+}
+
+#ifdef __linux__
+// the beat detector must not survive vimix, even if it crashes
+static void beat_child_setup(gpointer)
+{
+    prctl(PR_SET_PDEATHSIG, SIGTERM);
+}
+#endif
+
+bool Metronome::beatDetectionAvailable ()
+{
+    if (!beat_searched_) {
+        beat_binary_ = find_beat_detector();
+        beat_searched_ = true;
+        if (beat_binary_.empty())
+            Log::Info("Beat detection not available (program '%s' not found).", BEAT_DETECTOR_NAME);
+        else
+            Log::Info("Beat detection with '%s'.", beat_binary_.c_str());
+    }
+    return !beat_binary_.empty();
+}
+
+bool Metronome::beatDetection ()
+{
+#ifdef __linux__
+    if (beat_pid_ > 0) {
+        int status = 0;
+        pid_t r = waitpid(beat_pid_, &status, WNOHANG);
+        if (r == beat_pid_ || r < 0) {
+            // the program terminated by itself
+            Log::Warning("Beat detection stopped (program exited).");
+            beat_pid_ = 0;
+            Settings::application.timer.beat_detection = false;
+        }
+    }
+#endif
+    return beat_pid_ > 0;
+}
+
+void Metronome::setBeatDetection (bool on)
+{
+#ifdef __linux__
+    // (re)start requires to stop first
+    if (beat_pid_ > 0) {
+        kill(beat_pid_, SIGTERM);
+        // wait for a clean exit (it leaves the Link session), at most one second
+        bool done = false;
+        for (int i = 0; i < 100 && !done; ++i) {
+            done = waitpid(beat_pid_, nullptr, WNOHANG) != 0;
+            if (!done)
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        if (!done) {
+            kill(beat_pid_, SIGKILL);
+            waitpid(beat_pid_, nullptr, 0);
+        }
+        beat_pid_ = 0;
+        Log::Info("Beat detection stopped.");
+    }
+
+    Settings::application.timer.beat_detection = false;
+
+    // the beat detector listens to audio: only if audio is accepted (and thus initialized)
+    if (on && !Settings::application.accept_audio) {
+        Log::Warning("Beat detection requires audio: it is disabled in the settings.");
+        on = false;
+    }
+    // and it sets the tempo of Ableton Link: only if enabled
+    if (on && !link_->isEnabled()) {
+        Log::Warning("Beat detection requires Ableton Link to be enabled.");
+        on = false;
+    }
+
+    if (on && beatDetectionAvailable()) {
+        std::string device = Settings::application.timer.beat_device;
+        // only use the device if it is plugged in
+        if (!device.empty() && !Audio::manager().exists(device)) {
+            Log::Info("Beat detection: audio source '%s' not found; using the default.", device.c_str());
+            device = "";
+        }
+
+        gchar *argv[5];
+        int n = 0;
+        argv[n++] = const_cast<gchar *>(beat_binary_.c_str());
+        if (!device.empty()) {
+            argv[n++] = const_cast<gchar *>("--device");
+            argv[n++] = const_cast<gchar *>(device.c_str());
+        }
+        argv[n] = nullptr;
+
+        GPid pid = 0;
+        GError *error = nullptr;
+        if (g_spawn_async(nullptr, argv, nullptr, G_SPAWN_DO_NOT_REAP_CHILD,
+                          beat_child_setup, nullptr, &pid, &error)) {
+            beat_pid_ = pid;
+            Settings::application.timer.beat_detection = true;
+            Log::Info("Beat detection started%s%s.", device.empty() ? "" : " on ", device.c_str());
+        }
+        else {
+            Log::Warning("Beat detection could not start: %s", error ? error->message : "unknown error");
+            if (error)
+                g_error_free(error);
+        }
+    }
+#else
+    (void) on;
+#endif
+}
+
+void Metronome::setBeatDevice (const std::string &name)
+{
+    Settings::application.timer.beat_device = name;
+    // apply the new source
+    if (beatDetection())
+        setBeatDetection(true);
+}
 
 void Metronome::setStartStopSync (bool on)
 {

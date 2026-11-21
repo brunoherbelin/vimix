@@ -207,12 +207,6 @@ int main(int argc, char *argv[])
         return 1;
 
     ///
-    /// METRONOME INIT (Ableton Link)
-    ///
-    if ( !Metronome::manager().init() )
-        return 1;
-
-    ///
     /// RENDERING & GST INIT
     ///
     if ( !Rendering::manager().init() )
@@ -248,6 +242,13 @@ int main(int argc, char *argv[])
     ///
     if ( Settings::application.accept_audio )
         Audio::manager().initialize();
+
+    ///
+    /// METRONOME INIT (Ableton Link)
+    /// (after AUDIO INIT: it restarts the beat detection, which needs the audio devices)
+    ///
+    if ( !Metronome::manager().init() )
+        return 1;
 
     // callbacks to draw
     Rendering::manager().pushBackDrawCallback(prepare);
