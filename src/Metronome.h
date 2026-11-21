@@ -1,6 +1,7 @@
 #ifndef METRONOME_H
 #define METRONOME_H
 
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <string>
@@ -35,6 +36,12 @@ public:
 
     void setTempo (double t);
     double tempo () const;
+
+    // Pause: set the tempo of the Link session to its minimum (20 BPM), and restore the
+    // previous tempo when un-paused. If another value is set in the session (e.g. by a peer
+    // or by the beat detection), or with setTempo(), the pause is cancelled.
+    void setPaused (bool on);
+    bool paused () const;
 
     void setQuantum (double q);
     double quantum () const;
@@ -72,6 +79,8 @@ public:
     void setBeatDevice (const std::string &name);   // audio source (restarts the detector if running; empty: what is currently played)
 
 private:
+    std::atomic<bool> paused_{false};
+    double paused_tempo_ = 120.;
     int beat_pid_ = 0;
     std::string beat_binary_;
     bool beat_searched_ = false;

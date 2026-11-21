@@ -234,9 +234,19 @@ void TimerMetronomeWindow::Render()
                 snprintf(text_buf, 24, "%d BPM\n(set by peer)", (int) ceil(t));
                 ImGuiToolkit::ToolTip(text_buf);
             }
+            // Pause icon
+            ImGui::SetCursorScreenPos(circle_top_left);
+            bool paused = Metronome::manager().paused();
+            if (ImGuiToolkit::IconToggle(ICON_FA_PAUSE, &paused, "Suspend (minimum tempo)\nuntil next tempo detection")) {
+                Metronome::manager().setPaused(paused);
+            }
         }
         // Controls operational only if no peer
         else {
+            // without peer, the pause icon is not available: cancel the pause
+            if (Metronome::manager().paused())
+                Metronome::manager().setPaused(false);
+
             // Tempo
             ImGui::SetCursorScreenPos(circle_top_right);
             ImGuiToolkit::PushFont(ImGuiToolkit::FONT_BOLD);

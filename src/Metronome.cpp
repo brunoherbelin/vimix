@@ -19,6 +19,7 @@
 
 #include <thread>
 #include <string>
+#include <cmath>
 
 #include <glib.h>
 #ifdef __linux__
@@ -44,6 +45,9 @@
 #include "Metronome.h"
 #include "Log.h"
 #include "Audio.h"
+
+// Link does not accept a tempo lower than 20 BPM
+static const double kPauseTempo = 20.;
 
 
 namespace ableton
@@ -164,6 +168,13 @@ Metronome::Metronome()
 
 bool Metronome::init()
 {
+    // a tempo different from the pause tempo, set in the session by someone else, cancels the pause
+    // (the callback is called by Link on its own thread, also for the changes made here)
+    link_->setTempoCallback( [this](double bpm) {
+        if (paused_ && std::fabs(bpm - kPauseTempo) > 0.01)
+            paused_ = false;
+    });
+
     // set parameters
     setEnabled(Settings::application.timer.link_enabled);
     setTempo(Settings::application.timer.link_tempo);
@@ -180,6 +191,9 @@ bool Metronome::init()
 
 void Metronome::terminate()
 {
+    // leave the session at the tempo it had before the pause (and save that one)
+    setPaused(false);
+
     // stop the beat detector, but remember that it was running: the setting is saved after this
     const bool beat_was_running = beatDetection();
     setBeatDetection(false);
@@ -195,8 +209,10 @@ void Metronome::terminate()
 void Metronome::setEnabled (bool on)
 {
     // the beat detection feeds the Link session: useless without it
-    if (!on)
+    if (!on) {
+        setPaused(false);
         setBeatDetection(false);
+    }
 
     link_->enable(on);
     Settings::application.timer.link_enabled = link_->isEnabled();
@@ -229,8 +245,36 @@ double Metronome::quantum() const
     return engine_.quantum();
 }
 
+void Metronome::setPaused(bool on)
+{
+    if (on == paused_)
+        return;
+
+    if (on) {
+        // remember the tempo, and slow down the session to the minimum
+        paused_tempo_ = engine_.tempo();
+        engine_.setTempo(kPauseTempo);
+        paused_ = true;
+        Log::Info("Metronome paused (tempo %.1f BPM kept).", paused_tempo_);
+    }
+    else {
+        // restore the tempo
+        paused_ = false;
+        engine_.setTempo(paused_tempo_);
+        Log::Info("Metronome resumed at %.1f BPM.", paused_tempo_);
+    }
+}
+
+bool Metronome::paused() const
+{
+    return paused_;
+}
+
 void Metronome::setTempo(double t)
 {
+    // a tempo explicitly set cancels the pause
+    paused_ = false;
+
     // set the tempo to t
     // OR
     // adopt the last tempo value that have been proposed on the network
