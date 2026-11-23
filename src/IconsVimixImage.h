@@ -295,15 +295,20 @@
 #define ICON_VI_VIEWSPACE_4       9, 17
 #define ICON_VI_VIEWSPACE_ALL    10, 17
 
-// Miscellaneous
-#define ICON_VI_LINUX           10, 14
-#define ICON_VI_DESKTOP_MEDIA   19, 13
-
+// Automatons
 #define ICON_VI_CLOCKWISE         4, 15
 #define ICON_VI_COUNTERCLOCKWISE  5, 15
 #define ICON_VI_RIGHT_LEFT        7, 15
 #define ICON_VI_LEFT_RIGHT        8, 15
+#define ICON_VI_MOTION_LINEAR    12, 13
+#define ICON_VI_MOTION_SMOOTH    13, 13
+#define ICON_VI_MOTION_PULSE     14, 13
 
+// Miscellaneous
+#define ICON_VI_LINUX           10, 14
+#define ICON_VI_DESKTOP_MEDIA   19, 13
+#define ICON_VI_BANNED          17,  1
+#define ICON_VI_CHECKED         18,  1
 
 //
 // UNUSED ICONS
@@ -322,9 +327,7 @@
 // #define ICON_VI_UNDEFINED_9    1,  1
 // #define ICON_VI_UNDEFINED_11  10,  1
 // #define ICON_VI_UNDEFINED_12  12,  1
-// #define ICON_VI_UNDEFINED_13  17,  1
-// #define ICON_VI_UNDEFINED_14  18,  1
-//
+
 // #define ICON_VI_UNDEFINED_16   2,  2
 // #define ICON_VI_UNDEFINED_18   8,  2
 // #define ICON_VI_UNDEFINED_19  12,  2
@@ -422,9 +425,6 @@
 // #define ICON_VI_UNDEFINED_106 15, 12
 //
 // #define ICON_VI_UNDEFINED_107 10, 13
-// #define ICON_VI_UNDEFINED_108 12, 13
-// #define ICON_VI_UNDEFINED_109 13, 13
-// #define ICON_VI_UNDEFINED_111 15, 13
 // #define ICON_VI_UNDEFINED_112 16, 13
 // #define ICON_VI_UNDEFINED_113 17, 13
 //

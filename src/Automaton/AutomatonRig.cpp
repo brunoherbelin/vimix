@@ -317,7 +317,9 @@ void AutomatonRig::add (Automaton *a)
     if (a == nullptr)
         return;
     std::lock_guard<std::mutex> lock(access_);
-    automatons_.push_back(a);
+    // sorted by view (after the others of the same view)
+    automatons_.insert( std::upper_bound(automatons_.begin(), automatons_.end(), a,
+                                         [](Automaton *x, Automaton *y) { return x->mode() < y->mode(); }), a);
     selected_ = a->id();
 }
 

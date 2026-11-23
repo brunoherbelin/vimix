@@ -24,6 +24,7 @@
 
 // ImGui
 #include "Toolkit/ImGuiToolkit.h"
+#include "imgui.h"
 #include "imgui_internal.h"
 
 #include "defines.h"
@@ -132,7 +133,7 @@ void AutomatonControlWindow::Render ()
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu(ICON_FA_PLUS " Insert", can_insert))
+        if (ImGui::BeginMenu(ICON_FA_PLUS "  Insert", can_insert))
         {
             for (size_t t = 0; t < Automaton::Types.size(); ++t) {
                 const std::string label = std::string(Automaton::Types[t].first) + "  " + Automaton::Types[t].second;
@@ -170,9 +171,11 @@ void AutomatonControlWindow::Render ()
     const float details_min = 5.5f * ImGui::GetFrameHeightWithSpacing();
     const float timeline_h = std::max(2.f * row_h,
                                       std::min(needed, ImGui::GetContentRegionAvail().y - details_min));
-    ImGui::BeginChild("##AutomatonTimelines", ImVec2(0, timeline_h), true);
+    ImGui::BeginChild("##AutomatonTimelines", ImVec2(0, timeline_h));
     RenderTimelines(rig);
     ImGui::EndChild();
+
+    ImGui::Separator();
 
     RenderDetails(rig, rig->selected());
 
@@ -196,7 +199,9 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
     const ImVec2 origin = ImGui::GetCursorScreenPos();
     const float width = ImGui::GetContentRegionAvail().x;
     const float x0 = origin.x + label_w;
-    const float x1 = origin.x + width - style.ItemSpacing.x;
+    // last column for the curve shape button
+    const float shape_w = ImGui::GetFrameHeight();
+    const float x1 = origin.x + width - shape_w - 2.f * style.ItemSpacing.x;
     const float bottom = origin.y + header_h + row_h * float(rig->size());
 
     // the width of the timeline is the longest cycle
@@ -239,16 +244,65 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
         const bool selected = rig->selected() == a;
         ImGui::PushID( (int) (a->id() & 0x7FFFFFFF) );
 
-        // enable and select
-        ImGui::SetCursorScreenPos(ImVec2(origin.x, y + 0.5f * (row_h - ImGui::GetFrameHeight())));
-        bool on = a->enabled();
-        if (ImGui::Checkbox("##enabled", &on)) {
-            rig->setEnabled(a, on);
-            Action::manager().store(a->name() + (on ? ": Enable" : ": Disable"));
-        }
+        // items of the row are vertically centered (placed one after the other on their own line,
+        // to avoid the text baseline offset of SameLine)
+        const float yc = y + 0.5f * row_h;
+        float xc = origin.x;
+        auto place = [&](float h) { ImGui::SetCursorScreenPos(ImVec2(xc, yc - 0.5f * h)); };
+        auto next  = [&]() { xc = ImGui::GetItemRectMax().x + style.ItemSpacing.x; };
+
+        // icon of the view of the automaton
+        place(a->mode() == View::LAYER ? ImGui::GetTextLineHeightWithSpacing() : ImGui::GetTextLineHeight());
+        if (a->mode() == View::LAYER)
+            ImGuiToolkit::Icon(ICON_VI_LAYERS, a->enabled());
+        else if (a->enabled())
+            ImGui::Text("%s", a->mode() == View::MIXING ? ICON_FA_BULLSEYE : ICON_FA_OBJECT_UNGROUP);
+        else
+            ImGui::TextDisabled("%s", a->mode() == View::MIXING ? ICON_FA_BULLSEYE : ICON_FA_OBJECT_UNGROUP);
         if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip(on ? "Disable" : "Enable");
-        ImGui::SameLine();
+            ImGuiToolkit::ToolTip( (Settings::application.views[a->mode()].name + " view"
+                                    + (a->enabled() ? "" : " (disabled)")).c_str() );
+        next();
+
+        // ViewSpace (same as for sources)
+        static std::vector< std::pair<int,int> > ws_icon = { {ICON_VI_VIEWSPACE_1},
+                                                            {ICON_VI_VIEWSPACE_2},
+                                                            {ICON_VI_VIEWSPACE_3},
+                                                            {ICON_VI_VIEWSPACE_4} };
+        static std::vector< std::string > ws_tooltip = { "Workspace 1\nActs on sources of workspace 1",
+                                                         "Workspace 2\nActs on sources of workspace 2",
+                                                         "Workspace 3\nActs on sources of workspace 3",
+                                                         "Workspace 4\nActs on sources of workspace 4" };
+        // linked sources and automaton share the same ViewSpace:
+        // with one source linked, both change; with several, the automaton follows its sources
+        std::set<uint64_t> linked;
+        if (PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a))
+            linked = pa->linkedSources();
+        int ws_index = (int) a->viewSpace();
+        const bool singleviewspace = Mixer::manager().viewSpaceOnlyShown((uint) ws_index);
+        place(linked.size() > 1 ? ImGui::GetTextLineHeightWithSpacing() : ImGui::GetFrameHeight());
+        if (linked.size() > 1) {
+            // cannot change
+            ImGuiToolkit::Icon(ws_icon[ws_index].first, ws_icon[ws_index].second, false);
+            if (ImGui::IsItemHovered())
+                ImGuiToolkit::ToolTip( (std::string("Workspace ") + std::to_string(ws_index + 1) +
+                                        "\nSame as its linked sources").c_str() );
+        }
+        else if (ImGuiToolkit::IconMultistate(ws_icon, &ws_index, ws_tooltip)) {
+            rig->lock();
+            a->setViewSpace((uint) ws_index);
+            rig->unlock();
+            // the source linked goes too (and other automatons follow it)
+            Source *s = linked.empty() ? nullptr : Mixer::manager().findSource(*linked.begin());
+            if (s)
+                Mixer::manager().setViewSpace(s, (uint) ws_index);
+            Action::manager().store(a->name() + ": Workspace " + std::to_string(ws_index + 1));
+            // keep the automaton visible if its workspace was the only one shown
+            if ( singleviewspace )
+                Mixer::manager().showViewSpace((uint) ws_index, true, true);
+        }
+        next();
+
         const std::string label = std::string(Automaton::Types[a->type()].first) + " " + a->name()
                                   + (a->paused() ? "  " ICON_FA_PAUSE : (a->resuming() ? "  " ICON_FA_HOURGLASS_HALF : ""));
         // dimmed if its workspace is hidden
@@ -259,20 +313,53 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
         auto select = [rig, a]() {
             rig->setSelected(a);
             Mixer::manager().showViewSpace(a->viewSpace(), true, true);
+            if (Mixer::manager().view()->mode() != a->mode())
+                Mixer::manager().setView(a->mode());
         };
-        if (ImGui::Selectable(label.c_str(), selected, 0, ImVec2(x0 - ImGui::GetCursorScreenPos().x - style.ItemSpacing.x, 0)))
+        // selectable of the height of the row background, with text centered
+        ImGui::SetCursorScreenPos(ImVec2(xc, y + 2.f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, 0.f));
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.f, 0.5f));
+        if (ImGui::Selectable(label.c_str(), selected, 0,
+                    ImVec2(x0 - xc - style.ItemSpacing.x, row_h - 4.f)))
             select();
+        ImGui::PopStyleVar(2);
         if (!shown)
             ImGui::PopStyleColor();
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip( (Settings::application.views[a->mode()].name + " view, workspace "
-                                    + std::to_string(a->viewSpace() + 1) + "\nClic to edit (show only workspace "
-                                    + std::to_string(a->viewSpace() + 1) + ")").c_str() );
+        // if (ImGui::IsItemHovered())
+        //     ImGuiToolkit::ToolTip( (Settings::application.views[a->mode()].name + " view, workspace "
+        //                             + std::to_string(a->viewSpace() + 1) + "\nClic to edit (show only workspace "
+        //                             + std::to_string(a->viewSpace() + 1) + ")").c_str() );
 
         // clic in the timeline also selects
         ImGui::SetCursorScreenPos(ImVec2(x0, y));
         if (ImGui::InvisibleButton("##row", ImVec2(std::max(1.f, x1 - x0), row_h)))
             select();
+        if (ImGui::IsItemHovered()) {
+            char info[64];
+            if (std::abs(a->offset()) < 1e-6)
+                snprintf(info, 64, "%g beat%s cycle", a->period(), a->period() == 1.0 ? "" : "s");
+            else
+                snprintf(info, 64, "%g beat%s cycle, shift by %+g", a->period(), a->period() == 1.0 ? "" : "s", a->offset());
+            ImGuiToolkit::ToolTip(info);
+        }
+
+        // Multiply or divide cycle duration
+        ImGui::SetCursorScreenPos(ImVec2(x1 + style.ItemSpacing.x, y ));
+        ImGui::BeginGroup();
+        ImGui::SmallButton("x2");
+        ImGui::SmallButton("/2");
+        ImGui::EndGroup();
+
+        // // shape of the motion curve
+        // static std::vector< std::pair<int, int> > icons_shape = { {ICON_VI_MOTION_LINEAR}, {ICON_VI_MOTION_SMOOTH}, {ICON_VI_MOTION_PULSE} };
+        // static std::vector< std::string > tooltips_shape = { "Linear motion", "Smooth motion", "Pulse motion" };
+        // ImGui::SetCursorScreenPos(ImVec2(x1 + style.ItemSpacing.x, y + 0.5f * (row_h - ImGui::GetFrameHeight())));
+        // int shape = a->shape();
+        // if (ImGuiToolkit::IconMultistate(icons_shape, &shape, tooltips_shape)) {
+        //     a->setShape(shape);
+        //     Action::manager().store(a->name() + ": Motion " + Automaton::Shapes[shape]);
+        // }
 
         ImGui::PopID();
 
@@ -347,7 +434,7 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
     ImGui::Dummy(ImVec2(width, style.ItemSpacing.y));
 }
 
-void AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
+bool AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
 {
     const ImGuiContext& g = *GImGui;
     const float h_space = g.Style.ItemInnerSpacing.x;
@@ -401,7 +488,21 @@ void AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
                                                         "Loop\nRepeat cycles indefinitely" };
     ImGui::SameLine();
     const bool directional = a->type() < Automaton::AUTOMATON_HEART;  // linear, circular and free path
-    ImGui::SetCursorScreenPos(ImVec2(top.x + bar_width - bar_height * (directional ? 2.f : 1.f),
+    // right part: [direction] loop | [linked sources] enable delete
+    // the combo of linked sources takes the space left (if enough)
+    PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a);
+    const float x_left  = ImGui::GetCursorScreenPos().x;
+    const float x_right = top.x + bar_width;
+    const float w_icons = bar_height * (directional ? 2.f : 1.f);
+    const float w_sep   = ImGui::CalcTextSize("|").x + 2.f * h_space;
+    float w_combo = 0.f;
+    if (pa && !pa->links().empty()) {
+        w_combo = std::min(8.f * ImGui::GetTextLineHeight(),
+                           x_right - 2.f * bar_height - w_sep - w_icons - x_left - 2.f * h_space);
+        if (w_combo < 4.f * ImGui::GetTextLineHeight())
+            w_combo = 0.f;
+    }
+    ImGui::SetCursorScreenPos(ImVec2(x_right - 2.f * bar_height - (w_combo > 0.f ? w_combo + h_space : 0.f) - w_sep - w_icons,
                                      ImGui::GetCursorScreenPos().y));
 
     // direction (not reversed: clockwise, or starting from first point to second)
@@ -430,11 +531,81 @@ void AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
         Action::manager().store(a->name() + (a->loop() ? ": Loop" : ": One cycle"));
     }
 
+    // Separator
+    ImGui::SameLine(0, h_space);
+    ImGui::Text("|");
+
+    // linked sources: select one to unlink it
+    if (w_combo > 0.f) {
+        ImGui::SameLine(0, h_space);
+        ImGui::SetNextItemWidth(w_combo);
+        const size_t n = pa->links().size();
+        const std::string label = std::string(ICON_FA_LINK "  ") + std::to_string(n) + (n > 1 ? " sources" : " source");
+        if (ImGui::BeginCombo("##AutomatonLinks", label.c_str())) {
+            AutomatonLink to_remove;
+            bool remove = false;
+            int k = 0;
+            for (auto &l : pa->links()) {
+                ImGui::PushID(k++);
+                Source *s = Mixer::manager().findSource(l.source);
+                const std::string item = (s ? std::string(s->initials()) + " - " + s->name() : std::string("(missing source)"))
+                                         + "  (" + AutomatonRig::linkLabel(l) + ")";
+                if (ImGui::MenuItem(item.c_str(), nullptr, true)) {
+                    to_remove = l;
+                    remove = true;
+                }
+                if (ImGui::IsItemHovered())
+                    ImGuiToolkit::ToolTip("Unlink");
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+            if (remove) {
+                rig->unlink(pa, to_remove);
+                Action::manager().store(a->name() + ": Unlink");
+            }
+        }
+        else if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Linked sources\nSelect one to unlink it");
+    }
+
+    // enable
+    ImGui::SameLine(0, h_space);
+    ImGui::SetCursorScreenPos(ImVec2(x_right - 2.f * bar_height, ImGui::GetCursorScreenPos().y));
+    bool on = a->enabled();
+
+    const char *tooltip[2] = {"Disabled", "Enabled"};
+    if ( ImGuiToolkit::IconToggle(ICON_VI_BANNED, ICON_VI_CHECKED, &on, tooltip ) ){
+        rig->setEnabled(a, on);
+        Action::manager().store(a->name() + (on ? ": Enable" : ": Disable"));
+    }
+//
+//
+//     if (ImGui::Checkbox("##enabled", &on)) {
+//         rig->setEnabled(a, on);
+//         Action::manager().store(a->name() + (on ? ": Enable" : ": Disable"));
+//     }
+//     if (ImGui::IsItemHovered())
+//         ImGuiToolkit::ToolTip(on ? "Disable" : "Enable");
+
+    // delete, at the right end
+    ImGui::SameLine(0, h_space);
+    ImGui::SetCursorScreenPos(ImVec2(x_right - bar_height, ImGui::GetCursorScreenPos().y));
+    const bool del = ImGui::Button(ICON_FA_TRASH);
+    if (ImGui::IsItemHovered())
+        ImGuiToolkit::ToolTip("Delete automaton");
+
     ImGui::PopStyleColor(5);
 
     // move cursor below the bar
     ImGui::SetCursorScreenPos(top + ImVec2(0.f, bar_height + v_space));
     ImGui::Dummy(ImVec2(0.f, 0.f));
+
+    if (del) {
+        const std::string label = a->name() + ": Delete";
+        rig->remove(a);
+        Action::manager().store(label);
+    }
+    return del;
 }
 
 void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
@@ -450,8 +621,7 @@ void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
         strncpy(name_buffer_, a->name().c_str(), 63);
         name_buffer_[63] = '\0';
     }
-    ImGui::Text("%s", Automaton::Types[a->type()].first);
-    ImGui::SameLine();
+
     ImGui::SetNextItemWidth(12.f * ImGui::GetTextLineHeight());
     if (ImGui::InputText("##name", name_buffer_, 64, ImGuiInputTextFlags_EnterReturnsTrue) || ImGui::IsItemDeactivatedAfterEdit()) {
         if (strlen(name_buffer_) > 0 && a->name() != name_buffer_) {
@@ -459,49 +629,12 @@ void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
             Action::manager().store(a->name() + ": Rename");
         }
     }
-    ImGui::SameLine();
 
-    // ViewSpace (same as for sources)
-    static std::vector< std::pair<int,int> > ws_icon = { {ICON_VI_VIEWSPACE_1},
-                                                        {ICON_VI_VIEWSPACE_2},
-                                                        {ICON_VI_VIEWSPACE_3},
-                                                        {ICON_VI_VIEWSPACE_4} };
-    static std::vector< std::string > ws_tooltip = { "Workspace 1\nActs on sources of workspace 1",
-                                                     "Workspace 2\nActs on sources of workspace 2",
-                                                     "Workspace 3\nActs on sources of workspace 3",
-                                                     "Workspace 4\nActs on sources of workspace 4" };
-    // linked sources and automaton share the same ViewSpace:
-    // with one source linked, both change; with several, the automaton follows its sources
-    std::set<uint64_t> linked;
-    if (PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a))
-        linked = pa->linkedSources();
-    int ws_index = (int) a->viewSpace();
-    const bool singleviewspace = Mixer::manager().viewSpaceOnlyShown((uint) ws_index);
-    if (linked.size() > 1) {
-        // cannot change
-        ImGuiToolkit::Icon(ws_icon[ws_index].first, ws_icon[ws_index].second, false);
-        if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip( (std::string("Workspace ") + std::to_string(ws_index + 1) +
-                                    "\nSame as its linked sources").c_str() );
-    }
-    else if (ImGuiToolkit::IconMultistate(ws_icon, &ws_index, ws_tooltip)) {
-        rig->lock();
-        a->setViewSpace((uint) ws_index);
-        rig->unlock();
-        // the source linked goes too (and other automatons follow it)
-        Source *s = linked.empty() ? nullptr : Mixer::manager().findSource(*linked.begin());
-        if (s)
-            Mixer::manager().setViewSpace(s, (uint) ws_index);
-        Action::manager().store(a->name() + ": Workspace " + std::to_string(ws_index + 1));
-        // keep the automaton visible if its workspace was the only one shown
-        if ( singleviewspace )
-            Mixer::manager().showViewSpace((uint) ws_index, true, true);
-    }
-    ImGui::SameLine();
-    ImGui::TextDisabled("%s in %s view", Automaton::Types[a->type()].second.c_str(),
-                        Settings::application.views[a->mode()].name.c_str());
+    // control bar (like media player), on the whole width
+    // (returns true if the automaton was deleted)
+    if (DrawControlBar(rig, a))
+        return;
 
-    ImGui::Columns(2, "##AutomatonDetails", false);
     const float item_w = 9.f * ImGui::GetTextLineHeight();
 
     // period in beats (steps of quarters of beat)
@@ -534,13 +667,6 @@ void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
     ImGui::SameLine();
     ImGui::Text("Phase");
 
-    // shape of motion
-    int shape = a->shape();
-    ImGui::SetNextItemWidth(item_w);
-    if (ImGui::Combo("Motion", &shape, "Linear\0Smooth\0Pulse\0")) {
-        a->setShape(shape);
-        Action::manager().store(a->name() + ": Motion " + Automaton::Shapes[shape]);
-    }
 
     // key points
     if (FreePathAutomaton *fp = dynamic_cast<FreePathAutomaton *>(a)) {
@@ -560,58 +686,5 @@ void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
         }
     }
 
-    // control bar (like media player)
-    DrawControlBar(rig, a);
 
-    // delete
-    if (ImGui::Button(ICON_FA_TRASH "  Delete")) {
-        const std::string label = a->name() + ": Delete";
-        rig->remove(a);
-        Action::manager().store(label);
-        ImGui::Columns(1);
-        return;
-    }
-
-    ImGui::NextColumn();
-
-    // links
-    if (PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a)) {
-        if (pa->links().empty()) {
-            ImGui::TextDisabled("No link.");
-            ImGui::TextWrapped("Drag the moving part of the automaton in the view, and release on a source "
-                               "(or on a handle of the current source in Geometry view).");
-        }
-        else {
-            ImGui::BeginChild("##AutomatonLinks", ImVec2(0, 0), false);
-            AutomatonLink to_remove;
-            bool remove = false;
-            int k = 0;
-            for (auto &l : pa->links()) {
-                ImGui::PushID(k++);
-                if (ImGuiToolkit::IconButton(ICON_FA_UNLINK, "Unlink")) {
-                    to_remove = l;
-                    remove = true;
-                }
-                ImGui::SameLine();
-                Source *s = Mixer::manager().findSource(l.source);
-                if (s)
-                    ImGui::Text("%s  %s", s->name().c_str(), AutomatonRig::linkLabel(l).c_str());
-                else
-                    ImGui::TextDisabled("(missing source)  %s", AutomatonRig::linkLabel(l).c_str());
-                ImGui::PopID();
-            }
-            ImGui::EndChild();
-            if (remove) {
-                rig->unlink(pa, to_remove);
-                Action::manager().store(a->name() + ": Unlink");
-            }
-        }
-    }
-    else {
-        ImGui::TextDisabled("Acts on all sources");
-        ImGui::TextDisabled("of the %s view.", Settings::application.views[a->mode()].name.c_str());
-        ImGui::TextWrapped("Move it with the cross in the center; adjust its size with the grips.");
-    }
-
-    ImGui::Columns(1);
 }
