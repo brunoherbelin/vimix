@@ -399,15 +399,14 @@ void Metronome::setBeatDetection (bool on)
         Log::Warning("Beat detection requires Ableton Link to be enabled.");
         on = false;
     }
+    // and it listens to the selected audio source: only if it is plugged in
+    const std::string device = Settings::application.timer.beat_device;
+    if (on && !device.empty() && !Audio::manager().exists(device)) {
+        Log::Warning("Beat detection disabled: audio source '%s' not available.", device.c_str());
+        on = false;
+    }
 
     if (on && beatDetectionAvailable()) {
-        std::string device = Settings::application.timer.beat_device;
-        // only use the device if it is plugged in
-        if (!device.empty() && !Audio::manager().exists(device)) {
-            Log::Info("Beat detection: audio source '%s' not found; using the default.", device.c_str());
-            device = "";
-        }
-
         gchar *argv[5];
         int n = 0;
         argv[n++] = const_cast<gchar *>(beat_binary_.c_str());
