@@ -50,7 +50,7 @@
 #define AUTOMATON_ALPHA_HEAD           1.0f   // timeline head of a paused automaton
 #define AUTOMATON_ALPHA_MARK_DISABLED  0.3f   // timeline marks of events of a disabled automaton
 
-AutomatonControlWindow::AutomatonControlWindow () : WorkspaceWindow("Automatons"), name_id_(0)
+AutomatonControlWindow::AutomatonControlWindow () : WorkspaceWindow("Automatons"), name_id_(0), drag_offset_(0.0), drag_period_(4.0), drag_anchor_(0.0), drag_anchor_x_(0.f), drag_span_(0.0), drag_page_(0.0), drag_mode_(0), period_slider_(2.f), period_sliding_(false)
 {
     name_buffer_[0] = '\0';
 }
@@ -165,7 +165,8 @@ void AutomatonControlWindow::Render ()
     // timelines on top, details of selected automaton below
     // timeline as high as needed by rows (at least 2 rows), leaving space for details
     const ImGuiStyle &style = ImGui::GetStyle();
-    const float row_h = ImGui::GetFrameHeight() * 1.5f;
+    // same height as the timelines of the media player (double line)
+    const float row_h = (ImGui::GetFontSize() + style.FramePadding.y) * 2.f;
     const float needed = ImGui::GetTextLineHeightWithSpacing() + row_h * float(std::max<size_t>(2, rig->size()))
                          + 2.f * style.WindowPadding.y + style.ItemSpacing.y;
     const float details_min = 5.5f * ImGui::GetFrameHeightWithSpacing();
@@ -194,14 +195,17 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
     ImDrawList *dl = ImGui::GetWindowDrawList();
     const ImGuiStyle &style = ImGui::GetStyle();
     const float label_w = 11.f * ImGui::GetTextLineHeight();
-    const float row_h = ImGui::GetFrameHeight() * 1.5f;
+    // same height as the timelines of the media player (double line)
+    const float row_h = (ImGui::GetFontSize() + style.FramePadding.y) * 2.f;
     const float header_h = ImGui::GetTextLineHeightWithSpacing();
     const ImVec2 origin = ImGui::GetCursorScreenPos();
     const float width = ImGui::GetContentRegionAvail().x;
     const float x0 = origin.x + label_w;
-    // last column for the curve shape button
-    const float shape_w = ImGui::GetFrameHeight();
-    const float x1 = origin.x + width - shape_w - 2.f * style.ItemSpacing.x;
+    // two columns of small stacked buttons on the right (minimal margin for the icon of last column)
+    const float period_w = 0.5f * row_h;
+    const float x1 = origin.x + width - 2.f * period_w - 4.f - std::max(0.f, ImGui::GetFrameHeight() - period_w);
+    const float xb = x1 + 2.f;                                   // drag mode buttons
+    const float xs = xb + period_w + style.ItemInnerSpacing.x;                        // reset phase and shape buttons
     const float bottom = origin.y + header_h + row_h * float(rig->size());
 
     // the width of the timeline is the longest cycle
@@ -210,7 +214,14 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
         span = std::max(span, (*it)->period());
     // timeline shows the current page of time
     const double beats = rig->beats();
-    const double page = std::floor(beats / span) * span;
+    double page = std::floor(beats / span) * span;
+    // unchanged while dragging a timeline (to not rescale under the mouse)
+    if (drag_span_ > 0.0 && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        drag_span_ = 0.0;
+    if (drag_span_ > 0.0) {
+        span = drag_span_;
+        page = drag_page_;
+    }
     auto X = [&](double t) { return x0 + (x1 - x0) * float((t - page) / span); };
 
     const ImU32 col_grid = ImGui::GetColorU32(ImGuiCol_Text, 0.12f);
@@ -253,15 +264,16 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
 
         // icon of the view of the automaton
         place(a->mode() == View::LAYER ? ImGui::GetTextLineHeightWithSpacing() : ImGui::GetTextLineHeight());
+        // enabled if it is the current view
+        const bool inview = Mixer::manager().view()->mode() == a->mode();
         if (a->mode() == View::LAYER)
-            ImGuiToolkit::Icon(ICON_VI_LAYERS, a->enabled());
-        else if (a->enabled())
+            ImGuiToolkit::Icon(ICON_VI_LAYERS, inview);
+        else if (inview)
             ImGui::Text("%s", a->mode() == View::MIXING ? ICON_FA_BULLSEYE : ICON_FA_OBJECT_UNGROUP);
         else
             ImGui::TextDisabled("%s", a->mode() == View::MIXING ? ICON_FA_BULLSEYE : ICON_FA_OBJECT_UNGROUP);
         if (ImGui::IsItemHovered())
-            ImGuiToolkit::ToolTip( (Settings::application.views[a->mode()].name + " view"
-                                    + (a->enabled() ? "" : " (disabled)")).c_str() );
+            ImGuiToolkit::ToolTip( (Settings::application.views[a->mode()].name + " view").c_str() );
         next();
 
         // ViewSpace (same as for sources)
@@ -269,10 +281,10 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
                                                             {ICON_VI_VIEWSPACE_2},
                                                             {ICON_VI_VIEWSPACE_3},
                                                             {ICON_VI_VIEWSPACE_4} };
-        static std::vector< std::string > ws_tooltip = { "Workspace 1\nActs on sources of workspace 1",
-                                                         "Workspace 2\nActs on sources of workspace 2",
-                                                         "Workspace 3\nActs on sources of workspace 3",
-                                                         "Workspace 4\nActs on sources of workspace 4" };
+        static std::vector< std::string > ws_tooltip = { "Acts on sources of workspace 1",
+                                                         "Acts on sources of workspace 2",
+                                                         "Acts on sources of workspace 3",
+                                                         "Acts on sources of workspace 4" };
         // linked sources and automaton share the same ViewSpace:
         // with one source linked, both change; with several, the automaton follows its sources
         std::set<uint64_t> linked;
@@ -298,17 +310,25 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
                 Mixer::manager().setViewSpace(s, (uint) ws_index);
             Action::manager().store(a->name() + ": Workspace " + std::to_string(ws_index + 1));
             // keep the automaton visible if its workspace was the only one shown
-            if ( singleviewspace )
-                Mixer::manager().showViewSpace((uint) ws_index, true, true);
+            if ( singleviewspace ){
+                rig->setSelected(a);
+                Mixer::manager().showViewSpace(a->viewSpace(), true, true);
+                if (Mixer::manager().view()->mode() != a->mode())
+                    Mixer::manager().setView(a->mode());
+            };
         }
         next();
 
-        const std::string label = std::string(Automaton::Types[a->type()].first) + " " + a->name()
-                                  + (a->paused() ? "  " ICON_FA_PAUSE : (a->resuming() ? "  " ICON_FA_HOURGLASS_HALF : ""));
+        const std::string label = std::string(Automaton::Types[a->type()].first) + " " + a->name();
         // dimmed if its workspace is hidden
         const bool shown = Mixer::manager().viewSpaceShown(a->viewSpace());
         if (!shown)
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        if (!a->enabled()) {
+            ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgActive));
+        }
         // select, and show only its workspace (to interact with it in the view)
         auto select = [rig, a]() {
             rig->setSelected(a);
@@ -320,21 +340,61 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
         ImGui::SetCursorScreenPos(ImVec2(xc, y + 2.f));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, 0.f));
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.f, 0.5f));
-        if (ImGui::Selectable(label.c_str(), selected, 0,
-                    ImVec2(x0 - xc - style.ItemSpacing.x, row_h - 4.f)))
+        if (ImGui::Selectable(label.c_str(), selected, 0,  ImVec2(x0 - xc - style.ItemSpacing.x, row_h - 4.f)))
             select();
         ImGui::PopStyleVar(2);
+        if (!a->enabled())
+            ImGui::PopStyleColor(3);
         if (!shown)
             ImGui::PopStyleColor();
-        // if (ImGui::IsItemHovered())
-        //     ImGuiToolkit::ToolTip( (Settings::application.views[a->mode()].name + " view, workspace "
-        //                             + std::to_string(a->viewSpace() + 1) + "\nClic to edit (show only workspace "
-        //                             + std::to_string(a->viewSpace() + 1) + ")").c_str() );
+
 
         // clic in the timeline also selects
         ImGui::SetCursorScreenPos(ImVec2(x0, y));
         if (ImGui::InvisibleButton("##row", ImVec2(std::max(1.f, x1 - x0), row_h)))
             select();
+        // drag the timeline of the selected automaton to
+        // - shift its phase (by quarters of beat)
+        // - or scale its cycle duration, stretching from the start of the cycle
+        //   at the left of the timeline (fixed when starting to drag)
+        if (selected) {
+            if (ImGui::IsItemActivated()) {
+                drag_offset_ = a->offset();
+                drag_period_ = a->period();
+                drag_anchor_ = drag_offset_ + std::floor((page - drag_offset_) / drag_period_) * drag_period_;
+                drag_anchor_x_ = X(drag_anchor_);
+                drag_span_ = span;
+                drag_page_ = page;
+            }
+            if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                const ImVec2 delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+                if (drag_mode_ == 0) {
+                    const double d = double(delta.x / (x1 - x0)) * span;
+                    a->setOffset( std::round((drag_offset_ + d) * 4.0) / 4.0 );
+                }
+                else {
+                    // ratio of distances to the anchor (grab point follows the mouse)
+                    const float xg = std::max(ImGui::GetIO().MouseClickedPos[ImGuiMouseButton_Left].x - drag_anchor_x_, 10.f);
+                    const double k = double(std::max(xg + delta.x, 1.f) / xg);
+                    // whole beats (quarters of beat below one beat)
+                    double p = drag_period_ * k;
+                    p = p < 1.0 ? std::round(p * 4.0) / 4.0 : std::round(p);
+                    p = std::min(64.0, std::max(0.25, p));
+                    // a cycle still starts at the anchor (exact: no rounding needed)
+                    a->setPeriod(p);
+                    a->setOffset( drag_anchor_ - p * std::floor(drag_anchor_ / p) );
+                }
+            }
+            if (ImGui::IsItemDeactivated()) {
+                drag_span_ = 0.0;
+                if (a->period() != drag_period_)
+                    Action::manager().store(a->name() + ": Period");
+                else if (a->offset() != drag_offset_)
+                    Action::manager().store(a->name() + ": Phase");
+            }
+            if (ImGui::IsItemHovered() || ImGui::IsItemActive())
+                ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        }
         if (ImGui::IsItemHovered()) {
             char info[64];
             if (std::abs(a->offset()) < 1e-6)
@@ -344,22 +404,36 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
             ImGuiToolkit::ToolTip(info);
         }
 
-        // Multiply or divide cycle duration
-        ImGui::SetCursorScreenPos(ImVec2(x1 + style.ItemSpacing.x, y ));
-        ImGui::BeginGroup();
-        ImGui::SmallButton("x2");
-        ImGui::SmallButton("/2");
-        ImGui::EndGroup();
+        // mode of drag on timeline (selected automaton only): toggle up / down
+        if (selected) {
+            // filled rect on the active mode
+            const float ym = y + 0.5f * row_h;
+            dl->AddRectFilled(ImVec2(xb, drag_mode_ == 0 ? y + 2.f : ym), ImVec2(xb + period_w, drag_mode_ == 0 ? ym : y + row_h - 2.f),
+                              ImGui::GetColorU32(ImGuiCol_FrameBg), style.FrameRounding);
+            ImGui::SetCursorScreenPos(ImVec2(xb, y + 1.f));
+            if (ImGuiToolkit::IconButton(ICON_VI_PHASE_SHIFT, "Shift phase\nDrag timeline to shift the cycle in time"))
+                drag_mode_ = 0;
+            ImGui::SetCursorScreenPos(ImVec2(xb, ym));
+            if (ImGuiToolkit::IconButton(ICON_VI_PHASE_SCALE, "Scale cycle\nDrag timeline to change the cycle duration"))
+                drag_mode_ = 1;
 
-        // // shape of the motion curve
-        // static std::vector< std::pair<int, int> > icons_shape = { {ICON_VI_MOTION_LINEAR}, {ICON_VI_MOTION_SMOOTH}, {ICON_VI_MOTION_PULSE} };
-        // static std::vector< std::string > tooltips_shape = { "Linear motion", "Smooth motion", "Pulse motion" };
-        // ImGui::SetCursorScreenPos(ImVec2(x1 + style.ItemSpacing.x, y + 0.5f * (row_h - ImGui::GetFrameHeight())));
-        // int shape = a->shape();
-        // if (ImGuiToolkit::IconMultistate(icons_shape, &shape, tooltips_shape)) {
-        //     a->setShape(shape);
-        //     Action::manager().store(a->name() + ": Motion " + Automaton::Shapes[shape]);
-        // }
+            // reset phase shift (no background)
+            ImGui::SetCursorScreenPos(ImVec2(xs, y + 1.f));
+            if (ImGuiToolkit::IconButton(ICON_VI_PHASE_RESET, "Reset phase shift") && a->offset() != 0.0) {
+                a->setOffset(0.0);
+                Action::manager().store(a->name() + ": Phase");
+            }
+            // shape of the motion curve
+            static std::vector< std::pair<int, int> > icons_shape = { {ICON_VI_MOTION_LINEAR}, {ICON_VI_MOTION_SMOOTH}, {ICON_VI_MOTION_PULSE} };
+            static std::vector< std::string > tooltips_shape = { "Linear motion", "Smooth motion", "Pulse motion" };
+            ImGui::SetCursorScreenPos(ImVec2(xs, ym));
+            int shape = a->shape();
+            if (ImGuiToolkit::IconMultistate(icons_shape, &shape, tooltips_shape)) {
+                a->setShape(shape);
+                Action::manager().store(a->name() + ": Motion " + Automaton::Shapes[shape]);
+            }
+
+        }
 
         ImGui::PopID();
 
@@ -481,6 +555,15 @@ bool AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
                                                        : "Play\nPlay until the end of the cycle, from the next beat")
                                           : (a->resuming() ? "Pause\nWaiting for the next beat to continue"
                                                            : "Pause\nStop motion (still acting on sources)"));
+
+    // waiting for the next beat to resume
+    if (a->resuming()) {
+        ImGui::SameLine(0, h_space);
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text(ICON_FA_HOURGLASS_HALF);
+        if (ImGui::IsItemHovered())
+            ImGuiToolkit::ToolTip("Waiting for the next beat to continue");
+    }
 
     // right aligned: loop mode
     static std::vector< std::pair<int, int> > icons_loop = { {ICON_VI_LOOP_STOP}, {ICON_VI_LOOP_RESTART} };
@@ -634,38 +717,6 @@ void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
     // (returns true if the automaton was deleted)
     if (DrawControlBar(rig, a))
         return;
-
-    const float item_w = 9.f * ImGui::GetTextLineHeight();
-
-    // period in beats (steps of quarters of beat)
-    float p = (float) a->period();
-    ImGui::SetNextItemWidth(item_w);
-    if (ImGui::DragFloat("##period", &p, 0.02f, 0.25f, 64.f, "%.2f beats"))
-        a->setPeriod( std::max(0.25, std::round(double(p) * 4.0) / 4.0) );
-    if (ImGui::IsItemDeactivatedAfterEdit())
-        Action::manager().store(a->name() + ": Period");
-    ImGui::SameLine(0, 2);
-    if (ImGui::Button("/2") && a->period() > 0.25) {
-        a->setPeriod( std::max(0.25, a->period() * 0.5) );
-        Action::manager().store(a->name() + ": Period");
-    }
-    ImGui::SameLine(0, 2);
-    if (ImGui::Button("x2") && a->period() < 64.0) {
-        a->setPeriod( std::min(64.0, a->period() * 2.0) );
-        Action::manager().store(a->name() + ": Period");
-    }
-    ImGui::SameLine();
-    ImGui::Text("Cycle");
-
-    // phase offset in beats
-    float o = (float) a->offset();
-    ImGui::SetNextItemWidth(item_w);
-    if (ImGui::DragFloat("##offset", &o, 0.02f, -64.f, 64.f, "%+.2f beats"))
-        a->setOffset( std::round(double(o) * 4.0) / 4.0 );
-    if (ImGui::IsItemDeactivatedAfterEdit())
-        Action::manager().store(a->name() + ": Phase");
-    ImGui::SameLine();
-    ImGui::Text("Phase");
 
 
     // key points

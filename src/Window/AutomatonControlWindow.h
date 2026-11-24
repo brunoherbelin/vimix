@@ -18,6 +18,15 @@ class AutomatonControlWindow : public WorkspaceWindow
 {
     char name_buffer_[64];
     uint64_t name_id_;
+    double drag_offset_;   // phase offset when starting to drag the timeline
+    double drag_period_;   // period when starting to drag the timeline
+    double drag_anchor_;   // beat time of the cycle start kept fixed when scaling
+    float drag_anchor_x_;  // its position in the timeline when starting to drag
+    double drag_span_;     // width and start of the timeline frozen while dragging (0 if not)
+    double drag_page_;
+    int drag_mode_;        // drag on timeline: 0 shifts phase, 1 scales cycle duration
+    float period_slider_;  // log2 of period, while moving the period slider
+    bool period_sliding_;
 
     void RenderTimelines (AutomatonRig *rig);
     bool DrawControlBar (AutomatonRig *rig, Automaton *a);

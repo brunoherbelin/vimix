@@ -303,6 +303,9 @@
 #define ICON_VI_MOTION_LINEAR    12, 13
 #define ICON_VI_MOTION_SMOOTH    13, 13
 #define ICON_VI_MOTION_PULSE     14, 13
+#define ICON_VI_PHASE_SCALE      11, 17
+#define ICON_VI_PHASE_SHIFT      12, 17
+#define ICON_VI_PHASE_RESET      17,  9
 
 // Miscellaneous
 #define ICON_VI_LINUX           10, 14
@@ -391,7 +394,6 @@
 // #define ICON_VI_UNDEFINED_74   1,  9
 // #define ICON_VI_UNDEFINED_76   5,  9
 // #define ICON_VI_UNDEFINED_77   9,  9
-// #define ICON_VI_UNDEFINED_78  17,  9
 // #define ICON_VI_UNDEFINED_79  19,  9
 //
 // #define ICON_VI_UNDEFINED_80   0, 10
@@ -422,7 +424,6 @@
 // #define ICON_VI_UNDEFINED_103  1, 12
 // #define ICON_VI_UNDEFINED_104  6, 12
 // #define ICON_VI_UNDEFINED_105  7, 12
-// #define ICON_VI_UNDEFINED_106 15, 12
 //
 // #define ICON_VI_UNDEFINED_107 10, 13
 // #define ICON_VI_UNDEFINED_112 16, 13
