@@ -50,7 +50,7 @@
 #define AUTOMATON_ALPHA_HEAD           1.0f   // timeline head of a paused automaton
 #define AUTOMATON_ALPHA_MARK_DISABLED  0.3f   // timeline marks of events of a disabled automaton
 
-AutomatonControlWindow::AutomatonControlWindow () : WorkspaceWindow("Automatons"), name_id_(0), drag_offset_(0.0), drag_period_(4.0), drag_anchor_(0.0), drag_anchor_x_(0.f), drag_span_(0.0), drag_page_(0.0), drag_mode_(0), period_slider_(2.f), period_sliding_(false)
+AutomatonControlWindow::AutomatonControlWindow () : WorkspaceWindow("Automatons"), name_id_(0), name_editing_(0), name_focus_(false), drag_offset_(0.0), drag_period_(4.0), drag_anchor_(0.0), drag_anchor_x_(0.f), drag_span_(0.0), drag_page_(0.0), drag_mode_(0), period_slider_(2.f), period_sliding_(false)
 {
     name_buffer_[0] = '\0';
 }
@@ -162,23 +162,15 @@ void AutomatonControlWindow::Render ()
         ImGui::EndMenuBar();
     }
 
-    // timelines on top, details of selected automaton below
-    // timeline as high as needed by rows (at least 2 rows), leaving space for details
-    const ImGuiStyle &style = ImGui::GetStyle();
-    // same height as the timelines of the media player (double line)
-    const float row_h = (ImGui::GetFontSize() + style.FramePadding.y) * 2.f;
-    const float needed = ImGui::GetTextLineHeightWithSpacing() + row_h * float(std::max<size_t>(2, rig->size()))
-                         + 2.f * style.WindowPadding.y + style.ItemSpacing.y;
-    const float details_min = 5.5f * ImGui::GetFrameHeightWithSpacing();
-    const float timeline_h = std::max(2.f * row_h,
-                                      std::min(needed, ImGui::GetContentRegionAvail().y - details_min));
+    // timelines on top, control bar of selected automaton at the bottom of the window
+    const ImGuiContext& g = *GImGui;
+    const float bar_height = g.FontSize + g.Style.FramePadding.y * 4.0f;
+    const float timeline_h = std::max(bar_height, ImGui::GetContentRegionAvail().y - bar_height - g.Style.ItemSpacing.y - g.Style.FramePadding.y);
     ImGui::BeginChild("##AutomatonTimelines", ImVec2(0, timeline_h));
     RenderTimelines(rig);
     ImGui::EndChild();
 
-    ImGui::Separator();
-
-    RenderDetails(rig, rig->selected());
+    DrawControlBar(rig, rig->selected());
 
     ImGui::End();
 }
@@ -337,12 +329,47 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
                 Mixer::manager().setView(a->mode());
         };
         // selectable of the height of the row background, with text centered
-        ImGui::SetCursorScreenPos(ImVec2(xc, y + 2.f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, 0.f));
-        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.f, 0.5f));
-        if (ImGui::Selectable(label.c_str(), selected, 0,  ImVec2(x0 - xc - style.ItemSpacing.x, row_h - 4.f)))
-            select();
-        ImGui::PopStyleVar(2);
+        // (or input text to edit the name)
+        const float w_label = x0 - xc - style.ItemSpacing.x;
+        if (name_editing_ == a->id()) {
+            ImGui::SetCursorScreenPos(ImVec2(xc, yc - 0.5f * ImGui::GetFrameHeight()));
+            ImGui::SetNextItemWidth(w_label);
+            if (name_focus_) {
+                ImGui::SetKeyboardFocusHere();
+                name_focus_ = false;
+            }
+            if (ImGui::InputText("##rowname", name_buffer_, 64, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll)
+                || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (strlen(name_buffer_) > 0 && a->name() != name_buffer_) {
+                    a->setName(name_buffer_);
+                    Action::manager().store(a->name() + ": Rename");
+                }
+                name_editing_ = 0;
+            }
+            // back to selectable when leaving the input
+            if (ImGui::IsItemDeactivated())
+                name_editing_ = 0;
+        }
+        else {
+            ImGui::SetCursorScreenPos(ImVec2(xc, y + 2.f));
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, 0.f));
+            ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.f, 0.5f));
+            if (ImGui::Selectable(label.c_str(), selected, 0,  ImVec2(w_label, row_h - 4.f)))
+                select();
+            ImGui::PopStyleVar(2);
+            // edit name button, right aligned on the selectable of the selected automaton
+            if (selected) {
+                ImGui::SetItemAllowOverlap();
+                ImGui::SetCursorScreenPos(ImVec2(xc + w_label - 0.3f * ImGui::GetFrameHeight(), yc - 0.3f * ImGui::GetFrameHeight()));
+                if (ImGuiToolkit::IconButton(ICON_FA_I_CURSOR, "Rename")) {
+                    name_editing_ = a->id();
+                    name_focus_ = true;
+                    name_id_ = a->id();
+                    strncpy(name_buffer_, a->name().c_str(), 63);
+                    name_buffer_[63] = '\0';
+                }
+            }
+        }
         if (!a->enabled())
             ImGui::PopStyleColor(3);
         if (!shown)
@@ -530,6 +557,19 @@ bool AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
 
     ImGui::SetCursorScreenPos(top + ImVec2(h_space, v_space));
 
+    // no automaton: disabled bar
+    if (a == nullptr) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.f, 0.f, 0.f, 0.f));
+        ImGui::Button(ICON_FA_FAST_BACKWARD);
+        ImGui::SameLine(0, h_space);
+        ImGui::Button(ICON_FA_PLAY, ImVec2(ImGui::GetFrameHeightWithSpacing(), 0));
+        ImGui::PopStyleColor(3 + 5);
+        ImGui::SetCursorScreenPos(top + ImVec2(0.f, bar_height + v_space));
+        return false;
+    }
+
     // restart: back to start of cycle
     if (ImGui::Button(ICON_FA_FAST_BACKWARD)) {
         rig->lock();
@@ -661,14 +701,7 @@ bool AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
         rig->setEnabled(a, on);
         Action::manager().store(a->name() + (on ? ": Enable" : ": Disable"));
     }
-//
-//
-//     if (ImGui::Checkbox("##enabled", &on)) {
-//         rig->setEnabled(a, on);
-//         Action::manager().store(a->name() + (on ? ": Enable" : ": Disable"));
-//     }
-//     if (ImGui::IsItemHovered())
-//         ImGuiToolkit::ToolTip(on ? "Disable" : "Enable");
+
 
     // delete, at the right end
     ImGui::SameLine(0, h_space);
@@ -681,7 +714,6 @@ bool AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
 
     // move cursor below the bar
     ImGui::SetCursorScreenPos(top + ImVec2(0.f, bar_height + v_space));
-    ImGui::Dummy(ImVec2(0.f, 0.f));
 
     if (del) {
         const std::string label = a->name() + ": Delete";
@@ -691,51 +723,21 @@ bool AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
     return del;
 }
 
-void AutomatonControlWindow::RenderDetails (AutomatonRig *rig, Automaton *a)
-{
-    if (a == nullptr) {
-        ImGui::TextDisabled("Select an automaton to configure it.");
-        return;
-    }
-
-    // name
-    if (name_id_ != a->id()) {
-        name_id_ = a->id();
-        strncpy(name_buffer_, a->name().c_str(), 63);
-        name_buffer_[63] = '\0';
-    }
-
-    ImGui::SetNextItemWidth(12.f * ImGui::GetTextLineHeight());
-    if (ImGui::InputText("##name", name_buffer_, 64, ImGuiInputTextFlags_EnterReturnsTrue) || ImGui::IsItemDeactivatedAfterEdit()) {
-        if (strlen(name_buffer_) > 0 && a->name() != name_buffer_) {
-            a->setName(name_buffer_);
-            Action::manager().store(a->name() + ": Rename");
-        }
-    }
-
-    // control bar (like media player), on the whole width
-    // (returns true if the automaton was deleted)
-    if (DrawControlBar(rig, a))
-        return;
-
-
-    // key points
-    if (FreePathAutomaton *fp = dynamic_cast<FreePathAutomaton *>(a)) {
-        ImGui::SameLine();
-        if (ImGui::SmallButton(ICON_FA_PLUS " Key")) {
-            rig->lock();
-            fp->addKey();
-            rig->unlock();
-            Action::manager().store(a->name() + ": Add key");
-        }
-        ImGui::SameLine();
-        if (ImGui::SmallButton(ICON_FA_MINUS " Key") && fp->controls().size() > 2) {
-            rig->lock();
-            fp->removeKey();
-            rig->unlock();
-            Action::manager().store(a->name() + ": Remove key");
-        }
-    }
-
-
-}
+// TODO : add these options in View directly
+// // key points
+// if (FreePathAutomaton *fp = dynamic_cast<FreePathAutomaton *>(a)) {
+//     ImGui::SameLine();
+//     if (ImGui::SmallButton(ICON_FA_PLUS " Key")) {
+//         rig->lock();
+//         fp->addKey();
+//         rig->unlock();
+//         Action::manager().store(a->name() + ": Add key");
+//     }
+//     ImGui::SameLine();
+//     if (ImGui::SmallButton(ICON_FA_MINUS " Key") && fp->controls().size() > 2) {
+//         rig->lock();
+//         fp->removeKey();
+//         rig->unlock();
+//         Action::manager().store(a->name() + ": Remove key");
+//     }
+// }

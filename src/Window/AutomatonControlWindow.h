@@ -18,6 +18,8 @@ class AutomatonControlWindow : public WorkspaceWindow
 {
     char name_buffer_[64];
     uint64_t name_id_;
+    uint64_t name_editing_;   // id of automaton whose name is edited in its row (0 if none)
+    bool name_focus_;
     double drag_offset_;   // phase offset when starting to drag the timeline
     double drag_period_;   // period when starting to drag the timeline
     double drag_anchor_;   // beat time of the cycle start kept fixed when scaling
@@ -30,7 +32,6 @@ class AutomatonControlWindow : public WorkspaceWindow
 
     void RenderTimelines (AutomatonRig *rig);
     bool DrawControlBar (AutomatonRig *rig, Automaton *a);
-    void RenderDetails (AutomatonRig *rig, Automaton *a);
 
 public:
     AutomatonControlWindow ();
