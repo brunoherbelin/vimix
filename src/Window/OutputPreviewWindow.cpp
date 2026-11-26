@@ -252,7 +252,7 @@ void OutputPreviewWindow::Render()
             if (ImGui::BeginMenu(IMGUI_TITLE_PREVIEW))
             {
                 // Preview and output menu
-                if (ImGuiToolkit::MenuItemIcon(ICON_PREVIEW, MENU_PREVIEW, SHORTCUT_PREVIEW_OUT) )
+                if (ImGuiToolkit::MenuItemIcon(ICON_VI_PREVIEW, MENU_PREVIEW, SHORTCUT_PREVIEW_OUT) )
                     UserInterface::manager().show_preview = UserInterface::PREVIEW_OUTPUT;
                 ImGui::MenuItem( MENU_OUTPUTDISABLE, SHORTCUT_OUTPUTDISABLE, &Settings::application.render.disabled);
 

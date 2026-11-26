@@ -48,9 +48,10 @@
 #define AUTOMATON_ALPHA_CURVE_DISABLED 0.3f  // timeline curve of a disabled automaton
 #define AUTOMATON_ALPHA_MARK           0.8f   // timeline marks of events
 #define AUTOMATON_ALPHA_HEAD           1.0f   // timeline head of a paused automaton
+#define AUTOMATON_ALPHA_GRID_HEAD      0.5f   // play head of the metronome in the beats grid
 #define AUTOMATON_ALPHA_MARK_DISABLED  0.3f   // timeline marks of events of a disabled automaton
 
-AutomatonControlWindow::AutomatonControlWindow () : WorkspaceWindow("Automatons"), name_id_(0), name_editing_(0), name_focus_(false), drag_offset_(0.0), drag_period_(4.0), drag_anchor_(0.0), drag_anchor_x_(0.f), drag_span_(0.0), drag_page_(0.0), drag_mode_(0), period_slider_(2.f), period_sliding_(false)
+AutomatonControlWindow::AutomatonControlWindow () : WorkspaceWindow("Kinetics"), name_id_(0), name_editing_(0), name_focus_(false), drag_offset_(0.0), drag_period_(4.0), drag_anchor_(0.0), drag_anchor_x_(0.f), drag_span_(0.0), drag_page_(0.0), drag_mode_(1), period_slider_(2.f), period_sliding_(false)
 {
     name_buffer_[0] = '\0';
 }
@@ -110,24 +111,15 @@ void AutomatonControlWindow::Render ()
         {
             if ( ImGui::MenuItem( ICON_FA_PLAY "  Play all", nullptr, false, rig->anyPaused()) ) {
                 rig->setPaused(false);
-                Action::manager().store("Automatons: Play all");
+                Action::manager().store("Kinetics: Play all");
             }
             if ( ImGui::MenuItem( ICON_FA_PAUSE "  Pause all", nullptr, false, !rig->empty() && !rig->allPaused()) ) {
                 rig->setPaused(true);
-                Action::manager().store("Automatons: Pause all");
+                Action::manager().store("Kinetics: Pause all");
             }
 
             ImGui::Separator();
-            bool pinned = Settings::application.widget.automatons_view == Settings::application.current_view;
-            std::string menutext = std::string( ICON_FA_MAP_PIN "    Stick to ") +
-                                   Settings::application.views[Settings::application.current_view].name + " view";
-            if ( ImGui::MenuItem( menutext.c_str(), nullptr, &pinned) ){
-                if (pinned)
-                    Settings::application.widget.automatons_view = Settings::application.current_view;
-                else
-                    Settings::application.widget.automatons_view = -1;
-            }
-            if ( ImGui::MenuItem( MENU_CLOSE ) )
+            if ( ImGui::MenuItem( MENU_CLOSE,  SHORTCUT_AUTOMATONS) )
                 Settings::application.widget.automatons = false;
 
             ImGui::EndMenu();
@@ -235,6 +227,14 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
             snprintf(txt, 16, "%d", int(std::round(in_bar)) + 1);
             dl->AddText(ImVec2(x + 3.f, origin.y), bar ? col_bar : col_text, txt);
         }
+    }
+
+    // play head of the metronome in the beats grid (short, semi transparent)
+    if (beats >= page && beats <= page + span) {
+        ImVec4 c = ImGuiToolkit::HighlightColor();
+        c.w *= AUTOMATON_ALPHA_GRID_HEAD;
+        const float x = X(beats);
+        dl->AddLine(ImVec2(x, origin.y), ImVec2(x, origin.y + header_h), ImGui::GetColorU32(c), 2.f);
     }
 
     // marks of events across all rows (drawn faint, on top of rows)
@@ -425,9 +425,9 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
         if (ImGui::IsItemHovered()) {
             char info[64];
             if (std::abs(a->offset()) < 1e-6)
-                snprintf(info, 64, "%g beat%s cycle", a->period(), a->period() == 1.0 ? "" : "s");
+                snprintf(info, 64, "%g beat%s / cycle, no phase shift", a->period(), a->period() == 1.0 ? "" : "s");
             else
-                snprintf(info, 64, "%g beat%s cycle, shift by %+g", a->period(), a->period() == 1.0 ? "" : "s", a->offset());
+                snprintf(info, 64, "%g beat%s / cycle, shift by %+g", a->period(), a->period() == 1.0 ? "" : "s", a->offset());
             ImGuiToolkit::ToolTip(info);
         }
 
@@ -438,10 +438,10 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
             dl->AddRectFilled(ImVec2(xb, drag_mode_ == 0 ? y + 2.f : ym), ImVec2(xb + period_w, drag_mode_ == 0 ? ym : y + row_h - 2.f),
                               ImGui::GetColorU32(ImGuiCol_FrameBg), style.FrameRounding);
             ImGui::SetCursorScreenPos(ImVec2(xb, y + 1.f));
-            if (ImGuiToolkit::IconButton(ICON_VI_PHASE_SHIFT, "Shift phase\nDrag timeline to shift the cycle in time"))
+            if (ImGuiToolkit::IconButton(ICON_VI_PHASE_SHIFT, "Phase shift\nDrag timeline to shift cycle in time"))
                 drag_mode_ = 0;
             ImGui::SetCursorScreenPos(ImVec2(xb, ym));
-            if (ImGuiToolkit::IconButton(ICON_VI_PHASE_SCALE, "Scale cycle\nDrag timeline to change the cycle duration"))
+            if (ImGuiToolkit::IconButton(ICON_VI_PHASE_SCALE, "Scale cycle\nDrag timeline to change cycle duration"))
                 drag_mode_ = 1;
 
             // reset phase shift (no background)
@@ -452,12 +452,12 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
             }
             // shape of the motion curve
             static std::vector< std::pair<int, int> > icons_shape = { {ICON_VI_MOTION_LINEAR}, {ICON_VI_MOTION_SMOOTH}, {ICON_VI_MOTION_PULSE} };
-            static std::vector< std::string > tooltips_shape = { "Linear motion", "Smooth motion", "Pulse motion" };
+            static std::vector< std::string > tooltips_shape = { "Linear curve", "Smooth curve", "Pulse curve" };
             ImGui::SetCursorScreenPos(ImVec2(xs, ym));
             int shape = a->shape();
             if (ImGuiToolkit::IconMultistate(icons_shape, &shape, tooltips_shape)) {
                 a->setShape(shape);
-                Action::manager().store(a->name() + ": Motion " + Automaton::Shapes[shape]);
+                Action::manager().store(a->name() + ": Curve " + Automaton::Shapes[shape]);
             }
 
         }

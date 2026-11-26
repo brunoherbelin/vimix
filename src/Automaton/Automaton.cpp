@@ -37,11 +37,11 @@
 #include "Automaton.h"
 
 std::vector< std::pair<const char *, std::string> > Automaton::Types = {
-    { ICON_FA_ARROWS_ALT_H, std::string("Linear") },
-    { ICON_FA_CIRCLE_NOTCH, std::string("Circular") },
+    { ICON_FA_ARROWS_ALT_H, std::string(" Linear path") },
+    { ICON_FA_CIRCLE_NOTCH, std::string(" Circular path") },
     { ICON_FA_BEZIER_CURVE, std::string("Free path") },
-    { ICON_FA_HEARTBEAT,    std::string("Heart") },
-    { ICON_FA_GRIP_LINES,   std::string("Rift") }
+    { ICON_FA_DOT_CIRCLE,   std::string(" Radiant") },
+    { ICON_FA_GRIP_LINES,   std::string(" Rift") }
 };
 
 std::vector< std::string > Automaton::Shapes = { "Linear", "Smooth", "Pulse" };
@@ -118,6 +118,11 @@ void Automaton::attachTo (Group *parent)
 
     if (parent_ != nullptr)
         parent_->attach(frame_);
+}
+
+void Automaton::setViewSpace (uint v)
+{
+    viewspace_ = v < MAX_VIEWSPACE ? v : 0;
 }
 
 bool Automaton::visible () const

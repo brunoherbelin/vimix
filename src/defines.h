@@ -200,7 +200,7 @@
 
 #define IMGUI_TITLE_MEDIAPLAYER ICON_FA_PLAY_CIRCLE "  Player"
 #define IMGUI_TITLE_TIMER ICON_FA_CLOCK " Timer"
-#define IMGUI_TITLE_AUTOMATONS ICON_FA_ROBOT " Automatons"
+#define IMGUI_TITLE_AUTOMATONS ICON_FA_INFINITY " Kinetics"
 #define IMGUI_TITLE_INPUT_MAPPING ICON_FA_HAND_PAPER " Input Mapping"
 #define IMGUI_TITLE_HELP ICON_FA_LIFE_RING "  Help"
 #define IMGUI_TITLE_TOOLBOX ICON_FA_HAMSA "  Guru Toolbox"
@@ -261,7 +261,6 @@
 #define SHORTCUT_CAPTURE_GUI  "F9"
 #define MENU_OUTPUTDISABLE    ICON_FA_EYE_SLASH " Disable outputs"
 #define SHORTCUT_OUTPUTDISABLE "F12"
-#define ICON_PREVIEW          4, 15
 #define MENU_PREVIEW          "Preview"
 #define SHORTCUT_PREVIEW_OUT  "F6"
 #define SHORTCUT_PREVIEW_SRC  "F7"
@@ -283,7 +282,8 @@
 #define MENU_TIMER            ICON_FA_CLOCK "  Timer "
 #define TOOLTIP_TIMER         "Timer "
 #define SHORTCUT_TIMER        CTRL_MOD "T"
-#define MENU_AUTOMATONS       ICON_FA_ROBOT " Automatons "
+#define MENU_AUTOMATONS       ICON_FA_INFINITY " Kinetics "
+#define SHORTCUT_AUTOMATONS   CTRL_MOD "K"
 #define MENU_INPUTS           ICON_FA_HAND_PAPER "  Input mapping "
 #define TOOLTIP_INPUTS        "Inputs mapping "
 #define SHORTCUT_INPUTS       CTRL_MOD "I"

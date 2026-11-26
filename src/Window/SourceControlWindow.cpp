@@ -312,7 +312,7 @@ void SourceControlWindow::Render()
         if (ImGui::BeginMenu(IMGUI_TITLE_MEDIAPLAYER))
         {
             // Preview and output menu
-            if (ImGuiToolkit::MenuItemIcon(ICON_PREVIEW, MENU_PREVIEW, SHORTCUT_PREVIEW_SRC, false, renderedFramebuffer()!=nullptr) )
+            if (ImGuiToolkit::MenuItemIcon(ICON_VI_PREVIEW, MENU_PREVIEW, SHORTCUT_PREVIEW_SRC, false, renderedFramebuffer()!=nullptr) )
                 UserInterface::manager().show_preview = UserInterface::PREVIEW_SOURCE;
             //
             // Menu section for play control

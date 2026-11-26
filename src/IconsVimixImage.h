@@ -46,6 +46,7 @@
 #define ICON_VI_LAYERS            13, 16
 #define ICON_VI_LAYERS_CENTRAL    11, 16
 #define ICON_VI_DISTRIBUTE         4, 6
+#define ICON_VI_PREVIEW           18,  6
 
 // filters icons
 #define ICON_VI_FILTER_NONE          7, 11

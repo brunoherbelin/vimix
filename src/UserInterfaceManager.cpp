@@ -515,6 +515,10 @@ void UserInterface::handleKeyboard()
             // Timers
             timercontrol.setVisible(!Settings::application.widget.timer);
         }
+        else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_K), false )) {
+            // Kinetics (automatons)
+            automatoncontrol.setVisible(!Settings::application.widget.automatons);
+        }
         else if (ImGui::IsKeyPressed( Control::layoutKey(GLFW_KEY_G), false )) {
             // Developer toolbox
             Settings::application.widget.toolbox = !Settings::application.widget.toolbox;
@@ -1621,7 +1625,7 @@ void UserInterface::showMenuWindows()
     if ( ImGui::MenuItem( MENU_TIMER, SHORTCUT_TIMER, &Settings::application.widget.timer) )
         UserInterface::manager().timercontrol.setVisible(Settings::application.widget.timer);
 
-    if ( ImGui::MenuItem( MENU_AUTOMATONS, nullptr, &Settings::application.widget.automatons) )
+    if ( ImGui::MenuItem( MENU_AUTOMATONS, SHORTCUT_AUTOMATONS, &Settings::application.widget.automatons) )
         UserInterface::manager().automatoncontrol.setVisible(Settings::application.widget.automatons);
 
     if ( ImGui::MenuItem( MENU_INPUTS, SHORTCUT_INPUTS, &Settings::application.widget.inputs) )
@@ -1817,7 +1821,7 @@ static const std::vector< std::pair<std::string, const char*> > layout_windows =
     { "preview",        "OutputPreview" },          // OutputPreviewWindow
     { "media_player",   "SourceController" },       // SourceControlWindow
     { "timer",          "Timer" },                  // TimerMetronomeWindow
-    { "automatons",     "Automatons" },             // AutomatonControlWindow
+    { "automatons",     "Kinetics" },             // AutomatonControlWindow
     { "inputs",         "InputMappingInterface" },  // InputMappingWindow
     { "shader_editor",  "Shader" },                 // ShaderEditWindow
     { "logs",           "###LOGVIMIX" },            // Log window
@@ -3725,11 +3729,11 @@ void UserInterface::RenderHelp()
         ImGui::Text("F5"); ImGui::NextColumn();
         ImGui::Text(ICON_FA_TV " Displays view"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_PREVIEW_OUT); ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Output");
+        ImGuiToolkit::Icon(ICON_VI_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Output");
         ImGui::SameLine(0, IMGUI_SAME_LINE); ImGuiToolkit::Indication("Press & hold for momentary on/off", ICON_FA_INFO_CIRCLE);
         ImGui::NextColumn();
         ImGui::Text(SHORTCUT_PREVIEW_SRC); ImGui::NextColumn();
-        ImGuiToolkit::Icon(ICON_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Source");
+        ImGuiToolkit::Icon(ICON_VI_PREVIEW); ImGui::SameLine(0, IMGUI_SAME_LINE); ImGui::Text("Preview Source");
         ImGui::SameLine(0, IMGUI_SAME_LINE); ImGuiToolkit::Indication("Press & hold for momentary on/off", ICON_FA_INFO_CIRCLE);
         ImGui::NextColumn();
         ImGui::Text("F8"); ImGui::NextColumn();
@@ -3752,6 +3756,8 @@ void UserInterface::RenderHelp()
         ImGui::Text(ICON_FA_PLAY_CIRCLE " " TOOLTIP_PLAYER "window" ); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_TIMER); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CLOCK " " TOOLTIP_TIMER "window"); ImGui::NextColumn();
+        ImGui::Text(SHORTCUT_AUTOMATONS); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_ROBOT " Kinetics window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_INPUTS); ImGui::NextColumn();
         ImGui::Text(ICON_FA_HAND_PAPER " " TOOLTIP_INPUTS "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_SHADEREDITOR); ImGui::NextColumn();
