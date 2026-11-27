@@ -3757,7 +3757,7 @@ void UserInterface::RenderHelp()
         ImGui::Text(SHORTCUT_TIMER); ImGui::NextColumn();
         ImGui::Text(ICON_FA_CLOCK " " TOOLTIP_TIMER "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_AUTOMATONS); ImGui::NextColumn();
-        ImGui::Text(ICON_FA_ROBOT " Kinetics window"); ImGui::NextColumn();
+        ImGui::Text(ICON_FA_ATOM " Kinetics window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_INPUTS); ImGui::NextColumn();
         ImGui::Text(ICON_FA_HAND_PAPER " " TOOLTIP_INPUTS "window"); ImGui::NextColumn();
         ImGui::Text(SHORTCUT_SHADEREDITOR); ImGui::NextColumn();

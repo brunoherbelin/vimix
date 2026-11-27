@@ -868,7 +868,7 @@ View::Cursor AutomatonRig::drag (View *view, glm::vec2 screen)
     // drag a grip: change geometry
     grab_.bot->grab(grab_.grip, grab_.stored, p - grab_.from);
     grab_.moved = true;
-    return View::Cursor(View::Cursor_ResizeAll, std::string(ICON_FA_ROBOT " ") + grab_.bot->name());
+    return View::Cursor(View::Cursor_ResizeAll, std::string(ICON_FA_ATOM " ") + grab_.bot->name());
 }
 
 void AutomatonRig::beginLinking ()
@@ -968,7 +968,7 @@ View::Cursor AutomatonRig::over (View *view, glm::vec2 screen)
         if (g == Automaton::GRIP_MOVER | g == Automaton::GRIP_MOVE) {
             found = true;
             ret.type = View::Cursor_Hand;
-            ret.info = std::string(ICON_FA_ROBOT " ");
+            ret.info = std::string(ICON_FA_ATOM " ");
             if (g == Automaton::GRIP_MOVER)
                 ret.info += "Drag to a source to link";
             else {
