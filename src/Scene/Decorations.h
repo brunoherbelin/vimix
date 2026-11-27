@@ -119,6 +119,8 @@ public:
         BLEND_S_LIGHT,
         BLEND_S_SUB,
         BLEND_LIGHTEN,
+        PATH_PLUS,
+        PATH_MINUS,
         EMPTY
     } Type;
     Symbol(Type t, glm::vec3 pos = glm::vec3(0.f));

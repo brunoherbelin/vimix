@@ -589,6 +589,10 @@ Symbol::Symbol(Type t, glm::vec3 pos) : Node(), type_(t)
         shadows[BLEND_S_SUB]= nullptr;
         icons[BLEND_LIGHTEN]  = new Mesh("mesh/icon_blend_lighten.ply");
         shadows[BLEND_LIGHTEN]= nullptr;
+        icons[PATH_PLUS]  = new Mesh("mesh/icon_path_plus.ply");
+        shadows[PATH_PLUS]= nullptr;
+        icons[PATH_MINUS]  = new Mesh("mesh/icon_path_minus.ply");
+        shadows[PATH_MINUS]= nullptr;
         icons[EMPTY]    = new Mesh("mesh/icon_empty.ply");
         shadows[EMPTY]  = shadow;
     }

@@ -83,6 +83,12 @@ glm::vec2 ellipse (glm::vec2 center, glm::vec2 radius, float turn)
     return center + glm::vec2(radius.x * std::cos(a), radius.y * std::sin(a));
 }
 
+glm::vec2 ellipse (glm::vec2 center, glm::vec2 axis_x, glm::vec2 axis_y, float turn)
+{
+    const float a = 2.f * PI_F * turn;
+    return center + axis_x * std::cos(a) + axis_y * std::sin(a);
+}
+
 // centripetal Catmull-Rom segment between P1 and P2
 static glm::vec2 catmullRom (glm::vec2 P0, glm::vec2 P1, glm::vec2 P2, glm::vec2 P3, float t)
 {

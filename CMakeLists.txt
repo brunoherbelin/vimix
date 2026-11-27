@@ -1011,6 +1011,8 @@ set(VMIX_RSC_FILES
     ./rsc/mesh/icon_blend_hard_light.ply
     ./rsc/mesh/icon_blend_soft_sub.ply
     ./rsc/mesh/icon_blend_lighten.ply
+    ./rsc/mesh/icon_path_plus.ply
+    ./rsc/mesh/icon_path_minus.ply
     ./rsc/mesh/h_line.ply
     ./rsc/mesh/h_mark.ply
     ./rsc/shaders/filters/default.glsl

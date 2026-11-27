@@ -865,6 +865,10 @@ View::Cursor AutomatonRig::drag (View *view, glm::vec2 screen)
         return View::Cursor(View::Cursor_Hand, ICON_FA_LINK " Release on a source");
     }
 
+    // buttons are clicked, not dragged
+    if (grab_.grip == Automaton::GRIP_ADD_KEY || grab_.grip == Automaton::GRIP_REMOVE_KEY)
+        return View::Cursor(View::Cursor_Hand);
+
     // drag a grip: change geometry
     grab_.bot->grab(grab_.grip, grab_.stored, p - grab_.from);
     grab_.moved = true;
@@ -916,6 +920,21 @@ void AutomatonRig::release (View *view, glm::vec2 screen)
             }
         }
     }
+    else if (grab_.bot && view && (grab_.grip == Automaton::GRIP_ADD_KEY || grab_.grip == Automaton::GRIP_REMOVE_KEY)) {
+        // click on a button: released over the same button
+        FreePathAutomaton *fp = dynamic_cast<FreePathAutomaton *>(grab_.bot);
+        if (fp && fp->pick(scenePoint(view, screen)) == grab_.grip) {
+            const bool add = grab_.grip == Automaton::GRIP_ADD_KEY;
+            {
+                std::lock_guard<std::mutex> lock(access_);
+                if (add)
+                    fp->addKey();
+                else
+                    fp->removeKey();
+            }
+            label = fp->name() + (add ? ": Add key" : ": Remove key");
+        }
+    }
     else if (grab_.bot && grab_.moved)
         label = grab_.bot->name() + ": Edit";
 
@@ -929,7 +948,8 @@ void AutomatonRig::release (View *view, glm::vec2 screen)
 
 void AutomatonRig::doubleclic ()
 {
-    if (grab_.bot == nullptr)
+    // (buttons can be clicked repeatedly)
+    if (grab_.bot == nullptr || grab_.grip == Automaton::GRIP_ADD_KEY || grab_.grip == Automaton::GRIP_REMOVE_KEY)
         return;
     Automaton *a = grab_.bot;
     {
@@ -965,12 +985,17 @@ View::Cursor AutomatonRig::over (View *view, glm::vec2 screen)
         if (!found && a->mode() == view->mode() && a->parent() != nullptr && a->visible() && a->interactive())
             g = a->pick(p);
         a->hover(g);
-        if (g == Automaton::GRIP_MOVER | g == Automaton::GRIP_MOVE) {
+        if (g == Automaton::GRIP_MOVER || g == Automaton::GRIP_MOVE
+            || g == Automaton::GRIP_ADD_KEY || g == Automaton::GRIP_REMOVE_KEY) {
             found = true;
             ret.type = View::Cursor_Hand;
             ret.info = std::string(ICON_FA_ATOM " ");
             if (g == Automaton::GRIP_MOVER)
                 ret.info += "Drag to a source to link";
+            else if (g == Automaton::GRIP_ADD_KEY)
+                ret.info += "Add key point";
+            else if (g == Automaton::GRIP_REMOVE_KEY)
+                ret.info += "Remove key point";
             else {
                 ret.info += a->name();
                 ret.info += a->paused() ? "\n   (double clic to play)" : "\n   (double clic to pause)";

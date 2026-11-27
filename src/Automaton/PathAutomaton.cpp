@@ -225,19 +225,20 @@ void CircularAutomaton::reset (glm::vec2 c, float size)
     rebuild();
 }
 
-void CircularAutomaton::constrain (int)
+void CircularAutomaton::constrain (int grip)
 {
-    // radius points on the axis of the ellipse, with a minimum radius
+    // minimum radius
     const float m = 0.01f;
-    controls_[1].y = controls_[0].y;
-    controls_[1].x = controls_[0].x + std::max(m, std::abs(controls_[1].x - controls_[0].x));
-    controls_[2].x = controls_[0].x;
-    controls_[2].y = controls_[0].y + std::max(m, std::abs(controls_[2].y - controls_[0].y));
-}
-
-glm::vec2 CircularAutomaton::radius () const
-{
-    return glm::vec2(controls_[1].x - controls_[0].x, controls_[2].y - controls_[0].y);
+    // Rx gives the orientation of the ellipse (like Rift)
+    glm::vec2 ax = axisX();
+    float rx = glm::length(ax);
+    const glm::vec2 u = rx > 1e-5f ? ax / rx : glm::vec2(1.f, 0.f);
+    controls_[1] = controls_[0] + u * std::max(m, rx);
+    // Ry on the perpendicular of Rx, counter-clockwise
+    const glm::vec2 n(-u.y, u.x);
+    // its radius is kept when rotating with Rx, and is the projection on the axis otherwise
+    const float ry = (grip == 1) ? glm::length(axisY()) : glm::dot(axisY(), n);
+    controls_[2] = controls_[0] + n * std::max(m, ry);
 }
 
 void CircularAutomaton::rebuild ()
@@ -245,7 +246,7 @@ void CircularAutomaton::rebuild ()
     std::vector<glm::vec2> path;
     const size_t N = 72;
     for (size_t i = 0; i < N; ++i)
-        path.push_back( ellipse(controls_[0], radius(), float(i) / float(N)) );
+        path.push_back( ellipse(controls_[0], axisX(), axisY(), float(i) / float(N)) );
     setPath(path, true);
 }
 
@@ -254,7 +255,7 @@ void CircularAutomaton::motion ()
     // starts at the top (like a clock), turns clockwise unless reversed
     const float t = ramp(float(progress_), shape_);
     const float turn = reverse_ ? 0.25f + t : 0.25f - t;
-    setMover( ellipse(controls_[0], radius(), turn) );
+    setMover( ellipse(controls_[0], axisX(), axisY(), turn) );
 }
 
 float CircularAutomaton::curve (float u) const
@@ -290,6 +291,52 @@ FreePathAutomaton::FreePathAutomaton (View::Mode m, uint64_t id) : PathAutomaton
     period_ = 4.0;
     shape_ = SHAPE_SMOOTH;
     reset(glm::vec2(0.f), 0.5f);
+
+    // buttons to add / remove key points
+    add_key_ = new Symbol(Symbol::PATH_PLUS);
+    add_key_->visible_ = false;
+    grips_->attach(add_key_);
+    remove_key_ = new Symbol(Symbol::PATH_MINUS);
+    remove_key_->visible_ = false;
+    grips_->attach(remove_key_);
+}
+
+glm::vec2 FreePathAutomaton::keyButton (bool add) const
+{
+    // after the end point, in the direction of the path,
+    // the add button on the left and the remove button on the right
+    const size_t n = controls_.size();
+    const glm::vec2 last = controls_[n - 1];
+    glm::vec2 dir = last - controls_[n - 2];
+    dir = glm::length(dir) < 1e-5f ? glm::vec2(1.f, 0.f) : glm::normalize(dir);
+    const glm::vec2 side(-dir.y, dir.x);
+    return last + uiscale_ * ( AUTOMATON_KEY_BUTTON_AHEAD * dir
+                               + (add ? 1.f : -1.f) * AUTOMATON_KEY_BUTTON_SIDE * side );
+}
+
+int FreePathAutomaton::pick (glm::vec2 p) const
+{
+    const float r = AUTOMATON_KEY_BUTTON_PICK * uiscale_;
+    if (keyButtonShown(true) && glm::distance(p, keyButton(true)) < r)
+        return GRIP_ADD_KEY;
+    if (keyButtonShown(false) && glm::distance(p, keyButton(false)) < r)
+        return GRIP_REMOVE_KEY;
+    return PathAutomaton::pick(p);
+}
+
+void FreePathAutomaton::updateGrips ()
+{
+    PathAutomaton::updateGrips();
+
+    const float s = AUTOMATON_KEY_BUTTON_SIZE / AUTOMATON_MESH_ICON_SIZE * uiscale_;
+    for (bool add : { true, false }) {
+        Symbol *b = add ? add_key_ : remove_key_;
+        const int g = add ? GRIP_ADD_KEY : GRIP_REMOVE_KEY;
+        b->visible_ = keyButtonShown(add);
+        b->translation_ = glm::vec3(keyButton(add), 0.f);
+        b->scale_ = glm::vec3(s, s, 1.f) * (hover_ == g ? AUTOMATON_GRIP_HOVER_SCALE : 1.f);
+        b->color = color(hover_ == g ? AUTOMATON_ALPHA_HOVER : AUTOMATON_ALPHA_GRIP);
+    }
 }
 
 void FreePathAutomaton::reset (glm::vec2 c, float size)

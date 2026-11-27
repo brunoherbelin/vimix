@@ -43,6 +43,9 @@ float wavePeak (int shape);
 
 // point on ellipse at given turn [0 1] (counter clockwise, starting on the right)
 glm::vec2 ellipse (glm::vec2 center, glm::vec2 radius, float turn);
+// point on a rotated ellipse, given its two (orthogonal) semi-axes:
+// turn 0 is at center + axis_x, turn 0.25 at center + axis_y
+glm::vec2 ellipse (glm::vec2 center, glm::vec2 axis_x, glm::vec2 axis_y, float turn);
 
 // smooth curve passing through all given key points (centripetal Catmull-Rom)
 // returns the polyline of 'samples' points (first and last are first and last keys)

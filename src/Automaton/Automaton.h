@@ -129,7 +129,8 @@ public:
     inline Group *parent () const { return parent_; }
 
     // grips for user interaction (point given in scene coordinates)
-    enum { GRIP_NONE = -1, GRIP_MOVE = -2, GRIP_MOVER = -3 };
+    // (buttons are clicked, not dragged)
+    enum { GRIP_NONE = -1, GRIP_MOVE = -2, GRIP_MOVER = -3, GRIP_ADD_KEY = -4, GRIP_REMOVE_KEY = -5 };
     virtual int pick (glm::vec2 p) const;
     // move grip by delta, from the stored controls (at the start of grab)
     void grab (int grip, const std::vector<glm::vec2> &stored, glm::vec2 delta);
@@ -156,6 +157,10 @@ protected:
     virtual glm::vec2 center () const;
     // control points can be hidden (e.g. when same as center)
     virtual bool gripShown (size_t) const { return true; }
+    // control point marked with a border (double diamond), e.g. end of an open path
+    virtual bool gripBorder (size_t) const { return false; }
+    // update the graphics of grips (after motion)
+    virtual void updateGrips ();
 
     // utility to replace a line in a group
     static LineStrip *replaceLine (Group *parent, LineStrip *line, const std::vector<glm::vec2> &path,
@@ -194,11 +199,9 @@ protected:
     Group *grips_;
     std::vector<Symbol *> grip_nodes_;
     Symbol *move_grip_;
+    Symbol *border_grip_;
     int hover_;
     bool highlight_;
-
-private:
-    void updateGrips ();
 };
 
 //
@@ -208,10 +211,15 @@ private:
 #define AUTOMATON_GRIP_SIZE          0.04f
 #define AUTOMATON_GRIP_PICK          0.25f
 #define AUTOMATON_GRIP_HOVER_SCALE   1.3f   // grips under the cursor are bigger
+#define AUTOMATON_GRIP_BORDER    1.3f   // border around marked grips (relative to grip size)
 #define AUTOMATON_MOVER_SIZE         0.07f
 #define AUTOMATON_MOVER_PICK_SCALE   1.3f   // mover easier to pick than grips
 #define AUTOMATON_MOVER_HOVER_SCALE  1.2f
 #define AUTOMATON_LINK_POINT_SIZE    0.02f  // point at the end of link lines, on the source
+#define AUTOMATON_KEY_BUTTON_SIZE    0.06f  // buttons to add / remove key points of free paths
+#define AUTOMATON_KEY_BUTTON_PICK    0.07f
+#define AUTOMATON_KEY_BUTTON_AHEAD   0.16f  // distance of buttons after the end point (along the path)
+#define AUTOMATON_KEY_BUTTON_SIDE    0.07f // distance of buttons on each side of the path
 // Width of lines (in pixels)
 #define AUTOMATON_LINE_WIDTH         3.0f   // path of path automatons
 #define AUTOMATON_LINE_WIDTH_MOTION  (AUTOMATON_LINE_WIDTH * 1.6f) // moving lines of field automatons (heart ring, rift lines)
@@ -238,5 +246,7 @@ private:
 // half size of the meshes of symbols used for drawing
 #define AUTOMATON_MESH_POINT_SIZE 0.044f
 #define AUTOMATON_MESH_CROSS_SIZE 0.7f
+#define AUTOMATON_MESH_SQUARE_SIZE 0.574f
+#define AUTOMATON_MESH_ICON_SIZE   0.11f
 
 #endif // AUTOMATON_H

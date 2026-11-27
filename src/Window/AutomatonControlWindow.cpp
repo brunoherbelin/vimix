@@ -722,22 +722,3 @@ bool AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
     }
     return del;
 }
-
-// TODO : add these options in View directly
-// // key points
-// if (FreePathAutomaton *fp = dynamic_cast<FreePathAutomaton *>(a)) {
-//     ImGui::SameLine();
-//     if (ImGui::SmallButton(ICON_FA_PLUS " Key")) {
-//         rig->lock();
-//         fp->addKey();
-//         rig->unlock();
-//         Action::manager().store(a->name() + ": Add key");
-//     }
-//     ImGui::SameLine();
-//     if (ImGui::SmallButton(ICON_FA_MINUS " Key") && fp->controls().size() > 2) {
-//         rig->lock();
-//         fp->removeKey();
-//         rig->unlock();
-//         Action::manager().store(a->name() + ": Remove key");
-//     }
-// }

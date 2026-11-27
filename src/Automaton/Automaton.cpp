@@ -99,6 +99,11 @@ Automaton::Automaton (View::Mode m, uint64_t id) : id_(id), mode_(m), enabled_(t
     move_grip_ = new Symbol(Symbol::SQUARE);
     move_grip_->translation_.z = 0.005f;
     grips_->attach(move_grip_);
+    // border of the double diamond of the marked grip
+    border_grip_ = new Symbol(Symbol::SQUARE);
+    border_grip_->rotation_.z = glm::quarter_pi<float>();
+    border_grip_->visible_ = false;
+    grips_->attach(border_grip_);
 }
 
 Automaton::~Automaton ()
@@ -286,12 +291,22 @@ void Automaton::updateGrips ()
     }
 
     const float s = AUTOMATON_GRIP_SIZE / AUTOMATON_MESH_POINT_SIZE * uiscale_;
+    border_grip_->visible_ = false;
     for (size_t i = 0; i < grip_nodes_.size(); ++i) {
         Symbol *d = grip_nodes_[i];
+        const float h = hover_ == int(i) ? AUTOMATON_GRIP_HOVER_SCALE : 1.f;
         d->visible_ = gripShown(i);
         d->translation_ = glm::vec3(controls_[i], 0.f);
-        d->scale_ = glm::vec3(s, s, 1.f) * (hover_ == int(i) ? AUTOMATON_GRIP_HOVER_SCALE : 1.f);
+        d->scale_ = glm::vec3(s, s, 1.f) * h;
         d->color = color(hover_ == int(i) ? AUTOMATON_ALPHA_HOVER : AUTOMATON_ALPHA_GRIP);
+        // marked grip: filled diamond surrounded by a larger border
+        if (gripBorder(i)) {
+            const float b = AUTOMATON_GRIP_BORDER * AUTOMATON_GRIP_SIZE / AUTOMATON_MESH_SQUARE_SIZE * uiscale_ * h;
+            border_grip_->visible_ = d->visible_;
+            border_grip_->translation_ = d->translation_;
+            border_grip_->scale_ = glm::vec3(b, b, 1.f);
+            border_grip_->color = d->color;
+        }
     }
 
     const float c = AUTOMATON_MOVER_SIZE / AUTOMATON_MESH_CROSS_SIZE * uiscale_ * (hover_ == GRIP_MOVE ? AUTOMATON_GRIP_HOVER_SCALE : 1.f);

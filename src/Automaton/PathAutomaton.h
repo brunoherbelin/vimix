@@ -98,12 +98,14 @@ protected:
     void motion () override;
     void rebuild () override;
     glm::vec2 center () const override;
+    bool gripBorder (size_t i) const override { return i + 1 == controls_.size(); }
 };
 
 /**
  * @brief The CircularAutomaton turns a circle around an ellipse
  * (clockwise by default, counter-clockwise if reverse)
- * controls: [ C, Rx, Ry ] the center and two points on the horizontal and vertical radius
+ * controls: [ C, Rx, Ry ] the center and the ends of the two semi-axes:
+ * moving Rx rotates the ellipse, Ry stays on the perpendicular axis
  */
 class CircularAutomaton : public PathAutomaton
 {
@@ -121,7 +123,11 @@ protected:
     void constrain (int grip) override;
     glm::vec2 center () const override { return controls_[0]; }
     bool gripShown (size_t i) const override { return i > 0; }
-    glm::vec2 radius () const;
+    // Ry is the starting point
+    bool gripBorder (size_t i) const override { return i == 2; }
+    // semi-axes of the ellipse (Ry is perpendicular to Rx)
+    inline glm::vec2 axisX () const { return controls_[1] - controls_[0]; }
+    inline glm::vec2 axisY () const { return controls_[2] - controls_[0]; }
 };
 
 /**
@@ -143,9 +149,20 @@ public:
     void addKey ();
     void removeKey ();
 
+    // buttons to add / remove key points first (shown if selected)
+    int pick (glm::vec2 p) const override;
+
 protected:
     void motion () override;
     void rebuild () override;
+    bool gripBorder (size_t i) const override { return i + 1 == controls_.size(); }
+    void updateGrips () override;
+    // position of the buttons, next to the end point
+    glm::vec2 keyButton (bool add) const;
+    inline bool keyButtonShown (bool add) const { return highlight_ && (add || controls_.size() > 2); }
+
+    Symbol *add_key_;
+    Symbol *remove_key_;
 
     AutomatonMath::ArcPath arc_;
     std::vector<float> key_fractions_;

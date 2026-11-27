@@ -95,6 +95,12 @@ static void test_paths()
     CHECK(near(ellipse(c, r, 0.25f), glm::vec2(1.f, 2.5f)));
     CHECK(near(ellipse(c, r, 0.5f), glm::vec2(-1.f, 2.f)));
     CHECK(near(ellipse(c, r, 1.f), ellipse(c, r, 0.f), 1e-3f));
+    // rotated ellipse: same as axis aligned with axes on x and y
+    for (float t : { 0.f, 0.1f, 0.25f, 0.6f })
+        CHECK(near(ellipse(c, glm::vec2(r.x, 0.f), glm::vec2(0.f, r.y), t), ellipse(c, r, t)));
+    // rotated by a quarter turn
+    CHECK(near(ellipse(c, glm::vec2(0.f, 2.f), glm::vec2(-0.5f, 0.f), 0.f), glm::vec2(1.f, 4.f)));
+    CHECK(near(ellipse(c, glm::vec2(0.f, 2.f), glm::vec2(-0.5f, 0.f), 0.25f), glm::vec2(0.5f, 2.f)));
 
     // smooth path passes through its keys
     std::vector<glm::vec2> keys = { {0.f, 0.f}, {1.f, 1.f}, {2.f, -0.5f}, {3.5f, 0.2f} };
