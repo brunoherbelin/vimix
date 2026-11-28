@@ -30,6 +30,7 @@
 #include "Scene/Decorations.h"
 #include "Visitor/Visitor.h"
 #include "Toolkit/BaseToolkit.h"
+#include "Settings.h"
 
 #include "AutomatonMath.h"
 #include "PathAutomaton.h"
@@ -203,9 +204,14 @@ void Automaton::setControls (const std::vector<glm::vec2> &c)
     rebuild();
 }
 
+bool Automaton::active () const
+{
+    return enabled_ && !Settings::application.automatons_disabled;
+}
+
 glm::vec4 Automaton::color (float alpha) const
 {
-    if (!enabled_)
+    if (!active())
         alpha *= AUTOMATON_ALPHA_DISABLED;
     else if (highlight_)
         alpha = std::min(1.f, alpha * AUTOMATON_ALPHA_HIGHLIGHT);

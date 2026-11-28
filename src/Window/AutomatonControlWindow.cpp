@@ -39,6 +39,7 @@
 #include "Automaton/AutomatonMath.h"
 #include "Automaton/AutomatonRig.h"
 #include "Automaton/PathAutomaton.h"
+#include "UserInterfaceManager.h"
 
 #include "AutomatonControlWindow.h"
 
@@ -109,6 +110,10 @@ void AutomatonControlWindow::Render ()
 
         if (ImGui::BeginMenu(IMGUI_TITLE_AUTOMATONS))
         {
+            // global disable (temporary: automatons do not act on sources)
+            ImGui::MenuItem( ICON_FA_BAN "  Disable", nullptr, &Settings::application.automatons_disabled);
+
+            ImGui::Separator();
             if ( ImGui::MenuItem( ICON_FA_PLAY "  Play all", nullptr, false, rig->anyPaused()) ) {
                 rig->setPaused(false);
                 Action::manager().store("Kinetics: Play all");
@@ -116,6 +121,17 @@ void AutomatonControlWindow::Render ()
             if ( ImGui::MenuItem( ICON_FA_PAUSE "  Pause all", nullptr, false, !rig->empty() && !rig->allPaused()) ) {
                 rig->setPaused(true);
                 Action::manager().store("Kinetics: Pause all");
+            }
+            if ( ImGui::MenuItem( ICON_FA_FAST_BACKWARD "  Restart all", nullptr, false, !rig->empty()) ) {
+                rig->restart();
+                Action::manager().store("Kinetics: Restart all");
+            }
+            if ( ImGui::MenuItem( ICON_FA_TRASH "  Delete all", nullptr, false, !rig->empty()) ) {
+                // (linked sources stay where they are, see AutomatonRig::remove)
+                const std::vector<Automaton *> all(rig->begin(), rig->end());
+                for (auto a : all)
+                    rig->remove(a);
+                Action::manager().store("Kinetics: Delete all");
             }
 
             ImGui::Separator();
@@ -147,9 +163,14 @@ void AutomatonControlWindow::Render ()
         const double b = rig->beats();
         snprintf(info, 64, "%.1f BPM   %d / %d",
                  Metronome::manager().tempo(), (int) std::floor(b - q * std::floor(b / q)) + 1, (int) q);
-        const float w = ImGui::CalcTextSize(info).x + ImGui::GetStyle().ItemSpacing.x;
+        // followed by the icon of the Timer window (to open it)
+        const float w_icon = ImGui::CalcTextSize(ICON_FA_CLOCK).x + ImGui::GetStyle().ItemSpacing.x;
+        const float w = ImGui::CalcTextSize(info).x + ImGui::GetStyle().ItemSpacing.x + w_icon;
         ImGui::SameLine(ImGui::GetWindowWidth() - w - ImGui::GetStyle().WindowPadding.x);
         ImGui::TextDisabled("%s", info);
+        ImGui::SameLine();
+        if (ImGuiToolkit::IconButton(ICON_FA_CLOCK, "Timer", SHORTCUT_TIMER))
+            UserInterface::manager().timercontrol.setVisible(true);
 
         ImGui::EndMenuBar();
     }
@@ -160,6 +181,9 @@ void AutomatonControlWindow::Render ()
     const float timeline_h = std::max(bar_height, ImGui::GetContentRegionAvail().y - bar_height - g.Style.ItemSpacing.y - g.Style.FramePadding.y);
     ImGui::BeginChild("##AutomatonTimelines", ImVec2(0, timeline_h));
     RenderTimelines(rig);
+    // clic in the background deselects
+    if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
+        rig->setSelected(nullptr);
     ImGui::EndChild();
 
     DrawControlBar(rig, rig->selected());
@@ -191,6 +215,8 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
     const float xb = x1 + 2.f;                                   // drag mode buttons
     const float xs = xb + period_w + style.ItemInnerSpacing.x;                        // reset phase and shape buttons
     const float bottom = origin.y + header_h + row_h * float(rig->size());
+    // line of time in seconds below the rows (same height as the line of beats)
+    const float footer_h = header_h;
 
     // the width of the timeline is the longest cycle
     double span = 1.0;
@@ -273,10 +299,8 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
                                                             {ICON_VI_VIEWSPACE_2},
                                                             {ICON_VI_VIEWSPACE_3},
                                                             {ICON_VI_VIEWSPACE_4} };
-        static std::vector< std::string > ws_tooltip = { "Acts on sources of workspace 1",
-                                                         "Acts on sources of workspace 2",
-                                                         "Acts on sources of workspace 3",
-                                                         "Acts on sources of workspace 4" };
+        static std::vector< std::string > ws_tooltip = { "Workspace 1", "Workspace 2",
+                                                         "Workspace 3", "Workspace 4" };
         // linked sources and automaton share the same ViewSpace:
         // with one source linked, both change; with several, the automaton follows its sources
         std::set<uint64_t> linked;
@@ -316,7 +340,7 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
         const bool shown = Mixer::manager().viewSpaceShown(a->viewSpace());
         if (!shown)
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-        if (!a->enabled()) {
+        if (!a->active()) {
             ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
             ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered));
             ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgActive));
@@ -370,7 +394,7 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
                 }
             }
         }
-        if (!a->enabled())
+        if (!a->active())
             ImGui::PopStyleColor(3);
         if (!shown)
             ImGui::PopStyleColor();
@@ -465,11 +489,11 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
         ImGui::PopID();
 
         // row background
-        const ImU32 col_row = ImGui::GetColorU32(ImGuiCol_FrameBgActive, selected ? 1.3f : a->enabled() ? 0.5f : 0.1f);
+        const ImU32 col_row = ImGui::GetColorU32(ImGuiCol_FrameBgActive, selected ? 1.3f : a->active() ? 0.5f : 0.1f);
         dl->AddRectFilled(ImVec2(x0, y + 2.f), ImVec2(x1, y + row_h - 2.f), col_row, style.FrameRounding);
 
-        const ImU32 col_curve = ImGui::GetColorU32(AUTOMATON_IMGUI_COLOR(!a->enabled() ? AUTOMATON_ALPHA_CURVE_DISABLED : (a->paused() ? AUTOMATON_ALPHA_CURVE_PAUSED : AUTOMATON_ALPHA_CURVE)));
-        const ImU32 col_mark  = ImGui::GetColorU32(AUTOMATON_IMGUI_COLOR(a->enabled() ? AUTOMATON_ALPHA_MARK : AUTOMATON_ALPHA_MARK_DISABLED));
+        const ImU32 col_curve = ImGui::GetColorU32(AUTOMATON_IMGUI_COLOR(!a->active() ? AUTOMATON_ALPHA_CURVE_DISABLED : (a->paused() ? AUTOMATON_ALPHA_CURVE_PAUSED : AUTOMATON_ALPHA_CURVE)));
+        const ImU32 col_mark  = ImGui::GetColorU32(AUTOMATON_IMGUI_COLOR(a->active() ? AUTOMATON_ALPHA_MARK : AUTOMATON_ALPHA_MARK_DISABLED));
         const float width_curve = selected ? 2.5f : 1.5f;
 
         // motion curve over the page of time
@@ -502,7 +526,9 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
 
         // play head of the automaton: moving with beats when playing,
         // otherwise frozen at the location of pause (first occurrence in this page)
-        const ImU32 col_head = ImGui::GetColorU32(ImGuiToolkit::HighlightColor());
+        // (gray if disabled, like the selectable of the row)
+        const ImU32 col_head = a->active() ? ImGui::GetColorU32(ImGuiToolkit::HighlightColor())
+                                            : ImGui::GetColorU32(ImGuiCol_FrameBg);
         const bool still = a->paused() || a->resuming();
         double th = beats;
         if (still)
@@ -530,8 +556,46 @@ void AutomatonControlWindow::RenderTimelines (AutomatonRig *rig)
     for (float x : marks)
         dl->AddLine(ImVec2(x, origin.y + header_h), ImVec2(x, bottom), col_faint);
 
+    // time in seconds from the start of the page, below the rows
+    const double tempo = Metronome::manager().tempo();
+    if (tempo > 0.0) {
+        const double seconds = span * 60.0 / tempo;
+        // step between ticks: enough space for their labels
+        const float min_dx = ImGui::CalcTextSize("00.00s").x + 6.f;
+        static const double steps[] = { 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 15.0, 30.0, 60.0, 120.0, 300.0 };
+        double step = steps[0];
+        for (double s : steps) {
+            step = s;
+            if ((x1 - x0) * float(s / seconds) >= min_dx)
+                break;
+        }
+        auto XS = [&](double s) { return x0 + (x1 - x0) * float(s / seconds); };
+        const float yt = bottom + 2.f;
+        // total duration of the timeline, right aligned after the timeline
+        char total[32];
+        if (seconds >= 60.0)
+            snprintf(total, 32, "%d:%04.1f", int(seconds) / 60, std::fmod(seconds, 60.0));
+        else
+            snprintf(total, 32, "%.2fs", seconds);
+        const float x_total = origin.x + width - ImGui::CalcTextSize(total).x;
+        dl->AddText(ImVec2(x_total, yt), col_bar, total);
+        for (int k = 0; k * step <= seconds + 1e-6; ++k) {
+            const double s = k * step;
+            const float x = XS(s);
+            dl->AddLine(ImVec2(x, bottom), ImVec2(x, bottom + footer_h * 0.5f), col_grid, 2.f);
+            char txt[16];
+            if (s >= 60.0)
+                snprintf(txt, 16, "%d:%02d", int(s) / 60, int(s) % 60);
+            else
+                snprintf(txt, 16, "%gs", s);
+            // no label overflowing the timeline
+            if (x + 5.f + ImGui::CalcTextSize(txt).x <= std::min(x1, x_total - 3.f))
+                dl->AddText(ImVec2(x + 5.f, yt), col_text, txt);
+        }
+    }
+
     // reserve space in window
-    ImGui::SetCursorScreenPos(ImVec2(origin.x, bottom));
+    ImGui::SetCursorScreenPos(ImVec2(origin.x, bottom + footer_h));
     ImGui::Dummy(ImVec2(width, style.ItemSpacing.y));
 }
 
@@ -696,11 +760,17 @@ bool AutomatonControlWindow::DrawControlBar (AutomatonRig *rig, Automaton *a)
     ImGui::SetCursorScreenPos(ImVec2(x_right - 2.f * bar_height, ImGui::GetCursorScreenPos().y));
     bool on = a->enabled();
 
+    // not available if all automatons are disabled
+    const bool all_disabled = Settings::application.automatons_disabled;
+    ImGuiToolkit::PushDisabled(all_disabled);
     const char *tooltip[2] = {"Disabled", "Enabled"};
-    if ( ImGuiToolkit::IconToggle(ICON_VI_BANNED, ICON_VI_CHECKED, &on, tooltip ) ){
+    if ( ImGuiToolkit::IconToggle(ICON_VI_BANNED, ICON_VI_CHECKED, &on, tooltip ) && !all_disabled ){
         rig->setEnabled(a, on);
         Action::manager().store(a->name() + (on ? ": Enable" : ": Disable"));
     }
+    ImGuiToolkit::PopDisabled(all_disabled);
+    if (all_disabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGuiToolkit::ToolTip("All Kinetics are disabled\n(see menu)");
 
 
     // delete, at the right end

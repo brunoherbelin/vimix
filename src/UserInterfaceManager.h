@@ -50,6 +50,7 @@ class UserInterface
     friend class SettingsPanel;
     friend class OutputPreviewWindow;
     friend class SourceControlWindow;
+    friend class AutomatonControlWindow;
 
     // Private Constructor
     UserInterface();

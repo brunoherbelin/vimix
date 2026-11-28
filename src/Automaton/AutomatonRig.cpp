@@ -26,6 +26,7 @@
 #include "IconsFontAwesome5.h"
 #include "defines.h"
 #include "Metronome.h"
+#include "Settings.h"
 #include "Log.h"
 #include "Mixer.h"
 #include "MixingGroup.h"
@@ -336,7 +337,7 @@ void AutomatonRig::remove (Automaton *a)
             selected_ = 0;
         // linked sources stay where they are
         if (PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a)) {
-            if (pa->enabled())
+            if (pa->active())
                 for (auto &l : pa->links())
                     bake(pa, l);
         }
@@ -370,7 +371,7 @@ Automaton *AutomatonRig::selected () const
 void AutomatonRig::unlink (PathAutomaton *a, const AutomatonLink &link)
 {
     std::lock_guard<std::mutex> lock(access_);
-    if (a->enabled()) {
+    if (a->active()) {
         for (auto &l : a->links())
             if (l.sameElement(link))
                 bake(a, l);
@@ -387,8 +388,11 @@ void AutomatonRig::setEnabled (Automaton *a, bool on)
     if (PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a)) {
         for (auto &l : pa->links()) {
             // disabled: linked sources stay where they are
-            if (!on)
-                bake(pa, l);
+            // (if all disabled, the links do not act: nothing to keep)
+            if (!on) {
+                if (!Settings::application.automatons_disabled)
+                    bake(pa, l);
+            }
 #if AUTOMATON_BAKE_LINKS
             // enabled: linked sources start moving from where they are
             else
@@ -445,7 +449,7 @@ bool AutomatonRig::rebase (Source *s, View::Mode m)
     bool linked = false;
     for (auto a : automatons_) {
         PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a);
-        if (pa == nullptr || !pa->enabled() || pa->mode() != m)
+        if (pa == nullptr || !pa->active() || pa->mode() != m)
             continue;
         for (auto &l : pa->links()) {
             if (l.source == s->id()) {
@@ -488,7 +492,7 @@ void AutomatonRig::followViewSpaces ()
         for (auto l = pa->links().begin(); l != pa->links().end(); ) {
             auto s = session_->find(l->source);
             if (s != session_->end() && (*s)->viewSpace() != pa->viewSpace()) {
-                if (pa->enabled() && l->active)
+                if (pa->active() && l->active)
                     bake(pa, *l);
                 Log::Notify("%s unlinked from %s %s: source moved to workspace %d.",
                              pa->name().c_str(), (*s)->name().c_str(), linkLabel(*l).c_str(),
@@ -539,6 +543,14 @@ void AutomatonRig::setPaused (bool on)
     std::lock_guard<std::mutex> lock(access_);
     for (auto a : automatons_)
         a->setPaused(on);
+}
+
+void AutomatonRig::restart ()
+{
+    std::lock_guard<std::mutex> lock(access_);
+    const double b = Metronome::manager().beats();
+    for (auto a : automatons_)
+        a->restart(b);
 }
 
 bool AutomatonRig::allPaused () const
@@ -630,7 +642,7 @@ void AutomatonRig::update ()
         for (auto &l : pa->links()) {
             auto s = sources.find(l.source);
             const bool active = s != sources.end() && s->second->viewSpace() == a->viewSpace();
-            if (pa->enabled() && l.active != active) {
+            if (pa->active() && l.active != active) {
                 // leaving the ViewSpace: the source stays where it is
                 if (!active)
                     bake(pa, l);
@@ -650,7 +662,7 @@ void AutomatonRig::update ()
         p.second.source = nullptr;
     }
     for (auto a : automatons_) {
-        if (!a->enabled())
+        if (!a->active())
             continue;
         const View::Mode m = a->mode();
         if (a->field()) {
@@ -739,7 +751,7 @@ void AutomatonRig::compose (Source *s, View::Mode m, RestPose &p)
     // links of path automatons: handles first, then translation of the source
     glm::vec2 offset(0.f);
     for (auto a : automatons_) {
-        if (!a->enabled() || a->mode() != m)
+        if (!a->active() || a->mode() != m)
             continue;
         PathAutomaton *pa = dynamic_cast<PathAutomaton *>(a);
         if (pa == nullptr)
@@ -764,7 +776,7 @@ void AutomatonRig::compose (Source *s, View::Mode m, RestPose &p)
     // fields push sources away
     if (m != View::LAYER && !s->locked()) {
         for (auto a : automatons_) {
-            if (!a->enabled() || a->mode() != m || a->viewSpace() != s->viewSpace())
+            if (!a->active() || a->mode() != m || a->viewSpace() != s->viewSpace())
                 continue;
             if (FieldAutomaton *fa = dynamic_cast<FieldAutomaton *>(a)) {
                 const glm::vec2 q = fa->push( glm::vec2(node->translation_) );
@@ -909,7 +921,7 @@ void AutomatonRig::release (View *view, glm::vec2 screen)
                 {
                     std::lock_guard<std::mutex> lock(access_);
                     // unlinked source stays where it is
-                    if (pa->enabled()) {
+                    if (pa->active()) {
                         for (auto &e : pa->links())
                             if (e.sameElement(l))
                                 bake(pa, e);

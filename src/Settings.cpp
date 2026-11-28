@@ -216,6 +216,7 @@ void Settings::terminate(uint64_t runtime, const std::string &filename)
     applicationNode->SetAttribute("shm_method", application.shm_method);
     applicationNode->SetAttribute("accept_audio", application.accept_audio);
     applicationNode->SetAttribute("media_keys", application.media_keys);
+    applicationNode->SetAttribute("automatons_disabled", application.automatons_disabled);
 
     XMLElement *transcodeNode = xmlDoc.NewElement( "Transcode" );
     transcodeNode->SetAttribute("option_0", application.transcode_options[0]);
@@ -678,6 +679,7 @@ void Settings::init(const std::string &filename)
             applicationNode->QueryIntAttribute("loopback_camera", &application.loopback_camera);
             applicationNode->QueryBoolAttribute("accept_audio", &application.accept_audio);
             applicationNode->QueryBoolAttribute("media_keys", &application.media_keys);
+            applicationNode->QueryBoolAttribute("automatons_disabled", &application.automatons_disabled);
             applicationNode->QueryIntAttribute("shm_method", &application.shm_method);
 
             XMLElement * transcodeNode = applicationNode->FirstChildElement("Transcode");

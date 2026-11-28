@@ -83,6 +83,8 @@ public:
     // timing
     // pause or play all automatons (see Automaton::setPaused)
     void setPaused (bool on);
+    // restart the cycle of all automatons (see Automaton::restart)
+    void restart ();
     bool allPaused () const;
     bool anyPaused () const;
     inline double beats () const { return beats_; }

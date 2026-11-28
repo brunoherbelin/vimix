@@ -19,6 +19,7 @@
 
 #include <algorithm>
 
+#include "defines.h"
 #include "Scene/Scene.h"
 #include "Scene/Primitives.h"
 #include "Scene/Mesh.h"

@@ -194,6 +194,51 @@
 #define COLOR_AUTOMATON 0.95f, 0.3f, 0.3f
 #define COLOR_PRESENTATION_BGROUND 0.1f, 0.1f, 0.1f
 
+//
+// Look of automatons (Kinetics)
+//
+// Sizes of graphics on screen (in units of the projection, independent of zoom)
+#define AUTOMATON_GRIP_SIZE          0.04f
+#define AUTOMATON_GRIP_PICK          0.25f
+#define AUTOMATON_GRIP_HOVER_SCALE   1.3f   // grips under the cursor are bigger
+#define AUTOMATON_GRIP_BORDER    1.3f   // border around marked grips (relative to grip size)
+#define AUTOMATON_MOVER_SIZE         0.07f
+#define AUTOMATON_MOVER_PICK_SCALE   1.3f   // mover easier to pick than grips
+#define AUTOMATON_MOVER_HOVER_SCALE  1.2f
+#define AUTOMATON_LINK_POINT_SIZE    0.02f  // point at the end of link lines, on the source
+#define AUTOMATON_KEY_BUTTON_SIZE    0.06f  // buttons to add / remove key points of free paths
+#define AUTOMATON_KEY_BUTTON_PICK    0.07f
+#define AUTOMATON_KEY_BUTTON_AHEAD   0.16f  // distance of buttons after the end point (along the path)
+#define AUTOMATON_KEY_BUTTON_SIDE    0.07f // distance of buttons on each side of the path
+// Width of lines (in pixels)
+#define AUTOMATON_LINE_WIDTH         3.0f   // path of path automatons
+#define AUTOMATON_LINE_WIDTH_MOTION  (AUTOMATON_LINE_WIDTH * 1.6f) // moving lines of field automatons (heart ring, rift lines)
+#define AUTOMATON_LINE_WIDTH_GUIDE   (AUTOMATON_LINE_WIDTH * 0.8f) // limits of field automatons (heart max ring, rift axis)
+#define AUTOMATON_LINE_WIDTH_LINK    (AUTOMATON_LINE_WIDTH * 0.8f)  // lines from mover to linked sources
+// Opacity of drawings [0 1]
+#define AUTOMATON_ALPHA_PATH         0.8f
+#define AUTOMATON_ALPHA_MOVER        1.0f
+#define AUTOMATON_ALPHA_MOTION       0.9f   // moving lines of field automatons
+#define AUTOMATON_ALPHA_GUIDE        0.5f   // limits of field automatons
+#define AUTOMATON_ALPHA_FILL         0.25f  // disk of heart
+#define AUTOMATON_ALPHA_LINK         0.5f
+#define AUTOMATON_ALPHA_LINK_POINT   0.8f
+#define AUTOMATON_ALPHA_LINKING      1.0f   // line while dragging the mover to link
+#define AUTOMATON_ALPHA_GRIP         0.7f
+#define AUTOMATON_ALPHA_GRIP_MOVE    0.6f   // grip to move whole automaton
+#define AUTOMATON_ALPHA_HOVER        1.0f   // grip under the cursor
+// Factors of opacity
+#define AUTOMATON_ALPHA_DISABLED     0.4f   // automaton disabled
+#define AUTOMATON_ALPHA_VIEWSPACE    0.3f   // other ViewSpaces shown (not interactive)
+#define AUTOMATON_ALPHA_HIGHLIGHT    1.3f   // automaton selected in the control window
+// Sampling of curves
+#define AUTOMATON_PATH_SAMPLES 96
+// half size of the meshes of symbols used for drawing
+#define AUTOMATON_MESH_POINT_SIZE 0.044f
+#define AUTOMATON_MESH_CROSS_SIZE 0.7f
+#define AUTOMATON_MESH_SQUARE_SIZE 0.574f
+#define AUTOMATON_MESH_ICON_SIZE   0.11f
+
 #define OSC_PORT_RECV_DEFAULT 7000
 #define OSC_PORT_SEND_DEFAULT 7001
 #define OSC_CONFIG_FILE "osc.xml"
